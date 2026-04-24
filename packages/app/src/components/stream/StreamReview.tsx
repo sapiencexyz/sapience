@@ -18,12 +18,12 @@ import {
 import { TooltipProvider } from '@sapience/ui/components/ui/tooltip';
 import MessageGroupRow from './MessageGroupRow';
 import { useSettings } from '~/lib/context/SettingsContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import {
   useRelayerMessageLog,
   type GroupCategory,
-} from '~/hooks/relayer/useRelayerMessageLog';
+} from '~/hooks/ws/useRelayerMessageLog';
 
 type FilterTab = 'all' | GroupCategory;
 

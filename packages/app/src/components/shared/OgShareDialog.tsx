@@ -16,7 +16,7 @@ import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
 import PositionProgressBar from '~/components/shared/PositionProgressBar';
 import { usePredictions, type Prediction } from '~/hooks/graphql/usePositions';
 import { useSession } from '~/lib/context/SessionContext';
-import type { PositionProgressState } from '~/types/positionProgress';
+import type { PositionProgressState } from '~/lib/types/positionProgress';
 
 // Stable counter for cache busting - increments each time a dialog opens
 let dialogOpenCounter = 0;

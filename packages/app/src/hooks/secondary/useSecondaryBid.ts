@@ -9,11 +9,11 @@ import {
   secondaryMarketEscrow,
   collateralToken,
 } from '@sapience/sdk/contracts';
+import { generateRandomNonce } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { generateRandomNonce } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';

@@ -8,7 +8,7 @@ import importPlugin from "eslint-plugin-import";
 export default [
   {files: ["**/*.{js,mjs,cjs,ts}"]},
   {languageOptions: { globals: globals.node }},
-  {ignores: ["src/graphql/types/generated.ts"]},
+  {ignores: ["src/graphql/types/generated.ts", "src/graphql/sdl/__generated__/**"]},
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -23,6 +23,14 @@ export default [
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': 'warn',
       'import/order': 'warn',
+    },
+  },
+  {
+    // .cjs files are CommonJS by design; `require()` is the only way
+    // to import, so the TS-default ban doesn't apply.
+    files: ['**/*.cjs'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 ];

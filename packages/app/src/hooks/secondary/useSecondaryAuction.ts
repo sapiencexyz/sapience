@@ -11,7 +11,7 @@ import {
 } from '@sapience/sdk/contracts';
 import { generateRandomNonce } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { useSession } from '~/lib/context/SessionContext';
 

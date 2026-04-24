@@ -5,29 +5,29 @@ import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { parseUnits, formatEther, formatUnits } from 'viem';
 import { Pin, ChevronDown } from 'lucide-react';
-import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
-import { useAuctionBids, type AuctionBid } from '~/lib/auction/useAuctionBids';
-import { usePreprocessedBids } from '~/hooks/auction/usePreprocessedBids';
-import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
-import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract } from 'wagmi';
 import {
   collateralToken,
   predictionMarketEscrow,
 } from '@sapience/sdk/contracts';
-import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { useSession } from '~/lib/context/SessionContext';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import type { Address } from 'viem';
 import { useChainId } from 'wagmi';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import { PYTH_RESOLVER_SET } from '@sapience/sdk/auction/decodePredictedOutcomes';
+import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
+import { useAuctionBids, type AuctionBid } from '~/lib/auction/useAuctionBids';
+import { usePreprocessedBids } from '~/hooks/auction/usePreprocessedBids';
+import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
+import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { useSession } from '~/lib/context/SessionContext';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
 import { useTerminalLogsOptional } from '~/components/terminal/TerminalLogsContext';
 import { useBidPreflight, useEscrowBidSubmission } from '~/hooks/auction';
 import PercentChance from '~/components/shared/PercentChance';
-import { PYTH_RESOLVER_SET } from '~/lib/auction/decodePredictedOutcomes';
 
 type Props = {
   uiTx: UiTransaction;

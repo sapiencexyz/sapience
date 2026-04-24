@@ -1,5 +1,6 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import {
   createContext,
   useContext,
@@ -316,6 +317,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     } catch {
       // localStorage not available
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
   // Derived flags - these are what the rest of the app should use
@@ -506,6 +508,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setTimeRemainingMs(result.config.expiresAt - Date.now());
       } catch (error) {
         console.error('Failed to restore session:', error);
+        Sentry.captureException(error, {
+          tags: { component: 'session' },
+          extra: { function: 'restoreSession' },
+        });
         clearSession();
       } finally {
         setIsRestoringSession(false);
@@ -515,7 +521,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     if (walletAddress) {
       void restore();
     }
-  }, [walletAddress]);
+  }, [walletAddress, extractSessionApprovalData]);
 
   // Update time remaining every second
   useEffect(() => {
@@ -532,6 +538,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
     }, 1000);
 
     return () => clearInterval(interval);
+    // endSessionInternal is declared below and has stable [] deps;
+    // listing it here would be a forward reference in the TDZ.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSessionActive, sessionConfig]);
 
   // Internal end session function
@@ -566,6 +575,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
             '[SessionContext] Failed to end session when switching to EOA:',
             error
           );
+          Sentry.captureException(error, {
+            tags: { component: 'session' },
+            extra: { function: 'setAccountMode', targetMode: mode },
+          });
           // Continue with mode switch even if session cleanup fails
         }
       }
@@ -643,6 +656,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
         );
       } catch (error) {
         console.error('Failed to start session:', error);
+        Sentry.captureException(error, {
+          tags: { component: 'session' },
+          extra: { function: 'startSession', etherealChainId },
+        });
         setSessionError(
           error instanceof Error ? error : new Error('Failed to start session')
         );
@@ -652,7 +669,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setSessionCreationStep(null);
       }
     },
-    [walletAddress, connector, switchChainAsync]
+    [walletAddress, connector, switchChainAsync, extractSessionApprovalData]
   );
 
   // Attempt on-chain session key revocation on both escrow contracts for a given chain.
@@ -794,6 +811,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
           '[SessionContext] Failed to create Arbitrum session:',
           error
         );
+        Sentry.captureException(error, {
+          tags: { component: 'session' },
+          extra: { function: 'createArbitrumSessionIfNeeded' },
+        });
         throw error;
       } finally {
         setIsCreatingArbitrumSession(false);

@@ -14,12 +14,17 @@ import {
 import { Tabs, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
+  buildVaultPnlChartData,
+  calculateVaultPnlHeadlineApy,
+  computeVaultPnlYDomain,
+} from './vaultPnlChartUtils';
+import {
   useProtocolStats,
   type ProtocolStat,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
-import { type Period, PERIOD_DAYS } from '~/components/shared/PeriodFilter';
+import { type Period } from '~/components/shared/PeriodFilter';
 
 function formatLargeNumber(value: number): string {
   const abs = Math.abs(value);
@@ -166,6 +171,8 @@ type VaultPnlChartProps = {
   externalPeriod?: Period;
   /** Hide entire internal header (title, APY, tabs). Defaults to true. */
   showHeader?: boolean;
+  /** Optional lower bound on visible history (Unix seconds). Snapshots before this are dropped. */
+  chartAnchorSec?: number;
 };
 
 export default function VaultPnlChart({
@@ -175,6 +182,7 @@ export default function VaultPnlChart({
   className,
   externalPeriod,
   showHeader = true,
+  chartAnchorSec,
 }: VaultPnlChartProps) {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
   const [internalPeriod, setInternalPeriod] = useState<Period>('1W');
@@ -189,83 +197,29 @@ export default function VaultPnlChart({
   const protocolStats = externalStats ?? internalStats;
   const isLoading = externalLoading ?? internalLoading;
 
-  // Transform protocol stats into PnL chart data using real vaultCumulativePnL
-  const chartData = useMemo(() => {
-    if (!protocolStats || protocolStats.length === 0) return [];
-
-    // Filter based on selected period
-    const periodDays = PERIOD_DAYS[period];
-    const cutoffTimestamp =
-      periodDays === Infinity
-        ? 0
-        : Math.floor(Date.now() / 1000) - periodDays * 24 * 60 * 60;
-
-    let filteredStats = protocolStats.filter(
-      (stat) => stat.timestamp >= cutoffTimestamp
-    );
-
-    // For the ALL view, drop leading entries where PnL hasn't started accruing
-    // yet (new vault, no activity). Keep the last zero so the chart visually
-    // starts at 0 before the first non-zero move.
-    if (period === 'ALL') {
-      const firstActiveIdx = filteredStats.findIndex(
-        (s) => s.vaultCumulativePnL && parseFloat(s.vaultCumulativePnL) !== 0
-      );
-      if (firstActiveIdx > 0) {
-        filteredStats = filteredStats.slice(firstActiveIdx - 1);
-      }
-    }
-
-    if (filteredStats.length === 0) return [];
-
-    const points = filteredStats.map((point) => {
-      const currentTvl =
-        (parseFloat(point.vaultBalance) + parseFloat(point.escrowBalance)) /
-        1e18;
-
-      const pnl = point.vaultCumulativePnL
-        ? parseFloat(point.vaultCumulativePnL) / 1e18
-        : 0;
-
-      return {
-        timestamp: point.timestamp,
-        pnl,
-        tvl: currentTvl,
-      };
-    });
-
-    // Both charts rebase to zero at the window start:
-    //   pnlDelta = cumulative PnL accrued since the window start
-    //   apy      = compound-annualized return on starting TVL to date
-    // Concretely apy_t = ((1 + pnlDelta_t / startTvl)^(365/daysElapsed_t) - 1)
-    const startPnl = points[0].pnl;
-    const startTvl = points[0].tvl;
-
-    return points.map((p) => {
-      const pnlDelta = p.pnl - startPnl;
-      const periodReturn = startTvl > 0 ? pnlDelta / startTvl : 0;
-      // `pct` is just the $ chart scaled by 1/startTvl, so the % curve has
-      // exactly the same shape — only the axis scale differs.
-      const pct = periodReturn * 100;
-      return { ...p, pnlDelta, pct };
-    });
-  }, [protocolStats, period]);
+  // Trim pre-activity snapshots for every period so % mode and APY anchor off
+  // the first funded point, while keeping a visible zero baseline immediately
+  // before activity when a prior snapshot exists. `chartAnchorSec` adds a hard
+  // lower bound on visible history for vaults where the caller wants to hide
+  // a pre-activity tail (see `vaultAnchors.ts`).
+  const chartData = useMemo(
+    () =>
+      buildVaultPnlChartData(
+        protocolStats,
+        period,
+        Math.floor(Date.now() / 1000),
+        chartAnchorSec
+      ),
+    [protocolStats, period, chartAnchorSec]
+  );
 
   // Headline APY uses wall-clock now for elapsed-days so it doesn't snap to
   // whatever the last snapshot's timestamp is (midnight UTC). Chart points
   // stay on daily granularity; only this annualization sees "now".
-  const apy = useMemo(() => {
-    if (chartData.length < 2) return null;
-    const first = chartData[0];
-    const last = chartData[chartData.length - 1];
-    if (first.tvl <= 0) return null;
-    const periodReturn = last.pnlDelta / first.tvl;
-    if (1 + periodReturn <= 0) return null;
-    const nowSec = Math.floor(Date.now() / 1000);
-    const daysElapsed = (nowSec - first.timestamp) / (24 * 60 * 60);
-    if (daysElapsed < 0.5) return null;
-    return (Math.pow(1 + periodReturn, 365 / daysElapsed) - 1) * 100;
-  }, [chartData]);
+  const apy = useMemo(
+    () => calculateVaultPnlHeadlineApy(chartData),
+    [chartData]
+  );
 
   // Recharts animates only when the dataKey and point count stay stable, so
   // project both modes onto a single `value` field. Swapping source makes the
@@ -281,18 +235,14 @@ export default function VaultPnlChart({
     [chartData, displayMode]
   );
 
-  const yDomain = useMemo(() => {
-    if (displayData.length === 0) return [-1, 1];
-
-    const values = displayData.map((d) => d.value);
-    const minVal = Math.min(...values);
-    const maxVal = Math.max(...values);
-
-    const range = maxVal - minVal;
-    const padding = range * 0.1 || (displayMode === 'pct' ? 0.01 : 0.1);
-
-    return [minVal - padding, maxVal + padding];
-  }, [displayData, displayMode]);
+  const yDomain = useMemo(
+    () =>
+      computeVaultPnlYDomain(
+        displayData.map((d) => d.value),
+        displayMode
+      ),
+    [displayData, displayMode]
+  );
 
   const currentValue =
     displayData.length > 0 ? displayData[displayData.length - 1].value : 0;

@@ -41,42 +41,66 @@ const ACTIVE_GROUP_SUBQUERY = `
   LIMIT 50
 `.trim();
 
-// Order matters for INSERTs: parents before children.
-// Each TRUNCATE uses CASCADE, so a later table referencing an earlier one will
-// be wiped when the earlier one truncates — always list parents before children.
+// Order matters: each TRUNCATE uses CASCADE, which wipes any table with an FK
+// pointing at the target — regardless of ON DELETE action. So parents (FK
+// targets) must come before their children, otherwise a later parent's
+// TRUNCATE wipes a previously-loaded child.
+//
+// Current FK graph (child → parent):
+//   condition_group      → category
+//   condition            → category, condition_group
+//   attestation          → condition
+//   attestation_score    → attestation
+//   Pick                 → Picks, condition
+//   Position (V2)        → Picks
+//   Prediction (V2)      → Picks
+//   prediction (V1)      → condition, limit_order, position
+//   app_user             → referral_code, app_user (self)
 const TABLES: TableSpec[] = [
+  // Roots: no FK parents among tables we capture.
   { name: 'category', limit: 25, orderBy: 'id' },
+  { name: 'referral_code', limit: 100, orderBy: 'id' },
   { name: 'app_user', limit: 100, orderBy: 'id' },
+  { name: 'limit_order', limit: 100, orderBy: 'id DESC' },
+  { name: 'position', limit: 500, orderBy: 'id DESC' },
+  { name: 'Picks', limit: 200, orderBy: '"createdAt" DESC' },
+  { name: 'Claim', limit: 500, orderBy: 'id DESC' },
+  { name: 'Close', limit: 500, orderBy: 'id DESC' },
+  { name: 'secondary_trade', limit: 200, orderBy: 'id DESC' },
+  { name: 'collateral_transfer', limit: 200, orderBy: 'id DESC' },
+  { name: 'protocol_stats_snapshot', limit: 200, orderBy: 'id DESC' },
+  { name: 'chat_message', limit: 100, orderBy: 'id DESC' },
+  { name: 'vault_flow_event', limit: 100, orderBy: 'id DESC' },
+  // Read by accountAccuracy / accuracyLeaderboard / accountAccuracyRank.
+  { name: 'attester_market_tw_error', limit: 500, orderBy: 'id DESC' },
+  // Not currently present on staging — script skips if the table is absent.
+  { name: 'PositionStatus', limit: 500, orderBy: 'id DESC' },
+  { name: 'V2SettlementResult', limit: 200, orderBy: 'id DESC' },
+
+  // Depends on category.
   {
     name: 'condition_group',
     limit: 50,
     orderBy: '"publicConditionCount" DESC, "maxEndTime" DESC NULLS LAST',
   },
+
+  // Depends on condition_group, category.
   {
     name: 'condition',
     limit: 1000,
     orderBy: '"createdAt" DESC',
     where: `"conditionGroupId" IS NULL OR "conditionGroupId" IN (${ACTIVE_GROUP_SUBQUERY})`,
   },
-  { name: 'prediction', limit: 500, orderBy: '"createdAt" DESC' },
-  { name: 'position', limit: 500, orderBy: 'id DESC' },
-  { name: 'PositionStatus', limit: 500, orderBy: 'id DESC' },
-  // V2 escrow tables — parents of Pick, Position (V2), Claim, Close.
-  { name: 'Picks', limit: 200, orderBy: '"createdAt" DESC' },
+
+  // Depend on Picks, condition, position, limit_order.
+  { name: 'attestation', limit: 200, orderBy: 'id DESC' },
   { name: 'Pick', limit: 1000, orderBy: '"createdAt" DESC' },
   { name: 'Position', limit: 500, orderBy: 'id DESC' },
-  { name: 'Claim', limit: 500, orderBy: 'id DESC' },
-  { name: 'Close', limit: 500, orderBy: 'id DESC' },
-  { name: 'attestation', limit: 200, orderBy: 'id DESC' },
+  { name: 'Prediction', limit: 500, orderBy: '"onChainCreatedAt" DESC' },
+  { name: 'prediction', limit: 500, orderBy: '"createdAt" DESC' },
+
+  // Depends on attestation.
   { name: 'attestation_score', limit: 500, orderBy: 'id DESC' },
-  { name: 'secondary_trade', limit: 200, orderBy: 'id DESC' },
-  { name: 'collateral_transfer', limit: 200, orderBy: 'id DESC' },
-  { name: 'protocol_stats_snapshot', limit: 200, orderBy: 'id DESC' },
-  { name: 'V2SettlementResult', limit: 200, orderBy: 'id DESC' },
-  { name: 'limit_order', limit: 100, orderBy: 'id DESC' },
-  { name: 'referral_code', limit: 100, orderBy: 'id' },
-  { name: 'chat_message', limit: 100, orderBy: 'id DESC' },
-  { name: 'vault_flow_event', limit: 100, orderBy: 'id DESC' },
 ];
 
 const requireCmd = (cmd: string): void => {

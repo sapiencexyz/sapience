@@ -119,7 +119,7 @@ vi.mock('@sapience/sdk/contracts', () => ({
 }));
 
 // buildAuctionPayload — return minimal valid payloads
-vi.mock('~/lib/auction/buildAuctionPayload', () => ({
+vi.mock('@sapience/sdk/auction/buildAuctionPayload', () => ({
   buildAuctionStartPayload: vi.fn().mockReturnValue({
     resolver: '0xResolver',
     predictedOutcomes: '0x01',
@@ -138,7 +138,7 @@ vi.mock('~/lib/auction/bidLogger', () => ({
 }));
 
 // Stub heavy child components to keep tests fast
-vi.mock('~/components/markets/forms', () => ({
+vi.mock('~/components/markets/forms/inputs/PositionSizeInput', () => ({
   PositionSizeInput: () => <div data-testid="position-size-input" />,
 }));
 
@@ -225,6 +225,7 @@ vi.mock('viem', () => ({
     BigInt(Math.round(Number(value) * 10 ** decimals)),
   formatUnits: (value: bigint, decimals: number) =>
     (Number(value) / 10 ** decimals).toString(),
+  zeroAddress: '0x0000000000000000000000000000000000000000',
 }));
 
 // @sapience/ui — stub UI components used by PositionForm

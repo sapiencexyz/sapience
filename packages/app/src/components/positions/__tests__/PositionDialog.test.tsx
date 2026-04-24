@@ -19,10 +19,15 @@ vi.mock('next/link', () => ({
   default: ({
     children,
     href,
+    ...rest
   }: {
     children: React.ReactNode;
     href: string;
-  }) => <a href={href}>{children}</a>,
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
 }));
 
 // EnsAvatar / AddressDisplay both reach for react-query (ENS lookups); render
@@ -91,7 +96,7 @@ const pickConfig: PickConfigData = {
 };
 
 // This holder holds the counterparty side of 10 predictions →
-// userCollateral = 979.79, totalPayout = 1,000 (sum across the parlays).
+// userCollateral = 979.79, totalPayout = 1,000 (sum across the combos).
 const counterpartyPosition: PositionBalance = {
   id: 1,
   chainId: 42161,
@@ -122,11 +127,36 @@ describe('PositionDialog', () => {
       />
     );
 
-    // Header reads "{picks} Pick Position" and must NOT surface the
-    // predictionId, since a position can aggregate many predictions with
-    // distinct ids. Picks for the test fixture are empty (0).
-    expect(screen.getByText('0 Pick Position')).toBeInTheDocument();
+    // Header reads "Position" and must NOT surface the predictionId, since a
+    // position can aggregate many predictions with distinct ids. Pick count
+    // moved to a dedicated "Picks" cell in the grid below.
+    expect(
+      screen.getByRole('heading', { name: 'Position' })
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Prediction\s+0xb8c5/i)).not.toBeInTheDocument();
+  });
+
+  it('renders Side, Picks, and Status cells in the addresses row', () => {
+    render(
+      <PositionDialog
+        open
+        onOpenChange={() => {}}
+        position={counterpartyPosition}
+        conditionsMap={new Map()}
+        collateralSymbol="USDe"
+      />
+    );
+
+    // Labels for the new cells
+    expect(screen.getByText('Side')).toBeInTheDocument();
+    expect(screen.getByText('Picks')).toBeInTheDocument();
+    expect(screen.getByText('Status')).toBeInTheDocument();
+
+    // Counterparty-side holder → Side shows COUNTERPARTY.
+    expect(screen.getByText('COUNTERPARTY')).toBeInTheDocument();
+
+    // Unresolved pickConfig with no picks → Status shows ACTIVE.
+    expect(screen.getByText('ACTIVE')).toBeInTheDocument();
   });
 
   it('renders the aggregate size and payout from the PositionBalance', () => {

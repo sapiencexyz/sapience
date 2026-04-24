@@ -390,6 +390,24 @@ describe('executeTransaction', () => {
       expect(result.path).toBe('owner');
       expect(result.hash).toBe('0xownerhash');
     });
+
+    it('preserves original error as cause when session throws', async () => {
+      const originalError = new Error('paymaster AA23 reverted');
+      const executeViaSessionKey = vi.fn().mockRejectedValue(originalError);
+
+      await expect(
+        executeTransaction(dummyCalls, CHAIN_ID_ETHEREAL, 'session', {
+          sessionClient: {
+            account: { encodeCalls: vi.fn() },
+            sendUserOperation: vi.fn(),
+          },
+          executeViaSessionKey,
+        })
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Session key transaction failed'),
+        cause: originalError,
+      });
+    });
   });
 
   describe('owner path', () => {
@@ -408,6 +426,20 @@ describe('executeTransaction', () => {
       expect(executeViaOwnerSigning).toHaveBeenCalled();
       expect(result.hash).toBe('0xownertx');
       expect(result.path).toBe('owner');
+    });
+
+    it('preserves original error as cause when owner path throws', async () => {
+      const originalError = new Error('wallet connection lost');
+      const executeViaOwnerSigning = vi.fn().mockRejectedValue(originalError);
+
+      await expect(
+        executeTransaction(dummyCalls, CHAIN_ID_ETHEREAL, 'owner', {
+          executeViaOwnerSigning,
+        })
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Smart account transaction failed'),
+        cause: originalError,
+      });
     });
 
     it('wraps calls on Ethereal with value', async () => {

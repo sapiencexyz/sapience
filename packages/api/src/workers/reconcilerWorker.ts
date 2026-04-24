@@ -20,7 +20,6 @@
  *   RECONCILER_LOOKBACK_BLOCKS   — fallback lookback if no watermark (default: 5000)
  */
 
-import 'reflect-metadata';
 import prisma from '../db';
 import { initializeDataSource } from '../db';
 import { initializeFixtures, INDEXERS } from '../fixtures';
