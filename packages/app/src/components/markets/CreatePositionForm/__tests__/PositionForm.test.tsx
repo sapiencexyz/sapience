@@ -119,7 +119,7 @@ vi.mock('@sapience/sdk/contracts', () => ({
 }));
 
 // buildAuctionPayload — return minimal valid payloads
-vi.mock('~/lib/auction/buildAuctionPayload', () => ({
+vi.mock('@sapience/sdk/auction/buildAuctionPayload', () => ({
   buildAuctionStartPayload: vi.fn().mockReturnValue({
     resolver: '0xResolver',
     predictedOutcomes: '0x01',

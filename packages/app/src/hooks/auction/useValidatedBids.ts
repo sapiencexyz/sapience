@@ -103,7 +103,7 @@ export function useValidatedBids(
     [picks]
   );
 
-  // Invalidate cached results when picks or predictorCollateral changes
+  // Invalidate cached results when prediction inputs change
   // (predictionHash changes, so all previous validations are stale)
   const picksKey = useMemo(
     () =>
@@ -119,11 +119,11 @@ export function useValidatedBids(
   );
 
   useEffect(() => {
-    // Clear all cached validation when picks or collateral changes
+    // Clear all cached validation when prediction inputs change
     validatedSignaturesRef.current.clear();
     validatingRef.current.clear();
     setValidationResults(new Map());
-  }, [picksKey, predictorCollateral]);
+  }, [picksKey, predictorCollateral, predictorNonce]);
 
   // Validate new bids when they arrive
   useEffect(() => {

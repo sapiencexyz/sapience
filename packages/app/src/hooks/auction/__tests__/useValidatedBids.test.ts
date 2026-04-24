@@ -117,6 +117,34 @@ describe('useValidatedBids', () => {
     expect(callArgs[2]).toMatchObject({ failOpen: false });
   });
 
+  it('revalidates bids when predictorNonce changes', async () => {
+    const bid = makeBid({ counterpartySignature: '0xnonce_change' });
+    const { rerender } = renderStable([bid], {
+      ...DEFAULT_OPTS,
+      predictorNonce: 1,
+    });
+
+    await flush();
+    expect(mockValidateBidOnChain).toHaveBeenCalledTimes(1);
+
+    rerender({
+      bids: [bid],
+      opts: {
+        ...DEFAULT_OPTS,
+        predictorNonce: 2,
+      },
+    });
+
+    await flush();
+    expect(mockValidateBidOnChain).toHaveBeenCalledTimes(2);
+    expect(mockValidateBidOnChain.mock.calls[0][1]).toMatchObject({
+      predictorNonce: 1,
+    });
+    expect(mockValidateBidOnChain.mock.calls[1][1]).toMatchObject({
+      predictorNonce: 2,
+    });
+  });
+
   // ---- Fix 2: catch block marks invalid, not valid ----
 
   it('marks bid as invalid when validateBidOnChain throws unexpectedly', async () => {
