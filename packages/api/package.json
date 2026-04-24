@@ -37,7 +37,7 @@
     "test:websocket": "tsx test-websocket-connection.ts",
     "test:rate-limiting": "tsx src/scripts/testRateLimiting.ts",
     "emit-schema": "tsx src/scripts/emitSchema.ts",
-    "generate-types": "pnpm run prisma:generate && pnpm run emit-schema && graphql-codegen --config codegen.ts && pnpm run generate-resolvers",
+    "generate-types": "pnpm run prisma:generate && pnpm run generate-resolvers && pnpm run emit-schema && graphql-codegen --config codegen.ts",
     "generate-resolvers": "graphql-codegen --config codegen-resolvers.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist",
     "lint": "eslint src --quiet",

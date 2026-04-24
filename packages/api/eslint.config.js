@@ -25,4 +25,12 @@ export default [
       'import/order': 'warn',
     },
   },
+  {
+    // .cjs files are CommonJS by design; `require()` is the only way
+    // to import, so the TS-default ban doesn't apply.
+    files: ['**/*.cjs'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
 ];
