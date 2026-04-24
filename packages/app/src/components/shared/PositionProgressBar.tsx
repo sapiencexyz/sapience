@@ -10,7 +10,7 @@ import {
 import {
   PositionStage,
   type PositionProgressState,
-} from '~/types/positionProgress';
+} from '~/lib/types/positionProgress';
 import { getExplorerUrl } from '~/lib/utils/util';
 
 interface PositionProgressBarProps {

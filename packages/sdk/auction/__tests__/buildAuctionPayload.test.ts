@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { decodeAbiParameters } from 'viem';
 import {
   buildAuctionStartPayload,
@@ -5,8 +6,8 @@ import {
   type PredictedOutcomeInputStub,
   type PythOutcomeInputStub,
 } from '../buildAuctionPayload';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
-import { OutcomeSide } from '@sapience/sdk/types';
+import { CHAIN_ID_ETHEREAL } from '../../constants';
+import { OutcomeSide } from '../../types';
 
 // ---------------------------------------------------------------------------
 // Polymarket / ConditionalTokens outcomes

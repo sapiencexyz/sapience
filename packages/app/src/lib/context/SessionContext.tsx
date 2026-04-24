@@ -317,6 +317,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     } catch {
       // localStorage not available
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
   // Derived flags - these are what the rest of the app should use
@@ -520,7 +521,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     if (walletAddress) {
       void restore();
     }
-  }, [walletAddress]);
+  }, [walletAddress, extractSessionApprovalData]);
 
   // Update time remaining every second
   useEffect(() => {
@@ -537,6 +538,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
     }, 1000);
 
     return () => clearInterval(interval);
+    // endSessionInternal is declared below and has stable [] deps;
+    // listing it here would be a forward reference in the TDZ.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSessionActive, sessionConfig]);
 
   // Internal end session function
@@ -665,7 +669,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setSessionCreationStep(null);
       }
     },
-    [walletAddress, connector, switchChainAsync]
+    [walletAddress, connector, switchChainAsync, extractSessionApprovalData]
   );
 
   // Attempt on-chain session key revocation on both escrow contracts for a given chain.

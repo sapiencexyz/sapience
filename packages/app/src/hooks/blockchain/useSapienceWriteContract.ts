@@ -30,7 +30,7 @@ import {
 import {
   handleViemError,
   isSessionPolicyError,
-} from '~/utils/blockchain/handleViemError';
+} from '~/lib/utils/handleViemError';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 import { CreatePositionContext } from '~/lib/context/CreatePositionContext';

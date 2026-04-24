@@ -1397,7 +1397,9 @@ export function saveSession(serialized: SerializedSession): void {
         }
       );
       Sentry.captureException(
-        new Error('Session key mismatch between private key and escrow approval'),
+        new Error(
+          'Session key mismatch between private key and escrow approval'
+        ),
         {
           tags: { component: 'session' },
           extra: { function: 'saveSession' },

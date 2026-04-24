@@ -1,12 +1,9 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { zeroAddress as ZERO_ADDRESS } from 'viem';
 import { OutcomeSide } from '@sapience/sdk/types';
 import type { AuctionBid } from '~/lib/auction/useAuctionBidsHub';
 import type { UsePreprocessedBidsOptions } from '../usePreprocessedBids';
-
-// ---- constants ----
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 // ---- mocks ----
 // vi.mock calls are hoisted — use vi.hoisted() so references are available.

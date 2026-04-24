@@ -11,12 +11,12 @@ import {
   encodePolymarketPredictedOutcomes,
   getPythMarketId,
   type PythBinaryOptionOutcome,
-} from '@sapience/sdk';
+} from '../encoding';
 import {
   pythConditionResolver,
   manualConditionResolver,
-} from '@sapience/sdk/contracts';
-import { OutcomeSide } from '@sapience/sdk/types';
+} from '../../contracts';
+import { OutcomeSide } from '../../types';
 import { parseDateTimeLocalToUnixSeconds } from '../buildAuctionPayload';
 
 // ---------------------------------------------------------------------------

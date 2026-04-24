@@ -1,7 +1,12 @@
 import prisma from '../../db';
 import { Prisma } from '../../../generated/prisma';
 import { getProviderForChain } from '../../utils/utils';
-import { type PublicClient, type Log, parseAbiItem } from 'viem';
+import {
+  type PublicClient,
+  type Log,
+  parseAbiItem,
+  zeroAddress as ZERO_ADDRESS,
+} from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
@@ -9,7 +14,6 @@ import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 const BLOCK_BATCH_SIZE = 1000;
 const POLLING_INTERVAL_MS = 10_000;
 const INDEXER_STATE_KEY = 'v2-transfer-indexer';
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 // Deploy date for predictionMarketEscrow (2026-02-26T00:00:00Z) used as
 // fallback when blockCreated is not set in the SDK contract config.

@@ -3,10 +3,9 @@ import {
   pythConditionResolver,
   conditionalTokensConditionResolver,
   manualConditionResolver,
-} from '@sapience/sdk/contracts';
-import { OutcomeSide } from '@sapience/sdk/types';
-import { getPythMarketId } from '@sapience/sdk';
-import type { Pick } from '@sapience/sdk/types';
+} from '../contracts';
+import { OutcomeSide, type Pick } from '../types';
+import { getPythMarketId } from './encoding';
 
 export type ConditionDecodedOutcome = {
   kind: 'condition';
