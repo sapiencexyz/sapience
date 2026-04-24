@@ -154,7 +154,10 @@ export function useAuctionRelayerFeed(options?: {
     };
   }, [wsUrl, observeVaultQuotes]);
 
-  // Handle dynamic toggling of observer after connection is established
+  // Handle dynamic toggling of observer after connection is established.
+  // Intentionally excludes wsUrl from deps: Effect above already sends the
+  // initial observe/unobserve on wsUrl changes, so retriggering here would
+  // produce a redundant message.
   useEffect(() => {
     if (!wsUrl) return;
     const client = getSharedAuctionWsClient(wsUrl);
@@ -163,7 +166,8 @@ export function useAuctionRelayerFeed(options?: {
         ? 'vault_quote.observe'
         : 'vault_quote.unobserve',
     });
-  }, [observeVaultQuotes, wsUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [observeVaultQuotes]);
 
   // Merge persisted auction.started messages with streaming messages.
   // This ensures auction.started messages survive state resets while keeping
