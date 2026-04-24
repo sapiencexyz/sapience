@@ -1,10 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { formatPythPriceDecimalFromInt } from '@sapience/sdk/auction/decodePredictedOutcomes';
 import StackedPredictions, {
   type Pick,
 } from '~/components/shared/StackedPredictions';
-import { formatPythPriceDecimalFromInt } from '~/lib/auction/decodePredictedOutcomes';
 import { usePythFeedLabel } from '~/lib/pyth/usePythFeedLabel';
 
 type PythPick = {

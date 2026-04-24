@@ -1,18 +1,20 @@
-import { OutcomeSide } from '@sapience/sdk/types';
-import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
+import { OutcomeSide } from '../types';
+import {
+  conditionalTokensConditionResolver,
+  pythConditionResolver,
+} from '../contracts';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
   DEFAULT_CHAIN_ID,
-} from '@sapience/sdk/constants';
+} from '../constants';
 import {
   encodePythBinaryOptionOutcomes,
   encodePolymarketPredictedOutcomes,
   getPythMarketId,
   type PythBinaryOptionOutcome,
   type PolymarketPredictedOutcome,
-} from '@sapience/sdk';
-import { pythConditionResolver } from '@sapience/sdk/contracts';
+} from './encoding';
 
 export interface PredictedOutcomeInputStub {
   marketId: string; // The id from API (already encoded claim:endTime)

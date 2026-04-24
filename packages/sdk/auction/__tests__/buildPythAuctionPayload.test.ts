@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { OutcomeSide } from '@sapience/sdk/types';
+import { OutcomeSide } from '../../types';
 import {
   normalizePythPriceId,
   decimalToScaledBigInt,
@@ -9,8 +9,8 @@ import {
   buildPythAuctionStartPayload,
   type PythOutcomeInputStub,
 } from '../buildAuctionPayload';
-import { pythConditionResolver } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { pythConditionResolver } from '../../contracts';
+import { DEFAULT_CHAIN_ID } from '../../constants';
 
 describe('normalizePythPriceId', () => {
   const BYTES32_ONE =

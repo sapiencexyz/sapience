@@ -9,9 +9,9 @@ import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
+import type { PredictedOutcomeInputStub } from '@sapience/sdk/auction/buildAuctionPayload';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-import type { PredictedOutcomeInputStub } from '~/lib/auction/buildAuctionPayload';
 import PercentChance from '~/components/shared/PercentChance';
 
 const FADE_VARIANTS = {

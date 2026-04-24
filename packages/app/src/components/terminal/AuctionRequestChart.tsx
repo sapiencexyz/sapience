@@ -2,14 +2,12 @@
 
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { formatUnits, zeroAddress as ZERO_ADDRESS } from 'viem';
+import { Info } from 'lucide-react';
 import AuctionBidsChart from '~/components/shared/AuctionBidsChart';
-import { formatUnits } from 'viem';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import { Info } from 'lucide-react';
 import type { AuctionBid } from '~/lib/auction/useAuctionBids';
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 type Props = {
   bids: AuctionBid[];

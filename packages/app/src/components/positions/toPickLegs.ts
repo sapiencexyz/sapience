@@ -1,9 +1,9 @@
 import { isPredictedYes, OutcomeSide } from '@sapience/sdk/types';
 import { decodePythMarketId } from '@sapience/sdk';
+import { formatPythPriceDecimalFromInt } from '@sapience/sdk/auction/decodePredictedOutcomes';
 import type { Pick } from '~/components/shared/StackedPredictions';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { getChoiceLabel } from '~/lib/resolvers/choiceLabel';
-import { formatPythPriceDecimalFromInt } from '~/lib/auction/decodePredictedOutcomes';
 import { getPythFeedLabelSync } from '~/lib/pyth/usePythFeedLabel';
 
 export type ConditionsMap = Map<
