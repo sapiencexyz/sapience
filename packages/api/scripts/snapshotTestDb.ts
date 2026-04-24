@@ -71,6 +71,8 @@ const TABLES: TableSpec[] = [
   { name: 'protocol_stats_snapshot', limit: 200, orderBy: 'id DESC' },
   { name: 'chat_message', limit: 100, orderBy: 'id DESC' },
   { name: 'vault_flow_event', limit: 100, orderBy: 'id DESC' },
+  // Read by accountAccuracy / accuracyLeaderboard / accountAccuracyRank.
+  { name: 'attester_market_tw_error', limit: 500, orderBy: 'id DESC' },
   // Not currently present on staging — script skips if the table is absent.
   { name: 'PositionStatus', limit: 500, orderBy: 'id DESC' },
   { name: 'V2SettlementResult', limit: 200, orderBy: 'id DESC' },

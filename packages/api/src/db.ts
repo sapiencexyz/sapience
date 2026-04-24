@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma';
 import { config } from './config';
 
@@ -8,30 +9,25 @@ export const requestContext = new AsyncLocalStorage<{
 }>();
 
 let _instance: PrismaClient | undefined;
+let _extendedInstance: PrismaClient | undefined;
 
 function getInstance(): PrismaClient {
   if (_instance) return _instance;
 
-  // Ensure the connection pool is bounded to prevent exhausting database connections.
-  // Appends connection_limit and pool_timeout to DATABASE_URL if not already present.
-  const dbUrl = new URL(config.DATABASE_URL);
-  if (!dbUrl.searchParams.has('connection_limit')) {
-    dbUrl.searchParams.set(
-      'connection_limit',
-      String(config.CONNECTION_POOL_SIZE)
-    );
-  }
-  if (!dbUrl.searchParams.has('pool_timeout')) {
-    dbUrl.searchParams.set('pool_timeout', '10');
-  }
+  // Bound the connection pool to avoid exhausting DB connections.
+  // In Prisma 7 these params come from the adapter (pg connection
+  // options), not from query-string params on DATABASE_URL, because
+  // the Rust engine that used to parse those is gone.
+  const adapter = new PrismaPg({
+    connectionString: config.DATABASE_URL,
+    max: config.CONNECTION_POOL_SIZE,
+    idleTimeoutMillis: 10_000,
+  });
 
-  // Create Prisma client with appropriate logging and query timeout
   _instance = new PrismaClient({
-    datasourceUrl: dbUrl.toString(),
+    adapter,
     log: config.isProd
-      ? config.DATABASE_URL.includes('localhost')
-        ? (['info', 'warn', 'error'] as const)
-        : (['info', 'warn', 'error'] as const)
+      ? (['info', 'warn', 'error'] as const)
       : (['warn', 'error'] as const),
     transactionOptions: {
       maxWait: config.PRISMA_QUERY_TIMEOUT_MS,
@@ -39,48 +35,43 @@ function getInstance(): PrismaClient {
     },
   });
 
-  // Per-query timing middleware — measures Prisma's full round-trip
-  // (connection checkout + SQL execution + result deserialization)
-  _instance.$use(async (params, next) => {
-    const start = performance.now();
-    const result = await next(params);
-    const ms = performance.now() - start;
-    const rid = requestContext.getStore()?.requestId ?? '';
-    const prefix = rid ? `[prisma:${rid}]` : '[prisma]';
-    console.log(
-      `${prefix} ${params.model ?? 'raw'}.${params.action} ${ms.toFixed(1)}ms`
-    );
-    return result;
-  });
+  // `$use` was removed in Prisma 6.16+; the modern equivalent is
+  // `$extends({ query: { $allOperations } })`. We compose the old
+  // three middlewares (timing, counter, timeout) into one wrapper.
+  _extendedInstance = _instance.$extends({
+    query: {
+      $allOperations: async ({ model, operation, args, query }) => {
+        const store = requestContext.getStore();
+        if (store) store.count++;
 
-  // Query counter middleware
-  _instance.$use(async (params, next) => {
-    const store = requestContext.getStore();
-    if (store) store.count++;
-    return next(params);
-  });
+        const timeout = config.PRISMA_QUERY_TIMEOUT_MS;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            reject(
+              new Error(
+                `Query timeout: ${model ?? 'raw'}.${operation} exceeded ${timeout}ms`
+              )
+            );
+          }, timeout);
+        });
 
-  // Query timeout middleware - bounds individual query execution time
-  _instance.$use(async (params, next) => {
-    const timeout = config.PRISMA_QUERY_TIMEOUT_MS;
-    let timer: ReturnType<typeof setTimeout>;
-
-    const timeoutPromise = new Promise((_, reject) => {
-      timer = setTimeout(() => {
-        reject(
-          new Error(
-            `Query timeout: ${params.model}.${params.action} exceeded ${timeout}ms`
-          )
-        );
-      }, timeout);
-    });
-
-    try {
-      return await Promise.race([next(params), timeoutPromise]);
-    } finally {
-      clearTimeout(timer!);
-    }
-  });
+        const start = performance.now();
+        try {
+          const result = await Promise.race([query(args), timeoutPromise]);
+          const ms = performance.now() - start;
+          const rid = store?.requestId ?? '';
+          const prefix = rid ? `[prisma:${rid}]` : '[prisma]';
+          console.log(
+            `${prefix} ${model ?? 'raw'}.${operation} ${ms.toFixed(1)}ms`
+          );
+          return result;
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+      },
+    },
+  }) as unknown as PrismaClient;
 
   return _instance;
 }
@@ -99,13 +90,15 @@ export const initializeDataSource = async () => {
 /**
  * Lazily-initialized Prisma client singleton.
  *
- * The PrismaClient is created on first property access, not at import time.
- * This allows build-time scripts (e.g. emit-schema) to import modules that
- * transitively depend on prisma without needing a database connection.
+ * The PrismaClient is created on first property access, not at import
+ * time. This allows build-time scripts (e.g. emit-schema) to import
+ * modules that transitively depend on prisma without needing a
+ * database connection.
  */
 const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   get(_, prop) {
-    const target = getInstance();
+    getInstance();
+    const target = _extendedInstance ?? _instance!;
     const value = Reflect.get(target, prop, target);
     return typeof value === 'function'
       ? (value as (...args: unknown[]) => unknown).bind(target)

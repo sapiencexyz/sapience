@@ -7834,7 +7834,7 @@
       {
         "kind": "SCALAR",
         "name": "Decimal",
-        "description": "GraphQL Scalar representing the Prisma.Decimal type, based on Decimal.js library.",
+        "description": "Prisma.Decimal — round-tripped as a decimal string with arbitrary precision.",
         "fields": null,
         "inputFields": null,
         "interfaces": null,

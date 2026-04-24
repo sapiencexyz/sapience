@@ -700,6 +700,13 @@ TRUNCATE TABLE "vault_flow_event" RESTART IDENTITY CASCADE;
 COPY "vault_flow_event" ("id", "createdAt", "chainId", "blockNumber", "transactionHash", "timestamp", "logIndex", "eventType", "user", "assets", "shares") FROM STDIN WITH (FORMAT CSV, QUOTE '"', ESCAPE '"');
 \.
 
+-- attester_market_tw_error: 2 rows
+TRUNCATE TABLE "attester_market_tw_error" RESTART IDENTITY CASCADE;
+COPY "attester_market_tw_error" ("id", "createdAt", "attester", "marketAddress", "marketId", "twError", "computedAt") FROM STDIN WITH (FORMAT CSV, QUOTE '"', ESCAPE '"');
+2,2026-03-02 18:01:40.669,0x6a225f09e0ebe597f79e86875b3704325d40c84d,0x9f0fa333e634b9e11cbca0fc16123912b941f7bd,0xd897104f3c685a63635ca5b9ab290f8ed4308b57dd215bc4b3d85d5a31c7b110,214.83,2026-03-11 11:03:20.162
+1,2026-03-02 18:01:40.652,0xfed214cce9cc6f7ceb507de9fdf00a3899592caa,0x9f0fa333e634b9e11cbca0fc16123912b941f7bd,0xd897104f3c685a63635ca5b9ab290f8ed4308b57dd215bc4b3d85d5a31c7b110,196.182,2026-03-11 11:03:20.158
+\.
+
 -- PositionStatus: not present on source DB, skipped
 
 -- V2SettlementResult: not present on source DB, skipped
