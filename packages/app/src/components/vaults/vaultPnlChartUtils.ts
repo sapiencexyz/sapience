@@ -32,13 +32,16 @@ function findFirstActivePointIndex(points: BasePoint[]): number {
 export function buildVaultPnlChartData(
   protocolStats: ProtocolStat[] | undefined,
   period: Period,
-  nowSec = Math.floor(Date.now() / 1000)
+  nowSec = Math.floor(Date.now() / 1000),
+  anchorSec?: number
 ): VaultPnlChartPoint[] {
   if (!protocolStats || protocolStats.length === 0) return [];
 
   const periodDays = PERIOD_DAYS[period];
-  const cutoffTimestamp =
+  const periodCutoff =
     periodDays === Infinity ? 0 : nowSec - periodDays * ONE_DAY_IN_SECONDS;
+  const cutoffTimestamp =
+    anchorSec !== undefined ? Math.max(periodCutoff, anchorSec) : periodCutoff;
 
   const filteredPoints = protocolStats
     .filter((stat) => stat.timestamp >= cutoffTimestamp)
