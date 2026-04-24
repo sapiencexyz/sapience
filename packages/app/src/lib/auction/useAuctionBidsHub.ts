@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSettings } from '~/lib/context/SettingsContext';
-import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import * as Sentry from '@sentry/nextjs';
+import { useSettings } from '~/lib/context/SettingsContext';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
+import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 
 /** Time after last bid expires before cleaning up entire auction (ms) */
 const STALE_THRESHOLD_MS = 60_000; // 1 minute
@@ -249,9 +249,12 @@ export function useAuctionBidsFor(auctionId: string | null | undefined) {
   }, []);
 
   const bids = useMemo(() => {
+    // tick is a re-render trigger: each hub listener call bumps it,
+    // forcing this memo to recompute fresh bids from the shared hub.
+    void tick;
     if (!auctionId) return [] as AuctionBid[];
     return hub.bidsByAuctionId.get(auctionId) || [];
-  }, [auctionId, wsUrl, idRef.current, tick]);
+  }, [auctionId, tick]);
 
   return { bids };
 }

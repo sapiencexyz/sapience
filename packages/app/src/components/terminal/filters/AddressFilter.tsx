@@ -2,13 +2,9 @@
 
 import type React from 'react';
 import { useCallback, useDeferredValue, useState } from 'react';
-import MultiSelect, { type MultiSelectItem } from './MultiSelect';
 import { Input } from '@sapience/ui/components/ui/input';
-
-const truncateAddress = (address: string) =>
-  address.length > 10
-    ? `${address.slice(0, 6)}...${address.slice(-4)}`
-    : address;
+import MultiSelect, { type MultiSelectItem } from './MultiSelect';
+import { shortenAddress } from '~/lib/utils/util';
 
 const isValidAddress = (address: string): boolean => {
   // Basic ethereum address validation (0x followed by 40 hex chars)
@@ -100,14 +96,14 @@ const AddressFilter: React.FC<Props> = ({ items, selected, onChange }) => {
       renderHeader={renderHeader}
       renderItemContent={(item) => (
         <span className="font-mono text-xs text-brand-white">
-          {truncateAddress(item.value)}
+          {shortenAddress(item.value)}
         </span>
       )}
       renderTriggerContent={(sel) => {
         if (sel.length === 0) return null;
         if (sel.length === 1) {
           return (
-            <span className="font-mono text-xs">{truncateAddress(sel[0])}</span>
+            <span className="font-mono text-xs">{shortenAddress(sel[0])}</span>
           );
         }
         return `${sel.length} predictors`;

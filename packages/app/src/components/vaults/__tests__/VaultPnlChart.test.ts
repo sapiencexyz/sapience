@@ -6,7 +6,7 @@ import {
 } from '../vaultPnlChartUtils';
 
 const ONE_DAY = 24 * 60 * 60;
-const ONE_ETH = 10n ** 18n;
+const ONE_WUSDE = 10n ** 18n;
 const NOW_SEC = Date.UTC(2026, 3, 24, 0, 0, 0) / 1000;
 
 function makeStat({
@@ -18,13 +18,13 @@ function makeStat({
   tvl: number;
   pnl: number;
 }): ProtocolStat {
-  const tvlWei = BigInt(tvl) * ONE_ETH;
+  const tvlWei = BigInt(tvl) * ONE_WUSDE;
 
   return {
     timestamp,
     vaultBalance: tvlWei.toString(),
     escrowBalance: '0',
-    vaultCumulativePnL: (BigInt(pnl) * ONE_ETH).toString(),
+    vaultCumulativePnL: (BigInt(pnl) * ONE_WUSDE).toString(),
   } as ProtocolStat;
 }
 

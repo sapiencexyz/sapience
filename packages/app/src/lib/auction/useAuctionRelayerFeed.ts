@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSettings } from '~/lib/context/SettingsContext';
-import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import * as Sentry from '@sentry/nextjs';
+import { useSettings } from '~/lib/context/SettingsContext';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
+import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 
 export type AuctionFeedMessage = {
   time: number; // ms epoch
@@ -163,7 +163,7 @@ export function useAuctionRelayerFeed(options?: {
         ? 'vault_quote.observe'
         : 'vault_quote.unobserve',
     });
-  }, [observeVaultQuotes]);
+  }, [observeVaultQuotes, wsUrl]);
 
   // Merge persisted auction.started messages with streaming messages.
   // This ensures auction.started messages survive state resets while keeping

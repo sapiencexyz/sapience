@@ -10,7 +10,7 @@ import type { OutcomeSide } from '@sapience/sdk/types';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import hub from '~/lib/auction/useAuctionBidsHub';
 import type { RecentCombo } from '~/hooks/graphql/useRecentCombos';

@@ -52,7 +52,7 @@ import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import Loader from '~/components/shared/Loader';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
 import { useSettings } from '~/lib/context/SettingsContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 
 // Defined outside TerminalPageContent to prevent remounting on parent re-renders
 const TradeNotifications = () => {

@@ -10,7 +10,7 @@ import {
 } from '@sapience/sdk/auction/initiate';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { logAuction, formatBidForLog } from '~/lib/auction/bidLogger';
 

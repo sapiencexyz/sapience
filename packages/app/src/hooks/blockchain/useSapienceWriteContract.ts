@@ -15,6 +15,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { arbitrum } from 'viem/chains';
 import { useSwitchChain } from 'wagmi';
 
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   getExecutionPath,
   encodeWriteContractToCall,
@@ -28,12 +29,11 @@ import {
 import {
   handleViemError,
   isSessionPolicyError,
-} from '~/utils/blockchain/handleViemError';
+} from '~/lib/utils/handleViemError';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 import { CreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   ethereal,
   executeSudoTransaction,
@@ -493,10 +493,7 @@ export function useSapienceWriteContract({
       validateAndSwitchChain,
       writeContractAsync,
       sendCallsAsync,
-      toast,
-      fallbackErrorMessage,
-      onError,
-      endSession,
+      handleCatchError,
       completeTransaction,
       getExecutionPathForChain,
       getSessionClient,
@@ -587,10 +584,7 @@ export function useSapienceWriteContract({
       validateAndSwitchChain,
       sendCallsAsync,
       client,
-      toast,
-      fallbackErrorMessage,
-      onError,
-      endSession,
+      handleCatchError,
       getExecutionPathForChain,
       getSessionClient,
       needsArbitrumSession,
