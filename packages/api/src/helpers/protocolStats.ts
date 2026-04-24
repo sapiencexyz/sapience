@@ -1,7 +1,11 @@
-import { erc20Abi, formatUnits } from 'viem';
+import { erc20Abi, formatUnits, type Block } from 'viem';
 import prisma from '../db';
 import { SettlementResult } from '../../generated/prisma';
-import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
+import {
+  getProviderForChain,
+  getBlockByTimestamp,
+  resolveBlocksForTimestamps,
+} from '../utils/utils';
 import { contracts, normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
@@ -289,6 +293,48 @@ function getContractForBlock(
 }
 
 /**
+ * Sum the collateral balance across the current V2 escrow + every past V2 escrow
+ * deployment, pinned to `blockNumber`. Iterates over the deduped list of
+ * [primary, ...legacies] straight from the SDK config — avoids double-counting
+ * when `getContractForBlock` would return a legacy (pre-redeploy blocks) and
+ * we'd otherwise re-read it from the legacy loop. For blocks where a contract
+ * wasn't deployed yet, `balanceOf` returns 0 (the token's storage slot is
+ * simply empty for that address), so earlier blocks just get a smaller total.
+ */
+async function sumEscrowBalancesAtBlock(
+  client: ReturnType<typeof getProviderForChain>,
+  chainId: number,
+  blockNumber: bigint
+): Promise<bigint> {
+  const escrowConfig = contracts.predictionMarketEscrow[chainId];
+  const collateralAddress = contracts.collateralToken[chainId]?.address as
+    | `0x${string}`
+    | undefined;
+  if (!escrowConfig || !collateralAddress) return 0n;
+
+  const addrs = new Set<`0x${string}`>([escrowConfig.address as `0x${string}`]);
+  for (const le of escrowConfig.legacy ?? []) {
+    addrs.add(normalizeLegacyEntry(le).address as `0x${string}`);
+  }
+
+  let total = 0n;
+  for (const addr of addrs) {
+    try {
+      total += await client.readContract({
+        address: collateralAddress,
+        abi: erc20Abi,
+        functionName: 'balanceOf',
+        args: [addr],
+        blockNumber,
+      });
+    } catch {
+      // Contract not deployed at this block or balanceOf reverted — treat as 0.
+    }
+  }
+  return total;
+}
+
+/**
  * Calculate vault's realized PnL from resolved predictions.
  *
  * Uses Picks.resolved (set automatically when all conditions settle)
@@ -465,57 +511,123 @@ async function upsertProtocolStatsSnapshot(
   });
 }
 
+const DEFAULT_SNAPSHOT_INTERVAL_SECONDS = 86400;
+
+export function resolveSnapshotIntervalSeconds(override?: number): number {
+  if (override && Number.isFinite(override) && override > 0) return override;
+  const env = process.env.PROTOCOL_STATS_INTERVAL_SECONDS;
+  if (env) {
+    const parsed = parseInt(env, 10);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return DEFAULT_SNAPSHOT_INTERVAL_SECONDS;
+}
+
 /**
- * Main function to compute and store daily protocol stats snapshot.
+ * Main function to compute and store a protocol stats snapshot.
+ *
+ * The snapshot timestamp is floored to the configured interval so bars line
+ * up on predictable boundaries regardless of exactly when the cron fires.
  */
 export async function computeAndStoreProtocolStats(
-  chainId: number = DEFAULT_CHAIN_ID
+  chainId: number = DEFAULT_CHAIN_ID,
+  intervalSeconds?: number
 ): Promise<void> {
+  const client = getProviderForChain(chainId);
   const vaultAddress = (
     contracts.predictionMarketVault[chainId]?.address ?? ''
   ).toLowerCase();
 
+  const interval = resolveSnapshotIntervalSeconds(intervalSeconds);
+
   console.log(
-    `[ProtocolStats] Starting stats computation for chain ${chainId}, vault ${vaultAddress}`
+    `[ProtocolStats] Starting stats computation for chain ${chainId}, vault ${vaultAddress}, interval ${interval}s`
   );
 
-  // Use UTC midnight for consistent daily snapshots (matches backfillProtocolStats)
-  const timestamp = getUtcMidnightTimestamp(new Date());
+  const timestamp = Math.floor(Date.now() / 1000 / interval) * interval;
 
-  // Fetch balances
-  const vaultBalance = await fetchVaultTVL(chainId);
-  const vaultAvailableAssets = await fetchVaultAvailableAssets(chainId);
-  const vaultDeployed = await fetchVaultDeployed(chainId);
-
-  // Sum escrow balance across current + legacy escrow contracts
-  const escrowConfig = contracts.predictionMarketEscrow[chainId];
-  let escrowBalance = await fetchPredictionMarketEscrowTVL(chainId);
-  for (const legEntry of escrowConfig?.legacy ?? []) {
-    const { address } = normalizeLegacyEntry(legEntry);
-    try {
-      escrowBalance += await fetchPredictionMarketEscrowTVL(chainId, address);
-    } catch {
-      // Legacy escrow may no longer exist
-    }
+  // Resolve the block for this timestamp so on-chain reads are pinned. Without
+  // this, readContract would fall through to chain head, which can be several
+  // seconds/minutes past the stored timestamp — causing systematic drift
+  // between cron snapshots and backfilled snapshots for the same timestamp.
+  const targetBlock = await getBlockByTimestamp(client, timestamp);
+  const blockNumber = targetBlock.number;
+  if (blockNumber === null) {
+    throw new Error(
+      `[ProtocolStats] Resolved a pending block for timestamp ${timestamp}; refusing to write a snapshot at chain-head state.`
+    );
   }
-
   console.log(
-    `[ProtocolStats] Vault: ${formatUnits(vaultBalance, 18)} balance, ${formatUnits(vaultAvailableAssets, 18)} available, ${formatUnits(vaultDeployed, 18)} deployed`
-  );
-  console.log(
-    `[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe (all contracts)`
+    `[ProtocolStats] Resolved block ${blockNumber} for timestamp ${timestamp} (block ts=${targetBlock.timestamp})`
   );
 
-  // Calculate vault PnL
-  const pnlResult = await calculateVaultPnL(chainId);
+  // Pick historically-correct vault address for this block — handles vault
+  // migrations via `getContractForBlock`. Escrow totals are aggregated
+  // separately by `sumEscrowBalancesAtBlock`.
+  const vaultConfig = contracts.predictionMarketVault[chainId];
+  const collateralAddress = contracts.collateralToken[chainId]?.address as
+    | `0x${string}`
+    | undefined;
+
+  const vaultAddr = vaultConfig
+    ? getContractForBlock(vaultConfig, blockNumber)
+    : null;
+
+  // On-chain reads, all pinned to `blockNumber` and run in parallel. The
+  // availableAssets() read may revert on older vault contracts that pre-date
+  // that function — catch and fall through to vaultBalance. Escrow is summed
+  // across current + all past V2 deploys, so funds stuck in old escrow
+  // contracts are still counted.
+  const [vaultBalance, vaultAvailableAssetsOrNull, escrowBalance] =
+    await Promise.all([
+      vaultAddr && collateralAddress
+        ? client.readContract({
+            address: collateralAddress,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [vaultAddr],
+            blockNumber,
+          })
+        : Promise.resolve(0n),
+      vaultAddr && collateralAddress
+        ? client
+            .readContract({
+              address: vaultAddr,
+              abi: predictionMarketVaultAbi,
+              functionName: 'availableAssets',
+              args: [],
+              blockNumber,
+            })
+            .then((v: unknown) => v as bigint)
+            .catch(() => null as bigint | null)
+        : Promise.resolve(0n as bigint | null),
+      sumEscrowBalancesAtBlock(client, chainId, blockNumber),
+    ]);
+
+  const vaultAvailableAssets =
+    vaultAvailableAssetsOrNull === null
+      ? vaultBalance
+      : vaultAvailableAssetsOrNull;
+
+  console.log(
+    `[ProtocolStats] Vault: ${formatUnits(vaultBalance, 18)} balance, ${formatUnits(vaultAvailableAssets, 18)} available`
+  );
+  console.log(
+    `[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe (V2 primary + past deploys)`
+  );
+
+  // DB-derived aggregates — pass the same snapshot timestamp so these are also
+  // evaluated at "state as of timestamp", matching the on-chain reads above.
+  const [vaultDeployed, pnlResult, flowsResult] = await Promise.all([
+    fetchVaultDeployedAtBlock(chainId, blockNumber, timestamp),
+    calculateVaultPnL(chainId, timestamp),
+    calculateVaultFlows(chainId, timestamp),
+  ]);
   console.log(
     `[ProtocolStats] Vault PnL: ${formatUnits(pnlResult.realizedPnL, 18)} USDe (won: ${pnlResult.positionsWon}, lost: ${pnlResult.positionsLost})`
   );
-
-  // Calculate vault flows
-  const flowsResult = await calculateVaultFlows(chainId);
   console.log(
-    `[ProtocolStats] Deposits: ${formatUnits(flowsResult.totalDeposits, 18)}, Withdrawals: ${formatUnits(flowsResult.totalWithdrawals, 18)}`
+    `[ProtocolStats] Deposits: ${formatUnits(flowsResult.totalDeposits, 18)}, Withdrawals: ${formatUnits(flowsResult.totalWithdrawals, 18)}, Deployed: ${formatUnits(vaultDeployed, 18)}`
   );
 
   // Calculate airdrop gains: unexplained balance increases
@@ -592,168 +704,319 @@ export async function getProtocolStatsTimeSeries(
   });
 }
 
+// Phase 1 (block resolution) is RPC-only: 1 inflight RPC per worker.
+// 10 workers ≈ 10 req/sec peak.
+const BACKFILL_BLOCK_RESOLUTION_CONCURRENCY = 10;
+
+// Phase 2 (per-snapshot work) fires 3 parallel RPC reads per worker.
+// 3 workers × 3 parallel reads = ~9 concurrent RPCs at peak — under
+// Conduit's free-tier rate limits. Also comfortably below Prisma's default
+// 10-conn pool (3 workers × 3 parallel DB reads = ~9 peak queries).
+const BACKFILL_SNAPSHOT_CONCURRENCY = 3;
+
 /**
  * Backfill historical protocol stats by querying on-chain state at past blocks.
+ *
+ * `days` is the time horizon (how far back to go). `intervalSeconds` controls
+ * the spacing between snapshots — defaults to the configured snapshot interval
+ * (env `PROTOCOL_STATS_INTERVAL_SECONDS`, fallback 86400).
+ *
+ * Runs in two phases:
+ *   Phase 1: resolve every non-pre-launch timestamp to a block number in bulk,
+ *            using a chunked blockspace skeleton + parallel binary searches
+ *            (see `resolveBlocksForTimestamps` in utils).
+ *   Phase 2: for each (timestamp, blockNumber) pair, fetch on-chain state +
+ *            aggregate DB-derived metrics + upsert, all under BACKFILL_SNAPSHOT_CONCURRENCY.
  */
 export async function backfillProtocolStats(
   chainId: number = DEFAULT_CHAIN_ID,
-  days: number = 90
+  days: number = 90,
+  intervalSeconds?: number
 ): Promise<void> {
   const client = getProviderForChain(chainId);
   const vaultAddress = (
     contracts.predictionMarketVault[chainId]?.address ?? ''
   ).toLowerCase();
 
+  const interval = resolveSnapshotIntervalSeconds(intervalSeconds);
+
   console.log(
-    `[ProtocolStats] Starting backfill for ${days} days on chain ${chainId}, vault ${vaultAddress}`
+    `[ProtocolStats] Starting backfill for ${days} days on chain ${chainId}, vault ${vaultAddress}, interval ${interval}s, phase1-concurrency ${BACKFILL_BLOCK_RESOLUTION_CONCURRENCY}, phase2-concurrency ${BACKFILL_SNAPSHOT_CONCURRENCY}`
   );
 
-  const todayMidnight = getUtcMidnightTimestamp(new Date());
+  // End boundary is "now" floored to the interval; walk back in interval steps.
+  const endBoundary = Math.floor(Date.now() / 1000 / interval) * interval;
+  const totalSpan = days * 86400;
+  const steps = Math.floor(totalSpan / interval);
   const timestamps: number[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    timestamps.push(todayMidnight - i * 86400);
+  for (let i = steps; i >= 0; i--) {
+    timestamps.push(endBoundary - i * interval);
   }
 
+  // Per-phase wall-clock timing.
+  const totals = {
+    skeleton: 0,
+    resolveBlocks: 0,
+    rpcReads: 0,
+    dbReads: 0,
+    upsert: 0,
+  };
+
+  // Ethereal mainnet launched ~October 20, 2025. Before this date no contracts
+  // existed on-chain, so pre-launch rows get a zero-valued upsert (no RPC).
+  const ETHEREAL_MAINNET_LAUNCH = Math.floor(Date.UTC(2025, 9, 20) / 1000);
+
+  const preLaunch = timestamps.filter((t) => t < ETHEREAL_MAINNET_LAUNCH);
+  const postLaunch = timestamps.filter((t) => t >= ETHEREAL_MAINNET_LAUNCH);
+
+  console.log(
+    `[ProtocolStats] Timestamps built: total=${timestamps.length}, preLaunch=${preLaunch.length}, postLaunch=${postLaunch.length}`
+  );
+
+  const backfillStart = performance.now();
   let successCount = 0;
   let skipCount = 0;
+  const resolved: Array<{ timestamp: number; blockNumber: bigint }> = [];
+  let crashError: unknown = null;
 
-  // Ethereal mainnet launched ~October 20, 2025. Before this date, no contracts
-  // existed on-chain, so we create zero-valued snapshots as time-axis placeholders.
-  const ETHEREAL_MAINNET_LAUNCH = Math.floor(Date.UTC(2025, 9, 20) / 1000); // 2025-10-20 UTC
-
-  for (let idx = 0; idx < timestamps.length; idx++) {
-    const timestamp = timestamps[idx];
-    const dateStr = new Date(timestamp * 1000).toISOString().split('T')[0];
-
-    if (timestamp < ETHEREAL_MAINNET_LAUNCH) {
+  try {
+    // ── Phase 1: resolve blocks for all post-launch timestamps in bulk ──
+    const tResolve = performance.now();
+    let blocks: Block[] = [];
+    if (postLaunch.length > 0) {
       console.log(
-        `[ProtocolStats] ${dateStr} - before Ethereal mainnet launch, creating zero-valued snapshot`
+        `[ProtocolStats] Phase 1: starting block resolution for ${postLaunch.length} post-launch timestamps...`
       );
-      await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
-        vaultBalance: 0n,
-        vaultAvailableAssets: 0n,
-        vaultDeployed: 0n,
-        escrowBalance: 0n,
-        vaultRealizedPnL: 0n,
-        vaultAirdropGains: 0n,
-        vaultDeposits: 0n,
-        vaultWithdrawals: 0n,
-        vaultPositionsWon: 0,
-        vaultPositionsLost: 0,
-        vaultCollateralWon: 0n,
-        vaultCollateralLost: 0n,
+      blocks = await resolveBlocksForTimestamps(client, postLaunch, {
+        concurrency: BACKFILL_BLOCK_RESOLUTION_CONCURRENCY,
+        logPrefix: '[ProtocolStats] Phase 1',
       });
-      skipCount++;
-      continue;
+    } else {
+      console.log(
+        `[ProtocolStats] Phase 1: skipped (no post-launch timestamps)`
+      );
     }
-
-    const block = await getBlockByTimestamp(client, timestamp);
-    const blockNumber = block.number;
-
-    if (blockNumber === null) {
-      console.log(`[ProtocolStats] Skipping ${dateStr} - pending block`);
-      skipCount++;
-      continue;
-    }
+    totals.resolveBlocks = performance.now() - tResolve;
 
     console.log(
-      `[ProtocolStats] Processing ${dateStr} (block ${blockNumber}) [${idx + 1}/${timestamps.length}]`
+      `[ProtocolStats] Phase 1: resolved ${postLaunch.length} target blocks in ${(totals.resolveBlocks / 1000).toFixed(1)}s`
     );
 
-    // Query historical balances using blockCreated to pick the right contract.
+    // Pair post-launch timestamps with their resolved blocks.
+    for (let i = 0; i < postLaunch.length; i++) {
+      const blockNumber = blocks[i]?.number;
+      if (blockNumber === null || blockNumber === undefined) {
+        console.log(
+          `[ProtocolStats] Skipping ${postLaunch[i]} - no block resolved`
+        );
+        continue;
+      }
+      resolved.push({ timestamp: postLaunch[i], blockNumber });
+    }
+
+    // ── Phase 2: parallel per-snapshot work ──
+    // Escrow aggregation is handled inside `sumEscrowBalancesAtBlock`, so we only
+    // need the vault config here. Collateral address is still needed for the
+    // balance-of vault read.
     const vaultConfig = contracts.predictionMarketVault[chainId];
-    const escrowConfig = contracts.predictionMarketEscrow[chainId];
     const collateralAddress = contracts.collateralToken[chainId]?.address as
       | `0x${string}`
       | undefined;
 
-    const vaultAddr = vaultConfig
-      ? getContractForBlock(vaultConfig, blockNumber)
-      : null;
-    const escrowAddr = escrowConfig
-      ? getContractForBlock(escrowConfig, blockNumber)
-      : null;
+    // Pre-launch zero-fills first — just DB upserts, no RPC.
+    if (preLaunch.length > 0) {
+      console.log(
+        `[ProtocolStats] Phase 2a: upserting ${preLaunch.length} pre-launch zero-fills...`
+      );
+      const tPreLaunch = performance.now();
+      const preStep = Math.max(1, Math.floor(preLaunch.length / 10));
+      await runParallelWork(
+        preLaunch,
+        BACKFILL_SNAPSHOT_CONCURRENCY,
+        async (timestamp) => {
+          const t0 = performance.now();
+          await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
+            vaultBalance: 0n,
+            vaultAvailableAssets: 0n,
+            vaultDeployed: 0n,
+            escrowBalance: 0n,
+            vaultRealizedPnL: 0n,
+            vaultAirdropGains: 0n,
+            vaultDeposits: 0n,
+            vaultWithdrawals: 0n,
+            vaultPositionsWon: 0,
+            vaultPositionsLost: 0,
+            vaultCollateralWon: 0n,
+            vaultCollateralLost: 0n,
+          });
+          totals.upsert += performance.now() - t0;
+          skipCount++;
+          if (skipCount % preStep === 0 || skipCount === preLaunch.length) {
+            console.log(
+              `[ProtocolStats] Phase 2a: ${skipCount}/${preLaunch.length} (${((performance.now() - tPreLaunch) / 1000).toFixed(1)}s)`
+            );
+          }
+        }
+      );
+      console.log(
+        `[ProtocolStats] Phase 2a: done in ${((performance.now() - tPreLaunch) / 1000).toFixed(1)}s`
+      );
+    }
 
-    let vaultBalance = 0n;
-    let vaultAvailableAssets = 0n;
-    if (vaultAddr && collateralAddress) {
-      vaultBalance = await client.readContract({
-        address: collateralAddress,
-        abi: erc20Abi,
-        functionName: 'balanceOf',
-        args: [vaultAddr],
-        blockNumber,
-      });
-      try {
-        vaultAvailableAssets = (await client.readContract({
-          address: vaultAddr,
-          abi: predictionMarketVaultAbi,
-          functionName: 'availableAssets',
-          args: [],
-          blockNumber,
-        })) as bigint;
-      } catch {
-        // Older vault contracts may not have availableAssets()
-        vaultAvailableAssets = vaultBalance;
+    // Real on-chain snapshots.
+    if (resolved.length > 0) {
+      console.log(
+        `[ProtocolStats] Phase 2b: fetching on-chain state + DB aggregates for ${resolved.length} snapshots (concurrency ${BACKFILL_SNAPSHOT_CONCURRENCY})...`
+      );
+    }
+    let doneCount = 0;
+    await runParallelWork(
+      resolved,
+      BACKFILL_SNAPSHOT_CONCURRENCY,
+      async ({ timestamp, blockNumber }) => {
+        const iterStart = performance.now();
+        const dateStr =
+          interval < 86400
+            ? new Date(timestamp * 1000).toISOString().replace('.000Z', 'Z')
+            : new Date(timestamp * 1000).toISOString().split('T')[0];
+
+        const vaultAddr = vaultConfig
+          ? getContractForBlock(vaultConfig, blockNumber)
+          : null;
+
+        // Three balance reads in parallel — share blockNumber. Escrow sums
+        // across current + all past V2 deploys (see sumEscrowBalancesAtBlock),
+        // so funds still sitting in old escrow contracts are included.
+        // availableAssets() may revert on legacy vaults; fall back to vaultBalance.
+        const tRpc = performance.now();
+        const [vaultBalance, vaultAvailableAssetsOrNull, escrowBalance] =
+          await Promise.all([
+            vaultAddr && collateralAddress
+              ? client.readContract({
+                  address: collateralAddress,
+                  abi: erc20Abi,
+                  functionName: 'balanceOf',
+                  args: [vaultAddr],
+                  blockNumber,
+                })
+              : Promise.resolve(0n),
+            vaultAddr && collateralAddress
+              ? client
+                  .readContract({
+                    address: vaultAddr,
+                    abi: predictionMarketVaultAbi,
+                    functionName: 'availableAssets',
+                    args: [],
+                    blockNumber,
+                  })
+                  .then((v) => v as bigint)
+                  .catch(() => null as bigint | null)
+              : Promise.resolve(0n as bigint | null),
+            sumEscrowBalancesAtBlock(client, chainId, blockNumber),
+          ]);
+        totals.rpcReads += performance.now() - tRpc;
+
+        const vaultAvailableAssets =
+          vaultAvailableAssetsOrNull === null
+            ? vaultBalance
+            : vaultAvailableAssetsOrNull;
+
+        // Three DB reads in parallel — independent at this timestamp.
+        const tDb = performance.now();
+        const [vaultDeployed, pnlResult, flowsResult] = await Promise.all([
+          fetchVaultDeployedAtBlock(chainId, blockNumber, timestamp),
+          calculateVaultPnL(chainId, timestamp),
+          calculateVaultFlows(chainId, timestamp),
+        ]);
+        totals.dbReads += performance.now() - tDb;
+
+        const actualTotalAssets = vaultBalance + vaultDeployed;
+        const expectedTotalAssets =
+          flowsResult.totalDeposits -
+          flowsResult.totalWithdrawals +
+          pnlResult.realizedPnL;
+        const airdropGains =
+          actualTotalAssets > expectedTotalAssets
+            ? actualTotalAssets - expectedTotalAssets
+            : 0n;
+
+        const tUpsert = performance.now();
+        await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
+          vaultBalance,
+          vaultAvailableAssets,
+          vaultDeployed,
+          escrowBalance,
+          vaultRealizedPnL: pnlResult.realizedPnL,
+          vaultAirdropGains: airdropGains,
+          vaultDeposits: flowsResult.totalDeposits,
+          vaultWithdrawals: flowsResult.totalWithdrawals,
+          vaultPositionsWon: pnlResult.positionsWon,
+          vaultPositionsLost: pnlResult.positionsLost,
+          vaultCollateralWon: pnlResult.totalCollateralWon,
+          vaultCollateralLost: pnlResult.totalCollateralLost,
+        });
+        totals.upsert += performance.now() - tUpsert;
+
+        successCount++;
+        doneCount++;
+        const iterMs = performance.now() - iterStart;
+        console.log(
+          `[ProtocolStats] ${dateStr} block=${blockNumber} [${doneCount}/${resolved.length}] ` +
+            `iter=${iterMs.toFixed(0)}ms | ` +
+            `vault=${formatUnits(vaultAvailableAssets, 18)}+${formatUnits(vaultDeployed, 18)} ` +
+            `escrow=${formatUnits(escrowBalance, 18)} pnl=${formatUnits(pnlResult.realizedPnL, 18)}`
+        );
       }
-    }
-
-    let escrowBalance = 0n;
-    if (escrowAddr && collateralAddress) {
-      escrowBalance = await client.readContract({
-        address: collateralAddress,
-        abi: erc20Abi,
-        functionName: 'balanceOf',
-        args: [escrowAddr],
-        blockNumber,
-      });
-    }
-
-    const vaultDeployed = await fetchVaultDeployedAtBlock(
-      chainId,
-      blockNumber,
-      timestamp
     );
-
-    // Calculate PnL up to this timestamp
-    const pnlResult = await calculateVaultPnL(chainId, timestamp);
-    const flowsResult = await calculateVaultFlows(chainId, timestamp);
-
-    // Calculate airdrop gains
-    const actualTotalAssets = vaultBalance + vaultDeployed;
-    const expectedTotalAssets =
-      flowsResult.totalDeposits -
-      flowsResult.totalWithdrawals +
-      pnlResult.realizedPnL;
-    const airdropGains =
-      actualTotalAssets > expectedTotalAssets
-        ? actualTotalAssets - expectedTotalAssets
-        : 0n;
-
-    await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
-      vaultBalance,
-      vaultAvailableAssets,
-      vaultDeployed,
-      escrowBalance,
-      vaultRealizedPnL: pnlResult.realizedPnL,
-      vaultAirdropGains: airdropGains,
-      vaultDeposits: flowsResult.totalDeposits,
-      vaultWithdrawals: flowsResult.totalWithdrawals,
-      vaultPositionsWon: pnlResult.positionsWon,
-      vaultPositionsLost: pnlResult.positionsLost,
-      vaultCollateralWon: pnlResult.totalCollateralWon,
-      vaultCollateralLost: pnlResult.totalCollateralLost,
-    });
-
-    console.log(
-      `[ProtocolStats]   Vault: ${formatUnits(vaultAvailableAssets, 18)} available + ${formatUnits(vaultDeployed, 18)} deployed, Escrow: ${formatUnits(escrowBalance, 18)}, PnL: ${formatUnits(pnlResult.realizedPnL, 18)}, Airdrops: ${formatUnits(airdropGains, 18)}`
+  } catch (err) {
+    crashError = err;
+    console.error(
+      '[ProtocolStats] Backfill threw — printing partial stats below:',
+      err
     );
-    successCount++;
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
+  // Always print the summary — on both success and failure.
+  const elapsedMs = performance.now() - backfillStart;
+  const phase2WallMs = Math.max(0, elapsedMs - totals.resolveBlocks);
+  const phase2CumulativeMs = totals.rpcReads + totals.dbReads + totals.upsert;
+  const wallPct = (ms: number) =>
+    `${(ms / 1000).toFixed(1)}s (${elapsedMs > 0 ? ((ms / elapsedMs) * 100).toFixed(1) : '0'}% wall)`;
+  const cumShare = (ms: number) =>
+    `${(ms / 1000).toFixed(1)}s cumulative across workers (${phase2CumulativeMs > 0 ? ((ms / phase2CumulativeMs) * 100).toFixed(1) : '0'}% of phase-2 work)`;
+  const verdict = crashError ? 'INCOMPLETE (see error above)' : 'complete';
   console.log(
-    `[ProtocolStats] Backfill complete: ${successCount} days processed, ${skipCount} skipped`
+    `[ProtocolStats] Backfill ${verdict}: ${successCount} snapshots processed, ${skipCount} pre-launch zero-fills, ${Math.max(0, postLaunch.length - resolved.length)} skipped in ${(elapsedMs / 1000).toFixed(1)}s\n` +
+      `  Phase 1 (block resolution): ${wallPct(totals.resolveBlocks)}\n` +
+      `  Phase 2 (per-snapshot work): ${wallPct(phase2WallMs)}\n` +
+      `    rpc reads:    ${cumShare(totals.rpcReads)}\n` +
+      `    db reads:     ${cumShare(totals.dbReads)}\n` +
+      `    db upsert:    ${cumShare(totals.upsert)}`
   );
+
+  if (crashError) throw crashError;
+}
+
+/**
+ * Run `fn` over `items` with at most `concurrency` in flight. Awaits all
+ * to finish. Unlike the one in utils, this doesn't need to return results.
+ */
+async function runParallelWork<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>
+): Promise<void> {
+  if (items.length === 0) return;
+  let next = 0;
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (true) {
+        const idx = next++;
+        if (idx >= items.length) return;
+        await fn(items[idx]);
+      }
+    }
+  );
+  await Promise.all(workers);
 }

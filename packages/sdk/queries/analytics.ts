@@ -14,8 +14,8 @@ export interface ProtocolStat {
   vaultDeposits: string;
   vaultWithdrawals: string;
   vaultAirdropGains: string;
-  dailyPnL: string;
-  dailyVolume: string;
+  periodPnL: string;
+  periodVolume: string;
 }
 
 export const GET_PROTOCOL_STATS = /* GraphQL */ `
@@ -34,8 +34,8 @@ export const GET_PROTOCOL_STATS = /* GraphQL */ `
       vaultDeposits
       vaultWithdrawals
       vaultAirdropGains
-      dailyPnL
-      dailyVolume
+      periodPnL
+      periodVolume
     }
   }
 `;

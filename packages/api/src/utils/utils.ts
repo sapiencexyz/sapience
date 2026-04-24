@@ -156,7 +156,14 @@ export function getProviderForChain(chainId: number): PublicClient {
 
 export async function getBlockByTimestamp(
   client: PublicClient,
-  timestamp: number
+  timestamp: number,
+  hints?: {
+    // Lower-bound block to start the binary search from. Safe to pass a block
+    // whose timestamp is known to be <= target — e.g. the block found for the
+    // previous timestamp during an ascending sweep. Cuts the search space
+    // from log2(latest) to log2(latest - minBlockNumber).
+    minBlockNumber?: bigint;
+  }
 ): Promise<Block> {
   // Get the latest block number
   const latestBlockNumber = await client.getBlockNumber();
@@ -172,8 +179,10 @@ export async function getBlockByTimestamp(
     return latestBlock;
   }
 
-  // Initialize the binary search range
-  let low = 0n;
+  // Initialize the binary search range, honoring the hint when provided.
+  let low = hints?.minBlockNumber ?? 0n;
+  if (low < 0n) low = 0n;
+  if (low > latestBlockNumber) low = 0n;
   let high = latestBlockNumber;
   let closestBlock: Block | null = null;
 
@@ -204,7 +213,174 @@ export async function getBlockByTimestamp(
   return closestBlock!;
 }
 
-export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;
+/**
+ * Run `fn` over `items` with at most `concurrency` promises in flight at a time.
+ * Preserves input-order in the returned results array. Terminates once every
+ * item has been processed.
+ */
+async function runParallel<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const workers = Array.from(
+    { length: Math.max(1, Math.min(concurrency, items.length)) },
+    async () => {
+      while (true) {
+        const idx = next++;
+        if (idx >= items.length) return;
+        results[idx] = await fn(items[idx], idx);
+      }
+    }
+  );
+  await Promise.all(workers);
+  return results;
+}
+
+/**
+ * Resolve target timestamps to blocks in bulk, using a chunked blockspace
+ * skeleton and parallel per-target binary searches. Returns blocks in the
+ * same order as `timestamps`.
+ *
+ * Strategy:
+ * - Split `[0, latestBlock]` into `chunks` equal spans; fetch the `chunks+1`
+ *   boundary block timestamps in parallel. This is the "skeleton".
+ * - For each target: (1) in-memory binsearch the skeleton to find its bracketing
+ *   chunk, (2) plain binary search within that chunk for the exact block.
+ * - Per-target lookups are independent and run in parallel under `concurrency`.
+ *
+ * Chunk count defaults to `max(concurrency+1, round(1.44 * timestamps.length))`
+ * — derived by minimizing total RPC calls `T(K) = (K+1) + N·log₂(L/K)`.
+ */
+export async function resolveBlocksForTimestamps(
+  client: PublicClient,
+  timestamps: number[],
+  opts: { concurrency: number; chunks?: number; logPrefix?: string }
+): Promise<Block[]> {
+  if (timestamps.length === 0) return [];
+
+  const concurrency = Math.max(1, opts.concurrency);
+  const N = timestamps.length;
+  const chunks = opts.chunks ?? Math.max(concurrency + 1, Math.round(1.44 * N));
+  const prefix = opts.logPrefix ?? '[resolveBlocks]';
+
+  console.log(
+    `${prefix} starting: ${N} targets, ${chunks + 1} skeleton boundaries, concurrency ${concurrency}`
+  );
+
+  const tLatest = performance.now();
+  const latestBlockNumber = await client.getBlockNumber();
+  const latestBlock = await client.getBlock({
+    blockNumber: latestBlockNumber,
+  });
+  const latestTs = Number(latestBlock.timestamp);
+  console.log(
+    `${prefix} latest block: ${latestBlockNumber} (ts=${latestTs}) in ${(performance.now() - tLatest).toFixed(0)}ms`
+  );
+
+  // Build the boundary block numbers evenly across [0, latestBlockNumber].
+  const boundaries: bigint[] = new Array(chunks + 1);
+  for (let i = 0; i <= chunks; i++) {
+    boundaries[i] = (latestBlockNumber * BigInt(i)) / BigInt(chunks);
+  }
+
+  // Fetch boundary blocks in parallel under the concurrency cap. We already
+  // have boundaries[0] implicitly (block 0) and boundaries[chunks] (latest),
+  // but refetch for uniformity — the cost is negligible.
+  const tSkeleton = performance.now();
+  let skeletonDone = 0;
+  const skeletonStep = Math.max(1, Math.floor((chunks + 1) / 10));
+  const skeletonBlocks = await runParallel(
+    boundaries,
+    concurrency,
+    async (blockNumber) => {
+      const b = await client.getBlock({ blockNumber });
+      skeletonDone++;
+      if (skeletonDone % skeletonStep === 0 || skeletonDone === chunks + 1) {
+        console.log(
+          `${prefix} skeleton: ${skeletonDone}/${chunks + 1} boundaries fetched (${(performance.now() - tSkeleton).toFixed(0)}ms)`
+        );
+      }
+      return b;
+    }
+  );
+  console.log(
+    `${prefix} skeleton ready in ${((performance.now() - tSkeleton) / 1000).toFixed(1)}s`
+  );
+  const skeleton: Array<{ blockNumber: bigint; timestamp: bigint }> =
+    skeletonBlocks.map((b) => ({
+      blockNumber: b.number!,
+      timestamp: b.timestamp,
+    }));
+
+  // Per-target lookup: bracket via skeleton, then binsearch within the chunk.
+  const tLookups = performance.now();
+  let lookupsDone = 0;
+  const lookupStep = Math.max(1, Math.floor(N / 20));
+  return runParallel(timestamps, concurrency, async (target) => {
+    // If target is at or beyond the latest block's timestamp, return latest.
+    if (target >= latestTs) {
+      return latestBlock;
+    }
+
+    const targetBn = BigInt(target);
+
+    // (1) Find bracketing chunk via in-memory binary search over the skeleton.
+    // We want the smallest i such that skeleton[i+1].timestamp >= targetBn.
+    let lo = 0;
+    let hi = skeleton.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (skeleton[mid + 1]?.timestamp >= targetBn) {
+        hi = mid;
+      } else {
+        lo = mid + 1;
+      }
+    }
+    const chunkStart = skeleton[lo].blockNumber;
+    const chunkEnd =
+      lo + 1 < skeleton.length
+        ? skeleton[lo + 1].blockNumber
+        : latestBlockNumber;
+
+    // (2) Plain binary search for the smallest block whose timestamp >= target.
+    let low = chunkStart;
+    let high = chunkEnd;
+    let closest: Block | null = null;
+    while (low <= high) {
+      const mid = (low + high) / 2n;
+      const block = await client.getBlock({ blockNumber: mid });
+      if (block.timestamp < targetBn) {
+        low = mid + 1n;
+      } else {
+        high = mid - 1n;
+        closest = block;
+      }
+    }
+
+    // If no block at-or-after target was found in the chunk (can happen if
+    // target is past the chunk's upper boundary by one block due to rounding),
+    // fall through to the next block.
+    if (closest === null) {
+      const nextBlock = await client.getBlock({ blockNumber: chunkEnd + 1n });
+      closest = nextBlock;
+    }
+
+    lookupsDone++;
+    if (lookupsDone % lookupStep === 0 || lookupsDone === N) {
+      const elapsed = (performance.now() - tLookups) / 1000;
+      const rate = lookupsDone / elapsed;
+      const eta = (N - lookupsDone) / rate;
+      console.log(
+        `${prefix} lookups: ${lookupsDone}/${N} (${elapsed.toFixed(1)}s elapsed, ETA ${eta.toFixed(1)}s)`
+      );
+    }
+
+    return closest!;
+  });
+}
 
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds

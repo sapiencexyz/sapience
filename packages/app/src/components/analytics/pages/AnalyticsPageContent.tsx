@@ -159,39 +159,14 @@ const CHART_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
 
 function filterDataByPeriod<T extends { timestamp: number }>(
   data: T[],
-  period: Period,
-  zeroEntry: Omit<T, 'timestamp'>
+  period: Period
 ): T[] {
   const days = PERIOD_DAYS[period];
   if (days === Infinity) return data;
 
   const now = Math.floor(Date.now() / 1000);
-  // Align cutoff to UTC midnight so we don't exclude snapshots that
-  // fall on the boundary day (snapshots use UTC midnight timestamps)
-  const DAY_SECONDS = 86400;
-  const cutoff =
-    Math.floor((now - days * DAY_SECONDS) / DAY_SECONDS) * DAY_SECONDS;
-  const filtered = data.filter((item) => item.timestamp >= cutoff);
-
-  // Fill missing days with zero entries, but only between the first and last
-  // data points — don't pad the tails with zeros
-  const existingTimestamps = new Set(
-    filtered.map((d) => Math.floor(d.timestamp / DAY_SECONDS))
-  );
-  const firstDataTs =
-    filtered.length > 0 ? Math.min(...filtered.map((d) => d.timestamp)) : now;
-  const lastDataTs =
-    filtered.length > 0 ? Math.max(...filtered.map((d) => d.timestamp)) : now;
-  const fillStart = Math.max(cutoff, firstDataTs);
-  const filled = [...filtered];
-  for (let ts = fillStart; ts <= lastDataTs; ts += DAY_SECONDS) {
-    const dayKey = Math.floor(ts / DAY_SECONDS);
-    if (!existingTimestamps.has(dayKey)) {
-      filled.push({ ...zeroEntry, timestamp: ts } as T);
-    }
-  }
-  filled.sort((a, b) => a.timestamp - b.timestamp);
-  return filled;
+  const cutoff = now - days * 86400;
+  return data.filter((item) => item.timestamp >= cutoff);
 }
 
 function AnalyticsPageContent(): React.ReactElement {
@@ -233,33 +208,22 @@ function AnalyticsPageContent(): React.ReactElement {
     if (!protocolStats) return [];
     return protocolStats.map((point) => ({
       timestamp: point.timestamp,
-      volume: parseFloat(point.dailyVolume) / 1e18,
+      volume: parseFloat(point.periodVolume) / 1e18,
     }));
   }, [protocolStats]);
 
-  // Filter chart data based on selected periods, filling missing days with zeros
   const filteredVolumeData = useMemo(
-    () => filterDataByPeriod(volumeChartData, volumePeriod, { volume: 0 }),
+    () => filterDataByPeriod(volumeChartData, volumePeriod),
     [volumeChartData, volumePeriod]
   );
 
   const filteredOiData = useMemo(
-    () =>
-      filterDataByPeriod(statsChartData, oiPeriod, {
-        openInterest: 0,
-        protocolTvl: 0,
-        vaultAvailableAssets: 0,
-      }),
+    () => filterDataByPeriod(statsChartData, oiPeriod),
     [statsChartData, oiPeriod]
   );
 
   const filteredTvlData = useMemo(
-    () =>
-      filterDataByPeriod(statsChartData, tvlPeriod, {
-        openInterest: 0,
-        protocolTvl: 0,
-        vaultAvailableAssets: 0,
-      }),
+    () => filterDataByPeriod(statsChartData, tvlPeriod),
     [statsChartData, tvlPeriod]
   );
 
@@ -373,12 +337,11 @@ function AnalyticsPageContent(): React.ReactElement {
 
         {/* Charts */}
         <div className="space-y-4 md:space-y-8">
-          {/* Volume Chart - Daily Bar */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="sc-heading text-foreground flex items-center gap-1.5">
-                  Daily Volume
+                  Volume
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className="text-muted-foreground hover:text-foreground transition-colors">
@@ -390,8 +353,8 @@ function AnalyticsPageContent(): React.ReactElement {
                       align="start"
                     >
                       <p className="text-sm text-muted-foreground">
-                        Includes volume from prediction mints and secondary
-                        market trades.
+                        Volume per snapshot interval. Includes volume from
+                        prediction mints and secondary market trades.
                       </p>
                     </PopoverContent>
                   </Popover>

@@ -31,7 +31,14 @@ vi.mock('../utils/utils', () => ({
   getProviderForChain: vi.fn().mockReturnValue({
     readContract: mockReadContract,
   }),
-  getBlockByTimestamp: vi.fn(),
+  // computeAndStoreProtocolStats now resolves a block for its snapshot
+  // timestamp so on-chain reads are pinned. The default mock returns a
+  // stable non-null blockNumber; individual tests override via mockResolvedValue
+  // if they need a different scenario.
+  getBlockByTimestamp: vi.fn().mockResolvedValue({
+    number: 123456n,
+    timestamp: 1700000000n,
+  }),
 }));
 
 vi.mock('@sapience/sdk/contracts', () => ({
@@ -234,7 +241,7 @@ describe('computeAndStoreProtocolStats', () => {
     expect(update.vaultCollateralLost).toBe(create.vaultCollateralLost);
   });
 
-  it('uses UTC midnight timestamp for snapshot', async () => {
+  it('defaults to daily flooring (UTC midnight) when no interval specified', async () => {
     await computeAndStoreProtocolStats(42161);
 
     const upsertCall = mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
@@ -247,6 +254,85 @@ describe('computeAndStoreProtocolStats', () => {
 
     expect(timestamp).toBe(expectedMidnight);
     expect(upsertCall.create.timestamp).toBe(expectedMidnight);
+  });
+
+  it('floors timestamp to the configured interval (hourly)', async () => {
+    // 12:37:42 UTC on 2026-04-23
+    const mockNowMs = Date.UTC(2026, 3, 23, 12, 37, 42);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(mockNowMs));
+
+    try {
+      await computeAndStoreProtocolStats(42161, 3600);
+
+      const upsertCall =
+        mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
+      const timestamp =
+        upsertCall.where.chainId_vaultAddress_timestamp.timestamp;
+
+      // Floor of 12:37:42 UTC to nearest hour is 12:00:00 UTC
+      const expected = Math.floor(Date.UTC(2026, 3, 23, 12, 0, 0) / 1000);
+      expect(timestamp).toBe(expected);
+      expect(upsertCall.create.timestamp).toBe(expected);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('floors timestamp to the configured interval (15 minutes)', async () => {
+    // 12:37:42 UTC on 2026-04-23
+    const mockNowMs = Date.UTC(2026, 3, 23, 12, 37, 42);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(mockNowMs));
+
+    try {
+      await computeAndStoreProtocolStats(42161, 900);
+
+      const upsertCall =
+        mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
+      const timestamp =
+        upsertCall.where.chainId_vaultAddress_timestamp.timestamp;
+
+      // Floor of 12:37:42 UTC to nearest 15 min is 12:30:00 UTC
+      const expected = Math.floor(Date.UTC(2026, 3, 23, 12, 30, 0) / 1000);
+      expect(timestamp).toBe(expected);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('floors to UTC midnight when interval is 86400', async () => {
+    // 17:45:00 UTC on 2026-04-23
+    const mockNowMs = Date.UTC(2026, 3, 23, 17, 45, 0);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(mockNowMs));
+
+    try {
+      await computeAndStoreProtocolStats(42161, 86400);
+
+      const upsertCall =
+        mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
+      const timestamp =
+        upsertCall.where.chainId_vaultAddress_timestamp.timestamp;
+
+      const expected = Math.floor(Date.UTC(2026, 3, 23, 0, 0, 0) / 1000);
+      expect(timestamp).toBe(expected);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('pins every readContract to the resolved blockNumber (no chain-head reads)', async () => {
+    await computeAndStoreProtocolStats(42161);
+
+    // Every readContract call for this snapshot must carry a blockNumber so
+    // on-chain state is evaluated at the resolved historical block, not at
+    // chain head when the cron happens to fire.
+    expect(mockReadContract).toHaveBeenCalled();
+    for (const call of mockReadContract.mock.calls) {
+      const args = call[0] as { blockNumber?: bigint };
+      expect(args.blockNumber).toBe(123456n);
+    }
   });
 });
 

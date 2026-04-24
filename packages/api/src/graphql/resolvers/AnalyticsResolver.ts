@@ -18,16 +18,17 @@ import {
   fetchPredictionMarketEscrowTVL,
   calculateVaultPnL,
   calculateVaultFlows,
+  resolveSnapshotIntervalSeconds,
 } from '../../helpers/protocolStats';
 
 @ObjectType({
   description:
-    'Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL',
+    'Protocol-wide statistics snapshot including vault metrics, volume, and PnL. Cadence is controlled by the snapshot cron; periodPnL and periodVolume are deltas over that interval.',
 })
 class ProtocolStat {
   @Field(() => Int, {
     description:
-      'Unix epoch timestamp (seconds) for midnight UTC of the snapshot day',
+      'Unix epoch timestamp (seconds) aligned to the snapshot interval boundary',
   })
   timestamp!: number;
 
@@ -67,11 +68,15 @@ class ProtocolStat {
   @Field(() => String)
   vaultAirdropGains!: string;
 
-  @Field(() => String)
-  dailyPnL!: string;
+  @Field(() => String, {
+    description: 'Realized PnL delta over the snapshot interval',
+  })
+  periodPnL!: string;
 
-  @Field(() => String)
-  dailyVolume!: string;
+  @Field(() => String, {
+    description: 'Cumulative-volume delta over the snapshot interval',
+  })
+  periodVolume!: string;
 }
 
 interface CumulativeVolumeRow {
@@ -101,7 +106,7 @@ function buildTimestampMap<T extends { timestamp: bigint }>(
 export class AnalyticsResolver {
   @Query(() => [ProtocolStat], {
     description:
-      'Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest',
+      'Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest',
   })
   @Directive('@cacheControl(maxAge: 60)')
   async protocolStats(
@@ -193,23 +198,26 @@ export class AnalyticsResolver {
     const volumeMap = buildTimestampMap(cumulativeVolumes, 'cumulative_volume');
     const oiMap = buildTimestampMap(openInterests, 'open_interest');
 
-    const DAY_SECONDS = 86400;
+    // Display each bar one interval *before* the snapshot's capture timestamp
+    // so the label reflects "the period/state represented" rather than "the
+    // moment of measurement". A snapshot captured at Mar 5 00:00 UTC reflects
+    // everything through Mar 4 (cumulative) and Mar 4's delta (period), so it
+    // belongs under the "Mar 4" label on a daily chart.
+    const interval = resolveSnapshotIntervalSeconds();
 
-    // Build results from snapshots. Each snapshot timestamp (midnight UTC) represents
-    // end-of-previous-day, so we shift the display timestamp back by 1 day.
     const results: ProtocolStat[] = protocolSnapshots.map((snapshot, i) => {
       const cumVol = volumeMap.get(snapshot.timestamp) || '0';
       const prevCumVol =
         i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
-      const dailyVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
+      const periodVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
 
       const prevPnL = i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
-      const dailyPnL = (
+      const periodPnL = (
         BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)
       ).toString();
 
       return {
-        timestamp: snapshot.timestamp - DAY_SECONDS,
+        timestamp: snapshot.timestamp - interval,
         cumulativeVolume: cumVol,
         openInterest: oiMap.get(snapshot.timestamp) || '0',
         vaultBalance: snapshot.vaultBalance,
@@ -222,8 +230,8 @@ export class AnalyticsResolver {
         vaultDeposits: snapshot.vaultDeposits,
         vaultWithdrawals: snapshot.vaultWithdrawals,
         vaultAirdropGains: snapshot.vaultAirdropGains,
-        dailyPnL,
-        dailyVolume,
+        periodPnL,
+        periodVolume,
       };
     });
 
@@ -234,7 +242,7 @@ export class AnalyticsResolver {
       const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
       const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
       const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
-      const liveDailyVolume = (
+      const livePeriodVolume = (
         BigInt(liveCumVol) - BigInt(lastCumVol)
       ).toString();
 
@@ -254,7 +262,7 @@ export class AnalyticsResolver {
         calculateVaultFlows(chainId),
       ]);
 
-      const liveDailyPnL = (
+      const livePeriodPnL = (
         livePnlResult.realizedPnL - BigInt(lastSnapshot.vaultRealizedPnL)
       ).toString();
 
@@ -268,13 +276,16 @@ export class AnalyticsResolver {
           ? liveActualTotalAssets - liveExpectedTotalAssets
           : 0n;
 
-      // Today's display timestamp = current UTC midnight. Derived from wall-clock
-      // rather than last snapshot so a missed cron doesn't mislabel the live candle.
-      const todayTimestamp =
-        Math.floor(Date.now() / 1000 / DAY_SECONDS) * DAY_SECONDS;
+      // Live candle represents "the current in-progress period" — label it at
+      // the start of the current interval (matches the display shift: bar at
+      // `currentBoundary` shows activity during [currentBoundary, nextBoundary]).
+      // The bar grows throughout the period and closes when cron fires, at
+      // which point the next snapshot's record takes over at this same label.
+      const currentBoundary =
+        Math.floor(Date.now() / 1000 / interval) * interval;
 
       results.push({
-        timestamp: todayTimestamp,
+        timestamp: currentBoundary,
         cumulativeVolume: liveCumVol,
         openInterest: oiMap.get(nowTimestamp) || '0',
         vaultBalance: liveVaultBalance.toString(),
@@ -287,8 +298,8 @@ export class AnalyticsResolver {
         vaultDeposits: liveFlowsResult.totalDeposits.toString(),
         vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
         vaultAirdropGains: liveAirdropGains.toString(),
-        dailyPnL: liveDailyPnL,
-        dailyVolume: liveDailyVolume,
+        periodPnL: livePeriodPnL,
+        periodVolume: livePeriodVolume,
       });
     } catch (err) {
       console.error(
