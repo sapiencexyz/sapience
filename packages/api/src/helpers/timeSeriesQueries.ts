@@ -6,13 +6,13 @@ import {
   TimeInterval,
   INTERVAL_TO_PG,
   INTERVAL_TO_PG_STEP,
-} from '../graphql/types/TimeSeriesTypes';
+} from './timeSeriesTypes';
 import type {
   VolumeDataPoint,
   PnlDataPoint,
   BalanceDataPoint,
   PredictionCountDataPoint,
-} from '../graphql/types/TimeSeriesTypes';
+} from './timeSeriesTypes';
 
 // ─── Bucket limits per interval ───────────────────────────────────────────────
 

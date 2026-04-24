@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { initializeDataSource } from './db';
 import { expressMiddleware } from '@as-integrations/express4';
 import { app } from './app';

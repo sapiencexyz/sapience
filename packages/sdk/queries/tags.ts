@@ -1,6 +1,6 @@
 import { graphqlRequest } from './client/graphqlClient';
 
-const GET_POPULAR_TAGS = /* GraphQL */ `
+export const GET_POPULAR_TAGS = /* GraphQL */ `
   query PopularTags {
     popularTags
   }

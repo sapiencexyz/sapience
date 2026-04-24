@@ -255,7 +255,7 @@ export default function QuestionPageContent({
             otherPicks.length > 0
               ? otherPicks.map((p) => ({
                   conditionId: p.conditionId,
-                  question: p.conditionId,
+                  resolverAddress: p.conditionResolver ?? undefined,
                   prediction:
                     (p.predictedOutcome as OutcomeSide) === OutcomeSide.YES,
                 }))

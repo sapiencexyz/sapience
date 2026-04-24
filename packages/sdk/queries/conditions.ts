@@ -233,7 +233,7 @@ type ConditionById = {
   estimatedPrice?: number | null;
 };
 
-const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
+export const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
   query ConditionsByIds($where: ConditionWhereInput!) {
     conditions(where: $where, take: 100) {
       id

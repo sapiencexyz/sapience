@@ -90,55 +90,58 @@ export default function PositionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl pt-8">
-        <PositionSummary
-          kind="position"
-          positionId={position.id}
-          pickCount={rawPicks.length}
-          createdAt={createdAt}
-          endsAtMs={endsAtMs}
-          positionSize={positionSize}
-          payout={totalPayout}
-          pnl={pnl}
-          roi={roi}
-          isSettled={isSettled}
-          positionWon={positionWon}
-          collateralSymbol={collateralSymbol}
-          holderAddress={position.holder}
-        />
+      <DialogContent className="sm:max-w-4xl pt-8 overflow-x-hidden">
+        <div className="min-w-0 space-y-4">
+          <PositionSummary
+            kind="position"
+            positionId={position.id}
+            pickCount={rawPicks.length}
+            createdAt={createdAt}
+            endsAtMs={endsAtMs}
+            positionSize={positionSize}
+            payout={totalPayout}
+            pnl={pnl}
+            roi={roi}
+            isSettled={isSettled}
+            positionWon={positionWon}
+            collateralSymbol={collateralSymbol}
+            holderAddress={position.holder}
+            isPredictorSide={isPredictorSide}
+          />
 
-        <PicksContent
-          picks={picks}
-          positionId={String(position.id)}
-          hideHeader
-          positionStatus={getPositionStatus()}
-        />
+          <PicksContent
+            picks={picks}
+            positionId={String(position.id)}
+            hideHeader
+            positionStatus={getPositionStatus()}
+          />
 
-        <div className="mt-2 rounded-md border border-border/60 overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setActivityOpen((v) => !v)}
-            aria-expanded={activityOpen}
-            className="w-full flex items-center justify-between px-4 py-3 bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
-          >
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              Related Activity
-            </span>
-            <ChevronDown
-              className={`h-4 w-4 text-muted-foreground transition-transform ${activityOpen ? 'rotate-180' : ''}`}
-              aria-hidden="true"
-            />
-          </button>
-          {activityOpen && (
-            <div className="border-t border-border/60 max-h-56 overflow-y-auto">
-              <ActivityTable
-                account={position.holder as Address}
-                filterPickConfigId={position.pickConfigId}
-                hiddenColumns={['position', 'status', 'share']}
-                hideFilters
+          <div className="mt-2 rounded-md border border-border/60 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setActivityOpen((v) => !v)}
+              aria-expanded={activityOpen}
+              className="w-full flex items-center justify-between px-4 py-3 bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
+            >
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                Related Activity
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${activityOpen ? 'rotate-180' : ''}`}
+                aria-hidden="true"
               />
-            </div>
-          )}
+            </button>
+            {activityOpen && (
+              <div className="border-t border-border/60 max-h-56 overflow-y-auto">
+                <ActivityTable
+                  account={position.holder as Address}
+                  filterPickConfigId={position.pickConfigId}
+                  hiddenColumns={['position', 'status', 'share']}
+                  hideFilters
+                />
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

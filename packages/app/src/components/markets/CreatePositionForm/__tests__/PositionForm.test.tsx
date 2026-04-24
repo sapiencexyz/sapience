@@ -138,7 +138,7 @@ vi.mock('~/lib/auction/bidLogger', () => ({
 }));
 
 // Stub heavy child components to keep tests fast
-vi.mock('~/components/markets/forms', () => ({
+vi.mock('~/components/markets/forms/inputs/PositionSizeInput', () => ({
   PositionSizeInput: () => <div data-testid="position-size-input" />,
 }));
 

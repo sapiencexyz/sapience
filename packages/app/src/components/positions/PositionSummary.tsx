@@ -47,7 +47,7 @@ export interface PositionSummaryProps {
   kind?: 'prediction' | 'position';
   /**
    * Number of picks backing this aggregate position. When provided with
-   * kind="position", the header becomes "{n} Pick Position".
+   * kind="position", renders a "Picks" cell in the addresses row.
    */
   pickCount?: number;
   /**
@@ -61,6 +61,11 @@ export interface PositionSummaryProps {
   predictorWon?: boolean;
   /** Whether the counterparty side won (for winner highlight in symmetric layout). */
   counterpartyWon?: boolean;
+  /**
+   * Which side the holder is on. When provided with kind="position", renders a
+   * "Side" cell (PREDICTOR / COUNTERPARTY) next to the Holder cell.
+   */
+  isPredictorSide?: boolean;
 }
 
 export default function PositionSummary({
@@ -86,22 +91,38 @@ export default function PositionSummary({
   counterpartyStake,
   predictorWon,
   counterpartyWon,
+  isPredictorSide,
 }: PositionSummaryProps) {
   const useSymmetricStats =
     predictorStake !== undefined && counterpartyStake !== undefined;
   const showOwner = isOwnerLoading || !!currentOwner;
   const showHolder = !!holderAddress;
+  const showSide = kind === 'position' && isPredictorSide !== undefined;
+  const showPicks = kind === 'position' && typeof pickCount === 'number';
+  const showPositionStatus = kind === 'position' && !useSymmetricStats;
   const showAddressesRow =
     !useSymmetricStats &&
-    (showOwner || showHolder || predictorAddress || counterpartyAddress);
+    (showOwner ||
+      showHolder ||
+      showSide ||
+      showPositionStatus ||
+      predictorAddress ||
+      counterpartyAddress);
   const addressCellCount =
-    (showOwner ? 1 : 0) + (showHolder ? 1 : 0) + (kind === 'position' ? 0 : 2);
+    (showOwner ? 1 : 0) +
+    (showHolder ? 1 : 0) +
+    (showSide ? 1 : 0) +
+    (showPicks ? 1 : 0) +
+    (showPositionStatus ? 1 : 0) +
+    (kind === 'position' ? 0 : 2);
   const addressGridCols =
-    addressCellCount >= 3
-      ? 'sm:grid-cols-3'
-      : addressCellCount === 2
-        ? 'sm:grid-cols-2'
-        : 'sm:grid-cols-1';
+    addressCellCount >= 4
+      ? 'sm:grid-cols-4'
+      : addressCellCount === 3
+        ? 'sm:grid-cols-3'
+        : addressCellCount === 2
+          ? 'sm:grid-cols-2'
+          : 'sm:grid-cols-1';
 
   const renderEndsCell = () => (
     <div className="flex flex-col gap-1 min-w-0">
@@ -179,31 +200,25 @@ export default function PositionSummary({
   );
 
   const renderStatusCell = () => {
-    const label = isSettled ? 'Winner' : 'Status';
     let value: string;
-    let badgeClass: string;
-    if (!isSettled) {
-      const isLive = endsAtMs != null && endsAtMs > Date.now();
-      value = isLive ? 'ACTIVE' : 'PENDING';
-      badgeClass = 'border-foreground/40 bg-foreground/10 text-foreground';
-    } else if (predictorWon) {
+    let valueClass: string;
+    if (isSettled && predictorWon) {
       value = 'PREDICTOR';
-      badgeClass = 'border-yes/40 bg-yes/10 text-yes';
-    } else if (counterpartyWon) {
+      valueClass = 'text-brand-white';
+    } else if (isSettled && counterpartyWon) {
       value = 'COUNTERPARTY';
-      badgeClass = 'border-yes/40 bg-yes/10 text-yes';
+      valueClass = 'text-brand-white';
     } else {
-      value = 'SETTLED';
-      badgeClass =
-        'border-muted-foreground/40 bg-muted-foreground/10 text-muted-foreground';
+      value = 'PENDING';
+      valueClass = 'text-muted-foreground';
     }
     return (
-      <div className="flex flex-col gap-1.5 min-w-0 items-start">
+      <div className="flex flex-col gap-1 min-w-0">
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-          {label}
+          Winner
         </div>
         <span
-          className={`inline-block px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border ${badgeClass}`}
+          className={`text-sm md:text-base font-medium font-mono ${valueClass}`}
         >
           {value}
         </span>
@@ -237,18 +252,21 @@ export default function PositionSummary({
         {label}
       </div>
       {address ? (
-        <Link
-          href={`/profile/${address}`}
-          className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors min-w-0 max-w-full overflow-hidden"
-        >
-          <EnsAvatar
-            address={address}
-            className="shrink-0 rounded-sm ring-1 ring-border/50"
-            width={16}
-            height={16}
-          />
+        <div className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground min-w-0 max-w-full overflow-hidden">
+          <Link
+            href={`/profile/${address}`}
+            aria-label={`View profile for ${address}`}
+            className="shrink-0 hover:opacity-80 transition-opacity"
+          >
+            <EnsAvatar
+              address={address}
+              className="shrink-0 rounded-sm ring-1 ring-border/50"
+              width={16}
+              height={16}
+            />
+          </Link>
           <AddressDisplay address={address} />
-        </Link>
+        </div>
       ) : (
         <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
           —
@@ -284,9 +302,7 @@ export default function PositionSummary({
           <h2 className="eyebrow text-foreground">
             {(() => {
               if (kind === 'position') {
-                return typeof pickCount === 'number'
-                  ? `${pickCount} Pick Position`
-                  : 'Position';
+                return 'Position';
               }
               const idStr = String(positionId);
               if (idStr.startsWith('0x')) {
@@ -304,8 +320,10 @@ export default function PositionSummary({
             })()}
           </h2>
         </div>
-        {/* Status badge (legacy mode only — symmetric mode surfaces it in the grid below) */}
+        {/* Status badge (legacy prediction mode only — symmetric mode and
+            position kind both surface it in the grid below) */}
         {!useSymmetricStats &&
+          kind !== 'position' &&
           (isSettled ? (
             positionWon ? (
               <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-yes/40 bg-yes/10 text-yes">
@@ -383,24 +401,29 @@ export default function PositionSummary({
         <>
           {/* Addresses row */}
           {showAddressesRow && (
-            <div className={`grid grid-cols-1 gap-4 ${addressGridCols}`}>
+            <div
+              className={`grid ${addressCellCount > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 ${addressGridCols}`}
+            >
               {showHolder && (
                 <div className="space-y-1">
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
                     Holder
                   </div>
-                  <Link
-                    href={`/profile/${holderAddress}`}
-                    className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-                  >
-                    <EnsAvatar
-                      address={holderAddress}
-                      className="shrink-0 rounded-sm ring-1 ring-border/50"
-                      width={16}
-                      height={16}
-                    />
+                  <div className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground">
+                    <Link
+                      href={`/profile/${holderAddress}`}
+                      aria-label={`View profile for ${holderAddress}`}
+                      className="shrink-0 hover:opacity-80 transition-opacity"
+                    >
+                      <EnsAvatar
+                        address={holderAddress}
+                        className="shrink-0 rounded-sm ring-1 ring-border/50"
+                        width={16}
+                        height={16}
+                      />
+                    </Link>
                     <AddressDisplay address={holderAddress} />
-                  </Link>
+                  </div>
                 </div>
               )}
 
@@ -414,23 +437,73 @@ export default function PositionSummary({
                       <Loader className="w-3.5 h-3.5" />
                     </div>
                   ) : currentOwner ? (
-                    <Link
-                      href={`/profile/${currentOwner}`}
-                      className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-                    >
-                      <EnsAvatar
-                        address={currentOwner}
-                        className="shrink-0 rounded-sm ring-1 ring-border/50"
-                        width={16}
-                        height={16}
-                      />
+                    <div className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground">
+                      <Link
+                        href={`/profile/${currentOwner}`}
+                        aria-label={`View profile for ${currentOwner}`}
+                        className="shrink-0 hover:opacity-80 transition-opacity"
+                      >
+                        <EnsAvatar
+                          address={currentOwner}
+                          className="shrink-0 rounded-sm ring-1 ring-border/50"
+                          width={16}
+                          height={16}
+                        />
+                      </Link>
                       <AddressDisplay address={currentOwner} />
-                    </Link>
+                    </div>
                   ) : (
                     <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
                       —
                     </span>
                   )}
+                </div>
+              )}
+
+              {showSide && (
+                <div className="space-y-1">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                    Side
+                  </div>
+                  <div className="flex items-center h-[24px] text-sm md:text-base font-medium font-mono text-foreground">
+                    {isPredictorSide ? 'PREDICTOR' : 'COUNTERPARTY'}
+                  </div>
+                </div>
+              )}
+
+              {showPicks && (
+                <div className="space-y-1">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                    Picks
+                  </div>
+                  <div className="flex items-center h-[24px] text-sm md:text-base font-medium tabular-nums text-foreground">
+                    {pickCount}
+                  </div>
+                </div>
+              )}
+
+              {showPositionStatus && (
+                <div className="space-y-1">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                    Status
+                  </div>
+                  <div className="flex items-center h-[24px]">
+                    {isSettled ? (
+                      positionWon ? (
+                        <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-yes/40 bg-yes/10 text-yes">
+                          WON
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-no/40 bg-no/10 text-no">
+                          LOST
+                        </span>
+                      )
+                    ) : (
+                      <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-foreground/40 bg-foreground/10 text-foreground">
+                        ACTIVE
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 

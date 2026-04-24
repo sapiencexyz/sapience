@@ -34,12 +34,16 @@ import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
-import { PositionSizeInput } from '~/components/markets/forms';
+import { PositionSizeInput } from '~/components/markets/forms/inputs/PositionSizeInput';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
+import { buildPythAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import {
-  buildPythAuctionStartPayload,
-  parseDateTimeLocalToUnixSeconds,
-} from '~/lib/auction/buildAuctionPayload';
+  formatPythDurationFromNow,
+  formatPythFeedLabel,
+  formatPythTargetPriceDisplay,
+  parsePythEndDate,
+} from '~/lib/auction/pythPredictionDisplay';
+import { selectBestBid } from '~/lib/auction/selectBestBid';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -56,61 +60,6 @@ import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { useSponsorshipActivation } from '~/hooks/sponsorship/useSponsorshipActivation';
 
 const EMPTY_BIDS: QuoteBid[] = [];
-
-// Strip the Pyth feed namespace so only the symbol remains
-// (`Crypto.BTC/USD` → `BTC/USD`, `Equity.US.AAPL` → `AAPL`).
-function formatPythFeedLabel(label: string | undefined): string {
-  const raw = label ?? 'Crypto';
-  const lastDot = raw.lastIndexOf('.');
-  return lastDot >= 0 ? raw.slice(lastDot + 1) : raw;
-}
-
-// Display the strike price at the same precision that's actually submitted on-chain.
-// `targetPriceRaw` is the user-entered decimal string; we only add thousand separators
-// to the integer part and preserve the fractional part verbatim. Falls back to
-// `targetPrice` (number) when raw is missing.
-function formatPythTargetPriceDisplay(
-  targetPriceRaw: string | undefined,
-  targetPrice: number
-): string {
-  const raw =
-    targetPriceRaw && targetPriceRaw.trim().length > 0
-      ? targetPriceRaw.trim()
-      : Number.isFinite(targetPrice)
-        ? String(targetPrice)
-        : '';
-  if (!raw) return '';
-  const [intPart, fracPart] = raw.split('.');
-  const intNum = Number(intPart);
-  const formattedInt = Number.isFinite(intNum)
-    ? intNum.toLocaleString(undefined, { maximumFractionDigits: 0 })
-    : intPart;
-  return fracPart !== undefined ? `${formattedInt}.${fracPart}` : formattedInt;
-}
-
-// Same parse rules as the on-chain endTime encoding — ensures the displayed
-// duration is computed from the same instant we submit. Returns null on invalid input.
-function parsePythEndDate(dateTimeLocal: string): Date | null {
-  try {
-    const unixSec = parseDateTimeLocalToUnixSeconds(dateTimeLocal);
-    return new Date(Number(unixSec) * 1000);
-  } catch {
-    return null;
-  }
-}
-
-// Floor at each boundary so we never round up into the next unit
-// (e.g. 59m50s shows as `59M`, not `60M`; 23h59m stays `23H`, not `1D`).
-// Sub-minute remaining time renders as `<1M` so the row never shows `0M`.
-function formatPythDurationFromNow(endMs: number, nowMs: number): string {
-  const ms = Math.max(0, endMs - nowMs);
-  const mins = Math.floor(ms / 60000);
-  if (mins < 1) return `<1M`;
-  if (mins < 60) return `${mins}M`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}H`;
-  return `${Math.floor(hours / 24)}D`;
-}
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -414,108 +363,39 @@ export default function PositionForm({
   // Track previous filter result to avoid logging on every tick
   const prevFilterResultRef = useRef<string | null>(null);
 
-  // Filter bids: only show bids marked as valid as best bids
   const { bestBid, estimateBid } = useMemo(() => {
+    const selection = selectBestBid(validBids, nowMs);
+
+    // Logging is gated on a state-change signature so a periodic re-render
+    // (e.g. the 1s `nowMs` tick) doesn't spam the log.
+    let resultKey: string | null = null;
     if (!validBids || validBids.length === 0) {
-      prevFilterResultRef.current = null;
-      return { bestBid: null, estimateBid: null };
-    }
-
-    // Separate estimator bids (vault-bot with deadline=1 sentinel) from regular bids
-    const estimatorBids = validBids.filter(
-      (bid) =>
-        bid.counterparty?.toLowerCase() ===
-          PREFERRED_ESTIMATE_QUOTER.toLowerCase() &&
-        bid.validationStatus === 'valid'
-    );
-    const regularBids = validBids.filter(
-      (bid) =>
-        bid.counterparty?.toLowerCase() !==
-        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
-    );
-
-    // Apply expiry filter only to regular bids (estimator bids use deadline=1 sentinel)
-    const nonExpiredBids = regularBids.filter(
-      (bid) => bid.counterpartyDeadline * 1000 > nowMs
-    );
-
-    if (nonExpiredBids.length === 0 && estimatorBids.length === 0) {
-      const resultKey = 'all-expired';
+      resultKey = null;
+    } else if (!selection.bestBid && !selection.estimateBid) {
+      resultKey = 'all-expired';
       if (prevFilterResultRef.current !== resultKey) {
         logPositionForm(
           `[bestBid] All ${validBids.length} bid(s) expired. First deadline=${validBids[0]?.counterpartyDeadline}, nowSec=${Math.floor(nowMs / 1000)}`
         );
-        prevFilterResultRef.current = resultKey;
       }
-      return { bestBid: null, estimateBid: null };
-    }
-
-    // Only bids marked as valid are valid for submission
-    const validFilteredBids = nonExpiredBids.filter(
-      (bid) => bid.validationStatus === 'valid'
-    );
-
-    // If we have no valid bids and exactly one invalid bid, show it as an estimate.
-    // This matches the "single failing bid shows ESTIMATE" behavior.
-    const failedBids = nonExpiredBids.filter(
-      (bid) => bid.validationStatus === 'invalid'
-    );
-
-    const estimateFromFailed =
-      validFilteredBids.length === 0 && failedBids.length === 1
-        ? failedBids[0]
-        : null;
-
-    if (validFilteredBids.length === 0) {
-      // No valid regular bids — fall back to best estimator bid or failed estimate
-      const bestEstimator =
-        estimatorBids.length > 0
-          ? estimatorBids.reduce((acc, current) => {
-              try {
-                return BigInt(current.counterpartyCollateral) >
-                  BigInt(acc.counterpartyCollateral)
-                  ? current
-                  : acc;
-              } catch {
-                return acc;
-              }
-            })
-          : null;
-
-      const estimate = bestEstimator ?? estimateFromFailed;
-      const resultKey = estimate
-        ? `estimate:${estimate.counterparty}`
-        : `no-valid:${failedBids.length}`;
+    } else if (selection.estimateBid) {
+      resultKey = `estimate:${selection.estimateBid.counterparty}`;
       if (prevFilterResultRef.current !== resultKey) {
-        if (estimate) {
-          logPositionForm(
-            `Using estimate: ${formatBidForLog(estimate, collateralDecimals)}`
-          );
-        }
-        prevFilterResultRef.current = resultKey;
+        logPositionForm(
+          `Using estimate: ${formatBidForLog(selection.estimateBid, collateralDecimals)}`
+        );
       }
-      return { bestBid: null, estimateBid: estimate };
-    }
-
-    // Select the bid with highest counterpartyCollateral (highest payout for user)
-    const best = validFilteredBids.reduce((acc, current) => {
-      try {
-        return BigInt(current.counterpartyCollateral) >
-          BigInt(acc.counterpartyCollateral)
-          ? current
-          : acc;
-      } catch {
-        return acc;
+    } else if (selection.bestBid) {
+      resultKey = `best:${selection.bestBid.counterparty}:${selection.bestBid.counterpartyCollateral}`;
+      if (prevFilterResultRef.current !== resultKey) {
+        logPositionForm(
+          `Best bid: ${formatBidForLog(selection.bestBid, collateralDecimals)}`
+        );
       }
-    });
-
-    const resultKey = `best:${best.counterparty}:${best.counterpartyCollateral}`;
-    if (prevFilterResultRef.current !== resultKey) {
-      logPositionForm(`Best bid: ${formatBidForLog(best, collateralDecimals)}`);
-      prevFilterResultRef.current = resultKey;
     }
+    prevFilterResultRef.current = resultKey;
 
-    return { bestBid: best, estimateBid: null };
+    return selection;
   }, [validBids, nowMs, collateralDecimals]);
 
   // Make estimate "sticky" so it doesn't disappear while we're still waiting for a success bid.

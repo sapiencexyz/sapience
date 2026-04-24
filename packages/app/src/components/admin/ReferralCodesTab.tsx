@@ -25,7 +25,7 @@ import {
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { ColumnDef } from '@tanstack/react-table';
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Copy,
   BarChart3,
@@ -39,32 +39,18 @@ import { useAccount } from 'wagmi';
 import { formatDistanceToNow, fromUnixTime, format } from 'date-fns';
 import { formatUnits } from 'viem';
 import DataTable from './data-table';
-import { useAdminApi } from '~/hooks/useAdminApi';
+import {
+  useAdminReferralCodes,
+  useAdminReferralCodeAnalytics,
+  useCreateAdminReferralCode,
+  useDeleteAdminReferralCode,
+  useUpdateAdminReferralCode,
+  type AdminReferralCodeRow,
+} from '~/hooks/referrals/useAdminReferralCodes';
 
-type ReferralCodeRow = {
-  id: number;
-  codeHash: string;
-  maxClaims: number;
-  isActive: boolean;
-  expiresAt: number | null;
-  createdBy: string;
-  creatorType: 'admin' | 'user';
-  createdAt: string;
-  claimCount: number;
+type ReferralCodeRow = AdminReferralCodeRow & {
   // Required by DataTable generic constraint
   category?: { slug?: string };
-};
-
-type AnalyticsData = {
-  codeHash: string;
-  claimCount: number;
-  claimants: Array<{
-    address: string;
-    tradingVolume: string;
-    positionCount: number;
-  }>;
-  totalVolume: string;
-  totalPositions: number;
 };
 
 type StatusFilter = 'all' | 'active' | 'inactive' | 'expired';
@@ -75,60 +61,32 @@ type ReferralCodesTabProps = {
   actionButtons?: React.ReactNode;
 };
 
+const getStatus = (row: ReferralCodeRow): 'active' | 'inactive' | 'expired' => {
+  if (!row.isActive) return 'inactive';
+  if (row.expiresAt && row.expiresAt <= Math.floor(Date.now() / 1000)) {
+    return 'expired';
+  }
+  return 'active';
+};
+
 const ReferralCodesTab = ({
   createOpen,
   setCreateOpen,
   actionButtons,
 }: ReferralCodesTabProps) => {
   const { toast } = useToast();
-  const adminApi = useAdminApi();
   const { address: connectedAddress } = useAccount();
 
-  // The referral admin endpoints are at /referrals/admin/... (not /admin/referrals/...)
-  // So we need to use the API root URL, not the admin base URL
-  const apiBaseUrl = adminApi.base.replace(/\/admin$/, '');
-
-  // Use refs to avoid infinite loops with useEffect
-  const adminApiRef = useRef(adminApi);
-  adminApiRef.current = adminApi;
-  const apiBaseUrlRef = useRef(apiBaseUrl);
-  apiBaseUrlRef.current = apiBaseUrl;
-  const toastRef = useRef(toast);
-  toastRef.current = toast;
-
-  // Custom fetch functions for referral endpoints (which are at /referrals/admin/...)
-  const referralFetch = useCallback(
-    async <T,>(
-      path: string,
-      method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-      body?: Record<string, unknown>
-    ): Promise<T> => {
-      const { signature, signatureTimestamp } =
-        await adminApiRef.current.sign();
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        'x-admin-signature': signature,
-        'x-admin-signature-timestamp': String(signatureTimestamp),
-      };
-
-      const response = await fetch(`${apiBaseUrlRef.current}${path}`, {
-        method,
-        headers,
-        ...(body ? { body: JSON.stringify(body) } : {}),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || data?.message || 'Request failed');
-      }
-      return data as T;
-    },
-    []
+  const codesQuery = useAdminReferralCodes();
+  const codes = useMemo<ReferralCodeRow[]>(
+    () => codesQuery.data ?? [],
+    [codesQuery.data]
   );
+  const isLoading = codesQuery.isLoading;
 
-  // Data state
-  const [codes, setCodes] = useState<ReferralCodeRow[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const createCodeMutation = useCreateAdminReferralCode();
+  const updateCodeMutation = useUpdateAdminReferralCode();
+  const deleteCodeMutation = useDeleteAdminReferralCode();
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -142,10 +100,12 @@ const ReferralCodesTab = ({
 
   // Analytics dialog state
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
-    null
+  const [analyticsCodeId, setAnalyticsCodeId] = useState<number | undefined>(
+    undefined
   );
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const analyticsQuery = useAdminReferralCodeAnalytics(analyticsCodeId);
+  const analyticsData = analyticsQuery.data ?? null;
+  const analyticsLoading = analyticsQuery.isLoading;
 
   // Delete confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -159,30 +119,6 @@ const ReferralCodesTab = ({
     dir: SortDir;
   }>({ key: 'volume', dir: 'desc' });
 
-  const fetchCodes = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await referralFetch<ReferralCodeRow[]>(
-        '/referrals/admin/codes',
-        'GET'
-      );
-      setCodes(data);
-    } catch (error) {
-      toastRef.current({
-        variant: 'destructive',
-        title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to fetch codes',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [referralFetch]);
-
-  useEffect(() => {
-    fetchCodes();
-  }, [fetchCodes]);
-
   const resetForm = () => {
     setCode('');
     setMaxClaims(1);
@@ -193,38 +129,31 @@ const ReferralCodesTab = ({
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const expiresAtSec = expiresAt
+      ? Math.floor(new Date(expiresAt).getTime() / 1000)
+      : null;
     try {
       if (editingId) {
-        // Update existing code
-        await referralFetch(`/referrals/admin/codes/${editingId}`, 'PUT', {
+        await updateCodeMutation.mutateAsync({
+          id: editingId,
           maxClaims,
-          expiresAt: expiresAt
-            ? Math.floor(new Date(expiresAt).getTime() / 1000)
-            : null,
+          expiresAt: expiresAtSec,
           isActive,
         });
-        toastRef.current({
-          title: 'Saved',
-        });
+        toast({ title: 'Saved' });
       } else {
-        // Create new code
-        await referralFetch('/referrals/admin/codes', 'POST', {
+        await createCodeMutation.mutateAsync({
           code,
           maxClaims,
-          expiresAt: expiresAt
-            ? Math.floor(new Date(expiresAt).getTime() / 1000)
-            : null,
+          expiresAt: expiresAtSec,
           createdBy: connectedAddress,
         });
-        toastRef.current({
-          title: 'Created',
-        });
+        toast({ title: 'Created' });
       }
-      await fetchCodes();
       setCreateOpen(false);
       resetForm();
     } catch (error) {
-      toastRef.current({
+      toast({
         variant: 'destructive',
         title: editingId ? 'Error updating code' : 'Error creating code',
         description: (error as Error)?.message || 'Request failed',
@@ -232,30 +161,32 @@ const ReferralCodesTab = ({
     }
   };
 
-  const handleEdit = (row: ReferralCodeRow) => {
-    setEditingId(row.id);
-    setCode(row.codeHash); // Show hash since plaintext is not stored
-    setMaxClaims(row.maxClaims);
-    setExpiresAt(
-      row.expiresAt
-        ? format(fromUnixTime(row.expiresAt), "yyyy-MM-dd'T'HH:mm")
-        : ''
-    );
-    setIsActive(row.isActive);
-    setCreateOpen(true);
-  };
+  const handleEdit = useCallback(
+    (row: ReferralCodeRow) => {
+      setEditingId(row.id);
+      setCode(row.codeHash); // Show hash since plaintext is not stored
+      setMaxClaims(row.maxClaims);
+      setExpiresAt(
+        row.expiresAt
+          ? format(fromUnixTime(row.expiresAt), "yyyy-MM-dd'T'HH:mm")
+          : ''
+      );
+      setIsActive(row.isActive);
+      setCreateOpen(true);
+    },
+    [setCreateOpen]
+  );
 
   const handleDelete = async () => {
     if (!deletingId) return;
     try {
-      await referralFetch(`/referrals/admin/codes/${deletingId}`, 'DELETE');
-      toastRef.current({
+      await deleteCodeMutation.mutateAsync({ id: deletingId });
+      toast({
         title: 'Deactivated',
         description: 'Referral code deactivated',
       });
-      await fetchCodes();
     } catch (error) {
-      toastRef.current({
+      toast({
         variant: 'destructive',
         title: 'Error',
         description: (error as Error)?.message || 'Failed to deactivate code',
@@ -266,36 +197,40 @@ const ReferralCodesTab = ({
     }
   };
 
-  const handleViewAnalytics = async (id: number) => {
-    setAnalyticsLoading(true);
+  const closeAnalyticsDialog = useCallback(() => {
+    setAnalyticsOpen(false);
+    setAnalyticsCodeId(undefined);
+    setAnalyticsSort({ key: 'volume', dir: 'desc' });
+  }, []);
+
+  const handleViewAnalytics = useCallback((id: number) => {
+    setAnalyticsCodeId(id);
     setAnalyticsOpen(true);
-    try {
-      const data = await referralFetch<AnalyticsData>(
-        `/referrals/admin/codes/${id}/analytics`,
-        'GET'
-      );
-      setAnalyticsData(data);
-    } catch (error) {
-      toastRef.current({
+  }, []);
+
+  useEffect(() => {
+    if (codesQuery.error) {
+      toast({
         variant: 'destructive',
         title: 'Error',
-        description: (error as Error)?.message || 'Failed to fetch analytics',
+        description: codesQuery.error.message || 'Failed to fetch codes',
       });
-      setAnalyticsOpen(false);
-    } finally {
-      setAnalyticsLoading(false);
     }
-  };
+  }, [codesQuery.error, toast]);
 
-  const getStatus = (
-    row: ReferralCodeRow
-  ): 'active' | 'inactive' | 'expired' => {
-    if (!row.isActive) return 'inactive';
-    if (row.expiresAt && row.expiresAt <= Math.floor(Date.now() / 1000)) {
-      return 'expired';
+  // Surface analytics fetch errors as a toast and close the dialog, matching
+  // the previous imperative behavior.
+  const analyticsError = analyticsQuery.error;
+  useEffect(() => {
+    if (analyticsError) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: analyticsError?.message || 'Failed to fetch analytics',
+      });
+      closeAnalyticsDialog();
     }
-    return 'active';
-  };
+  }, [analyticsError, closeAnalyticsDialog, toast]);
 
   const columns: ColumnDef<ReferralCodeRow>[] = useMemo(
     () => [
@@ -317,7 +252,7 @@ const ReferralCodesTab = ({
                 onClick={async (e) => {
                   e.stopPropagation();
                   await navigator.clipboard.writeText(codeHash);
-                  toastRef.current({
+                  toast({
                     title: 'Copied',
                     description: 'Hash copied to clipboard',
                     duration: 1500,
@@ -480,12 +415,12 @@ const ReferralCodesTab = ({
         },
       },
     ],
-    []
+    [handleEdit, handleViewAnalytics, toast]
   );
 
   const filteredCodes = useMemo(() => {
     if (statusFilter === 'all') return codes;
-    return codes.filter((code) => getStatus(code) === statusFilter);
+    return codes.filter((row) => getStatus(row) === statusFilter);
   }, [codes, statusFilter]);
 
   return (
@@ -616,11 +551,11 @@ const ReferralCodesTab = ({
       <Dialog
         open={analyticsOpen}
         onOpenChange={(open) => {
-          setAnalyticsOpen(open);
-          if (!open) {
-            // Reset sort when closing
-            setAnalyticsSort({ key: 'volume', dir: 'desc' });
+          if (open) {
+            setAnalyticsOpen(true);
+            return;
           }
+          closeAnalyticsDialog();
         }}
       >
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -788,7 +723,7 @@ const ReferralCodesTab = ({
                                       await navigator.clipboard.writeText(
                                         claimant.address
                                       );
-                                      toastRef.current({
+                                      toast({
                                         title: 'Copied',
                                         description: 'Address copied',
                                         duration: 1500,
