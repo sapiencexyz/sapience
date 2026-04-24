@@ -13,7 +13,7 @@ import type {
   ProtocolStat,
 } from '../../__generated__/resolvers';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { contracts } from '@sapience/sdk/contracts';
+import { contracts, normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import prisma from '../../../../db';
 import {
   calculateVaultFlows,
@@ -53,16 +53,31 @@ export const protocolStats: NonNullable<
   QueryResolvers['protocolStats']
 > = async (_parent, { vaultAddress: vaultAddressArg }) => {
   const chainId = DEFAULT_CHAIN_ID;
-  const vaultAddress = (
-    vaultAddressArg ??
-    contracts.predictionMarketVault[chainId]?.address ??
-    ''
-  ).toLowerCase();
+  const vaultConfig = contracts.predictionMarketVault[chainId];
+
+  // Filter the snapshot time series by the full vault history — current
+  // primary plus every demoted-to-legacy address — so historical rows written
+  // under a since-redeployed primary stay visible. Without the legacies,
+  // every SDK redeploy would orphan the entire historical chart until a
+  // re-stamping backfill runs.
+  //
+  // If the caller passes an explicit `vaultAddressArg`, use exactly that
+  // address (no expansion) — they're targeting a specific deploy.
+  const vaultAddresses: string[] = vaultAddressArg
+    ? [vaultAddressArg.toLowerCase()]
+    : vaultConfig
+      ? [
+          vaultConfig.address,
+          ...(vaultConfig.legacy ?? []).map(
+            (le) => normalizeLegacyEntry(le).address
+          ),
+        ].map((a) => a.toLowerCase())
+      : [];
 
   const protocolSnapshots = await getProtocolStatsTimeSeries(
     undefined,
     chainId,
-    vaultAddress
+    vaultAddresses
   );
   if (protocolSnapshots.length === 0) {
     return [];

@@ -680,14 +680,30 @@ export async function getLatestProtocolStats(
 }
 
 /**
- * Get stats time series. If days is provided, limits to the last N days.
+ * Get stats time series. If `days` is provided, limits to the last N days.
  * If omitted, returns all available snapshots.
+ *
+ * `vaultAddress` may be a single address or an array. Passing an array enables
+ * the caller to include historical primaries (current SDK primary plus its
+ * `legacy[]` chain) so the time series stays continuous across vault redeploys
+ * — without an array, rows written under a since-demoted primary would be
+ * orphaned by the equality filter.
  */
 export async function getProtocolStatsTimeSeries(
   days?: number,
   chainId: number = DEFAULT_CHAIN_ID,
-  vaultAddress?: string
+  vaultAddress?: string | readonly string[]
 ) {
+  const vaultFilter = (() => {
+    if (!vaultAddress) return {};
+    if (Array.isArray(vaultAddress)) {
+      if (vaultAddress.length === 0) return {};
+      if (vaultAddress.length === 1) return { vaultAddress: vaultAddress[0] };
+      return { vaultAddress: { in: vaultAddress as string[] } };
+    }
+    return { vaultAddress: vaultAddress as string };
+  })();
+
   return prisma.protocolStatsSnapshot.findMany({
     where: {
       ...(days
@@ -698,7 +714,7 @@ export async function getProtocolStatsTimeSeries(
           }
         : {}),
       chainId,
-      ...(vaultAddress ? { vaultAddress } : {}),
+      ...vaultFilter,
     },
     orderBy: { timestamp: 'asc' },
   });
