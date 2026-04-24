@@ -1,5 +1,6 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import {
   createContext,
   useContext,
@@ -506,6 +507,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setTimeRemainingMs(result.config.expiresAt - Date.now());
       } catch (error) {
         console.error('Failed to restore session:', error);
+        Sentry.captureException(error, {
+          tags: { component: 'session' },
+          extra: { function: 'restoreSession' },
+        });
         clearSession();
       } finally {
         setIsRestoringSession(false);
@@ -566,6 +571,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
             '[SessionContext] Failed to end session when switching to EOA:',
             error
           );
+          Sentry.captureException(error, {
+            tags: { component: 'session' },
+            extra: { function: 'setAccountMode', targetMode: mode },
+          });
           // Continue with mode switch even if session cleanup fails
         }
       }
@@ -643,6 +652,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
         );
       } catch (error) {
         console.error('Failed to start session:', error);
+        Sentry.captureException(error, {
+          tags: { component: 'session' },
+          extra: { function: 'startSession', etherealChainId },
+        });
         setSessionError(
           error instanceof Error ? error : new Error('Failed to start session')
         );
@@ -794,6 +807,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
           '[SessionContext] Failed to create Arbitrum session:',
           error
         );
+        Sentry.captureException(error, {
+          tags: { component: 'session' },
+          extra: { function: 'createArbitrumSessionIfNeeded' },
+        });
         throw error;
       } finally {
         setIsCreatingArbitrumSession(false);
