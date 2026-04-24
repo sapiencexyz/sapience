@@ -197,10 +197,26 @@ const ReferralCodesTab = ({
     }
   };
 
+  const closeAnalyticsDialog = useCallback(() => {
+    setAnalyticsOpen(false);
+    setAnalyticsCodeId(undefined);
+    setAnalyticsSort({ key: 'volume', dir: 'desc' });
+  }, []);
+
   const handleViewAnalytics = useCallback((id: number) => {
     setAnalyticsCodeId(id);
     setAnalyticsOpen(true);
   }, []);
+
+  useEffect(() => {
+    if (codesQuery.error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: codesQuery.error.message || 'Failed to fetch codes',
+      });
+    }
+  }, [codesQuery.error, toast]);
 
   // Surface analytics fetch errors as a toast and close the dialog, matching
   // the previous imperative behavior.
@@ -212,9 +228,9 @@ const ReferralCodesTab = ({
         title: 'Error',
         description: analyticsError?.message || 'Failed to fetch analytics',
       });
-      setAnalyticsOpen(false);
+      closeAnalyticsDialog();
     }
-  }, [analyticsError, toast]);
+  }, [analyticsError, closeAnalyticsDialog, toast]);
 
   const columns: ColumnDef<ReferralCodeRow>[] = useMemo(
     () => [
@@ -535,12 +551,11 @@ const ReferralCodesTab = ({
       <Dialog
         open={analyticsOpen}
         onOpenChange={(open) => {
-          setAnalyticsOpen(open);
-          if (!open) {
-            setAnalyticsCodeId(undefined);
-            // Reset sort when closing
-            setAnalyticsSort({ key: 'volume', dir: 'desc' });
+          if (open) {
+            setAnalyticsOpen(true);
+            return;
           }
+          closeAnalyticsDialog();
         }}
       >
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
