@@ -85,7 +85,7 @@
     "typescript-eslint": "8.21.0"
   },
   "engines": {
-    "node": ">=22.x",
+    "node": ">=22.12",
     "pnpm": "9.x"
   }
 }

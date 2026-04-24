@@ -24,11 +24,13 @@ export const Decimal = new GraphQLScalarType({
   description:
     'Prisma.Decimal — round-tripped as a decimal string with arbitrary precision.',
   serialize: (value: unknown): string => {
-    if (value instanceof Prisma.Decimal) return value.toString();
+    if (value instanceof Prisma.Decimal) {
+      return (value as { toString(): string }).toString();
+    }
     if (typeof value === 'string') return value;
     if (typeof value === 'number') return value.toString();
     throw new Error(
-      `Decimal cannot serialize value of type ${typeof value}: ${value}`
+      `Decimal cannot serialize value of type ${typeof value}: ${String(value)}`
     );
   },
   parseValue: (value: unknown): Prisma.Decimal => {
