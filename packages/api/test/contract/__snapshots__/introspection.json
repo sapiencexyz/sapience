@@ -13874,7 +13874,7 @@
       {
         "kind": "OBJECT",
         "name": "ProtocolStat",
-        "description": "Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL",
+        "description": "Protocol-wide statistics snapshot including vault metrics, volume, and PnL.\nCadence is controlled by the snapshot cron; periodPnL and periodVolume are\ndeltas over that interval.",
         "fields": [
           {
             "name": "cumulativeVolume",
@@ -13893,8 +13893,8 @@
             "deprecationReason": null
           },
           {
-            "name": "dailyPnL",
-            "description": null,
+            "name": "periodPnL",
+            "description": "Realized PnL delta over the snapshot interval",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -13909,8 +13909,8 @@
             "deprecationReason": null
           },
           {
-            "name": "dailyVolume",
-            "description": null,
+            "name": "periodVolume",
+            "description": "Cumulative-volume delta over the snapshot interval",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -13958,7 +13958,7 @@
           },
           {
             "name": "timestamp",
-            "description": "Unix epoch timestamp (seconds) for midnight UTC of the snapshot day",
+            "description": "Unix epoch timestamp (seconds) aligned to the snapshot interval boundary",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -16144,7 +16144,7 @@
           },
           {
             "name": "protocolStats",
-            "description": "Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest",
+            "description": "Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest",
             "args": [
               {
                 "name": "vaultAddress",

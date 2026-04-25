@@ -68,7 +68,8 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
     }
     case 'computeProtocolStats': {
       const chainId = argv[3] ? parseInt(argv[3], 10) : undefined;
-      await computeAndStoreProtocolStats(chainId);
+      const intervalSeconds = argv[4] ? parseInt(argv[4], 10) : undefined;
+      await computeAndStoreProtocolStats(chainId, intervalSeconds);
       console.log('Done computing protocol stats');
       process.exit(0);
       return true;
@@ -76,7 +77,8 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
     case 'backfillProtocolStats': {
       const days = argv[3] ? parseInt(argv[3], 10) : 90;
       const chainId = argv[4] ? parseInt(argv[4], 10) : undefined;
-      await backfillProtocolStats(chainId, days);
+      const intervalSeconds = argv[5] ? parseInt(argv[5], 10) : undefined;
+      await backfillProtocolStats(chainId, days, intervalSeconds);
       console.log('Done backfilling protocol stats');
       process.exit(0);
       return true;

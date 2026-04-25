@@ -1,8 +1,11 @@
 /**
- * Query.protocolStats — daily protocol-wide metrics for the last 90 days.
+ * Query.protocolStats — protocol-wide metrics at the configured snapshot cadence.
  *
- * Matches the legacy resolver behaviour while sourcing the root field from
- * the SDL-first resolver map.
+ * Each bar's display timestamp is shifted back by one interval so the label
+ * reflects "the period/state ending at that label" (a snapshot captured at
+ * Mar 5 00:00 UTC = cumulative through end of Mar 4 → rendered under Mar 4).
+ * The live candle is anchored to the current interval boundary so the FE sees
+ * a continuously-updating in-progress bar that closes when cron fires.
  */
 
 import type {
@@ -10,17 +13,19 @@ import type {
   ProtocolStat,
 } from '../../__generated__/resolvers';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { contracts } from '@sapience/sdk/contracts';
+import { contracts, normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import prisma from '../../../../db';
 import {
   calculateVaultFlows,
   calculateVaultPnL,
-  fetchPredictionMarketEscrowTVL,
   fetchVaultAvailableAssets,
   fetchVaultDeployed,
   fetchVaultTVL,
   getProtocolStatsTimeSeries,
+  resolveSnapshotIntervalSeconds,
+  sumEscrowBalancesAtBlock,
 } from '../../../../helpers/protocolStats';
+import { getProviderForChain } from '../../../../utils/utils';
 
 interface CumulativeVolumeRow {
   timestamp: bigint;
@@ -49,20 +54,61 @@ export const protocolStats: NonNullable<
   QueryResolvers['protocolStats']
 > = async (_parent, { vaultAddress: vaultAddressArg }) => {
   const chainId = DEFAULT_CHAIN_ID;
-  const vaultAddress = (
-    vaultAddressArg ??
-    contracts.predictionMarketVault[chainId]?.address ??
-    ''
-  ).toLowerCase();
+  const vaultConfig = contracts.predictionMarketVault[chainId];
 
-  const protocolSnapshots = await getProtocolStatsTimeSeries(
+  // Filter the snapshot time series by the full vault history — current
+  // primary plus every demoted-to-legacy address — so historical rows written
+  // under a since-redeployed primary stay visible. Without the legacies,
+  // every SDK redeploy would orphan the entire historical chart until a
+  // re-stamping backfill runs.
+  //
+  // If the caller passes an explicit `vaultAddressArg`, use exactly that
+  // address (no expansion) — they're targeting a specific deploy.
+  const vaultAddresses: string[] = vaultAddressArg
+    ? [vaultAddressArg.toLowerCase()]
+    : vaultConfig
+      ? [
+          vaultConfig.address,
+          ...(vaultConfig.legacy ?? []).map(
+            (le) => normalizeLegacyEntry(le).address
+          ),
+        ].map((a) => a.toLowerCase())
+      : [];
+
+  const rawSnapshots = await getProtocolStatsTimeSeries(
     undefined,
     chainId,
-    vaultAddress
+    vaultAddresses
   );
-  if (protocolSnapshots.length === 0) {
+  if (rawSnapshots.length === 0) {
     return [];
   }
+
+  // Dedupe by timestamp: a single day can have rows under multiple addresses
+  // (current primary + a since-demoted legacy that prod's older cron wrote).
+  // Without dedup, queryTimestamps below would contain duplicates, which
+  // breaks the cumulativeVolume SQL — UNNEST + LEFT JOIN + GROUP BY ends up
+  // multiplying the per-day volume by the number of duplicate rows, producing
+  // step-up cumVols that go *backwards* on days with fewer duplicates →
+  // negative periodVolume.
+  //
+  // Preference order when multiple rows share a timestamp: the row stamped
+  // under the current primary wins (matches what the post-redeploy backfill
+  // writes); otherwise keep whatever was there.
+  const currentPrimary = vaultConfig?.address.toLowerCase();
+  const dedup = new Map<number, (typeof rawSnapshots)[number]>();
+  for (const s of rawSnapshots) {
+    const existing = dedup.get(s.timestamp);
+    if (
+      !existing ||
+      (currentPrimary && s.vaultAddress.toLowerCase() === currentPrimary)
+    ) {
+      dedup.set(s.timestamp, s);
+    }
+  }
+  const protocolSnapshots = [...dedup.values()].sort(
+    (a, b) => a.timestamp - b.timestamp
+  );
 
   const snapshotTimestamps = protocolSnapshots.map((s) => s.timestamp);
   const nowTimestamp = Math.floor(Date.now() / 1000);
@@ -120,21 +166,25 @@ export const protocolStats: NonNullable<
 
   const volumeMap = buildTimestampMap(cumulativeVolumes, 'cumulative_volume');
   const oiMap = buildTimestampMap(openInterests, 'open_interest');
-  const DAY_SECONDS = 86400;
+
+  // Display each bar one interval *before* the snapshot's capture timestamp
+  // so the label reflects "the period/state represented" rather than "the
+  // moment of measurement".
+  const interval = resolveSnapshotIntervalSeconds();
 
   const results: ProtocolStat[] = protocolSnapshots.map((snapshot, i) => {
     const cumVol = volumeMap.get(snapshot.timestamp) || '0';
     const prevCumVol =
       i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
-    const dailyVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
+    const periodVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
 
     const prevPnL = i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
-    const dailyPnL = (
+    const periodPnL = (
       BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)
     ).toString();
 
     return {
-      timestamp: snapshot.timestamp - DAY_SECONDS,
+      timestamp: snapshot.timestamp - interval,
       cumulativeVolume: cumVol,
       openInterest: oiMap.get(snapshot.timestamp) || '0',
       vaultBalance: snapshot.vaultBalance,
@@ -147,8 +197,8 @@ export const protocolStats: NonNullable<
       vaultDeposits: snapshot.vaultDeposits,
       vaultWithdrawals: snapshot.vaultWithdrawals,
       vaultAirdropGains: snapshot.vaultAirdropGains,
-      dailyPnL,
-      dailyVolume,
+      periodPnL,
+      periodVolume,
     };
   });
 
@@ -156,7 +206,7 @@ export const protocolStats: NonNullable<
     const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
     const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
     const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
-    const liveDailyVolume = (
+    const livePeriodVolume = (
       BigInt(liveCumVol) - BigInt(lastCumVol)
     ).toString();
 
@@ -171,12 +221,15 @@ export const protocolStats: NonNullable<
       fetchVaultTVL(chainId),
       fetchVaultAvailableAssets(chainId),
       fetchVaultDeployed(chainId),
-      fetchPredictionMarketEscrowTVL(chainId),
+      // Sum across current + past V2 escrow deploys at chain head, matching
+      // the cron/backfill behaviour. Reading only the current primary (as
+      // before) would understate live TVL on every redeploy.
+      sumEscrowBalancesAtBlock(getProviderForChain(chainId), chainId),
       calculateVaultPnL(chainId),
       calculateVaultFlows(chainId),
     ]);
 
-    const liveDailyPnL = (
+    const livePeriodPnL = (
       livePnlResult.realizedPnL - BigInt(lastSnapshot.vaultRealizedPnL)
     ).toString();
 
@@ -190,11 +243,12 @@ export const protocolStats: NonNullable<
         ? liveActualTotalAssets - liveExpectedTotalAssets
         : 0n;
 
-    const todayTimestamp =
-      Math.floor(Date.now() / 1000 / DAY_SECONDS) * DAY_SECONDS;
+    // Live candle = current in-progress period; label at start of current
+    // interval (matches the display shift for closed bars).
+    const currentBoundary = Math.floor(Date.now() / 1000 / interval) * interval;
 
     results.push({
-      timestamp: todayTimestamp,
+      timestamp: currentBoundary,
       cumulativeVolume: liveCumVol,
       openInterest: oiMap.get(nowTimestamp) || '0',
       vaultBalance: liveVaultBalance.toString(),
@@ -207,8 +261,8 @@ export const protocolStats: NonNullable<
       vaultDeposits: liveFlowsResult.totalDeposits.toString(),
       vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
       vaultAirdropGains: liveAirdropGains.toString(),
-      dailyPnL: liveDailyPnL,
-      dailyVolume: liveDailyVolume,
+      periodPnL: livePeriodPnL,
+      periodVolume: livePeriodVolume,
     });
   } catch (err) {
     console.error(

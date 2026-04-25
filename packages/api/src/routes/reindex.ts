@@ -153,7 +153,7 @@ router.post(
 router.post(
   '/protocol-stats',
   handleAsyncErrors(async (req, res) => {
-    const { days, chainId } = req.body;
+    const { days, chainId, intervalSeconds } = req.body;
 
     const parsedDays = days !== undefined ? parseInt(days) : 90;
     if (isNaN(parsedDays) || parsedDays <= 0) {
@@ -165,15 +165,30 @@ router.post(
       res.status(400).json({ error: 'chainId must be a number' });
       return;
     }
+    const parsedInterval =
+      intervalSeconds !== undefined ? parseInt(intervalSeconds) : undefined;
+    if (
+      parsedInterval !== undefined &&
+      (isNaN(parsedInterval) || parsedInterval <= 0)
+    ) {
+      res
+        .status(400)
+        .json({ error: 'intervalSeconds must be a positive integer' });
+      return;
+    }
 
-    const params = JSON.stringify({ days: parsedDays, chainId: parsedChainId });
+    const params = JSON.stringify({
+      days: parsedDays,
+      chainId: parsedChainId,
+      intervalSeconds: parsedInterval,
+    });
     const job = await prisma.backgroundJob.create({
       data: { command: 'backfill-stats', status: 'running', params },
     });
 
     void (async () => {
       try {
-        await backfillProtocolStats(parsedChainId, parsedDays);
+        await backfillProtocolStats(parsedChainId, parsedDays, parsedInterval);
         await prisma.backgroundJob.update({
           where: { id: job.id },
           data: { status: 'completed' },
