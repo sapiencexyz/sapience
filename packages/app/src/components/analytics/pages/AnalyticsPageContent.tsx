@@ -90,6 +90,7 @@ type ChartTooltipProps = {
   label?: string;
   dataKey: string;
   collateralSymbol: string;
+  subDaily: boolean;
 };
 
 function ChartTooltip({
@@ -98,6 +99,7 @@ function ChartTooltip({
   label,
   dataKey,
   collateralSymbol,
+  subDaily,
 }: ChartTooltipProps): React.ReactNode {
   if (!active || !payload?.length) return null;
 
@@ -129,6 +131,11 @@ function ChartTooltip({
       'Dec',
     ];
     dateLabel = `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+    if (subDaily) {
+      const hh = String(date.getUTCHours()).padStart(2, '0');
+      const mm = String(date.getUTCMinutes()).padStart(2, '0');
+      dateLabel += ` ${hh}:${mm} UTC`;
+    }
   }
 
   return (
@@ -143,10 +150,19 @@ function ChartTooltip({
   );
 }
 
-function formatTimestampTick(value: number): string {
-  // Parse Unix timestamp (seconds) to date
-  const date = new Date(value * 1000);
-  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+// X-axis tick formatter. Adds HH:MM when the dataset uses a sub-daily snapshot
+// cadence (any timestamp that isn't UTC-midnight-aligned).
+function makeTimestampTickFormatter(
+  subDaily: boolean
+): (value: number) => string {
+  return (value: number) => {
+    const date = new Date(value * 1000);
+    const md = `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+    if (!subDaily) return md;
+    const hh = String(date.getUTCHours()).padStart(2, '0');
+    const mm = String(date.getUTCMinutes()).padStart(2, '0');
+    return `${md} ${hh}:${mm}`;
+  };
 }
 
 const CHART_AXIS_STYLE = {
@@ -225,6 +241,20 @@ function AnalyticsPageContent(): React.ReactElement {
   const filteredTvlData = useMemo(
     () => filterDataByPeriod(statsChartData, tvlPeriod),
     [statsChartData, tvlPeriod]
+  );
+
+  // The cron's snapshot interval is configurable. When it's sub-daily (4h /
+  // hourly / 15-min), at least one snapshot timestamp won't land on UTC
+  // midnight — the chart should then surface HH:MM in tick + tooltip labels
+  // so consecutive points are distinguishable.
+  const subDaily = useMemo(
+    () => (protocolStats ?? []).some((p) => p.timestamp % 86400 !== 0),
+    [protocolStats]
+  );
+
+  const formatTimestampTick = useMemo(
+    () => makeTimestampTickFormatter(subDaily),
+    [subDaily]
   );
 
   const isLoading = statsLoading;
@@ -397,6 +427,7 @@ function AnalyticsPageContent(): React.ReactElement {
                               {...props}
                               dataKey="volume"
                               collateralSymbol={collateralSymbol}
+                              subDaily={subDaily}
                             />
                           )}
                         />
@@ -491,6 +522,7 @@ function AnalyticsPageContent(): React.ReactElement {
                               {...props}
                               dataKey="openInterest"
                               collateralSymbol={collateralSymbol}
+                              subDaily={subDaily}
                             />
                           )}
                         />
@@ -570,6 +602,7 @@ function AnalyticsPageContent(): React.ReactElement {
                               {...props}
                               dataKey="protocolTvl"
                               collateralSymbol={collateralSymbol}
+                              subDaily={subDaily}
                             />
                           )}
                         />
