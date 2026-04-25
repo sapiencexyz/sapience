@@ -1,4 +1,9 @@
-import { erc20Abi, formatUnits, type Block } from 'viem';
+import {
+  ContractFunctionExecutionError,
+  erc20Abi,
+  formatUnits,
+  type Block,
+} from 'viem';
 import prisma from '../db';
 import { SettlementResult } from '../../generated/prisma';
 import {
@@ -320,21 +325,28 @@ export async function sumEscrowBalancesAtBlock(
     addrs.add(normalizeLegacyEntry(le).address as `0x${string}`);
   }
 
-  let total = 0n;
-  for (const addr of addrs) {
-    try {
-      total += await client.readContract({
-        address: collateralAddress,
-        abi: erc20Abi,
-        functionName: 'balanceOf',
-        args: [addr],
-        ...(blockNumber !== undefined ? { blockNumber } : {}),
-      });
-    } catch {
-      // Contract not deployed at this block or balanceOf reverted — treat as 0.
-    }
-  }
-  return total;
+  // Reads are independent — fan out in parallel. Each per-address try/catch
+  // ONLY swallows revert-like errors (balanceOf can revert when the contract
+  // didn't exist at the queried block); network/timeout/rate-limit errors
+  // (transport-level retries already exhausted) propagate so callers fail
+  // loud rather than silently writing a "0 balance" snapshot.
+  const balances = await Promise.all(
+    [...addrs].map(async (addr) => {
+      try {
+        return await client.readContract({
+          address: collateralAddress,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [addr],
+          ...(blockNumber !== undefined ? { blockNumber } : {}),
+        });
+      } catch (err) {
+        if (err instanceof ContractFunctionExecutionError) return 0n;
+        throw err;
+      }
+    })
+  );
+  return balances.reduce((acc, v) => acc + v, 0n);
 }
 
 /**
@@ -455,6 +467,159 @@ export async function calculateVaultFlows(
   }
 
   return { totalDeposits, totalWithdrawals };
+}
+
+/**
+ * Synchronous, in-memory replacements for `fetchVaultDeployed`,
+ * `calculateVaultPnL`, and `calculateVaultFlows`. The backfill loop calls all
+ * three per snapshot; doing each as a `findMany` round-trip causes N×table_scan
+ * amplification (e.g. 541 snapshots × full prediction-table scan). The
+ * underlying tables don't change during a backfill, so we pre-fetch the
+ * superset once and aggregate in JS for each timestamp.
+ *
+ * The cron path + GraphQL resolver still call the original async helpers —
+ * those run once per request, so this micro-optimization isn't worth the
+ * complexity there.
+ */
+export interface VaultAggregator {
+  deployedAt: (timestamp: number) => bigint;
+  pnlAt: (timestamp: number) => VaultPnLResult;
+  flowsAt: (timestamp: number) => VaultFlowsResult;
+}
+
+export async function buildVaultAggregator(
+  chainId: number
+): Promise<VaultAggregator> {
+  const vaultAddress = (
+    contracts.predictionMarketVault[chainId]?.address ?? ''
+  ).toLowerCase();
+  if (!vaultAddress) {
+    return {
+      deployedAt: () => 0n,
+      pnlAt: () => ({
+        realizedPnL: 0n,
+        positionsWon: 0,
+        positionsLost: 0,
+        totalCollateralWon: 0n,
+        totalCollateralLost: 0n,
+      }),
+      flowsAt: () => ({ totalDeposits: 0n, totalWithdrawals: 0n }),
+    };
+  }
+
+  // Fetch the union of every prediction either the deployed-collateral
+  // aggregator or the PnL aggregator could possibly need: anything where the
+  // vault is on either side of the trade.
+  const [predictions, flows] = await Promise.all([
+    prisma.prediction.findMany({
+      where: {
+        chainId,
+        OR: [{ predictor: vaultAddress }, { counterparty: vaultAddress }],
+      },
+      select: {
+        onChainCreatedAt: true,
+        counterpartyCollateral: true,
+        predictorCollateral: true,
+        predictor: true,
+        counterparty: true,
+        pickConfigId: true,
+        pickConfiguration: {
+          select: { resolved: true, resolvedAt: true, result: true },
+        },
+      },
+    }),
+    prisma.vaultFlowEvent.findMany({
+      where: { chainId },
+      select: { timestamp: true, eventType: true, assets: true },
+    }),
+  ]);
+
+  // Predicate ports of the SQL filters in `fetchVaultDeployed` /
+  // `calculateVaultPnL`. Keep these inline so a future reader can audit the
+  // JS branches against the SQL directly.
+  const deployedAt = (t: number): bigint => {
+    let total = 0n;
+    for (const p of predictions) {
+      if (p.counterparty.toLowerCase() !== vaultAddress) continue;
+      if (p.onChainCreatedAt > t) continue;
+      const pc = p.pickConfiguration;
+      const stillDeployed =
+        p.pickConfigId === null ||
+        (pc != null &&
+          (pc.resolved === false ||
+            (pc.resolved === true &&
+              pc.resolvedAt !== null &&
+              pc.resolvedAt > t)));
+      if (stillDeployed) total += BigInt(p.counterpartyCollateral);
+    }
+    return total;
+  };
+
+  const pnlAt = (t: number): VaultPnLResult => {
+    let realizedPnL = 0n;
+    let positionsWon = 0;
+    let positionsLost = 0;
+    let totalCollateralWon = 0n;
+    let totalCollateralLost = 0n;
+
+    for (const p of predictions) {
+      if (p.pickConfigId === null) continue;
+      const pc = p.pickConfiguration;
+      if (!pc || !pc.resolved) continue;
+      if (pc.result === SettlementResult.UNRESOLVED) continue;
+      // SQL `resolvedAt <= t` excludes nulls (NULL comparisons are false).
+      if (pc.resolvedAt === null || pc.resolvedAt > t) continue;
+
+      const predictorIsVault = p.predictor.toLowerCase() === vaultAddress;
+      const counterpartyIsVault = p.counterparty.toLowerCase() === vaultAddress;
+      if (!predictorIsVault && !counterpartyIsVault) continue;
+
+      const predictorCollateral = BigInt(p.predictorCollateral);
+      const counterpartyCollateral = BigInt(p.counterpartyCollateral);
+
+      const vaultWon =
+        (predictorIsVault && pc.result === SettlementResult.PREDICTOR_WINS) ||
+        (!predictorIsVault && pc.result === SettlementResult.COUNTERPARTY_WINS);
+
+      if (vaultWon) {
+        const gains = predictorIsVault
+          ? counterpartyCollateral
+          : predictorCollateral;
+        realizedPnL += gains;
+        positionsWon++;
+        totalCollateralWon += gains;
+      } else {
+        const loss = predictorIsVault
+          ? predictorCollateral
+          : counterpartyCollateral;
+        realizedPnL -= loss;
+        positionsLost++;
+        totalCollateralLost += loss;
+      }
+    }
+
+    return {
+      realizedPnL,
+      positionsWon,
+      positionsLost,
+      totalCollateralWon,
+      totalCollateralLost,
+    };
+  };
+
+  const flowsAt = (t: number): VaultFlowsResult => {
+    let totalDeposits = 0n;
+    let totalWithdrawals = 0n;
+    for (const e of flows) {
+      if (e.timestamp > t) continue;
+      const assets = BigInt(e.assets);
+      if (e.eventType === 'deposit') totalDeposits += assets;
+      else totalWithdrawals += assets;
+    }
+    return { totalDeposits, totalWithdrawals };
+  };
+
+  return { deployedAt, pnlAt, flowsAt };
 }
 
 /**
@@ -842,6 +1007,15 @@ export async function backfillProtocolStats(
       | `0x${string}`
       | undefined;
 
+    // One-shot pre-fetch of every prediction + flow event the per-iter DB
+    // aggregators could ever need. Replaces three findMany round-trips per
+    // iter (which scaled as N × table_scan) with O(1) sync calls per iter.
+    const tAggBuild = performance.now();
+    const aggregator = await buildVaultAggregator(chainId);
+    console.log(
+      `[ProtocolStats] Phase 2 prep: built in-memory aggregator in ${(performance.now() - tAggBuild).toFixed(0)}ms`
+    );
+
     // Pre-launch zero-fills first — just DB upserts, no RPC.
     if (preLaunch.length > 0) {
       console.log(
@@ -933,21 +1107,22 @@ export async function backfillProtocolStats(
               : Promise.resolve(0n as bigint | null),
             sumEscrowBalancesAtBlock(client, chainId, blockNumber),
           ]);
-        totals.rpcReads += performance.now() - tRpc;
+        const rpcMs = performance.now() - tRpc;
+        totals.rpcReads += rpcMs;
 
         const vaultAvailableAssets =
           vaultAvailableAssetsOrNull === null
             ? vaultBalance
             : vaultAvailableAssetsOrNull;
 
-        // Three DB reads in parallel — independent at this timestamp.
+        // DB-derived metrics — sync in-memory aggregation against the
+        // pre-fetched superset. Replaces three findMany calls per iter.
         const tDb = performance.now();
-        const [vaultDeployed, pnlResult, flowsResult] = await Promise.all([
-          fetchVaultDeployedAtBlock(chainId, blockNumber, timestamp),
-          calculateVaultPnL(chainId, timestamp),
-          calculateVaultFlows(chainId, timestamp),
-        ]);
-        totals.dbReads += performance.now() - tDb;
+        const vaultDeployed = aggregator.deployedAt(timestamp);
+        const pnlResult = aggregator.pnlAt(timestamp);
+        const flowsResult = aggregator.flowsAt(timestamp);
+        const dbMs = performance.now() - tDb;
+        totals.dbReads += dbMs;
 
         const actualTotalAssets = vaultBalance + vaultDeployed;
         const expectedTotalAssets =
@@ -974,14 +1149,16 @@ export async function backfillProtocolStats(
           vaultCollateralWon: pnlResult.totalCollateralWon,
           vaultCollateralLost: pnlResult.totalCollateralLost,
         });
-        totals.upsert += performance.now() - tUpsert;
+        const upsertMs = performance.now() - tUpsert;
+        totals.upsert += upsertMs;
 
         successCount++;
         doneCount++;
         const iterMs = performance.now() - iterStart;
         console.log(
           `[ProtocolStats] ${dateStr} block=${blockNumber} [${doneCount}/${resolved.length}] ` +
-            `iter=${iterMs.toFixed(0)}ms | ` +
+            `iter=${iterMs.toFixed(0)}ms ` +
+            `(rpc=${rpcMs.toFixed(0)} db=${dbMs.toFixed(0)} upsert=${upsertMs.toFixed(0)}) | ` +
             `vault=${formatUnits(vaultAvailableAssets, 18)}+${formatUnits(vaultDeployed, 18)} ` +
             `escrow=${formatUnits(escrowBalance, 18)} pnl=${formatUnits(pnlResult.realizedPnL, 18)}`
         );

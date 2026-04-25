@@ -76,6 +76,13 @@ const createInfuraWebSocketTransport = (network: string): Transport => {
   );
 };
 
+// Conduit's free Ethereal endpoint is rate-limited and occasionally 429s under
+// the parallel RPC bursts the protocol-stats backfill produces. Bumping retry
+// count + initial delay above viem's defaults (3 / 150ms) gives the transport
+// a real chance to ride out a burst — viem doubles delay each attempt, so
+// this yields ~7.75s max wait (250 / 500 / 1000 / 2000 / 4000 ms).
+const ETHEREAL_HTTP_RETRY_OPTS = { retryCount: 5, retryDelay: 250 } as const;
+
 const createChainClient = (
   chain: viem.Chain,
   network: string,
@@ -86,7 +93,7 @@ const createChainClient = (
       process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade';
     return createPublicClient({
       chain,
-      transport: http(rpcUrl),
+      transport: http(rpcUrl, ETHEREAL_HTTP_RETRY_OPTS),
       batch: {
         multicall: true,
       },
@@ -98,7 +105,7 @@ const createChainClient = (
       process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net/';
     return createPublicClient({
       chain,
-      transport: http(rpcUrl),
+      transport: http(rpcUrl, ETHEREAL_HTTP_RETRY_OPTS),
       batch: {
         multicall: true,
       },
