@@ -294,17 +294,20 @@ function getContractForBlock(
 
 /**
  * Sum the collateral balance across the current V2 escrow + every past V2 escrow
- * deployment, pinned to `blockNumber`. Iterates over the deduped list of
- * [primary, ...legacies] straight from the SDK config — avoids double-counting
- * when `getContractForBlock` would return a legacy (pre-redeploy blocks) and
- * we'd otherwise re-read it from the legacy loop. For blocks where a contract
- * wasn't deployed yet, `balanceOf` returns 0 (the token's storage slot is
- * simply empty for that address), so earlier blocks just get a smaller total.
+ * deployment. Iterates over the deduped list of [primary, ...legacies] from the
+ * SDK config — avoids double-counting when `getContractForBlock` would return a
+ * legacy (pre-redeploy blocks) and we'd otherwise re-read it from the legacy
+ * loop. For blocks where a contract wasn't deployed yet, `balanceOf` returns 0
+ * (the token's storage slot is simply empty for that address), so earlier
+ * blocks just get a smaller total.
+ *
+ * `blockNumber` pins reads to a historical block; omit it (or pass `undefined`)
+ * to read at chain head — used by the resolver's live-candle branch.
  */
-async function sumEscrowBalancesAtBlock(
+export async function sumEscrowBalancesAtBlock(
   client: ReturnType<typeof getProviderForChain>,
   chainId: number,
-  blockNumber: bigint
+  blockNumber?: bigint
 ): Promise<bigint> {
   const escrowConfig = contracts.predictionMarketEscrow[chainId];
   const collateralAddress = contracts.collateralToken[chainId]?.address as
@@ -325,7 +328,7 @@ async function sumEscrowBalancesAtBlock(
         abi: erc20Abi,
         functionName: 'balanceOf',
         args: [addr],
-        blockNumber,
+        ...(blockNumber !== undefined ? { blockNumber } : {}),
       });
     } catch {
       // Contract not deployed at this block or balanceOf reverted — treat as 0.

@@ -18,13 +18,14 @@ import prisma from '../../../../db';
 import {
   calculateVaultFlows,
   calculateVaultPnL,
-  fetchPredictionMarketEscrowTVL,
   fetchVaultAvailableAssets,
   fetchVaultDeployed,
   fetchVaultTVL,
   getProtocolStatsTimeSeries,
   resolveSnapshotIntervalSeconds,
+  sumEscrowBalancesAtBlock,
 } from '../../../../helpers/protocolStats';
+import { getProviderForChain } from '../../../../utils/utils';
 
 interface CumulativeVolumeRow {
   timestamp: bigint;
@@ -74,14 +75,40 @@ export const protocolStats: NonNullable<
         ].map((a) => a.toLowerCase())
       : [];
 
-  const protocolSnapshots = await getProtocolStatsTimeSeries(
+  const rawSnapshots = await getProtocolStatsTimeSeries(
     undefined,
     chainId,
     vaultAddresses
   );
-  if (protocolSnapshots.length === 0) {
+  if (rawSnapshots.length === 0) {
     return [];
   }
+
+  // Dedupe by timestamp: a single day can have rows under multiple addresses
+  // (current primary + a since-demoted legacy that prod's older cron wrote).
+  // Without dedup, queryTimestamps below would contain duplicates, which
+  // breaks the cumulativeVolume SQL — UNNEST + LEFT JOIN + GROUP BY ends up
+  // multiplying the per-day volume by the number of duplicate rows, producing
+  // step-up cumVols that go *backwards* on days with fewer duplicates →
+  // negative periodVolume.
+  //
+  // Preference order when multiple rows share a timestamp: the row stamped
+  // under the current primary wins (matches what the post-redeploy backfill
+  // writes); otherwise keep whatever was there.
+  const currentPrimary = vaultConfig?.address.toLowerCase();
+  const dedup = new Map<number, (typeof rawSnapshots)[number]>();
+  for (const s of rawSnapshots) {
+    const existing = dedup.get(s.timestamp);
+    if (
+      !existing ||
+      (currentPrimary && s.vaultAddress.toLowerCase() === currentPrimary)
+    ) {
+      dedup.set(s.timestamp, s);
+    }
+  }
+  const protocolSnapshots = [...dedup.values()].sort(
+    (a, b) => a.timestamp - b.timestamp
+  );
 
   const snapshotTimestamps = protocolSnapshots.map((s) => s.timestamp);
   const nowTimestamp = Math.floor(Date.now() / 1000);
@@ -194,7 +221,10 @@ export const protocolStats: NonNullable<
       fetchVaultTVL(chainId),
       fetchVaultAvailableAssets(chainId),
       fetchVaultDeployed(chainId),
-      fetchPredictionMarketEscrowTVL(chainId),
+      // Sum across current + past V2 escrow deploys at chain head, matching
+      // the cron/backfill behaviour. Reading only the current primary (as
+      // before) would understate live TVL on every redeploy.
+      sumEscrowBalancesAtBlock(getProviderForChain(chainId), chainId),
       calculateVaultPnL(chainId),
       calculateVaultFlows(chainId),
     ]);
