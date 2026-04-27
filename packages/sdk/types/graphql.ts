@@ -1539,15 +1539,21 @@ export type ProfitRank = {
   totalPnL: Scalars['String']['output'];
 };
 
-/** Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL */
+/**
+ * Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
+ * Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
+ * deltas over that interval.
+ */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
   cumulativeVolume: Scalars['String']['output'];
-  dailyPnL: Scalars['String']['output'];
-  dailyVolume: Scalars['String']['output'];
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
-  /** Unix epoch timestamp (seconds) for midnight UTC of the snapshot day */
+  /** Realized PnL delta over the snapshot interval */
+  periodPnL: Scalars['String']['output'];
+  /** Cumulative-volume delta over the snapshot interval */
+  periodVolume: Scalars['String']['output'];
+  /** Unix epoch timestamp (seconds) aligned to the snapshot interval boundary */
   timestamp: Scalars['Int']['output'];
   vaultAirdropGains: Scalars['String']['output'];
   vaultAvailableAssets: Scalars['String']['output'];
@@ -1613,7 +1619,7 @@ export type Query = {
   predictions: Array<Prediction>;
   /** Profit leaderboard — addresses ranked by total PnL across all positions */
   profitLeaderboard: Array<ProfitEntry>;
-  /** Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest */
+  /** Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest */
   protocolStats: Array<ProtocolStat>;
   /** Time-bucketed total protocol trading volume across all users */
   protocolVolume: Array<VolumeDataPoint>;

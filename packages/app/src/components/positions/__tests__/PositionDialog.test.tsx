@@ -96,7 +96,7 @@ const pickConfig: PickConfigData = {
 };
 
 // This holder holds the counterparty side of 10 predictions →
-// userCollateral = 979.79, totalPayout = 1,000 (sum across the parlays).
+// userCollateral = 979.79, totalPayout = 1,000 (sum across the combos).
 const counterpartyPosition: PositionBalance = {
   id: 1,
   chainId: 42161,

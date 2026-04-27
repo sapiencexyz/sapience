@@ -1,13 +1,12 @@
 import prisma from '../../db';
 import { initializeDataSource } from '../../db';
 import { getProviderForChain } from '../../utils/utils';
-import { parseAbiItem } from 'viem';
+import { parseAbiItem, zeroAddress as ZERO_ADDRESS } from 'viem';
 
 const TRANSFER_EVENT = parseAbiItem(
   'event Transfer(address indexed from, address indexed to, uint256 value)'
 );
 const BLOCK_BATCH_SIZE = 1000;
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 const INDEXER_STATE_KEY = 'v2-transfer-indexer';
 
 /**

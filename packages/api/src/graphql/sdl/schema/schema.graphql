@@ -1407,16 +1407,22 @@ type ProfitRank {
 }
 
 """
-Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL
+Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
+Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
+deltas over that interval.
 """
 type ProtocolStat {
   cumulativeVolume: String!
-  dailyPnL: String!
-  dailyVolume: String!
+
+  """Realized PnL delta over the snapshot interval"""
+  periodPnL: String!
+
+  """Cumulative-volume delta over the snapshot interval"""
+  periodVolume: String!
   escrowBalance: String!
   openInterest: String!
 
-  """Unix epoch timestamp (seconds) for midnight UTC of the snapshot day"""
+  """Unix epoch timestamp (seconds) aligned to the snapshot interval boundary"""
   timestamp: Int!
   vaultAirdropGains: String!
   vaultAvailableAssets: String!
@@ -1531,7 +1537,7 @@ type Query {
   profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
 
   """
-  Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest
+  Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest
   """
   protocolStats(vaultAddress: String): [ProtocolStat!]!
 

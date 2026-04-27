@@ -110,7 +110,7 @@ async function fetchMarketFromGammaApi(conditionId: string): Promise<PolymarketM
 
 async function fetchMarketFromClobApi(conditionId: string): Promise<PolymarketMarket | null> {
   try {
-    const url = `https://clob.polymarket.com/markets/${conditionId}`;
+    const url = `https://clob-v2.polymarket.com/markets/${conditionId}`;
     const response = await fetchWithRetry(url, {
       headers: { 'Accept': 'application/json' },
     });

@@ -200,13 +200,13 @@ Response: `outcomePrices` (YES/NO prices), `outcomes`, `clobTokenIds` (for order
 ### Get Orderbook
 
 ```bash
-curl "https://clob.polymarket.com/book?token_id=<clobTokenId>"
+curl "https://clob-v2.polymarket.com/book?token_id=<clobTokenId>"
 ```
 
 ### Price History
 
 ```bash
-curl "https://clob.polymarket.com/prices-history?market=<clobTokenId>&startTs=<unix_ts>&fidelity=60"
+curl "https://clob-v2.polymarket.com/prices-history?market=<clobTokenId>&startTs=<unix_ts>&fidelity=60"
 ```
 
 No auth required for Polymarket APIs.

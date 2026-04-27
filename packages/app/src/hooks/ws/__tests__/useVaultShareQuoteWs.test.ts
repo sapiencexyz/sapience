@@ -26,7 +26,7 @@ vi.mock('~/lib/ws/AuctionWsClient', () => ({
   }),
 }));
 
-vi.mock('~/lib/ws', () => ({
+vi.mock('~/lib/ws/auctionUrl', () => ({
   toAuctionWsUrl: (base: string) => `wss://mock/${base}`,
 }));
 

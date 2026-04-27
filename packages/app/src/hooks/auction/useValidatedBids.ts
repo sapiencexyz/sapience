@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Address } from 'viem';
+import { zeroAddress as ZERO_ADDRESS, type Address } from 'viem';
 import type { Pick, PickJson } from '@sapience/sdk/types';
 import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
@@ -31,8 +31,6 @@ export interface UseValidatedBidsResult {
   invalidBidCount: number;
   isValidating: boolean;
 }
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 /**
  * Hook that wraps raw QuoteBid[] with on-chain bid validation.
@@ -105,7 +103,7 @@ export function useValidatedBids(
     [picks]
   );
 
-  // Invalidate cached results when picks or predictorCollateral changes
+  // Invalidate cached results when prediction inputs change
   // (predictionHash changes, so all previous validations are stale)
   const picksKey = useMemo(
     () =>
@@ -121,11 +119,11 @@ export function useValidatedBids(
   );
 
   useEffect(() => {
-    // Clear all cached validation when picks or collateral changes
+    // Clear all cached validation when prediction inputs change
     validatedSignaturesRef.current.clear();
     validatingRef.current.clear();
     setValidationResults(new Map());
-  }, [picksKey, predictorCollateral]);
+  }, [picksKey, predictorCollateral, predictorNonce]);
 
   // Validate new bids when they arrive
   useEffect(() => {
@@ -260,6 +258,7 @@ export function useValidatedBids(
     collateralTokenAddress,
     predictorAddress,
     predictorCollateral,
+    predictorNonce,
     picksJson,
     isSponsored,
     sponsorAddress,

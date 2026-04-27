@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
-import type { Hex } from 'viem';
+import { zeroAddress as ZERO_ADDRESS, type Hex } from 'viem';
 import type { Pick } from '@sapience/sdk/types';
 import {
   prepareAuctionRFQ,
@@ -10,7 +10,7 @@ import {
 } from '@sapience/sdk/auction/initiate';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { logAuction, formatBidForLog } from '~/lib/auction/bidLogger';
 
@@ -295,7 +295,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             ? (data.payload.bids as Array<Record<string, unknown>>)
             : [];
 
-          const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
           const normalized: QuoteBid[] = rawBids
             .map((b): QuoteBid | null => {
               try {

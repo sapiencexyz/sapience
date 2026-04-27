@@ -1,13 +1,10 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { zeroAddress as ZERO_ADDRESS } from 'viem';
 import { OutcomeSide } from '@sapience/sdk/types';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 import type { UseValidatedBidsOptions } from '../useValidatedBids';
 import type { Pick } from '@sapience/sdk/types';
-
-// ---- constants ----
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 // ---- mocks ----
 // vi.mock calls are hoisted — use vi.hoisted() so references are available.
@@ -118,6 +115,34 @@ describe('useValidatedBids', () => {
     const callArgs = mockValidateBidOnChain.mock.calls[0];
     // Third argument is the options object
     expect(callArgs[2]).toMatchObject({ failOpen: false });
+  });
+
+  it('revalidates bids when predictorNonce changes', async () => {
+    const bid = makeBid({ counterpartySignature: '0xnonce_change' });
+    const { rerender } = renderStable([bid], {
+      ...DEFAULT_OPTS,
+      predictorNonce: 1,
+    });
+
+    await flush();
+    expect(mockValidateBidOnChain).toHaveBeenCalledTimes(1);
+
+    rerender({
+      bids: [bid],
+      opts: {
+        ...DEFAULT_OPTS,
+        predictorNonce: 2,
+      },
+    });
+
+    await flush();
+    expect(mockValidateBidOnChain).toHaveBeenCalledTimes(2);
+    expect(mockValidateBidOnChain.mock.calls[0][1]).toMatchObject({
+      predictorNonce: 1,
+    });
+    expect(mockValidateBidOnChain.mock.calls[1][1]).toMatchObject({
+      predictorNonce: 2,
+    });
   });
 
   // ---- Fix 2: catch block marks invalid, not valid ----

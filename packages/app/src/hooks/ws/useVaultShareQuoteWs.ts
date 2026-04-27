@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Address } from 'viem';
 import { useSettings } from '../../lib/context/SettingsContext';
-import { toAuctionWsUrl } from '../../lib/ws';
+import { toAuctionWsUrl } from '../../lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '../../lib/ws/AuctionWsClient';
 
 interface VaultShareWsQuotePayload {
