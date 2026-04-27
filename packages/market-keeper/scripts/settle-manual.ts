@@ -101,7 +101,7 @@ const CONDITIONAL_TOKENS_READER_ADDRESS = (process.env
 const DEFAULT_API_URL = 'https://api.sapience.xyz/graphql';
 
 const GAMMA_API_URL = 'https://gamma-api.polymarket.com';
-const CLOB_API_URL = 'https://clob.polymarket.com';
+const CLOB_API_URL = 'https://clob-v2.polymarket.com';
 
 // ============ Chain Definition ============
 

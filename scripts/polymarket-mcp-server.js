@@ -11,7 +11,7 @@
  */
 
 const GAMMA_BASE = "https://gamma-api.polymarket.com";
-const CLOB_BASE = "https://clob.polymarket.com";
+const CLOB_BASE = "https://clob-v2.polymarket.com";
 
 // --- Tool definitions --------------------------------------------------------
 
