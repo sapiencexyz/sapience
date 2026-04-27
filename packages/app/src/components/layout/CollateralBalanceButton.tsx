@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { useAccount, useSendCalls } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   HoverCard,
@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { formatUnits } from 'viem';
+import { useFundDialog } from '~/lib/context/FundDialogContext';
 import SponsorshipBadge from '~/components/shared/SponsorshipBadge';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
@@ -42,7 +43,6 @@ import {
   executeSudoTransaction,
   type OwnerSigner,
 } from '~/lib/session/sessionKeyManager';
-import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
@@ -90,7 +90,6 @@ export default function CollateralBalanceButton({
     balance: eoaBalance,
     nativeBalance: eoaNativeBalance,
     wrappedBalance: eoaWrappedBalance,
-    rawWrappedBalance: rawEoaWrappedBalance,
     symbol,
     refetch: refetchEoaBalance,
   } = useCollateralBalance({
@@ -121,146 +120,14 @@ export default function CollateralBalanceButton({
     ? formatDollarLikeBalance(formatUnits(remainingBudget, 18))
     : '0.00';
 
-  const [isGetUsdeOpen, setIsGetUsdeOpen] = useState(false);
+  const { openFundDialog } = useFundDialog();
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
-  const [isTransferLoading, setIsTransferLoading] = useState(false);
-  const [transferAmount, setTransferAmount] = useState('');
-  const [transferStatus, setTransferStatus] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [isWithdrawLoading, setIsWithdrawLoading] = useState(false);
   const [withdrawStatus, setWithdrawStatus] = useState('');
   const { toast } = useToast();
 
-  // useSendCalls for batching wrap + transfer (with fallback for wallets like Rabby)
-  const { sendCallsAsync, isPending: isSendingCalls } = useSendCalls();
-
   const { switchChainAsync } = useSwitchChain();
-
-  // Calculate max transferable amount (wrapped + native)
-  const maxTransferable = eoaWrappedBalance + eoaNativeBalance;
-
-  // Parse transfer amount and calculate allocation (use wrapped first, then native)
-  const transferAmountNum = parseFloat(transferAmount) || 0;
-  const fromWrapped = Math.min(transferAmountNum, eoaWrappedBalance);
-  const fromNative = Math.min(
-    Math.max(0, transferAmountNum - eoaWrappedBalance),
-    eoaNativeBalance
-  );
-  const isValidTransfer =
-    transferAmountNum > 0 && transferAmountNum <= maxTransferable;
-
-  // Set max amount when dialog opens (use floor to avoid exceeding balance)
-  useEffect(() => {
-    if (isGetUsdeOpen && maxTransferable > 0) {
-      // Floor to 2 decimals to ensure we never transfer more than available
-      const floored = Math.floor(maxTransferable * 100) / 100;
-      setTransferAmount(floored > 0 ? floored.toString() : '');
-    }
-  }, [isGetUsdeOpen, maxTransferable]);
-
-  // Handle transfer from wallet using sendCalls for batched wrap + transfer
-  const handleTransferFromWallet = async () => {
-    if (!smartAccountAddress || !eoaAddress || !isValidTransfer) {
-      let description = 'Wallet not connected';
-      if (!smartAccountAddress) {
-        description = 'Smart account address not available';
-      } else if (!isValidTransfer) {
-        description = 'Invalid transfer amount';
-      }
-      toast({
-        title: 'Cannot transfer',
-        description,
-        variant: 'destructive',
-        duration: 5000,
-      });
-      return;
-    }
-
-    setIsTransferLoading(true);
-    setTransferStatus('Switching to Ethereal...');
-
-    try {
-      // Switch to Ethereal chain first
-      await switchChainAsync({ chainId: DEFAULT_CHAIN_ID });
-
-      setTransferStatus('Preparing transaction...');
-
-      // Build the calls array for batched execution
-      const calls: { to: `0x${string}`; data: `0x${string}`; value: bigint }[] =
-        [];
-
-      // Compute amounts in wei using raw BigInts to avoid float precision loss
-      const transferAmountWei = parseEther(transferAmount || '0');
-      const fromWrappedWei =
-        transferAmountWei <= rawEoaWrappedBalance
-          ? transferAmountWei
-          : rawEoaWrappedBalance;
-      const fromNativeWei = transferAmountWei - fromWrappedWei;
-
-      // If we need to wrap native USDe, add wrap call first
-      if (fromNativeWei > 0n) {
-        const wrapData = encodeFunctionData({
-          abi: WUSDE_ABI,
-          functionName: 'deposit',
-        });
-
-        calls.push({
-          to: wusdeAddress,
-          data: wrapData,
-          value: fromNativeWei,
-        });
-      }
-
-      // Add transfer call (transfer the full requested amount as wUSDe)
-      const transferData = encodeFunctionData({
-        abi: WUSDE_ABI,
-        functionName: 'transfer',
-        args: [smartAccountAddress, transferAmountWei],
-      });
-
-      calls.push({
-        to: wusdeAddress,
-        data: transferData,
-        value: 0n,
-      });
-
-      setTransferStatus(
-        fromNative > 0 ? 'Wrapping & transferring...' : 'Transferring...'
-      );
-
-      // Execute batched calls with experimental fallback for wallets like Rabby
-      await sendCallsAsync({
-        chainId: DEFAULT_CHAIN_ID,
-        calls,
-        // Enable fallback for wallets that don't support EIP-5792
-        experimental_fallback: true,
-      } as Parameters<typeof sendCallsAsync>[0]);
-
-      setTransferStatus('');
-      toast({
-        title: 'Transfer successful',
-        description: `This will be reflected in the app shortly.`,
-        duration: 5000,
-      });
-
-      // Refetch balances after a delay
-      setTimeout(() => {
-        refetchEoaBalance();
-        refetchSmartAccountBalance();
-      }, 5000);
-    } catch (error: unknown) {
-      console.error('Transfer failed:', error);
-      setTransferStatus('');
-      toast({
-        title: 'Transfer failed',
-        description: (error as Error)?.message || 'Failed to transfer USDe',
-        variant: 'destructive',
-        duration: 5000,
-      });
-    } finally {
-      setIsTransferLoading(false);
-    }
-  };
 
   // Withdraw validation
   const withdrawAmountNum = parseFloat(withdrawAmount) || 0;
@@ -386,7 +253,7 @@ export default function CollateralBalanceButton({
       {showFundButton ? (
         <button
           type="button"
-          onClick={() => setIsGetUsdeOpen(true)}
+          onClick={openFundDialog}
           className={`btn-get-access inline-flex items-center rounded-md h-10 xl:h-9 px-4 justify-center text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase tracking-widest text-sm ${buttonClassName ?? ''}`}
         >
           <span className="relative z-10">Fund Account</span>
@@ -461,7 +328,7 @@ export default function CollateralBalanceButton({
                 <Button
                   size="sm"
                   className="gap-2 w-full"
-                  onClick={() => setIsGetUsdeOpen(true)}
+                  onClick={openFundDialog}
                 >
                   <Image
                     src="/usde.svg"
@@ -488,235 +355,6 @@ export default function CollateralBalanceButton({
           </HoverCardContent>
         </HoverCard>
       )}
-
-      {/* Get USDe Dialog */}
-      <Dialog open={isGetUsdeOpen} onOpenChange={setIsGetUsdeOpen}>
-        <DialogContent className="sm:max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle>Fund Your Account</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-5">
-            <ul className="text-sm text-muted-foreground leading-relaxed list-disc list-inside space-y-1">
-              <li>
-                <a
-                  href="https://www.bungee.exchange/?fromChainId=1&fromTokenAddress=0x4c9edd5852cd905f086c759e8383e09bff1e68b3"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="gold-link"
-                >
-                  Get USDe
-                </a>
-              </li>
-              <li>
-                <a
-                  href={STARGATE_DEPOSIT_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="gold-link"
-                >
-                  Bridge to Ethereal
-                </a>
-              </li>
-              <li className="text-brand-white">
-                Transfer to your Sapience Account
-              </li>
-            </ul>
-
-            {/* Two Account Cards */}
-            <div className="flex items-stretch gap-3">
-              {/* Ethereal Account Card */}
-              <div className="flex-1 rounded-lg border border-border/50 bg-muted/30 p-4 space-y-3">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Ethereal Account
-                  </p>
-                  {eoaAddress ? (
-                    <div className="flex items-center gap-2">
-                      <EnsAvatar address={eoaAddress} width={16} height={16} />
-                      <AddressDisplay address={eoaAddress} compact />
-                    </div>
-                  ) : (
-                    <span className="font-mono text-sm text-muted-foreground">
-                      Not connected
-                    </span>
-                  )}
-                </div>
-                <div className="pt-3 border-t border-border/30">
-                  <p className="text-xs text-muted-foreground">Balance</p>
-                  <HoverCard openDelay={100} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                      <div className="flex items-baseline gap-1.5 cursor-default">
-                        <span className="font-mono text-lg font-medium">
-                          {formatDollarLikeBalance(eoaBalance)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {symbol}
-                        </span>
-                      </div>
-                    </HoverCardTrigger>
-                    <HoverCardContent side="top" className="w-auto p-3">
-                      <div className="space-y-1.5 text-sm">
-                        <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">
-                            Native USDe
-                          </span>
-                          <span className="font-mono">
-                            {formatDollarLikeBalance(eoaNativeBalance)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">
-                            Wrapped USDe
-                          </span>
-                          <span className="font-mono">
-                            {formatDollarLikeBalance(eoaWrappedBalance)}
-                          </span>
-                        </div>
-                      </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                </div>
-              </div>
-
-              {/* Arrow */}
-              <div className="flex items-center justify-center px-1">
-                <ArrowRight className="h-5 w-5 text-muted-foreground" />
-              </div>
-
-              {/* Sapience Account Card */}
-              <div className="flex-1 rounded-lg border border-ethena/40 bg-brand-black p-4 space-y-3 shadow-[0_0_12px_rgba(136,180,245,0.15)]">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Sapience Account
-                  </p>
-                  {isCalculatingAddress ? (
-                    <span className="font-mono text-sm text-muted-foreground">
-                      Calculating...
-                    </span>
-                  ) : smartAccountAddress ? (
-                    <div className="flex items-center gap-2">
-                      <EnsAvatar
-                        address={smartAccountAddress}
-                        width={16}
-                        height={16}
-                      />
-                      <AddressDisplay address={smartAccountAddress} compact />
-                    </div>
-                  ) : (
-                    <span className="font-mono text-sm text-muted-foreground">
-                      Not available
-                    </span>
-                  )}
-                </div>
-                <div className="pt-3 border-t border-border/30">
-                  <p className="text-xs text-muted-foreground">Balance</p>
-                  <HoverCard openDelay={100} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                      <div className="flex items-baseline gap-1.5 cursor-default">
-                        <span className="font-mono text-lg font-medium text-brand-white">
-                          {formatDollarLikeBalance(smartAccountBalance)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {symbol}
-                        </span>
-                      </div>
-                    </HoverCardTrigger>
-                    <HoverCardContent side="top" className="w-auto p-3">
-                      <div className="space-y-1.5 text-sm">
-                        <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">
-                            Native USDe
-                          </span>
-                          <span className="font-mono">
-                            {formatDollarLikeBalance(smartAccountNativeBalance)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">
-                            Wrapped USDe
-                          </span>
-                          <span className="font-mono">
-                            {formatDollarLikeBalance(
-                              smartAccountWrappedBalance
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                </div>
-              </div>
-            </div>
-
-            {/* Transfer Input Section */}
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={transferAmount}
-                  onChange={(e) => setTransferAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="h-11 text-lg font-mono pr-10"
-                  disabled={isTransferLoading || isSendingCalls}
-                />
-                {transferAmountNum > 0 &&
-                  (fromWrapped > 0 || fromNative > 0) && (
-                    <HoverCard openDelay={100} closeDelay={100}>
-                      <HoverCardTrigger asChild>
-                        <button
-                          type="button"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground flex items-center gap-1"
-                        >
-                          <span className="text-lg">USDe</span>
-                          <Info className="h-4 w-4" />
-                        </button>
-                      </HoverCardTrigger>
-                      <HoverCardContent side="top" className="w-auto p-3">
-                        <div className="space-y-1.5 text-sm">
-                          {fromWrapped > 0 && (
-                            <div className="flex justify-between gap-4">
-                              <span className="text-muted-foreground">
-                                Wrapped USDe
-                              </span>
-                              <span className="font-mono">
-                                {formatDollarLikeBalance(fromWrapped)}
-                              </span>
-                            </div>
-                          )}
-                          {fromNative > 0 && (
-                            <div className="flex justify-between gap-4">
-                              <span className="text-muted-foreground">
-                                Native USDe (to wrap)
-                              </span>
-                              <span className="font-mono">
-                                {formatDollarLikeBalance(fromNative)}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </HoverCardContent>
-                    </HoverCard>
-                  )}
-              </div>
-              <Button
-                className="h-11 px-4"
-                onClick={handleTransferFromWallet}
-                disabled={
-                  isTransferLoading ||
-                  isSendingCalls ||
-                  !smartAccountAddress ||
-                  !isValidTransfer
-                }
-              >
-                {isTransferLoading || isSendingCalls
-                  ? transferStatus || 'Processing...'
-                  : 'Transfer'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Withdraw Dialog */}
       <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
