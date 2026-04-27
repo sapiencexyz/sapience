@@ -50,6 +50,9 @@ import { getPythMarketHash, decodePythMarketId } from '../auction/encoding';
  * - PRIVATE_KEY
  * - PYTH_CONSUMER_TOKEN (or PYTH_API_KEY)
  * - GRAPHQL_URL
+ *
+ * Note: the previous `BOT_PRIVATE_KEY` fallback was dropped — if you were
+ * relying on it locally, set `PRIVATE_KEY` (or pass `--private-key`) instead.
  */
 
 type Args = {
