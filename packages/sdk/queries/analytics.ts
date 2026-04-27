@@ -48,3 +48,66 @@ export async function fetchProtocolStats(
   }>(GET_PROTOCOL_STATS, { vaultAddress });
   return data?.protocolStats ?? [];
 }
+
+export interface CategoryOpenInterest {
+  category: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+  /** Open interest in wei (decimal string). */
+  openInterest: string;
+}
+
+export const GET_OPEN_INTEREST_BY_CATEGORY = /* GraphQL */ `
+  query OpenInterestByCategory {
+    openInterestByCategory {
+      category {
+        id
+        name
+        slug
+      }
+      openInterest
+    }
+  }
+`;
+
+export async function fetchOpenInterestByCategory(): Promise<
+  CategoryOpenInterest[]
+> {
+  const data = await graphqlRequest<{
+    openInterestByCategory: CategoryOpenInterest[];
+  }>(GET_OPEN_INTEREST_BY_CATEGORY);
+  return data?.openInterestByCategory ?? [];
+}
+
+export interface TimeToResolutionBucket {
+  /** Sort order: 1 = soonest. */
+  bucket: number;
+  /** Display label, e.g. "≤1d", "2-7d". */
+  label: string;
+  /** Open interest in wei (decimal string). */
+  openInterest: string;
+  /** Number of predictions in this bucket. */
+  predictionCount: number;
+}
+
+export const GET_OPEN_INTEREST_BY_TIME_TO_RESOLUTION = /* GraphQL */ `
+  query OpenInterestByTimeToResolution {
+    openInterestByTimeToResolution {
+      bucket
+      label
+      openInterest
+      predictionCount
+    }
+  }
+`;
+
+export async function fetchOpenInterestByTimeToResolution(): Promise<
+  TimeToResolutionBucket[]
+> {
+  const data = await graphqlRequest<{
+    openInterestByTimeToResolution: TimeToResolutionBucket[];
+  }>(GET_OPEN_INTEREST_BY_TIME_TO_RESOLUTION);
+  return data?.openInterestByTimeToResolution ?? [];
+}

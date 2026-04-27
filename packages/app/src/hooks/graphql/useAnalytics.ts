@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchProtocolStats, type ProtocolStat } from '@sapience/sdk/queries';
+import {
+  fetchOpenInterestByCategory,
+  fetchOpenInterestByTimeToResolution,
+  fetchProtocolStats,
+  type CategoryOpenInterest,
+  type ProtocolStat,
+  type TimeToResolutionBucket,
+} from '@sapience/sdk/queries';
 
 const CACHE_TIME_MS = 60 * 1000;
 
@@ -12,7 +19,25 @@ export function useProtocolStats(vaultAddress?: string) {
   });
 }
 
-export type { ProtocolStat };
+export function useOpenInterestByCategory() {
+  return useQuery<CategoryOpenInterest[]>({
+    queryKey: ['openInterestByCategory'],
+    queryFn: fetchOpenInterestByCategory,
+    staleTime: CACHE_TIME_MS,
+    refetchInterval: CACHE_TIME_MS,
+  });
+}
+
+export function useOpenInterestByTimeToResolution() {
+  return useQuery<TimeToResolutionBucket[]>({
+    queryKey: ['openInterestByTimeToResolution'],
+    queryFn: fetchOpenInterestByTimeToResolution,
+    staleTime: CACHE_TIME_MS,
+    refetchInterval: CACHE_TIME_MS,
+  });
+}
+
+export type { CategoryOpenInterest, ProtocolStat, TimeToResolutionBucket };
 
 /**
  * Protocol TVL = escrow balance + undeployed vault funds (wei).

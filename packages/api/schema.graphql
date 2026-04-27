@@ -279,6 +279,18 @@ input CategoryNullableRelationFilter {
   isNot: CategoryWhereInput
 }
 
+"""
+Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
+Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
+deltas over that interval.
+"""
+type CategoryOpenInterest {
+  category: Category!
+
+  """Open interest in wei (decimal string)"""
+  openInterest: String!
+}
+
 input CategoryOrderByWithRelationInput {
   conditionGroups: ConditionGroupOrderByRelationAggregateInput
   conditions: ConditionOrderByRelationAggregateInput
@@ -1401,11 +1413,6 @@ type ProfitRank {
   totalPnL: String!
 }
 
-"""
-Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
-Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
-deltas over that interval.
-"""
 type ProtocolStat {
   cumulativeVolume: String!
   escrowBalance: String!
@@ -1497,6 +1504,16 @@ type Query {
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+
+  """
+  Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
+  """
+  openInterestByCategory: [CategoryOpenInterest!]!
+
+  """
+  Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
+  """
+  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 
   """Look up a single pick configuration by ID"""
   pickConfiguration(id: String!): PickConfiguration
@@ -1715,6 +1732,26 @@ enum TimeInterval {
   HOUR
   MONTH
   WEEK
+}
+
+"""
+Open-interest aggregated by time-to-resolution bucket. Each unsettled
+prediction's collateral is bucketed by the latest endTime among the conditions
+it touches (the moment its OI can finally be claimed). One row per non-empty
+bucket, ordered from soonest (bucket = 1) to furthest out.
+"""
+type TimeToResolutionBucket {
+  """Sort order: 1 = soonest, increasing for further-out buckets"""
+  bucket: Int!
+
+  """Display label, e.g. "≤1d", "2-7d", "1-2mo" """
+  label: String!
+
+  """Open interest in wei (decimal string)"""
+  openInterest: String!
+
+  """Number of predictions contributing to this bucket"""
+  predictionCount: Int!
 }
 
 """
