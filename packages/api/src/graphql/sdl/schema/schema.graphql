@@ -1423,7 +1423,7 @@ bucket, ordered from soonest (bucket = 1) to furthest out.
 type TimeToResolutionBucket {
   """Sort order: 1 = soonest, increasing for further-out buckets"""
   bucket: Int!
-  """Display label, e.g. "≤1d", "2-7d", "1-2mo" """
+  """Display label, e.g. ≤1d / 2-7d / 1-2mo"""
   label: String!
   """Open interest in wei (decimal string)"""
   openInterest: String!
