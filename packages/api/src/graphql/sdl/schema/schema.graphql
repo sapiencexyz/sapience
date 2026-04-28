@@ -1318,10 +1318,11 @@ type Position {
   chainId: Int!
   createdAt: DateTimeISO!
   holder: String!
-  id: Int!
+  id: String!
   isPredictorToken: Boolean!
   pickConfig: PickConfiguration
   pickConfigId: String!
+  realizedPnL: String
   tokenAddress: String!
   totalPayout: String
   updatedAt: DateTimeISO!

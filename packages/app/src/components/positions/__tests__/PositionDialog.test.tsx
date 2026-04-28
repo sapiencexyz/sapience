@@ -187,7 +187,7 @@ describe('PositionDialog', () => {
       />
     );
 
-    expect(screen.getByText('Holder')).toBeInTheDocument();
+    expect(screen.getByText('Account')).toBeInTheDocument();
     // AddressDisplay renders the address in a truncated form; its link href
     // is the full holder address → profile page.
     const profileLink = screen.getByRole('link', { name: /0x1f5f/i });
