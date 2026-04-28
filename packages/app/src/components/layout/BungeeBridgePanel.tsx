@@ -567,6 +567,7 @@ export default function BungeeBridgePanel({
             <span className="flex items-center gap-1 min-w-0 truncate">
               <EnsAvatar address={smartAccountAddress} width={14} height={14} />
               <AddressDisplay address={smartAccountAddress} compact />
+              <span className="text-muted-foreground">(Sapience Account)</span>
             </span>
           ) : (
             <span className="text-muted-foreground">—</span>

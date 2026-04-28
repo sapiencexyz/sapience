@@ -1,11 +1,23 @@
 import type { Address, Hex } from 'viem';
 
-export const BUNGEE_API_BASE = 'https://public-backend.bungee.exchange/api/v1';
+// Frontend / Direct tier — domain whitelist enforced server-side, 100 RPM per
+// IP. Public-backend is the unauthenticated sandbox; switch only if our
+// origin gets de-whitelisted.
+export const BUNGEE_API_BASE = 'https://backend.bungee.exchange/api/v1';
 
 // Native asset sentinel used by Bungee/Socket. Same value for ETH on source
 // chains and for native USDe on Ethereal.
 export const BUNGEE_NATIVE_TOKEN: Address =
   '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+
+// Sapience affiliate ID, sent as the `affiliate` header on every Bungee
+// public-backend request so traffic gets attributed back to us.
+const BUNGEE_AFFILIATE_ID =
+  '609913096f193b62cecd1ff1d33395fd5bffedceb5fef75aad43e6cbff367039708902197e0b2b78b1d76cb0837ad0b318baedceb5fef75aad43e6cb';
+
+const BUNGEE_HEADERS: HeadersInit = {
+  affiliate: BUNGEE_AFFILIATE_ID,
+};
 
 export interface BungeeSourceToken {
   symbol: string;
@@ -176,7 +188,10 @@ export async function fetchBungeeQuote(
     slippage: String(params.slippage ?? 0.5),
     enableDepositAddress: 'true',
   });
-  const res = await fetch(`${BUNGEE_API_BASE}/bungee/quote?${qs}`, { signal });
+  const res = await fetch(`${BUNGEE_API_BASE}/bungee/quote?${qs}`, {
+    signal,
+    headers: BUNGEE_HEADERS,
+  });
   if (!res.ok) {
     throw new Error(`Bungee quote failed: ${res.status} ${res.statusText}`);
   }
@@ -202,7 +217,7 @@ export async function fetchBungeeStatus(
 ): Promise<BungeeStatusResponse> {
   const res = await fetch(
     `${BUNGEE_API_BASE}/bungee/status?requestHash=${requestHash}`,
-    { signal }
+    { signal, headers: BUNGEE_HEADERS }
   );
   if (!res.ok) {
     throw new Error(`Bungee status failed: ${res.status} ${res.statusText}`);
