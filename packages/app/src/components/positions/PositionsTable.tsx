@@ -56,6 +56,15 @@ import { useSession } from '~/lib/context/SessionContext';
 import SellPositionDialog from '~/components/secondary/SellPositionDialog';
 import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 
+// Render an ROI percentage with sign. Sub-1%-magnitude non-zero values
+// collapse to "<1%" so a 0.4% gain doesn't render as "+0%". Color carries
+// the direction at the call site, so the sign on tiny values is omitted.
+const formatRoi = (roi: number): string => {
+  if (roi !== 0 && Math.abs(roi) < 1) return '<1%';
+  const sign = roi >= 0 ? '+' : '';
+  return `${sign}${Math.round(roi).toLocaleString()}%`;
+};
+
 function PositionRow({
   position,
   collateralSymbol,
@@ -201,8 +210,7 @@ function PositionRow({
             <span
               className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-500' : 'text-red-500'}`}
             >
-              {roi >= 0 ? '+' : ''}
-              {Math.round(roi).toLocaleString()}%
+              {formatRoi(roi)}
             </span>
           )}
         </div>
@@ -241,7 +249,7 @@ function PositionRow({
           <span className="text-green-500">{collateralSymbol}</span>
           {positionSizeFormatted > 0 && (
             <span className="text-[10px] leading-tight tabular-nums font-mono text-green-500">
-              +{Math.round(roi).toLocaleString()}%
+              {formatRoi(roi)}
             </span>
           )}
         </div>
@@ -285,8 +293,7 @@ function PositionRow({
             <span
               className={`text-[10px] leading-tight tabular-nums font-mono ${colorClass}`}
             >
-              {roi >= 0 ? '+' : ''}
-              {Math.round(roi).toLocaleString()}%
+              {formatRoi(roi)}
             </span>
           )}
         </div>
