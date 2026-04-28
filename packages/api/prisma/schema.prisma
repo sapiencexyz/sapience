@@ -464,8 +464,10 @@ model ProtocolStatsSnapshot {
   escrowBalance String   @db.VarChar
 
   /// Vault PnL metrics
-  vaultRealizedPnL      String   @default("0") @db.VarChar  // Total realized PnL from predictions
-  vaultAirdropGains     String   @default("0") @db.VarChar  // Unexpected balance increases
+  vaultRealizedPnL      String   @default("0") @db.VarChar  // Settlement PnL: gross payouts to vault holder − vault primary-creation collateral
+  vaultAirdropGains     String   @default("0") @db.VarChar  // wUSDe transfers in not explained by deposits, settlement payouts, or secondary sales
+  vaultSecondaryBought  String   @default("0") @db.VarChar  // Total wUSDe paid by vault in secondary buys
+  vaultSecondarySold    String   @default("0") @db.VarChar  // Total wUSDe received by vault in secondary sells
   vaultDeposits         String   @default("0") @db.VarChar  // Total user deposits
   vaultWithdrawals      String   @default("0") @db.VarChar  // Total user withdrawals
   vaultPositionsWon     Int      @default(0)

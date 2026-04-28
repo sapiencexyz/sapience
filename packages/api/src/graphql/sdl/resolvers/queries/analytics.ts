@@ -19,8 +19,10 @@ import type {
 } from '../../__generated__/resolvers';
 import prisma from '../../../../db';
 import {
+  calculateVaultAirdrops,
   calculateVaultFlows,
   calculateVaultPnL,
+  calculateVaultSecondaryFlows,
   fetchVaultAvailableAssets,
   fetchVaultDeployed,
   fetchVaultTVL,
@@ -175,16 +177,24 @@ export const protocolStats: NonNullable<
   // moment of measurement".
   const interval = resolveSnapshotIntervalSeconds();
 
+  // Cumulative PnL surfaced to the chart rolls up trading activity:
+  // settlement PnL plus net secondary-market trade flow. Airdrops are
+  // tracked separately so they can be reported alongside without
+  // distorting the trading return shown in the PnL chart.
+  const cumulativePnL = (s: (typeof protocolSnapshots)[number]): bigint =>
+    BigInt(s.vaultRealizedPnL) +
+    BigInt(s.vaultSecondarySold) -
+    BigInt(s.vaultSecondaryBought);
+
   const results: ProtocolStat[] = protocolSnapshots.map((snapshot, i) => {
     const cumVol = volumeMap.get(snapshot.timestamp) || '0';
     const prevCumVol =
       i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
     const periodVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
 
-    const prevPnL = i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
-    const periodPnL = (
-      BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)
-    ).toString();
+    const cumPnL = cumulativePnL(snapshot);
+    const prevCumPnL = i > 0 ? cumulativePnL(protocolSnapshots[i - 1]) : 0n;
+    const periodPnL = (cumPnL - prevCumPnL).toString();
 
     return {
       timestamp: snapshot.timestamp - interval,
@@ -194,12 +204,14 @@ export const protocolStats: NonNullable<
       vaultAvailableAssets: snapshot.vaultAvailableAssets,
       vaultDeployed: snapshot.vaultDeployed,
       escrowBalance: snapshot.escrowBalance,
-      vaultCumulativePnL: snapshot.vaultRealizedPnL,
+      vaultCumulativePnL: cumPnL.toString(),
       vaultPositionsWon: snapshot.vaultPositionsWon,
       vaultPositionsLost: snapshot.vaultPositionsLost,
       vaultDeposits: snapshot.vaultDeposits,
       vaultWithdrawals: snapshot.vaultWithdrawals,
       vaultAirdropGains: snapshot.vaultAirdropGains,
+      vaultSecondaryBought: snapshot.vaultSecondaryBought,
+      vaultSecondarySold: snapshot.vaultSecondarySold,
       periodPnL,
       periodVolume,
     };
@@ -220,6 +232,8 @@ export const protocolStats: NonNullable<
       liveEscrowBalance,
       livePnlResult,
       liveFlowsResult,
+      liveSecondaryFlows,
+      liveAirdropGains,
     ] = await Promise.all([
       fetchVaultTVL(chainId),
       fetchVaultAvailableAssets(chainId),
@@ -230,21 +244,17 @@ export const protocolStats: NonNullable<
       sumEscrowBalancesAtBlock(getProviderForChain(chainId), chainId),
       calculateVaultPnL(chainId),
       calculateVaultFlows(chainId),
+      calculateVaultSecondaryFlows(chainId),
+      calculateVaultAirdrops(chainId),
     ]);
 
+    const liveCumulativePnL =
+      livePnlResult.realizedPnL +
+      liveSecondaryFlows.sold -
+      liveSecondaryFlows.bought;
     const livePeriodPnL = (
-      livePnlResult.realizedPnL - BigInt(lastSnapshot.vaultRealizedPnL)
+      liveCumulativePnL - cumulativePnL(lastSnapshot)
     ).toString();
-
-    const liveActualTotalAssets = liveVaultBalance + liveVaultDeployed;
-    const liveExpectedTotalAssets =
-      liveFlowsResult.totalDeposits -
-      liveFlowsResult.totalWithdrawals +
-      livePnlResult.realizedPnL;
-    const liveAirdropGains =
-      liveActualTotalAssets > liveExpectedTotalAssets
-        ? liveActualTotalAssets - liveExpectedTotalAssets
-        : 0n;
 
     // Live candle = current in-progress period; label at start of current
     // interval (matches the display shift for closed bars).
@@ -258,12 +268,14 @@ export const protocolStats: NonNullable<
       vaultAvailableAssets: liveVaultAvailableAssets.toString(),
       vaultDeployed: liveVaultDeployed.toString(),
       escrowBalance: liveEscrowBalance.toString(),
-      vaultCumulativePnL: livePnlResult.realizedPnL.toString(),
+      vaultCumulativePnL: liveCumulativePnL.toString(),
       vaultPositionsWon: livePnlResult.positionsWon,
       vaultPositionsLost: livePnlResult.positionsLost,
       vaultDeposits: liveFlowsResult.totalDeposits.toString(),
       vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
       vaultAirdropGains: liveAirdropGains.toString(),
+      vaultSecondaryBought: liveSecondaryFlows.bought.toString(),
+      vaultSecondarySold: liveSecondaryFlows.sold.toString(),
       periodPnL: livePeriodPnL,
       periodVolume: livePeriodVolume,
     });
