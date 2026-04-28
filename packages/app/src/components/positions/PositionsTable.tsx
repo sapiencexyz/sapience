@@ -117,12 +117,30 @@ function PositionRow({
     ((isPredictorToken && result === 'COUNTERPARTY_WINS') ||
       (!isPredictorToken && result === 'PREDICTOR_WINS'));
 
-  // PnL: profit if won (payout - positionSize), loss if lost (-positionSize)
+  // Per-disposal synthetic rows have ids like `${dbId}-sell-...` or
+  // `${dbId}-claim-...`; the open / parent row is just `${dbId}`.
+  const disposalKind: 'SOLD' | 'REDEEMED' | null = position.id.includes(
+    '-sell-'
+  )
+    ? 'SOLD'
+    : position.id.includes('-claim-')
+      ? 'REDEEMED'
+      : null;
+  const isClosed = !isResolved && BigInt(position.balance) === 0n;
+  const realizedPnLFormatted =
+    position.realizedPnL != null
+      ? parseFloat(formatEther(BigInt(position.realizedPnL)))
+      : null;
+
+  // PnL: profit if won (payout - positionSize), loss if lost (-positionSize),
+  // or the resolver-computed realized value for closed-but-unresolved positions.
   const pnlValue = isResolved
     ? holderWon
       ? payoutFormatted - positionSizeFormatted
       : -positionSizeFormatted
-    : null;
+    : isClosed
+      ? realizedPnLFormatted
+      : null;
   const roi =
     pnlValue !== null && positionSizeFormatted > 0
       ? (pnlValue / positionSizeFormatted) * 100
@@ -252,6 +270,35 @@ function PositionRow({
       );
     }
 
+    // Closed (balance=0, unresolved) → realized PnL from secondary trades + claims
+    if (isClosed && pnlValue !== null) {
+      const colorClass =
+        pnlValue > 0
+          ? 'text-green-500'
+          : pnlValue < 0
+            ? 'text-red-500'
+            : 'text-muted-foreground';
+      return (
+        <div
+          className={`whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 ${colorClass}`}
+        >
+          <NumberDisplay
+            value={pnlValue}
+            className={`tabular-nums font-mono ${colorClass}`}
+          />{' '}
+          <span className={colorClass}>{collateralSymbol}</span>
+          {positionSizeFormatted > 0 && (
+            <span
+              className={`text-[10px] leading-tight tabular-nums font-mono ${colorClass}`}
+            >
+              {roi >= 0 ? '+' : ''}
+              {Math.round(roi).toLocaleString()}%
+            </span>
+          )}
+        </div>
+      );
+    }
+
     // Not resolved → PENDING + optional Sell button
     return (
       <div className="flex items-center gap-2">
@@ -275,12 +322,19 @@ function PositionRow({
   return (
     <TableRow>
       <TableCell>
-        <PicksSummary
-          picks={picks}
-          predictionId={pickConfig?.predictionId}
-          onClick={onOpenDialog}
-        />
-        {pickConfig?.isLegacy && <LegacyBadge />}
+        <div className="flex items-center gap-2 flex-wrap">
+          <PicksSummary
+            picks={picks}
+            predictionId={pickConfig?.predictionId}
+            onClick={onOpenDialog}
+          />
+          {pickConfig?.isLegacy && <LegacyBadge />}
+          {disposalKind && (
+            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono uppercase border border-muted-foreground/40 bg-muted/20 text-muted-foreground">
+              {disposalKind}
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <NumberDisplay
