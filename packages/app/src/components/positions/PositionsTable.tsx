@@ -117,15 +117,9 @@ function PositionRow({
     ((isPredictorToken && result === 'COUNTERPARTY_WINS') ||
       (!isPredictorToken && result === 'PREDICTOR_WINS'));
 
-  // Per-disposal synthetic rows have ids like `${dbId}-sell-...` or
-  // `${dbId}-claim-...`; the open / parent row is just `${dbId}`.
-  const disposalKind: 'SOLD' | 'REDEEMED' | null = position.id.includes(
-    '-sell-'
-  )
-    ? 'SOLD'
-    : position.id.includes('-claim-')
-      ? 'REDEEMED'
-      : null;
+  // Synthetic sell rows have ids like `${dbId}-sell-${tradeHash}`; the open
+  // / parent row is just `${dbId}`.
+  const isSoldRow = position.id.includes('-sell-');
   const isClosed = !isResolved && BigInt(position.balance) === 0n;
   const realizedPnLFormatted =
     position.realizedPnL != null
@@ -329,9 +323,9 @@ function PositionRow({
             onClick={onOpenDialog}
           />
           {pickConfig?.isLegacy && <LegacyBadge />}
-          {disposalKind && (
+          {isSoldRow && (
             <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono uppercase border border-muted-foreground/40 bg-muted/20 text-muted-foreground">
-              {disposalKind}
+              SOLD
             </span>
           )}
         </div>

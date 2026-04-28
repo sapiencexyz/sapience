@@ -66,8 +66,12 @@ export const predictionCount: NonNullable<
 export const positionCount: NonNullable<
   QueryResolvers['positionCount']
 > = async (_parent, { holder, settled, chainId }) => {
+  // Mirror the visibility rule applied in `positions`: drop zero-balance
+  // unresolved rows (off-platform transfers/burns) so the count matches the
+  // set of underlying positions surfaced to clients.
   const where: Prisma.PositionWhereInput = {
     holder: holder.toLowerCase(),
+    NOT: { balance: '0', pickConfiguration: { resolved: false } },
   };
   if (settled !== undefined && settled !== null) {
     where.pickConfiguration = { resolved: settled };
@@ -344,52 +348,36 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
   });
 
   // For each Position row we build a chronological event stream of primary
-  // mints (Predictions), secondary trades (buys + sells matching token+holder),
-  // and Claims, then walk it with running WAC. Each disposal event produces
-  // its own synthetic Closed row; if balance > 0 at the end, we also emit an
-  // Open row carrying the remaining cost basis.
+  // mints (Predictions) and secondary trades (buys + sells matching
+  // token+holder), then walk it with running WAC. Each sell produces a
+  // synthetic Closed row; if balance > 0 at the end, we also emit an Open
+  // row carrying the remaining cost basis. Claims are intentionally excluded
+  // — the contract reverts redeem() unless the pickConfig is resolved, so
+  // any Claim is post-settlement and the existing settlement-PnL flow on a
+  // resolved Position already covers it.
   const chainIds = Array.from(new Set(rows.map((r) => r.chainId)));
   const tokenAddresses = Array.from(new Set(rows.map((r) => r.tokenAddress)));
   const holders = Array.from(new Set(rows.map((r) => r.holder)));
-  const [trades, claimRows] =
+  const trades =
     rows.length === 0
-      ? [[], []]
-      : await Promise.all([
-          prisma.secondaryTrade.findMany({
-            where: {
-              chainId: { in: chainIds },
-              token: { in: tokenAddresses },
-              OR: [{ seller: { in: holders } }, { buyer: { in: holders } }],
-            },
-            select: {
-              id: true,
-              chainId: true,
-              token: true,
-              seller: true,
-              buyer: true,
-              price: true,
-              tokenAmount: true,
-              executedAt: true,
-              tradeHash: true,
-            },
-          }),
-          prisma.claim.findMany({
-            where: {
-              chainId: { in: chainIds },
-              positionToken: { in: tokenAddresses },
-              holder: { in: holders },
-            },
-            select: {
-              id: true,
-              chainId: true,
-              positionToken: true,
-              holder: true,
-              tokensBurned: true,
-              collateralPaid: true,
-              redeemedAt: true,
-            },
-          }),
-        ]);
+      ? []
+      : await prisma.secondaryTrade.findMany({
+          where: {
+            chainId: { in: chainIds },
+            token: { in: tokenAddresses },
+            OR: [{ seller: { in: holders } }, { buyer: { in: holders } }],
+          },
+          select: {
+            chainId: true,
+            token: true,
+            seller: true,
+            buyer: true,
+            price: true,
+            tokenAmount: true,
+            executedAt: true,
+            tradeHash: true,
+          },
+        });
 
   const positionKey = (chainId: number, token: string, holder: string) =>
     `${chainId}:${token}:${holder}`;
@@ -401,13 +389,6 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
       if (arr) arr.push(t);
       else tradesByPos.set(k, [t]);
     }
-  }
-  const claimsByPos = new Map<string, typeof claimRows>();
-  for (const c of claimRows) {
-    const k = positionKey(c.chainId, c.positionToken, c.holder);
-    const arr = claimsByPos.get(k);
-    if (arr) arr.push(c);
-    else claimsByPos.set(k, [c]);
   }
 
   type PositionShape = {
@@ -435,8 +416,7 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     // Primary-mint events from Predictions tied to this position
     type Acquire = { ts: number; cost: bigint; shares: bigint };
     type Disposal = {
-      kind: 'sell' | 'claim';
-      idStr: string;
+      tradeHash: string;
       ts: number;
       proceeds: bigint;
       shares: bigint;
@@ -475,22 +455,12 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
       }
       if (t.seller === r.holder) {
         disposals.push({
-          kind: 'sell',
-          idStr: t.tradeHash,
+          tradeHash: t.tradeHash,
           ts: t.executedAt,
           proceeds: price,
           shares,
         });
       }
-    }
-    for (const c of claimsByPos.get(k) ?? []) {
-      disposals.push({
-        kind: 'claim',
-        idStr: String(c.id),
-        ts: c.redeemedAt,
-        proceeds: BigInt(c.collateralPaid),
-        shares: BigInt(c.tokensBurned),
-      });
     }
 
     const acquiresSorted = [...acquires].sort((a, b) => a.ts - b.ts);
@@ -503,8 +473,7 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     let sharesPool = 0n;
     let acqIdx = 0;
     type DisposalRow = {
-      kind: 'sell' | 'claim';
-      idStr: string;
+      tradeHash: string;
       ts: number;
       proceeds: bigint;
       shares: bigint;
@@ -540,12 +509,12 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     const balanceBn = BigInt(r.balance);
     const isResolved = pc?.resolved ?? false;
 
-    // Emit one synthetic row per disposal (only meaningful for unresolved
+    // Emit one synthetic row per sell (only meaningful for unresolved
     // pickConfigs — once settled, the existing PnL flow takes over).
     if (!isResolved) {
       for (const d of disposalRows) {
         synthesized.push({
-          id: `${r.id}-${d.kind}-${d.idStr}`,
+          id: `${r.id}-sell-${d.tradeHash}`,
           chainId: r.chainId,
           tokenAddress: r.tokenAddress,
           pickConfigId: r.pickConfigId,
@@ -562,10 +531,11 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
       }
     }
 
-    // Open / parent row: keep when there's still balance OR when we didn't
-    // emit any disposals (preserves today's behavior for never-traded and
-    // resolved positions).
-    if (balanceBn > 0n || disposalRows.length === 0 || isResolved) {
+    // Open / parent row: keep when there's still balance, or when the
+    // position is settled (existing settlement-PnL flow handles it). A
+    // zero-balance unresolved row with no sells means the holder transferred
+    // or burned the tokens off-platform — drop it, matching prior behavior.
+    if (balanceBn > 0n || isResolved) {
       const remainingCost =
         !isResolved && disposalRows.length > 0 ? costPool : totalUserCollateral;
       synthesized.push({
