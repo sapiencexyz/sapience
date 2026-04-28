@@ -32,7 +32,11 @@ import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
 import { accountActivity } from './queries/activity';
-import { protocolStats } from './queries/analytics';
+import {
+  openInterestByCategory,
+  openInterestByTimeToResolution,
+  protocolStats,
+} from './queries/analytics';
 import {
   collateralBalance,
   collateralBalanceHistory,
@@ -95,6 +99,8 @@ export const resolvers: Resolvers = {
     // Activity + unified feeds
     accountActivity,
     // Analytics
+    openInterestByCategory,
+    openInterestByTimeToResolution,
     protocolStats,
     // Collateral
     accountTotalVolume,

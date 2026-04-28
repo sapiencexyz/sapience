@@ -25,6 +25,8 @@ import {
   useProtocolStats,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
+import OpenInterestByCategoryChart from '~/components/analytics/OpenInterestByCategoryChart';
+import OpenInterestByTimeToResolutionChart from '~/components/analytics/OpenInterestByTimeToResolutionChart';
 import PeriodFilter, {
   type Period,
   PERIOD_DAYS,
@@ -189,9 +191,9 @@ function AnalyticsPageContent(): React.ReactElement {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
 
   // Period states for each chart
-  const [volumePeriod, setVolumePeriod] = useState<Period>('1W');
-  const [oiPeriod, setOiPeriod] = useState<Period>('1W');
-  const [tvlPeriod, setTvlPeriod] = useState<Period>('1W');
+  const [volumePeriod, setVolumePeriod] = useState<Period>('1M');
+  const [oiPeriod, setOiPeriod] = useState<Period>('1M');
+  const [tvlPeriod, setTvlPeriod] = useState<Period>('1M');
 
   // Fetch protocol stats and daily volumes
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
@@ -367,27 +369,17 @@ function AnalyticsPageContent(): React.ReactElement {
 
         {/* Charts */}
         <div className="space-y-4 md:space-y-8">
+          {/* Open Interest distribution: by category + by time-to-resolution */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+            <OpenInterestByCategoryChart />
+            <OpenInterestByTimeToResolutionChart />
+          </div>
+
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="sc-heading text-foreground flex items-center gap-1.5">
-                  Volume
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="text-muted-foreground hover:text-foreground transition-colors">
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto bg-background border border-border p-3"
-                      align="start"
-                    >
-                      <p className="text-sm text-muted-foreground">
-                        Volume per snapshot interval. Includes volume from
-                        prediction mints and secondary market trades.
-                      </p>
-                    </PopoverContent>
-                  </Popover>
+                  Daily Volume
                 </h3>
                 <PeriodFilter value={volumePeriod} onChange={setVolumePeriod} />
               </div>
@@ -450,22 +442,6 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="sc-heading text-foreground flex items-center gap-1.5">
                   Open Interest
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="text-muted-foreground hover:text-foreground transition-colors">
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto bg-background border border-border p-3"
-                      align="start"
-                    >
-                      <p className="text-sm text-muted-foreground">
-                        Includes open interest from both V1 (legacy) and V2
-                        (escrow) prediction markets.
-                      </p>
-                    </PopoverContent>
-                  </Popover>
                 </h3>
                 <PeriodFilter value={oiPeriod} onChange={setOiPeriod} />
               </div>

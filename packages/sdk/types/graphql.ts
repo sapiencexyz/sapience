@@ -336,6 +336,18 @@ export type CategoryNullableRelationFilter = {
   isNot?: InputMaybe<CategoryWhereInput>;
 };
 
+/**
+ * Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
+ * Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
+ * deltas over that interval.
+ */
+export type CategoryOpenInterest = {
+  __typename?: 'CategoryOpenInterest';
+  category: Category;
+  /** Open interest in wei (decimal string) */
+  openInterest: Scalars['String']['output'];
+};
+
 export type CategoryOrderByWithRelationInput = {
   conditionGroups?: InputMaybe<ConditionGroupOrderByRelationAggregateInput>;
   conditions?: InputMaybe<ConditionOrderByRelationAggregateInput>;
@@ -1539,11 +1551,6 @@ export type ProfitRank = {
   totalPnL: Scalars['String']['output'];
 };
 
-/**
- * Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
- * Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
- * deltas over that interval.
- */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
   cumulativeVolume: Scalars['String']['output'];
@@ -1601,6 +1608,8 @@ export type Query = {
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
+  /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
+  openInterestByCategory: Array<CategoryOpenInterest>;
   /** Look up a single pick configuration by ID */
   pickConfiguration?: Maybe<PickConfiguration>;
   /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
