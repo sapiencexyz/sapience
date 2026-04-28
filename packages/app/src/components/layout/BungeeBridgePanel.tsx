@@ -283,6 +283,7 @@ export default function BungeeBridgePanel({
     data: quote,
     isFetching: isQuoting,
     error: quoteError,
+    refetch: refetchQuote,
   } = useQuery({
     queryKey: [
       'bungee-quote',
@@ -316,6 +317,20 @@ export default function BungeeBridgePanel({
   const noRouteAvailable =
     !!quote && !deposit && !!inputAmountWei && !isQuoting;
 
+  // Quotes carry an expiry (unix seconds). Track current time so the disabled
+  // state and auto-refetch react as the deadline passes — without this, a user
+  // who dwells on the dialog could submit `txData` Bungee no longer accepts.
+  const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    if (!deposit?.expiry) return;
+    const id = setInterval(
+      () => setNowSec(Math.floor(Date.now() / 1000)),
+      1000
+    );
+    return () => clearInterval(id);
+  }, [deposit?.expiry]);
+  const isQuoteExpired = !!deposit?.expiry && deposit.expiry <= nowSec;
+
   const { data: statusData } = useQuery({
     queryKey: ['bungee-status', requestHash],
     queryFn: ({ signal }) => fetchBungeeStatus(requestHash!, signal),
@@ -335,8 +350,21 @@ export default function BungeeBridgePanel({
     if (isComplete && onDelivered) onDelivered();
   }, [isComplete, onDelivered]);
 
+  // Refresh the quote as soon as it expires, so the Bridge button never sits
+  // wired to stale txData.
+  useEffect(() => {
+    if (!isQuoteExpired) return;
+    if (isQuoting || isInFlight || isSending) return;
+    refetchQuote();
+  }, [isQuoteExpired, isQuoting, isInFlight, isSending, refetchQuote]);
+
   const handleBridge = async () => {
     if (!deposit || !eoaAddress) return;
+    // Last-line guard: expiry could have lapsed between render and click.
+    if (deposit.expiry > 0 && deposit.expiry <= Math.floor(Date.now() / 1000)) {
+      refetchQuote();
+      return;
+    }
     setErrorMsg(null);
     setIsSending(true);
     try {
@@ -386,6 +414,8 @@ export default function BungeeBridgePanel({
     if (insufficientFunds) return 'Insufficient balance';
     if (!inputAmountWei) return 'Enter an amount';
     if (!deposit) return 'No route available';
+    if (isQuoteExpired)
+      return isQuoting ? 'Refreshing quote…' : 'Quote expired';
     return `Bridge to Sapience Account`;
   })();
 
@@ -396,7 +426,8 @@ export default function BungeeBridgePanel({
       isInFlight ||
       !deposit ||
       insufficientFunds ||
-      !inputAmountWei);
+      !inputAmountWei ||
+      isQuoteExpired);
 
   const buttonOnClick = isComplete || isFailed ? handleReset : handleBridge;
 
@@ -410,26 +441,22 @@ export default function BungeeBridgePanel({
   };
 
   return (
-    <div className="space-y-3">
-      {/* Destination — inline label */}
-      <div className="flex items-center gap-1.5 text-sm px-1">
-        <span className="text-muted-foreground">Depositing to your</span>
-        <span className="font-medium">Sapience Account</span>
-        {isCalculatingAddress ? (
-          <span className="text-muted-foreground">—</span>
-        ) : smartAccountAddress ? (
-          <span className="flex items-center gap-1 text-muted-foreground">
-            <EnsAvatar address={smartAccountAddress} width={14} height={14} />
-            <AddressDisplay address={smartAccountAddress} compact />
-          </span>
-        ) : null}
-      </div>
-
+    <div className="space-y-3 min-w-0">
       {/* Amount card */}
       <div className="rounded-lg border-2 border-ethena/40 bg-muted/20 p-4 space-y-3 shadow-[0_0_12px_rgba(136,180,245,0.1)]">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Amount</span>
-          <div className="flex gap-1.5">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 text-sm min-w-0">
+            <span className="text-muted-foreground shrink-0">From</span>
+            {eoaAddress ? (
+              <span className="flex items-center gap-1 min-w-0 truncate">
+                <EnsAvatar address={eoaAddress} width={14} height={14} />
+                <AddressDisplay address={eoaAddress} compact />
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </div>
+          <div className="flex gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setAmountFraction(0.5)}
@@ -449,7 +476,7 @@ export default function BungeeBridgePanel({
             </button>
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 min-w-0">
           <input
             type="text"
             inputMode="decimal"
@@ -457,7 +484,8 @@ export default function BungeeBridgePanel({
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
             disabled={inputsLocked}
-            className="bg-transparent text-3xl font-mono outline-none flex-1 min-w-0 placeholder:text-muted-foreground/40 disabled:opacity-50"
+            size={1}
+            className="bg-transparent text-3xl font-mono outline-none flex-1 min-w-0 w-0 placeholder:text-muted-foreground/40 disabled:opacity-50"
           />
           <Select
             value={selectedKey}
@@ -531,15 +559,32 @@ export default function BungeeBridgePanel({
 
       {/* Est. Receive */}
       <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-3">
-        <span className="text-sm text-muted-foreground">
-          Est. Receive (incl. cost)
-        </span>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-3xl font-mono text-brand-white">
+        <div className="flex items-center gap-1.5 text-sm min-w-0">
+          <span className="text-muted-foreground shrink-0">To</span>
+          {isCalculatingAddress ? (
+            <span className="text-muted-foreground">—</span>
+          ) : smartAccountAddress ? (
+            <span className="flex items-center gap-1 min-w-0 truncate">
+              <EnsAvatar address={smartAccountAddress} width={14} height={14} />
+              <AddressDisplay address={smartAccountAddress} compact />
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-3 min-w-0">
+          <span className="text-3xl font-mono text-brand-white truncate">
             {outputAmount != null ? formatBalance(outputAmount, 4) : '0.00'}
           </span>
-          <div className="flex items-center gap-2 bg-background/60 rounded-md pl-1.5 pr-2.5 py-1.5 border border-border/60">
-            <img src="/usde.svg" alt="" className="w-7 h-7" />
+          <div className="flex items-center gap-2 bg-background/60 rounded-md pl-1.5 pr-2.5 py-1.5 border border-border/60 shrink-0">
+            <div className="relative">
+              <img src="/usde.svg" alt="" className="w-7 h-7" />
+              <img
+                src="/ethereal-logomark.svg"
+                alt=""
+                className="w-3 h-3 absolute -bottom-0.5 -right-0.5 rounded-full bg-background ring-2 ring-background"
+              />
+            </div>
             <span className="font-medium text-sm">{collateralSymbol}</span>
           </div>
         </div>

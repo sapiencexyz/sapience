@@ -34,7 +34,7 @@ export default function FundDialog({ open, onOpenChange }: FundDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[520px] sm:p-8 overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>Deposit</DialogTitle>
         </DialogHeader>

@@ -325,20 +325,39 @@ export default function CollateralBalanceButton({
                     </div>
                   </div>
                 )}
-                <Button
-                  size="sm"
-                  className="gap-2 w-full"
-                  onClick={openFundDialog}
-                >
-                  <Image
-                    src="/usde.svg"
-                    alt="USDe"
-                    width={16}
-                    height={16}
-                    className="opacity-90"
-                  />
-                  Get USDe
-                </Button>
+                {isUsingSmartAccount ? (
+                  <Button
+                    size="sm"
+                    className="gap-2 w-full"
+                    onClick={openFundDialog}
+                  >
+                    <Image
+                      src="/usde.svg"
+                      alt="USDe"
+                      width={16}
+                      height={16}
+                      className="opacity-90"
+                    />
+                    Get USDe
+                  </Button>
+                ) : (
+                  <Button size="sm" className="gap-2 w-full" asChild>
+                    <a
+                      href="https://stargate.finance/?dstChain=ethereal&dstToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Image
+                        src="/usde.svg"
+                        alt="USDe"
+                        width={16}
+                        height={16}
+                        className="opacity-90"
+                      />
+                      Get USDe
+                    </a>
+                  </Button>
+                )}
                 {/* Withdraw button shown when smart account has balance, regardless of mode */}
                 {/* This allows users to recover funds from smart account even when using EOA */}
                 {smartAccountBalance > 0 && (
