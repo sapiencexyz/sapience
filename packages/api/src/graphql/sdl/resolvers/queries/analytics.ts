@@ -286,56 +286,85 @@ interface CategoryOpenInterestRow {
 }
 
 /**
- * Query.openInterestByCategory — protocol-wide open interest aggregated by category.
- *
- * Mirrors the canonical "what's a market" filter from the questions resolver:
- * sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped
- * public condition's openInterest. Returns only categories with non-zero OI,
- * sorted descending so the donut chart renders largest slice first.
+ * Tiny TTL memo for argument-less resolvers. Single-flight on cache miss so
+ * a thundering herd collapses to one DB hit.
  */
-export const openInterestByCategory: NonNullable<
-  QueryResolvers['openInterestByCategory']
-> = async (): Promise<CategoryOpenInterest[]> => {
-  const rows = await prisma.$queryRaw<CategoryOpenInterestRow[]>`
-    WITH combined AS (
-      SELECT cg."categoryId" AS category_id, cg."totalOpenInterest"::numeric AS oi
-      FROM condition_group cg
-      WHERE cg."publicConditionCount" > 0 AND cg."categoryId" IS NOT NULL
+const memoTtl = <T>(
+  fn: () => Promise<T>,
+  ttlMs: number
+): (() => Promise<T>) => {
+  let cached: { value: T; expiresAt: number } | null = null;
+  let inflight: Promise<T> | null = null;
+  return async () => {
+    const now = Date.now();
+    if (cached && cached.expiresAt > now) return cached.value;
+    if (inflight) return inflight;
+    inflight = (async () => {
+      try {
+        const value = await fn();
+        cached = { value, expiresAt: Date.now() + ttlMs };
+        return value;
+      } finally {
+        inflight = null;
+      }
+    })();
+    return inflight;
+  };
+};
 
-      UNION ALL
+const ANALYTICS_CACHE_TTL_MS = 60_000;
 
-      SELECT c."categoryId" AS category_id, c."openInterest"::numeric AS oi
-      FROM condition c
-      WHERE c.public = true
-        AND c."conditionGroupId" IS NULL
-        AND c."categoryId" IS NOT NULL
-    )
+/**
+ * Query.openInterestByCategory — protocol-wide open interest aggregated by
+ * category for the configured chain.
+ *
+ * Aggregates per-condition `openInterest` directly (rather than reading
+ * `condition_group.totalOpenInterest`) so the chainId filter applies cleanly.
+ * Math is equivalent: the denormalized group total is a sum of its
+ * conditions' OI, so summing condition rows produces the same per-category
+ * total. Uses `IDX_condition_market_filter (public, chainId, ...)`.
+ *
+ * Cached in-process for 60s — single-flighted, so concurrent requests
+ * collapse to one DB hit and the result feeds the public CDN as well.
+ */
+const fetchOpenInterestByCategory = memoTtl(
+  async (): Promise<CategoryOpenInterest[]> => {
+    const chainId = DEFAULT_CHAIN_ID;
+    const rows = await prisma.$queryRaw<CategoryOpenInterestRow[]>`
     SELECT
       cat.id AS category_id,
       cat.name AS category_name,
       cat.slug AS category_slug,
       cat."createdAt" AS category_created_at,
-      SUM(combined.oi)::text AS total_oi
-    FROM combined
-    INNER JOIN category cat ON cat.id = combined.category_id
+      SUM(c."openInterest"::numeric)::text AS total_oi
+    FROM condition c
+    INNER JOIN category cat ON cat.id = c."categoryId"
+    WHERE c.public = true
+      AND c.settled = false
+      AND c."chainId" = ${chainId}
     GROUP BY cat.id, cat.name, cat.slug, cat."createdAt"
-    HAVING SUM(combined.oi) > 0
-    ORDER BY SUM(combined.oi) DESC
+    HAVING SUM(c."openInterest"::numeric) > 0
+    ORDER BY SUM(c."openInterest"::numeric) DESC
   `;
 
-  return rows.map((row) => ({
-    // Relation fields (conditions / conditionGroups) resolve lazily through
-    // their own field resolvers if the client requests them; the cast keeps
-    // codegen happy without forcing us to load them eagerly here.
-    category: {
-      id: row.category_id,
-      name: row.category_name,
-      slug: row.category_slug,
-      createdAt: row.category_created_at,
-    } as unknown as Category,
-    openInterest: row.total_oi,
-  }));
-};
+    return rows.map((row) => ({
+      // Category field resolvers (conditions/conditionGroups) only read parent.id,
+      // so a partial row satisfies them — no need to load relations eagerly.
+      category: {
+        id: row.category_id,
+        name: row.category_name,
+        slug: row.category_slug,
+        createdAt: row.category_created_at,
+      } as unknown as Category,
+      openInterest: row.total_oi,
+    }));
+  },
+  ANALYTICS_CACHE_TTL_MS
+);
+
+export const openInterestByCategory: NonNullable<
+  QueryResolvers['openInterestByCategory']
+> = () => fetchOpenInterestByCategory();
 
 interface TimeToResolutionRow {
   bucket: number;
@@ -355,65 +384,68 @@ const TTR_BUCKET_LABELS: Record<number, string> = {
 
 /**
  * Query.openInterestByTimeToResolution — protocol-wide OI bucketed by how soon
- * each prediction's collateral can finally be claimed. For each unsettled
- * prediction we take the MAX endTime across the conditions it touches (combo
- * predictions resolve only when *all* legs settle), then bucket the prediction's
- * total collateral by that horizon. Predictions whose latest endTime is in the
+ * each prediction's collateral can finally be claimed. Pre-aggregates each
+ * pickConfig once (max endTime across legs, all-public flag), then joins
+ * predictions in a single pass — avoiding the Pick × condition fan-out that
+ * the obvious join would create. Predictions whose latest endTime is in the
  * past but haven't been resolved roll into bucket 1 (imminent / overdue).
  *
  * Mirrors the privacy filter used by the OI time-series resolver: drops any
  * prediction that touches a non-public condition, so the totals reconcile with
- * what's shown elsewhere.
+ * what's shown elsewhere. The CTE pre-filters Pick rows by condition.chainId
+ * so the per-pickConfig aggregation only walks rows for the target chain
+ * (Pick legs are co-chain with their pickConfig in practice). Cached
+ * in-process for 60s with single-flight.
  */
-export const openInterestByTimeToResolution: NonNullable<
-  QueryResolvers['openInterestByTimeToResolution']
-> = async (): Promise<TimeToResolutionBucket[]> => {
-  const rows = await prisma.$queryRaw<TimeToResolutionRow[]>`
-    WITH per_prediction AS (
+const fetchOpenInterestByTimeToResolution = memoTtl(
+  async (): Promise<TimeToResolutionBucket[]> => {
+    const chainId = DEFAULT_CHAIN_ID;
+    const rows = await prisma.$queryRaw<TimeToResolutionRow[]>`
+    WITH per_pick_config AS (
       SELECT
-        p.id,
-        (CAST(p."predictorCollateral" AS numeric) +
-         CAST(p."counterpartyCollateral" AS numeric)) AS oi,
-        MAX(c."endTime") AS max_end_time
-      FROM "Prediction" p
-      JOIN "Picks" pk ON pk.id = p."pickConfigId"
-      JOIN "Pick" pi ON pi."pickConfigId" = pk.id
+        pi."pickConfigId" AS pick_config_id,
+        MAX(c."endTime")  AS max_end_time,
+        BOOL_AND(c.public) AS all_public
+      FROM "Pick" pi
       JOIN "condition" c ON c.id = pi."conditionId"
-      WHERE pk."resolvedAt" IS NULL
-        AND NOT EXISTS (
-          SELECT 1 FROM "Pick" pi2
-          JOIN "condition" c2 ON c2.id = pi2."conditionId"
-          WHERE pi2."pickConfigId" = pk.id AND c2.public = false
-        )
-      GROUP BY p.id, p."predictorCollateral", p."counterpartyCollateral"
-    ),
-    bucketed AS (
-      SELECT
-        CASE
-          WHEN (max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 86400 THEN 1
-          WHEN (max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 7 * 86400 THEN 2
-          WHEN (max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 30 * 86400 THEN 3
-          WHEN (max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 60 * 86400 THEN 4
-          WHEN (max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 90 * 86400 THEN 5
-          WHEN (max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 180 * 86400 THEN 6
-          ELSE 7
-        END AS bucket,
-        oi
-      FROM per_prediction
+      WHERE c."chainId" = ${chainId}
+      GROUP BY pi."pickConfigId"
     )
     SELECT
-      bucket,
-      SUM(oi)::text AS total_oi,
+      CASE
+        WHEN (x.max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 86400 THEN 1
+        WHEN (x.max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 7 * 86400 THEN 2
+        WHEN (x.max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 30 * 86400 THEN 3
+        WHEN (x.max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 60 * 86400 THEN 4
+        WHEN (x.max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 90 * 86400 THEN 5
+        WHEN (x.max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 180 * 86400 THEN 6
+        ELSE 7
+      END AS bucket,
+      SUM(
+        CAST(p."predictorCollateral" AS numeric) +
+        CAST(p."counterpartyCollateral" AS numeric)
+      )::text AS total_oi,
       COUNT(*)::bigint AS prediction_count
-    FROM bucketed
+    FROM "Prediction" p
+    JOIN "Picks" pk ON pk.id = p."pickConfigId"
+    JOIN per_pick_config x ON x.pick_config_id = pk.id
+    WHERE pk.resolved = false
+      AND pk."chainId" = ${chainId}
+      AND x.all_public
     GROUP BY bucket
     ORDER BY bucket
   `;
 
-  return rows.map((row) => ({
-    bucket: row.bucket,
-    label: TTR_BUCKET_LABELS[row.bucket] ?? String(row.bucket),
-    openInterest: row.total_oi,
-    predictionCount: Number(row.prediction_count),
-  }));
-};
+    return rows.map((row) => ({
+      bucket: row.bucket,
+      label: TTR_BUCKET_LABELS[row.bucket] ?? String(row.bucket),
+      openInterest: row.total_oi,
+      predictionCount: Number(row.prediction_count),
+    }));
+  },
+  ANALYTICS_CACHE_TTL_MS
+);
+
+export const openInterestByTimeToResolution: NonNullable<
+  QueryResolvers['openInterestByTimeToResolution']
+> = () => fetchOpenInterestByTimeToResolution();

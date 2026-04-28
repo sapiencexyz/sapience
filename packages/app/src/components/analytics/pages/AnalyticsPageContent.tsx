@@ -191,9 +191,9 @@ function AnalyticsPageContent(): React.ReactElement {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
 
   // Period states for each chart
-  const [volumePeriod, setVolumePeriod] = useState<Period>('1W');
-  const [oiPeriod, setOiPeriod] = useState<Period>('1W');
-  const [tvlPeriod, setTvlPeriod] = useState<Period>('1W');
+  const [volumePeriod, setVolumePeriod] = useState<Period>('1M');
+  const [oiPeriod, setOiPeriod] = useState<Period>('1M');
+  const [tvlPeriod, setTvlPeriod] = useState<Period>('1M');
 
   // Fetch protocol stats and daily volumes
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();

@@ -54,7 +54,7 @@ export default function OpenInterestByCategoryChart() {
 
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader />
+            <Loader className="w-8 h-8" />
           </div>
         ) : slices.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">

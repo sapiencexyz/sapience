@@ -1406,11 +1406,7 @@ type ProfitRank {
   totalPnL: String!
 }
 
-"""
-Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
-Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
-deltas over that interval.
-"""
+"""Open-interest aggregated for a single category."""
 type CategoryOpenInterest {
   category: Category!
   """Open interest in wei (decimal string)"""
@@ -1434,6 +1430,11 @@ type TimeToResolutionBucket {
   predictionCount: Int!
 }
 
+"""
+Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
+Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
+deltas over that interval.
+"""
 type ProtocolStat {
   cumulativeVolume: String!
 

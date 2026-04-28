@@ -104,7 +104,7 @@ export default function OpenInterestByTimeToResolutionChart() {
 
           {isLoading ? (
             <div className="h-[260px] flex items-center justify-center">
-              <Loader />
+              <Loader className="w-8 h-8" />
             </div>
           ) : !hasData ? (
             <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">
