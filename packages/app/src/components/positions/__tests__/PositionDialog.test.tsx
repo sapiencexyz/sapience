@@ -96,7 +96,7 @@ const pickConfig: PickConfigData = {
 };
 
 // This holder holds the counterparty side of 10 predictions →
-// userCollateral = 979.79, totalPayout = 1,000 (sum across the parlays).
+// userCollateral = 979.79, totalPayout = 1,000 (sum across the combos).
 const counterpartyPosition: PositionBalance = {
   id: 1,
   chainId: 42161,
@@ -187,7 +187,7 @@ describe('PositionDialog', () => {
       />
     );
 
-    expect(screen.getByText('Holder')).toBeInTheDocument();
+    expect(screen.getByText('Account')).toBeInTheDocument();
     // AddressDisplay renders the address in a truncated form; its link href
     // is the full holder address → profile page.
     const profileLink = screen.getByRole('link', { name: /0x1f5f/i });

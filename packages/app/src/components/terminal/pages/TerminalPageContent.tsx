@@ -12,6 +12,10 @@ import type { ConditionById } from '@sapience/sdk/queries';
 import { useReadContracts } from 'wagmi';
 import { collateralToken } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import {
+  decodeAuctionPredictedOutcomes,
+  PYTH_RESOLVER_SET,
+} from '@sapience/sdk/auction/decodePredictedOutcomes';
 import { useSessionState } from '~/hooks/useSessionState';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
 import {
@@ -34,10 +38,6 @@ import { useCategories } from '~/hooks/graphql/useCategories';
 import StackedPredictions, {
   type Pick,
 } from '~/components/shared/StackedPredictions';
-import {
-  decodeAuctionPredictedOutcomes,
-  PYTH_RESOLVER_SET,
-} from '~/lib/auction/decodePredictedOutcomes';
 
 import CategoryFilter from '~/components/terminal/filters/CategoryFilter';
 import ConditionsFilter from '~/components/terminal/filters/ConditionsFilter';
@@ -52,7 +52,7 @@ import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import Loader from '~/components/shared/Loader';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
 import { useSettings } from '~/lib/context/SettingsContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 
 // Defined outside TerminalPageContent to prevent remounting on parent re-renders
 const TradeNotifications = () => {

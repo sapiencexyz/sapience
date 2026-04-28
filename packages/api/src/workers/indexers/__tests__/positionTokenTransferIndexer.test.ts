@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Log } from 'viem';
+import { zeroAddress as ZERO_ADDRESS, type Log } from 'viem';
 import { Prisma } from '../../../../generated/prisma';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
@@ -39,7 +39,6 @@ vi.mock('@sapience/sdk/contracts', () => ({
 const HOLDER_A = '0x1111111111111111111111111111111111111111';
 const HOLDER_B = '0x2222222222222222222222222222222222222222';
 const TOKEN = '0x3333333333333333333333333333333333333333';
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 const PICK_CONFIG_ID = '0x' + 'cc'.repeat(32);
 
 function makeTransferLog(

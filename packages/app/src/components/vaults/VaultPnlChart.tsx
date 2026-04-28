@@ -16,6 +16,7 @@ import { Button } from '@sapience/ui/components/ui/button';
 import {
   buildVaultPnlChartData,
   calculateVaultPnlHeadlineApy,
+  computeVaultPnlYDomain,
 } from './vaultPnlChartUtils';
 import {
   useProtocolStats,
@@ -234,18 +235,14 @@ export default function VaultPnlChart({
     [chartData, displayMode]
   );
 
-  const yDomain = useMemo(() => {
-    if (displayData.length === 0) return [-1, 1];
-
-    const values = displayData.map((d) => d.value);
-    const minVal = Math.min(...values);
-    const maxVal = Math.max(...values);
-
-    const range = maxVal - minVal;
-    const padding = range * 0.1 || (displayMode === 'pct' ? 0.01 : 0.1);
-
-    return [minVal - padding, maxVal + padding];
-  }, [displayData, displayMode]);
+  const yDomain = useMemo(
+    () =>
+      computeVaultPnlYDomain(
+        displayData.map((d) => d.value),
+        displayMode
+      ),
+    [displayData, displayMode]
+  );
 
   const currentValue =
     displayData.length > 0 ? displayData[displayData.length - 1].value : 0;

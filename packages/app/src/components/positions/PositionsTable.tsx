@@ -56,6 +56,15 @@ import { useSession } from '~/lib/context/SessionContext';
 import SellPositionDialog from '~/components/secondary/SellPositionDialog';
 import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 
+// Render an ROI percentage with sign. Sub-1%-magnitude non-zero values
+// collapse to "<1%" so a 0.4% gain doesn't render as "+0%". Color carries
+// the direction at the call site, so the sign on tiny values is omitted.
+const formatRoi = (roi: number): string => {
+  if (roi !== 0 && Math.abs(roi) < 1) return '<1%';
+  const sign = roi >= 0 ? '+' : '';
+  return `${sign}${Math.round(roi).toLocaleString()}%`;
+};
+
 function PositionRow({
   position,
   collateralSymbol,
@@ -117,12 +126,24 @@ function PositionRow({
     ((isPredictorToken && result === 'COUNTERPARTY_WINS') ||
       (!isPredictorToken && result === 'PREDICTOR_WINS'));
 
-  // PnL: profit if won (payout - positionSize), loss if lost (-positionSize)
+  // Synthetic sell rows have ids like `${dbId}-sell-${tradeHash}`; the open
+  // / parent row is just `${dbId}`.
+  const isSoldRow = position.id.includes('-sell-');
+  const isClosed = !isResolved && BigInt(position.balance) === 0n;
+  const realizedPnLFormatted =
+    position.realizedPnL != null
+      ? parseFloat(formatEther(BigInt(position.realizedPnL)))
+      : null;
+
+  // PnL: profit if won (payout - positionSize), loss if lost (-positionSize),
+  // or the resolver-computed realized value for closed-but-unresolved positions.
   const pnlValue = isResolved
     ? holderWon
       ? payoutFormatted - positionSizeFormatted
       : -positionSizeFormatted
-    : null;
+    : isClosed
+      ? realizedPnLFormatted
+      : null;
   const roi =
     pnlValue !== null && positionSizeFormatted > 0
       ? (pnlValue / positionSizeFormatted) * 100
@@ -189,8 +210,7 @@ function PositionRow({
             <span
               className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-500' : 'text-red-500'}`}
             >
-              {roi >= 0 ? '+' : ''}
-              {Math.round(roi).toLocaleString()}%
+              {formatRoi(roi)}
             </span>
           )}
         </div>
@@ -229,7 +249,7 @@ function PositionRow({
           <span className="text-green-500">{collateralSymbol}</span>
           {positionSizeFormatted > 0 && (
             <span className="text-[10px] leading-tight tabular-nums font-mono text-green-500">
-              +{Math.round(roi).toLocaleString()}%
+              {formatRoi(roi)}
             </span>
           )}
         </div>
@@ -248,6 +268,34 @@ function PositionRow({
           <span className="text-[10px] leading-tight tabular-nums font-mono text-red-500">
             -100%
           </span>
+        </div>
+      );
+    }
+
+    // Closed (balance=0, unresolved) → realized PnL from secondary trades + claims
+    if (isClosed && pnlValue !== null) {
+      const colorClass =
+        pnlValue > 0
+          ? 'text-green-500'
+          : pnlValue < 0
+            ? 'text-red-500'
+            : 'text-muted-foreground';
+      return (
+        <div
+          className={`whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 ${colorClass}`}
+        >
+          <NumberDisplay
+            value={pnlValue}
+            className={`tabular-nums font-mono ${colorClass}`}
+          />{' '}
+          <span className={colorClass}>{collateralSymbol}</span>
+          {positionSizeFormatted > 0 && (
+            <span
+              className={`text-[10px] leading-tight tabular-nums font-mono ${colorClass}`}
+            >
+              {formatRoi(roi)}
+            </span>
+          )}
         </div>
       );
     }
@@ -275,12 +323,19 @@ function PositionRow({
   return (
     <TableRow>
       <TableCell>
-        <PicksSummary
-          picks={picks}
-          predictionId={pickConfig?.predictionId}
-          onClick={onOpenDialog}
-        />
-        {pickConfig?.isLegacy && <LegacyBadge />}
+        <div className="flex items-center gap-2 flex-wrap">
+          <PicksSummary
+            picks={picks}
+            predictionId={pickConfig?.predictionId}
+            onClick={onOpenDialog}
+          />
+          {pickConfig?.isLegacy && <LegacyBadge />}
+          {isSoldRow && (
+            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono uppercase border border-muted-foreground/40 bg-muted/20 text-muted-foreground">
+              SOLD
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <NumberDisplay

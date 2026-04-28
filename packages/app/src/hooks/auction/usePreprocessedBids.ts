@@ -1,14 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Address } from 'viem';
+import { zeroAddress as ZERO_ADDRESS, type Address } from 'viem';
 import type { PickJson } from '@sapience/sdk/types';
 import { validateBidFull } from '@sapience/sdk/auction/validation';
 import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import type { AuctionBid } from '~/lib/auction/useAuctionBidsHub';
 import { getPublicClientForChainId } from '~/lib/utils/util';
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

@@ -3,7 +3,7 @@ import {
   PositionStage,
   type PositionBenchmarks,
   type PositionProgressState,
-} from '~/types/positionProgress';
+} from '~/lib/types/positionProgress';
 
 const initialBenchmarks: PositionBenchmarks = {
   submissionStartedAt: null,

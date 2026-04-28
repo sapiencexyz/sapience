@@ -66,6 +66,9 @@ export const predictionCount: NonNullable<
 export const positionCount: NonNullable<
   QueryResolvers['positionCount']
 > = async (_parent, { holder, settled, chainId }) => {
+  // Mirror the visibility rule applied in `positions`: drop zero-balance
+  // unresolved rows (off-platform transfers/burns) so the count matches the
+  // set of underlying positions surfaced to clients.
   const where: Prisma.PositionWhereInput = {
     holder: holder.toLowerCase(),
     NOT: { balance: '0', pickConfiguration: { resolved: false } },
@@ -326,12 +329,6 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     }
   }
 
-  // Hide zero-balance positions that aren't settled yet (user burned or
-  // transferred the tokens before settlement — these would display as
-  // "0.00 USDe / PENDING" on the client). Post-settlement zero-balance
-  // positions are kept since they carry PnL data.
-  where.NOT = { balance: '0', pickConfiguration: { resolved: false } };
-
   // PositionSortField SDL enum values are CREATED_AT / UPDATED_AT; map
   // to the Prisma column name for orderBy.
   const posOrderDirection = orderDirection === 'asc' ? 'asc' : 'desc';
@@ -350,42 +347,225 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     },
   });
 
-  return rows.map((r) => {
+  // For each Position row we build a chronological event stream of primary
+  // mints (Predictions) and secondary trades (buys + sells matching
+  // token+holder), then walk it with running WAC. Each sell produces a
+  // synthetic Closed row; if balance > 0 at the end, we also emit an Open
+  // row carrying the remaining cost basis. Claims are intentionally excluded
+  // — the contract reverts redeem() unless the pickConfig is resolved, so
+  // any Claim is post-settlement and the existing settlement-PnL flow on a
+  // resolved Position already covers it.
+  const chainIds = Array.from(new Set(rows.map((r) => r.chainId)));
+  const tokenAddresses = Array.from(new Set(rows.map((r) => r.tokenAddress)));
+  const holders = Array.from(new Set(rows.map((r) => r.holder)));
+  const trades =
+    rows.length === 0
+      ? []
+      : await prisma.secondaryTrade.findMany({
+          where: {
+            chainId: { in: chainIds },
+            token: { in: tokenAddresses },
+            OR: [{ seller: { in: holders } }, { buyer: { in: holders } }],
+          },
+          select: {
+            chainId: true,
+            token: true,
+            seller: true,
+            buyer: true,
+            price: true,
+            tokenAmount: true,
+            executedAt: true,
+            tradeHash: true,
+          },
+        });
+
+  const positionKey = (chainId: number, token: string, holder: string) =>
+    `${chainId}:${token}:${holder}`;
+  const tradesByPos = new Map<string, typeof trades>();
+  for (const t of trades) {
+    for (const role of [t.seller, t.buyer] as const) {
+      const k = positionKey(t.chainId, t.token, role);
+      const arr = tradesByPos.get(k);
+      if (arr) arr.push(t);
+      else tradesByPos.set(k, [t]);
+    }
+  }
+
+  type PositionShape = {
+    id: string;
+    chainId: number;
+    tokenAddress: string;
+    pickConfigId: string;
+    isPredictorToken: boolean;
+    holder: string;
+    balance: string;
+    userCollateral: string | null;
+    totalPayout: string | null;
+    realizedPnL: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    pickConfig: ReturnType<typeof mapPickConfig> | null;
+  };
+
+  const synthesized: PositionShape[] = [];
+  for (const r of rows) {
     const pc = r.pickConfiguration;
-    let userCollateral = 0n;
     let totalPayout = 0n;
     let predictionId: string | null = null;
+
+    // Primary-mint events from Predictions tied to this position
+    type Acquire = { ts: number; cost: bigint; shares: bigint };
+    type Disposal = {
+      tradeHash: string;
+      ts: number;
+      proceeds: bigint;
+      shares: bigint;
+    };
+    const acquires: Acquire[] = [];
+    const disposals: Disposal[] = [];
+
     if (pc) {
       for (const pred of pc.predictions) {
         const predCollateral = BigInt(pred.predictorCollateral);
         const cpCollateral = BigInt(pred.counterpartyCollateral);
         const predictionTotal = predCollateral + cpCollateral;
-        if (r.isPredictorToken && pred.predictor === r.holder) {
-          predictionId = pred.predictionId;
-          userCollateral += predCollateral;
-          totalPayout += predictionTotal;
-        } else if (!r.isPredictorToken && pred.counterparty === r.holder) {
-          predictionId = pred.predictionId;
-          userCollateral += cpCollateral;
-          totalPayout += predictionTotal;
-        }
+        const isHolderSide =
+          (r.isPredictorToken && pred.predictor === r.holder) ||
+          (!r.isPredictorToken && pred.counterparty === r.holder);
+        if (!isHolderSide) continue;
+        predictionId ??= pred.predictionId;
+        totalPayout += predictionTotal;
+        // Mint amount on both sides equals total collateral pool (see
+        // PredictionMarketEscrow.sol). Cost is just the holder's share.
+        const cost = r.isPredictorToken ? predCollateral : cpCollateral;
+        acquires.push({
+          ts: pred.createdAt.getTime() / 1000,
+          cost,
+          shares: predictionTotal,
+        });
       }
     }
-    return {
-      id: r.id,
-      chainId: r.chainId,
-      tokenAddress: r.tokenAddress,
-      pickConfigId: r.pickConfigId,
-      isPredictorToken: r.isPredictorToken,
-      holder: r.holder,
-      balance: r.balance,
-      userCollateral: userCollateral > 0n ? userCollateral.toString() : null,
-      totalPayout: totalPayout > 0n ? totalPayout.toString() : null,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-      pickConfig: pc ? mapPickConfig(pc, { predictionId }) : null,
+
+    const k = positionKey(r.chainId, r.tokenAddress, r.holder);
+    for (const t of tradesByPos.get(k) ?? []) {
+      const price = BigInt(t.price);
+      const shares = BigInt(t.tokenAmount);
+      if (t.buyer === r.holder) {
+        acquires.push({ ts: t.executedAt, cost: price, shares });
+      }
+      if (t.seller === r.holder) {
+        disposals.push({
+          tradeHash: t.tradeHash,
+          ts: t.executedAt,
+          proceeds: price,
+          shares,
+        });
+      }
+    }
+
+    const acquiresSorted = [...acquires].sort((a, b) => a.ts - b.ts);
+    const disposalsSorted = [...disposals].sort((a, b) => a.ts - b.ts);
+
+    // Walk acquires + disposals in chronological order, maintaining running
+    // WAC. Each disposal records the cost basis allocated to its shares
+    // using the WAC at that moment.
+    let costPool = 0n;
+    let sharesPool = 0n;
+    let acqIdx = 0;
+    type DisposalRow = {
+      tradeHash: string;
+      ts: number;
+      proceeds: bigint;
+      shares: bigint;
+      costBasis: bigint;
     };
+    const disposalRows: DisposalRow[] = [];
+    for (const d of disposalsSorted) {
+      while (
+        acqIdx < acquiresSorted.length &&
+        acquiresSorted[acqIdx].ts <= d.ts
+      ) {
+        costPool += acquiresSorted[acqIdx].cost;
+        sharesPool += acquiresSorted[acqIdx].shares;
+        acqIdx += 1;
+      }
+      const allocated =
+        sharesPool > 0n ? (costPool * d.shares) / sharesPool : 0n;
+      disposalRows.push({ ...d, costBasis: allocated });
+      costPool -= allocated;
+      sharesPool -= d.shares;
+      if (sharesPool < 0n) sharesPool = 0n;
+      if (costPool < 0n) costPool = 0n;
+    }
+    while (acqIdx < acquiresSorted.length) {
+      costPool += acquiresSorted[acqIdx].cost;
+      sharesPool += acquiresSorted[acqIdx].shares;
+      acqIdx += 1;
+    }
+
+    const totalUserCollateral = acquires.reduce((s, a) => s + a.cost, 0n);
+    const totalPayoutStr = totalPayout > 0n ? totalPayout.toString() : null;
+    const mappedPickConfig = pc ? mapPickConfig(pc, { predictionId }) : null;
+    const balanceBn = BigInt(r.balance);
+    const isResolved = pc?.resolved ?? false;
+
+    // Emit one synthetic row per sell (only meaningful for unresolved
+    // pickConfigs — once settled, the existing PnL flow takes over).
+    if (!isResolved) {
+      for (const d of disposalRows) {
+        synthesized.push({
+          id: `${r.id}-sell-${d.tradeHash}`,
+          chainId: r.chainId,
+          tokenAddress: r.tokenAddress,
+          pickConfigId: r.pickConfigId,
+          isPredictorToken: r.isPredictorToken,
+          holder: r.holder,
+          balance: '0',
+          userCollateral: d.costBasis.toString(),
+          totalPayout: totalPayoutStr,
+          realizedPnL: (d.proceeds - d.costBasis).toString(),
+          createdAt: r.createdAt,
+          updatedAt: new Date(d.ts * 1000),
+          pickConfig: mappedPickConfig,
+        });
+      }
+    }
+
+    // Open / parent row: keep when there's still balance, or when the
+    // position is settled (existing settlement-PnL flow handles it). A
+    // zero-balance unresolved row with no sells means the holder transferred
+    // or burned the tokens off-platform — drop it, matching prior behavior.
+    if (balanceBn > 0n || isResolved) {
+      const remainingCost =
+        !isResolved && disposalRows.length > 0 ? costPool : totalUserCollateral;
+      synthesized.push({
+        id: String(r.id),
+        chainId: r.chainId,
+        tokenAddress: r.tokenAddress,
+        pickConfigId: r.pickConfigId,
+        isPredictorToken: r.isPredictorToken,
+        holder: r.holder,
+        balance: r.balance,
+        userCollateral: remainingCost > 0n ? remainingCost.toString() : null,
+        totalPayout: totalPayoutStr,
+        realizedPnL: null,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        pickConfig: mappedPickConfig,
+      });
+    }
+  }
+
+  // Re-sort by the requested field. Synthetic sell rows carry the trade's
+  // executedAt as their updatedAt, so without this they'd appear grouped
+  // under their parent Position rather than interleaved by recency.
+  const sortKey: keyof Pick<PositionShape, 'createdAt' | 'updatedAt'> =
+    posOrderField === 'createdAt' ? 'createdAt' : 'updatedAt';
+  synthesized.sort((a, b) => {
+    const diff = b[sortKey].getTime() - a[sortKey].getTime();
+    return posOrderDirection === 'asc' ? -diff : diff;
   });
+  return synthesized;
 };
 
 export const closes: NonNullable<QueryResolvers['closes']> = async (

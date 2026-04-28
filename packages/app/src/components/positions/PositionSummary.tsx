@@ -407,7 +407,7 @@ export default function PositionSummary({
               {showHolder && (
                 <div className="space-y-1">
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-                    Holder
+                    Account
                   </div>
                   <div className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground">
                     <Link

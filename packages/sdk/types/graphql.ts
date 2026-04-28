@@ -336,6 +336,14 @@ export type CategoryNullableRelationFilter = {
   isNot?: InputMaybe<CategoryWhereInput>;
 };
 
+/** Open-interest aggregated for a single category. */
+export type CategoryOpenInterest = {
+  __typename?: 'CategoryOpenInterest';
+  category: Category;
+  /** Open interest in wei (decimal string) */
+  openInterest: Scalars['String']['output'];
+};
+
 export type CategoryOrderByWithRelationInput = {
   conditionGroups?: InputMaybe<ConditionGroupOrderByRelationAggregateInput>;
   conditions?: InputMaybe<ConditionOrderByRelationAggregateInput>;
@@ -1458,10 +1466,11 @@ export type Position = {
   chainId: Scalars['Int']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   holder: Scalars['String']['output'];
-  id: Scalars['Int']['output'];
+  id: Scalars['String']['output'];
   isPredictorToken: Scalars['Boolean']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   pickConfigId: Scalars['String']['output'];
+  realizedPnL?: Maybe<Scalars['String']['output']>;
   tokenAddress: Scalars['String']['output'];
   totalPayout?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTimeISO']['output'];
@@ -1539,15 +1548,21 @@ export type ProfitRank = {
   totalPnL: Scalars['String']['output'];
 };
 
-/** Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL */
+/**
+ * Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
+ * Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
+ * deltas over that interval.
+ */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
   cumulativeVolume: Scalars['String']['output'];
-  dailyPnL: Scalars['String']['output'];
-  dailyVolume: Scalars['String']['output'];
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
-  /** Unix epoch timestamp (seconds) for midnight UTC of the snapshot day */
+  /** Realized PnL delta over the snapshot interval */
+  periodPnL: Scalars['String']['output'];
+  /** Cumulative-volume delta over the snapshot interval */
+  periodVolume: Scalars['String']['output'];
+  /** Unix epoch timestamp (seconds) aligned to the snapshot interval boundary */
   timestamp: Scalars['Int']['output'];
   vaultAirdropGains: Scalars['String']['output'];
   vaultAvailableAssets: Scalars['String']['output'];
@@ -1595,6 +1610,10 @@ export type Query = {
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
+  /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
+  openInterestByCategory: Array<CategoryOpenInterest>;
+  /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
+  openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   /** Look up a single pick configuration by ID */
   pickConfiguration?: Maybe<PickConfiguration>;
   /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
@@ -1613,7 +1632,7 @@ export type Query = {
   predictions: Array<Prediction>;
   /** Profit leaderboard — addresses ranked by total PnL across all positions */
   profitLeaderboard: Array<ProfitEntry>;
-  /** Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest */
+  /** Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest */
   protocolStats: Array<ProtocolStat>;
   /** Time-bucketed total protocol trading volume across all users */
   protocolVolume: Array<VolumeDataPoint>;
@@ -2091,6 +2110,24 @@ export type TimeInterval =
   | 'HOUR'
   | 'MONTH'
   | 'WEEK';
+
+/**
+ * Open-interest aggregated by time-to-resolution bucket. Each unsettled
+ * prediction's collateral is bucketed by the latest endTime among the conditions
+ * it touches (the moment its OI can finally be claimed). One row per non-empty
+ * bucket, ordered from soonest (bucket = 1) to furthest out.
+ */
+export type TimeToResolutionBucket = {
+  __typename?: 'TimeToResolutionBucket';
+  /** Sort order: 1 = soonest, increasing for further-out buckets */
+  bucket: Scalars['Int']['output'];
+  /** Display label, e.g. ≤1d / 2-7d / 1-2mo */
+  label: Scalars['String']['output'];
+  /** Open interest in wei (decimal string) */
+  openInterest: Scalars['String']['output'];
+  /** Number of predictions contributing to this bucket */
+  predictionCount: Scalars['Int']['output'];
+};
 
 /** Secondary market trade record where position tokens are exchanged between users */
 export type Trade = {

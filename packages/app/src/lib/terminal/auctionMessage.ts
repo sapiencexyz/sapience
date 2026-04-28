@@ -1,7 +1,7 @@
 import {
   decodeAuctionPredictedOutcomes,
   PYTH_RESOLVER_SET,
-} from '~/lib/auction/decodePredictedOutcomes';
+} from '@sapience/sdk/auction/decodePredictedOutcomes';
 import type { UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
 
 // Shape of auction.started / auction.bids message payload (relayer feed).

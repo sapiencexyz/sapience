@@ -3,10 +3,11 @@ import type { ProtocolStat } from '~/hooks/graphql/useAnalytics';
 import {
   buildVaultPnlChartData,
   calculateVaultPnlHeadlineApy,
+  computeVaultPnlYDomain,
 } from '../vaultPnlChartUtils';
 
 const ONE_DAY = 24 * 60 * 60;
-const ONE_ETH = 10n ** 18n;
+const ONE_WUSDE = 10n ** 18n;
 const NOW_SEC = Date.UTC(2026, 3, 24, 0, 0, 0) / 1000;
 
 function makeStat({
@@ -18,13 +19,13 @@ function makeStat({
   tvl: number;
   pnl: number;
 }): ProtocolStat {
-  const tvlWei = BigInt(tvl) * ONE_ETH;
+  const tvlWei = BigInt(tvl) * ONE_WUSDE;
 
   return {
     timestamp,
     vaultBalance: tvlWei.toString(),
     escrowBalance: '0',
-    vaultCumulativePnL: (BigInt(pnl) * ONE_ETH).toString(),
+    vaultCumulativePnL: (BigInt(pnl) * ONE_WUSDE).toString(),
   } as ProtocolStat;
 }
 
@@ -138,6 +139,35 @@ describe('vaultPnlChartUtils', () => {
     );
 
     expect(chartData).toEqual([]);
+  });
+
+  describe('computeVaultPnlYDomain', () => {
+    it('anchors the baseline at zero when all values are non-negative', () => {
+      const [bottom, top] = computeVaultPnlYDomain([2.26, 5.1, 8.18], 'pct');
+      expect(bottom).toBe(0);
+      expect(top).toBeCloseTo(8.18 + (8.18 - 2.26) * 0.1, 10);
+    });
+
+    it('pads below the minimum when any value is negative', () => {
+      const [bottom, top] = computeVaultPnlYDomain([-3, 0, 5], 'pct');
+      const padding = (5 - -3) * 0.1;
+      expect(bottom).toBeCloseTo(-3 - padding, 10);
+      expect(top).toBeCloseTo(5 + padding, 10);
+    });
+
+    it('uses a fallback pad when all values collapse to a single point', () => {
+      const [bottomPct, topPct] = computeVaultPnlYDomain([4, 4], 'pct');
+      expect(bottomPct).toBe(0);
+      expect(topPct).toBeCloseTo(4 + 0.01, 10);
+
+      const [bottomAbs, topAbs] = computeVaultPnlYDomain([-2, -2], 'abs');
+      expect(bottomAbs).toBeCloseTo(-2 - 0.1, 10);
+      expect(topAbs).toBeCloseTo(-2 + 0.1, 10);
+    });
+
+    it('returns a neutral range for an empty series', () => {
+      expect(computeVaultPnlYDomain([], 'pct')).toEqual([-1, 1]);
+    });
   });
 
   it('preserves the zero-TVL leading-point trim when no anchorSec is supplied', () => {

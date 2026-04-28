@@ -80,7 +80,7 @@ export function TransactionOwnerCell({ tx }: { tx: UiTransaction }) {
     typeof eventLog?.maker === 'string' ? eventLog.maker : '';
   const owner =
     tx.position?.owner ||
-    (normalizedType.includes('mintparlay') ? fallbackMaker : '') ||
+    (normalizedType.includes('mintcombo') ? fallbackMaker : '') ||
     '';
   return (
     <div>
@@ -149,7 +149,7 @@ export function TransactionAmountCell({
       normalizedType.includes('removeliquidity') ||
       normalizedType.includes('settleposition') ||
       normalizedType.includes('settledposition') ||
-      normalizedType.includes('burnparlay')
+      normalizedType.includes('burncombo')
     ) {
       return 'out';
     }
@@ -157,9 +157,9 @@ export function TransactionAmountCell({
       normalizedType.includes('addliquidity') ||
       normalizedType.includes('long') ||
       normalizedType.includes('short') ||
-      normalizedType.includes('mintparlay') ||
-      normalizedType === 'parlay' ||
-      normalizedType === 'antiparlay'
+      normalizedType.includes('mintcombo') ||
+      normalizedType === 'combo' ||
+      normalizedType === 'anticombo'
     ) {
       return 'in';
     }

@@ -1318,10 +1318,11 @@ type Position {
   chainId: Int!
   createdAt: DateTimeISO!
   holder: String!
-  id: Int!
+  id: String!
   isPredictorToken: Boolean!
   pickConfig: PickConfiguration
   pickConfigId: String!
+  realizedPnL: String
   tokenAddress: String!
   totalPayout: String
   updatedAt: DateTimeISO!
@@ -1406,17 +1407,47 @@ type ProfitRank {
   totalPnL: String!
 }
 
+"""Open-interest aggregated for a single category."""
+type CategoryOpenInterest {
+  category: Category!
+  """Open interest in wei (decimal string)"""
+  openInterest: String!
+}
+
 """
-Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL
+Open-interest aggregated by time-to-resolution bucket. Each unsettled
+prediction's collateral is bucketed by the latest endTime among the conditions
+it touches (the moment its OI can finally be claimed). One row per non-empty
+bucket, ordered from soonest (bucket = 1) to furthest out.
+"""
+type TimeToResolutionBucket {
+  """Sort order: 1 = soonest, increasing for further-out buckets"""
+  bucket: Int!
+  """Display label, e.g. ≤1d / 2-7d / 1-2mo"""
+  label: String!
+  """Open interest in wei (decimal string)"""
+  openInterest: String!
+  """Number of predictions contributing to this bucket"""
+  predictionCount: Int!
+}
+
+"""
+Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
+Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
+deltas over that interval.
 """
 type ProtocolStat {
   cumulativeVolume: String!
-  dailyPnL: String!
-  dailyVolume: String!
+
+  """Realized PnL delta over the snapshot interval"""
+  periodPnL: String!
+
+  """Cumulative-volume delta over the snapshot interval"""
+  periodVolume: String!
   escrowBalance: String!
   openInterest: String!
 
-  """Unix epoch timestamp (seconds) for midnight UTC of the snapshot day"""
+  """Unix epoch timestamp (seconds) aligned to the snapshot interval boundary"""
   timestamp: Int!
   vaultAirdropGains: String!
   vaultAvailableAssets: String!
@@ -1531,7 +1562,17 @@ type Query {
   profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
 
   """
-  Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest
+  Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
+  """
+  openInterestByCategory: [CategoryOpenInterest!]!
+
+  """
+  Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
+  """
+  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
+
+  """
+  Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest
   """
   protocolStats(vaultAddress: String): [ProtocolStat!]!
 

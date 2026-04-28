@@ -38,7 +38,7 @@ vi.mock('~/lib/ws/AuctionWsClient', () => ({
     (msg as Record<string, unknown>)?.__source as string | undefined,
 }));
 
-vi.mock('~/lib/ws', () => ({
+vi.mock('~/lib/ws/auctionUrl', () => ({
   toAuctionWsUrl: (url: string) => `ws://${url}`,
 }));
 

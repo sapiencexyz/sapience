@@ -19,12 +19,9 @@ import {
   createErrorImageResponse,
 } from '../_shared';
 import { fetchProfileData, resolveEnsInfo } from '../_profile-helpers';
+import { shortenAddress } from '~/lib/utils/util';
 
 export const runtime = 'edge';
-
-function truncateAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
 
 function formatPnL(pnl: number): { text: string; color: string } {
   const abs = Math.abs(pnl);
@@ -180,7 +177,7 @@ export async function GET(req: Request) {
                     fontFamily: FONT_FAMILY.mono,
                   }}
                 >
-                  {ensInfo.name || truncateAddress(address)}
+                  {ensInfo.name || shortenAddress(address)}
                 </div>
               </div>
             </div>

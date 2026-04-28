@@ -4,6 +4,7 @@ import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import { httpCacheHeadersPlugin } from './plugins/httpCacheHeadersPlugin';
+import { operationTimingPlugin } from './plugins/operationTimingPlugin';
 import depthLimit from 'graphql-depth-limit';
 import { GraphQLError } from 'graphql';
 import { validateQuery } from './queryValidation.js';
@@ -17,6 +18,10 @@ import { buildApiSchema } from './buildSchema';
 
 export interface ApolloContext {
   prisma: typeof prisma;
+  // Set by the inline complexity plugin in didResolveOperation; read by
+  // operationTimingPlugin in willSendResponse. Optional because the
+  // complexity plugin skips pure-introspection queries.
+  queryComplexity?: number;
 }
 
 export const initializeApolloServer = async () => {
@@ -51,6 +56,7 @@ export const initializeApolloServer = async () => {
         includeCookies: true,
       }),
       httpCacheHeadersPlugin(),
+      operationTimingPlugin(),
       responseCachePlugin(),
       // Query complexity plugin
       // Note: Uses local adaptation of graphql-query-complexity to avoid
@@ -59,7 +65,7 @@ export const initializeApolloServer = async () => {
       {
         async requestDidStart() {
           return {
-            async didResolveOperation({ request, document }) {
+            async didResolveOperation({ request, document, contextValue }) {
               // Skip validation for pure introspection queries
               // (queries that ONLY contain __schema or __type fields)
               // Introspection is already gated by the introspection: true setting
@@ -93,6 +99,9 @@ export const initializeApolloServer = async () => {
                   config.GRAPHQL_MAX_LIST_SIZE
                 ),
               });
+
+              // Bridge to operationTimingPlugin's willSendResponse logger.
+              contextValue.queryComplexity = complexity;
 
               if (config.isDev) {
                 console.log(`Query complexity: ${complexity}`);

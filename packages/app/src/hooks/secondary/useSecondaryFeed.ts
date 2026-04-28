@@ -8,7 +8,7 @@ import type {
   SecondaryValidatedBid,
 } from '@sapience/sdk/types/secondary';
 import { useSettings } from '~/lib/context/SettingsContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 
 export interface SecondaryListing extends SecondaryAuctionDetails {

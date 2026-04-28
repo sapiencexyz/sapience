@@ -68,7 +68,7 @@ export type PickConfigData = {
  * Position Balance - ERC20 token balance for a user
  */
 export type PositionBalance = {
-  id: number;
+  id: string;
   chainId: number;
   tokenAddress: string;
   pickConfigId: string;
@@ -77,6 +77,7 @@ export type PositionBalance = {
   balance: string;
   userCollateral?: string | null;
   totalPayout?: string | null;
+  realizedPnL?: string | null;
   createdAt: string;
   updatedAt: string;
   pickConfig?: PickConfigData | null;
@@ -232,6 +233,7 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
       balance
       userCollateral
       totalPayout
+      realizedPnL
       createdAt
       updatedAt
       pickConfig {
@@ -284,6 +286,7 @@ const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
       balance
       userCollateral
       totalPayout
+      realizedPnL
       createdAt
       updatedAt
       pickConfig {

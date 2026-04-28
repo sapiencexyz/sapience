@@ -7,6 +7,7 @@ import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import { ConditionStatusIndicator } from './ConditionStatusIndicator';
 import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
+import { shortenAddress } from '~/lib/utils/util';
 
 interface TechSpecTableProps {
   conditionId: string;
@@ -33,9 +34,6 @@ export function TechSpecTable({
     resolverAddress &&
     POLYMARKET_RESOLVER_ADDRESSES.has(resolverAddress.toLowerCase());
   const isPythResolver = inferResolverKind(resolverAddress) === 'pyth';
-
-  const formatAddress = (address: string) =>
-    `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -66,7 +64,7 @@ export function TechSpecTable({
                     className="h-[18px] w-[18px]"
                   />
                 </a>
-                {formatAddress(marketAddress)}
+                {shortenAddress(marketAddress)}
                 <button
                   type="button"
                   onClick={() => copyToClipboard(marketAddress)}
@@ -122,7 +120,7 @@ export function TechSpecTable({
                     </div>
                   </a>
                 )}
-                {formatAddress(resolverAddress)}
+                {shortenAddress(resolverAddress)}
                 <button
                   type="button"
                   onClick={() => copyToClipboard(resolverAddress)}
@@ -149,7 +147,7 @@ export function TechSpecTable({
                 resolvedToYes={resolvedToYes}
                 nonDecisive={nonDecisive}
               />
-              {formatAddress(conditionId)}
+              {shortenAddress(conditionId)}
               <button
                 type="button"
                 onClick={() => copyToClipboard(conditionId)}

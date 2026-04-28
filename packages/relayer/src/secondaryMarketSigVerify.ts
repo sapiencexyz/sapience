@@ -7,7 +7,12 @@
  * does the definitive verification for those.
  */
 
-import { verifyTypedData, type Address, type Hex } from 'viem';
+import {
+  verifyTypedData,
+  zeroAddress as ZERO_ADDRESS,
+  type Address,
+  type Hex,
+} from 'viem';
 import { secondaryMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import {
   computeTradeHash,
@@ -18,8 +23,6 @@ import type {
   SecondaryAuctionRequestPayload,
   SecondaryBidPayload,
 } from '@sapience/sdk/types/secondary';
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
 
 /**
  * Get the verifying contract address for a chain
