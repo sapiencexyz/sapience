@@ -9,7 +9,31 @@ const mockPrisma = vi.hoisted(() => ({
 
 vi.mock('../../../../db', () => ({ default: mockPrisma }));
 
+import type {
+  QueryPositionsArgs,
+  QueryPositionCountArgs,
+} from '../../__generated__/resolvers';
 import { positions, positionCount } from './escrow';
+
+// Resolvers in the generated module are typed as the
+// `ResolverFn | ResolverWithResolve` union, which TypeScript can't narrow
+// to a callable from outside Apollo. The implementations are plain async
+// functions, so we cast to the function shape for direct invocation in
+// tests.
+type PositionsFn = (
+  parent: unknown,
+  args: QueryPositionsArgs,
+  ctx: unknown,
+  info: unknown
+) => Promise<unknown[]>;
+type PositionCountFn = (
+  parent: unknown,
+  args: QueryPositionCountArgs,
+  ctx: unknown,
+  info: unknown
+) => Promise<number>;
+const positionsFn = positions as unknown as PositionsFn;
+const positionCountFn = positionCount as unknown as PositionCountFn;
 
 const ALICE = '0xalice';
 const BOB = '0xbob';
@@ -112,18 +136,23 @@ const makeTrade = (overrides: {
   ...overrides,
 });
 
-const callPositions = (args: Partial<Parameters<typeof positions>[1]> = {}) => {
-  return positions(
-    undefined as never,
-    {
-      take: 50,
-      skip: 0,
-      holder: ALICE,
-      ...args,
-    } as Parameters<typeof positions>[1],
-    undefined as never,
-    undefined as never
-  );
+type PositionRowShape = {
+  id: string;
+  balance: string;
+  userCollateral: string | null;
+  realizedPnL: string | null;
+  totalPayout: string | null;
+};
+
+const callPositions = (
+  args: Partial<QueryPositionsArgs> = {}
+): Promise<PositionRowShape[]> => {
+  return positionsFn(
+    undefined,
+    { take: 50, skip: 0, holder: ALICE, ...args },
+    undefined,
+    undefined
+  ) as Promise<PositionRowShape[]>;
 };
 
 beforeEach(() => {
@@ -208,8 +237,8 @@ describe('positions resolver — synthetic row emission', () => {
     const result = await callPositions();
 
     expect(result).toHaveLength(2);
-    const sold = result.find((r) => r!.id.includes('-sell-'));
-    const open = result.find((r) => !r!.id.includes('-sell-'));
+    const sold = result.find((r) => r.id.includes('-sell-'));
+    const open = result.find((r) => !r.id.includes('-sell-'));
     // WAC: cost=100, shares=200; sell 100 shares → allocated = 100*100/200 = 50.
     expect(sold).toMatchObject({
       userCollateral: '50',
@@ -417,7 +446,7 @@ describe('positions resolver — ordering', () => {
 
     const result = await callPositions();
 
-    expect(result.map((r) => r!.id)).toEqual(['1-sell-0xtrade1', '2']);
+    expect(result.map((r) => r.id)).toEqual(['1-sell-0xtrade1', '2']);
   });
 });
 
@@ -425,11 +454,11 @@ describe('positionCount resolver', () => {
   it('applies the same zero-balance/unresolved exclusion as positions', async () => {
     mockPrisma.position.count.mockResolvedValue(3);
 
-    const result = await positionCount(
-      undefined as never,
-      { holder: ALICE } as Parameters<typeof positionCount>[1],
-      undefined as never,
-      undefined as never
+    const result = await positionCountFn(
+      undefined,
+      { holder: ALICE },
+      undefined,
+      undefined
     );
 
     expect(result).toBe(3);
