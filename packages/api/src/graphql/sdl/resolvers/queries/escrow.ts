@@ -555,6 +555,16 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
       });
     }
   }
+
+  // Re-sort by the requested field. Synthetic sell rows carry the trade's
+  // executedAt as their updatedAt, so without this they'd appear grouped
+  // under their parent Position rather than interleaved by recency.
+  const sortKey: keyof Pick<PositionShape, 'createdAt' | 'updatedAt'> =
+    posOrderField === 'createdAt' ? 'createdAt' : 'updatedAt';
+  synthesized.sort((a, b) => {
+    const diff = b[sortKey].getTime() - a[sortKey].getTime();
+    return posOrderDirection === 'asc' ? -diff : diff;
+  });
   return synthesized;
 };
 
