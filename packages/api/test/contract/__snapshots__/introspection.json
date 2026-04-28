@@ -18195,7 +18195,7 @@
           },
           {
             "name": "label",
-            "description": "Display label, e.g. \"≤1d\", \"2-7d\", \"1-2mo\" ",
+            "description": "Display label, e.g. ≤1d / 2-7d / 1-2mo",
             "args": [],
             "type": {
               "kind": "NON_NULL",
