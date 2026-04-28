@@ -2121,7 +2121,7 @@ export type TimeToResolutionBucket = {
   __typename?: 'TimeToResolutionBucket';
   /** Sort order: 1 = soonest, increasing for further-out buckets */
   bucket: Scalars['Int']['output'];
-  /** Display label, e.g. "≤1d", "2-7d", "1-2mo"  */
+  /** Display label, e.g. ≤1d / 2-7d / 1-2mo */
   label: Scalars['String']['output'];
   /** Open interest in wei (decimal string) */
   openInterest: Scalars['String']['output'];
