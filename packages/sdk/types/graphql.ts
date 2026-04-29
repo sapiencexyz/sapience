@@ -1577,11 +1577,17 @@ export type ProtocolStat = {
 
 export type Query = {
   __typename?: 'Query';
-  /** Accuracy score for a single forecaster address, or null if no scored attestations exist */
+  /**
+   * Accuracy score for a single forecaster address, or null if no scored attestations exist
+   * @deprecated Field no longer supported
+   */
   accountAccuracy?: Maybe<ForecasterScore>;
   /** Accuracy rank and score for a single address relative to all forecasters */
   accountAccuracyRank: AccuracyRank;
-  /** Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity. */
+  /**
+   * Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
+   * @deprecated Field no longer supported
+   */
   accountActivity: Array<ActivityItem>;
   /** Time-bucketed balance snapshots for a single address showing deployed and claimable collateral */
   accountBalance: Array<BalanceDataPoint>;
@@ -1589,7 +1595,10 @@ export type Query = {
   accountPnl: Array<PnlDataPoint>;
   /** Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time */
   accountPredictionCount: Array<PredictionCountDataPoint>;
-  /** Profit rank and total PnL for a single address relative to all participants */
+  /**
+   * Profit rank and total PnL for a single address relative to all participants
+   * @deprecated Field no longer supported
+   */
   accountProfitRank: ProfitRank;
   /** Total lifetime trading volume in wei for the given address across all prediction types */
   accountTotalVolume: Scalars['String']['output'];
@@ -1599,14 +1608,22 @@ export type Query = {
   accuracyLeaderboard: Array<ForecasterScore>;
   attestations: Array<Attestation>;
   categories: Array<Category>;
-  /** Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain */
+  /**
+   * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
+   * @deprecated Field no longer supported
+   */
   claims: Array<Claim>;
-  /** Paginated list of position close (burn) records, filterable by address, pick config, and chain */
+  /**
+   * Paginated list of position close (burn) records, filterable by address, pick config, and chain
+   * @deprecated Field no longer supported
+   */
   closes: Array<Close>;
   collateralBalance: CollateralBalanceType;
   collateralBalanceHistory: Array<CollateralBalanceSnapshotType>;
+  /** @deprecated Field no longer supported */
   collateralTransfers: Array<CollateralTransferType>;
   condition?: Maybe<Condition>;
+  /** @deprecated Field no longer supported */
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
@@ -1614,7 +1631,10 @@ export type Query = {
   openInterestByCategory: Array<CategoryOpenInterest>;
   /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
-  /** Look up a single pick configuration by ID */
+  /**
+   * Look up a single pick configuration by ID
+   * @deprecated Field no longer supported
+   */
   pickConfiguration?: Maybe<PickConfiguration>;
   /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
   pickConfigurations: Array<PickConfiguration>;
@@ -1624,9 +1644,15 @@ export type Query = {
   positionCount: Scalars['Int']['output'];
   /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
   positions: Array<Position>;
-  /** Look up a single prediction by its on-chain prediction ID */
+  /**
+   * Look up a single prediction by its on-chain prediction ID
+   * @deprecated Field no longer supported
+   */
   prediction?: Maybe<Prediction>;
-  /** Count of escrow predictions involving the given address */
+  /**
+   * Count of escrow predictions involving the given address
+   * @deprecated Field no longer supported
+   */
   predictionCount: Scalars['Int']['output'];
   /** Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status */
   predictions: Array<Prediction>;
@@ -1634,17 +1660,28 @@ export type Query = {
   profitLeaderboard: Array<ProfitEntry>;
   /** Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest */
   protocolStats: Array<ProtocolStat>;
-  /** Time-bucketed total protocol trading volume across all users */
+  /**
+   * Time-bucketed total protocol trading volume across all users
+   * @deprecated Field no longer supported
+   */
   protocolVolume: Array<VolumeDataPoint>;
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
-  /** Look up a single secondary market trade by its trade hash */
+  /**
+   * Look up a single secondary market trade by its trade hash
+   * @deprecated Field no longer supported
+   */
   trade?: Maybe<Trade>;
-  /** Count of secondary market trades matching the given filters */
+  /**
+   * Count of secondary market trades matching the given filters
+   * @deprecated Field no longer supported
+   */
   tradeCount: Scalars['Int']['output'];
   /** Paginated list of secondary market trades, filterable by seller, buyer, token, and chain */
   trades: Array<Trade>;
+  /** @deprecated Field no longer supported */
   user?: Maybe<User>;
+  /** @deprecated Field no longer supported */
   users: Array<User>;
 };
 
