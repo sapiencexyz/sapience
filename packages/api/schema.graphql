@@ -1445,7 +1445,7 @@ type Query {
   """
   Accuracy score for a single forecaster address, or null if no scored attestations exist
   """
-  accountAccuracy(address: String!): ForecasterScore
+  accountAccuracy(address: String!): ForecasterScore @deprecated
 
   """
   Accuracy rank and score for a single address relative to all forecasters
@@ -1455,7 +1455,7 @@ type Query {
   """
   Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
-  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
+  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]! @deprecated
 
   """
   Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
@@ -1475,7 +1475,7 @@ type Query {
   """
   Profit rank and total PnL for a single address relative to all participants
   """
-  accountProfitRank(address: String!): ProfitRank!
+  accountProfitRank(address: String!): ProfitRank! @deprecated
 
   """
   Total lifetime trading volume in wei for the given address across all prediction types
@@ -1493,17 +1493,17 @@ type Query {
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
   """
-  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]!
+  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated
 
   """
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
-  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]!
+  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
   collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
-  collateralTransfers(address: String!, chainId: Int!, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
+  collateralTransfers(address: String!, chainId: Int!, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]! @deprecated
   condition(where: ConditionWhereUniqueInput!): Condition
-  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
+  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
 
@@ -1518,7 +1518,7 @@ type Query {
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 
   """Look up a single pick configuration by ID"""
-  pickConfiguration(id: String!): PickConfiguration
+  pickConfiguration(id: String!): PickConfiguration @deprecated
 
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
@@ -1537,10 +1537,10 @@ type Query {
   positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
 
   """Look up a single prediction by its on-chain prediction ID"""
-  prediction(id: String!): Prediction
+  prediction(id: String!): Prediction @deprecated
 
   """Count of escrow predictions involving the given address"""
-  predictionCount(address: String!, chainId: Int): Int!
+  predictionCount(address: String!, chainId: Int): Int! @deprecated
 
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
@@ -1558,7 +1558,7 @@ type Query {
   protocolStats(vaultAddress: String): [ProtocolStat!]!
 
   """Time-bucketed total protocol trading volume across all users"""
-  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
+  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated
 
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
@@ -1566,17 +1566,17 @@ type Query {
   questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
 
   """Look up a single secondary market trade by its trade hash"""
-  trade(id: String!): Trade
+  trade(id: String!): Trade @deprecated
 
   """Count of secondary market trades matching the given filters"""
-  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int!
+  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated
 
   """
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
   """
   trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
-  user(where: UserWhereUniqueInput!): User
-  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
+  user(where: UserWhereUniqueInput!): User @deprecated
+  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated
 }
 
 enum QueryMode {
