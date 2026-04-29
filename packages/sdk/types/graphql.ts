@@ -336,11 +336,7 @@ export type CategoryNullableRelationFilter = {
   isNot?: InputMaybe<CategoryWhereInput>;
 };
 
-/**
- * Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
- * Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
- * deltas over that interval.
- */
+/** Open-interest aggregated for a single category. */
 export type CategoryOpenInterest = {
   __typename?: 'CategoryOpenInterest';
   category: Category;
@@ -1551,6 +1547,11 @@ export type ProfitRank = {
   totalPnL: Scalars['String']['output'];
 };
 
+/**
+ * Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
+ * Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
+ * deltas over that interval.
+ */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
   cumulativeVolume: Scalars['String']['output'];
@@ -1570,6 +1571,12 @@ export type ProtocolStat = {
   vaultDeposits: Scalars['String']['output'];
   vaultPositionsLost: Scalars['Int']['output'];
   vaultPositionsWon: Scalars['Int']['output'];
+  /** Cumulative wUSDe paid by the vault on secondary-market buys */
+  vaultSecondaryBought: Scalars['String']['output'];
+  /** Cumulative wUSDe received by the vault on secondary-market sells */
+  vaultSecondarySold: Scalars['String']['output'];
+  /** wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins */
+  vaultUnredeemedClaim: Scalars['String']['output'];
   vaultWithdrawals: Scalars['String']['output'];
 };
 
@@ -1610,6 +1617,8 @@ export type Query = {
   conditions: Array<Condition>;
   /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
   openInterestByCategory: Array<CategoryOpenInterest>;
+  /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
+  openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   /** Look up a single pick configuration by ID */
   pickConfiguration?: Maybe<PickConfiguration>;
   /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
@@ -2106,6 +2115,24 @@ export type TimeInterval =
   | 'HOUR'
   | 'MONTH'
   | 'WEEK';
+
+/**
+ * Open-interest aggregated by time-to-resolution bucket. Each unsettled
+ * prediction's collateral is bucketed by the latest endTime among the conditions
+ * it touches (the moment its OI can finally be claimed). One row per non-empty
+ * bucket, ordered from soonest (bucket = 1) to furthest out.
+ */
+export type TimeToResolutionBucket = {
+  __typename?: 'TimeToResolutionBucket';
+  /** Sort order: 1 = soonest, increasing for further-out buckets */
+  bucket: Scalars['Int']['output'];
+  /** Display label, e.g. "≤1d", "2-7d", "1-2mo"  */
+  label: Scalars['String']['output'];
+  /** Open interest in wei (decimal string) */
+  openInterest: Scalars['String']['output'];
+  /** Number of predictions contributing to this bucket */
+  predictionCount: Scalars['Int']['output'];
+};
 
 /** Secondary market trade record where position tokens are exchanged between users */
 export type Trade = {

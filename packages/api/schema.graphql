@@ -1437,6 +1437,15 @@ type ProtocolStat {
   vaultDeposits: String!
   vaultPositionsLost: Int!
   vaultPositionsWon: Int!
+
+  """Cumulative wUSDe paid by the vault on secondary-market buys"""
+  vaultSecondaryBought: String!
+
+  """Cumulative wUSDe received by the vault on secondary-market sells"""
+  vaultSecondarySold: String!
+
+  """wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins"""
+  vaultUnredeemedClaim: String!
   vaultWithdrawals: String!
 }
 

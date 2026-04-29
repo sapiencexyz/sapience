@@ -33,6 +33,379 @@ interface VaultSecondaryFlowsResult {
   sold: bigint;
 }
 
+/**
+ * Per-snapshot decomposition of every leg in 1634's reconciliation identity:
+ *   balance + deployed = deposits − withdrawals + settlementPnL
+ *                        + (secondarySold − secondaryBought) + airdrops
+ *
+ * Used only when PROTOCOL_STATS_GAP_DEBUG=1 to print full attribution logs so
+ * a non-zero `Δ = LHS − RHS` can be traced to a specific leg (or to legacy
+ * Prediction-side accounting that the new identity supersedes).
+ */
+export interface VaultGapDecomposition {
+  // ── Prediction-side legs (legacy diagnostic; superseded by Close-based PnL) ──
+  // Active deployment (in escrow, prediction not yet resolved as of t)
+  counterpartyActiveStake: bigint;
+  counterpartyActiveCount: number;
+  predictorActiveStake: bigint;
+  predictorActiveCount: number;
+  // Resolved & vault-on-side wins (from Prediction)
+  winsAsCounterpartyCount: number;
+  winsAsCounterpartyGain: bigint;
+  winsAsCounterpartyOwed: bigint;
+  winsAsPredictorCount: number;
+  winsAsPredictorGain: bigint;
+  winsAsPredictorOwed: bigint;
+  // Resolved & vault-on-side losses (from Prediction)
+  lossesAsCounterpartyCount: number;
+  lossesAsCounterpartyLoss: bigint;
+  lossesAsPredictorCount: number;
+  lossesAsPredictorLoss: bigint;
+  // Claims (TokensRedeemed events filed by vault)
+  claimedByVault: bigint;
+  claimCount: number;
+  // ── Close-based legs (load-bearing under 1634's identity) ──
+  closesPredictorHolderCount: number;
+  closesPredictorHolderPayout: bigint;
+  closesCounterpartyHolderCount: number;
+  closesCounterpartyHolderPayout: bigint;
+  primaryCollateralCommitted: bigint;
+  // CollateralTransfer leg (raw inflow source for airdrop residual)
+  collateralTransfersIn: bigint;
+  collateralTransfersInCount: number;
+}
+
+function formatGapDecomposition(
+  label: string,
+  d: VaultGapDecomposition,
+  balance: bigint,
+  deployed: bigint,
+  deposits: bigint,
+  withdrawals: bigint,
+  pnl: bigint,
+  secondary: VaultSecondaryFlowsResult,
+  airdrops: bigint
+): string {
+  const fmt = (b: bigint): string => formatUnits(b, 18);
+  const lhs = balance + deployed;
+  const rhs =
+    deposits - withdrawals + pnl + secondary.sold - secondary.bought + airdrops;
+  const delta = lhs - rhs;
+  const closeGross =
+    d.closesPredictorHolderPayout + d.closesCounterpartyHolderPayout;
+  const claimGross = d.claimedByVault;
+  const unionGross = closeGross + claimGross;
+  const totalOwedFromPredictionWins =
+    d.winsAsCounterpartyOwed + d.winsAsPredictorOwed;
+  const unredeemedFromPredictionView =
+    totalOwedFromPredictionWins - d.claimedByVault > 0n
+      ? totalOwedFromPredictionWins - d.claimedByVault
+      : 0n;
+
+  return [
+    `[GapDebug] ${label}`,
+    `  IDENTITY: balance + deployed = deposits − withdrawals + pnl + (sold − bought) + airdrops`,
+    `  LHS = ${fmt(balance)} + ${fmt(deployed)} = ${fmt(lhs)}`,
+    `  RHS = ${fmt(deposits)} − ${fmt(withdrawals)} + ${fmt(pnl)} + (${fmt(secondary.sold)} − ${fmt(secondary.bought)}) + ${fmt(airdrops)} = ${fmt(rhs)}`,
+    `  Δ   = LHS − RHS = ${fmt(delta)}`,
+    `  --- settlement gross payouts (Claim ∪ Close) ---`,
+    `  Claim (TokensRedeemed): count=${d.claimCount}, payout=${fmt(claimGross)}`,
+    `  Close (PositionsBurned, predictor-holder): count=${d.closesPredictorHolderCount}, payout=${fmt(d.closesPredictorHolderPayout)}`,
+    `  Close (PositionsBurned, counterparty-holder): count=${d.closesCounterpartyHolderCount}, payout=${fmt(d.closesCounterpartyHolderPayout)}`,
+    `  union gross payouts: ${fmt(unionGross)} (claim ${fmt(claimGross)} + close ${fmt(closeGross)})`,
+    `  primary collateral committed (resolved preds): ${fmt(d.primaryCollateralCommitted)}`,
+    `  realized PnL = union gross − primary = ${fmt(unionGross - d.primaryCollateralCommitted)}`,
+    `  --- airdrop residual breakdown ---`,
+    `  CollateralTransfer inflows: ${fmt(d.collateralTransfersIn)} (${d.collateralTransfersInCount} transfers)`,
+    `  explained = deposits + union gross payouts + secondary.sold = ${fmt(deposits + unionGross + secondary.sold)}`,
+    `  airdrop residual (clamped at 0) = ${fmt(airdrops)}`,
+    `  --- legacy Prediction-side legs (informational) ---`,
+    `  active stake: counterparty=${fmt(d.counterpartyActiveStake)} (${d.counterpartyActiveCount}), predictor=${fmt(d.predictorActiveStake)} (${d.predictorActiveCount})`,
+    `  prediction-side wins (gain): as_cp=${fmt(d.winsAsCounterpartyGain)} (${d.winsAsCounterpartyCount}), as_pr=${fmt(d.winsAsPredictorGain)} (${d.winsAsPredictorCount})`,
+    `  prediction-side losses: as_cp=${fmt(d.lossesAsCounterpartyLoss)} (${d.lossesAsCounterpartyCount}), as_pr=${fmt(d.lossesAsPredictorLoss)} (${d.lossesAsPredictorCount})`,
+    `  claimed by vault (TokensRedeemed): ${fmt(d.claimedByVault)} (${d.claimCount} claims)`,
+    `  unredeemed (Prediction-view): ${fmt(unredeemedFromPredictionView)}`,
+  ].join('\n');
+}
+
+/**
+ * Async live-path version: queries Prisma directly for one (chain, vault, timestamp)
+ * tuple. Backfill uses the in-memory aggregator variant below to avoid N×scan.
+ */
+async function decomposeVaultGap(
+  chainId: number,
+  atTimestamp: number,
+  vaultAddress: string
+): Promise<VaultGapDecomposition> {
+  const [predictions, claims, closes, transfers] = await Promise.all([
+    prisma.prediction.findMany({
+      where: {
+        chainId,
+        OR: [{ predictor: vaultAddress }, { counterparty: vaultAddress }],
+        onChainCreatedAt: { lte: atTimestamp },
+      },
+      select: {
+        onChainCreatedAt: true,
+        counterpartyCollateral: true,
+        predictorCollateral: true,
+        predictor: true,
+        counterparty: true,
+        pickConfigId: true,
+        pickConfiguration: {
+          select: { resolved: true, resolvedAt: true, result: true },
+        },
+      },
+    }),
+    prisma.claim.findMany({
+      where: {
+        chainId,
+        holder: vaultAddress,
+        redeemedAt: { lte: atTimestamp },
+      },
+      select: { collateralPaid: true },
+    }),
+    prisma.close.findMany({
+      where: {
+        chainId,
+        burnedAt: { lte: atTimestamp },
+        OR: [
+          { predictorHolder: vaultAddress },
+          { counterpartyHolder: vaultAddress },
+        ],
+      },
+      select: {
+        burnedAt: true,
+        predictorHolder: true,
+        counterpartyHolder: true,
+        predictorPayout: true,
+        counterpartyPayout: true,
+      },
+    }),
+    prisma.collateralTransfer.findMany({
+      where: {
+        chainId,
+        to: vaultAddress,
+        timestamp: { lte: new Date(atTimestamp * 1000) },
+      },
+      select: { value: true },
+    }),
+  ]);
+
+  return decomposeVaultGapInMemory(
+    predictions,
+    claims,
+    closes,
+    transfers,
+    atTimestamp,
+    vaultAddress
+  );
+}
+
+interface DecompPrediction {
+  onChainCreatedAt: number;
+  counterpartyCollateral: string;
+  predictorCollateral: string;
+  predictor: string;
+  counterparty: string;
+  pickConfigId: string | null;
+  pickConfiguration: {
+    resolved: boolean;
+    resolvedAt: number | null;
+    result: SettlementResult;
+  } | null;
+}
+
+interface DecompClaim {
+  collateralPaid: string;
+  holder?: string;
+  redeemedAt?: number;
+}
+
+interface DecompClose {
+  burnedAt: number;
+  predictorHolder: string;
+  counterpartyHolder: string;
+  predictorPayout: string;
+  counterpartyPayout: string;
+}
+
+interface DecompTransfer {
+  to?: string;
+  timestamp?: Date;
+  value: string;
+}
+
+function decomposeVaultGapInMemory(
+  predictions: DecompPrediction[],
+  claims: DecompClaim[],
+  closes: DecompClose[],
+  transfers: DecompTransfer[],
+  t: number,
+  vaultAddress: string
+): VaultGapDecomposition {
+  const d: VaultGapDecomposition = {
+    counterpartyActiveStake: 0n,
+    counterpartyActiveCount: 0,
+    predictorActiveStake: 0n,
+    predictorActiveCount: 0,
+    winsAsCounterpartyCount: 0,
+    winsAsCounterpartyGain: 0n,
+    winsAsCounterpartyOwed: 0n,
+    winsAsPredictorCount: 0,
+    winsAsPredictorGain: 0n,
+    winsAsPredictorOwed: 0n,
+    lossesAsCounterpartyCount: 0,
+    lossesAsCounterpartyLoss: 0n,
+    lossesAsPredictorCount: 0,
+    lossesAsPredictorLoss: 0n,
+    claimedByVault: 0n,
+    claimCount: 0,
+    closesPredictorHolderCount: 0,
+    closesPredictorHolderPayout: 0n,
+    closesCounterpartyHolderCount: 0,
+    closesCounterpartyHolderPayout: 0n,
+    primaryCollateralCommitted: 0n,
+    collateralTransfersIn: 0n,
+    collateralTransfersInCount: 0,
+  };
+
+  for (const p of predictions) {
+    if (p.onChainCreatedAt > t) continue;
+    const pc = p.pickConfiguration;
+    const predictorIsVault = p.predictor.toLowerCase() === vaultAddress;
+    const counterpartyIsVault = p.counterparty.toLowerCase() === vaultAddress;
+    if (!predictorIsVault && !counterpartyIsVault) continue;
+
+    const predictorColl = BigInt(p.predictorCollateral);
+    const counterpartyColl = BigInt(p.counterpartyCollateral);
+
+    const stillActive =
+      p.pickConfigId === null ||
+      (pc != null &&
+        (pc.resolved === false ||
+          (pc.resolved === true &&
+            pc.resolvedAt !== null &&
+            pc.resolvedAt > t)));
+
+    if (stillActive) {
+      if (counterpartyIsVault) {
+        d.counterpartyActiveStake += counterpartyColl;
+        d.counterpartyActiveCount++;
+      }
+      if (predictorIsVault) {
+        d.predictorActiveStake += predictorColl;
+        d.predictorActiveCount++;
+      }
+      continue;
+    }
+
+    if (
+      !pc ||
+      !pc.resolved ||
+      pc.result === SettlementResult.UNRESOLVED ||
+      pc.resolvedAt === null ||
+      pc.resolvedAt > t
+    ) {
+      continue;
+    }
+
+    // Resolved prediction: contributes to primary collateral committed.
+    if (predictorIsVault) d.primaryCollateralCommitted += predictorColl;
+    if (counterpartyIsVault) d.primaryCollateralCommitted += counterpartyColl;
+
+    const vaultWon =
+      (predictorIsVault && pc.result === SettlementResult.PREDICTOR_WINS) ||
+      (counterpartyIsVault && pc.result === SettlementResult.COUNTERPARTY_WINS);
+
+    if (vaultWon) {
+      const gain = predictorIsVault ? counterpartyColl : predictorColl;
+      const owed = predictorColl + counterpartyColl;
+      if (predictorIsVault) {
+        d.winsAsPredictorCount++;
+        d.winsAsPredictorGain += gain;
+        d.winsAsPredictorOwed += owed;
+      } else {
+        d.winsAsCounterpartyCount++;
+        d.winsAsCounterpartyGain += gain;
+        d.winsAsCounterpartyOwed += owed;
+      }
+    } else {
+      const loss = predictorIsVault ? predictorColl : counterpartyColl;
+      if (predictorIsVault) {
+        d.lossesAsPredictorCount++;
+        d.lossesAsPredictorLoss += loss;
+      } else {
+        d.lossesAsCounterpartyCount++;
+        d.lossesAsCounterpartyLoss += loss;
+      }
+    }
+  }
+
+  for (const c of claims) {
+    if (c.holder !== undefined && c.holder.toLowerCase() !== vaultAddress)
+      continue;
+    if (c.redeemedAt !== undefined && c.redeemedAt > t) continue;
+    d.claimedByVault += BigInt(c.collateralPaid);
+    d.claimCount++;
+  }
+
+  for (const c of closes) {
+    if (c.burnedAt > t) continue;
+    if (c.predictorHolder.toLowerCase() === vaultAddress) {
+      d.closesPredictorHolderCount++;
+      d.closesPredictorHolderPayout += BigInt(c.predictorPayout);
+    }
+    if (c.counterpartyHolder.toLowerCase() === vaultAddress) {
+      d.closesCounterpartyHolderCount++;
+      d.closesCounterpartyHolderPayout += BigInt(c.counterpartyPayout);
+    }
+  }
+
+  for (const tr of transfers) {
+    if (tr.to !== undefined && tr.to.toLowerCase() !== vaultAddress) continue;
+    if (
+      tr.timestamp !== undefined &&
+      Math.floor(tr.timestamp.getTime() / 1000) > t
+    ) {
+      continue;
+    }
+    d.collateralTransfersIn += BigInt(tr.value);
+    d.collateralTransfersInCount++;
+  }
+
+  return d;
+}
+
+const GAP_DEBUG = (): boolean => process.env.PROTOCOL_STATS_GAP_DEBUG === '1';
+
+function emptyDecomposition(): VaultGapDecomposition {
+  return {
+    counterpartyActiveStake: 0n,
+    counterpartyActiveCount: 0,
+    predictorActiveStake: 0n,
+    predictorActiveCount: 0,
+    winsAsCounterpartyCount: 0,
+    winsAsCounterpartyGain: 0n,
+    winsAsCounterpartyOwed: 0n,
+    winsAsPredictorCount: 0,
+    winsAsPredictorGain: 0n,
+    winsAsPredictorOwed: 0n,
+    lossesAsCounterpartyCount: 0,
+    lossesAsCounterpartyLoss: 0n,
+    lossesAsPredictorCount: 0,
+    lossesAsPredictorLoss: 0n,
+    claimedByVault: 0n,
+    claimCount: 0,
+    closesPredictorHolderCount: 0,
+    closesPredictorHolderPayout: 0n,
+    closesCounterpartyHolderCount: 0,
+    closesCounterpartyHolderPayout: 0n,
+    primaryCollateralCommitted: 0n,
+    collateralTransfersIn: 0n,
+    collateralTransfersInCount: 0,
+  };
+}
+
 interface ProtocolStatsData {
   vaultBalance: bigint;
   vaultAvailableAssets: bigint;
@@ -48,17 +421,89 @@ interface ProtocolStatsData {
   vaultPositionsLost: number;
   vaultCollateralWon: bigint;
   vaultCollateralLost: bigint;
+  /**
+   * wUSDe earmarked for the vault from resolved wins it hasn't yet redeemed
+   * (Prediction-based attribution; legacy diagnostic, not used by the
+   * settlement-PnL identity which now flows from Close.predictorHolder /
+   * Close.counterpartyHolder).
+   */
+  vaultUnredeemedClaim: bigint;
+}
+
+type VaultConfig = (typeof contracts.predictionMarketVault)[number];
+
+export interface ConfiguredVault {
+  kind: 'protocol' | 'pyth' | 'single-leg' | 'strategy-b';
+  config: VaultConfig;
+  address: string; // lowercased
+}
+
+/**
+ * Return every vault deployed on the given chain. Used to fan-out per-vault
+ * snapshot computation. The cron + backfill iterate this list, so adding a new
+ * vault family means: declare it in @sapience/sdk/contracts, then add a block
+ * here. No other code change required for the indexer to pick it up.
+ */
+export function getConfiguredVaults(chainId: number): ConfiguredVault[] {
+  const list: ConfiguredVault[] = [];
+  const protocol = contracts.predictionMarketVault[chainId];
+  if (protocol) {
+    list.push({
+      kind: 'protocol',
+      config: protocol,
+      address: protocol.address.toLowerCase(),
+    });
+  }
+  const pyth = contracts.pythPredictionMarketVault[chainId];
+  if (pyth) {
+    list.push({
+      kind: 'pyth',
+      config: pyth,
+      address: pyth.address.toLowerCase(),
+    });
+  }
+  const singleLeg = contracts.singleLegVault[chainId];
+  if (singleLeg) {
+    list.push({
+      kind: 'single-leg',
+      config: singleLeg,
+      address: singleLeg.address.toLowerCase(),
+    });
+  }
+  const strategyB = contracts.predictionMarketVaultStrategyB[chainId];
+  if (strategyB) {
+    list.push({
+      kind: 'strategy-b',
+      config: strategyB,
+      address: strategyB.address.toLowerCase(),
+    });
+  }
+  return list;
+}
+
+/**
+ * Resolve a vault address override (or default to the protocol primary) and
+ * return it lowercased, ready for prisma string-equality comparisons.
+ */
+function resolveVaultAddress(
+  chainId: number,
+  vaultAddressArg?: string
+): string | undefined {
+  const raw =
+    vaultAddressArg ?? contracts.predictionMarketVault[chainId]?.address;
+  return raw?.toLowerCase();
 }
 
 /**
  * Fetch Vault balance: collateral.balanceOf(vault)
  */
 export async function fetchVaultTVL(
-  chainId: number = DEFAULT_CHAIN_ID
+  chainId: number = DEFAULT_CHAIN_ID,
+  vaultAddressArg?: string
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!vaultAddress || !collateralAddress) {
@@ -71,7 +516,7 @@ export async function fetchVaultTVL(
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
-    args: [vaultAddress],
+    args: [vaultAddress as `0x${string}`],
   });
 
   return balance;
@@ -87,15 +532,16 @@ export async function fetchVaultTVL(
  */
 export async function fetchVaultDeployed(
   chainId: number = DEFAULT_CHAIN_ID,
-  atTimestamp?: number
+  atTimestamp?: number,
+  vaultAddressArg?: string
 ): Promise<bigint> {
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
   if (!vaultAddress) return 0n;
 
   const predictions = await prisma.prediction.findMany({
     where: {
       chainId,
-      counterparty: vaultAddress.toLowerCase(),
+      counterparty: vaultAddress,
       ...(atTimestamp
         ? {
             onChainCreatedAt: { lte: atTimestamp },
@@ -136,26 +582,28 @@ export async function fetchVaultDeployed(
 export async function fetchVaultDeployedAtBlock(
   chainId: number,
   _blockNumber: bigint,
-  atTimestamp?: number
+  atTimestamp?: number,
+  vaultAddressArg?: string
 ): Promise<bigint> {
-  return fetchVaultDeployed(chainId, atTimestamp);
+  return fetchVaultDeployed(chainId, atTimestamp, vaultAddressArg);
 }
 
 /**
  * Fetch Vault available assets: vault.availableAssets()
  */
 export async function fetchVaultAvailableAssets(
-  chainId: number = DEFAULT_CHAIN_ID
+  chainId: number = DEFAULT_CHAIN_ID,
+  vaultAddressArg?: string
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
 
   if (!vaultAddress) {
     throw new Error(`Vault not configured for chain ${chainId}`);
   }
 
   const availableAssets = (await client.readContract({
-    address: vaultAddress,
+    address: vaultAddress as `0x${string}`,
     abi: predictionMarketVaultAbi,
     functionName: 'availableAssets',
     args: [],
@@ -169,17 +617,18 @@ export async function fetchVaultAvailableAssets(
  */
 export async function fetchVaultAvailableAssetsAtBlock(
   chainId: number,
-  blockNumber: bigint
+  blockNumber: bigint,
+  vaultAddressArg?: string
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
 
   if (!vaultAddress) {
     throw new Error(`Vault not configured for chain ${chainId}`);
   }
 
   const availableAssets = (await client.readContract({
-    address: vaultAddress,
+    address: vaultAddress as `0x${string}`,
     abi: predictionMarketVaultAbi,
     functionName: 'availableAssets',
     args: [],
@@ -223,11 +672,12 @@ export async function fetchPredictionMarketEscrowTVL(
  */
 export async function fetchVaultTVLAtBlock(
   chainId: number,
-  blockNumber: bigint
+  blockNumber: bigint,
+  vaultAddressArg?: string
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!vaultAddress || !collateralAddress) {
@@ -240,7 +690,7 @@ export async function fetchVaultTVLAtBlock(
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
-    args: [vaultAddress],
+    args: [vaultAddress as `0x${string}`],
     blockNumber,
   });
 
@@ -357,31 +807,18 @@ export async function sumEscrowBalancesAtBlock(
 }
 
 /**
- * Calculate vault's realized settlement PnL.
+ * Calculate vault's realized PnL from resolved predictions.
  *
- * Sources gross settlement payouts from `Close` (the actual on-chain holder
- * and payout at burn time) rather than `Prediction.predictor` /
- * `Prediction.counterparty` (creation-time addresses). This matters because
- * NFT positions can transfer on the secondary market: only the holder at
- * close time receives the payout, even though the original predictor and
- * counterparty addresses are immutable on the Prediction record.
- *
- * Cost basis (the original collateral the vault committed at primary
- * creation) still comes from `Prediction`, scoped to predictions whose
- * pickConfig has resolved. Secondary-market cost basis is tracked
- * separately via `calculateVaultSecondaryFlows`.
- *
- *   realizedPnL = sum(payout to vault holder via Close)
- *               − sum(vault's primary collateral on resolved predictions)
- *
- * Reconciles against `vaultBalance + vaultDeployed` together with deposits,
- * withdrawals, secondary buys/sells, and airdrops.
+ * Uses Picks.resolved (set automatically when all conditions settle)
+ * rather than Prediction.settled (requires an explicit on-chain settle() call
+ * that may never happen for losing predictions).
  */
 export async function calculateVaultPnL(
   chainId: number,
-  beforeTimestamp?: number
+  beforeTimestamp?: number,
+  vaultAddressArg?: string
 ): Promise<VaultPnLResult> {
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
   if (!vaultAddress) {
     return {
       realizedPnL: 0n,
@@ -391,60 +828,80 @@ export async function calculateVaultPnL(
       totalCollateralLost: 0n,
     };
   }
-  const vaultAddressLower = vaultAddress.toLowerCase();
 
-  // Gross payouts: what the vault actually received from settlement,
-  // based on who held the position tokens when they were burned.
-  const closes = await prisma.close.findMany({
-    where: {
-      chainId,
-      ...(beforeTimestamp ? { burnedAt: { lte: beforeTimestamp } } : {}),
-      OR: [
-        { predictorHolder: vaultAddressLower },
-        { counterpartyHolder: vaultAddressLower },
-      ],
-    },
-    select: {
-      predictorHolder: true,
-      counterpartyHolder: true,
-      predictorPayout: true,
-      counterpartyPayout: true,
-    },
-  });
+  // Gross payouts: actual wUSDe the vault received from settlement-related
+  // wUSDe transfers. The protocol has two disjoint payout mechanisms — we
+  // sum both because each transfers wUSDe to the holder via on-chain
+  // safeTransfer:
+  //
+  //   1. `redeem()`  → TokensRedeemed → Claim (post-resolution, per-holder).
+  //      Holder calls; gets their proportional payout from the resolved
+  //      pickConfig pool.
+  //   2. `burn()`    → PositionsBurned → Close (bilateral pre/post-resolution
+  //      exit). Both sides burn together; payouts go to predictorHolder AND
+  //      counterpartyHolder in the same tx.
+  //
+  // Using ONLY Close (1634) would miss per-holder redemptions; ONLY Claim
+  // would miss bilateral-burn payouts. Both can land in the vault when it's
+  // a holder of either side.
+  const [claims, closes] = await Promise.all([
+    prisma.claim.findMany({
+      where: {
+        chainId,
+        holder: vaultAddress,
+        ...(beforeTimestamp ? { redeemedAt: { lte: beforeTimestamp } } : {}),
+      },
+      select: { collateralPaid: true },
+    }),
+    prisma.close.findMany({
+      where: {
+        chainId,
+        ...(beforeTimestamp ? { burnedAt: { lte: beforeTimestamp } } : {}),
+        OR: [
+          { predictorHolder: vaultAddress },
+          { counterpartyHolder: vaultAddress },
+        ],
+      },
+      select: {
+        predictorHolder: true,
+        counterpartyHolder: true,
+        predictorPayout: true,
+        counterpartyPayout: true,
+      },
+    }),
+  ]);
 
   let grossPayouts = 0n;
-  let positionsWon = 0;
-  let positionsLost = 0;
   let totalCollateralWon = 0n;
-  let totalCollateralLost = 0n;
-
-  for (const close of closes) {
-    if (close.predictorHolder.toLowerCase() === vaultAddressLower) {
-      const payout = BigInt(close.predictorPayout);
+  let positionsWon = 0;
+  for (const c of claims) {
+    const payout = BigInt(c.collateralPaid);
+    grossPayouts += payout;
+    totalCollateralWon += payout;
+    positionsWon++;
+  }
+  for (const c of closes) {
+    if (c.predictorHolder.toLowerCase() === vaultAddress) {
+      const payout = BigInt(c.predictorPayout);
       grossPayouts += payout;
-      if (payout > 0n) {
-        positionsWon++;
-        totalCollateralWon += payout;
-      } else {
-        positionsLost++;
-      }
+      totalCollateralWon += payout;
+      if (payout > 0n) positionsWon++;
     }
-    if (close.counterpartyHolder.toLowerCase() === vaultAddressLower) {
-      const payout = BigInt(close.counterpartyPayout);
+    if (c.counterpartyHolder.toLowerCase() === vaultAddress) {
+      const payout = BigInt(c.counterpartyPayout);
       grossPayouts += payout;
-      if (payout > 0n) {
-        positionsWon++;
-        totalCollateralWon += payout;
-      } else {
-        positionsLost++;
-      }
+      totalCollateralWon += payout;
+      if (payout > 0n) positionsWon++;
     }
   }
 
   // Cost basis: primary-creation collateral the vault committed for
   // predictions whose pickConfig has now resolved. Sold-on-secondary
   // positions still count here — the cost was paid at creation, and the
-  // sale proceeds are tracked separately in vaultSecondarySold.
+  // sale proceeds are tracked separately in vaultSecondarySold. We use
+  // Prediction (creator-side attribution) deliberately: PnL relative to
+  // *vault's* economic exposure is `wUSDe in − wUSDe out`, where in =
+  // claims for vault and out = primary collateral vault committed.
   const predictions = await prisma.prediction.findMany({
     where: {
       chainId,
@@ -454,38 +911,38 @@ export async function calculateVaultPnL(
         result: { not: SettlementResult.UNRESOLVED },
         ...(beforeTimestamp ? { resolvedAt: { lte: beforeTimestamp } } : {}),
       },
-      OR: [
-        { predictor: vaultAddressLower },
-        { counterparty: vaultAddressLower },
-      ],
+      OR: [{ predictor: vaultAddress }, { counterparty: vaultAddress }],
     },
-    select: {
-      predictor: true,
-      counterparty: true,
-      predictorCollateral: true,
-      counterpartyCollateral: true,
+    include: {
+      pickConfiguration: { select: { result: true } },
     },
   });
 
   let primaryCollateral = 0n;
+  let positionsLost = 0;
   for (const p of predictions) {
-    if (p.predictor.toLowerCase() === vaultAddressLower) {
+    const predictorIsVault = p.predictor.toLowerCase() === vaultAddress;
+    const counterpartyIsVault = p.counterparty.toLowerCase() === vaultAddress;
+    if (predictorIsVault) {
       primaryCollateral += BigInt(p.predictorCollateral);
     }
-    if (p.counterparty.toLowerCase() === vaultAddressLower) {
+    if (counterpartyIsVault) {
       primaryCollateral += BigInt(p.counterpartyCollateral);
     }
+    const pc = p.pickConfiguration;
+    if (!pc) continue;
+    const vaultLost =
+      (predictorIsVault && pc.result === SettlementResult.COUNTERPARTY_WINS) ||
+      (counterpartyIsVault && pc.result === SettlementResult.PREDICTOR_WINS);
+    if (vaultLost) positionsLost++;
   }
 
-  totalCollateralLost = primaryCollateral;
-  const realizedPnL = grossPayouts - primaryCollateral;
-
   return {
-    realizedPnL,
+    realizedPnL: grossPayouts - primaryCollateral,
     positionsWon,
     positionsLost,
     totalCollateralWon,
-    totalCollateralLost,
+    totalCollateralLost: primaryCollateral,
   };
 }
 
@@ -500,17 +957,17 @@ export async function calculateVaultPnL(
  */
 export async function calculateVaultSecondaryFlows(
   chainId: number,
-  beforeTimestamp?: number
+  beforeTimestamp?: number,
+  vaultAddressArg?: string
 ): Promise<VaultSecondaryFlowsResult> {
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
   if (!vaultAddress) return { bought: 0n, sold: 0n };
-  const vaultAddressLower = vaultAddress.toLowerCase();
 
   const trades = await prisma.secondaryTrade.findMany({
     where: {
       chainId,
       ...(beforeTimestamp ? { executedAt: { lte: beforeTimestamp } } : {}),
-      OR: [{ buyer: vaultAddressLower }, { seller: vaultAddressLower }],
+      OR: [{ buyer: vaultAddress }, { seller: vaultAddress }],
     },
     select: { buyer: true, seller: true, price: true },
   });
@@ -518,12 +975,8 @@ export async function calculateVaultSecondaryFlows(
   let bought = 0n;
   let sold = 0n;
   for (const t of trades) {
-    if (t.buyer.toLowerCase() === vaultAddressLower) {
-      bought += BigInt(t.price);
-    }
-    if (t.seller.toLowerCase() === vaultAddressLower) {
-      sold += BigInt(t.price);
-    }
+    if (t.buyer.toLowerCase() === vaultAddress) bought += BigInt(t.price);
+    if (t.seller.toLowerCase() === vaultAddress) sold += BigInt(t.price);
   }
   return { bought, sold };
 }
@@ -544,11 +997,11 @@ export async function calculateVaultSecondaryFlows(
  */
 export async function calculateVaultAirdrops(
   chainId: number,
-  beforeTimestamp?: number
+  beforeTimestamp?: number,
+  vaultAddressArg?: string
 ): Promise<bigint> {
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
   if (!vaultAddress) return 0n;
-  const vaultAddressLower = vaultAddress.toLowerCase();
 
   const transferWhere: {
     chainId: number;
@@ -556,7 +1009,7 @@ export async function calculateVaultAirdrops(
     timestamp?: { lte: Date };
   } = {
     chainId,
-    to: vaultAddressLower,
+    to: vaultAddress,
   };
   if (beforeTimestamp) {
     transferWhere.timestamp = { lte: new Date(beforeTimestamp * 1000) };
@@ -569,38 +1022,56 @@ export async function calculateVaultAirdrops(
   let transfersIn = 0n;
   for (const t of transfers) transfersIn += BigInt(t.value);
 
-  const flows = await calculateVaultFlows(chainId, beforeTimestamp);
+  const flows = await calculateVaultFlows(
+    chainId,
+    beforeTimestamp,
+    vaultAddressArg
+  );
 
-  // Gross settlement payouts the vault received as the on-chain holder.
-  const closes = await prisma.close.findMany({
-    where: {
-      chainId,
-      ...(beforeTimestamp ? { burnedAt: { lte: beforeTimestamp } } : {}),
-      OR: [
-        { predictorHolder: vaultAddressLower },
-        { counterpartyHolder: vaultAddressLower },
-      ],
-    },
-    select: {
-      predictorHolder: true,
-      counterpartyHolder: true,
-      predictorPayout: true,
-      counterpartyPayout: true,
-    },
-  });
+  // Settlement inflow: union of Claim (per-holder redeem) and Close
+  // (bilateral burn). Mirrors `calculateVaultPnL` — both transfer wUSDe to
+  // the vault when it holds a side, and they are disjoint event-streams.
+  const [claims, closes] = await Promise.all([
+    prisma.claim.findMany({
+      where: {
+        chainId,
+        holder: vaultAddress,
+        ...(beforeTimestamp ? { redeemedAt: { lte: beforeTimestamp } } : {}),
+      },
+      select: { collateralPaid: true },
+    }),
+    prisma.close.findMany({
+      where: {
+        chainId,
+        ...(beforeTimestamp ? { burnedAt: { lte: beforeTimestamp } } : {}),
+        OR: [
+          { predictorHolder: vaultAddress },
+          { counterpartyHolder: vaultAddress },
+        ],
+      },
+      select: {
+        predictorHolder: true,
+        counterpartyHolder: true,
+        predictorPayout: true,
+        counterpartyPayout: true,
+      },
+    }),
+  ]);
   let settlementInflow = 0n;
+  for (const c of claims) settlementInflow += BigInt(c.collateralPaid);
   for (const c of closes) {
-    if (c.predictorHolder.toLowerCase() === vaultAddressLower) {
+    if (c.predictorHolder.toLowerCase() === vaultAddress) {
       settlementInflow += BigInt(c.predictorPayout);
     }
-    if (c.counterpartyHolder.toLowerCase() === vaultAddressLower) {
+    if (c.counterpartyHolder.toLowerCase() === vaultAddress) {
       settlementInflow += BigInt(c.counterpartyPayout);
     }
   }
 
   const secondary = await calculateVaultSecondaryFlows(
     chainId,
-    beforeTimestamp
+    beforeTimestamp,
+    vaultAddressArg
   );
 
   const explained = flows.totalDeposits + settlementInflow + secondary.sold;
@@ -608,15 +1079,24 @@ export async function calculateVaultAirdrops(
 }
 
 /**
- * Calculate vault's cumulative deposits and withdrawals from indexed flow events.
+ * Calculate a vault's cumulative deposits and withdrawals from indexed flow
+ * events. Events are scoped per-vault via the `vaultAddress` column added in
+ * 20260422_add_vault_address_to_vault_flow_event — that migration TRUNCATEs
+ * the table, so by the time this code runs every row has a non-null vaultAddress.
  */
 export async function calculateVaultFlows(
   chainId: number,
-  beforeTimestamp?: number
+  beforeTimestamp?: number,
+  vaultAddressArg?: string
 ): Promise<VaultFlowsResult> {
-  const whereClause: { chainId: number; timestamp?: { lte: number } } = {
-    chainId,
-  };
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
+  if (!vaultAddress) return { totalDeposits: 0n, totalWithdrawals: 0n };
+
+  const whereClause: {
+    chainId: number;
+    vaultAddress: string;
+    timestamp?: { lte: number };
+  } = { chainId, vaultAddress };
 
   if (beforeTimestamp) {
     whereClause.timestamp = { lte: beforeTimestamp };
@@ -640,6 +1120,90 @@ export async function calculateVaultFlows(
 }
 
 /**
+ * Calculate the wUSDe earmarked for the vault from resolved-but-not-yet-redeemed
+ * wins. Bridges the basis mismatch between accrual `vaultRealizedPnL` (booked at
+ * `Picks.resolvedAt`) and cash-basis `vaultBalance` (only after `redeem()`).
+ *
+ *   unredeemed = Σ (predictorCollateral + counterpartyCollateral) for predictions
+ *                where the vault is on the winning side AND Picks.resolvedAt ≤ t
+ *              − Σ Claim.collateralPaid where holder = vault, redeemedAt ≤ t
+ *
+ * The per-prediction claimable on the winning side equals total collateral by
+ * the contract's parimutuel rule (see `_calculateClaimableForPrediction` in
+ * PredictionMarketEscrow.sol — `counterpartyClaimable = totalCollateral` on
+ * COUNTERPARTY_WINS, `predictorClaimable = totalCollateral` on PREDICTOR_WINS).
+ *
+ * Why not filter on `Prediction.settled`: that flag flips when SOMEONE calls
+ * `settle(predictionId)` on-chain — which is independent admin metadata and
+ * doesn't gate redemption. As long as the parent pickConfig is resolved
+ * (Picks.resolved = true, which is what gates `redeem()` on-chain), the vault's
+ * counterparty stake AND prize are sitting in escrow earmarked for it.
+ *
+ * Clamped at 0n. The `Claim.predictionId` column actually stores the on-chain
+ * pickConfigId (known indexer misnomer); we don't join through it — we just sum
+ * Claim rows whose holder is the vault.
+ */
+export async function calculateVaultUnredeemedClaim(
+  chainId: number,
+  beforeTimestamp?: number,
+  vaultAddressArg?: string
+): Promise<bigint> {
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
+  if (!vaultAddress) return 0n;
+
+  const resolvedFilter = beforeTimestamp ? { lte: beforeTimestamp } : undefined;
+
+  const [counterpartyWins, predictorWins, claims] = await Promise.all([
+    prisma.prediction.findMany({
+      where: {
+        chainId,
+        counterparty: vaultAddress,
+        pickConfiguration: {
+          resolved: true,
+          result: SettlementResult.COUNTERPARTY_WINS,
+          ...(resolvedFilter ? { resolvedAt: resolvedFilter } : {}),
+        },
+      },
+      select: { predictorCollateral: true, counterpartyCollateral: true },
+    }),
+    prisma.prediction.findMany({
+      where: {
+        chainId,
+        predictor: vaultAddress,
+        pickConfiguration: {
+          resolved: true,
+          result: SettlementResult.PREDICTOR_WINS,
+          ...(resolvedFilter ? { resolvedAt: resolvedFilter } : {}),
+        },
+      },
+      select: { predictorCollateral: true, counterpartyCollateral: true },
+    }),
+    prisma.claim.findMany({
+      where: {
+        chainId,
+        holder: vaultAddress,
+        ...(beforeTimestamp ? { redeemedAt: { lte: beforeTimestamp } } : {}),
+      },
+      select: { collateralPaid: true },
+    }),
+  ]);
+
+  let owed = 0n;
+  for (const p of counterpartyWins) {
+    owed += BigInt(p.predictorCollateral) + BigInt(p.counterpartyCollateral);
+  }
+  for (const p of predictorWins) {
+    owed += BigInt(p.predictorCollateral) + BigInt(p.counterpartyCollateral);
+  }
+
+  let claimed = 0n;
+  for (const c of claims) claimed += BigInt(c.collateralPaid);
+
+  const remainder = owed - claimed;
+  return remainder > 0n ? remainder : 0n;
+}
+
+/**
  * Synchronous, in-memory replacements for `fetchVaultDeployed`,
  * `calculateVaultPnL`, and `calculateVaultFlows`. The backfill loop calls all
  * three per snapshot; doing each as a `findMany` round-trip causes N×table_scan
@@ -647,25 +1211,35 @@ export async function calculateVaultFlows(
  * underlying tables don't change during a backfill, so we pre-fetch the
  * superset once and aggregate in JS for each timestamp.
  *
+ * Multi-vault: a single prefetch over every configured vault on the chain is
+ * cheaper than one prefetch per vault. The closures take `vaultAddressLower`
+ * as a per-call argument and filter the in-memory superset.
+ *
  * The cron path + GraphQL resolver still call the original async helpers —
  * those run once per request, so this micro-optimization isn't worth the
  * complexity there.
  */
 export interface VaultAggregator {
-  deployedAt: (timestamp: number) => bigint;
-  pnlAt: (timestamp: number) => VaultPnLResult;
-  flowsAt: (timestamp: number) => VaultFlowsResult;
-  secondaryAt: (timestamp: number) => VaultSecondaryFlowsResult;
-  airdropsAt: (timestamp: number) => bigint;
+  deployedAt: (timestamp: number, vaultAddressLower: string) => bigint;
+  pnlAt: (timestamp: number, vaultAddressLower: string) => VaultPnLResult;
+  flowsAt: (timestamp: number, vaultAddressLower: string) => VaultFlowsResult;
+  unredeemedClaimAt: (timestamp: number, vaultAddressLower: string) => bigint;
+  secondaryAt: (
+    timestamp: number,
+    vaultAddressLower: string
+  ) => VaultSecondaryFlowsResult;
+  airdropsAt: (timestamp: number, vaultAddressLower: string) => bigint;
+  gapDecompositionAt: (
+    timestamp: number,
+    vaultAddressLower: string
+  ) => VaultGapDecomposition;
 }
 
 export async function buildVaultAggregator(
   chainId: number
 ): Promise<VaultAggregator> {
-  const vaultAddress = (
-    contracts.predictionMarketVault[chainId]?.address ?? ''
-  ).toLowerCase();
-  if (!vaultAddress) {
+  const vaultAddresses = getConfiguredVaults(chainId).map((v) => v.address);
+  if (vaultAddresses.length === 0) {
     return {
       deployedAt: () => 0n,
       pnlAt: () => ({
@@ -676,72 +1250,91 @@ export async function buildVaultAggregator(
         totalCollateralLost: 0n,
       }),
       flowsAt: () => ({ totalDeposits: 0n, totalWithdrawals: 0n }),
+      unredeemedClaimAt: () => 0n,
       secondaryAt: () => ({ bought: 0n, sold: 0n }),
       airdropsAt: () => 0n,
+      gapDecompositionAt: () => emptyDecomposition(),
     };
   }
 
-  // Fetch the union of every prediction, flow event, close, secondary trade,
-  // and inbound collateral transfer the per-iter aggregators could ever need.
-  const [predictions, flows, closes, trades, transfers] = await Promise.all([
-    prisma.prediction.findMany({
-      where: {
-        chainId,
-        OR: [{ predictor: vaultAddress }, { counterparty: vaultAddress }],
-      },
-      select: {
-        onChainCreatedAt: true,
-        counterpartyCollateral: true,
-        predictorCollateral: true,
-        predictor: true,
-        counterparty: true,
-        pickConfigId: true,
-        pickConfiguration: {
-          select: { resolved: true, resolvedAt: true, result: true },
+  // Fetch the union of every prediction either the deployed-collateral
+  // aggregator or the PnL aggregator could possibly need across all configured
+  // vaults: anything where any configured vault is on either side of the trade.
+  // `vaultFlowEvent` is similarly chain-scoped — `vaultAddress` is set on every
+  // row by the backfill script (the migration TRUNCATEd legacy rows).
+  // `claim` rows are filtered by `holder ∈ vaultAddresses` for the
+  // unredeemed-claim aggregator (one Claim row per on-chain `redeem()` call).
+  const [predictions, flows, claims, closes, trades, transfers] =
+    await Promise.all([
+      prisma.prediction.findMany({
+        where: {
+          chainId,
+          OR: [
+            { predictor: { in: vaultAddresses } },
+            { counterparty: { in: vaultAddresses } },
+          ],
         },
-      },
-    }),
-    prisma.vaultFlowEvent.findMany({
-      where: { chainId },
-      select: { timestamp: true, eventType: true, assets: true },
-    }),
-    prisma.close.findMany({
-      where: {
-        chainId,
-        OR: [
-          { predictorHolder: vaultAddress },
-          { counterpartyHolder: vaultAddress },
-        ],
-      },
-      select: {
-        burnedAt: true,
-        predictorHolder: true,
-        counterpartyHolder: true,
-        predictorPayout: true,
-        counterpartyPayout: true,
-      },
-    }),
-    prisma.secondaryTrade.findMany({
-      where: {
-        chainId,
-        OR: [{ buyer: vaultAddress }, { seller: vaultAddress }],
-      },
-      select: {
-        executedAt: true,
-        buyer: true,
-        seller: true,
-        price: true,
-      },
-    }),
-    prisma.collateralTransfer.findMany({
-      where: { chainId, to: vaultAddress },
-      select: { timestamp: true, value: true },
-    }),
-  ]);
+        select: {
+          onChainCreatedAt: true,
+          counterpartyCollateral: true,
+          predictorCollateral: true,
+          predictor: true,
+          counterparty: true,
+          pickConfigId: true,
+          pickConfiguration: {
+            select: { resolved: true, resolvedAt: true, result: true },
+          },
+        },
+      }),
+      prisma.vaultFlowEvent.findMany({
+        where: { chainId },
+        select: {
+          timestamp: true,
+          eventType: true,
+          assets: true,
+          vaultAddress: true,
+        },
+      }),
+      prisma.claim.findMany({
+        where: { chainId, holder: { in: vaultAddresses } },
+        select: { holder: true, collateralPaid: true, redeemedAt: true },
+      }),
+      prisma.close.findMany({
+        where: {
+          chainId,
+          OR: [
+            { predictorHolder: { in: vaultAddresses } },
+            { counterpartyHolder: { in: vaultAddresses } },
+          ],
+        },
+        select: {
+          burnedAt: true,
+          predictorHolder: true,
+          counterpartyHolder: true,
+          predictorPayout: true,
+          counterpartyPayout: true,
+        },
+      }),
+      prisma.secondaryTrade.findMany({
+        where: {
+          chainId,
+          OR: [
+            { buyer: { in: vaultAddresses } },
+            { seller: { in: vaultAddresses } },
+          ],
+        },
+        select: { executedAt: true, buyer: true, seller: true, price: true },
+      }),
+      prisma.collateralTransfer.findMany({
+        where: { chainId, to: { in: vaultAddresses } },
+        select: { to: true, timestamp: true, value: true },
+      }),
+    ]);
 
-  // Predicate ports of the SQL filters in the async helpers. Keep these
-  // inline so a future reader can audit the JS branches against the SQL.
-  const deployedAt = (t: number): bigint => {
+  // Predicate ports of the SQL filters in `fetchVaultDeployed` /
+  // `calculateVaultPnL` / `calculateVaultFlows`. Keep these inline so a future
+  // reader can audit the JS branches against the SQL directly.
+  const deployedAt = (t: number, vaultAddress: string): bigint => {
     let total = 0n;
     for (const p of predictions) {
       if (p.counterparty.toLowerCase() !== vaultAddress) continue;
@@ -759,41 +1352,41 @@ export async function buildVaultAggregator(
     return total;
   };
 
-  // Settlement PnL: gross payouts from Close (the actual on-chain holder at
-  // burn time) minus primary-creation collateral the vault committed for
-  // resolved predictions. See the `calculateVaultPnL` docstring for the full
-  // reconciliation identity.
-  const pnlAt = (t: number): VaultPnLResult => {
+  // Settlement PnL: gross payouts = Claim (TokensRedeemed) ∪ Close
+  // (PositionsBurned), the two disjoint mechanisms by which the contract
+  // can transfer wUSDe to a vault that holds a side. See
+  // `calculateVaultPnL` for the why.
+  const pnlAt = (t: number, vaultAddress: string): VaultPnLResult => {
     let grossPayouts = 0n;
     let positionsWon = 0;
-    let positionsLost = 0;
     let totalCollateralWon = 0n;
 
+    for (const c of claims) {
+      if (c.holder.toLowerCase() !== vaultAddress) continue;
+      if (c.redeemedAt > t) continue;
+      const payout = BigInt(c.collateralPaid);
+      grossPayouts += payout;
+      totalCollateralWon += payout;
+      positionsWon++;
+    }
     for (const c of closes) {
       if (c.burnedAt > t) continue;
       if (c.predictorHolder.toLowerCase() === vaultAddress) {
         const payout = BigInt(c.predictorPayout);
         grossPayouts += payout;
-        if (payout > 0n) {
-          positionsWon++;
-          totalCollateralWon += payout;
-        } else {
-          positionsLost++;
-        }
+        totalCollateralWon += payout;
+        if (payout > 0n) positionsWon++;
       }
       if (c.counterpartyHolder.toLowerCase() === vaultAddress) {
         const payout = BigInt(c.counterpartyPayout);
         grossPayouts += payout;
-        if (payout > 0n) {
-          positionsWon++;
-          totalCollateralWon += payout;
-        } else {
-          positionsLost++;
-        }
+        totalCollateralWon += payout;
+        if (payout > 0n) positionsWon++;
       }
     }
 
     let primaryCollateral = 0n;
+    let positionsLost = 0;
     for (const p of predictions) {
       if (p.pickConfigId === null) continue;
       const pc = p.pickConfiguration;
@@ -801,12 +1394,19 @@ export async function buildVaultAggregator(
       if (pc.result === SettlementResult.UNRESOLVED) continue;
       if (pc.resolvedAt === null || pc.resolvedAt > t) continue;
 
-      if (p.predictor.toLowerCase() === vaultAddress) {
+      const predictorIsVault = p.predictor.toLowerCase() === vaultAddress;
+      const counterpartyIsVault = p.counterparty.toLowerCase() === vaultAddress;
+      if (predictorIsVault) {
         primaryCollateral += BigInt(p.predictorCollateral);
       }
-      if (p.counterparty.toLowerCase() === vaultAddress) {
+      if (counterpartyIsVault) {
         primaryCollateral += BigInt(p.counterpartyCollateral);
       }
+      const vaultLost =
+        (predictorIsVault &&
+          pc.result === SettlementResult.COUNTERPARTY_WINS) ||
+        (counterpartyIsVault && pc.result === SettlementResult.PREDICTOR_WINS);
+      if (vaultLost) positionsLost++;
     }
 
     return {
@@ -818,19 +1418,10 @@ export async function buildVaultAggregator(
     };
   };
 
-  const flowsAt = (t: number): VaultFlowsResult => {
-    let totalDeposits = 0n;
-    let totalWithdrawals = 0n;
-    for (const e of flows) {
-      if (e.timestamp > t) continue;
-      const assets = BigInt(e.assets);
-      if (e.eventType === 'deposit') totalDeposits += assets;
-      else totalWithdrawals += assets;
-    }
-    return { totalDeposits, totalWithdrawals };
-  };
-
-  const secondaryAt = (t: number): VaultSecondaryFlowsResult => {
+  const secondaryAt = (
+    t: number,
+    vaultAddress: string
+  ): VaultSecondaryFlowsResult => {
     let bought = 0n;
     let sold = 0n;
     for (const tr of trades) {
@@ -844,14 +1435,22 @@ export async function buildVaultAggregator(
   // Airdrops: total wUSDe transfers in to vault, minus inflows already
   // accounted for via deposits, settlement payouts, and secondary sales.
   // Mirrors the async `calculateVaultAirdrops` definition.
-  const airdropsAt = (t: number): bigint => {
+  const airdropsAt = (t: number, vaultAddress: string): bigint => {
     let transfersIn = 0n;
     for (const tr of transfers) {
+      if (tr.to.toLowerCase() !== vaultAddress) continue;
       if (Math.floor(tr.timestamp.getTime() / 1000) > t) continue;
       transfersIn += BigInt(tr.value);
     }
 
+    // Settlement inflow: union of Claim (per-holder redeem) and Close
+    // (bilateral burn). Mirrors `calculateVaultAirdrops`.
     let settlementInflow = 0n;
+    for (const c of claims) {
+      if (c.holder.toLowerCase() !== vaultAddress) continue;
+      if (c.redeemedAt > t) continue;
+      settlementInflow += BigInt(c.collateralPaid);
+    }
     for (const c of closes) {
       if (c.burnedAt > t) continue;
       if (c.predictorHolder.toLowerCase() === vaultAddress) {
@@ -862,14 +1461,89 @@ export async function buildVaultAggregator(
       }
     }
 
-    const flowsRes = flowsAt(t);
-    const secondary = secondaryAt(t);
+    const flowsRes = flowsAt(t, vaultAddress);
+    const secondary = secondaryAt(t, vaultAddress);
     const explained =
       flowsRes.totalDeposits + settlementInflow + secondary.sold;
     return transfersIn > explained ? transfersIn - explained : 0n;
   };
 
-  return { deployedAt, pnlAt, flowsAt, secondaryAt, airdropsAt };
+  const flowsAt = (t: number, vaultAddress: string): VaultFlowsResult => {
+    let totalDeposits = 0n;
+    let totalWithdrawals = 0n;
+    for (const e of flows) {
+      if (e.vaultAddress.toLowerCase() !== vaultAddress) continue;
+      if (e.timestamp > t) continue;
+      const assets = BigInt(e.assets);
+      if (e.eventType === 'deposit') totalDeposits += assets;
+      else totalWithdrawals += assets;
+    }
+    return { totalDeposits, totalWithdrawals };
+  };
+
+  // unredeemedClaim — sum of per-prediction claimable amounts (= total
+  // collateral on the winning side, per the contract's parimutuel rule) for
+  // vault wins resolved by `t`, minus claims by vault redeemed by `t`. Mirrors
+  // `calculateVaultUnredeemedClaim` and reads from the prefetched arrays.
+  //
+  // We deliberately do NOT filter on `Prediction.settled`: that flag is admin
+  // metadata about who called settle(), and the wUSDe is sitting in escrow
+  // earmarked for the vault as soon as the parent pickConfig is resolved
+  // regardless of which sibling triggered the on-chain resolution.
+  const unredeemedClaimAt = (t: number, vaultAddress: string): bigint => {
+    let owed = 0n;
+    for (const p of predictions) {
+      const pc = p.pickConfiguration;
+      if (!pc || !pc.resolved) continue;
+      if (pc.resolvedAt === null || pc.resolvedAt > t) continue;
+      const counterpartyIsVault = p.counterparty.toLowerCase() === vaultAddress;
+      const predictorIsVault = p.predictor.toLowerCase() === vaultAddress;
+      if (
+        counterpartyIsVault &&
+        pc.result === SettlementResult.COUNTERPARTY_WINS
+      ) {
+        owed +=
+          BigInt(p.predictorCollateral) + BigInt(p.counterpartyCollateral);
+      } else if (
+        predictorIsVault &&
+        pc.result === SettlementResult.PREDICTOR_WINS
+      ) {
+        owed +=
+          BigInt(p.predictorCollateral) + BigInt(p.counterpartyCollateral);
+      }
+    }
+    let claimed = 0n;
+    for (const c of claims) {
+      if (c.holder.toLowerCase() !== vaultAddress) continue;
+      if (c.redeemedAt > t) continue;
+      claimed += BigInt(c.collateralPaid);
+    }
+    const remainder = owed - claimed;
+    return remainder > 0n ? remainder : 0n;
+  };
+
+  const gapDecompositionAt = (
+    t: number,
+    vaultAddress: string
+  ): VaultGapDecomposition =>
+    decomposeVaultGapInMemory(
+      predictions,
+      claims,
+      closes,
+      transfers,
+      t,
+      vaultAddress
+    );
+
+  return {
+    deployedAt,
+    pnlAt,
+    flowsAt,
+    unredeemedClaimAt,
+    secondaryAt,
+    airdropsAt,
+    gapDecompositionAt,
+  };
 }
 
 /**
@@ -913,6 +1587,7 @@ async function upsertProtocolStatsSnapshot(
       vaultPositionsLost: data.vaultPositionsLost,
       vaultCollateralWon: data.vaultCollateralWon.toString(),
       vaultCollateralLost: data.vaultCollateralLost.toString(),
+      vaultUnredeemedClaim: data.vaultUnredeemedClaim.toString(),
     },
     update: {
       vaultBalance: data.vaultBalance.toString(),
@@ -929,6 +1604,7 @@ async function upsertProtocolStatsSnapshot(
       vaultPositionsLost: data.vaultPositionsLost,
       vaultCollateralWon: data.vaultCollateralWon.toString(),
       vaultCollateralLost: data.vaultCollateralLost.toString(),
+      vaultUnredeemedClaim: data.vaultUnredeemedClaim.toString(),
     },
   });
 }
@@ -946,24 +1622,31 @@ export function resolveSnapshotIntervalSeconds(override?: number): number {
 }
 
 /**
- * Main function to compute and store a protocol stats snapshot.
+ * Main function to compute and store protocol stats snapshots, one row per
+ * configured vault on the chain.
  *
  * The snapshot timestamp is floored to the configured interval so bars line
  * up on predictable boundaries regardless of exactly when the cron fires.
+ * Block resolution + escrow summation happen ONCE per call (chain-scoped);
+ * everything inside the per-vault loop scopes to that vault.
  */
 export async function computeAndStoreProtocolStats(
   chainId: number = DEFAULT_CHAIN_ID,
   intervalSeconds?: number
 ): Promise<void> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = (
-    contracts.predictionMarketVault[chainId]?.address ?? ''
-  ).toLowerCase();
+  const vaults = getConfiguredVaults(chainId);
+  if (vaults.length === 0) {
+    console.log(`[ProtocolStats] No vaults configured for chain ${chainId}`);
+    return;
+  }
 
   const interval = resolveSnapshotIntervalSeconds(intervalSeconds);
 
   console.log(
-    `[ProtocolStats] Starting stats computation for chain ${chainId}, vault ${vaultAddress}, interval ${interval}s`
+    `[ProtocolStats] Starting stats computation for chain ${chainId}, ` +
+      `${vaults.length} vault(s): ${vaults.map((v) => `${v.kind}@${v.address}`).join(', ')}, ` +
+      `interval ${interval}s`
   );
 
   const timestamp = Math.floor(Date.now() / 1000 / interval) * interval;
@@ -983,25 +1666,30 @@ export async function computeAndStoreProtocolStats(
     `[ProtocolStats] Resolved block ${blockNumber} for timestamp ${timestamp} (block ts=${targetBlock.timestamp})`
   );
 
-  // Pick historically-correct vault address for this block — handles vault
-  // migrations via `getContractForBlock`. Escrow totals are aggregated
-  // separately by `sumEscrowBalancesAtBlock`.
-  const vaultConfig = contracts.predictionMarketVault[chainId];
   const collateralAddress = contracts.collateralToken[chainId]?.address as
     | `0x${string}`
     | undefined;
 
-  const vaultAddr = vaultConfig
-    ? getContractForBlock(vaultConfig, blockNumber)
-    : null;
+  // Escrow is chain-wide (shared across all vault families on this chain), so
+  // sum it once and attach the same value to every per-vault snapshot.
+  const escrowBalance = await sumEscrowBalancesAtBlock(
+    client,
+    chainId,
+    blockNumber
+  );
+  console.log(
+    `[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe (V2 primary + past deploys)`
+  );
 
-  // On-chain reads, all pinned to `blockNumber` and run in parallel. The
-  // availableAssets() read may revert on older vault contracts that pre-date
-  // that function — catch and fall through to vaultBalance. Escrow is summed
-  // across current + all past V2 deploys, so funds stuck in old escrow
-  // contracts are still counted.
-  const [vaultBalance, vaultAvailableAssetsOrNull, escrowBalance] =
-    await Promise.all([
+  for (const vault of vaults) {
+    // Pick historically-correct vault address for this block — handles vault
+    // migrations via `getContractForBlock`.
+    const vaultAddr = getContractForBlock(vault.config, blockNumber);
+
+    // On-chain reads pinned to `blockNumber` in parallel. availableAssets()
+    // may revert on older vault contracts pre-dating that function — catch
+    // and fall through to vaultBalance.
+    const [vaultBalance, vaultAvailableAssetsOrNull] = await Promise.all([
       vaultAddr && collateralAddress
         ? client.readContract({
             address: collateralAddress,
@@ -1011,7 +1699,7 @@ export async function computeAndStoreProtocolStats(
             blockNumber,
           })
         : Promise.resolve(0n),
-      vaultAddr && collateralAddress
+      vaultAddr
         ? client
             .readContract({
               address: vaultAddr,
@@ -1023,90 +1711,119 @@ export async function computeAndStoreProtocolStats(
             .then((v: unknown) => v as bigint)
             .catch(() => null as bigint | null)
         : Promise.resolve(0n as bigint | null),
-      sumEscrowBalancesAtBlock(client, chainId, blockNumber),
     ]);
 
-  const vaultAvailableAssets =
-    vaultAvailableAssetsOrNull === null
-      ? vaultBalance
-      : vaultAvailableAssetsOrNull;
+    const vaultAvailableAssets =
+      vaultAvailableAssetsOrNull === null
+        ? vaultBalance
+        : vaultAvailableAssetsOrNull;
+
+    // DB-derived aggregates scoped to this vault — same snapshot timestamp.
+    // Note: `calculateVaultUnredeemedClaim` runs after the main Promise.all so
+    // its prediction.findMany calls don't interleave with fetchVaultDeployed /
+    // calculateVaultPnL (which both query Prediction in a specific order the
+    // cron-path tests rely on).
+    const [
+      vaultDeployed,
+      pnlResult,
+      flowsResult,
+      secondaryFlows,
+      airdropGains,
+    ] = await Promise.all([
+      fetchVaultDeployedAtBlock(chainId, blockNumber, timestamp, vault.address),
+      calculateVaultPnL(chainId, timestamp, vault.address),
+      calculateVaultFlows(chainId, timestamp, vault.address),
+      calculateVaultSecondaryFlows(chainId, timestamp, vault.address),
+      calculateVaultAirdrops(chainId, timestamp, vault.address),
+    ]);
+    const unredeemedClaim = await calculateVaultUnredeemedClaim(
+      chainId,
+      timestamp,
+      vault.address
+    );
+
+    // Reconciliation identity:
+    //   balance + deployed
+    //     = deposits - withdrawals
+    //     + settlementPnL  (Close-based)
+    //     + secondarySold - secondaryBought
+    //     + airdrops       (CollateralTransfer-based residual)
+    const actualTotalAssets = vaultBalance + vaultDeployed;
+    const expectedTotalAssets =
+      flowsResult.totalDeposits -
+      flowsResult.totalWithdrawals +
+      pnlResult.realizedPnL +
+      secondaryFlows.sold -
+      secondaryFlows.bought +
+      airdropGains;
+    const reconciliationDelta = actualTotalAssets - expectedTotalAssets;
+
+    console.log(
+      `[ProtocolStats] ${vault.kind}@${vault.address}: ` +
+        `balance=${formatUnits(vaultBalance, 18)}, available=${formatUnits(vaultAvailableAssets, 18)}, ` +
+        `deployed=${formatUnits(vaultDeployed, 18)}, unredeemed=${formatUnits(unredeemedClaim, 18)}, ` +
+        `pnl=${formatUnits(pnlResult.realizedPnL, 18)} ` +
+        `(won ${pnlResult.positionsWon}/lost ${pnlResult.positionsLost}), ` +
+        `flows=+${formatUnits(flowsResult.totalDeposits, 18)}/-${formatUnits(flowsResult.totalWithdrawals, 18)}, ` +
+        `secondary=+${formatUnits(secondaryFlows.sold, 18)}/-${formatUnits(secondaryFlows.bought, 18)}, ` +
+        `airdrop=${formatUnits(airdropGains, 18)}, ` +
+        `reconciliation Δ=${formatUnits(reconciliationDelta, 18)}`
+    );
+
+    // A non-zero reconciliation Δ means the identity
+    //   balance + deployed = deposits − withdrawals + pnl + (sold − bought) + airdrops
+    // didn't balance — wUSDe entered or left the vault via a path no
+    // accounting leg models (un-tracked off-protocol transfer, missing
+    // CollateralTransfer indexer row, ungated mint to/from a non-vault-side
+    // Prediction record, etc.). Logged at info-level rather than error
+    // because cumulative-balance drift persists across every subsequent
+    // snapshot — making it loud causes alert fatigue rather than action.
+    if (reconciliationDelta !== 0n) {
+      console.log(
+        `[ProtocolStats] reconciliation Δ ≠ 0 for ${vault.kind}@${vault.address} ts=${timestamp}: Δ=${formatUnits(reconciliationDelta, 18)} USDe ` +
+          `(LHS balance+deployed=${formatUnits(actualTotalAssets, 18)} vs RHS=${formatUnits(expectedTotalAssets, 18)})`
+      );
+    }
+
+    if (GAP_DEBUG()) {
+      const decomp = await decomposeVaultGap(chainId, timestamp, vault.address);
+      console.log(
+        formatGapDecomposition(
+          `ts=${timestamp} ${vault.kind}@${vault.address}`,
+          decomp,
+          vaultBalance,
+          vaultDeployed,
+          flowsResult.totalDeposits,
+          flowsResult.totalWithdrawals,
+          pnlResult.realizedPnL,
+          secondaryFlows,
+          airdropGains
+        )
+      );
+    }
+
+    await upsertProtocolStatsSnapshot(timestamp, chainId, vault.address, {
+      vaultBalance,
+      vaultAvailableAssets,
+      vaultDeployed,
+      escrowBalance,
+      vaultRealizedPnL: pnlResult.realizedPnL,
+      vaultAirdropGains: airdropGains,
+      vaultSecondaryBought: secondaryFlows.bought,
+      vaultSecondarySold: secondaryFlows.sold,
+      vaultDeposits: flowsResult.totalDeposits,
+      vaultWithdrawals: flowsResult.totalWithdrawals,
+      vaultPositionsWon: pnlResult.positionsWon,
+      vaultPositionsLost: pnlResult.positionsLost,
+      vaultCollateralWon: pnlResult.totalCollateralWon,
+      vaultCollateralLost: pnlResult.totalCollateralLost,
+      vaultUnredeemedClaim: unredeemedClaim,
+    });
+  }
 
   console.log(
-    `[ProtocolStats] Vault: ${formatUnits(vaultBalance, 18)} balance, ${formatUnits(vaultAvailableAssets, 18)} available`
+    `[ProtocolStats] Snapshots stored: ${vaults.length} row(s) at ts=${timestamp}`
   );
-  console.log(
-    `[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe (V2 primary + past deploys)`
-  );
-
-  // DB-derived aggregates — pass the same snapshot timestamp so these are also
-  // evaluated at "state as of timestamp", matching the on-chain reads above.
-  const [vaultDeployed, pnlResult, flowsResult] = await Promise.all([
-    fetchVaultDeployedAtBlock(chainId, blockNumber, timestamp),
-    calculateVaultPnL(chainId, timestamp),
-    calculateVaultFlows(chainId, timestamp),
-  ]);
-  console.log(
-    `[ProtocolStats] Vault PnL: ${formatUnits(pnlResult.realizedPnL, 18)} USDe (won: ${pnlResult.positionsWon}, lost: ${pnlResult.positionsLost})`
-  );
-  console.log(
-    `[ProtocolStats] Deposits: ${formatUnits(flowsResult.totalDeposits, 18)}, Withdrawals: ${formatUnits(flowsResult.totalWithdrawals, 18)}, Deployed: ${formatUnits(vaultDeployed, 18)}`
-  );
-
-  // Calculate secondary-market trade flow attributable to the vault, pinned
-  // to the snapshot timestamp like every other DB-derived aggregate.
-  const secondaryFlows = await calculateVaultSecondaryFlows(chainId, timestamp);
-  console.log(
-    `[ProtocolStats] Secondary bought: ${formatUnits(secondaryFlows.bought, 18)}, sold: ${formatUnits(secondaryFlows.sold, 18)}`
-  );
-
-  // Calculate airdrops: wUSDe transfers in not explained by deposits,
-  // settlement payouts, or secondary sales. Surface a residual diagnostic
-  // alongside it so we can spot indexer drift.
-  const airdropGains = await calculateVaultAirdrops(chainId, timestamp);
-  const actualTotalAssets = vaultBalance + vaultDeployed;
-  const expectedTotalAssets =
-    flowsResult.totalDeposits -
-    flowsResult.totalWithdrawals +
-    pnlResult.realizedPnL +
-    secondaryFlows.sold -
-    secondaryFlows.bought +
-    airdropGains;
-  const reconciliationDelta = actualTotalAssets - expectedTotalAssets;
-  console.log(
-    `[ProtocolStats] Airdrop gains: ${formatUnits(airdropGains, 18)} USDe (reconciliation Δ ${formatUnits(reconciliationDelta, 18)})`
-  );
-
-  await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
-    vaultBalance,
-    vaultAvailableAssets,
-    vaultDeployed,
-    escrowBalance,
-    vaultRealizedPnL: pnlResult.realizedPnL,
-    vaultAirdropGains: airdropGains,
-    vaultSecondaryBought: secondaryFlows.bought,
-    vaultSecondarySold: secondaryFlows.sold,
-    vaultDeposits: flowsResult.totalDeposits,
-    vaultWithdrawals: flowsResult.totalWithdrawals,
-    vaultPositionsWon: pnlResult.positionsWon,
-    vaultPositionsLost: pnlResult.positionsLost,
-    vaultCollateralWon: pnlResult.totalCollateralWon,
-    vaultCollateralLost: pnlResult.totalCollateralLost,
-  });
-
-  console.log(`[ProtocolStats] Snapshot stored successfully`);
-}
-
-/**
- * Get the latest stats snapshot.
- */
-export async function getLatestProtocolStats(
-  chainId: number = DEFAULT_CHAIN_ID,
-  vaultAddress?: string
-) {
-  return prisma.protocolStatsSnapshot.findFirst({
-    where: { chainId, ...(vaultAddress ? { vaultAddress } : {}) },
-    orderBy: { timestamp: 'desc' },
-  });
 }
 
 /**
@@ -1119,6 +1836,16 @@ export async function getLatestProtocolStats(
  * — without an array, rows written under a since-demoted primary would be
  * orphaned by the equality filter.
  */
+export async function getLatestProtocolStats(
+  chainId: number = DEFAULT_CHAIN_ID,
+  vaultAddress?: string
+) {
+  return prisma.protocolStatsSnapshot.findFirst({
+    where: { chainId, ...(vaultAddress ? { vaultAddress } : {}) },
+    orderBy: { timestamp: 'desc' },
+  });
+}
+
 export async function getProtocolStatsTimeSeries(
   days?: number,
   chainId: number = DEFAULT_CHAIN_ID,
@@ -1174,20 +1901,43 @@ const BACKFILL_SNAPSHOT_CONCURRENCY = 3;
  *   Phase 2: for each (timestamp, blockNumber) pair, fetch on-chain state +
  *            aggregate DB-derived metrics + upsert, all under BACKFILL_SNAPSHOT_CONCURRENCY.
  */
+const ZERO_SNAPSHOT: ProtocolStatsData = {
+  vaultBalance: 0n,
+  vaultAvailableAssets: 0n,
+  vaultDeployed: 0n,
+  escrowBalance: 0n,
+  vaultRealizedPnL: 0n,
+  vaultAirdropGains: 0n,
+  vaultSecondaryBought: 0n,
+  vaultSecondarySold: 0n,
+  vaultDeposits: 0n,
+  vaultWithdrawals: 0n,
+  vaultUnredeemedClaim: 0n,
+  vaultPositionsWon: 0,
+  vaultPositionsLost: 0,
+  vaultCollateralWon: 0n,
+  vaultCollateralLost: 0n,
+};
+
 export async function backfillProtocolStats(
   chainId: number = DEFAULT_CHAIN_ID,
   days: number = 90,
   intervalSeconds?: number
 ): Promise<void> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = (
-    contracts.predictionMarketVault[chainId]?.address ?? ''
-  ).toLowerCase();
+  const vaults = getConfiguredVaults(chainId);
+  if (vaults.length === 0) {
+    console.log(`[ProtocolStats] No vaults configured for chain ${chainId}`);
+    return;
+  }
 
   const interval = resolveSnapshotIntervalSeconds(intervalSeconds);
 
   console.log(
-    `[ProtocolStats] Starting backfill for ${days} days on chain ${chainId}, vault ${vaultAddress}, interval ${interval}s, phase1-concurrency ${BACKFILL_BLOCK_RESOLUTION_CONCURRENCY}, phase2-concurrency ${BACKFILL_SNAPSHOT_CONCURRENCY}`
+    `[ProtocolStats] Starting backfill for ${days} days on chain ${chainId}, ` +
+      `${vaults.length} vault(s): ${vaults.map((v) => `${v.kind}@${v.address}`).join(', ')}, ` +
+      `interval ${interval}s, phase1-concurrency ${BACKFILL_BLOCK_RESOLUTION_CONCURRENCY}, ` +
+      `phase2-concurrency ${BACKFILL_SNAPSHOT_CONCURRENCY}`
   );
 
   // End boundary is "now" floored to the interval; walk back in interval steps.
@@ -1261,57 +2011,48 @@ export async function backfillProtocolStats(
     }
 
     // ── Phase 2: parallel per-snapshot work ──
-    // Escrow aggregation is handled inside `sumEscrowBalancesAtBlock`, so we only
-    // need the vault config here. Collateral address is still needed for the
-    // balance-of vault read.
-    const vaultConfig = contracts.predictionMarketVault[chainId];
     const collateralAddress = contracts.collateralToken[chainId]?.address as
       | `0x${string}`
       | undefined;
 
     // One-shot pre-fetch of every prediction + flow event the per-iter DB
-    // aggregators could ever need. Replaces three findMany round-trips per
-    // iter (which scaled as N × table_scan) with O(1) sync calls per iter.
+    // aggregators could ever need across all configured vaults. Replaces
+    // (3 findMany) × (V vaults) × (T timestamps) round-trips with O(1) sync
+    // calls per iter.
     const tAggBuild = performance.now();
     const aggregator = await buildVaultAggregator(chainId);
     console.log(
       `[ProtocolStats] Phase 2 prep: built in-memory aggregator in ${(performance.now() - tAggBuild).toFixed(0)}ms`
     );
 
-    // Pre-launch zero-fills first — just DB upserts, no RPC.
+    // Pre-launch zero-fills first — just DB upserts, no RPC. One row per
+    // configured vault per pre-launch timestamp.
     if (preLaunch.length > 0) {
       console.log(
-        `[ProtocolStats] Phase 2a: upserting ${preLaunch.length} pre-launch zero-fills...`
+        `[ProtocolStats] Phase 2a: upserting ${preLaunch.length} × ${vaults.length} pre-launch zero-fills...`
       );
       const tPreLaunch = performance.now();
-      const preStep = Math.max(1, Math.floor(preLaunch.length / 10));
+      const totalPreUpserts = preLaunch.length * vaults.length;
+      const preStep = Math.max(1, Math.floor(totalPreUpserts / 10));
       await runParallelWork(
         preLaunch,
         BACKFILL_SNAPSHOT_CONCURRENCY,
         async (timestamp) => {
-          const t0 = performance.now();
-          await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
-            vaultBalance: 0n,
-            vaultAvailableAssets: 0n,
-            vaultDeployed: 0n,
-            escrowBalance: 0n,
-            vaultRealizedPnL: 0n,
-            vaultAirdropGains: 0n,
-            vaultSecondaryBought: 0n,
-            vaultSecondarySold: 0n,
-            vaultDeposits: 0n,
-            vaultWithdrawals: 0n,
-            vaultPositionsWon: 0,
-            vaultPositionsLost: 0,
-            vaultCollateralWon: 0n,
-            vaultCollateralLost: 0n,
-          });
-          totals.upsert += performance.now() - t0;
-          skipCount++;
-          if (skipCount % preStep === 0 || skipCount === preLaunch.length) {
-            console.log(
-              `[ProtocolStats] Phase 2a: ${skipCount}/${preLaunch.length} (${((performance.now() - tPreLaunch) / 1000).toFixed(1)}s)`
+          for (const vault of vaults) {
+            const t0 = performance.now();
+            await upsertProtocolStatsSnapshot(
+              timestamp,
+              chainId,
+              vault.address,
+              ZERO_SNAPSHOT
             );
+            totals.upsert += performance.now() - t0;
+            skipCount++;
+            if (skipCount % preStep === 0 || skipCount === totalPreUpserts) {
+              console.log(
+                `[ProtocolStats] Phase 2a: ${skipCount}/${totalPreUpserts} (${((performance.now() - tPreLaunch) / 1000).toFixed(1)}s)`
+              );
+            }
           }
         }
       );
@@ -1320,12 +2061,13 @@ export async function backfillProtocolStats(
       );
     }
 
-    // Real on-chain snapshots.
+    // Real on-chain snapshots — fan out per-vault inside each timestamp.
     if (resolved.length > 0) {
       console.log(
-        `[ProtocolStats] Phase 2b: fetching on-chain state + DB aggregates for ${resolved.length} snapshots (concurrency ${BACKFILL_SNAPSHOT_CONCURRENCY})...`
+        `[ProtocolStats] Phase 2b: fetching on-chain state + DB aggregates for ${resolved.length} timestamps × ${vaults.length} vault(s) (concurrency ${BACKFILL_SNAPSHOT_CONCURRENCY})...`
       );
     }
+    const totalRealUpserts = resolved.length * vaults.length;
     let doneCount = 0;
     await runParallelWork(
       resolved,
@@ -1337,88 +2079,176 @@ export async function backfillProtocolStats(
             ? new Date(timestamp * 1000).toISOString().replace('.000Z', 'Z')
             : new Date(timestamp * 1000).toISOString().split('T')[0];
 
-        const vaultAddr = vaultConfig
-          ? getContractForBlock(vaultConfig, blockNumber)
-          : null;
+        // Escrow is shared across all vault families on this chain — sum once
+        // per (timestamp, block) and reuse across the per-vault loop.
+        const tEscrow = performance.now();
+        const escrowBalance = await sumEscrowBalancesAtBlock(
+          client,
+          chainId,
+          blockNumber
+        );
+        let rpcMs = performance.now() - tEscrow;
 
-        // Three balance reads in parallel — share blockNumber. Escrow sums
-        // across current + all past V2 deploys (see sumEscrowBalancesAtBlock),
-        // so funds still sitting in old escrow contracts are included.
-        // availableAssets() may revert on legacy vaults; fall back to vaultBalance.
-        const tRpc = performance.now();
-        const [vaultBalance, vaultAvailableAssetsOrNull, escrowBalance] =
-          await Promise.all([
-            vaultAddr && collateralAddress
+        for (const vault of vaults) {
+          // Pick the vault address that was actually live at this block —
+          // handles redeploy boundaries (a since-demoted primary's snapshots
+          // for blocks before the new primary's deployment must read from
+          // the legacy address, not the current one).
+          const vaultAddrAtBlock = getContractForBlock(
+            vault.config,
+            blockNumber
+          );
+
+          if (!vaultAddrAtBlock) {
+            // Block predates this vault entirely. Write a zero row so the
+            // time series has a continuous backbone instead of gaps.
+            const t0 = performance.now();
+            await upsertProtocolStatsSnapshot(
+              timestamp,
+              chainId,
+              vault.address,
+              { ...ZERO_SNAPSHOT, escrowBalance }
+            );
+            totals.upsert += performance.now() - t0;
+            successCount++;
+            doneCount++;
+            continue;
+          }
+
+          // Two parallel RPC reads pinned to blockNumber. availableAssets()
+          // may revert on legacy vault contracts pre-dating that function;
+          // fall back to vaultBalance.
+          const tRpcVault = performance.now();
+          const [vaultBalance, vaultAvailableAssetsOrNull] = await Promise.all([
+            collateralAddress
               ? client.readContract({
                   address: collateralAddress,
                   abi: erc20Abi,
                   functionName: 'balanceOf',
-                  args: [vaultAddr],
+                  args: [vaultAddrAtBlock],
                   blockNumber,
                 })
               : Promise.resolve(0n),
-            vaultAddr && collateralAddress
-              ? client
-                  .readContract({
-                    address: vaultAddr,
-                    abi: predictionMarketVaultAbi,
-                    functionName: 'availableAssets',
-                    args: [],
-                    blockNumber,
-                  })
-                  .then((v) => v as bigint)
-                  .catch(() => null as bigint | null)
-              : Promise.resolve(0n as bigint | null),
-            sumEscrowBalancesAtBlock(client, chainId, blockNumber),
+            client
+              .readContract({
+                address: vaultAddrAtBlock,
+                abi: predictionMarketVaultAbi,
+                functionName: 'availableAssets',
+                args: [],
+                blockNumber,
+              })
+              .then((v) => v as bigint)
+              .catch(() => null as bigint | null),
           ]);
-        const rpcMs = performance.now() - tRpc;
+          rpcMs += performance.now() - tRpcVault;
+
+          const vaultAvailableAssets =
+            vaultAvailableAssetsOrNull === null
+              ? vaultBalance
+              : vaultAvailableAssetsOrNull;
+
+          // DB-derived metrics — sync in-memory aggregation scoped to the
+          // historical address (so post-redeploy stats only see prior-deployment
+          // predictions on pre-redeploy blocks, fixing the boundary bug).
+          const tDb = performance.now();
+          const historicalAddrLower = vaultAddrAtBlock.toLowerCase();
+          const vaultDeployed = aggregator.deployedAt(
+            timestamp,
+            historicalAddrLower
+          );
+          const pnlResult = aggregator.pnlAt(timestamp, historicalAddrLower);
+          const flowsResult = aggregator.flowsAt(
+            timestamp,
+            historicalAddrLower
+          );
+          const unredeemedClaim = aggregator.unredeemedClaimAt(
+            timestamp,
+            historicalAddrLower
+          );
+          const secondaryFlows = aggregator.secondaryAt(
+            timestamp,
+            historicalAddrLower
+          );
+          const airdropGains = aggregator.airdropsAt(
+            timestamp,
+            historicalAddrLower
+          );
+          totals.dbReads += performance.now() - tDb;
+
+          // Reconciliation identity (1634):
+          //   balance + deployed = deposits − withdrawals + settlementPnL
+          //                        + (secondarySold − secondaryBought) + airdrops
+          const actualTotalAssets = vaultBalance + vaultDeployed;
+          const expectedTotalAssets =
+            flowsResult.totalDeposits -
+            flowsResult.totalWithdrawals +
+            pnlResult.realizedPnL +
+            secondaryFlows.sold -
+            secondaryFlows.bought +
+            airdropGains;
+          const reconciliationDelta = actualTotalAssets - expectedTotalAssets;
+          // See `computeAndStoreProtocolStats` for the rationale on why this
+          // stays at log-level rather than error.
+          if (reconciliationDelta !== 0n) {
+            console.log(
+              `[ProtocolStats] reconciliation Δ ≠ 0 for ${vault.kind}@${historicalAddrLower} ts=${timestamp}: Δ=${formatUnits(reconciliationDelta, 18)} USDe ` +
+                `(LHS balance+deployed=${formatUnits(actualTotalAssets, 18)} vs RHS=${formatUnits(expectedTotalAssets, 18)})`
+            );
+          }
+
+          if (GAP_DEBUG()) {
+            const decomp = aggregator.gapDecompositionAt(
+              timestamp,
+              historicalAddrLower
+            );
+            console.log(
+              formatGapDecomposition(
+                `ts=${timestamp} ${vault.kind}@${historicalAddrLower}`,
+                decomp,
+                vaultBalance,
+                vaultDeployed,
+                flowsResult.totalDeposits,
+                flowsResult.totalWithdrawals,
+                pnlResult.realizedPnL,
+                secondaryFlows,
+                airdropGains
+              )
+            );
+          }
+
+          const tUpsert = performance.now();
+          // Always upsert under the vault's CURRENT primary address (vault.address)
+          // — rows are keyed by vault category, not by historical deployment.
+          await upsertProtocolStatsSnapshot(timestamp, chainId, vault.address, {
+            vaultBalance,
+            vaultAvailableAssets,
+            vaultDeployed,
+            escrowBalance,
+            vaultRealizedPnL: pnlResult.realizedPnL,
+            vaultAirdropGains: airdropGains,
+            vaultSecondaryBought: secondaryFlows.bought,
+            vaultSecondarySold: secondaryFlows.sold,
+            vaultDeposits: flowsResult.totalDeposits,
+            vaultWithdrawals: flowsResult.totalWithdrawals,
+            vaultPositionsWon: pnlResult.positionsWon,
+            vaultPositionsLost: pnlResult.positionsLost,
+            vaultCollateralWon: pnlResult.totalCollateralWon,
+            vaultCollateralLost: pnlResult.totalCollateralLost,
+            vaultUnredeemedClaim: unredeemedClaim,
+          });
+          totals.upsert += performance.now() - tUpsert;
+
+          successCount++;
+          doneCount++;
+        }
+
         totals.rpcReads += rpcMs;
-
-        const vaultAvailableAssets =
-          vaultAvailableAssetsOrNull === null
-            ? vaultBalance
-            : vaultAvailableAssetsOrNull;
-
-        // DB-derived metrics — sync in-memory aggregation against the
-        // pre-fetched superset. Replaces five findMany calls per iter.
-        const tDb = performance.now();
-        const vaultDeployed = aggregator.deployedAt(timestamp);
-        const pnlResult = aggregator.pnlAt(timestamp);
-        const flowsResult = aggregator.flowsAt(timestamp);
-        const secondaryFlows = aggregator.secondaryAt(timestamp);
-        const airdropGains = aggregator.airdropsAt(timestamp);
-        const dbMs = performance.now() - tDb;
-        totals.dbReads += dbMs;
-
-        const tUpsert = performance.now();
-        await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
-          vaultBalance,
-          vaultAvailableAssets,
-          vaultDeployed,
-          escrowBalance,
-          vaultRealizedPnL: pnlResult.realizedPnL,
-          vaultAirdropGains: airdropGains,
-          vaultSecondaryBought: secondaryFlows.bought,
-          vaultSecondarySold: secondaryFlows.sold,
-          vaultDeposits: flowsResult.totalDeposits,
-          vaultWithdrawals: flowsResult.totalWithdrawals,
-          vaultPositionsWon: pnlResult.positionsWon,
-          vaultPositionsLost: pnlResult.positionsLost,
-          vaultCollateralWon: pnlResult.totalCollateralWon,
-          vaultCollateralLost: pnlResult.totalCollateralLost,
-        });
-        const upsertMs = performance.now() - tUpsert;
-        totals.upsert += upsertMs;
-
-        successCount++;
-        doneCount++;
         const iterMs = performance.now() - iterStart;
         console.log(
-          `[ProtocolStats] ${dateStr} block=${blockNumber} [${doneCount}/${resolved.length}] ` +
+          `[ProtocolStats] ${dateStr} block=${blockNumber} [${doneCount}/${totalRealUpserts}] ` +
             `iter=${iterMs.toFixed(0)}ms ` +
-            `(rpc=${rpcMs.toFixed(0)} db=${dbMs.toFixed(0)} upsert=${upsertMs.toFixed(0)}) | ` +
-            `vault=${formatUnits(vaultAvailableAssets, 18)}+${formatUnits(vaultDeployed, 18)} ` +
-            `escrow=${formatUnits(escrowBalance, 18)} pnl=${formatUnits(pnlResult.realizedPnL, 18)}`
+            `escrow=${formatUnits(escrowBalance, 18)} ` +
+            `(${vaults.length} vault upsert${vaults.length === 1 ? '' : 's'})`
         );
       }
     );
@@ -1440,7 +2270,7 @@ export async function backfillProtocolStats(
     `${(ms / 1000).toFixed(1)}s cumulative across workers (${phase2CumulativeMs > 0 ? ((ms / phase2CumulativeMs) * 100).toFixed(1) : '0'}% of phase-2 work)`;
   const verdict = crashError ? 'INCOMPLETE (see error above)' : 'complete';
   console.log(
-    `[ProtocolStats] Backfill ${verdict}: ${successCount} snapshots processed, ${skipCount} pre-launch zero-fills, ${Math.max(0, postLaunch.length - resolved.length)} skipped in ${(elapsedMs / 1000).toFixed(1)}s\n` +
+    `[ProtocolStats] Backfill ${verdict}: ${successCount} snapshot upserts (across ${vaults.length} vault(s)), ${skipCount} pre-launch zero-fills, ${Math.max(0, postLaunch.length - resolved.length) * vaults.length} skipped in ${(elapsedMs / 1000).toFixed(1)}s\n` +
       `  Phase 1 (block resolution): ${wallPct(totals.resolveBlocks)}\n` +
       `  Phase 2 (per-snapshot work): ${wallPct(phase2WallMs)}\n` +
       `    rpc reads:    ${cumShare(totals.rpcReads)}\n` +

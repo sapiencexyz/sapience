@@ -10,6 +10,7 @@ const { mockPrisma, mockReadContract } = vi.hoisted(() => {
     close: { findMany: vi.fn() },
     secondaryTrade: { findMany: vi.fn() },
     collateralTransfer: { findMany: vi.fn() },
+    claim: { findMany: vi.fn() },
     protocolStatsSnapshot: {
       upsert: vi.fn(),
       findFirst: vi.fn(),
@@ -55,6 +56,9 @@ vi.mock('@sapience/sdk/contracts', () => ({
     predictionMarketVault: {
       42161: { address: '0xVault' },
     },
+    pythPredictionMarketVault: {},
+    singleLegVault: {},
+    predictionMarketVaultStrategyB: {},
   },
   normalizeLegacyEntry: (entry: unknown) => entry,
 }));
@@ -85,6 +89,7 @@ function resetEmptyState() {
   mockPrisma.close.findMany.mockResolvedValue([]);
   mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
   mockPrisma.collateralTransfer.findMany.mockResolvedValue([]);
+  mockPrisma.claim.findMany.mockResolvedValue([]);
   mockPrisma.protocolStatsSnapshot.upsert.mockResolvedValue({});
   mockReadContract.mockResolvedValue(1000000000000000000n);
 }
@@ -208,19 +213,23 @@ describe('calculateVaultAirdrops', () => {
 
   it('subtracts deposits, settlement payouts, and secondary sale proceeds from gross transfers in', async () => {
     // 5 wUSDe arrived in the vault. 1 was a deposit, 2 was a settlement
-    // payout, 1 was secondary sale proceeds. The remaining 1 is airdrop.
+    // redemption (Claim row), 1 was secondary sale proceeds. The remaining
+    // 1 is airdrop.
     mockPrisma.collateralTransfer.findMany.mockResolvedValue([
       { value: '5000000000000000000' },
     ]);
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
-      { assets: '1000000000000000000', eventType: 'deposit' },
-    ]);
-    mockPrisma.close.findMany.mockResolvedValue([
       {
-        predictorHolder: '0xother',
-        counterpartyHolder: '0xvault',
-        predictorPayout: '0',
-        counterpartyPayout: '2000000000000000000',
+        assets: '1000000000000000000',
+        eventType: 'deposit',
+        vaultAddress: '0xvault',
+      },
+    ]);
+    mockPrisma.claim.findMany.mockResolvedValue([
+      {
+        holder: '0xvault',
+        collateralPaid: '2000000000000000000',
+        redeemedAt: 1700000000,
       },
     ]);
     mockPrisma.secondaryTrade.findMany.mockResolvedValue([
@@ -236,7 +245,11 @@ describe('calculateVaultAirdrops', () => {
       { value: '500000000000000000' },
     ]);
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
-      { assets: '2000000000000000000', eventType: 'deposit' },
+      {
+        assets: '2000000000000000000',
+        eventType: 'deposit',
+        vaultAddress: '0xvault',
+      },
     ]);
     const result = await calculateVaultAirdrops(42161);
     expect(result).toBe(0n);
@@ -264,7 +277,11 @@ describe('computeAndStoreProtocolStats', () => {
       { value: '1500000000000000000' },
     ]);
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
-      { assets: '500000000000000000', eventType: 'deposit' },
+      {
+        assets: '500000000000000000',
+        eventType: 'deposit',
+        vaultAddress: '0xvault',
+      },
     ]);
 
     await computeAndStoreProtocolStats(42161);
@@ -288,7 +305,11 @@ describe('computeAndStoreProtocolStats', () => {
 
   it('upserts snapshot with all fields correctly mapped', async () => {
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
-      { assets: '1000000000000000000', eventType: 'deposit' },
+      {
+        assets: '1000000000000000000',
+        eventType: 'deposit',
+        vaultAddress: '0xvault',
+      },
     ]);
 
     await computeAndStoreProtocolStats(42161);
@@ -446,13 +467,13 @@ describe('vault PnL calculation', () => {
 
   it('credits gross settlement payout and subtracts primary collateral when vault held the winning side', async () => {
     // Vault was original counterparty with 0.7e18 collateral, held til
-    // settlement, received the full pot of 1e18.
-    mockPrisma.close.findMany.mockResolvedValue([
+    // settlement, redeemed for the full pot of 1e18 (TokensRedeemed event
+    // → Claim row with holder=vault, collateralPaid=1e18).
+    mockPrisma.claim.findMany.mockResolvedValue([
       {
-        predictorHolder: '0xother',
-        counterpartyHolder: '0xvault',
-        predictorPayout: '0',
-        counterpartyPayout: '1000000000000000000',
+        holder: '0xvault',
+        collateralPaid: '1000000000000000000',
+        redeemedAt: 1700000000,
       },
     ]);
     mockPrisma.prediction.findMany
@@ -463,6 +484,7 @@ describe('vault PnL calculation', () => {
           counterparty: '0xvault',
           predictorCollateral: '300000000000000000',
           counterpartyCollateral: '700000000000000000',
+          pickConfiguration: { result: 'COUNTERPARTY_WINS' },
         },
       ]);
 
@@ -475,14 +497,8 @@ describe('vault PnL calculation', () => {
   });
 
   it('records a loss when vault held the losing side and got zero payout', async () => {
-    mockPrisma.close.findMany.mockResolvedValue([
-      {
-        predictorHolder: '0xother',
-        counterpartyHolder: '0xvault',
-        predictorPayout: '1000000000000000000',
-        counterpartyPayout: '0',
-      },
-    ]);
+    // Vault lost — no TokensRedeemed for vault, no Claim row.
+    mockPrisma.claim.findMany.mockResolvedValue([]);
     mockPrisma.prediction.findMany
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -491,6 +507,7 @@ describe('vault PnL calculation', () => {
           counterparty: '0xvault',
           predictorCollateral: '300000000000000000',
           counterpartyCollateral: '700000000000000000',
+          pickConfiguration: { result: 'PREDICTOR_WINS' },
         },
       ]);
 
@@ -505,18 +522,11 @@ describe('vault PnL calculation', () => {
   });
 
   it('does NOT credit settlement payout for positions vault sold before close (only primary collateral remains as cost)', async () => {
-    // Vault was original counterparty for 0.7e18, but sold the token on
-    // secondary before close. Holder at close is 0xbuyer. Settlement does
-    // not contribute payout to vault; only the primary collateral cost
-    // remains. The sale proceeds get tracked via the secondaryTrade row.
-    mockPrisma.close.findMany.mockResolvedValue([
-      {
-        predictorHolder: '0xother',
-        counterpartyHolder: '0xbuyer',
-        predictorPayout: '0',
-        counterpartyPayout: '1000000000000000000',
-      },
-    ]);
+    // Vault was original counterparty for 0.7e18, sold the token on
+    // secondary before redemption. The buyer redeems and gets the pot — no
+    // Claim row for vault. Vault keeps its primary cost basis (-0.7e18 PnL)
+    // and the sale proceeds get tracked via vaultSecondarySold.
+    mockPrisma.claim.findMany.mockResolvedValue([]);
     mockPrisma.prediction.findMany
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -525,6 +535,7 @@ describe('vault PnL calculation', () => {
           counterparty: '0xvault',
           predictorCollateral: '300000000000000000',
           counterpartyCollateral: '700000000000000000',
+          pickConfiguration: { result: 'COUNTERPARTY_WINS' },
         },
       ]);
     mockPrisma.secondaryTrade.findMany.mockResolvedValue([
@@ -544,15 +555,14 @@ describe('vault PnL calculation', () => {
 
   it('credits gross payout (no cost basis) when vault bought the position on secondary', async () => {
     // Vault was not original counterparty/predictor; bought the winning
-    // token on secondary for 0.6e18. At settlement vault is the holder,
-    // receives 1e18. Settlement contribution: 1e18 (no primary cost).
-    // Cost basis sits in vaultSecondaryBought.
-    mockPrisma.close.findMany.mockResolvedValue([
+    // token on secondary for 0.6e18. Vault redeemed for 1e18 (Claim row).
+    // No primary cost basis (vault wasn't on the prediction's creation
+    // sides); cost sits in vaultSecondaryBought.
+    mockPrisma.claim.findMany.mockResolvedValue([
       {
-        predictorHolder: '0xvault',
-        counterpartyHolder: '0xother',
-        predictorPayout: '1000000000000000000',
-        counterpartyPayout: '0',
+        holder: '0xvault',
+        collateralPaid: '1000000000000000000',
+        redeemedAt: 1700000000,
       },
     ]);
     mockPrisma.prediction.findMany
@@ -686,7 +696,7 @@ describe('buildVaultAggregator', () => {
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
 
     const agg = await buildVaultAggregator(42161);
-    expect(agg.deployedAt(T)).toBe(500n);
+    expect(agg.deployedAt(T, '0xvault')).toBe(500n);
   });
 
   it('deployedAt: excludes predictions created after t', async () => {
@@ -704,7 +714,7 @@ describe('buildVaultAggregator', () => {
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
 
     const agg = await buildVaultAggregator(42161);
-    expect(agg.deployedAt(T)).toBe(0n);
+    expect(agg.deployedAt(T, '0xvault')).toBe(0n);
   });
 
   it('deployedAt: pickConfiguration resolved before t excludes prediction', async () => {
@@ -726,7 +736,7 @@ describe('buildVaultAggregator', () => {
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
 
     const agg = await buildVaultAggregator(42161);
-    expect(agg.deployedAt(T)).toBe(0n);
+    expect(agg.deployedAt(T, '0xvault')).toBe(0n);
   });
 
   it('deployedAt: pickConfiguration resolved after t still counts as deployed', async () => {
@@ -748,10 +758,10 @@ describe('buildVaultAggregator', () => {
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
 
     const agg = await buildVaultAggregator(42161);
-    expect(agg.deployedAt(T)).toBe(500n);
+    expect(agg.deployedAt(T, '0xvault')).toBe(500n);
   });
 
-  it('pnlAt: gross payouts via Close minus primary collateral, with UNRESOLVED + future-close skips', async () => {
+  it('pnlAt: gross payouts via Claim minus primary collateral, with UNRESOLVED + future-claim skips', async () => {
     mockPrisma.prediction.findMany.mockResolvedValue([
       // Vault wins as counterparty: cost basis 700, gross payout 1000 → +300
       {
@@ -811,39 +821,21 @@ describe('buildVaultAggregator', () => {
       },
     ]);
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
-    mockPrisma.close.findMany.mockResolvedValue([
-      // pc1 burned at T-50: vault held counterparty token, received full pot
-      {
-        burnedAt: T - 50,
-        predictorHolder: '0xuser',
-        counterpartyHolder: '0xvault',
-        predictorPayout: '0',
-        counterpartyPayout: '1000',
-      },
-      // pc2 burned at T-40: vault held predictor token, got 0
-      {
-        burnedAt: T - 40,
-        predictorHolder: '0xvault',
-        counterpartyHolder: '0xuser',
-        predictorPayout: '0',
-        counterpartyPayout: '1000',
-      },
-      // future close (after t) — payout skipped at this snapshot
-      {
-        burnedAt: T + 5,
-        predictorHolder: '0xvault',
-        counterpartyHolder: '0xuser',
-        predictorPayout: '999',
-        counterpartyPayout: '0',
-      },
+    // Claim rows = TokensRedeemed events. pc1: vault received 1000.
+    // pc2: vault lost — no claim row. Future-redeemed claim is skipped.
+    mockPrisma.claim.findMany.mockResolvedValue([
+      { holder: '0xvault', collateralPaid: '1000', redeemedAt: T - 50 },
+      // future-redeemed (after t) — skipped
+      { holder: '0xvault', collateralPaid: '999', redeemedAt: T + 5 },
     ]);
+    mockPrisma.close.findMany.mockResolvedValue([]);
     mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
     mockPrisma.collateralTransfer.findMany.mockResolvedValue([]);
 
     const agg = await buildVaultAggregator(42161);
-    const result = agg.pnlAt(T);
-    // grossPayouts = 1000 (pc1) + 0 (pc2) = 1000
-    // primaryCollateral = 700 (pc1) + 500 (pc2) = 1200
+    const result = agg.pnlAt(T, '0xvault');
+    // grossPayouts = 1000 (pc1; pc2 lost = no claim; pc4 future-redeemed skipped)
+    // primaryCollateral = 700 (pc1) + 500 (pc2) = 1200 (pc3 unresolved + pc4 future-resolved skipped)
     // realizedPnL = 1000 − 1200 = −200
     expect(result.realizedPnL).toBe(-200n);
     expect(result.positionsWon).toBe(1);
@@ -855,24 +847,44 @@ describe('buildVaultAggregator', () => {
   it('flowsAt: filters by timestamp <= t and partitions deposit vs withdrawal', async () => {
     mockPrisma.prediction.findMany.mockResolvedValue([]);
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
-      { timestamp: T - 100, eventType: 'deposit', assets: '1000' },
-      { timestamp: T - 50, eventType: 'withdrawal', assets: '200' },
-      { timestamp: T - 25, eventType: 'deposit', assets: '500' },
+      {
+        timestamp: T - 100,
+        eventType: 'deposit',
+        assets: '1000',
+        vaultAddress: '0xvault',
+      },
+      {
+        timestamp: T - 50,
+        eventType: 'withdrawal',
+        assets: '200',
+        vaultAddress: '0xvault',
+      },
+      {
+        timestamp: T - 25,
+        eventType: 'deposit',
+        assets: '500',
+        vaultAddress: '0xvault',
+      },
       // After t — skipped
-      { timestamp: T + 10, eventType: 'deposit', assets: '999' },
+      {
+        timestamp: T + 10,
+        eventType: 'deposit',
+        assets: '999',
+        vaultAddress: '0xvault',
+      },
     ]);
 
     const agg = await buildVaultAggregator(42161);
-    const result = agg.flowsAt(T);
+    const result = agg.flowsAt(T, '0xvault');
     expect(result.totalDeposits).toBe(1500n);
     expect(result.totalWithdrawals).toBe(200n);
   });
 
   it('returns zero-aggregators when chain has no vault configured', async () => {
     const agg = await buildVaultAggregator(999);
-    expect(agg.deployedAt(T)).toBe(0n);
-    expect(agg.pnlAt(T).realizedPnL).toBe(0n);
-    expect(agg.flowsAt(T).totalDeposits).toBe(0n);
+    expect(agg.deployedAt(T, '0xvault')).toBe(0n);
+    expect(agg.pnlAt(T, '0xvault').realizedPnL).toBe(0n);
+    expect(agg.flowsAt(T, '0xvault').totalDeposits).toBe(0n);
     expect(mockPrisma.prediction.findMany).not.toHaveBeenCalled();
   });
 });

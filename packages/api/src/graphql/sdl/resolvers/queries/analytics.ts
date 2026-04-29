@@ -9,7 +9,7 @@
  */
 
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { contracts, normalizeLegacyEntry } from '@sapience/sdk/contracts';
+import { normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import type {
   QueryResolvers,
   ProtocolStat,
@@ -23,9 +23,11 @@ import {
   calculateVaultFlows,
   calculateVaultPnL,
   calculateVaultSecondaryFlows,
+  calculateVaultUnredeemedClaim,
   fetchVaultAvailableAssets,
   fetchVaultDeployed,
   fetchVaultTVL,
+  getConfiguredVaults,
   getProtocolStatsTimeSeries,
   resolveSnapshotIntervalSeconds,
   sumEscrowBalancesAtBlock,
@@ -59,26 +61,40 @@ export const protocolStats: NonNullable<
   QueryResolvers['protocolStats']
 > = async (_parent, { vaultAddress: vaultAddressArg }) => {
   const chainId = DEFAULT_CHAIN_ID;
-  const vaultConfig = contracts.predictionMarketVault[chainId];
 
-  // Filter the snapshot time series by the full vault history — current
-  // primary plus every demoted-to-legacy address — so historical rows written
-  // under a since-redeployed primary stay visible. Without the legacies,
-  // every SDK redeploy would orphan the entire historical chart until a
-  // re-stamping backfill runs.
-  //
-  // If the caller passes an explicit `vaultAddressArg`, use exactly that
-  // address (no expansion) — they're targeting a specific deploy.
-  const vaultAddresses: string[] = vaultAddressArg
-    ? [vaultAddressArg.toLowerCase()]
-    : vaultConfig
-      ? [
-          vaultConfig.address,
-          ...(vaultConfig.legacy ?? []).map(
-            (le) => normalizeLegacyEntry(le).address
-          ),
-        ].map((a) => a.toLowerCase())
-      : [];
+  // Resolve which vault category the caller wants. Without `vaultAddressArg`
+  // we default to the protocol vault (preserves the legacy single-tab default).
+  // With it, match against any configured vault's current primary OR any of
+  // its legacy entries, so an explicit "give me the pyth tab" pin still works
+  // after a future pyth redeploy demotes the address into legacy.
+  const configuredVaults = getConfiguredVaults(chainId);
+  const targetArgLower = vaultAddressArg?.toLowerCase();
+  const targetVault = targetArgLower
+    ? configuredVaults.find(
+        (v) =>
+          v.address === targetArgLower ||
+          (v.config.legacy ?? []).some(
+            (le) =>
+              normalizeLegacyEntry(le).address.toLowerCase() === targetArgLower
+          )
+      )
+    : configuredVaults.find((v) => v.kind === 'protocol');
+  const vaultConfig = targetVault?.config;
+
+  // Filter the snapshot time series by the full address history of the chosen
+  // vault — current primary plus every demoted-to-legacy address. Without
+  // the legacies, every SDK redeploy would orphan the entire historical chart
+  // until a re-stamping backfill runs. Per-category by construction: the
+  // address set only contains entries for the SELECTED vault family, so
+  // protocol/pyth/single-leg/strategy-b rows never bleed across each other.
+  const vaultAddresses: string[] = vaultConfig
+    ? [
+        vaultConfig.address,
+        ...(vaultConfig.legacy ?? []).map(
+          (le) => normalizeLegacyEntry(le).address
+        ),
+      ].map((a) => a.toLowerCase())
+    : [];
 
   const rawSnapshots = await getProtocolStatsTimeSeries(
     undefined,
@@ -212,6 +228,7 @@ export const protocolStats: NonNullable<
       vaultAirdropGains: snapshot.vaultAirdropGains,
       vaultSecondaryBought: snapshot.vaultSecondaryBought,
       vaultSecondarySold: snapshot.vaultSecondarySold,
+      vaultUnredeemedClaim: snapshot.vaultUnredeemedClaim,
       periodPnL,
       periodVolume,
     };
@@ -225,6 +242,12 @@ export const protocolStats: NonNullable<
       BigInt(liveCumVol) - BigInt(lastCumVol)
     ).toString();
 
+    // Scope all per-vault helpers to the SELECTED vault category. Without this
+    // the live candle on the Pyth/SingleLeg/StrategyB tabs would silently render
+    // protocol-vault numbers, since these helpers default to the protocol
+    // primary when no vaultAddress arg is passed. Escrow stays chain-scoped —
+    // it's shared across all vault families on the chain.
+    const liveVaultAddress = vaultConfig?.address.toLowerCase();
     const [
       liveVaultBalance,
       liveVaultAvailableAssets,
@@ -234,18 +257,17 @@ export const protocolStats: NonNullable<
       liveFlowsResult,
       liveSecondaryFlows,
       liveAirdropGains,
+      liveUnredeemedClaim,
     ] = await Promise.all([
-      fetchVaultTVL(chainId),
-      fetchVaultAvailableAssets(chainId),
-      fetchVaultDeployed(chainId),
-      // Sum across current + past V2 escrow deploys at chain head, matching
-      // the cron/backfill behaviour. Reading only the current primary (as
-      // before) would understate live TVL on every redeploy.
+      fetchVaultTVL(chainId, liveVaultAddress),
+      fetchVaultAvailableAssets(chainId, liveVaultAddress),
+      fetchVaultDeployed(chainId, undefined, liveVaultAddress),
       sumEscrowBalancesAtBlock(getProviderForChain(chainId), chainId),
-      calculateVaultPnL(chainId),
-      calculateVaultFlows(chainId),
-      calculateVaultSecondaryFlows(chainId),
-      calculateVaultAirdrops(chainId),
+      calculateVaultPnL(chainId, undefined, liveVaultAddress),
+      calculateVaultFlows(chainId, undefined, liveVaultAddress),
+      calculateVaultSecondaryFlows(chainId, undefined, liveVaultAddress),
+      calculateVaultAirdrops(chainId, undefined, liveVaultAddress),
+      calculateVaultUnredeemedClaim(chainId, undefined, liveVaultAddress),
     ]);
 
     const liveCumulativePnL =
@@ -276,6 +298,7 @@ export const protocolStats: NonNullable<
       vaultAirdropGains: liveAirdropGains.toString(),
       vaultSecondaryBought: liveSecondaryFlows.bought.toString(),
       vaultSecondarySold: liveSecondaryFlows.sold.toString(),
+      vaultUnredeemedClaim: liveUnredeemedClaim.toString(),
       periodPnL: livePeriodPnL,
       periodVolume: livePeriodVolume,
     });

@@ -498,42 +498,31 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       }
 
       const eventName = decoded.eventName as unknown as string;
+      const txHash = log.transactionHash || '';
+      const logIdx = log.logIndex || 0;
 
-      // Record raw event. `Event` has a unique constraint on
-      // (transactionHash, logIndex); if we're replaying a log the Background
-      // Worker already processed, this create throws P2002 and we short-circuit
-      // the whole dispatcher. Per-handler idempotency gates below are still
-      // load-bearing for crash-in-the-middle scenarios, but this skips them in
-      // the common-case replay.
-      try {
-        await prisma.event.create({
-          data: {
-            blockNumber: Number(log.blockNumber || 0),
-            transactionHash: log.transactionHash || '',
-            timestamp: BigInt(block.timestamp),
-            logIndex: log.logIndex || 0,
-            logData: {
-              source: 'PredictionMarketEscrow',
-              chainId: this.chainId,
-              eventName,
-              args: JSON.parse(
-                JSON.stringify(decoded.args, (_key, value) =>
-                  typeof value === 'bigint' ? value.toString() : value
-                )
-              ),
-            },
+      // Fast-path replay short-circuit: if this event was already fully
+      // processed (Event row exists), skip the handler entirely. The Event
+      // row is now written AFTER successful handler completion (see below),
+      // so its presence is a strong signal the handler ran to completion at
+      // least once. Handlers are idempotent — per the per-handler audit —
+      // but re-running them on every reconciler pass is wasted work.
+      const alreadyProcessed = await prisma.event.findUnique({
+        where: {
+          transactionHash_logIndex: {
+            transactionHash: txHash,
+            logIndex: logIdx,
           },
-        });
-      } catch (e) {
-        if (
-          e instanceof Prisma.PrismaClientKnownRequestError &&
-          e.code === 'P2002'
-        ) {
-          return;
-        }
-        throw e;
-      }
+        },
+        select: { id: true },
+      });
+      if (alreadyProcessed) return;
 
+      // Run the handler FIRST. If it crashes, no Event row gets written, so
+      // the next reconciler pass re-runs the handler and converges to
+      // correct state via per-handler idempotency. Compare to the previous
+      // ordering (Event first), which left orphaned Event rows on
+      // crash-in-the-middle and the reconciler couldn't recover them.
       switch (eventName) {
         case 'PredictionCreated':
           await this.processPredictionCreated(
@@ -579,7 +568,41 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           break;
         default:
           // Silently skip other events (e.g., OwnershipTransferred)
-          break;
+          return;
+      }
+
+      // Mark the event as processed AFTER the handler succeeds. Concurrent
+      // workers (Background + Reconciler) may both reach here for the same
+      // event; whichever wins inserts the Event row, the loser hits P2002
+      // and short-circuits — both runs of the handler were independently
+      // idempotent so no double-application.
+      try {
+        await prisma.event.create({
+          data: {
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: txHash,
+            timestamp: BigInt(block.timestamp),
+            logIndex: logIdx,
+            logData: {
+              source: 'PredictionMarketEscrow',
+              chainId: this.chainId,
+              eventName,
+              args: JSON.parse(
+                JSON.stringify(decoded.args, (_key, value) =>
+                  typeof value === 'bigint' ? value.toString() : value
+                )
+              ),
+            },
+          },
+        });
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === 'P2002'
+        ) {
+          return;
+        }
+        throw e;
       }
     } catch (error) {
       console.error(
@@ -1042,31 +1065,52 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     // This is a known misnomer — Claim.predictionId actually stores a pickConfigId.
     // P&L code uses tokensBurned as cost basis to avoid depending on this field for joins.
     const predictionIdLower = event.pickConfigId.toLowerCase();
+    const positionTokenLower = event.positionToken.toLowerCase();
+    const txHash = log.transactionHash || '';
+    const logIdx = log.logIndex ?? 0;
 
-    // Create claim record
-    await prisma.claim.create({
-      data: {
-        chainId: this.chainId,
-        marketAddress: this.contractAddress.toLowerCase(),
-        predictionId: predictionIdLower,
-        holder: event.holder.toLowerCase(),
-        positionToken: event.positionToken.toLowerCase(),
-        tokensBurned: event.tokensBurned.toString(),
-        collateralPaid: event.collateralPaid.toString(),
-        redeemedAt: timestamp,
-        txHash: log.transactionHash || '',
-        refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
-      },
+    // Idempotent upsert keyed on (chainId, txHash, logIndex). The unique
+    // constraint on the Claim table makes the duplicate-row regression
+    // (reconciler/background-worker race) structurally impossible: replays
+    // hit the conflict and run the empty `update: {}` no-op.
+    await prisma.$transaction(async (tx) => {
+      await tx.claim.upsert({
+        where: {
+          chainId_txHash_logIndex: {
+            chainId: this.chainId,
+            txHash,
+            logIndex: logIdx,
+          },
+        },
+        create: {
+          chainId: this.chainId,
+          marketAddress: this.contractAddress.toLowerCase(),
+          predictionId: predictionIdLower,
+          holder: event.holder.toLowerCase(),
+          positionToken: positionTokenLower,
+          tokensBurned: event.tokensBurned.toString(),
+          collateralPaid: event.collateralPaid.toString(),
+          redeemedAt: timestamp,
+          txHash,
+          logIndex: logIdx,
+          refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
+        },
+        update: {}, // events are immutable; replay is no-op
+      });
     });
 
     // Position balance decrement is handled by the PositionTokenTransferIndexer
     // via the ERC20 Transfer(holder, 0x0, amount) burn event.
 
-    // Check if fully redeemed — look up pick config from the redeemed token
-    await this.checkFullyRedeemed(event.positionToken.toLowerCase());
+    // checkFullyRedeemed is independently idempotent (Picks.fullyRedeemed
+    // boolean flip is convergent — last write wins, value is always TRUE
+    // once both sides hit zero supply). Calling it after the transaction
+    // keeps the tx short and avoids holding a connection during two on-chain
+    // RPC reads.
+    await this.checkFullyRedeemed(positionTokenLower);
 
     console.log(
-      `[PredictionMarketEscrowIndexer:${this.chainId}] Created claim record for prediction ${predictionIdLower}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Created/replayed claim record for prediction ${predictionIdLower}`
     );
   }
 
