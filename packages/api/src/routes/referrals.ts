@@ -1,8 +1,8 @@
 import { Request, Response, Router } from 'express';
-import prisma from '../db';
-import { hashReferralCode } from '../helpers';
+import prisma from '../core/db';
+import { hashReferralCode } from '../services';
 import { recoverMessageAddress, type Address } from 'viem';
-import { adminAuth } from '../middleware';
+import { adminAuth } from '../runtime/middleware';
 import { grantSponsorshipBudget } from '../services/sponsorship';
 
 const router = Router();

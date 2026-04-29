@@ -14,6 +14,8 @@ export interface ProtocolStat {
   vaultDeposits: string;
   vaultWithdrawals: string;
   vaultAirdropGains: string;
+  vaultSecondaryBought: string;
+  vaultSecondarySold: string;
   periodPnL: string;
   periodVolume: string;
 }
@@ -34,6 +36,8 @@ export const GET_PROTOCOL_STATS = /* GraphQL */ `
       vaultDeposits
       vaultWithdrawals
       vaultAirdropGains
+      vaultSecondaryBought
+      vaultSecondarySold
       periodPnL
       periodVolume
     }

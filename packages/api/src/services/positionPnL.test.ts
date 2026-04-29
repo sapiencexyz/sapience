@@ -4,7 +4,7 @@ const mockPrisma = vi.hoisted(() => ({
   $queryRaw: vi.fn(),
 }));
 
-vi.mock('../db', () => ({ default: mockPrisma }));
+vi.mock('../core/db', () => ({ default: mockPrisma }));
 
 import { calculateCombinedPositionPnL } from './positionPnL';
 

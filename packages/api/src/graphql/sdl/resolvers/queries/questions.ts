@@ -28,7 +28,7 @@ import type {
 } from '../../__generated__/resolvers';
 import { QuestionItemType } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
-import prisma from '../../../../db';
+import prisma from '../../../../core/db';
 
 // The resolver returns Prisma rows (via mappers), not the raw SDL
 // Condition/ConditionGroup shapes — the typewrapper around Question in

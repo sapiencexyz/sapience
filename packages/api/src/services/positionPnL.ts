@@ -1,4 +1,4 @@
-import prisma from '../db';
+import prisma from '../core/db';
 
 export interface LegacyPositionPnLEntry {
   owner: string;

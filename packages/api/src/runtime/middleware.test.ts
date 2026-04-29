@@ -10,7 +10,7 @@ beforeEach(() => {
 
 describe('rate limiting with trust proxy', () => {
   it('rate limits per-IP using X-Forwarded-For, not globally', async () => {
-    vi.doMock('./config', () => ({
+    vi.doMock('../core/config', () => ({
       config: {
         isProd: false,
         RATE_LIMIT_WINDOW_MS: 60000,
@@ -18,7 +18,7 @@ describe('rate limiting with trust proxy', () => {
       },
     }));
 
-    const { createApp } = await import('./app');
+    const { createApp } = await import('../core/app');
     const app = createApp();
     app.get('/test', (_req, res) => res.json({ ok: true }));
 
@@ -41,7 +41,7 @@ describe('rate limiting with trust proxy', () => {
   });
 
   it('app has trust proxy enabled', async () => {
-    vi.doMock('./config', () => ({
+    vi.doMock('../core/config', () => ({
       config: {
         isProd: false,
         RATE_LIMIT_WINDOW_MS: 60000,
@@ -49,13 +49,13 @@ describe('rate limiting with trust proxy', () => {
       },
     }));
 
-    const { createApp } = await import('./app');
+    const { createApp } = await import('../core/app');
     const app = createApp();
     expect(app.get('trust proxy')).toBe(1);
   });
 
   it('rate-limited responses include standard rate limit headers', async () => {
-    vi.doMock('./config', () => ({
+    vi.doMock('../core/config', () => ({
       config: {
         isProd: false,
         RATE_LIMIT_WINDOW_MS: 60000,
@@ -63,7 +63,7 @@ describe('rate limiting with trust proxy', () => {
       },
     }));
 
-    const { createApp } = await import('./app');
+    const { createApp } = await import('../core/app');
     const app = createApp();
     app.get('/test', (_req, res) => res.json({ ok: true }));
 

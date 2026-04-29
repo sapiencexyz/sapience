@@ -1,6 +1,6 @@
 import { cleanEnv, str, num } from 'envalid';
 import { config as dotEnvConfig } from 'dotenv';
-import { fromRoot } from './utils/fromRoot';
+import { fromRoot } from '../lib/fromRoot';
 
 const validators = {
   NODE_ENV: str({

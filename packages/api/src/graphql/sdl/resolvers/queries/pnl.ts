@@ -9,8 +9,8 @@
  */
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
-import { TtlCache } from '../../../../utils/ttlCache';
-import { calculateCombinedPositionPnL } from '../../../../helpers/positionPnL';
+import { TtlCache } from '../../../../lib/ttlCache';
+import { calculateCombinedPositionPnL } from '../../../../services/positionPnL';
 
 const DEFAULT_DECIMALS = 18;
 

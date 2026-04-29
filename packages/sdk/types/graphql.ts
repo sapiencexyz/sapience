@@ -1572,6 +1572,12 @@ export type ProtocolStat = {
   vaultDeposits: Scalars['String']['output'];
   vaultPositionsLost: Scalars['Int']['output'];
   vaultPositionsWon: Scalars['Int']['output'];
+  /** Cumulative wUSDe paid by the vault on secondary-market buys */
+  vaultSecondaryBought: Scalars['String']['output'];
+  /** Cumulative wUSDe received by the vault on secondary-market sells */
+  vaultSecondarySold: Scalars['String']['output'];
+  /** wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins */
+  vaultUnredeemedClaim: Scalars['String']['output'];
   vaultWithdrawals: Scalars['String']['output'];
 };
 

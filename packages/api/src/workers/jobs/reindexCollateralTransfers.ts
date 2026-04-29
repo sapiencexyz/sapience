@@ -1,6 +1,6 @@
-import prisma from '../../db';
-import { initializeDataSource } from '../../db';
-import { getProviderForChain } from '../../utils/utils';
+import prisma from '../../core/db';
+import { initializeDataSource } from '../../core/db';
+import { getProviderForChain } from '../../lib/utils';
 import { parseAbiItem } from 'viem';
 import { collateralToken } from '@sapience/sdk/contracts';
 

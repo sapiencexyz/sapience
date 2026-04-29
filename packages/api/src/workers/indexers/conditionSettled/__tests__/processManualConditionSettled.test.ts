@@ -7,7 +7,7 @@ const mockSettleCondition = vi.hoisted(() => vi.fn());
 const mockSentry = vi.hoisted(() => ({ captureException: vi.fn() }));
 
 vi.mock('../settleCondition', () => ({ settleCondition: mockSettleCondition }));
-vi.mock('../../../../instrument', () => ({ default: mockSentry }));
+vi.mock('../../../../core/instrument', () => ({ default: mockSentry }));
 
 import { processManualConditionSettled } from '../processManualConditionSettled';
 import type { HandlerContext } from '../handlerContext';

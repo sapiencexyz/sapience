@@ -18,7 +18,7 @@ import type { GraphQLFormattedError } from 'graphql';
 import { ApolloServer } from '@apollo/server';
 import { buildApiSchema } from '../../src/graphql/buildSchema';
 import type { ApolloContext } from '../../src/graphql/startApolloServer';
-import prisma from '../../src/db';
+import prisma from '../../src/core/db';
 
 export interface OperationResult<TData = unknown> {
   data: TData | null;

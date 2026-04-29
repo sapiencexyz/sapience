@@ -1,6 +1,6 @@
 import { router as reindexRoutes } from './reindex';
 import { Router } from 'express';
-import { adminAuth } from '../middleware';
+import { adminAuth } from '../runtime/middleware';
 import { router as conditionsRoutes } from './conditions';
 import { router as conditionGroupsRoutes } from './conditionGroups';
 import { router as referralsRoutes } from './referrals';

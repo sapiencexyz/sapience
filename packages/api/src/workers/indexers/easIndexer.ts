@@ -1,5 +1,5 @@
-import prisma from '../../db';
-import { getBlockByTimestamp, getProviderForChain } from '../../utils/utils';
+import prisma from '../../core/db';
+import { getBlockByTimestamp, getProviderForChain } from '../../lib/utils';
 import {
   type PublicClient,
   parseAbiItem,
@@ -7,10 +7,10 @@ import {
   decodeAbiParameters,
   GetContractReturnType,
 } from 'viem';
-import Sentry from '../../instrument';
+import Sentry from '../../core/instrument';
 import { SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
 import { IIndexer } from '../../interfaces';
-import { upsertAttestationScoreFromAttestation } from '../../helpers/scoringService';
+import { upsertAttestationScoreFromAttestation } from '../../services/scoringService';
 import { eas } from '@sapience/sdk/contracts/addresses';
 
 const BLOCK_BATCH_SIZE = 100;

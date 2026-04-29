@@ -1,6 +1,6 @@
 import express from 'express';
-import { router } from './routes';
-import { setupMiddleware } from './middleware';
+import { router } from '../routes';
+import { setupMiddleware } from '../runtime/middleware';
 
 /**
  * Factory function to create Express app with fresh middleware
