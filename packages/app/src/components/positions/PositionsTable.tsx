@@ -54,7 +54,6 @@ import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useSession } from '~/lib/context/SessionContext';
 import SellPositionDialog from '~/components/secondary/SellPositionDialog';
-import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 
 // Render an ROI percentage with sign. Sub-1%-magnitude non-zero values
 // collapse to "<1%" so a 0.4% gain doesn't render as "+0%". Color carries
@@ -72,7 +71,6 @@ function PositionRow({
   onShare,
   onOpenDialog,
   onRefetch,
-  showSell,
 }: {
   position: PositionBalance;
   collateralSymbol: string;
@@ -80,7 +78,6 @@ function PositionRow({
   onShare: (position: PositionBalance) => void;
   onOpenDialog: () => void;
   onRefetch?: () => void;
-  showSell: boolean;
 }) {
   const { pickConfig, isPredictorToken } = position;
   const rawPicks = pickConfig?.picks ?? [];
@@ -306,7 +303,7 @@ function PositionRow({
         <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
           PENDING
         </span>
-        {showSell && isOwnPosition && BigInt(position.balance) > 0n && (
+        {isOwnPosition && BigInt(position.balance) > 0n && (
           <SellPositionDialog position={position} onSuccess={onRefetch}>
             <button
               type="button"
@@ -454,7 +451,6 @@ export default function PositionsTable({
   chainId?: number;
   leftSlot?: React.ReactNode;
 }) {
-  const showSell = useFeatureFlag('secondaryMarket', 'secondaryMarket');
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
   const [filters, setFilters] = React.useState<PositionsFilterState>(
@@ -807,7 +803,6 @@ export default function PositionsTable({
                 onShare={setSharePosition}
                 onOpenDialog={() => setDialogPosition(position)}
                 onRefetch={refetch}
-                showSell={showSell}
               />
             ))}
           </TableBody>
