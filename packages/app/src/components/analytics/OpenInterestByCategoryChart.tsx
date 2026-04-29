@@ -30,9 +30,30 @@ export default function OpenInterestByCategoryChart() {
       slug: d.category.slug,
       raw: BigInt(d.openInterest || '0'),
     }));
-    const total = numeric.reduce((acc, s) => acc + s.raw, 0n);
+
+    // Collapse all `prices-*` sub-categories (prices-crypto, prices-commodities,
+    // prices-equity) into a single "Price Trade" slice rendered with the Pyth mark.
+    const PRICE_SLUG = 'prices';
+    const PRICE_NAME = 'Price Trade';
+    const priceParts = numeric.filter((s) => s.slug.startsWith('prices-'));
+    const rest = numeric.filter((s) => !s.slug.startsWith('prices-'));
+    const merged =
+      priceParts.length > 0
+        ? [
+            ...rest,
+            {
+              id: -1,
+              name: PRICE_NAME,
+              slug: PRICE_SLUG,
+              raw: priceParts.reduce((acc, s) => acc + s.raw, 0n),
+            },
+          ]
+        : rest;
+    merged.sort((a, b) => (a.raw < b.raw ? 1 : a.raw > b.raw ? -1 : 0));
+
+    const total = merged.reduce((acc, s) => acc + s.raw, 0n);
     const totalNum = Number(total) / 1e18;
-    return numeric.map((s) => {
+    return merged.map((s) => {
       const value = Number(s.raw) / 1e18;
       return {
         id: s.id,
