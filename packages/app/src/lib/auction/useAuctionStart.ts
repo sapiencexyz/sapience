@@ -8,6 +8,7 @@ import {
   prepareAuctionRFQ,
   type SignableTypedData,
 } from '@sapience/sdk/auction/initiate';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
@@ -369,12 +370,32 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         ? (effectiveAddressRef.current ?? params.predictor)
         : (walletAddress ?? params.predictor);
 
+      // Canonicalize picks once up-front: bidders sign over the canonical
+      // (keccak256-sorted) order shipped by prepareAuctionRFQ, so every
+      // downstream consumer (mint payload, off-chain validation, indexer
+      // tracking) must agree on that order or predictionHash diverges and the
+      // counterparty signature won't validate. Doing this here guarantees
+      // currentAuctionParams, lastAuctionRef, and the RFQ all use the same
+      // pick order.
+      const canonicalizedParamPicks: AuctionParams['picks'] =
+        params.picks && params.picks.length > 0
+          ? canonicalizePicks(params.picks as Pick[]).map((p) => ({
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            }))
+          : params.picks;
+      const canonicalizedParams: AuctionParams = {
+        ...params,
+        picks: canonicalizedParamPicks,
+      };
+
       const requestPayload = {
-        wager: params.wager,
-        picks: params.picks,
+        wager: canonicalizedParams.wager,
+        picks: canonicalizedParams.picks,
         predictor: effectivePredictor,
-        predictorNonce: params.predictorNonce,
-        chainId: params.chainId,
+        predictorNonce: canonicalizedParams.predictorNonce,
+        chainId: canonicalizedParams.chainId,
       };
 
       const key = jsonStableStringify({
@@ -397,10 +418,19 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       setBids([]);
       pendingBidsRef.current.clear();
       // Store params with effectivePredictor so buildMintRequestDataFromBid uses the correct address
-      lastAuctionRef.current = { ...params, predictor: effectivePredictor };
-      setCurrentAuctionParams({ ...params, predictor: effectivePredictor });
+      lastAuctionRef.current = {
+        ...canonicalizedParams,
+        predictor: effectivePredictor,
+      };
+      setCurrentAuctionParams({
+        ...canonicalizedParams,
+        predictor: effectivePredictor,
+      });
 
-      if (!params.picks || params.picks.length === 0) {
+      if (
+        !canonicalizedParams.picks ||
+        canonicalizedParams.picks.length === 0
+      ) {
         console.error(
           '[Auction] Escrow picks missing — all auctions require escrow format'
         );
@@ -408,7 +438,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         return;
       }
 
-      const chainId = params.chainId;
+      const chainId = canonicalizedParams.chainId;
 
       // Build the signed auction payload via SDK
       // prepareAuctionRFQ handles: pick canonicalization, deadline computation,
@@ -428,21 +458,20 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       let escrowPayload: Record<string, unknown>;
       let predictorDeadline: number;
-      let canonicalPicks: Pick[];
 
       try {
         const prepared = await prepareAuctionRFQ({
-          picks: params.picks.map(
+          picks: canonicalizedParams.picks.map(
             (p): Pick => ({
               conditionResolver: p.conditionResolver,
               conditionId: p.conditionId,
               predictedOutcome: p.predictedOutcome,
             })
           ),
-          predictorCollateral: BigInt(params.wager),
+          predictorCollateral: BigInt(canonicalizedParams.wager),
           predictor: effectivePredictor,
           chainId,
-          nonce: params.predictorNonce,
+          nonce: canonicalizedParams.predictorNonce,
           signIntent: async (typedData: SignableTypedData): Promise<Hex> => {
             if (
               isUsingSessionRef.current &&
@@ -467,8 +496,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           options: {
             deadlineSeconds: 30,
             skipIntentSigning: skipSigning,
-            predictorSponsor: params.predictorSponsor,
-            predictorSponsorData: params.predictorSponsorData,
+            predictorSponsor: canonicalizedParams.predictorSponsor,
+            predictorSponsorData: canonicalizedParams.predictorSponsorData,
             sessionKeyData: etherealSessionApprovalRef.current
               ? JSON.stringify({
                   approval: etherealSessionApprovalRef.current.approval,
@@ -482,7 +511,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
         escrowPayload = prepared.payload as unknown as Record<string, unknown>;
         predictorDeadline = prepared.deadline;
-        canonicalPicks = prepared.canonicalPicks;
 
         if (prepared.payload.intentSignature) {
           log(
@@ -497,17 +525,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         return;
       }
 
-      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid can access it.
-      // Also overwrite picks with the canonical ordering used by prepareAuctionRFQ — bidders
-      // sign over canonical picks, so the mint payload must use the same order or
-      // verifyMintPartySignature reverts with InvalidCounterpartySignature.
+      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid
+      // can access it. Picks were already canonicalized up-front and stamped
+      // into both lastAuctionRef and currentAuctionParams; nothing to overwrite.
       lastAuctionRef.current = {
         ...lastAuctionRef.current,
-        picks: canonicalPicks.map((p) => ({
-          conditionResolver: p.conditionResolver,
-          conditionId: p.conditionId,
-          predictedOutcome: p.predictedOutcome,
-        })),
         predictorDeadline,
       };
 
