@@ -82,7 +82,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     id: 'prices',
     name: 'Prices',
     resources: [],
-    color: 'hsl(var(--category-8))',
+    color: 'hsl(var(--foreground) / 0.8)',
     Icon: PythOracleMark,
   },
 ];

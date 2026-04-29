@@ -65,8 +65,8 @@ export default function OpenInterestByCategoryChart() {
             No open interest yet.
           </div>
         ) : (
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-[1fr_minmax(0,220px)] gap-4 items-center">
-            <div className="h-full min-h-[240px] max-h-[300px] mx-auto w-full">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-[1fr_minmax(0,220px)] gap-6 items-stretch">
+            <div className="min-h-[260px] mx-auto w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -91,13 +91,13 @@ export default function OpenInterestByCategoryChart() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <ul className="divide-y divide-border/40 text-sm max-h-full overflow-y-auto pr-2">
+            <ul className="divide-y divide-border/40 text-sm flex flex-col justify-center py-1">
               {slices.map((s) => {
                 const Icon = getCategoryIcon(s.slug);
                 return (
                   <li
                     key={s.slug}
-                    className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0"
+                    className="flex items-center justify-between gap-3 py-1.5"
                   >
                     <span className="flex items-center gap-2 min-w-0">
                       <span
