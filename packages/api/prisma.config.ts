@@ -5,7 +5,7 @@
  * { url = env("DATABASE_URL") }` — that syntax was removed. The
  * connection URL for the migrate CLI + introspect now lives here
  * instead. The runtime PrismaClient takes its URL separately via
- * `src/db.ts` using the `@prisma/adapter-pg` driver adapter.
+ * `src/core/db.ts` using the `@prisma/adapter-pg` driver adapter.
  *
  * Loads .env explicitly because Prisma 7 also dropped dotenv
  * auto-loading — whatever process runs `prisma migrate ...` has to
