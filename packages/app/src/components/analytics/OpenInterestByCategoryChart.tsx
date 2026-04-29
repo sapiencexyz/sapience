@@ -4,12 +4,14 @@ import { useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { useOpenInterestByCategory } from '~/hooks/graphql/useAnalytics';
-import { getCategoryColor } from '~/components/markets/market-helpers';
+import {
+  collapsePriceCategories,
+  getCategoryColor,
+} from '~/components/markets/market-helpers';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import Loader from '~/components/shared/Loader';
 
 interface SliceDatum {
-  id: number;
   name: string;
   slug: string;
   color: string;
@@ -24,31 +26,13 @@ export default function OpenInterestByCategoryChart() {
 
   const slices = useMemo<SliceDatum[]>(() => {
     if (!data || data.length === 0) return [];
-    const numeric = data.map((d) => ({
-      id: d.category.id,
-      name: d.category.name,
-      slug: d.category.slug,
-      raw: BigInt(d.openInterest || '0'),
-    }));
-
-    // Collapse all `prices-*` sub-categories (prices-crypto, prices-commodities,
-    // prices-equity) into a single "Price Trade" slice rendered with the Pyth mark.
-    const PRICE_SLUG = 'prices';
-    const PRICE_NAME = 'Price Trade';
-    const priceParts = numeric.filter((s) => s.slug.startsWith('prices-'));
-    const rest = numeric.filter((s) => !s.slug.startsWith('prices-'));
-    const merged =
-      priceParts.length > 0
-        ? [
-            ...rest,
-            {
-              id: -1,
-              name: PRICE_NAME,
-              slug: PRICE_SLUG,
-              raw: priceParts.reduce((acc, s) => acc + s.raw, 0n),
-            },
-          ]
-        : rest;
+    const merged = collapsePriceCategories(
+      data.map((d) => ({
+        slug: d.category.slug,
+        name: d.category.name,
+        raw: BigInt(d.openInterest || '0'),
+      }))
+    );
     merged.sort((a, b) => (a.raw < b.raw ? 1 : a.raw > b.raw ? -1 : 0));
 
     const total = merged.reduce((acc, s) => acc + s.raw, 0n);
@@ -56,7 +40,6 @@ export default function OpenInterestByCategoryChart() {
     return merged.map((s) => {
       const value = Number(s.raw) / 1e18;
       return {
-        id: s.id,
         name: s.name,
         slug: s.slug,
         color: getCategoryColor(s.slug),
@@ -102,7 +85,7 @@ export default function OpenInterestByCategoryChart() {
                     activeIndex={-1}
                   >
                     {slices.map((s) => (
-                      <Cell key={s.id} fill={s.color} />
+                      <Cell key={s.slug} fill={s.color} />
                     ))}
                   </Pie>
                 </PieChart>
@@ -113,7 +96,7 @@ export default function OpenInterestByCategoryChart() {
                 const Icon = getCategoryIcon(s.slug);
                 return (
                   <li
-                    key={s.id}
+                    key={s.slug}
                     className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0"
                   >
                     <span className="flex items-center gap-2 min-w-0">

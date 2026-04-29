@@ -59,6 +59,7 @@
     --category-5: 355 72% 48%; /* Crimson */
     --category-6: 335 60% 54%; /* Magenta */
     --category-7: 20 75% 55%; /* Burnt Orange */
+    --category-8: 190 70% 48%; /* Teal — Prices/Pyth */
     --radius: 0.5rem;
     --banner-height: 0px;
     --banner-offset: 0px;
@@ -120,6 +121,7 @@
     --category-5: 355 72% 48%; /* deep cool red */
     --category-6: 330 65% 56%; /* confident magenta */
     --category-7: 18 78% 58%; /* burnt orange */
+    --category-8: 190 70% 52%; /* Teal — Prices/Pyth */
   }
 }
 

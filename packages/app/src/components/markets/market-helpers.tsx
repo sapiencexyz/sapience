@@ -98,6 +98,55 @@ export const getCategoryColor = (categorySlug?: string | null): string => {
   return getDeterministicCategoryColor(categorySlug);
 };
 
+/**
+ * Pyth-resolved conditions are indexed under per-asset-class category slugs
+ * (`prices-crypto`, `prices-commodities`, `prices-equity`). For aggregate
+ * displays we collapse them into a single `prices` row so the user sees
+ * "Prices" as one bucket alongside Crypto / Sports / etc.
+ */
+export interface CategoryAggregate<T> {
+  slug: string;
+  name: string;
+  /** The summed BigInt value (e.g. open interest in wei). */
+  raw: bigint;
+  /** The original row, when this aggregate represents a single source category. */
+  source?: T;
+}
+
+const PRICES_AGGREGATE_SLUG = 'prices';
+const PRICES_AGGREGATE_NAME = 'Prices';
+
+export function isPriceSubCategory(slug: string): boolean {
+  return slug.startsWith('prices-');
+}
+
+/**
+ * Collapse `prices-*` rows into a single `prices` aggregate. Non-price rows
+ * pass through unchanged. The returned list is unsorted — callers sort by
+ * whatever metric they care about.
+ */
+export function collapsePriceCategories<
+  T extends { slug: string; name: string; raw: bigint },
+>(rows: T[]): CategoryAggregate<T>[] {
+  const priceParts = rows.filter((r) => isPriceSubCategory(r.slug));
+  const rest = rows.filter((r) => !isPriceSubCategory(r.slug));
+  const passthrough: CategoryAggregate<T>[] = rest.map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    raw: r.raw,
+    source: r,
+  }));
+  if (priceParts.length === 0) return passthrough;
+  return [
+    ...passthrough,
+    {
+      slug: PRICES_AGGREGATE_SLUG,
+      name: PRICES_AGGREGATE_NAME,
+      raw: priceParts.reduce((acc, r) => acc + r.raw, 0n),
+    },
+  ];
+}
+
 /** Get open interest (wei) for any row kind */
 export function getRowOpenInterest(row: TopLevelRow): bigint {
   if (row.kind === 'group') return row.openInterestWei;

@@ -8,6 +8,7 @@ import {
   Medal,
   Tv,
 } from 'lucide-react';
+import { PythOracleMark } from '@sapience/ui';
 
 interface FocusArea {
   id: string;
@@ -76,6 +77,13 @@ export const FOCUS_AREAS: FocusArea[] = [
     resources: [],
     color: 'hsl(var(--category-6))',
     Icon: Tv,
+  },
+  {
+    id: 'prices',
+    name: 'Prices',
+    resources: [],
+    color: 'hsl(var(--category-8))',
+    Icon: PythOracleMark,
   },
 ];
 
