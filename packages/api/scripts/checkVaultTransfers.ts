@@ -20,8 +20,8 @@
  */
 import { formatUnits, parseAbiItem } from 'viem';
 import { contracts, normalizeLegacyEntry } from '@sapience/sdk/contracts';
-import { getBlockByTimestamp, getProviderForChain } from '../src/utils/utils';
-import { getConfiguredVaults } from '../src/helpers/protocolStats';
+import { getBlockByTimestamp, getProviderForChain } from '../src/lib/utils';
+import { getConfiguredVaults } from '../src/services/protocolStats';
 
 const transferEvent = parseAbiItem(
   'event Transfer(address indexed from, address indexed to, uint256 value)'

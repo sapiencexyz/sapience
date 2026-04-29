@@ -20,7 +20,7 @@ const { mockPrisma, mockReadContract } = vi.hoisted(() => {
   return { mockPrisma, mockReadContract };
 });
 
-vi.mock('../db', () => ({ default: mockPrisma }));
+vi.mock('../core/db', () => ({ default: mockPrisma }));
 
 vi.mock('../../generated/prisma', () => ({
   SettlementResult: {
@@ -31,7 +31,7 @@ vi.mock('../../generated/prisma', () => ({
   },
 }));
 
-vi.mock('../utils/utils', () => ({
+vi.mock('../lib/utils', () => ({
   getProviderForChain: vi.fn().mockReturnValue({
     readContract: mockReadContract,
   }),

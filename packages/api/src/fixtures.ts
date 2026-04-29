@@ -1,4 +1,4 @@
-import prisma from './db';
+import prisma from './core/db';
 import fixturesData from './fixtures.json';
 import { IIndexer } from './interfaces';
 import EASPredictionIndexer from './workers/indexers/easIndexer';

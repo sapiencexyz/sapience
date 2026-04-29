@@ -25,8 +25,8 @@
  *   pnpm --filter @sapience/api exec tsx scripts/backfillClaimLogIndex.ts --chainId 5064014
  */
 import { parseAbiItem, type Block as ViemBlock } from 'viem';
-import prisma from '../src/db';
-import { getProviderForChain } from '../src/utils/utils';
+import prisma from '../src/core/db';
+import { getProviderForChain } from '../src/lib/utils';
 import { contracts, normalizeLegacyEntry } from '@sapience/sdk/contracts';
 
 const CHAIN_ID = (() => {

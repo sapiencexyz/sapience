@@ -16,8 +16,8 @@
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
-import prisma from '../../../../db';
-import { TtlCache } from '../../../../utils/ttlCache';
+import prisma from '../../../../core/db';
+import { TtlCache } from '../../../../lib/ttlCache';
 
 /**
  * Cache only the no-args call (the dominant public path: integrator's

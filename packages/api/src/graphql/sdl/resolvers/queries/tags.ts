@@ -10,8 +10,8 @@
  */
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
-import prisma from '../../../../db';
-import { TtlCache } from '../../../../utils/ttlCache';
+import prisma from '../../../../core/db';
+import { TtlCache } from '../../../../lib/ttlCache';
 
 const popularTagsCache = new TtlCache<string, string[]>({
   ttlMs: 60 * 60 * 1000,

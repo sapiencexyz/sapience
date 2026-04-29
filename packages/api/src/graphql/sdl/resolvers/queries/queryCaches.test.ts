@@ -7,7 +7,7 @@ const mockPrisma = {
   },
 };
 
-vi.mock('../../../../db', () => ({ default: mockPrisma }));
+vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
 const { popularTags, __clearPopularTagsCache } = await import('./tags');
 const { categories, __clearCategoriesCache } = await import('./crud');

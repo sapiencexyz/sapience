@@ -14,7 +14,7 @@ const mockPrisma = {
   $transaction: vi.fn(),
 };
 
-vi.mock('../db', () => ({ default: mockPrisma, __esModule: true }));
+vi.mock('../core/db', () => ({ default: mockPrisma, __esModule: true }));
 
 const app = express();
 app.use(express.json());

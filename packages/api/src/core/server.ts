@@ -2,22 +2,22 @@ import { initializeDataSource } from './db';
 import { expressMiddleware } from '@as-integrations/express4';
 import { app } from './app';
 import { createServer } from 'http';
-import { createChatWebSocketServer } from './websocket/chat';
+import { createChatWebSocketServer } from '../websocket/chat';
 import type { IncomingMessage } from 'http';
 import type { Socket } from 'net';
 import { initSentry } from './instrument';
-import { initializeApolloServer } from './graphql/startApolloServer';
+import { initializeApolloServer } from '../graphql/startApolloServer';
 import Sentry from './instrument';
 import { NextFunction, Request, Response } from 'express';
-import { initializeFixtures } from './fixtures';
+import { initializeFixtures } from '../fixtures';
 import prisma from './db';
 import { config } from './config';
-import { createConcurrencyLimiter } from './concurrencyLimiter';
+import { createConcurrencyLimiter } from '../runtime/concurrencyLimiter';
 import {
   createAuctionProxyMiddleware,
   proxyAuctionWebSocket,
-} from './utils/auctionProxy';
-import { cdnCacheMiddleware } from './graphql/plugins/httpCacheHeadersPlugin';
+} from '../lib/auctionProxy';
+import { cdnCacheMiddleware } from '../graphql/plugins/httpCacheHeadersPlugin';
 import { requestContext } from './db';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;

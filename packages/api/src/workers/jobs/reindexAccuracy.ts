@@ -1,10 +1,10 @@
-import prisma from '../../db';
-import { initializeDataSource } from '../../db';
+import prisma from '../../core/db';
+import { initializeDataSource } from '../../core/db';
 import {
   upsertAttestationScoreFromAttestation,
   scoreSelectedForecastsForSettledMarket,
   computeAndStoreMarketTwErrors,
-} from '../../helpers/scoringService';
+} from '../../services/scoringService';
 import { backfillAccuracy } from './backfillAccuracy';
 
 export async function reindexAccuracy(

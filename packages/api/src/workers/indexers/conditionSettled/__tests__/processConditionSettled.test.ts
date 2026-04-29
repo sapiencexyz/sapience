@@ -9,11 +9,11 @@ const mockPrisma = vi.hoisted(() => ({
   $transaction: vi.fn(),
 }));
 
-vi.mock('../../../../db', () => ({ default: mockPrisma }));
-vi.mock('../../../../instrument', () => ({
+vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
+vi.mock('../../../../core/instrument', () => ({
   default: { captureException: vi.fn() },
 }));
-vi.mock('../../../../helpers/scoringService', () => ({
+vi.mock('../../../../services/scoringService', () => ({
   scoreSelectedForecastsForSettledMarket: vi.fn(),
   computeAndStoreMarketTwErrors: vi.fn(),
 }));
@@ -25,7 +25,7 @@ import { processConditionSettled } from '../processConditionSettled';
 import {
   scoreSelectedForecastsForSettledMarket,
   computeAndStoreMarketTwErrors,
-} from '../../../../helpers/scoringService';
+} from '../../../../services/scoringService';
 import { resolvePickConfigsForCondition } from '../resolvePickConfigs';
 import type { HandlerContext } from '../handlerContext';
 

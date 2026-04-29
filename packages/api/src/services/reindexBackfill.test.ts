@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as dbModule from '../db';
+import * as dbModule from '../core/db';
 import { reindexAccuracy } from '../workers/jobs/reindexAccuracy';
 import * as scoring from './scoringService';
 
-vi.mock('../db', () => {
+vi.mock('../core/db', () => {
   const prisma = {
     attestation: { findMany: vi.fn() },
     market: { findMany: vi.fn() },

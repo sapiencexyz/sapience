@@ -1,5 +1,5 @@
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { config } from '../config';
+import { config } from '../core/config';
 import http from 'http';
 import https from 'https';
 import type { Request, Response } from 'express';

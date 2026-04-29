@@ -25,11 +25,11 @@
  *   pnpm --filter @sapience/api exec tsx scripts/recoverMissingPredictions.ts --tx 0xabc...,0xdef...
  *   pnpm --filter @sapience/api exec tsx scripts/recoverMissingPredictions.ts --chainId 5064014
  */
-import prisma from '../src/db';
+import prisma from '../src/core/db';
 import { contracts } from '@sapience/sdk/contracts';
 import PredictionMarketEscrowIndexer from '../src/workers/indexers/predictionMarketEscrowIndexer';
 import type { Block, Log } from 'viem';
-import { getProviderForChain } from '../src/utils/utils';
+import { getProviderForChain } from '../src/lib/utils';
 
 const DEFAULT_TXS_5064014 = [
   '0x3617d01b5e9cc4967498848ac755d6b618ed271075bc8798ada27302fb675a71',

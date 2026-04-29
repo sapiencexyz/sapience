@@ -37,11 +37,11 @@ const mockPrisma = {
   $executeRaw: vi.fn(),
 };
 
-vi.mock('../../../db', () => ({ default: mockPrisma }));
-vi.mock('../../../instrument', () => ({
+vi.mock('../../../core/db', () => ({ default: mockPrisma }));
+vi.mock('../../../core/instrument', () => ({
   default: { captureException: vi.fn() },
 }));
-vi.mock('../../../utils/utils', () => ({
+vi.mock('../../../lib/utils', () => ({
   getProviderForChain: () => ({
     getBlockNumber: vi.fn().mockResolvedValue(100n),
     getLogs: vi.fn().mockResolvedValue([]),
@@ -54,7 +54,7 @@ vi.mock('../../../utils/utils', () => ({
     .fn()
     .mockResolvedValue({ number: 50n, timestamp: 1699999000n }),
 }));
-vi.mock('../../../helpers/discordAlert', () => ({
+vi.mock('../../../services/discordAlert', () => ({
   sendPositionAlert: vi.fn(),
 }));
 vi.mock('@sapience/sdk/contracts', () => ({

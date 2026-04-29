@@ -20,9 +20,9 @@
  *   pnpm --filter @sapience/api exec tsx scripts/checkVaultSponsorship.ts
  *   pnpm --filter @sapience/api exec tsx scripts/checkVaultSponsorship.ts --vaultAddress 0x1f5f...
  */
-import prisma from '../src/db';
+import prisma from '../src/core/db';
 import { contracts, normalizeLegacyEntry } from '@sapience/sdk/contracts';
-import { getConfiguredVaults } from '../src/helpers/protocolStats';
+import { getConfiguredVaults } from '../src/services/protocolStats';
 
 function parseFlag(name: string): string | undefined {
   const eq = process.argv.find((a) => a.startsWith(`${name}=`));

@@ -15,7 +15,7 @@ const mockPrisma = vi.hoisted(() => ({
   $transaction: vi.fn(),
 }));
 
-vi.mock('../db', () => ({ default: mockPrisma }));
+vi.mock('../core/db', () => ({ default: mockPrisma }));
 vi.mock('./predictionNormalization', () => ({
   normalizePredictionToProbability: vi.fn().mockReturnValue({
     probabilityFloat: 0.7,

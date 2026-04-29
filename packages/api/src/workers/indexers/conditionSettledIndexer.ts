@@ -1,5 +1,5 @@
-import prisma from '../../db';
-import { getProviderForChain, getBlockByTimestamp } from '../../utils/utils';
+import prisma from '../../core/db';
+import { getProviderForChain, getBlockByTimestamp } from '../../lib/utils';
 import {
   type PublicClient,
   type Log,
@@ -7,7 +7,7 @@ import {
   keccak256,
   toHex,
 } from 'viem';
-import Sentry from '../../instrument';
+import Sentry from '../../core/instrument';
 import { IIndexer } from '../../interfaces';
 import { processConditionResolved } from './conditionSettled/processConditionResolved';
 import { processConditionSettled } from './conditionSettled/processConditionSettled';
