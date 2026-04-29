@@ -81,6 +81,14 @@ export const protocolStats: NonNullable<
     : configuredVaults.find((v) => v.kind === 'protocol');
   const vaultConfig = targetVault?.config;
 
+  // An explicit vaultAddress that doesn't map to any configured vault family
+  // should yield no rows, not silently fall back to the unfiltered all-vault
+  // series. The empty-array sentinel below means "no matched addresses", while
+  // an omitted argument still uses the default protocol vault family.
+  if (vaultAddressArg && !targetVault) {
+    return [];
+  }
+
   // Filter the snapshot time series by the full address history of the chosen
   // vault — current primary plus every demoted-to-legacy address. Without
   // the legacies, every SDK redeploy would orphan the entire historical chart
