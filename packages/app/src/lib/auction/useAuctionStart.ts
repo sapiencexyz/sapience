@@ -377,17 +377,13 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // counterparty signature won't validate. Doing this here guarantees
       // currentAuctionParams, lastAuctionRef, and the RFQ all use the same
       // pick order.
-      const canonicalizedParamPicks: AuctionParams['picks'] =
-        params.picks && params.picks.length > 0
-          ? canonicalizePicks(params.picks as Pick[]).map((p) => ({
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            }))
-          : params.picks;
       const canonicalizedParams: AuctionParams = {
         ...params,
-        picks: canonicalizedParamPicks,
+        picks: params.picks?.length
+          ? (canonicalizePicks(
+              params.picks as Pick[]
+            ) as AuctionParams['picks'])
+          : params.picks,
       };
 
       const requestPayload = {
