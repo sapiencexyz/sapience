@@ -209,6 +209,12 @@ export const predictionMarketVaultStrategyB: ChainAddressMap = {
     blockCreated: 4346624,
     legacy: [] as const,
   },
+  13374202: {
+    // Ethereal testnet — deployed 2026-04-29
+    address: '0x78fFD04e61A0E405F3A04ddD8a39A01f8fAB00b3',
+    blockCreated: 2676636,
+    legacy: [] as const,
+  },
 } as const;
 
 /**

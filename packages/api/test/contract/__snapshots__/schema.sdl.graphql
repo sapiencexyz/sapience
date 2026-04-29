@@ -1321,10 +1321,11 @@ type Position {
   chainId: Int!
   createdAt: DateTimeISO!
   holder: String!
-  id: Int!
+  id: String!
   isPredictorToken: Boolean!
   pickConfig: PickConfiguration
   pickConfigId: String!
+  realizedPnL: String
   tokenAddress: String!
   totalPayout: String
   updatedAt: DateTimeISO!
@@ -1745,7 +1746,7 @@ type TimeToResolutionBucket {
   """Sort order: 1 = soonest, increasing for further-out buckets"""
   bucket: Int!
 
-  """Display label, e.g. "≤1d", "2-7d", "1-2mo" """
+  """Display label, e.g. ≤1d / 2-7d / 1-2mo"""
   label: String!
 
   """Open interest in wei (decimal string)"""

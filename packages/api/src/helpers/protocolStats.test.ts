@@ -905,11 +905,13 @@ describe('sumEscrowBalancesAtBlock', () => {
       .mockResolvedValueOnce(1000n)
       .mockRejectedValueOnce(
         new ContractFunctionExecutionError(
-          new Error('execution reverted') as Error,
+          new Error('execution reverted') as unknown as ConstructorParameters<
+            typeof ContractFunctionExecutionError
+          >[0],
           {
             abi: [],
             functionName: 'balanceOf',
-          } as Parameters<typeof ContractFunctionExecutionError>[1]
+          } as ConstructorParameters<typeof ContractFunctionExecutionError>[1]
         )
       );
     const total = await sumEscrowBalancesAtBlock(

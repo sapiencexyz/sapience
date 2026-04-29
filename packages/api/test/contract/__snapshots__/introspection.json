@@ -13187,7 +13187,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "String",
                 "ofType": null
               }
             },
@@ -13234,6 +13234,18 @@
                 "name": "String",
                 "ofType": null
               }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "realizedPnL",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
             },
             "isDeprecated": false,
             "deprecationReason": null
@@ -18183,7 +18195,7 @@
           },
           {
             "name": "label",
-            "description": "Display label, e.g. \"≤1d\", \"2-7d\", \"1-2mo\" ",
+            "description": "Display label, e.g. ≤1d / 2-7d / 1-2mo",
             "args": [],
             "type": {
               "kind": "NON_NULL",
