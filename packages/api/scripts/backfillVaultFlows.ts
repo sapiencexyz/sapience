@@ -16,9 +16,9 @@
  * --dry-run prints what would be upserted without touching the database.
  */
 import { parseAbiItem } from 'viem';
-import prisma from '../src/db';
-import { getProviderForChain } from '../src/utils/utils';
-import { getConfiguredVaults } from '../src/helpers/protocolStats';
+import prisma from '../src/core/db';
+import { getProviderForChain } from '../src/lib/utils';
+import { getConfiguredVaults } from '../src/services/protocolStats';
 
 const CHAIN_ID = (() => {
   const eq = process.argv.find((a) => a.startsWith('--chainId='));

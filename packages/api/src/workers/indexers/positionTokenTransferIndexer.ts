@@ -1,13 +1,13 @@
-import prisma from '../../db';
+import prisma from '../../core/db';
 import { Prisma } from '../../../generated/prisma';
-import { getProviderForChain } from '../../utils/utils';
+import { getProviderForChain } from '../../lib/utils';
 import {
   type PublicClient,
   type Log,
   parseAbiItem,
   zeroAddress as ZERO_ADDRESS,
 } from 'viem';
-import Sentry from '../../instrument';
+import Sentry from '../../core/instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 

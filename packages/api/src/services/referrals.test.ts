@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hashReferralCode } from '../helpers/referrals';
+import { hashReferralCode } from './referrals';
 
 describe('hashReferralCode', () => {
   it('produces consistent hash for same input', () => {

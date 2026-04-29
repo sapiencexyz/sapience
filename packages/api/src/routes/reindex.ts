@@ -1,14 +1,14 @@
 import { Router } from 'express';
-import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
-import prisma from '../db';
+import { handleAsyncErrors } from '../services/handleAsyncErrors';
+import prisma from '../core/db';
 import {
   getResolverAddressesForChain,
   getLegacyResolverAddressesForChain,
 } from '@sapience/sdk/contracts';
-import { getProviderForChain } from '../utils/utils';
+import { getProviderForChain } from '../lib/utils';
 import { reindexAccuracy } from '../workers/jobs/reindexAccuracy';
 import { reindexConditionSettled } from '../workers/jobs/reindexConditionSettled';
-import { backfillProtocolStats } from '../helpers/protocolStats';
+import { backfillProtocolStats } from '../services/protocolStats';
 import { reindexTransfers } from '../workers/jobs/reindexTransfers';
 import { reindexCollateralTransfers } from '../workers/jobs/reindexCollateralTransfers';
 

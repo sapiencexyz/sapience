@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as dbModule from '../db';
+import * as dbModule from '../core/db';
 
-vi.mock('../db', () => {
+vi.mock('../core/db', () => {
   const prisma = {
     condition: { findMany: vi.fn() },
   };

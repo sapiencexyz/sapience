@@ -4,13 +4,13 @@ import {
   formatUnits,
   type Block,
 } from 'viem';
-import prisma from '../db';
+import prisma from '../core/db';
 import { SettlementResult } from '../../generated/prisma';
 import {
   getProviderForChain,
   getBlockByTimestamp,
   resolveBlocksForTimestamps,
-} from '../utils/utils';
+} from '../lib/utils';
 import { contracts, normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';

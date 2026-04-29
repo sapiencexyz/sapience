@@ -17,7 +17,7 @@ import type {
   Category,
   TimeToResolutionBucket,
 } from '../../__generated__/resolvers';
-import prisma from '../../../../db';
+import prisma from '../../../../core/db';
 import {
   calculateVaultAirdrops,
   calculateVaultFlows,
@@ -31,8 +31,8 @@ import {
   getProtocolStatsTimeSeries,
   resolveSnapshotIntervalSeconds,
   sumEscrowBalancesAtBlock,
-} from '../../../../helpers/protocolStats';
-import { getProviderForChain } from '../../../../utils/utils';
+} from '../../../../services/protocolStats';
+import { getProviderForChain } from '../../../../lib/utils';
 
 interface CumulativeVolumeRow {
   timestamp: bigint;

@@ -1,8 +1,8 @@
-import prisma from '../../db';
+import prisma from '../../core/db';
 import { Prisma, type PrismaClient } from '../../../generated/prisma';
-import { getProviderForChain, getBlockByTimestamp } from '../../utils/utils';
+import { getProviderForChain, getBlockByTimestamp } from '../../lib/utils';
 import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
-import Sentry from '../../instrument';
+import Sentry from '../../core/instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import {
@@ -16,7 +16,7 @@ import {
 } from '@sapience/sdk/auction/encoding';
 import { PYTH_FEED_NAMES, PYTH_FEEDS } from '@sapience/sdk/constants';
 import { isPredictedYes, normalizeOutcomeSide } from '@sapience/sdk/types';
-import { sendPositionAlert } from '../../helpers/discordAlert';
+import { sendPositionAlert } from '../../services/discordAlert';
 
 type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 

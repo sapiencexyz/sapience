@@ -8,7 +8,7 @@ import {
   parseUnits,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { etherealTestnetChain, etherealChain } from '../utils/utils';
+import { etherealTestnetChain, etherealChain } from '../lib/utils';
 import { computeSmartAccountAddress } from '@sapience/sdk/session';
 import * as Sentry from '@sentry/node';
 

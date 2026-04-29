@@ -1,7 +1,7 @@
-import prisma from '../../db';
-import { getProviderForChain } from '../../utils/utils';
+import prisma from '../../core/db';
+import { getProviderForChain } from '../../lib/utils';
 import { type PublicClient, parseAbiItem } from 'viem';
-import Sentry from '../../instrument';
+import Sentry from '../../core/instrument';
 import { IIndexer } from '../../interfaces';
 import { collateralToken } from '@sapience/sdk/contracts';
 

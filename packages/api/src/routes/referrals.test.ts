@@ -22,7 +22,7 @@ const mockPrisma = {
   },
 };
 
-vi.mock('../db', () => ({ default: mockPrisma }));
+vi.mock('../core/db', () => ({ default: mockPrisma }));
 
 vi.mock('viem', async () => {
   const actual = await vi.importActual('viem');
@@ -36,11 +36,11 @@ vi.mock('../services/sponsorship', () => ({
   grantSponsorshipBudget: vi.fn().mockResolvedValue('0xmocktxhash'),
 }));
 
-vi.mock('../middleware', () => ({
+vi.mock('../runtime/middleware', () => ({
   adminAuth: (_req: Request, _res: Response, next: NextFunction) => next(),
 }));
 
-vi.mock('../helpers', () => ({
+vi.mock('../services', () => ({
   hashReferralCode: vi
     .fn()
     .mockReturnValue(('0x' + 'ab'.repeat(32)) as `0x${string}`),

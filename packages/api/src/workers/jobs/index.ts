@@ -7,7 +7,7 @@ import { reindexConditionSettled } from './reindexConditionSettled';
 import {
   computeAndStoreProtocolStats,
   backfillProtocolStats,
-} from '../../helpers/protocolStats';
+} from '../../services/protocolStats';
 
 const callReindexEAS = async (argv: string[]) => {
   const chainId = parseInt(argv[3], 10);

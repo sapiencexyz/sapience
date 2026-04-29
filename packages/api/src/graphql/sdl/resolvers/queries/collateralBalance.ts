@@ -10,7 +10,7 @@
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
-import prisma from '../../../../db';
+import prisma from '../../../../core/db';
 
 export const collateralBalance: NonNullable<
   QueryResolvers['collateralBalance']

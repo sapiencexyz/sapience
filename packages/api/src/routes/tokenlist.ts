@@ -9,7 +9,7 @@ import {
 } from '@sapience/sdk';
 import type { Address, Hex } from 'viem';
 import { isPredictedYes } from '@sapience/sdk/types';
-import prisma from '../db';
+import prisma from '../core/db';
 
 const router = Router();
 

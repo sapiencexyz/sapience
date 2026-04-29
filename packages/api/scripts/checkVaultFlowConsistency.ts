@@ -20,9 +20,9 @@
  * floored to 4h.
  */
 import { formatUnits, parseAbiItem } from 'viem';
-import prisma from '../src/db';
-import { getBlockByTimestamp, getProviderForChain } from '../src/utils/utils';
-import { getConfiguredVaults } from '../src/helpers/protocolStats';
+import prisma from '../src/core/db';
+import { getBlockByTimestamp, getProviderForChain } from '../src/lib/utils';
+import { getConfiguredVaults } from '../src/services/protocolStats';
 
 const processedEvent = parseAbiItem(
   'event PendingRequestProcessed(address indexed user, bool direction, uint256 shares, uint256 assets)'

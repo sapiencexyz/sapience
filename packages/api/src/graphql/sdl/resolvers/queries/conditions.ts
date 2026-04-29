@@ -18,7 +18,7 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import type { QueryResolvers } from '../../__generated__/resolvers';
-import prisma from '../../../../db';
+import prisma from '../../../../core/db';
 
 type Where = Prisma.ConditionWhereInput;
 
