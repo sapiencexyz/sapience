@@ -428,6 +428,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       let escrowPayload: Record<string, unknown>;
       let predictorDeadline: number;
+      let canonicalPicks: Pick[];
 
       try {
         const prepared = await prepareAuctionRFQ({
@@ -481,6 +482,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
         escrowPayload = prepared.payload as unknown as Record<string, unknown>;
         predictorDeadline = prepared.deadline;
+        canonicalPicks = prepared.canonicalPicks;
 
         if (prepared.payload.intentSignature) {
           log(
@@ -495,9 +497,17 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         return;
       }
 
-      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid can access it
+      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid can access it.
+      // Also overwrite picks with the canonical ordering used by prepareAuctionRFQ — bidders
+      // sign over canonical picks, so the mint payload must use the same order or
+      // verifyMintPartySignature reverts with InvalidCounterpartySignature.
       lastAuctionRef.current = {
         ...lastAuctionRef.current,
+        picks: canonicalPicks.map((p) => ({
+          conditionResolver: p.conditionResolver,
+          conditionId: p.conditionId,
+          predictedOutcome: p.predictedOutcome,
+        })),
         predictorDeadline,
       };
 

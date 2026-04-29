@@ -41,11 +41,20 @@ export interface WriteContractParams {
   chainId?: number;
 }
 
+export interface UserOperationReceipt {
+  success: boolean;
+  reason?: string;
+  receipt: { transactionHash: Hash };
+}
+
 export interface SessionClient {
   account?: {
     encodeCalls: (calls: TransactionCall[]) => Promise<Hex>;
   };
   sendUserOperation: (params: { callData: Hex }) => Promise<Hash>;
+  waitForUserOperationReceipt: (params: {
+    hash: Hash;
+  }) => Promise<UserOperationReceipt>;
 }
 
 export interface SessionConfig {
@@ -267,6 +276,25 @@ export async function executeViaSessionKeyDefault(
   });
 
   deps.onTxSent?.(userOpHash);
+
+  // Wait for the UserOp to be included on-chain so we can surface execution
+  // reverts to the caller. Without this, a reverted UserOp returns silently
+  // and the UI hangs (e.g. "INDEXING POSITION..." forever) because the
+  // indexer never sees the position.
+  const receipt = await sessionClient.waitForUserOperationReceipt({
+    hash: userOpHash,
+  });
+
+  if (!receipt.success) {
+    const txHash = receipt.receipt?.transactionHash;
+    const detail = receipt.reason
+      ? `: ${receipt.reason}`
+      : txHash
+        ? ` (tx ${txHash})`
+        : '';
+    throw new Error(`Transaction reverted onchain${detail}`);
+  }
+
   deps.onReceiptConfirmed?.();
 
   return userOpHash;
