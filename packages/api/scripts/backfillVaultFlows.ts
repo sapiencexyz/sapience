@@ -1,23 +1,24 @@
 /**
- * One-shot backfill for vault_flow_event on the current vault deployment.
- * Reads PendingRequestProcessed + EmergencyWithdrawal events from chain.
+ * One-shot backfill for vault_flow_event. Reads PendingRequestProcessed +
+ * EmergencyWithdrawal events from chain for every configured vault (main,
+ * Pyth options, single-leg) and writes rows tagged with the source vault.
  *
- * Why: no indexer writes to this table today. The rows that exist predate the
- * current vault redeployment (2026-03-25, block 3890223). Running this lets
- * analytics queries (airdrop gains, cumulative flows) reflect reality.
+ * Why: no cron writes to this table today; it is regenerated manually after
+ * schema changes or vault redeployments. Downstream consumers
+ * (protocol_stats_snapshot, airdrop gains, cumulative flows) re-derive from
+ * these events.
  *
  * Usage:
  *   pnpm --filter @sapience/api exec tsx scripts/backfillVaultFlows.ts
  *   pnpm --filter @sapience/api exec tsx scripts/backfillVaultFlows.ts --chainId 5064014
  *   pnpm --filter @sapience/api exec tsx scripts/backfillVaultFlows.ts --dry-run
  *
- * --dry-run prints what would be upserted without touching the database. Use it to
- * verify event discovery and data shape before running with write credentials.
+ * --dry-run prints what would be upserted without touching the database.
  */
 import { parseAbiItem } from 'viem';
 import prisma from '../src/db';
 import { getProviderForChain } from '../src/utils/utils';
-import { contracts } from '@sapience/sdk/contracts';
+import { getConfiguredVaults } from '../src/helpers/protocolStats';
 
 const CHAIN_ID = (() => {
   const eq = process.argv.find((a) => a.startsWith('--chainId='));
@@ -38,30 +39,37 @@ const emergencyEvent = parseAbiItem(
   'event EmergencyWithdrawal(address indexed user, uint256 shares, uint256 assets)'
 );
 
-async function main() {
-  const vaultEntry = contracts.predictionMarketVault[CHAIN_ID];
-  if (!vaultEntry) throw new Error(`No vault configured for chain ${CHAIN_ID}`);
+interface PreviewRow {
+  vault: string;
+  block: number;
+  ts: string;
+  type: string;
+  user: string;
+  assets: string;
+  shares: string;
+}
 
-  const vaultAddress = vaultEntry.address as `0x${string}`;
-  const fromBlock = BigInt(vaultEntry.blockCreated);
-  const client = getProviderForChain(CHAIN_ID);
-  const toBlock = await client.getBlockNumber();
+async function backfillVault(
+  chainId: number,
+  kind: string,
+  address: string,
+  fromBlock: bigint,
+  toBlock: bigint,
+  previewRows: PreviewRow[]
+): Promise<number> {
+  const client = getProviderForChain(chainId);
+  const vaultAddress = address as `0x${string}`;
+  const vaultAddressLower = address.toLowerCase();
 
   console.log(
-    `[backfillVaultFlows] chain=${CHAIN_ID} vault=${vaultAddress} blocks=${fromBlock}..${toBlock}${DRY_RUN ? ' [DRY RUN]' : ''}`
+    `\n[backfillVaultFlows] ${kind} vault ${vaultAddress} blocks=${fromBlock}..${toBlock}${DRY_RUN ? ' [DRY RUN]' : ''}`
   );
 
   let upserted = 0;
-  const previewRows: Array<{
-    block: number;
-    ts: string;
-    type: string;
-    user: string;
-    assets: string;
-    shares: string;
-  }> = [];
+
   for (let start = fromBlock; start <= toBlock; start += BATCH_BLOCKS) {
-    const end = start + BATCH_BLOCKS - 1n > toBlock ? toBlock : start + BATCH_BLOCKS - 1n;
+    const end =
+      start + BATCH_BLOCKS - 1n > toBlock ? toBlock : start + BATCH_BLOCKS - 1n;
 
     const [processedLogs, emergencyLogs] = await Promise.all([
       client.getLogs({
@@ -93,7 +101,8 @@ async function main() {
       if (!user || !shares || !assets || log.logIndex == null) continue;
       const ts = blockTimestamps.get(log.blockNumber!)!;
       const row = {
-        chainId: CHAIN_ID,
+        chainId,
+        vaultAddress: vaultAddressLower,
         blockNumber: Number(log.blockNumber!),
         transactionHash: log.transactionHash!,
         timestamp: ts,
@@ -105,6 +114,7 @@ async function main() {
       };
       if (DRY_RUN) {
         previewRows.push({
+          vault: kind,
           block: row.blockNumber,
           ts: new Date(ts * 1000).toISOString(),
           type: row.eventType,
@@ -122,7 +132,7 @@ async function main() {
             },
           },
           create: row,
-          update: {},
+          update: { vaultAddress: vaultAddressLower },
         });
       }
       upserted++;
@@ -133,7 +143,8 @@ async function main() {
       if (!user || !shares || !assets || log.logIndex == null) continue;
       const ts = blockTimestamps.get(log.blockNumber!)!;
       const row = {
-        chainId: CHAIN_ID,
+        chainId,
+        vaultAddress: vaultAddressLower,
         blockNumber: Number(log.blockNumber!),
         transactionHash: log.transactionHash!,
         timestamp: ts,
@@ -145,6 +156,7 @@ async function main() {
       };
       if (DRY_RUN) {
         previewRows.push({
+          vault: kind,
           block: row.blockNumber,
           ts: new Date(ts * 1000).toISOString(),
           type: 'emergency_withdrawal',
@@ -162,7 +174,7 @@ async function main() {
             },
           },
           create: row,
-          update: {},
+          update: { vaultAddress: vaultAddressLower },
         });
       }
       upserted++;
@@ -175,11 +187,37 @@ async function main() {
     }
   }
 
+  return upserted;
+}
+
+async function main() {
+  const vaults = getConfiguredVaults(CHAIN_ID);
+  if (vaults.length === 0) {
+    throw new Error(`No vaults configured for chain ${CHAIN_ID}`);
+  }
+
+  const client = getProviderForChain(CHAIN_ID);
+  const toBlock = await client.getBlockNumber();
+
+  const previewRows: PreviewRow[] = [];
+  let totalUpserted = 0;
+  for (const vault of vaults) {
+    const fromBlock = BigInt(vault.config.blockCreated);
+    totalUpserted += await backfillVault(
+      CHAIN_ID,
+      vault.kind,
+      vault.address,
+      fromBlock,
+      toBlock,
+      previewRows
+    );
+  }
+
   if (DRY_RUN) {
-    console.log(`\n[DRY RUN] Would upsert ${upserted} vault flow rows:`);
+    console.log(`\n[DRY RUN] Would upsert ${totalUpserted} vault flow rows:`);
     console.table(previewRows);
   } else {
-    console.log(`\nDone. Upserted ${upserted} vault flow rows.`);
+    console.log(`\nDone. Upserted ${totalUpserted} vault flow rows.`);
   }
   await prisma.$disconnect();
 }
