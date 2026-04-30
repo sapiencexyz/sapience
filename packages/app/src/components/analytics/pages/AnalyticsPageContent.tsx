@@ -173,7 +173,9 @@ const CHART_AXIS_STYLE = {
   tickLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
 };
 
-const CHART_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
+// Match OpenInterestByTimeToResolutionChart's left:-4 so the y-axis labels
+// hug the card edge consistently across all charts on the analytics page.
+const CHART_MARGIN = { top: 10, right: 4, left: -4, bottom: 0 };
 
 function filterDataByPeriod<T extends { timestamp: number }>(
   data: T[],
