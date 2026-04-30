@@ -68,6 +68,24 @@ const STABLE_PRICE_USD: Record<string, number> = {
 
 const SOURCE_CHAIN_IDS = BUNGEE_SOURCE_CHAIN_META.map((c) => c.chainId);
 
+// Keep native-token max sends below the full balance so the wallet can still
+// pay source-chain gas for the deposit transaction. ERC-20 routes still need
+// native gas too, but their token balance is independent of that gas budget.
+const NATIVE_GAS_RESERVE_WEI_BY_CHAIN_ID: Record<number, bigint> = {
+  1: 10_000_000_000_000_000n, // 0.01 ETH
+  42161: 1_000_000_000_000_000n, // 0.001 ETH
+};
+
+function getNativeGasReserveWei(chainId: number | undefined): bigint {
+  return chainId == null
+    ? 0n
+    : (NATIVE_GAS_RESERVE_WEI_BY_CHAIN_ID[chainId] ?? 0n);
+}
+
+function maxBigInt(value: bigint, floor: bigint): bigint {
+  return value > floor ? value : floor;
+}
+
 function formatBalance(value: number, maxDecimals = 4): string {
   return value.toLocaleString('en-US', { maximumFractionDigits: maxDecimals });
 }
@@ -200,34 +218,12 @@ export default function BungeeBridgePanel({
     address: eoaAddress,
     query: { enabled: !!eoaAddress },
   });
-  const nativeBalBase = useBalance({
-    chainId: 8453,
-    address: eoaAddress,
-    query: { enabled: !!eoaAddress },
-  });
-  const nativeBalBsc = useBalance({
-    chainId: 56,
-    address: eoaAddress,
-    query: { enabled: !!eoaAddress },
-  });
-  const nativeBalHyper = useBalance({
-    chainId: 999,
-    address: eoaAddress,
-    query: { enabled: !!eoaAddress },
-  });
   const nativeBalanceByChainId: Record<number, bigint> = {
     1: nativeBalEthereum.data?.value ?? 0n,
     42161: nativeBalArbitrum.data?.value ?? 0n,
-    8453: nativeBalBase.data?.value ?? 0n,
-    56: nativeBalBsc.data?.value ?? 0n,
-    999: nativeBalHyper.data?.value ?? 0n,
   };
   const nativeBalancesLoading =
-    nativeBalEthereum.isLoading ||
-    nativeBalArbitrum.isLoading ||
-    nativeBalBase.isLoading ||
-    nativeBalBsc.isLoading ||
-    nativeBalHyper.isLoading;
+    nativeBalEthereum.isLoading || nativeBalArbitrum.isLoading;
 
   const { data: nativePricesUsd } = useQuery({
     queryKey: ['bungee-native-prices'],
@@ -262,9 +258,6 @@ export default function BungeeBridgePanel({
     erc20BalancesData,
     nativeBalEthereum.data?.value,
     nativeBalArbitrum.data?.value,
-    nativeBalBase.data?.value,
-    nativeBalBsc.data?.value,
-    nativeBalHyper.data?.value,
     nativePricesUsd,
   ]);
 
@@ -291,7 +284,16 @@ export default function BungeeBridgePanel({
     combosWithBalance.find((c) => c.key === selectedKey) ??
     combosWithBalance[0];
   const sourceBalance = selectedComboData?.raw ?? 0n;
+  const nativeGasReserveWei = sourceToken?.isNative
+    ? getNativeGasReserveWei(sourceChainId)
+    : 0n;
+  const maxSpendableSourceBalance = sourceToken?.isNative
+    ? maxBigInt(sourceBalance - nativeGasReserveWei, 0n)
+    : sourceBalance;
   const sourceBalanceNum = selectedComboData?.balance ?? 0;
+  const maxSpendableSourceBalanceNum = sourceToken
+    ? Number(formatUnits(maxSpendableSourceBalance, sourceToken.decimals))
+    : 0;
 
   // On first balance load, auto-pick the highest-balance combo so users don't
   // have to hunt for their funds. Only fires once.
@@ -313,8 +315,10 @@ export default function BungeeBridgePanel({
     sortedCombos,
   ]);
 
-  // Auto-fill amount with the EOA's full source balance once per combo.
-  // Doesn't overwrite later balance refetches so the user can still type freely.
+  // Auto-fill amount with the EOA's max spendable source balance once per
+  // combo. Native tokens reserve a small gas buffer so Max doesn't create an
+  // unfundable transaction. Doesn't overwrite later balance refetches so the
+  // user can still type freely.
   const lastAutoFillKey = useRef<string>('');
   useEffect(() => {
     if (!sourceToken) return;
@@ -325,8 +329,8 @@ export default function BungeeBridgePanel({
       : erc20BalancesData !== undefined;
     if (!balanceLoaded) return;
     setAmount(
-      sourceBalance > 0n
-        ? formatAmountForInput(sourceBalance, sourceToken.decimals)
+      maxSpendableSourceBalance > 0n
+        ? formatAmountForInput(maxSpendableSourceBalance, sourceToken.decimals)
         : ''
     );
     lastAutoFillKey.current = key;
@@ -334,7 +338,7 @@ export default function BungeeBridgePanel({
     selectedKey,
     eoaAddress,
     sourceToken,
-    sourceBalance,
+    maxSpendableSourceBalance,
     erc20BalancesData,
     nativeBalancesLoading,
   ]);
@@ -463,7 +467,11 @@ export default function BungeeBridgePanel({
     setAmount('');
   };
 
-  const insufficientFunds = !!inputAmountWei && inputAmountWei > sourceBalance;
+  const insufficientFunds =
+    !!inputAmountWei && inputAmountWei > maxSpendableSourceBalance;
+  const insufficientFundsLabel = sourceToken?.isNative
+    ? 'Insufficient balance after gas reserve'
+    : 'Insufficient balance';
 
   const outputAmount = deposit
     ? Number(formatUnits(BigInt(deposit.output.amount), 18))
@@ -482,7 +490,7 @@ export default function BungeeBridgePanel({
     if (isSending) return 'Confirm in wallet…';
     if (isInFlight) return `${describeBungeeStatus(statusCode)}…`;
     if (isQuoting && !deposit) return 'Getting quote…';
-    if (insufficientFunds) return 'Insufficient balance';
+    if (insufficientFunds) return insufficientFundsLabel;
     if (!inputAmountWei) return 'Enter an amount';
     if (!deposit) return 'No route available';
     if (isQuoteExpired)
@@ -503,11 +511,12 @@ export default function BungeeBridgePanel({
   const buttonOnClick = isComplete || isFailed ? handleReset : handleBridge;
 
   const setAmountFraction = (fraction: number) => {
-    if (!sourceToken || sourceBalance === 0n) return;
+    if (!sourceToken || maxSpendableSourceBalance === 0n) return;
     const value =
       fraction === 1
-        ? sourceBalance
-        : (sourceBalance * BigInt(Math.floor(fraction * 10_000))) / 10_000n;
+        ? maxSpendableSourceBalance
+        : (maxSpendableSourceBalance * BigInt(Math.floor(fraction * 10_000))) /
+          10_000n;
     setAmount(formatAmountForInput(value, sourceToken.decimals));
   };
 
@@ -531,7 +540,7 @@ export default function BungeeBridgePanel({
             <button
               type="button"
               onClick={() => setAmountFraction(0.5)}
-              disabled={inputsLocked || sourceBalance === 0n}
+              disabled={inputsLocked || maxSpendableSourceBalance === 0n}
               className="px-2 py-0.5 text-xs bg-muted/60 hover:bg-muted rounded disabled:opacity-50"
             >
               50%
@@ -539,11 +548,16 @@ export default function BungeeBridgePanel({
             <button
               type="button"
               onClick={() => setAmountFraction(1)}
-              disabled={inputsLocked || sourceBalance === 0n}
+              disabled={inputsLocked || maxSpendableSourceBalance === 0n}
               className="px-2 py-0.5 text-xs bg-muted/60 hover:bg-muted rounded disabled:opacity-50"
             >
               Max:{' '}
-              {formatBalance(sourceBalanceNum, sourceToken?.isNative ? 4 : 2)}
+              {formatBalance(
+                sourceToken?.isNative
+                  ? maxSpendableSourceBalanceNum
+                  : sourceBalanceNum,
+                sourceToken?.isNative ? 4 : 2
+              )}
             </button>
           </div>
         </div>

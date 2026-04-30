@@ -34,9 +34,9 @@ export interface BungeeSourceChainMeta {
   iconUrl: string;
 }
 
-// Source chains Bungee can route from into Ethereal (per Bungee, confirmed
-// 2026-04-30). Tokens are fetched at runtime from /tokens/list; only chain
-// metadata lives here.
+// Source chains we both quote through Bungee and configure in wagmi for
+// balance reads, chain switching, and sending. Add more chains here only after
+// adding matching chain definitions/transports in the app provider.
 export const BUNGEE_SOURCE_CHAIN_META: readonly BungeeSourceChainMeta[] = [
   {
     chainId: 1,
@@ -49,24 +49,6 @@ export const BUNGEE_SOURCE_CHAIN_META: readonly BungeeSourceChainMeta[] = [
     name: 'Arbitrum',
     iconUrl:
       'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png',
-  },
-  {
-    chainId: 8453,
-    name: 'Base',
-    iconUrl:
-      'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png',
-  },
-  {
-    chainId: 56,
-    name: 'BSC',
-    iconUrl:
-      'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/info/logo.png',
-  },
-  {
-    chainId: 999,
-    name: 'HyperEVM',
-    iconUrl:
-      'https://assets.coingecko.com/coins/images/50882/standard/hyperliquid.jpg',
   },
 ] as const;
 
