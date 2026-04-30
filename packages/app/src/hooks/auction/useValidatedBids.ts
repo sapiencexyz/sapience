@@ -7,6 +7,7 @@ import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
+import { useSecondTick } from '~/hooks/useSecondTick';
 import { logBidValidation, formatBidForLog } from '~/lib/auction/bidLogger';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { getPublicClientForChainId } from '~/lib/utils/util';
@@ -339,15 +340,18 @@ export function useValidatedBids(
   }, [rawBids, validationResults, canValidate]);
 
   // Filter to valid + non-expired bids
+  // Tick once per second so a bid drops out when its (buffered) deadline
+  // elapses even if no new bids arrive.
+  const tickedNowMs = useSecondTick();
   const validBids = useMemo((): QuoteBid[] => {
-    const nowMs = Date.now();
+    const nowMs = tickedNowMs ?? Date.now();
     return validatedBids.filter((bid) => {
       if (bid.validationStatus !== 'valid') return false;
       const deadlineSec = Number(bid.counterpartyDeadline || 0);
       if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return false;
       return effectiveDeadlineMs(deadlineSec) > nowMs;
     });
-  }, [validatedBids]);
+  }, [validatedBids, tickedNowMs]);
 
   const invalidBidCount = useMemo(() => {
     return validatedBids.filter((bid) => bid.validationStatus === 'invalid')
