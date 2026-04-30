@@ -8,6 +8,7 @@ import {
   prepareAuctionRFQ,
   type SignableTypedData,
 } from '@sapience/sdk/auction/initiate';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
@@ -369,12 +370,28 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         ? (effectiveAddressRef.current ?? params.predictor)
         : (walletAddress ?? params.predictor);
 
+      // Canonicalize picks once up-front: bidders sign over the canonical
+      // (keccak256-sorted) order shipped by prepareAuctionRFQ, so every
+      // downstream consumer (mint payload, off-chain validation, indexer
+      // tracking) must agree on that order or predictionHash diverges and the
+      // counterparty signature won't validate. Doing this here guarantees
+      // currentAuctionParams, lastAuctionRef, and the RFQ all use the same
+      // pick order.
+      const canonicalizedParams: AuctionParams = {
+        ...params,
+        picks: params.picks?.length
+          ? (canonicalizePicks(
+              params.picks as Pick[]
+            ) as AuctionParams['picks'])
+          : params.picks,
+      };
+
       const requestPayload = {
-        wager: params.wager,
-        picks: params.picks,
+        wager: canonicalizedParams.wager,
+        picks: canonicalizedParams.picks,
         predictor: effectivePredictor,
-        predictorNonce: params.predictorNonce,
-        chainId: params.chainId,
+        predictorNonce: canonicalizedParams.predictorNonce,
+        chainId: canonicalizedParams.chainId,
       };
 
       const key = jsonStableStringify({
@@ -397,10 +414,19 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       setBids([]);
       pendingBidsRef.current.clear();
       // Store params with effectivePredictor so buildMintRequestDataFromBid uses the correct address
-      lastAuctionRef.current = { ...params, predictor: effectivePredictor };
-      setCurrentAuctionParams({ ...params, predictor: effectivePredictor });
+      lastAuctionRef.current = {
+        ...canonicalizedParams,
+        predictor: effectivePredictor,
+      };
+      setCurrentAuctionParams({
+        ...canonicalizedParams,
+        predictor: effectivePredictor,
+      });
 
-      if (!params.picks || params.picks.length === 0) {
+      if (
+        !canonicalizedParams.picks ||
+        canonicalizedParams.picks.length === 0
+      ) {
         console.error(
           '[Auction] Escrow picks missing — all auctions require escrow format'
         );
@@ -408,7 +434,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         return;
       }
 
-      const chainId = params.chainId;
+      const chainId = canonicalizedParams.chainId;
 
       // Build the signed auction payload via SDK
       // prepareAuctionRFQ handles: pick canonicalization, deadline computation,
@@ -431,17 +457,17 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       try {
         const prepared = await prepareAuctionRFQ({
-          picks: params.picks.map(
+          picks: canonicalizedParams.picks.map(
             (p): Pick => ({
               conditionResolver: p.conditionResolver,
               conditionId: p.conditionId,
               predictedOutcome: p.predictedOutcome,
             })
           ),
-          predictorCollateral: BigInt(params.wager),
+          predictorCollateral: BigInt(canonicalizedParams.wager),
           predictor: effectivePredictor,
           chainId,
-          nonce: params.predictorNonce,
+          nonce: canonicalizedParams.predictorNonce,
           signIntent: async (typedData: SignableTypedData): Promise<Hex> => {
             if (
               isUsingSessionRef.current &&
@@ -466,8 +492,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           options: {
             deadlineSeconds: 30,
             skipIntentSigning: skipSigning,
-            predictorSponsor: params.predictorSponsor,
-            predictorSponsorData: params.predictorSponsorData,
+            predictorSponsor: canonicalizedParams.predictorSponsor,
+            predictorSponsorData: canonicalizedParams.predictorSponsorData,
             sessionKeyData: etherealSessionApprovalRef.current
               ? JSON.stringify({
                   approval: etherealSessionApprovalRef.current.approval,
@@ -495,7 +521,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         return;
       }
 
-      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid can access it
+      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid
+      // can access it. Picks were already canonicalized up-front and stamped
+      // into both lastAuctionRef and currentAuctionParams; nothing to overwrite.
       lastAuctionRef.current = {
         ...lastAuctionRef.current,
         predictorDeadline,
