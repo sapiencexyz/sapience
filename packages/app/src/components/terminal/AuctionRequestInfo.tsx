@@ -279,7 +279,10 @@ const AuctionRequestInfo: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [maxEndTimeSec]);
+    // `now` is intentionally a dep: formatDistanceToNowStrict reads the clock
+    // internally, so without it the memoized label freezes at first render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxEndTimeSec, now]);
 
   const maxRemainingExpirySeconds = useMemo(() => {
     try {
