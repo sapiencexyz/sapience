@@ -30,6 +30,14 @@ vi.mock('../../../../lib/utils', () => ({
 
 const { protocolStats } = await import('./analytics');
 
+type ProtocolStatsFn = (
+  parent: unknown,
+  args: { vaultAddress?: string | null },
+  ctx: unknown,
+  info: unknown
+) => Promise<unknown[]>;
+const protocolStatsFn = protocolStats as unknown as ProtocolStatsFn;
+
 describe('Query.protocolStats', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -46,7 +54,7 @@ describe('Query.protocolStats', () => {
   });
 
   it('returns [] for an unknown vaultAddress instead of falling back to all vaults', async () => {
-    const result = await protocolStats(
+    const result = await protocolStatsFn(
       {} as never,
       { vaultAddress: '0xdeadbeef' },
       {} as never,
