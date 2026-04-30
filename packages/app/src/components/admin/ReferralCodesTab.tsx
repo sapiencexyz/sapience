@@ -164,7 +164,9 @@ const ReferralCodesTab = ({
   const handleEdit = useCallback(
     (row: ReferralCodeRow) => {
       setEditingId(row.id);
-      setCode(row.codeHash); // Show hash since plaintext is not stored
+      // Plaintext isn't stored and the hash is no longer surfaced; the Code
+      // input is unused in edit mode (see onSubmit below — it skips `code`).
+      setCode('');
       setMaxClaims(row.maxClaims);
       setExpiresAt(
         row.expiresAt
@@ -235,34 +237,32 @@ const ReferralCodesTab = ({
   const columns: ColumnDef<ReferralCodeRow>[] = useMemo(
     () => [
       {
-        header: 'Code Hash',
-        accessorKey: 'codeHash',
+        header: 'Created',
+        accessorKey: 'createdAt',
         size: 150,
         cell: ({ row }) => {
-          const codeHash = row.original.codeHash;
+          const createdAt = row.original.createdAt;
+          let relative = '';
+          try {
+            relative = formatDistanceToNow(new Date(createdAt), {
+              addSuffix: true,
+            });
+          } catch {
+            // ignore formatting errors
+          }
           return (
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-medium text-muted-foreground">
-                {codeHash.slice(0, 10)}...
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  await navigator.clipboard.writeText(codeHash);
-                  toast({
-                    title: 'Copied',
-                    description: 'Hash copied to clipboard',
-                    duration: 1500,
-                  });
-                }}
-                aria-label="Copy hash"
-              >
-                <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-              </Button>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-help text-muted-foreground">
+                    {relative}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{format(new Date(createdAt), 'PPpp')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
       },
@@ -415,7 +415,7 @@ const ReferralCodesTab = ({
         },
       },
     ],
-    [handleEdit, handleViewAnalytics, toast]
+    [handleEdit, handleViewAnalytics]
   );
 
   const filteredCodes = useMemo(() => {
@@ -561,10 +561,9 @@ const ReferralCodesTab = ({
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Analytics:{' '}
-              {analyticsData?.codeHash
-                ? `${analyticsData.codeHash.slice(0, 10)}...`
-                : 'Loading...'}
+              {analyticsCodeId
+                ? `Analytics — code #${analyticsCodeId}`
+                : 'Analytics'}
             </DialogTitle>
           </DialogHeader>
           {analyticsLoading ? (

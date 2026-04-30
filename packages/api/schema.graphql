@@ -1574,6 +1574,13 @@ type Query {
   """
   questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
 
+  """
+  Paginated referral codes with claim count and aggregate trading volume / position
+  count baked in. Pass `id` to filter to a single code (e.g. for the analytics
+  dialog). Per-claimant breakdown is available via the nested `claimants` field.
+  """
+  referralCodes(cursor: Int, id: Int, limit: Int = 100): ReferralCodesPage!
+
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade
 
@@ -1620,10 +1627,18 @@ enum QuestionSortField {
   similarMarketVolume
 }
 
+"""
+Referral code. `codeHash` is intentionally NOT exposed: redemption takes the
+plaintext, hashes it server-side, and looks up by hash, so a leaked hash is
+credential-equivalent against short / dictionary-style codes (keccak256 is
+unsalted and GPU-fast). Identity for clients is the integer `id`.
+"""
 type ReferralCode {
-  _count: ReferralCodeCount
-  claimedBy(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
-  codeHash: String!
+  """Total number of users who have claimed this code, across all pages."""
+  claimCount: Int!
+
+  """Paginated per-claimant breakdown with trading volume + position count."""
+  claimants(cursor: Int, limit: Int = 100): ReferralCodeClaimantsPage!
   createdAt: DateTimeISO!
   createdBy: String!
   creatorType: String!
@@ -1631,11 +1646,33 @@ type ReferralCode {
   id: Int!
   isActive: Boolean!
   maxClaims: Int!
+
+  """
+  Total position count across every claimant. A position with both predictor
+  and counterparty in the claimant set is counted twice, matching the
+  per-side semantics.
+  """
+  totalPositions: Int!
+
+  """
+  Sum of trading volume across every claimant's positions (predictor +
+  counterparty sides), as a stringified bigint. Aggregated server-side.
+  """
+  totalVolume: String!
   updatedAt: DateTimeISO!
 }
 
-type ReferralCodeCount {
-  claimedBy(where: UserWhereInput): Int!
+type ReferralCodeClaimant {
+  address: String!
+  claimedAt: DateTimeISO!
+  id: Int!
+  positionCount: Int!
+  tradingVolume: String!
+}
+
+type ReferralCodeClaimantsPage {
+  items: [ReferralCodeClaimant!]!
+  nextCursor: Int
 }
 
 input ReferralCodeNullableRelationFilter {
@@ -1644,8 +1681,6 @@ input ReferralCodeNullableRelationFilter {
 }
 
 input ReferralCodeOrderByWithRelationInput {
-  claimedBy: UserOrderByRelationAggregateInput
-  codeHash: SortOrder
   createdAt: SortOrder
   createdBy: SortOrder
   creatorType: SortOrder
@@ -1660,8 +1695,6 @@ input ReferralCodeWhereInput {
   AND: [ReferralCodeWhereInput!]
   NOT: [ReferralCodeWhereInput!]
   OR: [ReferralCodeWhereInput!]
-  claimedBy: UserListRelationFilter
-  codeHash: StringFilter
   createdAt: DateTimeFilter
   createdBy: StringFilter
   creatorType: StringFilter
@@ -1670,6 +1703,11 @@ input ReferralCodeWhereInput {
   isActive: BoolFilter
   maxClaims: IntFilter
   updatedAt: DateTimeFilter
+}
+
+type ReferralCodesPage {
+  items: [ReferralCode!]!
+  nextCursor: Int
 }
 
 """Filter questions by their resolution status"""

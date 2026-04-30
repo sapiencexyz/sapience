@@ -70,6 +70,7 @@ import {
   accountAccuracyRank,
   accuracyLeaderboard,
 } from './queries/score';
+import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import {
   accountBalance,
@@ -124,6 +125,8 @@ export const resolvers: Resolvers = {
     trade,
     tradeCount,
     trades,
+    // Referrals
+    referralCodes,
     // Tags
     popularTags,
     // CRUD passthroughs
