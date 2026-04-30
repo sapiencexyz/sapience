@@ -12,6 +12,10 @@ import type {
   BidPayload,
   ServerToClientMessage,
 } from '../escrowTypes';
+import type {
+  IdentifyPayload,
+  AuctionReceivedPayload,
+} from '@sapience/sdk/types';
 import {
   validateAuctionRFQ,
   validateBid,
@@ -28,8 +32,25 @@ import {
   bidsSubmitted,
   errorsTotal,
   subscriptionsActive,
+  auctionBroadcastSends,
+  auctionReceivedAcks,
+  auctionReceivedAckRejected,
+  clientsIdentified,
+  serviceLabel,
+  variantLabel,
 } from '../metrics';
+import { recordBroadcast, wasBroadcastTo } from '../broadcastLedger';
 import { config } from '../config';
+
+// Identity helpers — keep clientId/instanceId short in logs.
+const short = (s: string | undefined): string =>
+  s ? s.slice(0, 8) : 'unknown';
+
+// Strip non-printable ASCII so a client can't inject newlines/control chars
+// into our log lines via the `service` field.
+const sanitizeForLog = (s: string): string =>
+  // eslint-disable-next-line no-control-regex
+  s.replace(/[^\x20-\x7E]/g, '?');
 
 // Structured timing log for observability
 function logTiming(
@@ -120,22 +141,62 @@ export async function handleAuctionStart(
   client.send({ type: 'auction.ack', payload: ackPayload });
   logTiming(auctionId, 'ack_sent', startTime);
 
-  // Broadcast auction.started with auction details to all connected clients
+  // Broadcast auction.started with auction details to all connected clients.
+  // Per-client logging here is intentional: it's the only ground truth we
+  // have for "did the relayer attempt to deliver this auction to this bot."
+  // Without it, a silent miss (auction received, but bot never saw it) is
+  // indistinguishable from a relayer-side failure.
   const details = getEscrowAuctionDetails(auctionId);
   if (details) {
     const broadcastMsg = { type: 'auction.started', payload: details };
-    let botCount = 0;
+    const auctionShort = short(auctionId);
+    let attempted = 0;
+    let sent = 0;
+    let failed = 0;
+    let skippedClosed = 0;
     for (const c of ctx.allClients()) {
-      if (c.isOpen) {
-        try {
-          c.send(broadcastMsg);
-          botCount++;
-        } catch {
-          /* skip dead connections */
-        }
+      if (!c.isOpen) {
+        skippedClosed++;
+        continue;
+      }
+      attempted++;
+      let ok = false;
+      try {
+        ok = c.send(broadcastMsg);
+      } catch {
+        ok = false;
+      }
+      auctionBroadcastSends.inc({
+        service: serviceLabel(c.service),
+        variant: variantLabel(c.variant),
+        ok: ok ? 'true' : 'false',
+      });
+      if (ok) {
+        sent++;
+        recordBroadcast(auctionId, c.id);
+        console.log(
+          `[Relayer] auction.broadcast.send ok=true auctionId=${auctionShort} clientId=${short(
+            c.id
+          )} service=${c.service} variant=${c.variant} instance=${short(c.instanceId)}`
+        );
+      } else {
+        failed++;
+        console.warn(
+          `[Relayer] auction.broadcast.send ok=false auctionId=${auctionShort} clientId=${short(
+            c.id
+          )} service=${c.service} variant=${c.variant} instance=${short(c.instanceId)}`
+        );
       }
     }
-    logTiming(auctionId, 'broadcast', startTime, { bots: botCount });
+    console.log(
+      `[Relayer] auction.broadcast.done auctionId=${auctionShort} attempted=${attempted} sent=${sent} failed=${failed} skippedClosed=${skippedClosed}`
+    );
+    logTiming(auctionId, 'broadcast', startTime, {
+      attempted,
+      sent,
+      failed,
+      skippedClosed,
+    });
   }
 
   // Immediately stream current bids if any
@@ -289,4 +350,108 @@ export async function handleBidSubmit(
   });
 
   return false;
+}
+
+/**
+ * Identify handshake — clients announce service/instance identity so per-client
+ * broadcast logs are useful. No-op if payload is malformed; we don't penalize
+ * because identify is best-effort observability, not auth.
+ */
+export function handleIdentify(
+  client: ClientConnection,
+  payload: IdentifyPayload | undefined
+): void {
+  if (!payload || typeof payload !== 'object') return;
+  // The raw service is stored on the client and used in log lines (verbatim,
+  // sanitized for log injection). The Prometheus label is bounded separately
+  // via serviceLabel() so a client cannot inflate metric cardinality.
+  const rawService =
+    typeof payload.service === 'string' && payload.service.length > 0
+      ? sanitizeForLog(payload.service.slice(0, 64))
+      : 'anonymous';
+  const rawVariant =
+    typeof payload.variant === 'string' && payload.variant.length > 0
+      ? sanitizeForLog(payload.variant.slice(0, 32))
+      : 'default';
+  const instanceId =
+    typeof payload.instanceId === 'string' && payload.instanceId.length > 0
+      ? sanitizeForLog(payload.instanceId.slice(0, 64))
+      : undefined;
+  const chainId =
+    typeof payload.chainId === 'number' && Number.isFinite(payload.chainId)
+      ? payload.chainId
+      : undefined;
+
+  client.service = rawService;
+  client.variant = rawVariant;
+  client.instanceId = instanceId;
+  client.chainId = chainId;
+
+  clientsIdentified.inc({
+    service: serviceLabel(rawService),
+    variant: variantLabel(rawVariant),
+  });
+  console.log(
+    `[Relayer] client.identified clientId=${short(client.id)} service=${rawService} variant=${rawVariant} instance=${short(
+      instanceId
+    )} chainId=${chainId ?? 'none'} serviceInstance=${
+      typeof payload.serviceInstance === 'string'
+        ? sanitizeForLog(payload.serviceInstance.slice(0, 32))
+        : 'none'
+    } deploy=${
+      typeof payload.deploymentId === 'string'
+        ? sanitizeForLog(payload.deploymentId.slice(0, 12))
+        : 'none'
+    } replica=${
+      typeof payload.replicaId === 'string'
+        ? sanitizeForLog(payload.replicaId.slice(0, 12))
+        : 'none'
+    } version=${
+      typeof payload.version === 'string'
+        ? sanitizeForLog(payload.version.slice(0, 16))
+        : 'none'
+    }`
+  );
+}
+
+/**
+ * Bot ack for auction.started — proves end-to-end delivery (the bot's WS
+ * handler ran and saw the auction). Without this ack, a successful `ws.send`
+ * is the strongest signal we have, and it only proves the kernel buffer
+ * accepted the bytes.
+ *
+ * Anti-spoof: the relayer only honors an ack if it has a record of having
+ * broadcast that exact `auctionId` to this exact `clientId`. A client that
+ * fabricates an ack for an auction it never received gets dropped (and
+ * counted in `auctionReceivedAckRejected`), so the `auction.client_ack`
+ * log line is a real proof-of-delivery signal rather than self-reported.
+ */
+export function handleAuctionReceived(
+  client: ClientConnection,
+  payload: AuctionReceivedPayload | undefined
+): void {
+  if (!payload || typeof payload.auctionId !== 'string') {
+    auctionReceivedAckRejected.inc({ reason: 'invalid_payload' });
+    return;
+  }
+  if (!wasBroadcastTo(payload.auctionId, client.id)) {
+    auctionReceivedAckRejected.inc({ reason: 'not_recipient' });
+    console.warn(
+      `[Relayer] auction.received rejected (no broadcast record) auctionId=${short(
+        payload.auctionId
+      )} clientId=${short(client.id)} service=${client.service}`
+    );
+    return;
+  }
+  auctionReceivedAcks.inc({
+    service: serviceLabel(client.service),
+    variant: variantLabel(client.variant),
+  });
+  console.log(
+    `[Relayer] auction.client_ack auctionId=${short(
+      payload.auctionId
+    )} clientId=${short(client.id)} service=${client.service} variant=${client.variant} instance=${short(
+      client.instanceId
+    )}`
+  );
 }

@@ -394,10 +394,13 @@ function createMockClient(): MockClient {
   return {
     send: (msg: unknown) => {
       messages.push(msg);
+      return true;
     },
     close: () => {},
     isOpen: true,
     id: `test-client-${Math.random().toString(36).slice(2)}`,
+    service: 'anonymous',
+    variant: 'default',
     _messages: messages,
   } as MockClient;
 }
