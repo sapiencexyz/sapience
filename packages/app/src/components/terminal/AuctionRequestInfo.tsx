@@ -4,9 +4,6 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { formatEther } from 'viem';
-import EnsAvatar from '~/components/shared/EnsAvatar';
-import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import PlaceBidForm from '~/components/terminal/PlaceBidForm';
 import {
   Tooltip,
   TooltipContent,
@@ -14,8 +11,15 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { HelpCircle } from 'lucide-react';
+import EnsAvatar from '~/components/shared/EnsAvatar';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import PlaceBidForm from '~/components/terminal/PlaceBidForm';
 import ExpiresInLabel from '~/components/shared/ExpiresInLabel';
 import PercentChance from '~/components/shared/PercentChance';
+import {
+  effectiveDeadlineMs,
+  remainingMsToDeadline,
+} from '~/lib/auction/bidExpiry';
 
 type SubmitData = {
   amount: string;
@@ -66,7 +70,7 @@ const BestBid: React.FC<BestBidProps> = ({
         const deadlineSec = Number(b?.counterpartyDeadline || 0);
         const ms =
           Number.isFinite(deadlineSec) && deadlineSec > 0
-            ? deadlineSec * 1000
+            ? effectiveDeadlineMs(deadlineSec)
             : Number.POSITIVE_INFINITY;
         if (ms > now) return b;
       }
@@ -90,9 +94,9 @@ const BestBid: React.FC<BestBidProps> = ({
                 const secondsRemaining = (() => {
                   if (!Number.isFinite(deadlineSec) || deadlineSec <= 0)
                     return null;
-                  const ms = deadlineSec * 1000;
-                  const diff = Math.max(0, Math.round((ms - now) / 1000));
-                  return diff;
+                  return Math.round(
+                    remainingMsToDeadline(deadlineSec, now) / 1000
+                  );
                 })();
                 const payoutStr = (() => {
                   try {
@@ -275,7 +279,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [maxEndTimeSec, now]);
+  }, [maxEndTimeSec]);
 
   const maxRemainingExpirySeconds = useMemo(() => {
     try {
@@ -301,7 +305,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
           return false;
         const deadlineSec = Number(b?.counterpartyDeadline || 0);
         if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return true;
-        return deadlineSec * 1000 > now;
+        return effectiveDeadlineMs(deadlineSec) > now;
       });
       if (candidates.length === 0) return null;
       return candidates.reduce((best, b) => {

@@ -6,6 +6,7 @@ import type { PickJson } from '@sapience/sdk/types';
 import { validateBidFull } from '@sapience/sdk/auction/validation';
 import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import type { AuctionBid } from '~/lib/auction/useAuctionBidsHub';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -322,7 +323,7 @@ export function usePreprocessedBids(
       if (bid.validationStatus !== 'valid') return false;
       const deadlineSec = Number(bid.counterpartyDeadline || 0);
       if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return false;
-      return deadlineSec * 1000 > nowMs;
+      return effectiveDeadlineMs(deadlineSec) > nowMs;
     });
   }, [processedBids]);
 

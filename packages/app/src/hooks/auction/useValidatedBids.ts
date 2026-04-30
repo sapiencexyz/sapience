@@ -6,6 +6,7 @@ import type { Pick, PickJson } from '@sapience/sdk/types';
 import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
 import { logBidValidation, formatBidForLog } from '~/lib/auction/bidLogger';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { getPublicClientForChainId } from '~/lib/utils/util';
@@ -344,7 +345,7 @@ export function useValidatedBids(
       if (bid.validationStatus !== 'valid') return false;
       const deadlineSec = Number(bid.counterpartyDeadline || 0);
       if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return false;
-      return deadlineSec * 1000 > nowMs;
+      return effectiveDeadlineMs(deadlineSec) > nowMs;
     });
   }, [validatedBids]);
 
