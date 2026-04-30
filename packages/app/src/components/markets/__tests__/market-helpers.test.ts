@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { filterRows, type TopLevelRow } from '../market-helpers';
+import {
+  collapsePriceCategories,
+  filterRows,
+  type TopLevelRow,
+} from '../market-helpers';
 import type { FilterState } from '../TableFilters';
 
 const NO_FILTER_RANGES: Pick<
@@ -117,5 +121,46 @@ describe('filterRows — time-bucketed volume windows', () => {
         similarMarketVolume24hRange: [1, Infinity],
       })
     ).toHaveLength(0);
+  });
+});
+
+describe('collapsePriceCategories', () => {
+  it('returns rows unchanged when no price sub-categories are present', () => {
+    const rows = [
+      { slug: 'crypto', name: 'Crypto', raw: 100n },
+      { slug: 'sports', name: 'Sports', raw: 50n },
+    ];
+    const result = collapsePriceCategories(rows);
+    expect(result).toEqual([
+      { slug: 'crypto', name: 'Crypto', raw: 100n, source: rows[0] },
+      { slug: 'sports', name: 'Sports', raw: 50n, source: rows[1] },
+    ]);
+  });
+
+  it('merges all prices-* sub-categories into a single Prices aggregate', () => {
+    const rows = [
+      { slug: 'crypto', name: 'Crypto', raw: 100n },
+      { slug: 'prices-crypto', name: 'Crypto Prices', raw: 30n },
+      { slug: 'prices-equity', name: 'Equity Prices', raw: 20n },
+      { slug: 'prices-commodities', name: 'Commodities Prices', raw: 10n },
+    ];
+    const result = collapsePriceCategories(rows);
+    expect(result).toHaveLength(2);
+    expect(result.find((r) => r.slug === 'crypto')?.raw).toBe(100n);
+    const merged = result.find((r) => r.slug === 'prices');
+    expect(merged).toBeDefined();
+    expect(merged?.name).toBe('Prices');
+    expect(merged?.raw).toBe(60n);
+    expect(merged?.source).toBeUndefined();
+  });
+
+  it('merges a single prices-* row into the Prices aggregate', () => {
+    const rows = [{ slug: 'prices-crypto', name: 'Crypto Prices', raw: 7n }];
+    const result = collapsePriceCategories(rows);
+    expect(result).toEqual([{ slug: 'prices', name: 'Prices', raw: 7n }]);
+  });
+
+  it('handles an empty input', () => {
+    expect(collapsePriceCategories([])).toEqual([]);
   });
 });

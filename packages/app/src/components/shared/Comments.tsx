@@ -16,6 +16,7 @@ import { formatPercentChance } from '~/lib/format/percentChance';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketBadge from '~/components/markets/MarketBadge';
 import { getFocusAreaMap } from '~/lib/constants/focusAreas';
+import { categoryMatchesFilter } from '~/lib/utils/categoryMatcher';
 
 enum Answer {
   Yes = 'yes',
@@ -26,6 +27,7 @@ export enum CommentFilters {
   SelectedQuestion = 'selected',
   FilterByAccount = 'my-predictions',
   EconomyFinanceCategory = 'economy-finance',
+  PricesCategory = 'prices',
   DecentralizedComputeCategory = 'crypto',
   EnergyDePINCategory = 'energy-depin',
   ClimateChangeCategory = 'weather',
@@ -259,8 +261,8 @@ const Comments = ({
       selectedFilter !== CommentFilters.SelectedQuestion &&
       selectedFilter !== CommentFilters.FilterByAccount
     ) {
-      filtered = filtered.filter(
-        (comment) => comment.category === selectedFilter
+      filtered = filtered.filter((comment) =>
+        categoryMatchesFilter(comment.category, selectedFilter)
       );
     }
 
