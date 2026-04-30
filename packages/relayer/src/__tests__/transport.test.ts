@@ -9,6 +9,7 @@ function mockClient(
   return {
     id,
     service: 'anonymous',
+    variant: 'default',
     send: vi.fn().mockReturnValue(true),
     close: vi.fn(),
     get isOpen() {

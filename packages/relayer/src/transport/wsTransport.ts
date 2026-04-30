@@ -14,6 +14,7 @@ export function createWsClientConnection(
   const conn: ClientConnection = {
     id,
     service: 'anonymous',
+    variant: 'default',
     instanceId: undefined,
     chainId: undefined,
     send(msg: unknown): boolean {

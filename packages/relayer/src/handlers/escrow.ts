@@ -37,6 +37,7 @@ import {
   auctionReceivedAckRejected,
   clientsIdentified,
   serviceLabel,
+  variantLabel,
 } from '../metrics';
 import { recordBroadcast, wasBroadcastTo } from '../broadcastLedger';
 import { config } from '../config';
@@ -167,6 +168,7 @@ export async function handleAuctionStart(
       }
       auctionBroadcastSends.inc({
         service: serviceLabel(c.service),
+        variant: variantLabel(c.variant),
         ok: ok ? 'true' : 'false',
       });
       if (ok) {
@@ -175,14 +177,14 @@ export async function handleAuctionStart(
         console.log(
           `[Relayer] auction.broadcast.send auctionId=${auctionShort} clientId=${short(
             c.id
-          )} service=${c.service} instance=${short(c.instanceId)} ok=true`
+          )} service=${c.service} variant=${c.variant} instance=${short(c.instanceId)} ok=true`
         );
       } else {
         failed++;
         console.warn(
           `[Relayer] auction.broadcast.send auctionId=${auctionShort} clientId=${short(
             c.id
-          )} service=${c.service} instance=${short(c.instanceId)} ok=false`
+          )} service=${c.service} variant=${c.variant} instance=${short(c.instanceId)} ok=false`
         );
       }
     }
@@ -367,6 +369,10 @@ export function handleIdentify(
     typeof payload.service === 'string' && payload.service.length > 0
       ? sanitizeForLog(payload.service.slice(0, 64))
       : 'anonymous';
+  const rawVariant =
+    typeof payload.variant === 'string' && payload.variant.length > 0
+      ? sanitizeForLog(payload.variant.slice(0, 32))
+      : 'default';
   const instanceId =
     typeof payload.instanceId === 'string' && payload.instanceId.length > 0
       ? sanitizeForLog(payload.instanceId.slice(0, 64))
@@ -377,12 +383,16 @@ export function handleIdentify(
       : undefined;
 
   client.service = rawService;
+  client.variant = rawVariant;
   client.instanceId = instanceId;
   client.chainId = chainId;
 
-  clientsIdentified.inc({ service: serviceLabel(rawService) });
+  clientsIdentified.inc({
+    service: serviceLabel(rawService),
+    variant: variantLabel(rawVariant),
+  });
   console.log(
-    `[Relayer] client.identified clientId=${short(client.id)} service=${rawService} instance=${short(
+    `[Relayer] client.identified clientId=${short(client.id)} service=${rawService} variant=${rawVariant} instance=${short(
       instanceId
     )} chainId=${chainId ?? 'none'} serviceInstance=${
       typeof payload.serviceInstance === 'string'
@@ -434,12 +444,15 @@ export function handleAuctionReceived(
     );
     return;
   }
-  auctionReceivedAcks.inc({ service: serviceLabel(client.service) });
+  auctionReceivedAcks.inc({
+    service: serviceLabel(client.service),
+    variant: variantLabel(client.variant),
+  });
   console.log(
     `[Relayer] auction.client_ack auctionId=${payload.auctionId.slice(
       0,
       8
-    )} clientId=${short(client.id)} service=${client.service} instance=${short(
+    )} clientId=${short(client.id)} service=${client.service} variant=${client.variant} instance=${short(
       client.instanceId
     )}`
   );

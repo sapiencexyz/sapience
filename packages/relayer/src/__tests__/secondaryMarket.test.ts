@@ -400,6 +400,7 @@ function createMockClient(): MockClient {
     isOpen: true,
     id: `test-client-${Math.random().toString(36).slice(2)}`,
     service: 'anonymous',
+    variant: 'default',
     _messages: messages,
   } as MockClient;
 }
