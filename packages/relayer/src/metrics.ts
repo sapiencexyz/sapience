@@ -77,6 +77,27 @@ export const auctionsStarted = new Counter({
   registers: [register],
 });
 
+export const auctionBroadcastSends = new Counter({
+  name: 'relayer_auction_broadcast_sends_total',
+  help: 'Per-client auction.started broadcast attempts',
+  labelNames: ['service', 'ok'], // service: 'market-maker' | 'estimator' | 'anonymous' | ...; ok: 'true' | 'false'
+  registers: [register],
+});
+
+export const auctionReceivedAcks = new Counter({
+  name: 'relayer_auction_received_acks_total',
+  help: 'Per-client auction.received acks (proves end-to-end delivery)',
+  labelNames: ['service'],
+  registers: [register],
+});
+
+export const clientsIdentified = new Counter({
+  name: 'relayer_clients_identified_total',
+  help: 'Total identify handshakes accepted',
+  labelNames: ['service'],
+  registers: [register],
+});
+
 export const bidsSubmitted = new Counter({
   name: 'relayer_bids_submitted_total',
   help: 'Total number of bids submitted',

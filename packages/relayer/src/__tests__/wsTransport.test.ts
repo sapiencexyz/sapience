@@ -38,7 +38,11 @@ describe('createWsClientConnection', () => {
     it('JSON-serializes objects and sends when OPEN', () => {
       const ws = mockWs();
       const client = createWsClientConnection(ws);
-      client.send({ type: 'auction.ack', payload: { auctionId: '123' } });
+      const ok = client.send({
+        type: 'auction.ack',
+        payload: { auctionId: '123' },
+      });
+      expect(ok).toBe(true);
       expect(ws.send).toHaveBeenCalledWith(
         JSON.stringify({ type: 'auction.ack', payload: { auctionId: '123' } })
       );
@@ -55,8 +59,25 @@ describe('createWsClientConnection', () => {
     it('does not send when socket is not OPEN', () => {
       const ws = mockWs(WebSocket.CLOSED);
       const client = createWsClientConnection(ws);
-      client.send({ type: 'test' });
+      const ok = client.send({ type: 'test' });
+      expect(ok).toBe(false);
       expect(ws.send).not.toHaveBeenCalled();
+    });
+
+    it('returns false when ws.send throws', () => {
+      const ws = mockWs();
+      (ws.send as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        throw new Error('boom');
+      });
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const client = createWsClientConnection(ws);
+      const ok = client.send({ type: 'test' });
+      expect(ok).toBe(false);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('ws.send() failed'),
+        expect.anything()
+      );
+      warnSpy.mockRestore();
     });
 
     it('logs warning when socket is not OPEN', () => {

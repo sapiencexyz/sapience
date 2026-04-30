@@ -8,7 +8,8 @@ function mockClient(
 ): ClientConnection {
   return {
     id,
-    send: vi.fn(),
+    service: 'anonymous',
+    send: vi.fn().mockReturnValue(true),
     close: vi.fn(),
     get isOpen() {
       return open;

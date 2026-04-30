@@ -12,6 +12,10 @@ import type {
   BidPayload,
   ServerToClientMessage,
 } from '../escrowTypes';
+import type {
+  IdentifyPayload,
+  AuctionReceivedPayload,
+} from '@sapience/sdk/types';
 import {
   validateAuctionRFQ,
   validateBid,
@@ -28,8 +32,15 @@ import {
   bidsSubmitted,
   errorsTotal,
   subscriptionsActive,
+  auctionBroadcastSends,
+  auctionReceivedAcks,
+  clientsIdentified,
 } from '../metrics';
 import { config } from '../config';
+
+// Identity helpers — keep clientId/instanceId short in logs.
+const short = (s: string | undefined): string =>
+  s ? s.slice(0, 8) : 'unknown';
 
 // Structured timing log for observability
 function logTiming(
@@ -120,22 +131,60 @@ export async function handleAuctionStart(
   client.send({ type: 'auction.ack', payload: ackPayload });
   logTiming(auctionId, 'ack_sent', startTime);
 
-  // Broadcast auction.started with auction details to all connected clients
+  // Broadcast auction.started with auction details to all connected clients.
+  // Per-client logging here is intentional: it's the only ground truth we
+  // have for "did the relayer attempt to deliver this auction to this bot."
+  // Without it, a silent miss (auction received, but bot never saw it) is
+  // indistinguishable from a relayer-side failure.
   const details = getEscrowAuctionDetails(auctionId);
   if (details) {
     const broadcastMsg = { type: 'auction.started', payload: details };
-    let botCount = 0;
+    const auctionShort = auctionId.slice(0, 8);
+    let attempted = 0;
+    let sent = 0;
+    let failed = 0;
+    let skippedClosed = 0;
     for (const c of ctx.allClients()) {
-      if (c.isOpen) {
-        try {
-          c.send(broadcastMsg);
-          botCount++;
-        } catch {
-          /* skip dead connections */
-        }
+      if (!c.isOpen) {
+        skippedClosed++;
+        continue;
+      }
+      attempted++;
+      let ok = false;
+      try {
+        ok = c.send(broadcastMsg);
+      } catch {
+        ok = false;
+      }
+      auctionBroadcastSends.inc({
+        service: c.service,
+        ok: ok ? 'true' : 'false',
+      });
+      if (ok) {
+        sent++;
+        console.log(
+          `[Relayer] auction.broadcast.send auctionId=${auctionShort} clientId=${short(
+            c.id
+          )} service=${c.service} instance=${short(c.instanceId)} ok=true`
+        );
+      } else {
+        failed++;
+        console.warn(
+          `[Relayer] auction.broadcast.send auctionId=${auctionShort} clientId=${short(
+            c.id
+          )} service=${c.service} instance=${short(c.instanceId)} ok=false`
+        );
       }
     }
-    logTiming(auctionId, 'broadcast', startTime, { bots: botCount });
+    console.log(
+      `[Relayer] auction.broadcast.done auctionId=${auctionShort} attempted=${attempted} sent=${sent} failed=${failed} skippedClosed=${skippedClosed}`
+    );
+    logTiming(auctionId, 'broadcast', startTime, {
+      attempted,
+      sent,
+      failed,
+      skippedClosed,
+    });
   }
 
   // Immediately stream current bids if any
@@ -289,4 +338,77 @@ export async function handleBidSubmit(
   });
 
   return false;
+}
+
+/**
+ * Identify handshake — clients announce service/instance identity so per-client
+ * broadcast logs are useful. No-op if payload is malformed; we don't penalize
+ * because identify is best-effort observability, not auth.
+ */
+export function handleIdentify(
+  client: ClientConnection,
+  payload: IdentifyPayload | undefined
+): void {
+  if (!payload || typeof payload !== 'object') return;
+  const service =
+    typeof payload.service === 'string' && payload.service.length > 0
+      ? payload.service.slice(0, 64)
+      : 'anonymous';
+  const instanceId =
+    typeof payload.instanceId === 'string' && payload.instanceId.length > 0
+      ? payload.instanceId.slice(0, 64)
+      : undefined;
+  const chainId =
+    typeof payload.chainId === 'number' && Number.isFinite(payload.chainId)
+      ? payload.chainId
+      : undefined;
+
+  client.service = service;
+  client.instanceId = instanceId;
+  client.chainId = chainId;
+
+  clientsIdentified.inc({ service });
+  console.log(
+    `[Relayer] client.identified clientId=${short(client.id)} service=${service} instance=${short(
+      instanceId
+    )} chainId=${chainId ?? 'none'} serviceInstance=${
+      typeof payload.serviceInstance === 'string'
+        ? payload.serviceInstance.slice(0, 32)
+        : 'none'
+    } deploy=${
+      typeof payload.deploymentId === 'string'
+        ? payload.deploymentId.slice(0, 12)
+        : 'none'
+    } replica=${
+      typeof payload.replicaId === 'string'
+        ? payload.replicaId.slice(0, 12)
+        : 'none'
+    } version=${
+      typeof payload.version === 'string'
+        ? payload.version.slice(0, 16)
+        : 'none'
+    }`
+  );
+}
+
+/**
+ * Bot ack for auction.started — proves end-to-end delivery (the bot's WS
+ * handler ran and saw the auction). Without this ack, a successful `ws.send`
+ * is the strongest signal we have, and it only proves the kernel buffer
+ * accepted the bytes.
+ */
+export function handleAuctionReceived(
+  client: ClientConnection,
+  payload: AuctionReceivedPayload | undefined
+): void {
+  if (!payload || typeof payload.auctionId !== 'string') return;
+  auctionReceivedAcks.inc({ service: client.service });
+  console.log(
+    `[Relayer] auction.client_ack auctionId=${payload.auctionId.slice(
+      0,
+      8
+    )} clientId=${short(client.id)} service=${client.service} instance=${short(
+      client.instanceId
+    )}`
+  );
 }
