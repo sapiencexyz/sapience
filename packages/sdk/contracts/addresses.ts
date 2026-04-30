@@ -209,6 +209,12 @@ export const predictionMarketVaultStrategyB: ChainAddressMap = {
     blockCreated: 4346624,
     legacy: [] as const,
   },
+  13374202: {
+    // Ethereal testnet — deployed 2026-04-29
+    address: '0x78fFD04e61A0E405F3A04ddD8a39A01f8fAB00b3',
+    blockCreated: 2676636,
+    legacy: [] as const,
+  },
 } as const;
 
 /**
@@ -734,6 +740,26 @@ export const contracts = {
   predictionMarketBridgeRemote,
   predictionMarketTokenFactory,
 };
+
+/**
+ * All protocol-owned addresses (current + legacy) for a chain, lower-cased and
+ * deduped. Use to identify on-chain transfers that touch protocol contracts —
+ * e.g. excluding mint/redeem/trade flows from a user's "deposits & withdrawals"
+ * view, where any transfer involving a non-protocol address is treated as
+ * external (third-party bridges, EOA peers, etc.).
+ */
+export function getProtocolAddressesForChain(chainId: number): Address[] {
+  const out = new Set<string>();
+  for (const map of Object.values(contracts)) {
+    const entry = map[chainId];
+    if (!entry) continue;
+    out.add(entry.address.toLowerCase());
+    for (const leg of entry.legacy ?? []) {
+      out.add(normalizeLegacyEntry(leg).address.toLowerCase());
+    }
+  }
+  return [...out] as Address[];
+}
 
 // ============================================================================
 // Resolver Helpers

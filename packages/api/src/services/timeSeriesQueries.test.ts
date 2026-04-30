@@ -4,7 +4,7 @@ import { TimeInterval } from './timeSeriesTypes';
 
 // ─── Mock prisma ─────────────────────────────────────────────────────────────
 
-vi.mock('../db', () => {
+vi.mock('../core/db', () => {
   return {
     default: {
       $queryRaw: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock('../db', () => {
   };
 });
 
-import prisma from '../db';
+import prisma from '../core/db';
 import {
   resolveDefaults,
   queryAccountPredictionCount,

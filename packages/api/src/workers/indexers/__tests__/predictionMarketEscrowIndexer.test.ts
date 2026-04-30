@@ -14,7 +14,7 @@ import { OutcomeSide } from '@sapience/sdk/types';
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
 const mockPrisma = {
-  event: { create: vi.fn(), findFirst: vi.fn() },
+  event: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
   prediction: {
     findUnique: vi.fn(),
     create: vi.fn(),
@@ -30,18 +30,18 @@ const mockPrisma = {
   pick: { findMany: vi.fn() },
   condition: { upsert: vi.fn() },
   category: { findFirst: vi.fn() },
-  claim: { create: vi.fn() },
+  claim: { upsert: vi.fn() },
   close: { create: vi.fn() },
   indexerState: { findFirst: vi.fn(), upsert: vi.fn() },
   $transaction: vi.fn(),
   $executeRaw: vi.fn(),
 };
 
-vi.mock('../../../db', () => ({ default: mockPrisma }));
-vi.mock('../../../instrument', () => ({
+vi.mock('../../../core/db', () => ({ default: mockPrisma }));
+vi.mock('../../../core/instrument', () => ({
   default: { captureException: vi.fn() },
 }));
-vi.mock('../../../utils/utils', () => ({
+vi.mock('../../../lib/utils', () => ({
   getProviderForChain: () => ({
     getBlockNumber: vi.fn().mockResolvedValue(100n),
     getLogs: vi.fn().mockResolvedValue([]),
@@ -54,7 +54,7 @@ vi.mock('../../../utils/utils', () => ({
     .fn()
     .mockResolvedValue({ number: 50n, timestamp: 1699999000n }),
 }));
-vi.mock('../../../helpers/discordAlert', () => ({
+vi.mock('../../../services/discordAlert', () => ({
   sendPositionAlert: vi.fn(),
 }));
 vi.mock('@sapience/sdk/contracts', () => ({
@@ -319,6 +319,9 @@ describe('PredictionMarketEscrowIndexer', () => {
 
     // Default mock implementations
     mockPrisma.event.create.mockResolvedValue({});
+    // Dispatcher's pre-flight replay check — return null so the handler runs.
+    // Tests that exercise the replay short-circuit override this with a row.
+    mockPrisma.event.findUnique.mockResolvedValue(null);
     mockPrisma.prediction.findUnique.mockResolvedValue(null);
     mockPrisma.prediction.create.mockResolvedValue({});
     mockPrisma.prediction.update.mockResolvedValue({});
@@ -329,7 +332,7 @@ describe('PredictionMarketEscrowIndexer', () => {
     mockPrisma.picks.update.mockResolvedValue({});
     mockPrisma.pick.findMany.mockResolvedValue([]);
     mockPrisma.condition.upsert.mockResolvedValue({});
-    mockPrisma.claim.create.mockResolvedValue({});
+    mockPrisma.claim.upsert.mockResolvedValue({});
     mockPrisma.close.create.mockResolvedValue({});
     mockPrisma.indexerState.findFirst.mockResolvedValue(null);
     mockPrisma.indexerState.upsert.mockResolvedValue({});
@@ -572,7 +575,7 @@ describe('PredictionMarketEscrowIndexer', () => {
   // ─── TokensRedeemed ────────────────────────────────────────────────
 
   describe('TokensRedeemed', () => {
-    it('should create a claim record with correct fields', async () => {
+    it('should upsert a claim record keyed on (chainId, txHash, logIndex)', async () => {
       const indexer = new PredictionMarketEscrowIndexer(42161);
       const log = makeTokensRedeemedLog();
 
@@ -584,17 +587,54 @@ describe('PredictionMarketEscrowIndexer', () => {
 
       await indexer.indexBlocks('test', [50]);
 
-      expect(mockPrisma.claim.create).toHaveBeenCalledTimes(1);
-      const claimData = mockPrisma.claim.create.mock.calls[0][0].data;
-      expect(claimData.chainId).toBe(42161);
-      expect(claimData.marketAddress).toBe(CONTRACT_ADDRESS.toLowerCase());
-      expect(claimData.predictionId).toBe(PICK_CONFIG_ID.toLowerCase());
-      expect(claimData.holder).toBe(PREDICTOR.toLowerCase());
-      expect(claimData.positionToken).toBe(POSITION_TOKEN.toLowerCase());
-      expect(claimData.tokensBurned).toBe('1000000000000000000');
-      expect(claimData.collateralPaid).toBe('500000000000000000');
-      expect(claimData.redeemedAt).toBe(1700000000);
-      expect(claimData.refCode).toBeNull();
+      expect(mockPrisma.claim.upsert).toHaveBeenCalledTimes(1);
+      const upsertArg = mockPrisma.claim.upsert.mock.calls[0][0];
+
+      // Where clause uses the unique constraint on (chainId, txHash, logIndex).
+      expect(upsertArg.where).toEqual({
+        chainId_txHash_logIndex: {
+          chainId: 42161,
+          txHash: log.transactionHash,
+          logIndex: log.logIndex ?? 0,
+        },
+      });
+
+      // Create payload populated from the on-chain event.
+      const create = upsertArg.create;
+      expect(create.chainId).toBe(42161);
+      expect(create.marketAddress).toBe(CONTRACT_ADDRESS.toLowerCase());
+      expect(create.predictionId).toBe(PICK_CONFIG_ID.toLowerCase());
+      expect(create.holder).toBe(PREDICTOR.toLowerCase());
+      expect(create.positionToken).toBe(POSITION_TOKEN.toLowerCase());
+      expect(create.tokensBurned).toBe('1000000000000000000');
+      expect(create.collateralPaid).toBe('500000000000000000');
+      expect(create.redeemedAt).toBe(1700000000);
+      expect(create.logIndex).toBe(log.logIndex ?? 0);
+      expect(create.refCode).toBeNull();
+
+      // Update is intentionally empty — events are immutable.
+      expect(upsertArg.update).toEqual({});
+    });
+
+    it('skips the handler entirely when the dispatcher pre-flight finds the event already processed', async () => {
+      // Replay scenario: a previous run of the dispatcher already wrote the
+      // Event row. The fast-path findUnique should return non-null, and the
+      // handler must not run (no claim.upsert, no event.create).
+      mockPrisma.event.findUnique.mockResolvedValue({ id: 1 });
+
+      const indexer = new PredictionMarketEscrowIndexer(42161);
+      const log = makeTokensRedeemedLog();
+
+      indexer.client = {
+        getLogs: vi.fn().mockResolvedValue([log]),
+        getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
+        readContract: vi.fn().mockResolvedValue(0n),
+      };
+
+      await indexer.indexBlocks('test', [50]);
+
+      expect(mockPrisma.claim.upsert).not.toHaveBeenCalled();
+      expect(mockPrisma.event.create).not.toHaveBeenCalled();
     });
   });
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { type Request, type Response } from 'express';
-import { createConcurrencyLimiter } from './concurrencyLimiter';
+import { createConcurrencyLimiter } from '../runtime/concurrencyLimiter';
 
 beforeEach(() => {
   vi.resetModules();

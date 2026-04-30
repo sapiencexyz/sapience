@@ -1,5 +1,5 @@
 import { Request, Response, Router } from 'express';
-import prisma from '../db';
+import prisma from '../core/db';
 
 /** Convert BigInt values to numbers so JSON.stringify doesn't throw. */
 function toJsonSafe<T>(obj: T): T {

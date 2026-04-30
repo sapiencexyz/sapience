@@ -6,7 +6,7 @@
  */
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
-import prisma from '../../../../db';
+import prisma from '../../../../core/db';
 
 interface VolumeRow {
   total: string;

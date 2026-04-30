@@ -47,7 +47,7 @@ import { getPythMarketHash, decodePythMarketId } from '../auction/encoding';
  *
  * Env var equivalents:
  * - RPC_URL (or BOT_RPC_URL)
- * - PRIVATE_KEY
+ * - PRIVATE_KEY (or BOT_PRIVATE_KEY)
  * - PYTH_CONSUMER_TOKEN (or PYTH_API_KEY)
  * - GRAPHQL_URL
  */
@@ -111,7 +111,10 @@ function parseArgs(argv: string[]): Args {
     process.env.GRAPHQL_URL ??
     'http://localhost:3001/graphql';
 
-  const privateKey = get('private-key') ?? process.env.PRIVATE_KEY;
+  const privateKey =
+    get('private-key') ??
+    process.env.BOT_PRIVATE_KEY ??
+    process.env.PRIVATE_KEY;
 
   const pythToken =
     get('pyth-token') ??

@@ -1,4 +1,4 @@
-import { initializeDataSource } from '../../db';
+import { initializeDataSource } from '../../core/db';
 import * as Sentry from '@sentry/node';
 import ConditionSettledIndexer from '../indexers/conditionSettledIndexer';
 

@@ -1,10 +1,10 @@
-import prisma from '../../db';
-import { initializeDataSource } from '../../db';
+import prisma from '../../core/db';
+import { initializeDataSource } from '../../core/db';
 import {
   scoreSelectedForecastsForSettledMarket,
   upsertAttestationScoreFromAttestation,
   computeAndStoreMarketTwErrors,
-} from '../../helpers/scoringService';
+} from '../../services/scoringService';
 
 const BATCH_SIZE = 1000;
 

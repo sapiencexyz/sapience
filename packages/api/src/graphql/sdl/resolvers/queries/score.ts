@@ -13,8 +13,8 @@
  */
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
-import prisma from '../../../../db';
-import { TtlCache } from '../../../../utils/ttlCache';
+import prisma from '../../../../core/db';
+import { TtlCache } from '../../../../lib/ttlCache';
 
 const leaderboardCache = new TtlCache<
   string,

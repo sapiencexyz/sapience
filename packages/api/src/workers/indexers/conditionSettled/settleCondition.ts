@@ -1,9 +1,9 @@
-import prisma from '../../../db';
-import Sentry from '../../../instrument';
+import prisma from '../../../core/db';
+import Sentry from '../../../core/instrument';
 import {
   scoreSelectedForecastsForSettledMarket,
   computeAndStoreMarketTwErrors,
-} from '../../../helpers/scoringService';
+} from '../../../services/scoringService';
 import { resolvePickConfigsForCondition } from './resolvePickConfigs';
 import type { Prisma } from '../../../../generated/prisma';
 import type { Log, Block } from 'viem';

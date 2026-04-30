@@ -1,4 +1,4 @@
-import prisma from '../db';
+import prisma from '../core/db';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
@@ -12,8 +12,8 @@ import {
   getComplexity,
   createComplexityEstimators,
 } from './queryComplexity.js';
-import { config } from '../config';
-import Sentry from '../instrument';
+import { config } from '../core/config';
+import Sentry from '../core/instrument';
 import { buildApiSchema } from './buildSchema';
 
 export interface ApolloContext {

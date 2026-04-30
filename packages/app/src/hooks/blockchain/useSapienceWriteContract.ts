@@ -387,9 +387,7 @@ export function useSapienceWriteContract({
           onReceiptConfirmed,
         }
       );
-      console.log(
-        `[SessionTx] Total: ${Date.now() - startTime}ms (skipping on-chain wait)`
-      );
+      console.log(`[SessionTx] Total: ${Date.now() - startTime}ms`);
       return hash;
     },
     [sessionConfig, onTxSending, onTxSent, onReceiptConfirmed]

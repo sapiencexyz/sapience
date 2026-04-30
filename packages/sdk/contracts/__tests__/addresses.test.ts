@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   getResolverAddressesForChain,
   getConditionalTokensPairs,
+  getProtocolAddressesForChain,
   pythConditionResolver,
   conditionalTokensConditionResolver,
   conditionalTokensReader,
   manualConditionResolver,
+  predictionMarketEscrow,
+  secondaryMarketEscrow,
 } from '../addresses';
 
 describe('getResolverAddressesForChain', () => {
@@ -100,5 +103,56 @@ describe('getConditionalTokensPairs', () => {
 
   it('returns empty array for unknown chain', () => {
     expect(getConditionalTokensPairs(999999)).toEqual([]);
+  });
+});
+
+describe('getProtocolAddressesForChain', () => {
+  const MAINNET = 5064014;
+  const TESTNET = 13374202;
+
+  it('returns the current escrow address on mainnet, lower-cased', () => {
+    const addrs = getProtocolAddressesForChain(MAINNET);
+    expect(addrs).toContain(
+      predictionMarketEscrow[MAINNET].address.toLowerCase()
+    );
+  });
+
+  it('includes legacy escrow addresses on mainnet, lower-cased', () => {
+    const addrs = getProtocolAddressesForChain(MAINNET);
+    const legacy = predictionMarketEscrow[MAINNET].legacy ?? [];
+    for (const leg of legacy) {
+      const legAddr = (
+        typeof leg === 'string' ? leg : leg.address
+      ).toLowerCase();
+      expect(addrs).toContain(legAddr);
+    }
+    expect(legacy.length).toBeGreaterThan(0);
+  });
+
+  it('includes secondary market escrow on testnet (current + legacy)', () => {
+    const addrs = getProtocolAddressesForChain(TESTNET);
+    expect(addrs).toContain(
+      secondaryMarketEscrow[TESTNET].address.toLowerCase()
+    );
+    const legacy = secondaryMarketEscrow[TESTNET].legacy ?? [];
+    for (const leg of legacy) {
+      const legAddr = (
+        typeof leg === 'string' ? leg : leg.address
+      ).toLowerCase();
+      expect(addrs).toContain(legAddr);
+    }
+  });
+
+  it('returns lower-cased addresses with no duplicates', () => {
+    const addrs = getProtocolAddressesForChain(MAINNET);
+    expect(addrs.length).toBeGreaterThan(0);
+    for (const a of addrs) {
+      expect(a).toBe(a.toLowerCase());
+    }
+    expect(new Set(addrs).size).toBe(addrs.length);
+  });
+
+  it('returns empty array for unknown chain', () => {
+    expect(getProtocolAddressesForChain(999999)).toEqual([]);
   });
 });
