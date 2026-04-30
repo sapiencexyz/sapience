@@ -34,13 +34,22 @@ import {
   subscriptionsActive,
   auctionBroadcastSends,
   auctionReceivedAcks,
+  auctionReceivedAckRejected,
   clientsIdentified,
+  serviceLabel,
 } from '../metrics';
+import { recordBroadcast, wasBroadcastTo } from '../broadcastLedger';
 import { config } from '../config';
 
 // Identity helpers — keep clientId/instanceId short in logs.
 const short = (s: string | undefined): string =>
   s ? s.slice(0, 8) : 'unknown';
+
+// Strip non-printable ASCII so a client can't inject newlines/control chars
+// into our log lines via the `service` field.
+const sanitizeForLog = (s: string): string =>
+  // eslint-disable-next-line no-control-regex
+  s.replace(/[^\x20-\x7E]/g, '?');
 
 // Structured timing log for observability
 function logTiming(
@@ -157,11 +166,12 @@ export async function handleAuctionStart(
         ok = false;
       }
       auctionBroadcastSends.inc({
-        service: c.service,
+        service: serviceLabel(c.service),
         ok: ok ? 'true' : 'false',
       });
       if (ok) {
         sent++;
+        recordBroadcast(auctionId, c.id);
         console.log(
           `[Relayer] auction.broadcast.send auctionId=${auctionShort} clientId=${short(
             c.id
@@ -350,42 +360,45 @@ export function handleIdentify(
   payload: IdentifyPayload | undefined
 ): void {
   if (!payload || typeof payload !== 'object') return;
-  const service =
+  // The raw service is stored on the client and used in log lines (verbatim,
+  // sanitized for log injection). The Prometheus label is bounded separately
+  // via serviceLabel() so a client cannot inflate metric cardinality.
+  const rawService =
     typeof payload.service === 'string' && payload.service.length > 0
-      ? payload.service.slice(0, 64)
+      ? sanitizeForLog(payload.service.slice(0, 64))
       : 'anonymous';
   const instanceId =
     typeof payload.instanceId === 'string' && payload.instanceId.length > 0
-      ? payload.instanceId.slice(0, 64)
+      ? sanitizeForLog(payload.instanceId.slice(0, 64))
       : undefined;
   const chainId =
     typeof payload.chainId === 'number' && Number.isFinite(payload.chainId)
       ? payload.chainId
       : undefined;
 
-  client.service = service;
+  client.service = rawService;
   client.instanceId = instanceId;
   client.chainId = chainId;
 
-  clientsIdentified.inc({ service });
+  clientsIdentified.inc({ service: serviceLabel(rawService) });
   console.log(
-    `[Relayer] client.identified clientId=${short(client.id)} service=${service} instance=${short(
+    `[Relayer] client.identified clientId=${short(client.id)} service=${rawService} instance=${short(
       instanceId
     )} chainId=${chainId ?? 'none'} serviceInstance=${
       typeof payload.serviceInstance === 'string'
-        ? payload.serviceInstance.slice(0, 32)
+        ? sanitizeForLog(payload.serviceInstance.slice(0, 32))
         : 'none'
     } deploy=${
       typeof payload.deploymentId === 'string'
-        ? payload.deploymentId.slice(0, 12)
+        ? sanitizeForLog(payload.deploymentId.slice(0, 12))
         : 'none'
     } replica=${
       typeof payload.replicaId === 'string'
-        ? payload.replicaId.slice(0, 12)
+        ? sanitizeForLog(payload.replicaId.slice(0, 12))
         : 'none'
     } version=${
       typeof payload.version === 'string'
-        ? payload.version.slice(0, 16)
+        ? sanitizeForLog(payload.version.slice(0, 16))
         : 'none'
     }`
   );
@@ -396,13 +409,32 @@ export function handleIdentify(
  * handler ran and saw the auction). Without this ack, a successful `ws.send`
  * is the strongest signal we have, and it only proves the kernel buffer
  * accepted the bytes.
+ *
+ * Anti-spoof: the relayer only honors an ack if it has a record of having
+ * broadcast that exact `auctionId` to this exact `clientId`. A client that
+ * fabricates an ack for an auction it never received gets dropped (and
+ * counted in `auctionReceivedAckRejected`), so the `auction.client_ack`
+ * log line is a real proof-of-delivery signal rather than self-reported.
  */
 export function handleAuctionReceived(
   client: ClientConnection,
   payload: AuctionReceivedPayload | undefined
 ): void {
-  if (!payload || typeof payload.auctionId !== 'string') return;
-  auctionReceivedAcks.inc({ service: client.service });
+  if (!payload || typeof payload.auctionId !== 'string') {
+    auctionReceivedAckRejected.inc({ reason: 'invalid_payload' });
+    return;
+  }
+  if (!wasBroadcastTo(payload.auctionId, client.id)) {
+    auctionReceivedAckRejected.inc({ reason: 'not_recipient' });
+    console.warn(
+      `[Relayer] auction.received rejected (no broadcast record) auctionId=${payload.auctionId.slice(
+        0,
+        8
+      )} clientId=${short(client.id)} service=${client.service}`
+    );
+    return;
+  }
+  auctionReceivedAcks.inc({ service: serviceLabel(client.service) });
   console.log(
     `[Relayer] auction.client_ack auctionId=${payload.auctionId.slice(
       0,
