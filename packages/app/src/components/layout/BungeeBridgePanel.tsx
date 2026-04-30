@@ -22,12 +22,15 @@ import { ArrowDown, ChevronDown, Loader2 } from 'lucide-react';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   BUNGEE_NATIVE_TOKEN,
-  BUNGEE_SOURCE_CHAINS,
+  BUNGEE_SOURCE_CHAIN_META,
+  BUNGEE_TOKEN_COINGECKO_IDS,
   describeBungeeStatus,
   fetchBungeeQuote,
   fetchBungeeStatus,
+  fetchBungeeTokens,
   isBungeeSuccess,
   isBungeeTerminal,
+  selectBungeeSourceTokens,
   type BungeeDeposit,
   type BungeeSourceToken,
 } from '~/lib/bungee';
@@ -45,7 +48,8 @@ interface BungeeBridgePanelProps {
 
 const QUOTE_REFRESH_MS = 30_000;
 const STATUS_POLL_MS = 5_000;
-const ETH_PRICE_REFRESH_MS = 60_000;
+const NATIVE_PRICE_REFRESH_MS = 60_000;
+const TOKEN_LIST_REFRESH_MS = 10 * 60_000;
 
 interface SourceCombo {
   key: string;
@@ -55,22 +59,14 @@ interface SourceCombo {
   token: BungeeSourceToken;
 }
 
-const ALL_COMBOS: SourceCombo[] = BUNGEE_SOURCE_CHAINS.flatMap((c) =>
-  c.tokens.map((t) => ({
-    key: `${c.chainId}:${t.symbol}`,
-    chainId: c.chainId,
-    chainName: c.name,
-    chainIconUrl: c.iconUrl,
-    token: t,
-  }))
-);
-
 const STABLE_PRICE_USD: Record<string, number> = {
   USDe: 1,
   USDC: 1,
   USDT: 1,
   DAI: 1,
 };
+
+const SOURCE_CHAIN_IDS = BUNGEE_SOURCE_CHAIN_META.map((c) => c.chainId);
 
 function formatBalance(value: number, maxDecimals = 4): string {
   return value.toLocaleString('en-US', { maximumFractionDigits: maxDecimals });
@@ -92,14 +88,24 @@ function formatAmountForInput(
   return trimmed ? `${whole}.${trimmed}` : whole;
 }
 
-async function fetchEthUsd(signal?: AbortSignal): Promise<number> {
+// Fetch USD prices for every non-stable allowlisted symbol in one CoinGecko
+// call. Returns a map keyed by symbol (e.g. ETH, BNB, HYPE, cbBTC).
+async function fetchNativeUsdPrices(
+  signal?: AbortSignal
+): Promise<Record<string, number>> {
+  const ids = Object.values(BUNGEE_TOKEN_COINGECKO_IDS);
+  if (ids.length === 0) return {};
   const res = await fetch(
-    'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd',
+    `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`,
     { signal }
   );
-  if (!res.ok) return 0;
-  const json = (await res.json()) as { ethereum?: { usd?: number } };
-  return Number(json.ethereum?.usd ?? 0);
+  if (!res.ok) return {};
+  const json = (await res.json()) as Record<string, { usd?: number }>;
+  const out: Record<string, number> = {};
+  for (const [symbol, id] of Object.entries(BUNGEE_TOKEN_COINGECKO_IDS)) {
+    out[symbol] = Number(json[id]?.usd ?? 0);
+  }
+  return out;
 }
 
 export default function BungeeBridgePanel({
@@ -113,31 +119,63 @@ export default function BungeeBridgePanel({
   const { switchChainAsync } = useSwitchChain();
   const { sendTransactionAsync } = useSendTransaction();
 
-  const [selectedKey, setSelectedKey] = useState<string>(ALL_COMBOS[0].key);
+  const [selectedKey, setSelectedKey] = useState<string>('');
   const [amount, setAmount] = useState('');
   const [requestHash, setRequestHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
 
-  const selectedCombo: SourceCombo =
-    ALL_COMBOS.find((c) => c.key === selectedKey) ?? ALL_COMBOS[0];
-  const sourceChainId = selectedCombo.chainId;
-  const sourceToken = selectedCombo.token;
+  // Bungee's trending list per chain — feeds the source picker. Cached for
+  // the session; tokens we expose via the allowlist don't churn meaningfully
+  // within a user's session.
+  const { data: tokensData } = useQuery({
+    queryKey: ['bungee-tokens', SOURCE_CHAIN_IDS.join(',')],
+    queryFn: ({ signal }) => fetchBungeeTokens(SOURCE_CHAIN_IDS, signal),
+    staleTime: TOKEN_LIST_REFRESH_MS,
+  });
+
+  const allCombos = useMemo<SourceCombo[]>(() => {
+    if (!tokensData?.result) return [];
+    return BUNGEE_SOURCE_CHAIN_META.flatMap((meta) => {
+      const apiTokens = tokensData.result[String(meta.chainId)] ?? [];
+      return selectBungeeSourceTokens(apiTokens).map((t) => ({
+        key: `${meta.chainId}:${t.symbol}`,
+        chainId: meta.chainId,
+        chainName: meta.name,
+        chainIconUrl: meta.iconUrl,
+        token: t,
+      }));
+    });
+  }, [tokensData]);
+
+  // Once the token list arrives, lock in a default selection so the picker
+  // is never empty. The auto-balance effect below may override this with the
+  // user's largest holding.
+  useEffect(() => {
+    if (selectedKey) return;
+    if (allCombos.length === 0) return;
+    setSelectedKey(allCombos[0].key);
+  }, [selectedKey, allCombos]);
+
+  const selectedCombo: SourceCombo | undefined =
+    allCombos.find((c) => c.key === selectedKey) ?? allCombos[0];
+  const sourceChainId = selectedCombo?.chainId;
+  const sourceToken = selectedCombo?.token;
 
   const inputAmountWei = useMemo(() => {
-    if (!amount) return null;
+    if (!amount || !sourceToken) return null;
     try {
       const parsed = parseUnits(amount, sourceToken.decimals);
       return parsed > 0n ? parsed : null;
     } catch {
       return null;
     }
-  }, [amount, sourceToken.decimals]);
+  }, [amount, sourceToken]);
 
   // Batch ERC20 balances across all chains in one wagmi multicall set.
   const erc20Combos = useMemo(
-    () => ALL_COMBOS.filter((c) => !c.token.isNative),
-    []
+    () => allCombos.filter((c) => !c.token.isNative),
+    [allCombos]
   );
   const { data: erc20BalancesData } = useReadContracts({
     contracts: erc20Combos.map((c) => ({
@@ -151,32 +189,58 @@ export default function BungeeBridgePanel({
   });
 
   // Native balances — one useBalance per supported chain. Static count keeps
-  // hooks consistent across renders.
+  // hooks consistent across renders. Order must match BUNGEE_SOURCE_CHAIN_META.
+  const nativeBalEthereum = useBalance({
+    chainId: 1,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
   const nativeBalArbitrum = useBalance({
     chainId: 42161,
     address: eoaAddress,
     query: { enabled: !!eoaAddress },
   });
-  const nativeBalMainnet = useBalance({
-    chainId: 1,
+  const nativeBalBase = useBalance({
+    chainId: 8453,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
+  const nativeBalBsc = useBalance({
+    chainId: 56,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
+  const nativeBalHyper = useBalance({
+    chainId: 999,
     address: eoaAddress,
     query: { enabled: !!eoaAddress },
   });
   const nativeBalanceByChainId: Record<number, bigint> = {
+    1: nativeBalEthereum.data?.value ?? 0n,
     42161: nativeBalArbitrum.data?.value ?? 0n,
-    1: nativeBalMainnet.data?.value ?? 0n,
+    8453: nativeBalBase.data?.value ?? 0n,
+    56: nativeBalBsc.data?.value ?? 0n,
+    999: nativeBalHyper.data?.value ?? 0n,
   };
+  const nativeBalancesLoading =
+    nativeBalEthereum.isLoading ||
+    nativeBalArbitrum.isLoading ||
+    nativeBalBase.isLoading ||
+    nativeBalBsc.isLoading ||
+    nativeBalHyper.isLoading;
 
-  const { data: ethPriceUsd } = useQuery({
-    queryKey: ['eth-usd-price'],
-    queryFn: ({ signal }) => fetchEthUsd(signal),
-    staleTime: ETH_PRICE_REFRESH_MS,
-    refetchInterval: ETH_PRICE_REFRESH_MS,
-    enabled: ALL_COMBOS.some((c) => c.token.symbol === 'ETH'),
+  const { data: nativePricesUsd } = useQuery({
+    queryKey: ['bungee-native-prices'],
+    queryFn: ({ signal }) => fetchNativeUsdPrices(signal),
+    staleTime: NATIVE_PRICE_REFRESH_MS,
+    refetchInterval: NATIVE_PRICE_REFRESH_MS,
+    enabled: allCombos.some(
+      (c) => BUNGEE_TOKEN_COINGECKO_IDS[c.token.symbol] !== undefined
+    ),
   });
 
   const combosWithBalance = useMemo(() => {
-    return ALL_COMBOS.map((c) => {
+    return allCombos.map((c) => {
       let raw: bigint;
       if (c.token.isNative) {
         raw = nativeBalanceByChainId[c.chainId] ?? 0n;
@@ -187,16 +251,21 @@ export default function BungeeBridgePanel({
       const balance = Number(formatUnits(raw, c.token.decimals));
       const priceUsd =
         STABLE_PRICE_USD[c.token.symbol] ??
-        (c.token.symbol === 'ETH' ? (ethPriceUsd ?? 0) : 0);
+        nativePricesUsd?.[c.token.symbol] ??
+        0;
       return { ...c, raw, balance, valueUsd: balance * priceUsd };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    allCombos,
     erc20Combos,
     erc20BalancesData,
+    nativeBalEthereum.data?.value,
     nativeBalArbitrum.data?.value,
-    nativeBalMainnet.data?.value,
-    ethPriceUsd,
+    nativeBalBase.data?.value,
+    nativeBalBsc.data?.value,
+    nativeBalHyper.data?.value,
+    nativePricesUsd,
   ]);
 
   const sortedCombos = useMemo(
@@ -230,16 +299,17 @@ export default function BungeeBridgePanel({
   useEffect(() => {
     if (initialAutoSelectDone.current) return;
     if (!eoaAddress) return;
+    if (allCombos.length === 0) return;
     if (!erc20BalancesData) return;
-    if (nativeBalArbitrum.isLoading || nativeBalMainnet.isLoading) return;
+    if (nativeBalancesLoading) return;
     const top = sortedCombos[0];
     if (top && top.valueUsd > 0) setSelectedKey(top.key);
     initialAutoSelectDone.current = true;
   }, [
     eoaAddress,
+    allCombos.length,
     erc20BalancesData,
-    nativeBalArbitrum.isLoading,
-    nativeBalMainnet.isLoading,
+    nativeBalancesLoading,
     sortedCombos,
   ]);
 
@@ -247,10 +317,11 @@ export default function BungeeBridgePanel({
   // Doesn't overwrite later balance refetches so the user can still type freely.
   const lastAutoFillKey = useRef<string>('');
   useEffect(() => {
+    if (!sourceToken) return;
     const key = `${selectedKey}|${eoaAddress ?? ''}`;
     if (lastAutoFillKey.current === key) return;
     const balanceLoaded = sourceToken.isNative
-      ? !nativeBalArbitrum.isLoading && !nativeBalMainnet.isLoading
+      ? !nativeBalancesLoading
       : erc20BalancesData !== undefined;
     if (!balanceLoaded) return;
     setAmount(
@@ -262,12 +333,10 @@ export default function BungeeBridgePanel({
   }, [
     selectedKey,
     eoaAddress,
-    sourceToken.isNative,
-    sourceToken.decimals,
+    sourceToken,
     sourceBalance,
     erc20BalancesData,
-    nativeBalArbitrum.isLoading,
-    nativeBalMainnet.isLoading,
+    nativeBalancesLoading,
   ]);
 
   const isInFlight = !!requestHash;
@@ -275,6 +344,8 @@ export default function BungeeBridgePanel({
   const quoteEnabled =
     !!eoaAddress &&
     !!smartAccountAddress &&
+    !!sourceToken &&
+    sourceChainId !== undefined &&
     !!inputAmountWei &&
     inputAmountWei > 0n &&
     !isInFlight;
@@ -288,7 +359,7 @@ export default function BungeeBridgePanel({
     queryKey: [
       'bungee-quote',
       sourceChainId,
-      sourceToken.address,
+      sourceToken?.address,
       inputAmountWei?.toString(),
       eoaAddress,
       smartAccountAddress,
@@ -359,7 +430,7 @@ export default function BungeeBridgePanel({
   }, [isQuoteExpired, isQuoting, isInFlight, isSending, refetchQuote]);
 
   const handleBridge = async () => {
-    if (!deposit || !eoaAddress) return;
+    if (!deposit || !eoaAddress || sourceChainId === undefined) return;
     // Last-line guard: expiry could have lapsed between render and click.
     if (deposit.expiry > 0 && deposit.expiry <= Math.floor(Date.now() / 1000)) {
       refetchQuote();
@@ -432,7 +503,7 @@ export default function BungeeBridgePanel({
   const buttonOnClick = isComplete || isFailed ? handleReset : handleBridge;
 
   const setAmountFraction = (fraction: number) => {
-    if (sourceBalance === 0n) return;
+    if (!sourceToken || sourceBalance === 0n) return;
     const value =
       fraction === 1
         ? sourceBalance
@@ -472,7 +543,7 @@ export default function BungeeBridgePanel({
               className="px-2 py-0.5 text-xs bg-muted/60 hover:bg-muted rounded disabled:opacity-50"
             >
               Max:{' '}
-              {formatBalance(sourceBalanceNum, sourceToken.isNative ? 4 : 2)}
+              {formatBalance(sourceBalanceNum, sourceToken?.isNative ? 4 : 2)}
             </button>
           </div>
         </div>

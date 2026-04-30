@@ -28,93 +28,144 @@ export interface BungeeSourceToken {
   iconUrl: string;
 }
 
-const ICON_USDE =
-  'https://assets.coingecko.com/coins/images/33613/standard/usde.png';
-const ICON_USDC =
-  'https://assets.coingecko.com/coins/images/6319/standard/usdc.png';
-const ICON_USDT =
-  'https://assets.coingecko.com/coins/images/325/standard/Tether.png';
-const ICON_ETH =
-  'https://assets.coingecko.com/coins/images/279/standard/ethereum.png';
-
-const NATIVE_ETH: BungeeSourceToken = {
-  symbol: 'ETH',
-  address: BUNGEE_NATIVE_TOKEN,
-  decimals: 18,
-  isNative: true,
-  iconUrl: ICON_ETH,
-};
-
-export interface BungeeSourceChain {
+export interface BungeeSourceChainMeta {
   chainId: number;
   name: string;
   iconUrl: string;
-  /** First entry is the default selection. */
-  tokens: BungeeSourceToken[];
 }
 
-export const BUNGEE_SOURCE_CHAINS: readonly BungeeSourceChain[] = [
-  {
-    chainId: 42161,
-    name: 'Arbitrum',
-    iconUrl:
-      'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png',
-    tokens: [
-      {
-        symbol: 'USDe',
-        address: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34',
-        decimals: 18,
-        isNative: false,
-        iconUrl: ICON_USDE,
-      },
-      NATIVE_ETH,
-      {
-        symbol: 'USDC',
-        address: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
-        decimals: 6,
-        isNative: false,
-        iconUrl: ICON_USDC,
-      },
-      {
-        symbol: 'USDT',
-        address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
-        decimals: 6,
-        isNative: false,
-        iconUrl: ICON_USDT,
-      },
-    ],
-  },
+// Source chains Bungee can route from into Ethereal (per Bungee, confirmed
+// 2026-04-30). Tokens are fetched at runtime from /tokens/list; only chain
+// metadata lives here.
+export const BUNGEE_SOURCE_CHAIN_META: readonly BungeeSourceChainMeta[] = [
   {
     chainId: 1,
     name: 'Ethereum',
     iconUrl:
       'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png',
-    tokens: [
-      {
-        symbol: 'USDe',
-        address: '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
-        decimals: 18,
-        isNative: false,
-        iconUrl: ICON_USDE,
-      },
-      NATIVE_ETH,
-      {
-        symbol: 'USDC',
-        address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-        decimals: 6,
-        isNative: false,
-        iconUrl: ICON_USDC,
-      },
-      {
-        symbol: 'USDT',
-        address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
-        decimals: 6,
-        isNative: false,
-        iconUrl: ICON_USDT,
-      },
-    ],
+  },
+  {
+    chainId: 42161,
+    name: 'Arbitrum',
+    iconUrl:
+      'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png',
+  },
+  {
+    chainId: 8453,
+    name: 'Base',
+    iconUrl:
+      'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png',
+  },
+  {
+    chainId: 56,
+    name: 'BSC',
+    iconUrl:
+      'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/info/logo.png',
+  },
+  {
+    chainId: 999,
+    name: 'HyperEVM',
+    iconUrl:
+      'https://assets.coingecko.com/coins/images/50882/standard/hyperliquid.jpg',
   },
 ] as const;
+
+// Symbols we surface in the source picker. Bungee's trending list returns
+// far more — gating to this set keeps the UX recognizable. Add a symbol
+// here to expose it across every chain that ships it.
+export const BUNGEE_ALLOWLISTED_SYMBOLS: ReadonlySet<string> = new Set([
+  'USDe',
+  'USDC',
+  'USDT',
+  'ETH',
+  'BNB',
+  'HYPE',
+  'cbBTC',
+]);
+
+// Display order within a single chain — USDe first since it's a no-slip
+// route to Ethereal, then native gas, then other stables, then BTC-likes.
+const SYMBOL_PRIORITY: Record<string, number> = {
+  USDe: 0,
+  ETH: 1,
+  BNB: 1,
+  HYPE: 1,
+  USDC: 2,
+  USDT: 3,
+  cbBTC: 4,
+};
+
+// CoinGecko ids for allowlisted non-stable symbols, used to price balances.
+export const BUNGEE_TOKEN_COINGECKO_IDS: Record<string, string> = {
+  ETH: 'ethereum',
+  BNB: 'binancecoin',
+  HYPE: 'hyperliquid',
+  cbBTC: 'coinbase-wrapped-btc',
+};
+
+export interface BungeeApiToken {
+  chainId: number;
+  address: Address;
+  name: string;
+  symbol: string;
+  decimals: number;
+  logoURI: string;
+}
+
+export interface BungeeTokensResponse {
+  success: boolean;
+  statusCode: number;
+  result: Record<string, BungeeApiToken[]>;
+}
+
+export async function fetchBungeeTokens(
+  chainIds: readonly number[],
+  signal?: AbortSignal
+): Promise<BungeeTokensResponse> {
+  const qs = new URLSearchParams({
+    chainIds: chainIds.join(','),
+    list: 'trending',
+  });
+  const res = await fetch(`${BUNGEE_API_BASE}/tokens/list?${qs}`, {
+    signal,
+    headers: BUNGEE_HEADERS,
+  });
+  if (!res.ok) {
+    throw new Error(`Bungee tokens failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export function isBungeeNative(address: Address): boolean {
+  return address.toLowerCase() === BUNGEE_NATIVE_TOKEN.toLowerCase();
+}
+
+/**
+ * Filter Bungee's per-chain trending list down to the curated allowlist
+ * and convert to our BungeeSourceToken shape. De-dupes by symbol (preferring
+ * the first match Bungee returns, which is the higher-trending entry) so the
+ * picker never shows two USDC entries on the same chain.
+ */
+export function selectBungeeSourceTokens(
+  apiTokens: readonly BungeeApiToken[]
+): BungeeSourceToken[] {
+  const bySymbol = new Map<string, BungeeSourceToken>();
+  for (const t of apiTokens) {
+    if (!BUNGEE_ALLOWLISTED_SYMBOLS.has(t.symbol)) continue;
+    if (bySymbol.has(t.symbol)) continue;
+    bySymbol.set(t.symbol, {
+      symbol: t.symbol,
+      address: t.address,
+      decimals: t.decimals,
+      isNative: isBungeeNative(t.address),
+      iconUrl: t.logoURI,
+    });
+  }
+  return [...bySymbol.values()].sort(
+    (a, b) =>
+      (SYMBOL_PRIORITY[a.symbol] ?? 99) - (SYMBOL_PRIORITY[b.symbol] ?? 99)
+  );
+}
 
 export interface BungeeQuoteParams {
   originChainId: number;
