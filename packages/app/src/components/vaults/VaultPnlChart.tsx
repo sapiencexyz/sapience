@@ -185,7 +185,7 @@ export default function VaultPnlChart({
   chartAnchorSec,
 }: VaultPnlChartProps) {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
-  const [internalPeriod, setInternalPeriod] = useState<Period>('1W');
+  const [internalPeriod, setInternalPeriod] = useState<Period>('ALL');
   const period = externalPeriod ?? internalPeriod;
   const setPeriod = setInternalPeriod;
   const [displayMode, setDisplayMode] = useState<DisplayMode>('pct');
