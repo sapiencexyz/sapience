@@ -413,6 +413,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <YAxis
                           {...CHART_AXIS_STYLE}
                           tickFormatter={formatChartValue}
+                          width={44}
                         />
                         <Tooltip
                           cursor={<AnimatedCursor />}
@@ -492,6 +493,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <YAxis
                           {...CHART_AXIS_STYLE}
                           tickFormatter={formatChartValue}
+                          width={44}
                         />
                         <Tooltip
                           cursor={<AnimatedCursor />}
@@ -572,6 +574,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <YAxis
                           {...CHART_AXIS_STYLE}
                           tickFormatter={formatChartValue}
+                          width={44}
                         />
                         <Tooltip
                           cursor={<AnimatedCursor />}
