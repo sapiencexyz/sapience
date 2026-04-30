@@ -26,6 +26,7 @@ import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
+import { isPriceSubCategory } from '~/lib/utils/categoryMatcher';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,10 +116,6 @@ export interface CategoryAggregate<T> {
 
 const PRICES_AGGREGATE_SLUG = 'prices';
 const PRICES_AGGREGATE_NAME = 'Prices';
-
-export function isPriceSubCategory(slug: string): boolean {
-  return slug.startsWith('prices-');
-}
 
 /**
  * Collapse `prices-*` rows into a single `prices` aggregate. Non-price rows
