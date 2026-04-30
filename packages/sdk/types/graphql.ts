@@ -1590,10 +1590,7 @@ export type Query = {
   accountAccuracy?: Maybe<ForecasterScore>;
   /** Accuracy rank and score for a single address relative to all forecasters */
   accountAccuracyRank: AccuracyRank;
-  /**
-   * Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
-   * @deprecated Field no longer supported
-   */
+  /** Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity. */
   accountActivity: Array<ActivityItem>;
   /** Time-bucketed balance snapshots for a single address showing deployed and claimable collateral */
   accountBalance: Array<BalanceDataPoint>;
@@ -1649,15 +1646,9 @@ export type Query = {
   positionCount: Scalars['Int']['output'];
   /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
   positions: Array<Position>;
-  /**
-   * Look up a single prediction by its on-chain prediction ID
-   * @deprecated Field no longer supported
-   */
+  /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
-  /**
-   * Count of escrow predictions involving the given address
-   * @deprecated Field no longer supported
-   */
+  /** Count of escrow predictions involving the given address */
   predictionCount: Scalars['Int']['output'];
   /** Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status */
   predictions: Array<Prediction>;
@@ -1672,10 +1663,7 @@ export type Query = {
   protocolVolume: Array<VolumeDataPoint>;
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
-  /**
-   * Look up a single secondary market trade by its trade hash
-   * @deprecated Field no longer supported
-   */
+  /** Look up a single secondary market trade by its trade hash */
   trade?: Maybe<Trade>;
   /**
    * Count of secondary market trades matching the given filters
@@ -1684,7 +1672,6 @@ export type Query = {
   tradeCount: Scalars['Int']['output'];
   /** Paginated list of secondary market trades, filterable by seller, buyer, token, and chain */
   trades: Array<Trade>;
-  /** @deprecated Field no longer supported */
   user?: Maybe<User>;
   /** @deprecated Field no longer supported */
   users: Array<User>;

@@ -1464,7 +1464,7 @@ type Query {
   """
   Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
-  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]! @deprecated
+  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
 
   """
   Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
@@ -1546,10 +1546,10 @@ type Query {
   positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
 
   """Look up a single prediction by its on-chain prediction ID"""
-  prediction(id: String!): Prediction @deprecated
+  prediction(id: String!): Prediction
 
   """Count of escrow predictions involving the given address"""
-  predictionCount(address: String!, chainId: Int): Int! @deprecated
+  predictionCount(address: String!, chainId: Int): Int!
 
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
@@ -1575,7 +1575,7 @@ type Query {
   questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
 
   """Look up a single secondary market trade by its trade hash"""
-  trade(id: String!): Trade @deprecated
+  trade(id: String!): Trade
 
   """Count of secondary market trades matching the given filters"""
   tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated
@@ -1584,7 +1584,7 @@ type Query {
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
   """
   trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
-  user(where: UserWhereUniqueInput!): User @deprecated
+  user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated
 }
 

@@ -14378,8 +14378,8 @@
                 }
               }
             },
-            "isDeprecated": true,
-            "deprecationReason": "No longer supported"
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "accountBalance",
@@ -16035,8 +16035,8 @@
               "name": "Prediction",
               "ofType": null
             },
-            "isDeprecated": true,
-            "deprecationReason": "No longer supported"
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "predictionCount",
@@ -16076,8 +16076,8 @@
                 "ofType": null
               }
             },
-            "isDeprecated": true,
-            "deprecationReason": "No longer supported"
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "predictions",
@@ -16616,8 +16616,8 @@
               "name": "Trade",
               "ofType": null
             },
-            "isDeprecated": true,
-            "deprecationReason": "No longer supported"
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "tradeCount",
@@ -16803,8 +16803,8 @@
               "name": "User",
               "ofType": null
             },
-            "isDeprecated": true,
-            "deprecationReason": "No longer supported"
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "users",
