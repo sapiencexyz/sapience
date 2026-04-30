@@ -343,6 +343,14 @@ export interface IdentifyPayload {
    * pricing strategy vs the default strategy in a separate Railway service.
    */
   serviceInstance?: string;
+  /**
+   * Optional bounded label for which strategy/vault flavor this bot serves
+   * (e.g. `'default'`, `'pyth'`, `'experimental'`). Lets metrics break out
+   * `auction-bidder` connections by which vault they bid against without
+   * exploding cardinality. Relayer collapses any value outside its allowlist
+   * to `'unknown'`.
+   */
+  variant?: string;
 }
 
 /** Optional ack a client sends on receiving auction.started — proves end-to-end delivery. */

@@ -84,7 +84,9 @@ import {
   auctionReceivedAckRejected,
   clientsIdentified,
   serviceLabel,
+  variantLabel,
   KNOWN_SERVICE_LABELS,
+  KNOWN_VARIANT_LABELS,
 } from '../metrics';
 import { handleIdentify, handleAuctionReceived } from '../handlers/escrow';
 import { _resetBroadcastLedgerForTests } from '../broadcastLedger';
@@ -98,6 +100,7 @@ function mockClient(id = crypto.randomUUID()): ClientConnection {
   return {
     id,
     service: 'anonymous',
+    variant: 'default',
     send: vi.fn().mockReturnValue(true),
     close: vi.fn(),
     get isOpen() {
@@ -312,6 +315,7 @@ describe('Escrow Handlers', () => {
       handleAuctionReceived(recipient, { auctionId: 'auction-123' });
       expect(auctionReceivedAcks.inc).toHaveBeenCalledWith({
         service: 'anonymous',
+        variant: 'default',
       });
 
       vi.clearAllMocks();
@@ -322,7 +326,7 @@ describe('Escrow Handlers', () => {
       });
     });
 
-    it('uses bounded service label in broadcast metric', async () => {
+    it('uses bounded service+variant labels in broadcast metric', async () => {
       _resetBroadcastLedgerForTests();
       vi.mocked(validateAuctionRFQ).mockResolvedValue({ status: 'valid' });
       const details = { auctionId: 'auction-456', picks: [] };
@@ -330,6 +334,7 @@ describe('Escrow Handlers', () => {
 
       const evil = mockClient('cccccccc-0000-0000-0000-000000000000');
       evil.service = 'evil-service-not-on-allowlist';
+      evil.variant = 'rogue-variant';
       const ctx2 = { allClients: () => [evil] };
       const client = mockClient();
 
@@ -342,6 +347,43 @@ describe('Escrow Handlers', () => {
 
       expect(auctionBroadcastSends.inc).toHaveBeenCalledWith({
         service: 'unknown',
+        variant: 'unknown',
+        ok: 'true',
+      });
+    });
+
+    it('breaks out broadcast metric per (service, variant) pair', async () => {
+      _resetBroadcastLedgerForTests();
+      vi.mocked(validateAuctionRFQ).mockResolvedValue({ status: 'valid' });
+      const details = { auctionId: 'auction-789', picks: [] };
+      vi.mocked(getEscrowAuctionDetails).mockReturnValue(details as never);
+
+      const main = mockClient('mmmmmmmm-0000-0000-0000-000000000000');
+      main.service = 'auction-bidder';
+      main.variant = 'default';
+
+      const pyth = mockClient('pppppppp-0000-0000-0000-000000000000');
+      pyth.service = 'auction-bidder';
+      pyth.variant = 'pyth';
+
+      const ctx2 = { allClients: () => [main, pyth] };
+      const client = mockClient();
+
+      await handleAuctionStart(
+        client,
+        baseAuctionPayload as never,
+        mockSubs(),
+        ctx2
+      );
+
+      expect(auctionBroadcastSends.inc).toHaveBeenCalledWith({
+        service: 'auction-bidder',
+        variant: 'default',
+        ok: 'true',
+      });
+      expect(auctionBroadcastSends.inc).toHaveBeenCalledWith({
+        service: 'auction-bidder',
+        variant: 'pyth',
         ok: 'true',
       });
     });
@@ -953,23 +995,55 @@ describe('serviceLabel allowlist', () => {
   });
 });
 
+describe('variantLabel allowlist', () => {
+  it('returns the raw value for known variants', () => {
+    for (const known of KNOWN_VARIANT_LABELS) {
+      expect(variantLabel(known)).toBe(known);
+    }
+  });
+  it('falls back to "default" for empty/undefined', () => {
+    expect(variantLabel('')).toBe('default');
+    expect(variantLabel(undefined)).toBe('default');
+  });
+  it('collapses unknown variants to "unknown"', () => {
+    expect(variantLabel('rogue')).toBe('unknown');
+    expect(variantLabel('attacker-' + 'v'.repeat(100))).toBe('unknown');
+  });
+});
+
 describe('handleIdentify', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('sets service / instanceId / chainId on the client', () => {
+  it('sets service / variant / instanceId / chainId on the client', () => {
     const client = mockClient();
     handleIdentify(client, {
       service: 'auction-bidder',
+      variant: 'pyth',
       instanceId: 'inst-1',
       chainId: 5064014,
     });
     expect(client.service).toBe('auction-bidder');
+    expect(client.variant).toBe('pyth');
     expect(client.instanceId).toBe('inst-1');
     expect(client.chainId).toBe(5064014);
     expect(clientsIdentified.inc).toHaveBeenCalledWith({
       service: 'auction-bidder',
+      variant: 'pyth',
+    });
+  });
+
+  it('defaults variant to "default" when omitted', () => {
+    const client = mockClient();
+    handleIdentify(client, {
+      service: 'auction-bidder',
+      instanceId: 'inst-1',
+    });
+    expect(client.variant).toBe('default');
+    expect(clientsIdentified.inc).toHaveBeenCalledWith({
+      service: 'auction-bidder',
+      variant: 'default',
     });
   });
 
@@ -977,31 +1051,42 @@ describe('handleIdentify', () => {
     const client = mockClient();
     handleIdentify(client, {
       service: 'attacker-' + 'a'.repeat(100),
+      variant: 'rogue',
       instanceId: 'inst-x',
     });
-    // raw (truncated to 64) is what shows up in logs
+    // raw (truncated) is what shows up in logs
     expect(client.service.length).toBeLessThanOrEqual(64);
     expect(client.service.startsWith('attacker-')).toBe(true);
-    // metric label collapsed to 'unknown' so cardinality stays bounded
-    expect(clientsIdentified.inc).toHaveBeenCalledWith({ service: 'unknown' });
+    expect(client.variant).toBe('rogue');
+    // metric labels collapsed so cardinality stays bounded
+    expect(clientsIdentified.inc).toHaveBeenCalledWith({
+      service: 'unknown',
+      variant: 'unknown',
+    });
   });
 
   it('strips control characters from logged identity fields', () => {
     const client = mockClient();
     handleIdentify(client, {
       service: 'auction-bidder\nINJECTED',
+      variant: 'pyth\r\n!!!',
       instanceId: 'inst\r\n!!!',
     });
     expect(client.service).toBe('auction-bidder?INJECTED');
+    expect(client.variant).toBe('pyth??!!!');
     expect(client.instanceId).toBe('inst??!!!');
-    // raw service is not in the allowlist after sanitization → 'unknown'
-    expect(clientsIdentified.inc).toHaveBeenCalledWith({ service: 'unknown' });
+    // raw values aren't in either allowlist after sanitization
+    expect(clientsIdentified.inc).toHaveBeenCalledWith({
+      service: 'unknown',
+      variant: 'unknown',
+    });
   });
 
   it('ignores malformed payload', () => {
     const client = mockClient();
     handleIdentify(client, undefined);
     expect(client.service).toBe('anonymous');
+    expect(client.variant).toBe('default');
     expect(clientsIdentified.inc).not.toHaveBeenCalled();
   });
 });
