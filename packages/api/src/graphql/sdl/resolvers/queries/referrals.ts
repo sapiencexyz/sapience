@@ -1,9 +1,15 @@
 /**
- * Query.referralCodes — paginated referral codes with per-code analytics
- * (claimCount, totalVolume, totalPositions) baked in. The `id` arg filters
- * to a single code so the analytics dialog can fetch one code without a
- * separate top-level query. Per-claimant breakdown lives on the nested
- * `claimants` field (see ReferralCode.ts).
+ * Query.referralCodes — public referral analytics.
+ *
+ * Security model: referral codes are attribution hints, not authorization
+ * credentials. Public reads can expose creator/claimant/volume analytics because
+ * claiming someone else's code only credits that referrer; it does not unlock
+ * funds or privileged access. Mutations remain wallet-signature/admin-gated in
+ * REST.
+ *
+ * The `id` arg filters to a single code so the analytics dialog can fetch one
+ * code without a separate top-level query. Per-claimant breakdown lives on the
+ * nested `claimants` field (see ReferralCode.ts).
  *
  * Aggregation runs in Postgres (one batched $queryRaw per page) so we
  * never load the full position table over the wire.

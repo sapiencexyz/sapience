@@ -92,6 +92,9 @@ function useReferralAdminMutate() {
   );
 }
 
+// Reads use public GraphQL intentionally. Referral analytics are public because
+// codes only affect attribution; create/update/delete mutations remain signed
+// admin REST requests.
 const REFERRAL_CODES_QUERY = `
   query AdminReferralCodes($limit: Int!) {
     referralCodes(limit: $limit) {

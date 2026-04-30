@@ -36,6 +36,20 @@ describe('Query.referralCodes', () => {
     vi.clearAllMocks();
   });
 
+  it('is intentionally public and does not require admin context', async () => {
+    mockPrisma.referralCode.findMany.mockResolvedValue([
+      { id: 1, createdBy: '0xa', creatorType: 'admin' },
+    ]);
+    mockPrisma.$queryRaw.mockResolvedValue([
+      { id: 1, claim_count: 0n, total_volume: '0', total_positions: 0n },
+    ]);
+
+    const result = await call({}, { limit: 10 }, {}, {});
+
+    expect(result.items).toHaveLength(1);
+    expect(mockPrisma.referralCode.findMany).toHaveBeenCalled();
+  });
+
   it('returns empty page when no codes exist', async () => {
     mockPrisma.referralCode.findMany.mockResolvedValue([]);
 
@@ -183,7 +197,7 @@ describe('Query.referralCodes', () => {
     expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
   });
 
-  it('never returns codeHash on any item', async () => {
+  it('does not expose codeHash through the declared GraphQL field set', async () => {
     mockPrisma.referralCode.findMany.mockResolvedValue([
       { id: 1, codeHash: '0xleak', createdBy: '0xa', creatorType: 'admin' },
     ]);
