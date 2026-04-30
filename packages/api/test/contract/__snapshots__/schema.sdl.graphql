@@ -1510,7 +1510,7 @@ type Query {
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
   collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
-  collateralTransfers(address: String!, chainId: Int!, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]! @deprecated
+  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!

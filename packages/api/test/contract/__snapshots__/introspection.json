@@ -15311,6 +15311,16 @@
                 "defaultValue": null
               },
               {
+                "name": "excludeProtocol",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                },
+                "defaultValue": "false"
+              },
+              {
                 "name": "limit",
                 "description": null,
                 "type": {
@@ -15356,8 +15366,8 @@
                 }
               }
             },
-            "isDeprecated": true,
-            "deprecationReason": "No longer supported"
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "condition",

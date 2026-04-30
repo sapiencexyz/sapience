@@ -1626,7 +1626,6 @@ export type Query = {
   closes: Array<Close>;
   collateralBalance: CollateralBalanceType;
   collateralBalanceHistory: Array<CollateralBalanceSnapshotType>;
-  /** @deprecated Field no longer supported */
   collateralTransfers: Array<CollateralTransferType>;
   condition?: Maybe<Condition>;
   /** @deprecated Field no longer supported */
@@ -1815,6 +1814,7 @@ export type QueryCollateralBalanceHistoryArgs = {
 export type QueryCollateralTransfersArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
+  excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: Scalars['Int']['input'];
   offset?: Scalars['Int']['input'];
 };

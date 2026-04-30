@@ -741,6 +741,26 @@ export const contracts = {
   predictionMarketTokenFactory,
 };
 
+/**
+ * All protocol-owned addresses (current + legacy) for a chain, lower-cased and
+ * deduped. Use to identify on-chain transfers that touch protocol contracts —
+ * e.g. excluding mint/redeem/trade flows from a user's "deposits & withdrawals"
+ * view, where any transfer involving a non-protocol address is treated as
+ * external (third-party bridges, EOA peers, etc.).
+ */
+export function getProtocolAddressesForChain(chainId: number): Address[] {
+  const out = new Set<string>();
+  for (const map of Object.values(contracts)) {
+    const entry = map[chainId];
+    if (!entry) continue;
+    out.add(entry.address.toLowerCase());
+    for (const leg of entry.legacy ?? []) {
+      out.add(normalizeLegacyEntry(leg).address.toLowerCase());
+    }
+  }
+  return [...out] as Address[];
+}
+
 // ============================================================================
 // Resolver Helpers
 // ============================================================================

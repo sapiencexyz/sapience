@@ -8,6 +8,7 @@
  * - `collateralTransfers`: paginated transfer log for an address.
  */
 
+import { getProtocolAddressesForChain } from '@sapience/sdk/contracts';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
@@ -93,13 +94,28 @@ export const collateralBalanceHistory: NonNullable<
 
 export const collateralTransfers: NonNullable<
   QueryResolvers['collateralTransfers']
-> = async (_parent, { address, chainId, limit, offset }) =>
-  prisma.collateralTransfer.findMany({
+> = async (_parent, { address, chainId, excludeProtocol, limit, offset }) => {
+  const addr = address.toLowerCase();
+  const protocolAddresses = excludeProtocol
+    ? getProtocolAddressesForChain(chainId)
+    : [];
+  const excludeClause =
+    protocolAddresses.length > 0
+      ? {
+          AND: [
+            { from: { notIn: protocolAddresses } },
+            { to: { notIn: protocolAddresses } },
+          ],
+        }
+      : {};
+  return prisma.collateralTransfer.findMany({
     where: {
       chainId,
-      OR: [{ from: address.toLowerCase() }, { to: address.toLowerCase() }],
+      OR: [{ from: addr }, { to: addr }],
+      ...excludeClause,
     },
     orderBy: { blockNumber: 'desc' },
     take: Math.min(limit, 500),
     skip: offset,
   });
+};
