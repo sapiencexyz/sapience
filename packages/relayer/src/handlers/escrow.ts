@@ -149,7 +149,7 @@ export async function handleAuctionStart(
   const details = getEscrowAuctionDetails(auctionId);
   if (details) {
     const broadcastMsg = { type: 'auction.started', payload: details };
-    const auctionShort = auctionId.slice(0, 8);
+    const auctionShort = short(auctionId);
     let attempted = 0;
     let sent = 0;
     let failed = 0;
@@ -175,16 +175,16 @@ export async function handleAuctionStart(
         sent++;
         recordBroadcast(auctionId, c.id);
         console.log(
-          `[Relayer] auction.broadcast.send auctionId=${auctionShort} clientId=${short(
+          `[Relayer] auction.broadcast.send ok=true auctionId=${auctionShort} clientId=${short(
             c.id
-          )} service=${c.service} variant=${c.variant} instance=${short(c.instanceId)} ok=true`
+          )} service=${c.service} variant=${c.variant} instance=${short(c.instanceId)}`
         );
       } else {
         failed++;
         console.warn(
-          `[Relayer] auction.broadcast.send auctionId=${auctionShort} clientId=${short(
+          `[Relayer] auction.broadcast.send ok=false auctionId=${auctionShort} clientId=${short(
             c.id
-          )} service=${c.service} variant=${c.variant} instance=${short(c.instanceId)} ok=false`
+          )} service=${c.service} variant=${c.variant} instance=${short(c.instanceId)}`
         );
       }
     }
@@ -437,9 +437,8 @@ export function handleAuctionReceived(
   if (!wasBroadcastTo(payload.auctionId, client.id)) {
     auctionReceivedAckRejected.inc({ reason: 'not_recipient' });
     console.warn(
-      `[Relayer] auction.received rejected (no broadcast record) auctionId=${payload.auctionId.slice(
-        0,
-        8
+      `[Relayer] auction.received rejected (no broadcast record) auctionId=${short(
+        payload.auctionId
       )} clientId=${short(client.id)} service=${client.service}`
     );
     return;
@@ -449,9 +448,8 @@ export function handleAuctionReceived(
     variant: variantLabel(client.variant),
   });
   console.log(
-    `[Relayer] auction.client_ack auctionId=${payload.auctionId.slice(
-      0,
-      8
+    `[Relayer] auction.client_ack auctionId=${short(
+      payload.auctionId
     )} clientId=${short(client.id)} service=${client.service} variant=${client.variant} instance=${short(
       client.instanceId
     )}`
