@@ -286,7 +286,7 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-4 md:mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 mb-4 lg:mb-8">
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="sc-heading text-foreground mb-2 flex items-center gap-1.5">
@@ -384,7 +384,7 @@ function AnalyticsPageContent(): React.ReactElement {
         {/* Charts */}
         <div className="space-y-4 md:space-y-8">
           {/* Open Interest distribution: by category + by time-to-resolution */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
             <OpenInterestByCategoryChart />
             <OpenInterestByTimeToResolutionChart />
           </div>
