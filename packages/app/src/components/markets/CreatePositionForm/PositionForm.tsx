@@ -132,6 +132,12 @@ export default function PositionForm({
   // a previous request for a different prediction set. We only want to display
   // bids after *this* form initiates an auction for the current inputs.
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
+  // Tracks whether a legit (valid, non-expired) bid has been shown for the
+  // current auction. Once it has, we suppress the estimate fallback when the
+  // bid expires — the user has already seen a real price, so dropping back to
+  // an estimator placeholder would be misleading. They should see the
+  // request-again state instead. Reset whenever a new auction starts.
+  const hasShownValidBidRef = useRef(false);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const {
@@ -270,6 +276,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      hasShownValidBidRef.current = false;
       resetSponsor();
       setLastQuoteRequestMs(null); // Reset cooldown when position size changes
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
@@ -288,6 +295,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      hasShownValidBidRef.current = false;
       resetSponsor();
       setLastQuoteRequestMs(null);
       currentRequestKeyRef.current = null;
@@ -306,6 +314,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      hasShownValidBidRef.current = false;
       resetSponsor();
       setLastQuoteRequestMs(null);
       currentRequestKeyRef.current = null;
@@ -320,6 +329,7 @@ export default function PositionForm({
       logPositionForm('Predictions changed, clearing bids');
       setValidBids([]);
       setStickyEstimateBid(null);
+      hasShownValidBidRef.current = false;
       resetSponsor();
       setLastQuoteRequestMs(null); // Reset cooldown when selections change
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
@@ -400,6 +410,14 @@ export default function PositionForm({
   // Make estimate "sticky" so it doesn't disappear while we're still waiting for a success bid.
   useEffect(() => {
     if (bestBid) {
+      hasShownValidBidRef.current = true;
+      setStickyEstimateBid(null);
+      return;
+    }
+    // Once a real bid has been shown for this auction, don't fall back to an
+    // estimator placeholder when it expires — the user has already seen a
+    // legit price. Surface the request-again state until a fresh auction.
+    if (hasShownValidBidRef.current) {
       setStickyEstimateBid(null);
       return;
     }
@@ -421,10 +439,15 @@ export default function PositionForm({
   // Cooldown duration for showing loader after requesting bids (15 seconds)
   const QUOTE_COOLDOWN_MS = 15000;
 
-  // Check if we recently made a request - show loader during cooldown
+  // Check if we recently made a request - show loader during cooldown.
+  // Once a legit bid has been shown for this auction, the cooldown's purpose
+  // (suppressing a flicker before bids arrive) no longer applies — the user
+  // has already seen a real price, so on expiry we want to drop straight to
+  // the request-again button instead of a "listening for bids" intermediate.
   const recentlyRequested =
     lastQuoteRequestMs != null &&
-    nowMs - lastQuoteRequestMs < QUOTE_COOLDOWN_MS;
+    nowMs - lastQuoteRequestMs < QUOTE_COOLDOWN_MS &&
+    !hasShownValidBidRef.current;
 
   // Restart cooldown when we receive an estimate bid (failed simulation)
   // This keeps the loader showing while waiting for valid bids
@@ -477,6 +500,7 @@ export default function PositionForm({
         // Reset display state for a new request (prevents stale "active bid" while awaiting quotes).
         setValidBids([]);
         setStickyEstimateBid(null);
+        hasShownValidBidRef.current = false;
 
         // Fetch fresh nonce via wagmi refetch (bypasses stale cache)
         const nonceResult = await refetchTakerNonce();
@@ -936,6 +960,7 @@ export default function PositionForm({
               hasFormErrors={hasFormErrors}
               isLoggedOut={!hasConnectedWallet}
               onConnectClick={openConnectDialog}
+              hasShownValidBid={hasShownValidBidRef.current}
             />
           </div>
           {error && (
