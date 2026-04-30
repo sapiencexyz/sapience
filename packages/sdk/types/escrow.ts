@@ -319,11 +319,44 @@ export interface BidPayload {
 
 // ----- Client to Server Messages -----
 
+/**
+ * Client identity announced after WS connect. Backwards-compatible:
+ * relayer treats clients without identify as anonymous.
+ *
+ * Three identity layers stack here:
+ *   - clientId  (assigned by relayer per WS connection — changes on every reconnect)
+ *   - instanceId (assigned by client per process — stable across reconnects, changes on restart)
+ *   - service   (logical service name — non-unique by design)
+ */
+export interface IdentifyPayload {
+  service: string;
+  instanceId: string;
+  chainId?: number;
+  bootAt?: number;
+  version?: string;
+  deploymentId?: string;
+  replicaId?: string;
+  /**
+   * Optional human-readable label for the deployment hosting this process
+   * (e.g. Railway service name). Distinguishes two deployments that share the
+   * same logical `service` — for instance an `auction-bidder` running the Pyth
+   * pricing strategy vs the default strategy in a separate Railway service.
+   */
+  serviceInstance?: string;
+}
+
+/** Optional ack a client sends on receiving auction.started — proves end-to-end delivery. */
+export interface AuctionReceivedPayload {
+  auctionId: string;
+}
+
 export type ClientToServerMessage =
   | { type: 'auction.start'; payload: AuctionRFQPayload }
   | { type: 'auction.subscribe'; payload: { auctionId: string } }
   | { type: 'auction.unsubscribe'; payload: { auctionId: string } }
   | { type: 'bid.submit'; payload: BidPayload }
+  | { type: 'identify'; payload: IdentifyPayload }
+  | { type: 'auction.received'; payload: AuctionReceivedPayload }
   | { type: 'ping' };
 
 // ----- Server to Client Messages -----

@@ -64,13 +64,18 @@ export class InMemorySubscriptionManager implements SubscriptionManager {
 
     let count = 0;
     for (const client of set) {
-      if (client.isOpen) {
-        try {
-          client.send(raw);
-          count++;
-        } catch {
-          set.delete(client);
-        }
+      if (!client.isOpen) {
+        set.delete(client);
+        continue;
+      }
+      let ok = false;
+      try {
+        ok = client.send(raw);
+      } catch {
+        ok = false;
+      }
+      if (ok) {
+        count++;
       } else {
         set.delete(client);
       }

@@ -24,6 +24,9 @@ vi.mock('../metrics', () => ({
   errorsTotal: { inc: vi.fn() },
   subscriptionsActive: { inc: vi.fn(), dec: vi.fn() },
   vaultQuotesPublished: { inc: vi.fn() },
+  auctionBroadcastSends: { inc: vi.fn() },
+  auctionReceivedAcks: { inc: vi.fn() },
+  clientsIdentified: { inc: vi.fn() },
 }));
 
 // ── Mock viem ──────────────────────────────────────────────────────────────
@@ -79,7 +82,8 @@ import { verifyMessage } from 'viem';
 function mockClient(id = crypto.randomUUID()): ClientConnection {
   return {
     id,
-    send: vi.fn(),
+    service: 'anonymous',
+    send: vi.fn().mockReturnValue(true),
     close: vi.fn(),
     get isOpen() {
       return true;
