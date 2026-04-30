@@ -1,6 +1,6 @@
 import { Prisma } from '../../generated/prisma';
 import { GraphQLError } from 'graphql';
-import prisma from '../db';
+import prisma from '../core/db';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   TimeInterval,

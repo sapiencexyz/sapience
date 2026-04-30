@@ -64,6 +64,10 @@ interface BidDisplayProps {
   isLoggedOut?: boolean;
   /** Callback to open connect dialog */
   onConnectClick?: () => void;
+  /** A legit (valid, non-expired) bid has been shown for the current auction.
+   * When the bid then expires we surface this so the idle button can read
+   * "RESTART AUCTION" instead of "INITIATE AUCTION". */
+  hasShownValidBid?: boolean;
 }
 
 /**
@@ -97,6 +101,7 @@ export default function BidDisplay({
   hasFormErrors = false,
   isLoggedOut = false,
   onConnectClick,
+  hasShownValidBid = false,
 }: BidDisplayProps): React.ReactElement {
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
 
@@ -228,7 +233,9 @@ export default function BidDisplay({
         }
         return {
           text: showRequestBidsButton
-            ? 'INITIATE AUCTION'
+            ? hasShownValidBid
+              ? 'RESTART AUCTION'
+              : 'INITIATE AUCTION'
             : 'WAITING FOR BIDS...',
           disabled:
             !showRequestBidsButton || hasFormErrors || showAddPredictionsHint,

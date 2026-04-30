@@ -12,7 +12,7 @@
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
-import prisma from '../../../../db';
+import prisma from '../../../../core/db';
 
 type Trade = NonNullable<
   Awaited<ReturnType<typeof prisma.secondaryTrade.findUnique>>

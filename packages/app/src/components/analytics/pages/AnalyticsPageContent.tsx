@@ -152,15 +152,19 @@ function ChartTooltip({
   );
 }
 
-// X-axis tick formatter. Adds HH:MM when the dataset uses a sub-daily snapshot
-// cadence (any timestamp that isn't UTC-midnight-aligned).
+// X-axis tick formatter. Includes HH:MM only when the dataset is sub-daily
+// (a snapshot timestamp not aligned to UTC midnight) AND the visible period
+// is short enough that multiple ticks land on the same day. For 1M/3M/ALL
+// the time component is noise — the date alone is unambiguous.
 function makeTimestampTickFormatter(
-  subDaily: boolean
+  subDaily: boolean,
+  period: Period
 ): (value: number) => string {
+  const showTime = subDaily && period === '1W';
   return (value: number) => {
     const date = new Date(value * 1000);
     const md = `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
-    if (!subDaily) return md;
+    if (!showTime) return md;
     const hh = String(date.getUTCHours()).padStart(2, '0');
     const mm = String(date.getUTCMinutes()).padStart(2, '0');
     return `${md} ${hh}:${mm}`;
@@ -173,7 +177,9 @@ const CHART_AXIS_STYLE = {
   tickLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
 };
 
-const CHART_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
+// Match OpenInterestByTimeToResolutionChart's left:-4 so the y-axis labels
+// hug the card edge consistently across all charts on the analytics page.
+const CHART_MARGIN = { top: 10, right: 4, left: -4, bottom: 0 };
 
 function filterDataByPeriod<T extends { timestamp: number }>(
   data: T[],
@@ -254,9 +260,17 @@ function AnalyticsPageContent(): React.ReactElement {
     [protocolStats]
   );
 
-  const formatTimestampTick = useMemo(
-    () => makeTimestampTickFormatter(subDaily),
-    [subDaily]
+  const formatVolumeTick = useMemo(
+    () => makeTimestampTickFormatter(subDaily, volumePeriod),
+    [subDaily, volumePeriod]
+  );
+  const formatOiTick = useMemo(
+    () => makeTimestampTickFormatter(subDaily, oiPeriod),
+    [subDaily, oiPeriod]
+  );
+  const formatTvlTick = useMemo(
+    () => makeTimestampTickFormatter(subDaily, tvlPeriod),
+    [subDaily, tvlPeriod]
   );
 
   const isLoading = statsLoading;
@@ -272,7 +286,7 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-4 md:mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 mb-4 lg:mb-8">
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="sc-heading text-foreground mb-2 flex items-center gap-1.5">
@@ -370,7 +384,7 @@ function AnalyticsPageContent(): React.ReactElement {
         {/* Charts */}
         <div className="space-y-4 md:space-y-8">
           {/* Open Interest distribution: by category + by time-to-resolution */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
             <OpenInterestByCategoryChart />
             <OpenInterestByTimeToResolutionChart />
           </div>
@@ -406,11 +420,12 @@ function AnalyticsPageContent(): React.ReactElement {
                         <XAxis
                           dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatTimestampTick}
+                          tickFormatter={formatVolumeTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
                           tickFormatter={formatChartValue}
+                          width={44}
                         />
                         <Tooltip
                           cursor={<AnimatedCursor />}
@@ -485,11 +500,12 @@ function AnalyticsPageContent(): React.ReactElement {
                         <XAxis
                           dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatTimestampTick}
+                          tickFormatter={formatOiTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
                           tickFormatter={formatChartValue}
+                          width={44}
                         />
                         <Tooltip
                           cursor={<AnimatedCursor />}
@@ -565,11 +581,12 @@ function AnalyticsPageContent(): React.ReactElement {
                         <XAxis
                           dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatTimestampTick}
+                          tickFormatter={formatTvlTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
                           tickFormatter={formatChartValue}
+                          width={44}
                         />
                         <Tooltip
                           cursor={<AnimatedCursor />}

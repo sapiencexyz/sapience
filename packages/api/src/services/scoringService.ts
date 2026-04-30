@@ -1,5 +1,5 @@
 import { OutcomeSide } from '@sapience/sdk/types';
-import prisma from '../db';
+import prisma from '../core/db';
 import {
   normalizePredictionToProbability,
   outcomeFromCondition,

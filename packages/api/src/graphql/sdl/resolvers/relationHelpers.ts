@@ -18,7 +18,7 @@
  */
 
 import type { PrismaClient } from '../../../../generated/prisma';
-import prisma from '../../../db';
+import prisma from '../../../core/db';
 
 type AnyRecord = Record<string, unknown>;
 

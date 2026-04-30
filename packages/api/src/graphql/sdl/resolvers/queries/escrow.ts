@@ -19,7 +19,7 @@
 
 import type { QueryResolvers, Prediction } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
-import prisma from '../../../../db';
+import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 
 type PredictionWithPickConfig = Prisma.PredictionGetPayload<{

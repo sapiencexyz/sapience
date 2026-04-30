@@ -14,9 +14,9 @@ const mockSentry = vi.hoisted(() => ({
   captureMessage: vi.fn(),
 }));
 
-vi.mock('../../../../db', () => ({ default: mockPrisma }));
-vi.mock('../../../../instrument', () => ({ default: mockSentry }));
-vi.mock('../../../../helpers/scoringService', () => ({
+vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
+vi.mock('../../../../core/instrument', () => ({ default: mockSentry }));
+vi.mock('../../../../services/scoringService', () => ({
   scoreSelectedForecastsForSettledMarket: vi.fn(),
   computeAndStoreMarketTwErrors: vi.fn(),
 }));
@@ -28,7 +28,7 @@ import { settleCondition, type SettlementInput } from '../settleCondition';
 import {
   scoreSelectedForecastsForSettledMarket,
   computeAndStoreMarketTwErrors,
-} from '../../../../helpers/scoringService';
+} from '../../../../services/scoringService';
 import { resolvePickConfigsForCondition } from '../resolvePickConfigs';
 
 // --- Helpers ---

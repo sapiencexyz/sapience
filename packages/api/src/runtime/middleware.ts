@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { recoverMessageAddress } from 'viem';
-import { config } from './config';
+import { config } from '../core/config';
 
 // ─── Admin auth ──────────────────────────────────────────────────────────────
 

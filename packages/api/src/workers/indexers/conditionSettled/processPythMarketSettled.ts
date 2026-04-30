@@ -1,5 +1,5 @@
 import { decodeAbiParameters, type Log, type Block } from 'viem';
-import Sentry from '../../../instrument';
+import Sentry from '../../../core/instrument';
 import type { HandlerContext } from './handlerContext';
 import { settleCondition } from './settleCondition';
 

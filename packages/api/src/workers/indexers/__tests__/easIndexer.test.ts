@@ -10,8 +10,8 @@ const mockPrisma = {
   },
 };
 
-vi.mock('../../../db', () => ({ default: mockPrisma }));
-vi.mock('../../../instrument', () => ({
+vi.mock('../../../core/db', () => ({ default: mockPrisma }));
+vi.mock('../../../core/instrument', () => ({
   default: {
     captureException: vi.fn(),
     withScope: vi.fn(
@@ -20,7 +20,7 @@ vi.mock('../../../instrument', () => ({
     ),
   },
 }));
-vi.mock('../../../utils/utils', () => ({
+vi.mock('../../../lib/utils', () => ({
   getProviderForChain: () => ({
     getBlockNumber: vi.fn().mockResolvedValue(100n),
     getLogs: vi.fn().mockResolvedValue([]),
@@ -33,7 +33,7 @@ vi.mock('../../../utils/utils', () => ({
     .fn()
     .mockResolvedValue({ number: 50n, timestamp: 1699999000n }),
 }));
-vi.mock('../../../helpers/scoringService', () => ({
+vi.mock('../../../services/scoringService', () => ({
   upsertAttestationScoreFromAttestation: vi.fn(),
 }));
 vi.mock('@sapience/sdk/contracts/addresses', () => ({
@@ -60,7 +60,7 @@ vi.mock('viem', async () => {
 
 // ─── Imports (after mocks) ───────────────────────────────────────────────────
 
-import { upsertAttestationScoreFromAttestation } from '../../../helpers/scoringService';
+import { upsertAttestationScoreFromAttestation } from '../../../services/scoringService';
 import { encodeAbiParameters } from 'viem';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

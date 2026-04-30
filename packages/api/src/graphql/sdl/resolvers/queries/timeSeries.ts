@@ -19,8 +19,8 @@ import {
   queryAccountBalance,
   queryProtocolVolume,
   queryAccountPredictionCount,
-} from '../../../../helpers/timeSeriesQueries';
-import { TimeInterval as HelperTimeInterval } from '../../../../helpers/timeSeriesTypes';
+} from '../../../../services/timeSeriesQueries';
+import { TimeInterval as HelperTimeInterval } from '../../../../services/timeSeriesTypes';
 
 const toHelperInterval = (i: string): HelperTimeInterval =>
   i as HelperTimeInterval;

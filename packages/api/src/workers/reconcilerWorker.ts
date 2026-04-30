@@ -20,10 +20,10 @@
  *   RECONCILER_LOOKBACK_BLOCKS   — fallback lookback if no watermark (default: 5000)
  */
 
-import prisma from '../db';
-import { initializeDataSource } from '../db';
+import prisma from '../core/db';
+import { initializeDataSource } from '../core/db';
 import { initializeFixtures, INDEXERS } from '../fixtures';
-import { createResilientProcess, getProviderForChain } from '../utils/utils';
+import { createResilientProcess, getProviderForChain } from '../lib/utils';
 import type { PublicClient } from 'viem';
 import { IIndexer } from '../interfaces';
 

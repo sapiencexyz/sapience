@@ -15,7 +15,7 @@ import type {
   PickConfiguration,
   Prediction,
 } from '../../__generated__/resolvers';
-import prisma from '../../../../db';
+import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 
 const MAX_SKIP = 500;
