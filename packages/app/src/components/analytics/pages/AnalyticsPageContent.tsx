@@ -152,15 +152,19 @@ function ChartTooltip({
   );
 }
 
-// X-axis tick formatter. Adds HH:MM when the dataset uses a sub-daily snapshot
-// cadence (any timestamp that isn't UTC-midnight-aligned).
+// X-axis tick formatter. Includes HH:MM only when the dataset is sub-daily
+// (a snapshot timestamp not aligned to UTC midnight) AND the visible period
+// is short enough that multiple ticks land on the same day. For 1M/3M/ALL
+// the time component is noise — the date alone is unambiguous.
 function makeTimestampTickFormatter(
-  subDaily: boolean
+  subDaily: boolean,
+  period: Period
 ): (value: number) => string {
+  const showTime = subDaily && period === '1W';
   return (value: number) => {
     const date = new Date(value * 1000);
     const md = `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
-    if (!subDaily) return md;
+    if (!showTime) return md;
     const hh = String(date.getUTCHours()).padStart(2, '0');
     const mm = String(date.getUTCMinutes()).padStart(2, '0');
     return `${md} ${hh}:${mm}`;
@@ -256,9 +260,17 @@ function AnalyticsPageContent(): React.ReactElement {
     [protocolStats]
   );
 
-  const formatTimestampTick = useMemo(
-    () => makeTimestampTickFormatter(subDaily),
-    [subDaily]
+  const formatVolumeTick = useMemo(
+    () => makeTimestampTickFormatter(subDaily, volumePeriod),
+    [subDaily, volumePeriod]
+  );
+  const formatOiTick = useMemo(
+    () => makeTimestampTickFormatter(subDaily, oiPeriod),
+    [subDaily, oiPeriod]
+  );
+  const formatTvlTick = useMemo(
+    () => makeTimestampTickFormatter(subDaily, tvlPeriod),
+    [subDaily, tvlPeriod]
   );
 
   const isLoading = statsLoading;
@@ -408,7 +420,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <XAxis
                           dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatTimestampTick}
+                          tickFormatter={formatVolumeTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
@@ -488,7 +500,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <XAxis
                           dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatTimestampTick}
+                          tickFormatter={formatOiTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
@@ -569,7 +581,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <XAxis
                           dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatTimestampTick}
+                          tickFormatter={formatTvlTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
