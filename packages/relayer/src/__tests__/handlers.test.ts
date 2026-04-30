@@ -18,16 +18,23 @@ vi.mock('../escrowRegistry', () => ({
 }));
 
 // ── Mock metrics (no-op counters) ──────────────────────────────────────────
-vi.mock('../metrics', () => ({
-  auctionsStarted: { inc: vi.fn() },
-  bidsSubmitted: { inc: vi.fn() },
-  errorsTotal: { inc: vi.fn() },
-  subscriptionsActive: { inc: vi.fn(), dec: vi.fn() },
-  vaultQuotesPublished: { inc: vi.fn() },
-  auctionBroadcastSends: { inc: vi.fn() },
-  auctionReceivedAcks: { inc: vi.fn() },
-  clientsIdentified: { inc: vi.fn() },
-}));
+vi.mock('../metrics', async (importOriginal) => {
+  // Use the real `serviceLabel` (and KNOWN_SERVICE_LABELS) so allowlist
+  // behavior is exercised in tests; only counters are stubbed.
+  const actual = await importOriginal<typeof import('../metrics')>();
+  return {
+    ...actual,
+    auctionsStarted: { inc: vi.fn() },
+    bidsSubmitted: { inc: vi.fn() },
+    errorsTotal: { inc: vi.fn() },
+    subscriptionsActive: { inc: vi.fn(), dec: vi.fn() },
+    vaultQuotesPublished: { inc: vi.fn() },
+    auctionBroadcastSends: { inc: vi.fn() },
+    auctionReceivedAcks: { inc: vi.fn() },
+    auctionReceivedAckRejected: { inc: vi.fn() },
+    clientsIdentified: { inc: vi.fn() },
+  };
+});
 
 // ── Mock viem ──────────────────────────────────────────────────────────────
 vi.mock('viem', () => ({
@@ -72,7 +79,15 @@ import {
   errorsTotal,
   subscriptionsActive,
   vaultQuotesPublished,
+  auctionBroadcastSends,
+  auctionReceivedAcks,
+  auctionReceivedAckRejected,
+  clientsIdentified,
+  serviceLabel,
+  KNOWN_SERVICE_LABELS,
 } from '../metrics';
+import { handleIdentify, handleAuctionReceived } from '../handlers/escrow';
+import { _resetBroadcastLedgerForTests } from '../broadcastLedger';
 import { verifyMessage } from 'viem';
 
 // ============================================================================
@@ -271,6 +286,64 @@ describe('Escrow Handlers', () => {
       expect(bot2.send).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'auction.started' })
       );
+    });
+
+    it('records broadcast recipients only when send succeeded', async () => {
+      _resetBroadcastLedgerForTests();
+      vi.mocked(validateAuctionRFQ).mockResolvedValue({ status: 'valid' });
+      const details = { auctionId: 'auction-123', picks: [] };
+      vi.mocked(getEscrowAuctionDetails).mockReturnValue(details as never);
+
+      const recipient = mockClient('aaaaaaaa-0000-0000-0000-000000000000');
+      const failing = mockClient('bbbbbbbb-0000-0000-0000-000000000000');
+      // simulate a transport-level send failure
+      (failing.send as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      const ctx2 = { allClients: () => [recipient, failing] };
+      const client = mockClient();
+
+      await handleAuctionStart(
+        client,
+        baseAuctionPayload as never,
+        mockSubs(),
+        ctx2
+      );
+
+      // recipient was acknowledged into the ledger; failing was not
+      handleAuctionReceived(recipient, { auctionId: 'auction-123' });
+      expect(auctionReceivedAcks.inc).toHaveBeenCalledWith({
+        service: 'anonymous',
+      });
+
+      vi.clearAllMocks();
+      handleAuctionReceived(failing, { auctionId: 'auction-123' });
+      expect(auctionReceivedAcks.inc).not.toHaveBeenCalled();
+      expect(auctionReceivedAckRejected.inc).toHaveBeenCalledWith({
+        reason: 'not_recipient',
+      });
+    });
+
+    it('uses bounded service label in broadcast metric', async () => {
+      _resetBroadcastLedgerForTests();
+      vi.mocked(validateAuctionRFQ).mockResolvedValue({ status: 'valid' });
+      const details = { auctionId: 'auction-456', picks: [] };
+      vi.mocked(getEscrowAuctionDetails).mockReturnValue(details as never);
+
+      const evil = mockClient('cccccccc-0000-0000-0000-000000000000');
+      evil.service = 'evil-service-not-on-allowlist';
+      const ctx2 = { allClients: () => [evil] };
+      const client = mockClient();
+
+      await handleAuctionStart(
+        client,
+        baseAuctionPayload as never,
+        mockSubs(),
+        ctx2
+      );
+
+      expect(auctionBroadcastSends.inc).toHaveBeenCalledWith({
+        service: 'unknown',
+        ok: 'true',
+      });
     });
 
     it('echoes requestId in ack when provided', async () => {
@@ -858,6 +931,128 @@ describe('Vault Handlers', () => {
       expect(vaultQuotesPublished.inc).toHaveBeenCalledWith({
         status: 'error',
       });
+    });
+  });
+});
+
+// ============================================================================
+// Identity + spoof-resistant ack
+// ============================================================================
+
+describe('serviceLabel allowlist', () => {
+  it('returns the raw value for known services', () => {
+    for (const known of KNOWN_SERVICE_LABELS) {
+      expect(serviceLabel(known)).toBe(known);
+    }
+  });
+  it('collapses unknown services to "unknown"', () => {
+    expect(serviceLabel('evil')).toBe('unknown');
+    expect(serviceLabel('attacker-' + 'x'.repeat(100))).toBe('unknown');
+    expect(serviceLabel('')).toBe('unknown');
+    expect(serviceLabel(undefined)).toBe('unknown');
+  });
+});
+
+describe('handleIdentify', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('sets service / instanceId / chainId on the client', () => {
+    const client = mockClient();
+    handleIdentify(client, {
+      service: 'auction-bidder',
+      instanceId: 'inst-1',
+      chainId: 5064014,
+    });
+    expect(client.service).toBe('auction-bidder');
+    expect(client.instanceId).toBe('inst-1');
+    expect(client.chainId).toBe(5064014);
+    expect(clientsIdentified.inc).toHaveBeenCalledWith({
+      service: 'auction-bidder',
+    });
+  });
+
+  it('keeps the raw service in the client field but uses bounded label for the metric', () => {
+    const client = mockClient();
+    handleIdentify(client, {
+      service: 'attacker-' + 'a'.repeat(100),
+      instanceId: 'inst-x',
+    });
+    // raw (truncated to 64) is what shows up in logs
+    expect(client.service.length).toBeLessThanOrEqual(64);
+    expect(client.service.startsWith('attacker-')).toBe(true);
+    // metric label collapsed to 'unknown' so cardinality stays bounded
+    expect(clientsIdentified.inc).toHaveBeenCalledWith({ service: 'unknown' });
+  });
+
+  it('strips control characters from logged identity fields', () => {
+    const client = mockClient();
+    handleIdentify(client, {
+      service: 'auction-bidder\nINJECTED',
+      instanceId: 'inst\r\n!!!',
+    });
+    expect(client.service).toBe('auction-bidder?INJECTED');
+    expect(client.instanceId).toBe('inst??!!!');
+    // raw service is not in the allowlist after sanitization → 'unknown'
+    expect(clientsIdentified.inc).toHaveBeenCalledWith({ service: 'unknown' });
+  });
+
+  it('ignores malformed payload', () => {
+    const client = mockClient();
+    handleIdentify(client, undefined);
+    expect(client.service).toBe('anonymous');
+    expect(clientsIdentified.inc).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleAuctionReceived (anti-spoof)', () => {
+  beforeEach(() => {
+    _resetBroadcastLedgerForTests();
+    vi.clearAllMocks();
+  });
+
+  it('rejects acks for auctions that were never broadcast to the client', () => {
+    const client = mockClient();
+    handleAuctionReceived(client, { auctionId: 'never-sent' });
+    expect(auctionReceivedAcks.inc).not.toHaveBeenCalled();
+    expect(auctionReceivedAckRejected.inc).toHaveBeenCalledWith({
+      reason: 'not_recipient',
+    });
+  });
+
+  it('rejects malformed payloads', () => {
+    const client = mockClient();
+    handleAuctionReceived(client, undefined);
+    handleAuctionReceived(client, { auctionId: 123 } as never);
+    expect(auctionReceivedAcks.inc).not.toHaveBeenCalled();
+    expect(auctionReceivedAckRejected.inc).toHaveBeenCalledWith({
+      reason: 'invalid_payload',
+    });
+  });
+
+  it('does not let client A ack an auction broadcast only to client B', async () => {
+    vi.mocked(validateAuctionRFQ).mockResolvedValue({ status: 'valid' });
+    const details = { auctionId: 'auction-123', picks: [] };
+    vi.mocked(getEscrowAuctionDetails).mockReturnValue(details as never);
+
+    const recipient = mockClient('rrrrrrrr-0000-0000-0000-000000000000');
+    const spoofer = mockClient('ssssssss-0000-0000-0000-000000000000');
+    spoofer.service = 'auction-bidder'; // pretend to be the funded bidder
+    const ctx2 = { allClients: () => [recipient] };
+    const client = mockClient();
+
+    await handleAuctionStart(
+      client,
+      baseAuctionPayload as never,
+      mockSubs(),
+      ctx2
+    );
+
+    handleAuctionReceived(spoofer, { auctionId: 'auction-123' });
+    expect(auctionReceivedAcks.inc).not.toHaveBeenCalled();
+    expect(auctionReceivedAckRejected.inc).toHaveBeenCalledWith({
+      reason: 'not_recipient',
     });
   });
 });
