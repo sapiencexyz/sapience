@@ -482,6 +482,25 @@ export function getConfiguredVaults(chainId: number): ConfiguredVault[] {
 }
 
 /**
+ * Return every deployed vault address known to the SDK config, including legacy
+ * deployments. Historical backfills need the full address set because DB rows
+ * were written against the address that existed at the time, while the live
+ * cron path normally only touches current primaries from `getConfiguredVaults`.
+ */
+export function getConfiguredVaultDeploymentAddresses(
+  chainId: number
+): string[] {
+  const addresses = new Set<string>();
+  for (const vault of getConfiguredVaults(chainId)) {
+    addresses.add(vault.address);
+    for (const legacy of vault.config.legacy ?? []) {
+      addresses.add(normalizeLegacyEntry(legacy).address.toLowerCase());
+    }
+  }
+  return [...addresses];
+}
+
+/**
  * Resolve a vault address override (or default to the protocol primary) and
  * return it lowercased, ready for prisma string-equality comparisons.
  */
@@ -1238,7 +1257,7 @@ export interface VaultAggregator {
 export async function buildVaultAggregator(
   chainId: number
 ): Promise<VaultAggregator> {
-  const vaultAddresses = getConfiguredVaults(chainId).map((v) => v.address);
+  const vaultAddresses = getConfiguredVaultDeploymentAddresses(chainId);
   if (vaultAddresses.length === 0) {
     return {
       deployedAt: () => 0n,

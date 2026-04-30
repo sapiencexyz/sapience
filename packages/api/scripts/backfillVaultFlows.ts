@@ -1,10 +1,12 @@
 /**
  * One-shot backfill for vault_flow_event. Reads PendingRequestProcessed +
- * EmergencyWithdrawal events from chain for every configured vault (main,
- * Pyth options, single-leg) and writes rows tagged with the source vault.
+ * EmergencyWithdrawal events from chain for every configured vault deployment
+ * (current primaries plus legacy redeploys) and writes rows tagged with the
+ * source vault address.
  *
- * Why: no cron writes to this table today; it is regenerated manually after
- * schema changes or vault redeployments. Downstream consumers
+ * Why: live protocol-stats cron snapshots read the latest configured vaults,
+ * but this historical rebuild must replay every deployment because migrations
+ * can truncate vault_flow_event and downstream consumers
  * (protocol_stats_snapshot, airdrop gains, cumulative flows) re-derive from
  * these events.
  *
@@ -19,6 +21,7 @@ import { parseAbiItem } from 'viem';
 import prisma from '../src/core/db';
 import { getProviderForChain } from '../src/lib/utils';
 import { getConfiguredVaults } from '../src/services/protocolStats';
+import { normalizeLegacyEntry } from '@sapience/sdk/contracts';
 
 const CHAIN_ID = (() => {
   const eq = process.argv.find((a) => a.startsWith('--chainId='));
@@ -47,6 +50,38 @@ interface PreviewRow {
   user: string;
   assets: string;
   shares: string;
+}
+
+interface VaultDeployment {
+  kind: string;
+  address: string;
+  blockCreated: number;
+}
+
+function getVaultDeployments(chainId: number): VaultDeployment[] {
+  const deployments = new Map<string, VaultDeployment>();
+
+  for (const vault of getConfiguredVaults(chainId)) {
+    deployments.set(vault.address, {
+      kind: `${vault.kind}:current`,
+      address: vault.address,
+      blockCreated: vault.config.blockCreated,
+    });
+
+    for (const [index, legacy] of (vault.config.legacy ?? []).entries()) {
+      const normalized = normalizeLegacyEntry(legacy);
+      const address = normalized.address.toLowerCase();
+      deployments.set(address, {
+        kind: `${vault.kind}:legacy#${index + 1}`,
+        address,
+        blockCreated: normalized.blockCreated,
+      });
+    }
+  }
+
+  return [...deployments.values()].sort(
+    (a, b) => a.blockCreated - b.blockCreated || a.kind.localeCompare(b.kind)
+  );
 }
 
 async function backfillVault(
@@ -191,18 +226,22 @@ async function backfillVault(
 }
 
 async function main() {
-  const vaults = getConfiguredVaults(CHAIN_ID);
-  if (vaults.length === 0) {
-    throw new Error(`No vaults configured for chain ${CHAIN_ID}`);
+  const vaultDeployments = getVaultDeployments(CHAIN_ID);
+  if (vaultDeployments.length === 0) {
+    throw new Error(`No vault deployments configured for chain ${CHAIN_ID}`);
   }
 
   const client = getProviderForChain(CHAIN_ID);
   const toBlock = await client.getBlockNumber();
 
+  console.log(
+    `[backfillVaultFlows] Replaying ${vaultDeployments.length} vault deployment(s) on chain ${CHAIN_ID}`
+  );
+
   const previewRows: PreviewRow[] = [];
   let totalUpserted = 0;
-  for (const vault of vaults) {
-    const fromBlock = BigInt(vault.config.blockCreated);
+  for (const vault of vaultDeployments) {
+    const fromBlock = BigInt(vault.blockCreated);
     totalUpserted += await backfillVault(
       CHAIN_ID,
       vault.kind,
