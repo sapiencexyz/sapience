@@ -710,7 +710,10 @@ const ForecastsTable = ({
   };
 
   return (
-    <div>
+    // When fill, propagate the flex-1 chain so the loading/empty box
+    // can grow to fill the parent TabsContent panel. Without this the
+    // wrapping div would clamp to the natural content height.
+    <div className={fill ? 'flex-1 flex flex-col' : ''}>
       <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
         {leftSlot}
         <div className="flex-1">

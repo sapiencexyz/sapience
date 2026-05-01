@@ -205,39 +205,29 @@ const PREDICTIONS_QUERY = /* GraphQL */ `
   }
 `;
 
+// Slim projection for the question page chart — only the fields scatterData
+// reads. Keeps server-side query complexity under the 15k limit at take=100;
+// the full PICK_CONFIG_FRAGMENT (with embedded conditions) blew past it.
 const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
-  query PredictionsByCondition(
-    $conditionId: String!
-    $take: Int
-    $skip: Int
-  ) {
-    predictions(
-      conditionId: $conditionId
-      take: $take
-      skip: $skip
-    ) {
+  query PredictionsByCondition($conditionId: String!, $take: Int, $skip: Int) {
+    predictions(conditionId: $conditionId, take: $take, skip: $skip) {
       id
       predictionId
-      chainId
       marketAddress
       predictor
       counterparty
-      predictorToken
-      counterpartyToken
       predictorCollateral
       counterpartyCollateral
-      collateralDeposited
       collateralDepositedAt
-      settled
-      settledAt
-      settleTxHash
-      result
-      predictorClaimable
-      counterpartyClaimable
-      createTxHash
       createdAt
-      refCode
-      ${PICK_CONFIG_FRAGMENT}
+      pickConfig {
+        id
+        picks {
+          conditionId
+          conditionResolver
+          predictedOutcome
+        }
+      }
     }
   }
 `;

@@ -40,6 +40,7 @@ import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
 import ActivityTable from '~/components/positions/ActivityTable';
 import PositionsTable from '~/components/positions/PositionsTable';
+import EmptyTabState from '~/components/shared/EmptyTabState';
 import { usePredictionsByConditionId } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
@@ -221,7 +222,7 @@ export default function QuestionPageContent({
     });
 
   // Fetch forecasts for this condition
-  const { data: forecasts } = useForecasts({
+  const { data: forecasts, isLoading: isLoadingForecasts } = useForecasts({
     conditionId,
     options: {
       enabled: Boolean(conditionId),
@@ -384,10 +385,8 @@ export default function QuestionPageContent({
     return transformed;
   }, [forecasts]);
 
-  // Computed flags for conditional rendering
+  // Positions tab is hidden when no predictions exist for this condition.
   const hasPositions = predictions.length > 0;
-  const hasForecasts = forecastScatterData.length > 0;
-  const shouldShowChart = hasPositions || hasForecasts || isLoadingPredictions;
 
   type PrimaryTab =
     | 'predictions'
@@ -669,12 +668,16 @@ export default function QuestionPageContent({
               />
             </div>
           )}
-          <Comments
-            selectedCategory={CommentFilters.SelectedQuestion}
-            question={data.question}
-            conditionId={conditionId}
-            refetchTrigger={refetchTrigger}
-          />
+          {data?.settled && !isLoadingForecasts && forecasts.length === 0 ? (
+            <EmptyTabState message="No forecasts" />
+          ) : (
+            <Comments
+              selectedCategory={CommentFilters.SelectedQuestion}
+              question={data.question}
+              conditionId={conditionId}
+              refetchTrigger={refetchTrigger}
+            />
+          )}
         </TabsContent>
         {/* Content area - Resolution */}
         <TabsContent value="resolution" className="m-0 p-4">
@@ -806,12 +809,16 @@ export default function QuestionPageContent({
               />
             </div>
           )}
-          <Comments
-            selectedCategory={CommentFilters.SelectedQuestion}
-            question={data.question}
-            conditionId={conditionId}
-            refetchTrigger={refetchTrigger}
-          />
+          {data?.settled && !isLoadingForecasts && forecasts.length === 0 ? (
+            <EmptyTabState message="No forecasts" />
+          ) : (
+            <Comments
+              selectedCategory={CommentFilters.SelectedQuestion}
+              question={data.question}
+              conditionId={conditionId}
+              refetchTrigger={refetchTrigger}
+            />
+          )}
         </TabsContent>
         <TabsContent value="resolution" className="m-0 p-4">
           <div className="mb-4 flex items-center gap-3 flex-wrap">
@@ -935,42 +942,20 @@ export default function QuestionPageContent({
             />
           </div>
 
-          {/* When we have chart data, keep scatter plot on the left and sidebar cards on the right */}
-          {shouldShowChart && (
-            <>
-              <div className="hidden lg:grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 mb-6 items-stretch">
-                {renderScatterPlotCard()}
-                {sidebarContent}
-              </div>
+          {/* Scatter plot on the left, sidebar cards on the right; tabs below */}
+          <div className="hidden lg:grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 mb-6 items-stretch">
+            {renderScatterPlotCard()}
+            {sidebarContent}
+          </div>
 
-              <div className="lg:hidden flex flex-col gap-6 mb-12">
-                {renderPredictionFormCard()}
-                {renderScatterPlotCard()}
-                {renderTechSpecsCard()}
-                {mobileTabs}
-              </div>
-            </>
-          )}
+          <div className="lg:hidden flex flex-col gap-6 mb-12">
+            {renderPredictionFormCard()}
+            {renderScatterPlotCard()}
+            {renderTechSpecsCard()}
+            {mobileTabs}
+          </div>
 
-          {/* When there is no chart data, use the tabs in the left slot and keep sidebar on the right */}
-          {!shouldShowChart && (
-            <>
-              <div className="hidden lg:grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 mb-6 items-stretch">
-                <div className="min-w-0">{desktopTabs}</div>
-                {sidebarContent}
-              </div>
-              <div className="lg:hidden flex flex-col gap-6 mb-12">
-                {renderPredictionFormCard()}
-                {renderTechSpecsCard()}
-                {mobileTabs}
-              </div>
-            </>
-          )}
-
-          {/* Desktop tabs: show here only when the chart is present (otherwise rendered in grid) */}
-          {shouldShowChart && (
-            <div className="hidden lg:block mb-12">{desktopTabs}</div>
-          )}
+          <div className="hidden lg:block mb-12">{desktopTabs}</div>
         </div>
       </div>
 
