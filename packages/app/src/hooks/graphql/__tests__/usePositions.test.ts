@@ -48,18 +48,25 @@ const makePosition = (id: string) => ({
   pickConfig: null,
 });
 
+const page = (items: ReturnType<typeof makePosition>[], hasMore: boolean) => ({
+  positionsPage: { items, hasMore },
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockResolvedValue({ positions: [] });
+  mockGraphqlRequest.mockResolvedValue(page([], false));
 });
 
 describe('usePositionBalances — pagination', () => {
-  it('does not paginate further when the next fetch returns an empty page', async () => {
+  it('stops paginating when the server reports hasMore=false', async () => {
+    // Server-truth: synthesized item count is unreliable (zero-balance
+    // unresolved positions with no sells produce empty pages). Trust
+    // hasMore from the API.
     const { usePositionBalances } = await getHooks();
 
     mockGraphqlRequest
-      .mockResolvedValueOnce({ positions: [makePosition('1')] })
-      .mockResolvedValueOnce({ positions: [] });
+      .mockResolvedValueOnce(page([makePosition('1')], true))
+      .mockResolvedValueOnce(page([], false));
 
     const { result } = renderHook(
       () => usePositionBalances({ holder: HOLDER, pageSize: 1 }),
@@ -69,7 +76,6 @@ describe('usePositionBalances — pagination', () => {
     await waitFor(() => {
       expect(result.current.data.length).toBe(1);
     });
-    // Page 0 returned 1 (== pageSize) → still hasMore.
     expect(result.current.hasMore).toBe(true);
 
     await act(async () => {
@@ -79,29 +85,36 @@ describe('usePositionBalances — pagination', () => {
       expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
     });
 
-    // Page 1 returned 0 → done. Stops further paging.
     expect(result.current.hasMore).toBe(false);
   });
 
-  it('keeps paginating when the API returns fewer rows than pageSize', async () => {
-    // Synthesized event-stream rows mean returned count != raw page size,
-    // so a partial page is NOT a stop signal — only an empty one is.
+  it('keeps paginating across pages with zero synthesized items so long as the server still reports more', async () => {
+    // The whole point of moving to server-truth pagination: a page can
+    // have items=[] but more raw rows behind it.
     const { usePositionBalances } = await getHooks();
 
-    mockGraphqlRequest.mockResolvedValueOnce({
-      positions: [makePosition('1')],
-    });
+    mockGraphqlRequest
+      .mockResolvedValueOnce(page([], true)) // empty synthesized page, more raw rows behind
+      .mockResolvedValueOnce(page([makePosition('99')], false));
 
     const { result } = renderHook(
-      () => usePositionBalances({ holder: HOLDER, pageSize: 50 }),
+      () => usePositionBalances({ holder: HOLDER, pageSize: 15 }),
       { wrapper: createWrapper() }
     );
 
+    // Empty synthesized page, but hasMore=true means we should still fetch.
+    await waitFor(() => {
+      expect(result.current.hasMore).toBe(true);
+    });
+    expect(result.current.data.length).toBe(0);
+
+    await act(async () => {
+      result.current.fetchMore();
+    });
     await waitFor(() => {
       expect(result.current.data.length).toBe(1);
     });
-
-    expect(result.current.hasMore).toBe(true);
+    expect(result.current.hasMore).toBe(false);
   });
 
   it('passes holder/chainId/settled/pagination params through', async () => {
@@ -141,12 +154,12 @@ describe('usePositionBalances — pagination', () => {
 });
 
 describe('usePositionBalancesByConditionId — pagination', () => {
-  it('stops on empty page using the same rule as the holder hook', async () => {
+  it('stops paginating when hasMore=false (same rule as the holder hook)', async () => {
     const { usePositionBalancesByConditionId } = await getHooks();
 
     mockGraphqlRequest
-      .mockResolvedValueOnce({ positions: [makePosition('1')] })
-      .mockResolvedValueOnce({ positions: [] });
+      .mockResolvedValueOnce(page([makePosition('1')], true))
+      .mockResolvedValueOnce(page([], false));
 
     const { result } = renderHook(
       () =>

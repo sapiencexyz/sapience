@@ -85,6 +85,16 @@ export type PickConfigData = {
 };
 
 /**
+ * Server-truth paginated wrapper. `hasMore` reflects whether at least one
+ * more raw position row exists past this page; trust this over
+ * `items.length`, which the resolver can return as 0 for non-final pages.
+ */
+export type PositionBalancePage = {
+  items: PositionBalance[];
+  hasMore: boolean;
+};
+
+/**
  * Position Balance - ERC20 token balance for a user
  */
 export type PositionBalance = {
@@ -144,6 +154,7 @@ const PICK_CONFIG_FRAGMENT = `
     counterpartyToken
     endsAt
     isLegacy
+    predictionId
     picks {
       id
       pickConfigId
@@ -266,6 +277,10 @@ const PREDICTION_QUERY = /* GraphQL */ `
   }
 `;
 
+// Server-truth paginated query. The resolver synthesizes events per raw
+// position and can emit zero rows for some pages (zero-balance unresolved
+// positions with no sells), so the client-side `lastPage.length === 0`
+// stop signal is unsafe — use the response's `hasMore` flag instead.
 const POSITION_BALANCES_QUERY = /* GraphQL */ `
   query Positions(
     $holder: String!
@@ -274,49 +289,28 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
     $take: Int
     $skip: Int
   ) {
-    positions(
+    positionsPage(
       holder: $holder
       chainId: $chainId
       settled: $settled
       take: $take
       skip: $skip
     ) {
-      id
-      chainId
-      tokenAddress
-      pickConfigId
-      isPredictorToken
-      holder
-      balance
-      userCollateral
-      totalPayout
-      realizedPnL
-      createdAt
-      updatedAt
-      pickConfig {
+      hasMore
+      items {
         id
         chainId
-        marketAddress
-        totalPredictorCollateral
-        totalCounterpartyCollateral
-        claimedPredictorCollateral
-        claimedCounterpartyCollateral
-        resolved
-        result
-        resolvedAt
-        predictorToken
-        counterpartyToken
-        endsAt
-        isLegacy
-        predictionId
-        picks {
-          id
-          pickConfigId
-          conditionResolver
-          conditionId
-          predictedOutcome
-          ${PICK_CONDITION_FRAGMENT}
-        }
+        tokenAddress
+        pickConfigId
+        isPredictorToken
+        holder
+        balance
+        userCollateral
+        totalPayout
+        realizedPnL
+        createdAt
+        updatedAt
+        ${PICK_CONFIG_FRAGMENT}
       }
     }
   }
@@ -329,48 +323,27 @@ const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
     $skip: Int
     $settled: Boolean
   ) {
-    positions(
+    positionsPage(
       conditionId: $conditionId
       take: $take
       skip: $skip
       settled: $settled
     ) {
-      id
-      chainId
-      tokenAddress
-      pickConfigId
-      isPredictorToken
-      holder
-      balance
-      userCollateral
-      totalPayout
-      realizedPnL
-      createdAt
-      updatedAt
-      pickConfig {
+      hasMore
+      items {
         id
         chainId
-        marketAddress
-        totalPredictorCollateral
-        totalCounterpartyCollateral
-        claimedPredictorCollateral
-        claimedCounterpartyCollateral
-        resolved
-        result
-        resolvedAt
-        predictorToken
-        counterpartyToken
-        endsAt
-        isLegacy
-        predictionId
-        picks {
-          id
-          pickConfigId
-          conditionResolver
-          conditionId
-          predictedOutcome
-          ${PICK_CONDITION_FRAGMENT}
-        }
+        tokenAddress
+        pickConfigId
+        isPredictorToken
+        holder
+        balance
+        userCollateral
+        totalPayout
+        realizedPnL
+        createdAt
+        updatedAt
+        ${PICK_CONFIG_FRAGMENT}
       }
     }
   }
@@ -476,18 +449,16 @@ export function usePositionBalances(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     initialPageParam: 0,
-    // The server paginates raw Position DB rows by (take, skip), then
-    // synthesizes per-row events (one Open + one synthetic SOLD per
-    // sell). The returned synthesized count therefore differs from the
-    // raw page size — using `lastPage.length < pageSize` would stop
-    // early on resolved-only pages and over-fetch on heavy-sell pages.
-    // Stop only when a page comes back empty: that's the unambiguous
-    // signal we've exhausted raw rows. Costs one trailing empty fetch.
-    getNextPageParam: (lastPage: PositionBalance[], allPages) =>
-      lastPage.length === 0 ? undefined : allPages.length * pageSize,
+    // The server uses a `take + 1` raw-row trick to compute hasMore
+    // server-truth. Synthesized event-stream rows from the resolver can be
+    // empty for some pages (zero-balance unresolved positions with no
+    // sells), so we cannot infer "exhausted" from `items.length === 0`.
+    // Trust the API's hasMore flag.
+    getNextPageParam: (lastPage: PositionBalancePage, allPages) =>
+      lastPage.hasMore ? allPages.length * pageSize : undefined,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        positions: PositionBalance[];
+        positionsPage: PositionBalancePage;
       }>(POSITION_BALANCES_QUERY, {
         holder,
         chainId: chainId ?? null,
@@ -495,11 +466,14 @@ export function usePositionBalances(params: {
         take: pageSize,
         skip: pageParam,
       });
-      return resp?.positions ?? [];
+      return resp?.positionsPage ?? { items: [], hasMore: false };
     },
   });
 
-  const items = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const items = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data]
+  );
   const fetchMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
@@ -548,24 +522,26 @@ export function usePositionBalancesByConditionId(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     initialPageParam: 0,
-    // See `usePositionBalances` for why we stop on empty rather than
-    // a partial page — server synthesizes events from raw rows.
-    getNextPageParam: (lastPage: PositionBalance[], allPages) =>
-      lastPage.length === 0 ? undefined : allPages.length * pageSize,
+    // Same hasMore-from-server signal — see `usePositionBalances` for why.
+    getNextPageParam: (lastPage: PositionBalancePage, allPages) =>
+      lastPage.hasMore ? allPages.length * pageSize : undefined,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        positions: PositionBalance[];
+        positionsPage: PositionBalancePage;
       }>(POSITION_BALANCES_BY_CONDITION_QUERY, {
         conditionId,
         take: pageSize,
         skip: pageParam,
         settled: settled ?? null,
       });
-      return resp?.positions ?? [];
+      return resp?.positionsPage ?? { items: [], hasMore: false };
     },
   });
 
-  const items = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const items = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data]
+  );
   const fetchMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);

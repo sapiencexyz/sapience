@@ -25,6 +25,8 @@ import React, { useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronUp, ChevronDown, CircleHelp, Info } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
+import TableLoadingState from '~/components/shared/TableLoadingState';
+import InfiniteScrollFooter from '~/components/shared/InfiniteScrollFooter';
 import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketBadge from '~/components/markets/MarketBadge';
@@ -32,7 +34,6 @@ import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
 import ShareDialog from '~/components/shared/ShareDialog';
 import { formatPercentChance } from '~/lib/format/percentChance';
-import Loader from '~/components/shared/Loader';
 import {
   ForecastsTableFilters,
   getDefaultForecastsFilterState,
@@ -711,15 +712,11 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
         </div>
       </div>
       {isInitialLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <span className="text-sm text-muted-foreground font-mono uppercase">
-            Loading forecasts…
-          </span>
-        </div>
+        <TableLoadingState message="Loading forecasts…" fillViewport />
       ) : hasNoData ? (
-        <EmptyTabState centered message="No forecasts found" />
+        <EmptyTabState fillViewport message="No forecasts found" />
       ) : filteredAttestations.length === 0 ? (
-        <EmptyTabState centered message="No forecasts match your filters" />
+        <EmptyTabState fillViewport message="No forecasts match your filters" />
       ) : (
         <>
           <div className="overflow-hidden bg-brand-black relative">
@@ -899,23 +896,11 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           </div>
           {/* Infinite scroll sentinel - triggers auto-load when visible */}
           {hasMore && (
-            <div
+            <InfiniteScrollFooter
               ref={loadMoreRef}
-              className="flex items-center justify-center px-4 py-6 bg-brand-black"
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <Loader className="w-3 h-3" />
-                  <span className="text-sm text-muted-foreground">
-                    Loading more forecasts...
-                  </span>
-                </div>
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  Scroll to load more
-                </span>
-              )}
-            </div>
+              isLoading={isLoading}
+              loadingMessage="Loading more forecasts…"
+            />
           )}
         </>
       )}

@@ -64,7 +64,10 @@ export const initializeApolloServer = async () => {
       return formattedError;
     },
     introspection: true,
-    validationRules: [depthLimit(5)],
+    // accountActivity → prediction → pickConfig → picks → condition →
+    // category → slug naturally needs depth 6. Limit kept tight enough to
+    // still block fan-out like conditions(take: 200) with 5+ relations.
+    validationRules: [depthLimit(6)],
     plugins: [
       ApolloServerPluginLandingPageLocalDefault({
         embed: true,

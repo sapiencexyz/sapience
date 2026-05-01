@@ -14,6 +14,8 @@ import {
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import EmptyTabState from '~/components/shared/EmptyTabState';
+import TableLoadingState from '~/components/shared/TableLoadingState';
+import InfiniteScrollFooter from '~/components/shared/InfiniteScrollFooter';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PicksSummary from '~/components/shared/PicksSummary';
 import PicksPopover from '~/components/shared/PicksPopover';
@@ -751,11 +753,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <div className="flex items-center justify-center py-12">
-          <span className="text-sm text-muted-foreground font-mono uppercase">
-            Loading activity…
-          </span>
-        </div>
+        <TableLoadingState message="Loading activity…" fillViewport />
       </>
     );
   }
@@ -764,7 +762,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No activity found" />
+        <EmptyTabState message="No activity found" fillViewport />
       </>
     );
   }
@@ -773,7 +771,10 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No activity matches your filters" />
+        <EmptyTabState
+          message="No activity matches your filters"
+          fillViewport
+        />
       </>
     );
   }
@@ -854,7 +855,13 @@ export default function ActivityTable({
           </tbody>
         </table>
       </div>
-      <div ref={loadMoreRef} className="h-0" />
+      {activityHasMore && (
+        <InfiniteScrollFooter
+          ref={loadMoreRef}
+          isLoading={activityFetchingMore}
+          loadingMessage="Loading more activity…"
+        />
+      )}
       {sharePrediction && (
         <SharePredictionDialog
           sharePrediction={sharePrediction}

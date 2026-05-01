@@ -22,8 +22,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useAccount } from 'wagmi';
 import EmptyTabState from '~/components/shared/EmptyTabState';
+import TableLoadingState from '~/components/shared/TableLoadingState';
+import InfiniteScrollFooter from '~/components/shared/InfiniteScrollFooter';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import Loader from '~/components/shared/Loader';
 import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
 import CountdownCell from '~/components/shared/CountdownCell';
@@ -728,11 +729,7 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <div className="flex items-center justify-center py-12">
-          <span className="text-sm text-muted-foreground font-mono uppercase">
-            Loading positions…
-          </span>
-        </div>
+        <TableLoadingState message="Loading positions…" fillViewport />
       </>
     );
   }
@@ -741,7 +738,7 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <div className="text-destructive text-center py-8">
+        <div className="flex items-center justify-center min-h-[calc(100svh-340px)] text-destructive">
           Error loading positions
         </div>
       </>
@@ -752,7 +749,7 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No positions found" />
+        <EmptyTabState message="No positions found" fillViewport />
       </>
     );
   }
@@ -766,6 +763,7 @@ export default function PositionsTable({
       <>
         {headerContent}
         <EmptyTabState
+          fillViewport
           message={
             hasMore && isFetchingMore
               ? 'Loading more positions…'
@@ -857,23 +855,11 @@ export default function PositionsTable({
         </Table>
       </div>
       {hasMore && (
-        <div
+        <InfiniteScrollFooter
           ref={loadMoreRef}
-          className="flex items-center justify-center px-4 py-6 bg-brand-black"
-        >
-          {isFetchingMore ? (
-            <div className="flex items-center gap-2">
-              <Loader className="w-3 h-3" />
-              <span className="text-sm text-muted-foreground">
-                Loading more positions...
-              </span>
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">
-              Scroll to load more
-            </span>
-          )}
-        </div>
+          isLoading={isFetchingMore}
+          loadingMessage="Loading more positions…"
+        />
       )}
       <PositionDialog
         open={dialogPosition !== null}
