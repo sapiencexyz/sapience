@@ -476,8 +476,15 @@ export function usePositionBalances(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     initialPageParam: 0,
+    // The server paginates raw Position DB rows by (take, skip), then
+    // synthesizes per-row events (one Open + one synthetic SOLD per
+    // sell). The returned synthesized count therefore differs from the
+    // raw page size — using `lastPage.length < pageSize` would stop
+    // early on resolved-only pages and over-fetch on heavy-sell pages.
+    // Stop only when a page comes back empty: that's the unambiguous
+    // signal we've exhausted raw rows. Costs one trailing empty fetch.
     getNextPageParam: (lastPage: PositionBalance[], allPages) =>
-      lastPage.length < pageSize ? undefined : allPages.length * pageSize,
+      lastPage.length === 0 ? undefined : allPages.length * pageSize,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
         positions: PositionBalance[];
@@ -541,8 +548,10 @@ export function usePositionBalancesByConditionId(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     initialPageParam: 0,
+    // See `usePositionBalances` for why we stop on empty rather than
+    // a partial page — server synthesizes events from raw rows.
     getNextPageParam: (lastPage: PositionBalance[], allPages) =>
-      lastPage.length < pageSize ? undefined : allPages.length * pageSize,
+      lastPage.length === 0 ? undefined : allPages.length * pageSize,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
         positions: PositionBalance[];

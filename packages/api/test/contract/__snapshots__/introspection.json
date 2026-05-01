@@ -12710,6 +12710,18 @@
         "description": "Individual outcome pick within a pick configuration",
         "fields": [
           {
+            "name": "condition",
+            "description": "The condition this pick references. May be null if the conditionId is dangling.",
+            "args": [],
+            "type": {
+              "kind": "OBJECT",
+              "name": "Condition",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "conditionId",
             "description": null,
             "args": [],

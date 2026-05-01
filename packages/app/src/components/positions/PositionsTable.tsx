@@ -755,11 +755,22 @@ export default function PositionsTable({
     );
   }
 
+  // Filters are applied client-side, so a page with 0 matches doesn't
+  // mean there are no matches at all — later pages may have some.
+  // Render the sentinel below the empty state when there are more
+  // pages so infinite scroll can keep fetching.
   if (filteredPositions.length === 0) {
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No positions match your filters" />
+        <EmptyTabState
+          message={
+            hasMore && isFetchingMore
+              ? 'Loading more positions…'
+              : 'No positions match your filters'
+          }
+        />
+        {hasMore && <div ref={loadMoreRef} className="h-0" />}
       </>
     );
   }
