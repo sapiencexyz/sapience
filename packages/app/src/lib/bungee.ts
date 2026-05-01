@@ -1,12 +1,17 @@
 import type { Address, Hex } from 'viem';
 
-// Frontend / Direct tier — domain whitelist enforced server-side, 100 RPM per
-// IP. Public-backend (`https://public-backend.bungee.exchange/api/v1`) is the
-// unauthenticated sandbox — set NEXT_PUBLIC_BUNGEE_API_BASE to it locally so
-// dev origins that aren't on Bungee's whitelist don't get 403'd on preflight.
+// Production hits the Frontend/Direct tier (domain-whitelisted, 100 RPM per
+// IP, attributed via the affiliate header). Dev hits the public-backend
+// sandbox so unwhitelisted local origins don't get 403'd on preflight.
+// NEXT_PUBLIC_BUNGEE_API_BASE overrides both — useful when previewing prod
+// on a non-whitelisted domain.
+const BUNGEE_DEFAULT_API_BASE =
+  process.env.NODE_ENV === 'development'
+    ? 'https://public-backend.bungee.exchange/api/v1'
+    : 'https://backend.bungee.exchange/api/v1';
+
 export const BUNGEE_API_BASE =
-  process.env.NEXT_PUBLIC_BUNGEE_API_BASE ??
-  'https://backend.bungee.exchange/api/v1';
+  process.env.NEXT_PUBLIC_BUNGEE_API_BASE ?? BUNGEE_DEFAULT_API_BASE;
 
 // Native asset sentinel used by Bungee/Socket. Same value for ETH on source
 // chains and for native USDe on Ethereal.
