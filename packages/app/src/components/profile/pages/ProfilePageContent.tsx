@@ -137,7 +137,7 @@ const ProfilePageContent = ({
           onValueChange={handleTabChange}
           className="w-full flex-1 flex flex-col"
         >
-          <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 flex-1 flex flex-col">
+          <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8 flex-1 flex flex-col">
             {/*
               `data-[state=active]:` modifier on the flex utilities is
               load-bearing: without it, inactive TabsContent panels still
