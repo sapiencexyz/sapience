@@ -138,9 +138,19 @@ const ProfilePageContent = ({
           className="w-full flex-1 flex flex-col"
         >
           <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8 flex-1 flex flex-col">
+            {/*
+              `data-[state=active]:` modifier on the flex utilities is
+              load-bearing: without it, inactive TabsContent panels still
+              compute as `display: flex` (the class beats the UA
+              `[hidden] { display: none }` rule on equal specificity), so
+              all three panels share the bordered container's height via
+              flex-1 and the active one only claims a third. Gating the
+              flex utilities on `data-state=active` lets the [hidden]
+              attribute fully hide inactive panels.
+            */}
             <TabsContent
               value="positions"
-              className="mt-0 flex-1 flex flex-col"
+              className="mt-0 data-[state=active]:flex-1 data-[state=active]:flex data-[state=active]:flex-col"
             >
               <PositionsTable
                 account={address}
@@ -152,7 +162,7 @@ const ProfilePageContent = ({
 
             <TabsContent
               value="forecasts"
-              className="mt-0 flex-1 flex flex-col"
+              className="mt-0 data-[state=active]:flex-1 data-[state=active]:flex data-[state=active]:flex-col"
             >
               <ForecastsTable
                 attesterAddress={address}
@@ -161,7 +171,10 @@ const ProfilePageContent = ({
               />
             </TabsContent>
 
-            <TabsContent value="activity" className="mt-0 flex-1 flex flex-col">
+            <TabsContent
+              value="activity"
+              className="mt-0 data-[state=active]:flex-1 data-[state=active]:flex data-[state=active]:flex-col"
+            >
               <ActivityTable account={address} leftSlot={tabSwitcher} fill />
             </TabsContent>
           </div>
