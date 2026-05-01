@@ -450,6 +450,67 @@ describe('positions resolver — ordering', () => {
   });
 });
 
+describe('positions resolver — query shape', () => {
+  it('pushes the holder filter into the predictions include so we only pull the holder’s predictions', async () => {
+    // Without this, every prediction on the pickConfiguration is loaded —
+    // including unrelated users — and discarded later in the WAC walk.
+    // For popular pickConfigs this is a 10x+ payload reduction.
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({ holder: ALICE });
+
+    const callArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(callArgs.include?.pickConfiguration?.include?.predictions).toEqual({
+      where: {
+        OR: [
+          { predictor: ALICE.toLowerCase() },
+          { counterparty: ALICE.toLowerCase() },
+        ],
+      },
+    });
+  });
+
+  it('does not narrow predictions when holder is not provided (conditionId path)', async () => {
+    mockPrisma.pick.findMany.mockResolvedValue([{ pickConfigId: PC_ID }]);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({ holder: undefined, conditionId: '0xcond' });
+
+    const callArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(callArgs.include?.pickConfiguration?.include?.predictions).toBe(
+      true
+    );
+  });
+
+  it('runs preloadPickConditions and secondaryTrade.findMany in parallel after position.findMany', async () => {
+    // We can't observe scheduling directly, but we can confirm both
+    // dependent fetches were issued from the resolver. The Promise.all
+    // wrapper means neither blocks the other.
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({ balance: '100' }),
+    ]);
+
+    await callPositions({ holder: ALICE });
+
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
+    // preloadPickConditions issues a condition.findMany when ctx is provided.
+    // We don't pass ctx in this suite, so it's a no-op — but the trades
+    // call is the smoking gun that the parallel branch ran.
+    const tradesArgs = mockPrisma.secondaryTrade.findMany.mock.calls[0][0];
+    expect(tradesArgs.where).toMatchObject({
+      OR: [{ seller: { in: [ALICE] } }, { buyer: { in: [ALICE] } }],
+    });
+  });
+
+  it('skips the secondaryTrade.findMany call when there are no positions to resolve', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({ holder: ALICE });
+
+    expect(mockPrisma.secondaryTrade.findMany).not.toHaveBeenCalled();
+  });
+});
+
 describe('positionCount resolver', () => {
   it('applies the same zero-balance/unresolved exclusion as positions', async () => {
     mockPrisma.position.count.mockResolvedValue(3);

@@ -129,11 +129,7 @@ const ProfilePageContent = ({
         ) : null}
       </div>
 
-      <div
-        className={`pb-0 transition-opacity duration-300 ${
-          hasLoadedOnce ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
+      <div className="pb-0">
         <Tabs
           value={tabValue}
           onValueChange={handleTabChange}

@@ -354,23 +354,31 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     [posOrderField]: posOrderDirection,
   };
 
+  // The PickConfiguration → Prediction relation is many-to-many in spirit:
+  // any user who has predicted on this market shows up here. We only need
+  // the rows where the holder is a counterparty to compute their cost
+  // basis, so push the filter into the include and avoid pulling every
+  // other user's prediction back over the wire. When `holder` isn't
+  // pinned (conditionId / pickConfigId path), keep the full set.
+  const predictionsInclude: Prisma.Picks$predictionsArgs | true = holderLower
+    ? {
+        where: {
+          OR: [{ predictor: holderLower }, { counterparty: holderLower }],
+        },
+      }
+    : true;
+
   const rows = await prisma.position.findMany({
     where,
     orderBy: orderByClause,
     take: cappedTake,
     skip,
     include: {
-      pickConfiguration: { include: { picks: true, predictions: true } },
+      pickConfiguration: {
+        include: { picks: true, predictions: predictionsInclude },
+      },
     },
   });
-
-  // Pre-load every Pick.condition referenced by this page in one batch.
-  // The Pick.condition field resolver reads from ctx.pickConditions and
-  // returns the cached row without per-pick round trips.
-  await preloadPickConditions(
-    ctx,
-    rows.map((r) => r.pickConfiguration)
-  );
 
   // For each Position row we build a chronological event stream of primary
   // mints (Predictions) and secondary trades (buys + sells matching
@@ -383,10 +391,19 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
   const chainIds = Array.from(new Set(rows.map((r) => r.chainId)));
   const tokenAddresses = Array.from(new Set(rows.map((r) => r.tokenAddress)));
   const holders = Array.from(new Set(rows.map((r) => r.holder)));
-  const trades =
+
+  // preloadPickConditions and the trades fetch are independent — both only
+  // need `rows`. Run them in parallel to overlap their network round trips.
+  const [, trades] = await Promise.all([
+    preloadPickConditions(
+      ctx,
+      rows.map((r) => r.pickConfiguration)
+    ),
     rows.length === 0
-      ? []
-      : await prisma.secondaryTrade.findMany({
+      ? Promise.resolve(
+          [] as Awaited<ReturnType<typeof prisma.secondaryTrade.findMany>>
+        )
+      : prisma.secondaryTrade.findMany({
           where: {
             chainId: { in: chainIds },
             token: { in: tokenAddresses },
@@ -402,7 +419,8 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
             executedAt: true,
             tradeHash: true,
           },
-        });
+        }),
+  ]);
 
   const positionKey = (chainId: number, token: string, holder: string) =>
     `${chainId}:${token}:${holder}`;

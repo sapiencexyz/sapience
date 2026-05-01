@@ -41,8 +41,9 @@ export interface ApolloContext {
 export const initializeApolloServer = async () => {
   const schema = await buildApiSchema({ emitSchemaFile: true });
 
-  // Default of 10000 allows all legitimate app queries (max ~8700) while blocking
-  // deeply nested queries like conditions(take: 200) with 5 levels of nesting (~55000)
+  // Default of 15000 covers legitimate app queries (positions(take:50) with
+  // inline Pick.condition tops ~11000) while still blocking deeply nested
+  // queries like conditions(take: 200) with 5 levels of nesting (~55000).
   const maxComplexity = config.GRAPHQL_MAX_COMPLEXITY;
 
   console.log(`GraphQL query complexity limit set to: ${maxComplexity}`);

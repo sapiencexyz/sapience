@@ -440,7 +440,7 @@ export function usePredictions(params: {
   };
 }
 
-const DEFAULT_POSITIONS_PAGE_SIZE = 50;
+const DEFAULT_POSITIONS_PAGE_SIZE = 15;
 
 /**
  * Hook to get position balances (ERC20 tokens) for a user, paginated.

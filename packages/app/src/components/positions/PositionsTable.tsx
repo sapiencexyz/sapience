@@ -728,8 +728,10 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <div className="flex items-center justify-center py-8">
-          <Loader />
+        <div className="flex items-center justify-center py-12">
+          <span className="text-sm text-muted-foreground font-mono uppercase">
+            Loading positions…
+          </span>
         </div>
       </>
     );
