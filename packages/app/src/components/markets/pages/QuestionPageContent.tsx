@@ -896,14 +896,16 @@ export default function QuestionPageContent({
             {displayTitle}
           </h1>
 
-          {/* Badges Row: Category, Open Interest, End Time */}
+          {/* Badges Row: Category, Open Interest, End Time. Open interest and
+              end-time read as historical noise once a question is resolved, so
+              we hide them and let the Resolved card on the right carry status. */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
             {/* Focus Area Badge */}
             {categorySlug && <FocusAreaBadge categorySlug={categorySlug} />}
 
-            {/* Open Interest Badge */}
-            {(() => {
-              return (
+            {!data.settled && (
+              <>
+                {/* Open Interest Badge */}
                 <Badge
                   variant="outline"
                   className="h-9 items-center px-3.5 text-sm leading-none inline-flex bg-card border-brand-white/20 text-brand-white font-medium"
@@ -916,30 +918,28 @@ export default function QuestionPageContent({
                   />
                   <span className="whitespace-nowrap text-foreground font-normal ml-1.5 md:ml-0">
                     {(() => {
-                      // Get open interest from data and format it
                       const openInterestWei = data?.openInterest || '0';
                       try {
                         const etherValue = parseFloat(
                           formatEther(BigInt(openInterestWei))
                         );
-                        const formattedValue = etherValue.toFixed(2);
-                        return `${formattedValue} USDe`;
+                        return `${etherValue.toFixed(2)} USDe`;
                       } catch {
                         return '0 USDe';
                       }
                     })()}
                   </span>
                 </Badge>
-              );
-            })()}
 
-            {/* End Time Badge */}
-            <EndTimeDisplay
-              endTime={data.endTime ?? null}
-              settled={data.settled}
-              size="large"
-              appearance="brandWhite"
-            />
+                {/* End Time Badge */}
+                <EndTimeDisplay
+                  endTime={data.endTime ?? null}
+                  settled={data.settled}
+                  size="large"
+                  appearance="brandWhite"
+                />
+              </>
+            )}
           </div>
 
           {/* Scatter plot on the left, sidebar cards on the right; tabs below */}
