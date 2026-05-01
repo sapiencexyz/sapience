@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 /**
@@ -222,8 +223,20 @@ const PREDICTION_QUERY = /* GraphQL */ `
 `;
 
 const POSITION_BALANCES_QUERY = /* GraphQL */ `
-  query Positions($holder: String!, $chainId: Int, $settled: Boolean) {
-    positions(holder: $holder, chainId: $chainId, settled: $settled) {
+  query Positions(
+    $holder: String!
+    $chainId: Int
+    $settled: Boolean
+    $take: Int
+    $skip: Int
+  ) {
+    positions(
+      holder: $holder
+      chainId: $chainId
+      settled: $settled
+      take: $take
+      skip: $skip
+    ) {
       id
       chainId
       tokenAddress
@@ -381,79 +394,134 @@ export function usePredictions(params: {
   };
 }
 
+const DEFAULT_POSITIONS_PAGE_SIZE = 50;
+
 /**
- * Hook to get position balances (ERC20 tokens) for a user
+ * Hook to get position balances (ERC20 tokens) for a user, paginated.
  */
 export function usePositionBalances(params: {
   holder?: string;
   chainId?: number;
   settled?: boolean;
+  pageSize?: number;
 }) {
-  const { holder, chainId, settled } = params;
+  const {
+    holder,
+    chainId,
+    settled,
+    pageSize = DEFAULT_POSITIONS_PAGE_SIZE,
+  } = params;
   const enabled = Boolean(holder);
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['positionBalances', holder, chainId, settled],
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['positionBalances', holder, chainId, settled, pageSize],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    queryFn: async () => {
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: PositionBalance[], allPages) =>
+      lastPage.length < pageSize ? undefined : allPages.length * pageSize,
+    queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
         positions: PositionBalance[];
       }>(POSITION_BALANCES_QUERY, {
         holder,
         chainId: chainId ?? null,
         settled: settled ?? null,
+        take: pageSize,
+        skip: pageParam,
       });
       return resp?.positions ?? [];
     },
   });
 
+  const items = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const fetchMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   return {
-    data: data ?? [],
-    isLoading: !!enabled && (isLoading || isFetching),
+    data: items,
+    isLoading: !!enabled && isLoading,
+    isFetchingMore: isFetchingNextPage,
+    isFetching: !!enabled && isFetching,
+    hasMore: Boolean(hasNextPage),
+    fetchMore,
     error,
     refetch,
   };
 }
 
 /**
- * Hook to get position balances for a condition (all holders)
+ * Hook to get position balances for a condition (all holders), paginated.
  */
 export function usePositionBalancesByConditionId(params: {
   conditionId?: string;
-  take?: number;
-  skip?: number;
+  pageSize?: number;
   settled?: boolean;
 }) {
-  const { conditionId, take = 100, skip = 0, settled } = params;
+  const {
+    conditionId,
+    pageSize = DEFAULT_POSITIONS_PAGE_SIZE,
+    settled,
+  } = params;
   const enabled = Boolean(conditionId);
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['positionBalancesByCondition', conditionId, take, skip, settled],
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['positionBalancesByCondition', conditionId, pageSize, settled],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    queryFn: async () => {
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: PositionBalance[], allPages) =>
+      lastPage.length < pageSize ? undefined : allPages.length * pageSize,
+    queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
         positions: PositionBalance[];
       }>(POSITION_BALANCES_BY_CONDITION_QUERY, {
         conditionId,
-        take,
-        skip,
+        take: pageSize,
+        skip: pageParam,
         settled: settled ?? null,
       });
       return resp?.positions ?? [];
     },
   });
 
+  const items = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const fetchMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   return {
-    data: data ?? [],
-    isLoading: !!enabled && (isLoading || isFetching),
+    data: items,
+    isLoading: !!enabled && isLoading,
+    isFetchingMore: isFetchingNextPage,
+    isFetching: !!enabled && isFetching,
+    hasMore: Boolean(hasNextPage),
+    fetchMore,
     error,
     refetch,
   };

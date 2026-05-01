@@ -24,6 +24,7 @@ import { useAccount } from 'wagmi';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
+import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
 import CountdownCell from '~/components/shared/CountdownCell';
 import {
@@ -473,6 +474,9 @@ export default function PositionsTable({
   const {
     data: accountPositions,
     isLoading: accountLoading,
+    isFetchingMore: accountFetchingMore,
+    hasMore: accountHasMore,
+    fetchMore: accountFetchMore,
     error: accountError,
     refetch: accountRefetch,
   } = usePositionBalances({
@@ -485,6 +489,9 @@ export default function PositionsTable({
   const {
     data: conditionPositions,
     isLoading: conditionLoading,
+    isFetchingMore: conditionFetchingMore,
+    hasMore: conditionHasMore,
+    fetchMore: conditionFetchMore,
     error: conditionError,
     refetch: conditionRefetch,
   } = usePositionBalancesByConditionId({
@@ -494,8 +501,18 @@ export default function PositionsTable({
 
   const positions = account ? accountPositions : conditionPositions;
   const isLoading = account ? accountLoading : conditionLoading;
+  const isFetchingMore = account ? accountFetchingMore : conditionFetchingMore;
+  const hasMore = account ? accountHasMore : conditionHasMore;
+  const fetchMore = account ? accountFetchMore : conditionFetchMore;
   const error = account ? accountError : conditionError;
   const refetch = account ? accountRefetch : conditionRefetch;
+
+  const { loadMoreRef } = useInfiniteScroll({
+    hasMore,
+    isLoading,
+    isFetchingMore,
+    onFetchMore: fetchMore,
+  });
 
   // Collect all unique conditionIds to fetch category data
   const conditionIds = React.useMemo(() => {
@@ -808,6 +825,25 @@ export default function PositionsTable({
           </TableBody>
         </Table>
       </div>
+      {hasMore && (
+        <div
+          ref={loadMoreRef}
+          className="flex items-center justify-center px-4 py-6 bg-brand-black"
+        >
+          {isFetchingMore ? (
+            <div className="flex items-center gap-2">
+              <Loader className="w-3 h-3" />
+              <span className="text-sm text-muted-foreground">
+                Loading more positions...
+              </span>
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              Scroll to load more
+            </span>
+          )}
+        </div>
+      )}
       <PositionDialog
         open={dialogPosition !== null}
         onOpenChange={(open) => {
