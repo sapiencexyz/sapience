@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { Address } from 'viem';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import type { Prediction, PickConfigData } from '~/hooks/graphql/usePositions';
 import type { SecondaryTrade } from '~/hooks/graphql/useSecondaryTrades';
@@ -201,7 +201,6 @@ export function useAccountActivity({
    */
   enabled?: boolean;
 }) {
-  const [take, setTake] = useState(pageSize);
   const enabled = enabledOverride ?? true;
 
   const typeFilter =
@@ -210,43 +209,45 @@ export function useAccountActivity({
   const {
     data,
     isLoading: initialLoading,
-    isFetching,
-  } = useQuery({
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
     queryKey: [
       'accountActivity',
       account ?? 'global',
-      take,
       typeFilter,
       pickConfigId ?? null,
       conditionId ?? null,
+      pageSize,
     ],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    placeholderData: (
-      prev: { accountActivity: RawActivityItem[] } | undefined
-    ) => prev,
-    queryFn: async () => {
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: RawActivityItem[], allPages) =>
+      lastPage.length < pageSize ? undefined : allPages.length * pageSize,
+    queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
         accountActivity: RawActivityItem[];
       }>(ACCOUNT_ACTIVITY_QUERY, {
         address: account ?? null,
-        take,
-        skip: 0,
+        take: pageSize,
+        skip: pageParam,
         type: typeFilter ?? null,
         pickConfigId: pickConfigId ?? null,
         conditionId: conditionId ?? null,
       });
-      return resp ?? { accountActivity: [] };
+      return resp?.accountActivity ?? [];
     },
   });
 
-  const rawItems = useMemo(() => data?.accountActivity ?? [], [data]);
+  const rawItems = useMemo(() => data?.pages.flat() ?? [], [data]);
 
   // Only show loading spinner on true initial load (no data yet)
   const isLoading = initialLoading && !data;
-  const isFetchingMore = isFetching && !!data;
+  const isFetchingMore = isFetchingNextPage;
 
   // Map raw items to typed ActivityItems, skipping malformed entries
   const items: ActivityItem[] = useMemo(() => {
@@ -277,8 +278,10 @@ export function useAccountActivity({
     return mapped;
   }, [rawItems, account]);
 
-  const hasMore = rawItems.length >= take;
-  const fetchMore = () => setTake((t) => t + pageSize);
+  const hasMore = Boolean(hasNextPage);
+  const fetchMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   return {
     items,

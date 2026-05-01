@@ -33,6 +33,7 @@ export const preloadPickConditions = async (
 
   const conditions = await prisma.condition.findMany({
     where: { id: { in: Array.from(need) } },
+    include: { category: true },
   });
   for (const c of conditions) cache.set(c.id, c);
 };
