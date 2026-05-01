@@ -20,7 +20,7 @@ const InfiniteScrollFooter = forwardRef<HTMLDivElement, Props>(
     return (
       <div
         ref={ref}
-        className="flex items-center justify-center px-4 py-6 bg-brand-black"
+        className="flex items-center justify-center px-4 py-6 bg-brand-black border-t border-border/60"
       >
         {isLoading ? (
           <div className="flex items-center gap-2">
