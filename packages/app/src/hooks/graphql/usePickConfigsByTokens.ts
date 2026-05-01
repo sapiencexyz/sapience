@@ -5,7 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import type { PickConfigData, PickData } from '~/hooks/graphql/usePositions';
 
-// tokens arg on pickConfigurations added in PR #1440
+// tokens arg on pickConfigurations added in PR #1440. `picks.condition`
+// is fetched inline so callers can build their conditionsMap from a
+// single round trip — see Pick resolver + pickConfigurations resolver.
 const PICK_CONFIGS_BY_TOKENS_QUERY = `
   query PickConfigsByTokens($tokens: [String!]) {
     pickConfigurations(tokens: $tokens, take: 100) {
@@ -29,6 +31,22 @@ const PICK_CONFIGS_BY_TOKENS_QUERY = `
         conditionResolver
         conditionId
         predictedOutcome
+        condition {
+          id
+          shortName
+          optionName
+          question
+          description
+          endTime
+          resolver
+          settled
+          resolvedToYes
+          nonDecisive
+          estimatedPrice
+          category {
+            slug
+          }
+        }
       }
     }
   }

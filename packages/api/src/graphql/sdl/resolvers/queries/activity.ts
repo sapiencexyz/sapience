@@ -11,12 +11,11 @@
 
 import type {
   QueryResolvers,
-  ActivityItem,
-  PickConfiguration,
-  Prediction,
+  ResolversParentTypes,
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
+import { preloadPickConditions } from '../preloadPickConditions';
 
 const MAX_SKIP = 500;
 
@@ -24,7 +23,8 @@ export const accountActivity: NonNullable<
   QueryResolvers['accountActivity']
 > = async (
   _parent,
-  { address, take, skip, type, pickConfigId, conditionId }
+  { address, take, skip, type, pickConfigId, conditionId },
+  ctx
 ) => {
   const cappedTake = Math.max(1, Math.min(take ?? 20, 100));
   const cappedSkip = Math.max(0, Math.min(skip ?? 0, MAX_SKIP));
@@ -127,40 +127,53 @@ export const accountActivity: NonNullable<
   ]);
 
   const tradeTokens = [...new Set(trades.map((t) => t.token.toLowerCase()))];
-  const pickConfigsByToken = new Map<string, PickConfiguration>();
-  if (tradeTokens.length > 0) {
-    const pickConfigs = await prisma.picks.findMany({
-      where: {
-        OR: [
-          { predictorToken: { in: tradeTokens } },
-          { counterpartyToken: { in: tradeTokens } },
-        ],
-      },
-      include: { picks: true },
-    });
-    for (const pc of pickConfigs) {
-      const mapped = mapPickConfig(pc);
-      if (
-        pc.predictorToken &&
-        tradeTokens.includes(pc.predictorToken.toLowerCase())
-      ) {
-        pickConfigsByToken.set(pc.predictorToken.toLowerCase(), mapped);
-      }
-      if (
-        pc.counterpartyToken &&
-        tradeTokens.includes(pc.counterpartyToken.toLowerCase())
-      ) {
-        pickConfigsByToken.set(pc.counterpartyToken.toLowerCase(), mapped);
-      }
+  const tradePickConfigs =
+    tradeTokens.length > 0
+      ? await prisma.picks.findMany({
+          where: {
+            OR: [
+              { predictorToken: { in: tradeTokens } },
+              { counterpartyToken: { in: tradeTokens } },
+            ],
+          },
+          include: { picks: true },
+        })
+      : [];
+
+  // Pre-load conditions referenced by every Pick on this page (predictions
+  // and trades) into ctx.pickConditions. The Pick.condition resolver reads
+  // the cache and returns rows without per-pick round trips.
+  await preloadPickConditions(ctx, [
+    ...predictions.map((r) => r.pickConfiguration),
+    ...tradePickConfigs,
+  ]);
+
+  const pickConfigsByToken = new Map<
+    string,
+    ResolversParentTypes['PickConfiguration']
+  >();
+  for (const pc of tradePickConfigs) {
+    const mapped = mapPickConfig(pc);
+    if (
+      pc.predictorToken &&
+      tradeTokens.includes(pc.predictorToken.toLowerCase())
+    ) {
+      pickConfigsByToken.set(pc.predictorToken.toLowerCase(), mapped);
+    }
+    if (
+      pc.counterpartyToken &&
+      tradeTokens.includes(pc.counterpartyToken.toLowerCase())
+    ) {
+      pickConfigsByToken.set(pc.counterpartyToken.toLowerCase(), mapped);
     }
   }
 
-  const items: ActivityItem[] = [];
+  const items: ResolversParentTypes['ActivityItem'][] = [];
 
   for (const r of predictions) {
     const ts =
       r.collateralDepositedAt ?? Math.floor(r.createdAt.getTime() / 1000);
-    const prediction: Prediction = {
+    const prediction: ResolversParentTypes['Prediction'] = {
       id: r.id,
       predictionId: r.predictionId,
       chainId: r.chainId,
@@ -175,7 +188,7 @@ export const accountActivity: NonNullable<
       collateralDepositedAt: r.collateralDepositedAt ?? null,
       settled: r.settled,
       settledAt: r.settledAt ?? null,
-      result: r.result as Prediction['result'],
+      result: r.result as ResolversParentTypes['Prediction']['result'],
       predictorClaimable: r.predictorClaimable ?? null,
       counterpartyClaimable: r.counterpartyClaimable ?? null,
       createdAt: r.createdAt,

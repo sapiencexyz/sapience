@@ -2,8 +2,10 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import type { PickConfigurationResult } from '@sapience/sdk/queries';
-import type { ConditionById } from '@sapience/sdk/queries/conditions';
+import type {
+  PickConfigurationCondition,
+  PickConfigurationResult,
+} from '@sapience/sdk/queries';
 
 // ---- mocks ----
 
@@ -19,12 +21,6 @@ vi.mock('@sapience/sdk/queries', async () => {
       mockFetchPickConfigurations(...args),
   };
 });
-
-const mockUseConditionsByIds = vi.fn();
-
-vi.mock('../useConditionsByIds', () => ({
-  useConditionsByIds: (...args: unknown[]) => mockUseConditionsByIds(...args),
-}));
 
 // ---- helpers ----
 
@@ -43,32 +39,15 @@ function createWrapper() {
   };
 }
 
-function makeConfig(
-  overrides: Partial<PickConfigurationResult> & { id: string }
-): PickConfigurationResult {
-  return {
-    chainId: 1,
-    totalPredictorCollateral: '1000',
-    totalCounterpartyCollateral: '1000',
-    resolved: false,
-    picks: [
-      { conditionId: 'c1', conditionResolver: 'r1', predictedOutcome: 1 },
-      { conditionId: 'c2', conditionResolver: 'r2', predictedOutcome: 0 },
-    ],
-    ...overrides,
-  };
-}
-
 function makeCondition(
-  overrides: Partial<ConditionById> & { id: string }
-): ConditionById {
+  overrides: Partial<PickConfigurationCondition> & { id: string }
+): PickConfigurationCondition {
   return {
     shortName: null,
     question: 'Test?',
     description: null,
     endTime: Date.now() / 1000 + 86400,
     resolver: null,
-    similarMarkets: [],
     category: null,
     settled: false,
     resolvedToYes: false,
@@ -78,18 +57,34 @@ function makeCondition(
   };
 }
 
-function conditionMap(conditions: ConditionById[]): Map<string, ConditionById> {
-  return new Map(conditions.map((c) => [c.id, c]));
+function makePick(
+  conditionId: string,
+  conditionOverrides: Partial<PickConfigurationCondition> = {}
+): PickConfigurationResult['picks'][number] {
+  return {
+    conditionId,
+    conditionResolver: `r-${conditionId}`,
+    predictedOutcome: 1,
+    condition: makeCondition({ id: conditionId, ...conditionOverrides }),
+  };
+}
+
+function makeConfig(
+  overrides: Partial<PickConfigurationResult> & { id: string }
+): PickConfigurationResult {
+  return {
+    chainId: 1,
+    totalPredictorCollateral: '1000',
+    totalCounterpartyCollateral: '1000',
+    resolved: false,
+    picks: [makePick('c1'), makePick('c2')],
+    ...overrides,
+  };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockFetchPickConfigurations.mockResolvedValue([]);
-  mockUseConditionsByIds.mockReturnValue({
-    map: new Map(),
-    isLoading: false,
-    error: null,
-  });
 });
 
 // ---- import after mocks ----
@@ -105,12 +100,6 @@ describe('useRecentCombos', () => {
 
     const configs = [makeConfig({ id: 'pc1' })];
     mockFetchPickConfigurations.mockResolvedValue(configs);
-    const conds = [makeCondition({ id: 'c1' }), makeCondition({ id: 'c2' })];
-    mockUseConditionsByIds.mockReturnValue({
-      map: conditionMap(conds),
-      isLoading: false,
-      error: null,
-    });
 
     renderHook(() => useRecentCombos({ chainId: 1 }), {
       wrapper: createWrapper(),
@@ -130,21 +119,10 @@ describe('useRecentCombos', () => {
     const useRecentCombos = await getHook();
 
     const configs = [
-      makeConfig({
-        id: 'single',
-        picks: [
-          { conditionId: 'c1', conditionResolver: 'r1', predictedOutcome: 1 },
-        ],
-      }),
+      makeConfig({ id: 'single', picks: [makePick('c1')] }),
       makeConfig({ id: 'multi' }),
     ];
     mockFetchPickConfigurations.mockResolvedValue(configs);
-    const conds = [makeCondition({ id: 'c1' }), makeCondition({ id: 'c2' })];
-    mockUseConditionsByIds.mockReturnValue({
-      map: conditionMap(conds),
-      isLoading: false,
-      error: null,
-    });
 
     const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
       wrapper: createWrapper(),
@@ -165,24 +143,10 @@ describe('useRecentCombos', () => {
       makeConfig({ id: 'pc2' }), // same condition set as pc1
       makeConfig({
         id: 'pc3',
-        picks: [
-          { conditionId: 'c3', conditionResolver: 'r3', predictedOutcome: 1 },
-          { conditionId: 'c4', conditionResolver: 'r4', predictedOutcome: 0 },
-        ],
+        picks: [makePick('c3'), makePick('c4')],
       }),
     ];
     mockFetchPickConfigurations.mockResolvedValue(configs);
-    const conds = [
-      makeCondition({ id: 'c1' }),
-      makeCondition({ id: 'c2' }),
-      makeCondition({ id: 'c3' }),
-      makeCondition({ id: 'c4' }),
-    ];
-    mockUseConditionsByIds.mockReturnValue({
-      map: conditionMap(conds),
-      isLoading: false,
-      error: null,
-    });
 
     const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
       wrapper: createWrapper(),
@@ -198,54 +162,20 @@ describe('useRecentCombos', () => {
     ]);
   });
 
-  it('returns empty combos while conditions are loading (flash prevention)', async () => {
-    const useRecentCombos = await getHook();
-
-    const configs = [makeConfig({ id: 'pc1' })];
-    mockFetchPickConfigurations.mockResolvedValue(configs);
-    // conditionMap is empty (size === 0) → should return []
-    mockUseConditionsByIds.mockReturnValue({
-      map: new Map(),
-      isLoading: true,
-      error: null,
-    });
-
-    const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(mockFetchPickConfigurations).toHaveBeenCalled();
-    });
-
-    expect(result.current.combos).toEqual([]);
-  });
-
   it('filters out combos where any condition is settled: true', async () => {
     const useRecentCombos = await getHook();
 
     const configs = [
-      makeConfig({ id: 'settled-combo' }),
+      makeConfig({
+        id: 'settled-combo',
+        picks: [makePick('c1', { settled: true }), makePick('c2')],
+      }),
       makeConfig({
         id: 'active-combo',
-        picks: [
-          { conditionId: 'c3', conditionResolver: 'r3', predictedOutcome: 1 },
-          { conditionId: 'c4', conditionResolver: 'r4', predictedOutcome: 0 },
-        ],
+        picks: [makePick('c3'), makePick('c4')],
       }),
     ];
     mockFetchPickConfigurations.mockResolvedValue(configs);
-    const conds = [
-      makeCondition({ id: 'c1', settled: true }), // settled!
-      makeCondition({ id: 'c2' }),
-      makeCondition({ id: 'c3' }),
-      makeCondition({ id: 'c4' }),
-    ];
-    mockUseConditionsByIds.mockReturnValue({
-      map: conditionMap(conds),
-      isLoading: false,
-      error: null,
-    });
 
     const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
       wrapper: createWrapper(),
@@ -261,17 +191,16 @@ describe('useRecentCombos', () => {
   it('filters out combos where any condition has estimatedPrice < 0.01', async () => {
     const useRecentCombos = await getHook();
 
-    const configs = [makeConfig({ id: 'low-price' })];
-    mockFetchPickConfigurations.mockResolvedValue(configs);
-    const conds = [
-      makeCondition({ id: 'c1', estimatedPrice: 0.005 }), // < 0.01
-      makeCondition({ id: 'c2', estimatedPrice: 0.5 }),
+    const configs = [
+      makeConfig({
+        id: 'low-price',
+        picks: [
+          makePick('c1', { estimatedPrice: 0.005 }),
+          makePick('c2', { estimatedPrice: 0.5 }),
+        ],
+      }),
     ];
-    mockUseConditionsByIds.mockReturnValue({
-      map: conditionMap(conds),
-      isLoading: false,
-      error: null,
-    });
+    mockFetchPickConfigurations.mockResolvedValue(configs);
 
     const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
       wrapper: createWrapper(),
@@ -289,17 +218,16 @@ describe('useRecentCombos', () => {
   it('filters out combos where any condition has estimatedPrice > 0.99', async () => {
     const useRecentCombos = await getHook();
 
-    const configs = [makeConfig({ id: 'high-price' })];
-    mockFetchPickConfigurations.mockResolvedValue(configs);
-    const conds = [
-      makeCondition({ id: 'c1', estimatedPrice: 0.5 }),
-      makeCondition({ id: 'c2', estimatedPrice: 0.995 }), // > 0.99
+    const configs = [
+      makeConfig({
+        id: 'high-price',
+        picks: [
+          makePick('c1', { estimatedPrice: 0.5 }),
+          makePick('c2', { estimatedPrice: 0.995 }),
+        ],
+      }),
     ];
-    mockUseConditionsByIds.mockReturnValue({
-      map: conditionMap(conds),
-      isLoading: false,
-      error: null,
-    });
+    mockFetchPickConfigurations.mockResolvedValue(configs);
 
     const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
       wrapper: createWrapper(),
@@ -317,17 +245,16 @@ describe('useRecentCombos', () => {
   it('keeps combos whose estimatedPrice values are within the 1%-99% band', async () => {
     const useRecentCombos = await getHook();
 
-    const configs = [makeConfig({ id: 'mid-band' })];
-    mockFetchPickConfigurations.mockResolvedValue(configs);
-    const conds = [
-      makeCondition({ id: 'c1', estimatedPrice: 0.0185 }),
-      makeCondition({ id: 'c2', estimatedPrice: 0.9895 }),
+    const configs = [
+      makeConfig({
+        id: 'mid-band',
+        picks: [
+          makePick('c1', { estimatedPrice: 0.0185 }),
+          makePick('c2', { estimatedPrice: 0.9895 }),
+        ],
+      }),
     ];
-    mockUseConditionsByIds.mockReturnValue({
-      map: conditionMap(conds),
-      isLoading: false,
-      error: null,
-    });
+    mockFetchPickConfigurations.mockResolvedValue(configs);
 
     const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
       wrapper: createWrapper(),
@@ -343,17 +270,16 @@ describe('useRecentCombos', () => {
   it('allows combos where estimatedPrice is null', async () => {
     const useRecentCombos = await getHook();
 
-    const configs = [makeConfig({ id: 'null-price' })];
-    mockFetchPickConfigurations.mockResolvedValue(configs);
-    const conds = [
-      makeCondition({ id: 'c1', estimatedPrice: null }),
-      makeCondition({ id: 'c2', estimatedPrice: 0.5 }),
+    const configs = [
+      makeConfig({
+        id: 'null-price',
+        picks: [
+          makePick('c1', { estimatedPrice: null }),
+          makePick('c2', { estimatedPrice: 0.5 }),
+        ],
+      }),
     ];
-    mockUseConditionsByIds.mockReturnValue({
-      map: conditionMap(conds),
-      isLoading: false,
-      error: null,
-    });
+    mockFetchPickConfigurations.mockResolvedValue(configs);
 
     const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
       wrapper: createWrapper(),
@@ -372,32 +298,10 @@ describe('useRecentCombos', () => {
     const configs = Array.from({ length: 10 }, (_, i) =>
       makeConfig({
         id: `pc${i}`,
-        picks: [
-          {
-            conditionId: `a${i}`,
-            conditionResolver: 'r1',
-            predictedOutcome: 1,
-          },
-          {
-            conditionId: `b${i}`,
-            conditionResolver: 'r2',
-            predictedOutcome: 0,
-          },
-        ],
+        picks: [makePick(`a${i}`), makePick(`b${i}`)],
       })
     );
     mockFetchPickConfigurations.mockResolvedValue(configs);
-
-    const conds: ConditionById[] = [];
-    for (let i = 0; i < 10; i++) {
-      conds.push(makeCondition({ id: `a${i}` }));
-      conds.push(makeCondition({ id: `b${i}` }));
-    }
-    mockUseConditionsByIds.mockReturnValue({
-      map: conditionMap(conds),
-      isLoading: false,
-      error: null,
-    });
 
     const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
       wrapper: createWrapper(),
@@ -420,12 +324,6 @@ describe('useRecentCombos', () => {
       }),
     ];
     mockFetchPickConfigurations.mockResolvedValue(configs);
-    const conds = [makeCondition({ id: 'c1' }), makeCondition({ id: 'c2' })];
-    mockUseConditionsByIds.mockReturnValue({
-      map: conditionMap(conds),
-      isLoading: false,
-      error: null,
-    });
 
     const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
       wrapper: createWrapper(),
