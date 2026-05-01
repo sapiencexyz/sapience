@@ -118,7 +118,7 @@ const ProfilePageContent = ({
   return (
     // flex-1 + flex-col so the tabs region can grow to fill the column
     // (ContentArea is itself a flex column under the layout root).
-    <div className="mx-auto pb-3 md:pb-6 lg:pb-8 px-3 md:px-6 lg:px-8 w-full pt-4 md:pt-0 flex-1 flex flex-col">
+    <div className="mx-auto px-3 md:px-6 lg:px-8 w-full pt-4 md:pt-0 flex-1 flex flex-col">
       <ShareAfterRedirect address={address} />
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <ProfileHeader address={address} className="mb-0" />
@@ -137,7 +137,7 @@ const ProfilePageContent = ({
           onValueChange={handleTabChange}
           className="w-full flex-1 flex flex-col"
         >
-          <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8 flex-1 flex flex-col">
+          <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 flex-1 flex flex-col">
             {/*
               `data-[state=active]:` modifier on the flex utilities is
               load-bearing: without it, inactive TabsContent panels still
