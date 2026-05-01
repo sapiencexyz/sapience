@@ -141,6 +141,7 @@ const ProfilePageContent = ({
                 account={address}
                 showHeaderText={false}
                 leftSlot={tabSwitcher}
+                fillViewport
               />
             </TabsContent>
 
@@ -148,11 +149,16 @@ const ProfilePageContent = ({
               <ForecastsTable
                 attesterAddress={address}
                 leftSlot={tabSwitcher}
+                fillViewport
               />
             </TabsContent>
 
             <TabsContent value="activity" className="mt-0">
-              <ActivityTable account={address} leftSlot={tabSwitcher} />
+              <ActivityTable
+                account={address}
+                leftSlot={tabSwitcher}
+                fillViewport
+              />
             </TabsContent>
           </div>
         </Tabs>

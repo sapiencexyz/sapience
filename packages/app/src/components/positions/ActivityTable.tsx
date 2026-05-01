@@ -577,6 +577,7 @@ export default function ActivityTable({
   hiddenColumns,
   filterPickConfigId,
   hideFilters,
+  fillViewport = false,
 }: {
   account?: Address;
   conditionId?: string;
@@ -596,6 +597,9 @@ export default function ActivityTable({
   filterPickConfigId?: string;
   /** Hide the filter toolbar (search/status/value-range/date-range). */
   hideFilters?: boolean;
+  /** Stretch the empty/loading panel to fill the viewport — appropriate
+   *  on the profile tab, not on a question page or dialog. */
+  fillViewport?: boolean;
 }) {
   const isHidden = React.useMemo(
     () => makeIsHidden(hiddenColumns),
@@ -753,7 +757,10 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <TableLoadingState message="Loading activity…" fillViewport />
+        <TableLoadingState
+          message="Loading activity…"
+          fillViewport={fillViewport}
+        />
       </>
     );
   }
@@ -762,7 +769,10 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No activity found" fillViewport />
+        <EmptyTabState
+          message="No activity found"
+          fillViewport={fillViewport}
+        />
       </>
     );
   }
@@ -773,7 +783,7 @@ export default function ActivityTable({
         {headerContent}
         <EmptyTabState
           message="No activity matches your filters"
-          fillViewport
+          fillViewport={fillViewport}
         />
       </>
     );

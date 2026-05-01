@@ -462,12 +462,16 @@ export default function PositionsTable({
   showHeaderText = true,
   chainId,
   leftSlot,
+  fillViewport = false,
 }: {
   account?: Address;
   conditionId?: string;
   showHeaderText?: boolean;
   chainId?: number;
   leftSlot?: React.ReactNode;
+  /** Stretch the empty/loading panel to fill the viewport — appropriate
+   *  on the profile tab, not on a question page or dialog. */
+  fillViewport?: boolean;
 }) {
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
@@ -729,7 +733,10 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <TableLoadingState message="Loading positions…" fillViewport />
+        <TableLoadingState
+          message="Loading positions…"
+          fillViewport={fillViewport}
+        />
       </>
     );
   }
@@ -738,7 +745,11 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <div className="flex items-center justify-center min-h-[calc(100svh-340px)] text-destructive">
+        <div
+          className={`flex items-center justify-center text-destructive ${
+            fillViewport ? 'min-h-[calc(100svh-340px)]' : 'py-12'
+          }`}
+        >
           Error loading positions
         </div>
       </>
@@ -749,7 +760,10 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No positions found" fillViewport />
+        <EmptyTabState
+          message="No positions found"
+          fillViewport={fillViewport}
+        />
       </>
     );
   }
@@ -763,7 +777,7 @@ export default function PositionsTable({
       <>
         {headerContent}
         <EmptyTabState
-          fillViewport
+          fillViewport={fillViewport}
           message={
             hasMore && isFetchingMore
               ? 'Loading more positions…'
