@@ -1420,6 +1420,8 @@ export type NullsOrder =
 /** Individual outcome pick within a pick configuration */
 export type Pick = {
   __typename?: 'Pick';
+  /** The condition this pick references. May be null if the conditionId is dangling. */
+  condition?: Maybe<Condition>;
   conditionId: Scalars['String']['output'];
   conditionResolver: Scalars['String']['output'];
   id: Scalars['Int']['output'];

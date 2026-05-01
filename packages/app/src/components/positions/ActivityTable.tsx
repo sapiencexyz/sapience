@@ -25,7 +25,6 @@ import {
   type Prediction,
   type PickConfigData,
 } from '~/hooks/graphql/usePositions';
-import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import {
   useAccountActivity,
   type PredictionActivity,
@@ -627,18 +626,20 @@ export default function ActivityTable({
 
   const isAccountMode = !!account;
 
-  // ── Condition enrichment for all prediction items ────────────────────────
-  const conditionIds = React.useMemo(() => {
-    const ids = new Set<string>();
+  // Build the condition map from inline `picks.condition` data the server
+  // pre-loads. Avoids the second-round-trip waterfall the previous
+  // `useConditionsByIds(conditionIds)` call produced.
+  const conditionsMap: ConditionsMap = React.useMemo(() => {
+    const m: ConditionsMap = new Map();
     for (const item of items) {
       for (const pick of item.pickConfig?.picks ?? []) {
-        ids.add(pick.conditionId);
+        if (pick.condition && !m.has(pick.conditionId)) {
+          m.set(pick.conditionId, pick.condition);
+        }
       }
     }
-    return Array.from(ids);
+    return m;
   }, [items]);
-
-  const { map: conditionsMap } = useConditionsByIds(conditionIds);
 
   // ── Client-side filters ──────────────────────────────────────────────────
   const filteredItems = React.useMemo(() => {

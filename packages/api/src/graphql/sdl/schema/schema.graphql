@@ -1271,6 +1271,8 @@ enum NullsOrder {
 
 """Individual outcome pick within a pick configuration"""
 type Pick {
+  """The condition this pick references. May be null if the conditionId is dangling."""
+  condition: Condition
   conditionId: String!
   conditionResolver: String!
   id: Int!

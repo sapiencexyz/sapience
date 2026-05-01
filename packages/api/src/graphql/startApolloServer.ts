@@ -22,6 +22,20 @@ export interface ApolloContext {
   // operationTimingPlugin in willSendResponse. Optional because the
   // complexity plugin skips pure-introspection queries.
   queryComplexity?: number;
+  /**
+   * Optional per-request cache: conditionId → Prisma Condition row.
+   *
+   * Hot resolvers (positions, accountActivity) batch-load every
+   * referenced Condition up front and populate this map; the
+   * Pick.condition field resolver then returns rows from the cache
+   * without a per-pick round trip. Resolvers that don't pre-populate
+   * fall back to per-pick lookups.
+   *
+   * Stored on context (not as a request-scoped DataLoader) because we
+   * already do the batching ourselves before mapPickConfig and just
+   * need a place to stash the map for the field resolver to read.
+   */
+  pickConditions?: Map<string, unknown>;
 }
 
 export const initializeApolloServer = async () => {

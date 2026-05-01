@@ -37,7 +37,6 @@ import {
   usePositionBalancesByConditionId,
   type PositionBalance,
 } from '~/hooks/graphql/usePositions';
-import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import PicksSummary from '~/components/shared/PicksSummary';
 import LegacyBadge from '~/components/shared/LegacyBadge';
 import PositionDialog from '~/components/positions/PositionDialog';
@@ -531,18 +530,20 @@ export default function PositionsTable({
     onFetchMore: fetchMore,
   });
 
-  // Collect all unique conditionIds to fetch category data
-  const conditionIds = React.useMemo(() => {
-    const ids = new Set<string>();
+  // Build the condition map from the inline `picks.condition` data the
+  // server pre-loads. Avoids the second-round-trip waterfall the previous
+  // `useConditionsByIds(conditionIds)` call produced.
+  const conditionsMap: ConditionsMap = React.useMemo(() => {
+    const m: ConditionsMap = new Map();
     for (const p of positions) {
       for (const pick of p.pickConfig?.picks ?? []) {
-        ids.add(pick.conditionId);
+        if (pick.condition && !m.has(pick.conditionId)) {
+          m.set(pick.conditionId, pick.condition);
+        }
       }
     }
-    return Array.from(ids);
+    return m;
   }, [positions]);
-
-  const { map: conditionsMap } = useConditionsByIds(conditionIds);
 
   // Apply client-side filters
   const filteredPositions = React.useMemo(() => {

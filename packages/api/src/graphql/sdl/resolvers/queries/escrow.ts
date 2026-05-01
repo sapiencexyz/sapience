@@ -17,7 +17,11 @@
  * shape. `mapPickConfig` lives in the shared `pickConfigHelpers.ts`.
  */
 
-import type { QueryResolvers, Prediction } from '../../__generated__/resolvers';
+import type {
+  QueryResolvers,
+  Prediction,
+  ResolversParentTypes,
+} from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
@@ -26,7 +30,9 @@ type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
 }>;
 
-const mapPrediction = (r: PredictionWithPickConfig): Prediction => ({
+const mapPrediction = (
+  r: PredictionWithPickConfig
+): ResolversParentTypes['Prediction'] => ({
   id: r.id,
   predictionId: r.predictionId,
   chainId: r.chainId,
@@ -206,7 +212,8 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     collateralMax,
     orderBy,
     orderDirection,
-  }
+  },
+  ctx
 ) => {
   const cappedTake = Math.max(1, Math.min(take, 100));
   const holderLower = holder?.toLowerCase();
@@ -347,6 +354,27 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     },
   });
 
+  // Pre-load every Pick.condition referenced by this page in one batch.
+  // The Pick.condition field resolver reads from ctx.pickConditions and
+  // returns the cached row without per-pick round trips.
+  const pickConditions = ctx?.pickConditions;
+  if (pickConditions) {
+    const conditionIds = new Set<string>();
+    for (const r of rows) {
+      for (const p of r.pickConfiguration?.picks ?? []) {
+        if (p.conditionId && !pickConditions.has(p.conditionId)) {
+          conditionIds.add(p.conditionId);
+        }
+      }
+    }
+    if (conditionIds.size > 0) {
+      const conditions = await prisma.condition.findMany({
+        where: { id: { in: Array.from(conditionIds) } },
+      });
+      for (const c of conditions) pickConditions.set(c.id, c);
+    }
+  }
+
   // For each Position row we build a chronological event stream of primary
   // mints (Predictions) and secondary trades (buys + sells matching
   // token+holder), then walk it with running WAC. Each sell produces a
@@ -391,7 +419,7 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     }
   }
 
-  type PositionShape = {
+  type PositionShape = ResolversParentTypes['Position'] & {
     id: string;
     chainId: number;
     tokenAddress: string;

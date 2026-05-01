@@ -89,6 +89,22 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
             conditionResolver
             conditionId
             predictedOutcome
+            condition {
+              id
+              shortName
+              optionName
+              question
+              description
+              endTime
+              resolver
+              settled
+              resolvedToYes
+              nonDecisive
+              estimatedPrice
+              category {
+                slug
+              }
+            }
           }
         }
       }
@@ -126,6 +142,22 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
             conditionResolver
             conditionId
             predictedOutcome
+            condition {
+              id
+              shortName
+              optionName
+              question
+              description
+              endTime
+              resolver
+              settled
+              resolvedToYes
+              nonDecisive
+              estimatedPrice
+              category {
+                slug
+              }
+            }
           }
         }
       }

@@ -36,6 +36,24 @@ export type Prediction = {
   pickConfig?: PickConfigData | null;
 };
 
+/** Embedded condition metadata on a Pick. Mirrors the shape that
+ *  `useConditionsByIds` returns so consumers can build a conditionsMap
+ *  without a follow-up query. */
+export type PickConditionData = {
+  id: string;
+  shortName?: string | null;
+  optionName?: string | null;
+  question?: string | null;
+  description?: string | null;
+  endTime?: number | null;
+  resolver?: string | null;
+  category?: { slug?: string | null } | null;
+  settled?: boolean;
+  resolvedToYes?: boolean;
+  nonDecisive?: boolean;
+  estimatedPrice?: number | null;
+};
+
 /** Pick in a pick configuration */
 export type PickData = {
   id: number;
@@ -43,6 +61,7 @@ export type PickData = {
   conditionResolver: string;
   conditionId: string;
   predictedOutcome: number;
+  condition?: PickConditionData | null;
 };
 
 /** Pick Configuration data */
@@ -85,6 +104,30 @@ export type PositionBalance = {
 };
 
 // GraphQL queries
+//
+// `picks.condition` is fetched inline so consumers can render the full
+// row without a follow-up `useConditionsByIds` round trip. The server
+// pre-loads conditions per request — see Pick resolver + escrow/activity
+// resolvers.
+const PICK_CONDITION_FRAGMENT = `
+  condition {
+    id
+    shortName
+    optionName
+    question
+    description
+    endTime
+    resolver
+    settled
+    resolvedToYes
+    nonDecisive
+    estimatedPrice
+    category {
+      slug
+    }
+  }
+`;
+
 const PICK_CONFIG_FRAGMENT = `
   pickConfig {
     id
@@ -107,6 +150,7 @@ const PICK_CONFIG_FRAGMENT = `
       conditionResolver
       conditionId
       predictedOutcome
+      ${PICK_CONDITION_FRAGMENT}
     }
   }
 `;
@@ -271,6 +315,7 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
           conditionResolver
           conditionId
           predictedOutcome
+          ${PICK_CONDITION_FRAGMENT}
         }
       }
     }
@@ -324,6 +369,7 @@ const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
           conditionResolver
           conditionId
           predictedOutcome
+          ${PICK_CONDITION_FRAGMENT}
         }
       }
     }
