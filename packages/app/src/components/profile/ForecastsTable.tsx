@@ -49,9 +49,11 @@ import ConditionStatus from '~/components/shared/ConditionStatus';
 interface ForecastsTableProps {
   attesterAddress: string;
   leftSlot?: React.ReactNode;
-  /** Stretch the empty/loading panel to fill the viewport — appropriate
-   *  on the profile tab, not on a question page or dialog. */
-  fillViewport?: boolean;
+  /** Stretch the empty/loading panel to `100svh - viewportOffset`. Set
+   *  per-consumer because the chrome above each consumer differs.
+   *  Profile's tab uses 340; dialogs/question pages omit it for compact
+   *  rendering. */
+  viewportOffset?: number;
 }
 
 type ConditionData = {
@@ -210,7 +212,7 @@ const renderQuestionCell = ({
 const ForecastsTable = ({
   attesterAddress,
   leftSlot,
-  fillViewport = false,
+  viewportOffset,
 }: ForecastsTableProps) => {
   // Share dialog state
   const [openShareUid, setOpenShareUid] = React.useState<string | null>(null);
@@ -721,16 +723,16 @@ const ForecastsTable = ({
       {isInitialLoading ? (
         <TableLoadingState
           message="Loading forecasts…"
-          fillViewport={fillViewport}
+          viewportOffset={viewportOffset}
         />
       ) : hasNoData ? (
         <EmptyTabState
-          fillViewport={fillViewport}
+          viewportOffset={viewportOffset}
           message="No forecasts found"
         />
       ) : filteredAttestations.length === 0 ? (
         <EmptyTabState
-          fillViewport={fillViewport}
+          viewportOffset={viewportOffset}
           message="No forecasts match your filters"
         />
       ) : (

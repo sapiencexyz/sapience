@@ -462,16 +462,18 @@ export default function PositionsTable({
   showHeaderText = true,
   chainId,
   leftSlot,
-  fillViewport = false,
+  viewportOffset,
 }: {
   account?: Address;
   conditionId?: string;
   showHeaderText?: boolean;
   chainId?: number;
   leftSlot?: React.ReactNode;
-  /** Stretch the empty/loading panel to fill the viewport — appropriate
-   *  on the profile tab, not on a question page or dialog. */
-  fillViewport?: boolean;
+  /** Stretch the empty/loading panel to `100svh - viewportOffset`. Set
+   *  per-consumer because the chrome above each consumer differs.
+   *  Profile's tab uses 340; /feed uses 200; dialogs/question pages
+   *  omit it for compact rendering. */
+  viewportOffset?: number;
 }) {
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
@@ -735,7 +737,7 @@ export default function PositionsTable({
         {headerContent}
         <TableLoadingState
           message="Loading positions…"
-          fillViewport={fillViewport}
+          viewportOffset={viewportOffset}
         />
       </>
     );
@@ -747,8 +749,13 @@ export default function PositionsTable({
         {headerContent}
         <div
           className={`flex items-center justify-center text-destructive ${
-            fillViewport ? 'min-h-[calc(100svh-340px)]' : 'py-12'
+            viewportOffset !== undefined ? '' : 'py-12'
           }`}
+          style={
+            viewportOffset !== undefined
+              ? { minHeight: `calc(100svh - ${viewportOffset}px)` }
+              : undefined
+          }
         >
           Error loading positions
         </div>
@@ -762,7 +769,7 @@ export default function PositionsTable({
         {headerContent}
         <EmptyTabState
           message="No positions found"
-          fillViewport={fillViewport}
+          viewportOffset={viewportOffset}
         />
       </>
     );
@@ -777,7 +784,7 @@ export default function PositionsTable({
       <>
         {headerContent}
         <EmptyTabState
-          fillViewport={fillViewport}
+          viewportOffset={viewportOffset}
           message={
             hasMore && isFetchingMore
               ? 'Loading more positions…'

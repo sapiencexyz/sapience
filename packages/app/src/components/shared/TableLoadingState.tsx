@@ -3,22 +3,30 @@ import Loader from '~/components/shared/Loader';
 /**
  * Shared "Loading …" state for the profile-tab tables (Positions /
  * Forecasts / Activity). Pairs a small inline spinner with a font-mono
- * uppercase message and (optionally) stretches to fill the remaining
- * viewport height — accounting for the page header, profile section,
- * tabs row, and footer chrome.
+ * uppercase message and (optionally) stretches to `100svh -
+ * viewportOffset` so the panel covers the visible page area.
+ *
+ * `viewportOffset` is per-consumer because the chrome above each
+ * consumer differs (profile ~340, /feed ~200). Omit it for compact
+ * (py-12) rendering inside dialogs and embedded contexts.
  */
 export default function TableLoadingState({
   message,
-  fillViewport = false,
+  viewportOffset,
 }: {
   message: string;
-  fillViewport?: boolean;
+  viewportOffset?: number;
 }) {
   return (
     <div
       className={`flex items-center justify-center gap-2 ${
-        fillViewport ? 'min-h-[calc(100svh-340px)]' : 'py-12'
+        viewportOffset !== undefined ? '' : 'py-12'
       }`}
+      style={
+        viewportOffset !== undefined
+          ? { minHeight: `calc(100svh - ${viewportOffset}px)` }
+          : undefined
+      }
     >
       <Loader className="w-3 h-3" />
       <span className="text-sm text-muted-foreground font-mono uppercase">

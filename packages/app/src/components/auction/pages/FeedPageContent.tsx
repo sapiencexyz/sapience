@@ -15,7 +15,7 @@ const FeedPageContent: React.FC = () => {
   return (
     <div className="mx-auto pb-0 px-3 md:px-6 lg:px-8 w-full pt-4 md:pt-0">
       <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8">
-        <ActivityTable leftSlot={titleSlot} />
+        <ActivityTable leftSlot={titleSlot} viewportOffset={200} />
       </div>
     </div>
   );
