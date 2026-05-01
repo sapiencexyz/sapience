@@ -102,6 +102,8 @@ export default function CollateralBalanceButton({
     balance: smartAccountBalance,
     nativeBalance: smartAccountNativeBalance,
     wrappedBalance: smartAccountWrappedBalance,
+    rawNativeBalance: rawSmartAccountNativeBalance,
+    rawWrappedBalance: rawSmartAccountWrappedBalance,
     isLoading: isSmartAccountBalanceLoading,
     refetch: refetchSmartAccountBalance,
   } = useCollateralBalance({
@@ -125,19 +127,27 @@ export default function CollateralBalanceButton({
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [isWithdrawLoading, setIsWithdrawLoading] = useState(false);
   const [withdrawStatus, setWithdrawStatus] = useState('');
+  const [isWithdrawComplete, setIsWithdrawComplete] = useState(false);
   const { toast } = useToast();
 
   const { switchChainAsync } = useSwitchChain();
 
-  // Withdraw validation
+  // Withdraw validation — covers both wrapped and native USDe in the smart
+  // account, since the UserOp can unwrap atomically before transferring native
+  // out to the EOA.
   const withdrawAmountNum = parseFloat(withdrawAmount) || 0;
-  const maxWithdrawable = smartAccountWrappedBalance; // Can only withdraw wrapped balance
+  const maxWithdrawable =
+    smartAccountNativeBalance + smartAccountWrappedBalance;
   const isValidWithdraw =
     withdrawAmountNum > 0 && withdrawAmountNum <= maxWithdrawable;
 
-  // Set max withdraw amount when dialog opens
+  // Reset success/amount state when the dialog closes or reopens fresh
   useEffect(() => {
-    if (isWithdrawOpen && maxWithdrawable > 0) {
+    if (!isWithdrawOpen) {
+      setIsWithdrawComplete(false);
+      return;
+    }
+    if (maxWithdrawable > 0) {
       const floored = Math.floor(maxWithdrawable * 100) / 100;
       setWithdrawAmount(floored > 0 ? floored.toString() : '');
     }
@@ -175,21 +185,41 @@ export default function CollateralBalanceButton({
     setWithdrawStatus('Requesting signature...');
 
     try {
-      const amount = parseEther(withdrawAmountNum.toString());
+      const requestedAmount = parseEther(withdrawAmountNum.toString());
+      const rawMax =
+        rawSmartAccountNativeBalance + rawSmartAccountWrappedBalance;
+      // Float→wei rounding can push the requested value 1 wei over the actual
+      // balance when the user picks the "max" amount. Clamp so we never try
+      // to unwrap or send more than the SA holds.
+      const amount = requestedAmount > rawMax ? rawMax : requestedAmount;
 
-      // Transfer wUSDe directly to EOA (user can unwrap on their own if needed)
-      // This is a single call that can be sponsored by the paymaster
-      const calls: { to: Address; data: Hex; value: bigint }[] = [
-        {
+      // Spend native USDe first; only unwrap as much wUSDe as needed to cover
+      // the rest. This minimizes calls when the smart account already has
+      // native funds sitting alongside wrapped.
+      const fromNative =
+        amount <= rawSmartAccountNativeBalance
+          ? amount
+          : rawSmartAccountNativeBalance;
+      const fromWrapped = amount - fromNative;
+
+      const calls: { to: Address; data: Hex; value: bigint }[] = [];
+      if (fromWrapped > 0n) {
+        calls.push({
           to: wusdeAddress,
           data: encodeFunctionData({
             abi: WUSDE_ABI,
-            functionName: 'transfer',
-            args: [eoaAddress, amount],
+            functionName: 'withdraw',
+            args: [fromWrapped],
           }),
           value: 0n,
-        },
-      ];
+        });
+      }
+      // Native USDe transfer — bare value send, no calldata.
+      calls.push({
+        to: eoaAddress,
+        data: '0x',
+        value: amount,
+      });
 
       // Create owner signer from connector
       const provider = (await connector.getProvider()) as EIP1193Provider;
@@ -203,18 +233,18 @@ export default function CollateralBalanceButton({
 
       setWithdrawStatus('Confirm in wallet...');
 
-      // Execute via sudo transaction (requires wallet signature)
+      // Execute via sudo transaction (requires wallet signature). All calls
+      // bundle into one paymaster-sponsored UserOp — atomic unwrap + transfer.
       await executeSudoTransaction(ownerSigner, calls, DEFAULT_CHAIN_ID);
 
       setWithdrawStatus('');
+      setIsWithdrawComplete(true);
       toast({
         title: 'Withdraw Successful',
-        description: `${formatDollarLikeBalance(withdrawAmountNum)} wUSDe transferred to ${eoaAddress.slice(0, 6)}...${eoaAddress.slice(-4)}`,
+        description: `${formatDollarLikeBalance(withdrawAmountNum)} ${symbol} sent to ${eoaAddress.slice(0, 6)}...${eoaAddress.slice(-4)}`,
         duration: 5000,
       });
 
-      // Close dialog and refetch balances
-      setIsWithdrawOpen(false);
       setTimeout(() => {
         refetchEoaBalance();
         refetchSmartAccountBalance();
@@ -360,11 +390,12 @@ export default function CollateralBalanceButton({
       <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>Withdraw USDe</DialogTitle>
+            <DialogTitle>Withdraw to Wallet</DialogTitle>
           </DialogHeader>
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Withdraw USDe from your Sapience Account to your Ethereal Account.
+              Funds land as native {symbol} in your Ethereal Account, ready to
+              bridge out to another chain via Stargate.
             </p>
 
             {/* Two Account Cards (reversed from deposit) */}
@@ -494,29 +525,60 @@ export default function CollateralBalanceButton({
             </div>
 
             {/* Withdraw Input Section */}
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Input
-                  type="number"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="h-11 text-lg font-mono"
-                  disabled={isWithdrawLoading}
-                />
+            {!isWithdrawComplete && (
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Input
+                    type="number"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="h-11 text-lg font-mono"
+                    disabled={isWithdrawLoading}
+                  />
+                </div>
+                <Button
+                  className="h-11 px-4"
+                  onClick={handleWithdraw}
+                  disabled={
+                    isWithdrawLoading ||
+                    !smartAccountAddress ||
+                    !isValidWithdraw
+                  }
+                >
+                  {isWithdrawLoading
+                    ? withdrawStatus || 'Processing...'
+                    : 'Withdraw'}
+                </Button>
               </div>
-              <Button
-                className="h-11 px-4"
-                onClick={handleWithdraw}
-                disabled={
-                  isWithdrawLoading || !smartAccountAddress || !isValidWithdraw
-                }
-              >
-                {isWithdrawLoading
-                  ? withdrawStatus || 'Processing...'
-                  : 'Withdraw'}
-              </Button>
-            </div>
+            )}
+
+            {/* Success state — surface Stargate so the user can bridge native
+                USDe out to another chain. We pass Ethereal as srcChain since
+                that's where the funds now sit. */}
+            {isWithdrawComplete && (
+              <div className="space-y-3">
+                <p className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-400">
+                  Sent to your Ethereal Account as native {symbol}.
+                </p>
+                <Button className="h-11 w-full" asChild>
+                  <a
+                    href="https://stargate.finance/?srcChain=ethereal&srcToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Bridge to another chain via Stargate
+                  </a>
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setIsWithdrawOpen(false)}
+                  className="block mx-auto text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  Done
+                </button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
