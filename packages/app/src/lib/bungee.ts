@@ -50,6 +50,24 @@ export const BUNGEE_SOURCE_CHAIN_META: readonly BungeeSourceChainMeta[] = [
     iconUrl:
       'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png',
   },
+  {
+    chainId: 8453,
+    name: 'Base',
+    iconUrl:
+      'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png',
+  },
+  {
+    chainId: 56,
+    name: 'BNB Chain',
+    iconUrl:
+      'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/info/logo.png',
+  },
+  {
+    chainId: 999,
+    name: 'HyperEVM',
+    iconUrl:
+      'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/hyperliquid/info/logo.png',
+  },
 ] as const;
 
 // Symbols we surface in the source picker. Bungee's trending list returns

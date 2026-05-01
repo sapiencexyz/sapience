@@ -37,11 +37,19 @@ import {
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 
+type RecipientMode = 'smartAccount' | 'eoa';
+
 interface BungeeBridgePanelProps {
   eoaAddress?: Address;
   smartAccountAddress?: Address;
   collateralSymbol?: string;
   isCalculatingAddress?: boolean;
+  /**
+   * Which destination is preselected — typically derived from whether the user
+   * is in smart-account or wallet mode in the app. The user can override via
+   * the in-panel toggle.
+   */
+  defaultRecipient?: RecipientMode;
   /** Called once Bungee reports the destination delivery is fulfilled. */
   onDelivered?: () => void;
 }
@@ -72,8 +80,11 @@ const SOURCE_CHAIN_IDS = BUNGEE_SOURCE_CHAIN_META.map((c) => c.chainId);
 // pay source-chain gas for the deposit transaction. ERC-20 routes still need
 // native gas too, but their token balance is independent of that gas budget.
 const NATIVE_GAS_RESERVE_WEI_BY_CHAIN_ID: Record<number, bigint> = {
-  1: 10_000_000_000_000_000n, // 0.01 ETH
-  42161: 1_000_000_000_000_000n, // 0.001 ETH
+  1: 10_000_000_000_000_000n, // 0.01 ETH (Ethereum)
+  42161: 1_000_000_000_000_000n, // 0.001 ETH (Arbitrum)
+  8453: 500_000_000_000_000n, // 0.0005 ETH (Base)
+  56: 5_000_000_000_000_000n, // 0.005 BNB
+  999: 10_000_000_000_000_000n, // 0.01 HYPE
 };
 
 function getNativeGasReserveWei(chainId: number | undefined): bigint {
@@ -131,6 +142,7 @@ export default function BungeeBridgePanel({
   smartAccountAddress,
   collateralSymbol = 'USDe',
   isCalculatingAddress,
+  defaultRecipient = 'smartAccount',
   onDelivered,
 }: BungeeBridgePanelProps) {
   const { chain: activeChain } = useAccount();
@@ -139,9 +151,28 @@ export default function BungeeBridgePanel({
 
   const [selectedKey, setSelectedKey] = useState<string>('');
   const [amount, setAmount] = useState('');
+  const [recipient, setRecipient] = useState<RecipientMode>(defaultRecipient);
   const [requestHash, setRequestHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+
+  // If the prop changes (e.g. user switches account mode while the dialog is
+  // open), reflect that — but only when we're not mid-bridge, so we don't
+  // retarget an in-flight request.
+  const lastDefaultRecipient = useRef(defaultRecipient);
+  useEffect(() => {
+    if (lastDefaultRecipient.current === defaultRecipient) return;
+    lastDefaultRecipient.current = defaultRecipient;
+    if (!requestHash) setRecipient(defaultRecipient);
+  }, [defaultRecipient, requestHash]);
+
+  // Resolve the active receiver address. Falls back to EOA if SA isn't ready.
+  const resolvedReceiver: Address | undefined =
+    recipient === 'smartAccount'
+      ? (smartAccountAddress ?? undefined)
+      : eoaAddress;
+  const recipientLabel =
+    recipient === 'smartAccount' ? 'Sapience Account' : 'Ethereal Account';
 
   // Bungee's trending list per chain — feeds the source picker. Cached for
   // the session; tokens we expose via the allowlist don't churn meaningfully
@@ -218,12 +249,34 @@ export default function BungeeBridgePanel({
     address: eoaAddress,
     query: { enabled: !!eoaAddress },
   });
+  const nativeBalBase = useBalance({
+    chainId: 8453,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
+  const nativeBalBsc = useBalance({
+    chainId: 56,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
+  const nativeBalHyperEvm = useBalance({
+    chainId: 999,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
   const nativeBalanceByChainId: Record<number, bigint> = {
     1: nativeBalEthereum.data?.value ?? 0n,
     42161: nativeBalArbitrum.data?.value ?? 0n,
+    8453: nativeBalBase.data?.value ?? 0n,
+    56: nativeBalBsc.data?.value ?? 0n,
+    999: nativeBalHyperEvm.data?.value ?? 0n,
   };
   const nativeBalancesLoading =
-    nativeBalEthereum.isLoading || nativeBalArbitrum.isLoading;
+    nativeBalEthereum.isLoading ||
+    nativeBalArbitrum.isLoading ||
+    nativeBalBase.isLoading ||
+    nativeBalBsc.isLoading ||
+    nativeBalHyperEvm.isLoading;
 
   const { data: nativePricesUsd } = useQuery({
     queryKey: ['bungee-native-prices'],
@@ -258,6 +311,9 @@ export default function BungeeBridgePanel({
     erc20BalancesData,
     nativeBalEthereum.data?.value,
     nativeBalArbitrum.data?.value,
+    nativeBalBase.data?.value,
+    nativeBalBsc.data?.value,
+    nativeBalHyperEvm.data?.value,
     nativePricesUsd,
   ]);
 
@@ -347,7 +403,7 @@ export default function BungeeBridgePanel({
 
   const quoteEnabled =
     !!eoaAddress &&
-    !!smartAccountAddress &&
+    !!resolvedReceiver &&
     !!sourceToken &&
     sourceChainId !== undefined &&
     !!inputAmountWei &&
@@ -366,7 +422,7 @@ export default function BungeeBridgePanel({
       sourceToken?.address,
       inputAmountWei?.toString(),
       eoaAddress,
-      smartAccountAddress,
+      resolvedReceiver,
     ],
     queryFn: ({ signal }) =>
       fetchBungeeQuote(
@@ -377,7 +433,7 @@ export default function BungeeBridgePanel({
           outputToken: BUNGEE_NATIVE_TOKEN,
           inputAmount: inputAmountWei!.toString(),
           userAddress: eoaAddress!,
-          receiverAddress: smartAccountAddress!,
+          receiverAddress: resolvedReceiver!,
           refundAddress: eoaAddress!,
         },
         signal
@@ -495,7 +551,7 @@ export default function BungeeBridgePanel({
     if (!deposit) return 'No route available';
     if (isQuoteExpired)
       return isQuoting ? 'Refreshing quote…' : 'Quote expired';
-    return `Bridge to Sapience Account`;
+    return `Bridge to ${recipientLabel}`;
   })();
 
   const buttonDisabled =
@@ -644,18 +700,47 @@ export default function BungeeBridgePanel({
 
       {/* Est. Receive */}
       <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-3">
-        <div className="flex items-center gap-1.5 text-sm min-w-0">
-          <span className="text-muted-foreground shrink-0">To</span>
-          {isCalculatingAddress ? (
-            <span className="text-muted-foreground">—</span>
-          ) : smartAccountAddress ? (
-            <span className="flex items-center gap-1 min-w-0 truncate">
-              <EnsAvatar address={smartAccountAddress} width={14} height={14} />
-              <AddressDisplay address={smartAccountAddress} compact />
-              <span className="text-muted-foreground">(Sapience Account)</span>
-            </span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 text-sm min-w-0">
+            <span className="text-muted-foreground shrink-0">To</span>
+            {recipient === 'smartAccount' && isCalculatingAddress ? (
+              <span className="text-muted-foreground">—</span>
+            ) : resolvedReceiver ? (
+              <span className="flex items-center gap-1 min-w-0 truncate">
+                <EnsAvatar address={resolvedReceiver} width={14} height={14} />
+                <AddressDisplay address={resolvedReceiver} compact />
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </div>
+          {smartAccountAddress && eoaAddress && (
+            <div className="flex shrink-0 rounded-md border border-border/60 bg-background/40 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setRecipient('smartAccount')}
+                disabled={inputsLocked}
+                className={`px-2 py-0.5 rounded transition-colors disabled:opacity-50 ${
+                  recipient === 'smartAccount'
+                    ? 'bg-ethena/20 text-ethena'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Sapience Account
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecipient('eoa')}
+                disabled={inputsLocked}
+                className={`px-2 py-0.5 rounded transition-colors disabled:opacity-50 ${
+                  recipient === 'eoa'
+                    ? 'bg-ethena/20 text-ethena'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Wallet
+              </button>
+            </div>
           )}
         </div>
         <div className="flex items-center justify-between gap-3 min-w-0">
