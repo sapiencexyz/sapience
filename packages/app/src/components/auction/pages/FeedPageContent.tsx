@@ -13,9 +13,12 @@ const FeedPageContent: React.FC = () => {
   );
 
   return (
-    <div className="mx-auto pb-0 px-3 md:px-6 lg:px-8 w-full pt-4 md:pt-0">
-      <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8">
-        <ActivityTable leftSlot={titleSlot} viewportOffset={200} />
+    // flex-1 + flex-col so the bordered table container can grow to
+    // fill the column. The layout root reserves space for the fixed
+    // footer (sm:pb-[33px]), so flex-1 here cleanly stops above it.
+    <div className="mx-auto pb-3 md:pb-6 lg:pb-8 px-3 md:px-6 lg:px-8 w-full pt-4 md:pt-0 flex-1 flex flex-col">
+      <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8 flex-1 flex flex-col">
+        <ActivityTable leftSlot={titleSlot} fill />
       </div>
     </div>
   );

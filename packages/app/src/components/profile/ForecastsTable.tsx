@@ -49,11 +49,11 @@ import ConditionStatus from '~/components/shared/ConditionStatus';
 interface ForecastsTableProps {
   attesterAddress: string;
   leftSlot?: React.ReactNode;
-  /** Stretch the empty/loading panel to `100svh - viewportOffset`. Set
-   *  per-consumer because the chrome above each consumer differs.
-   *  Profile's tab uses 340; dialogs/question pages omit it for compact
-   *  rendering. */
-  viewportOffset?: number;
+  /** Grow the empty/loading panel via `flex-1` to fill the parent.
+   *  Caller is responsible for the flex ancestor chain (page wrapper
+   *  + bordered container both `flex flex-col flex-1`). Omit for the
+   *  compact rendering used inside dialogs / question page. */
+  fill?: boolean;
 }
 
 type ConditionData = {
@@ -212,7 +212,7 @@ const renderQuestionCell = ({
 const ForecastsTable = ({
   attesterAddress,
   leftSlot,
-  viewportOffset,
+  fill = false,
 }: ForecastsTableProps) => {
   // Share dialog state
   const [openShareUid, setOpenShareUid] = React.useState<string | null>(null);
@@ -721,20 +721,11 @@ const ForecastsTable = ({
         </div>
       </div>
       {isInitialLoading ? (
-        <TableLoadingState
-          message="Loading forecasts…"
-          viewportOffset={viewportOffset}
-        />
+        <TableLoadingState message="Loading forecasts…" fill={fill} />
       ) : hasNoData ? (
-        <EmptyTabState
-          viewportOffset={viewportOffset}
-          message="No forecasts found"
-        />
+        <EmptyTabState fill={fill} message="No forecasts found" />
       ) : filteredAttestations.length === 0 ? (
-        <EmptyTabState
-          viewportOffset={viewportOffset}
-          message="No forecasts match your filters"
-        />
+        <EmptyTabState fill={fill} message="No forecasts match your filters" />
       ) : (
         <>
           <div className="overflow-hidden bg-brand-black relative">

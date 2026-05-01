@@ -462,18 +462,18 @@ export default function PositionsTable({
   showHeaderText = true,
   chainId,
   leftSlot,
-  viewportOffset,
+  fill = false,
 }: {
   account?: Address;
   conditionId?: string;
   showHeaderText?: boolean;
   chainId?: number;
   leftSlot?: React.ReactNode;
-  /** Stretch the empty/loading panel to `100svh - viewportOffset`. Set
-   *  per-consumer because the chrome above each consumer differs.
-   *  Profile's tab uses 340; /feed uses 200; dialogs/question pages
-   *  omit it for compact rendering. */
-  viewportOffset?: number;
+  /** Grow the empty/loading panel via `flex-1` to fill the parent.
+   *  Caller is responsible for the flex ancestor chain (page wrapper
+   *  + bordered container both `flex flex-col flex-1`). Omit for the
+   *  compact rendering used inside dialogs / question page. */
+  fill?: boolean;
 }) {
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
@@ -735,10 +735,7 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <TableLoadingState
-          message="Loading positions…"
-          viewportOffset={viewportOffset}
-        />
+        <TableLoadingState message="Loading positions…" fill={fill} />
       </>
     );
   }
@@ -749,13 +746,8 @@ export default function PositionsTable({
         {headerContent}
         <div
           className={`flex items-center justify-center text-destructive ${
-            viewportOffset !== undefined ? '' : 'py-12'
+            fill ? 'flex-1' : 'py-12'
           }`}
-          style={
-            viewportOffset !== undefined
-              ? { minHeight: `calc(100svh - ${viewportOffset}px)` }
-              : undefined
-          }
         >
           Error loading positions
         </div>
@@ -767,10 +759,7 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState
-          message="No positions found"
-          viewportOffset={viewportOffset}
-        />
+        <EmptyTabState message="No positions found" fill={fill} />
       </>
     );
   }
@@ -784,7 +773,7 @@ export default function PositionsTable({
       <>
         {headerContent}
         <EmptyTabState
-          viewportOffset={viewportOffset}
+          fill={fill}
           message={
             hasMore && isFetchingMore
               ? 'Loading more positions…'

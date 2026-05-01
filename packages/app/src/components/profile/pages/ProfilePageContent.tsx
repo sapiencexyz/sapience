@@ -116,7 +116,9 @@ const ProfilePageContent = ({
   );
 
   return (
-    <div className="mx-auto pb-3 md:pb-6 lg:pb-8 px-3 md:px-6 lg:px-8 w-full pt-4 md:pt-0">
+    // flex-1 + flex-col so the tabs region can grow to fill the column
+    // (ContentArea is itself a flex column under the layout root).
+    <div className="mx-auto pb-3 md:pb-6 lg:pb-8 px-3 md:px-6 lg:px-8 w-full pt-4 md:pt-0 flex-1 flex flex-col">
       <ShareAfterRedirect address={address} />
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <ProfileHeader address={address} className="mb-0" />
@@ -129,36 +131,38 @@ const ProfilePageContent = ({
         ) : null}
       </div>
 
-      <div className="pb-0">
+      <div className="pb-0 flex-1 flex flex-col">
         <Tabs
           value={tabValue}
           onValueChange={handleTabChange}
-          className="w-full"
+          className="w-full flex-1 flex flex-col"
         >
-          <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8">
-            <TabsContent value="positions" className="mt-0">
+          <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8 flex-1 flex flex-col">
+            <TabsContent
+              value="positions"
+              className="mt-0 flex-1 flex flex-col"
+            >
               <PositionsTable
                 account={address}
                 showHeaderText={false}
                 leftSlot={tabSwitcher}
-                viewportOffset={340}
+                fill
               />
             </TabsContent>
 
-            <TabsContent value="forecasts" className="mt-0">
+            <TabsContent
+              value="forecasts"
+              className="mt-0 flex-1 flex flex-col"
+            >
               <ForecastsTable
                 attesterAddress={address}
                 leftSlot={tabSwitcher}
-                viewportOffset={340}
+                fill
               />
             </TabsContent>
 
-            <TabsContent value="activity" className="mt-0">
-              <ActivityTable
-                account={address}
-                leftSlot={tabSwitcher}
-                viewportOffset={340}
-              />
+            <TabsContent value="activity" className="mt-0 flex-1 flex flex-col">
+              <ActivityTable account={address} leftSlot={tabSwitcher} fill />
             </TabsContent>
           </div>
         </Tabs>

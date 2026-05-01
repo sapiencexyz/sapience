@@ -3,30 +3,26 @@ import Loader from '~/components/shared/Loader';
 /**
  * Shared "Loading …" state for the profile-tab tables (Positions /
  * Forecasts / Activity). Pairs a small inline spinner with a font-mono
- * uppercase message and (optionally) stretches to `100svh -
- * viewportOffset` so the panel covers the visible page area.
+ * uppercase message.
  *
- * `viewportOffset` is per-consumer because the chrome above each
- * consumer differs (profile ~340, /feed ~200). Omit it for compact
- * (py-12) rendering inside dialogs and embedded contexts.
+ * When `fill` is set, the box grows via `flex-1` to fill its parent
+ * flex column. The caller is responsible for setting up the flex
+ * ancestor chain (page wrapper + bordered container both `flex flex-col
+ * flex-1`). Omit `fill` for compact (py-12) rendering inside dialogs
+ * and embedded contexts.
  */
 export default function TableLoadingState({
   message,
-  viewportOffset,
+  fill = false,
 }: {
   message: string;
-  viewportOffset?: number;
+  fill?: boolean;
 }) {
   return (
     <div
       className={`flex items-center justify-center gap-2 ${
-        viewportOffset !== undefined ? '' : 'py-12'
+        fill ? 'flex-1' : 'py-12'
       }`}
-      style={
-        viewportOffset !== undefined
-          ? { minHeight: `calc(100svh - ${viewportOffset}px)` }
-          : undefined
-      }
     >
       <Loader className="w-3 h-3" />
       <span className="text-sm text-muted-foreground font-mono uppercase">

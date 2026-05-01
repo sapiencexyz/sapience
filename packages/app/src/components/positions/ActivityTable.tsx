@@ -577,7 +577,7 @@ export default function ActivityTable({
   hiddenColumns,
   filterPickConfigId,
   hideFilters,
-  viewportOffset,
+  fill = false,
 }: {
   account?: Address;
   conditionId?: string;
@@ -597,11 +597,11 @@ export default function ActivityTable({
   filterPickConfigId?: string;
   /** Hide the filter toolbar (search/status/value-range/date-range). */
   hideFilters?: boolean;
-  /** Stretch the empty/loading panel to `100svh - viewportOffset`. Set
-   *  per-consumer because the chrome above each consumer differs.
-   *  Profile's tab uses 340; /feed uses 200; dialogs/question pages
-   *  omit it for compact rendering. */
-  viewportOffset?: number;
+  /** Grow the empty/loading panel via `flex-1` to fill the parent.
+   *  Caller is responsible for the flex ancestor chain (page wrapper
+   *  + bordered container both `flex flex-col flex-1`). Omit for the
+   *  compact rendering used inside dialogs / question page. */
+  fill?: boolean;
 }) {
   const isHidden = React.useMemo(
     () => makeIsHidden(hiddenColumns),
@@ -759,10 +759,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <TableLoadingState
-          message="Loading activity…"
-          viewportOffset={viewportOffset}
-        />
+        <TableLoadingState message="Loading activity…" fill={fill} />
       </>
     );
   }
@@ -771,10 +768,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState
-          message="No activity found"
-          viewportOffset={viewportOffset}
-        />
+        <EmptyTabState message="No activity found" fill={fill} />
       </>
     );
   }
@@ -783,10 +777,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState
-          message="No activity matches your filters"
-          viewportOffset={viewportOffset}
-        />
+        <EmptyTabState message="No activity matches your filters" fill={fill} />
       </>
     );
   }
