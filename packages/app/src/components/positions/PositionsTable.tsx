@@ -354,14 +354,17 @@ function PositionRow({
       {/* Ends */}
       <TableCell className="whitespace-nowrap">
         {(() => {
-          if (isResolved && holderWon) {
+          const closedWithProfit =
+            isClosed && pnlValue !== null && pnlValue > 0;
+          const closedWithLoss = isClosed && pnlValue !== null && pnlValue < 0;
+          if ((isResolved && holderWon) || closedWithProfit) {
             return (
               <span className="whitespace-nowrap font-mono uppercase text-green-500">
                 WON
               </span>
             );
           }
-          if (isResolved && holderLost) {
+          if ((isResolved && holderLost) || closedWithLoss) {
             return (
               <span className="whitespace-nowrap font-mono uppercase text-red-500">
                 LOST
