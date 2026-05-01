@@ -15,6 +15,7 @@ import type {
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
+import { preloadPickConditions } from '../preloadPickConditions';
 
 const MAX_SKIP = 500;
 
@@ -142,30 +143,10 @@ export const accountActivity: NonNullable<
   // Pre-load conditions referenced by every Pick on this page (predictions
   // and trades) into ctx.pickConditions. The Pick.condition resolver reads
   // the cache and returns rows without per-pick round trips.
-  const pickConditions = ctx?.pickConditions;
-  if (pickConditions) {
-    const conditionIdSet = new Set<string>();
-    for (const r of predictions) {
-      for (const p of r.pickConfiguration?.picks ?? []) {
-        if (p.conditionId && !pickConditions.has(p.conditionId)) {
-          conditionIdSet.add(p.conditionId);
-        }
-      }
-    }
-    for (const pc of tradePickConfigs) {
-      for (const p of pc.picks ?? []) {
-        if (p.conditionId && !pickConditions.has(p.conditionId)) {
-          conditionIdSet.add(p.conditionId);
-        }
-      }
-    }
-    if (conditionIdSet.size > 0) {
-      const conditions = await prisma.condition.findMany({
-        where: { id: { in: Array.from(conditionIdSet) } },
-      });
-      for (const c of conditions) pickConditions.set(c.id, c);
-    }
-  }
+  await preloadPickConditions(ctx, [
+    ...predictions.map((r) => r.pickConfiguration),
+    ...tradePickConfigs,
+  ]);
 
   const pickConfigsByToken = new Map<
     string,

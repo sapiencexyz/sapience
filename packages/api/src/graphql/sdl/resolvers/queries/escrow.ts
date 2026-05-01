@@ -25,6 +25,7 @@ import type {
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
+import { preloadPickConditions } from '../preloadPickConditions';
 
 type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
@@ -98,7 +99,8 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     isLegacy,
     orderBy,
     orderDirection,
-  }
+  },
+  ctx
 ) => {
   const cappedTake = Math.max(1, Math.min(take, 100));
   const addr = address?.toLowerCase();
@@ -140,23 +142,29 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     skip,
     include: { pickConfiguration: { include: { picks: true } } },
   });
+  await preloadPickConditions(
+    ctx,
+    rows.map((r) => r.pickConfiguration)
+  );
   return rows.map(mapPrediction);
 };
 
 export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   _parent,
-  { id }
+  { id },
+  ctx
 ) => {
   const r = await prisma.prediction.findUnique({
     where: { predictionId: id.toLowerCase() },
     include: { pickConfiguration: { include: { picks: true } } },
   });
+  if (r) await preloadPickConditions(ctx, [r.pickConfiguration]);
   return r ? mapPrediction(r) : null;
 };
 
 export const pickConfigurations: NonNullable<
   QueryResolvers['pickConfigurations']
-> = async (_parent, { take, skip, chainId, resolved, result, tokens }) => {
+> = async (_parent, { take, skip, chainId, resolved, result, tokens }, ctx) => {
   const cappedTake = Math.max(1, Math.min(take, 100));
   const where: Prisma.PicksWhereInput = {};
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
@@ -181,16 +189,18 @@ export const pickConfigurations: NonNullable<
     skip,
     include: { picks: true },
   });
+  await preloadPickConditions(ctx, rows);
   return rows.map((r) => mapPickConfig(r));
 };
 
 export const pickConfiguration: NonNullable<
   QueryResolvers['pickConfiguration']
-> = async (_parent, { id }) => {
+> = async (_parent, { id }, ctx) => {
   const r = await prisma.picks.findUnique({
     where: { id: id.toLowerCase() },
     include: { picks: true },
   });
+  if (r) await preloadPickConditions(ctx, [r]);
   return r ? mapPickConfig(r) : null;
 };
 
@@ -357,23 +367,10 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
   // Pre-load every Pick.condition referenced by this page in one batch.
   // The Pick.condition field resolver reads from ctx.pickConditions and
   // returns the cached row without per-pick round trips.
-  const pickConditions = ctx?.pickConditions;
-  if (pickConditions) {
-    const conditionIds = new Set<string>();
-    for (const r of rows) {
-      for (const p of r.pickConfiguration?.picks ?? []) {
-        if (p.conditionId && !pickConditions.has(p.conditionId)) {
-          conditionIds.add(p.conditionId);
-        }
-      }
-    }
-    if (conditionIds.size > 0) {
-      const conditions = await prisma.condition.findMany({
-        where: { id: { in: Array.from(conditionIds) } },
-      });
-      for (const c of conditions) pickConditions.set(c.id, c);
-    }
-  }
+  await preloadPickConditions(
+    ctx,
+    rows.map((r) => r.pickConfiguration)
+  );
 
   // For each Position row we build a chronological event stream of primary
   // mints (Predictions) and secondary trades (buys + sells matching
