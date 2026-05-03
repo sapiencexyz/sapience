@@ -533,11 +533,11 @@ export default function CollateralBalanceButton({
               </div>
             </div>
 
-            {/* Withdraw + Bridge in a single row. Withdraw moves SA → wallet
-                on Ethereal (toast confirms); Bridge hands off to Stargate
-                for the cross-chain leg. Both stay visible so users can
-                bridge any time without navigating a "completed" screen. */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Withdraw and Stargate stacked. Withdraw moves SA → wallet on
+                Ethereal (toast confirms); Stargate handles the cross-chain
+                leg. Both stay visible so users can bridge any time without
+                navigating a "completed" screen. */}
+            <div className="space-y-4">
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
                   Withdraw to wallet
