@@ -19,6 +19,13 @@ const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const listeners = new Set<() => void>();
 
+// Cached array per storage key. `useSyncExternalStore` calls getSnapshot on
+// every check and compares by reference — if we re-parsed localStorage each
+// time we'd return a fresh array every call and trigger an infinite render
+// loop. Cache invalidates on internal writes (writeRaw) and cross-tab
+// `storage` events (subscribe).
+const snapshotCache = new Map<string, BridgeRecord[]>();
+
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && !!window.localStorage;
 }
@@ -27,10 +34,10 @@ function storageKey(eoa: Address): string {
   return `${STORAGE_PREFIX}${eoa.toLowerCase()}`;
 }
 
-function readRaw(eoa: Address): BridgeRecord[] {
+function parseFromStorage(key: string): BridgeRecord[] {
   if (!isBrowser()) return [];
   try {
-    const raw = window.localStorage.getItem(storageKey(eoa));
+    const raw = window.localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -49,17 +56,31 @@ function readRaw(eoa: Address): BridgeRecord[] {
   }
 }
 
+function readRaw(eoa: Address): BridgeRecord[] {
+  const key = storageKey(eoa);
+  const cached = snapshotCache.get(key);
+  if (cached !== undefined) return cached;
+  const fresh = parseFromStorage(key);
+  snapshotCache.set(key, fresh);
+  return fresh;
+}
+
 function writeRaw(eoa: Address, records: BridgeRecord[]): void {
-  if (!isBrowser()) return;
-  try {
-    if (records.length === 0) {
-      window.localStorage.removeItem(storageKey(eoa));
-    } else {
-      window.localStorage.setItem(storageKey(eoa), JSON.stringify(records));
+  const key = storageKey(eoa);
+  if (isBrowser()) {
+    try {
+      if (records.length === 0) {
+        window.localStorage.removeItem(key);
+      } else {
+        window.localStorage.setItem(key, JSON.stringify(records));
+      }
+    } catch {
+      // ignore quota / serialization failures
     }
-  } catch {
-    // ignore quota / serialization failures
   }
+  // Update cache to the new array identity so subsequent getSnapshot calls
+  // return the same reference until the next mutation.
+  snapshotCache.set(key, records);
   notify();
 }
 
@@ -106,7 +127,17 @@ export function subscribe(cb: () => void): () => void {
   let storageHandler: ((e: StorageEvent) => void) | null = null;
   if (isBrowser()) {
     storageHandler = (e: StorageEvent) => {
-      if (!e.key || e.key.startsWith(STORAGE_PREFIX)) cb();
+      // null key means localStorage.clear() — drop everything we cached.
+      if (e.key === null) {
+        snapshotCache.clear();
+        cb();
+        return;
+      }
+      if (!e.key.startsWith(STORAGE_PREFIX)) return;
+      // Another tab mutated this key — drop the cached array so the next
+      // read pulls fresh from localStorage.
+      snapshotCache.delete(e.key);
+      cb();
     };
     window.addEventListener('storage', storageHandler);
   }
