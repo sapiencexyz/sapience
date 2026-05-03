@@ -128,7 +128,6 @@ export default function CollateralBalanceButton({
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [isWithdrawLoading, setIsWithdrawLoading] = useState(false);
   const [withdrawStatus, setWithdrawStatus] = useState('');
-  const [isWithdrawComplete, setIsWithdrawComplete] = useState(false);
   const { toast } = useToast();
 
   const { switchChainAsync } = useSwitchChain();
@@ -142,12 +141,9 @@ export default function CollateralBalanceButton({
   const isValidWithdraw =
     withdrawAmountNum > 0 && withdrawAmountNum <= maxWithdrawable;
 
-  // Reset success/amount state when the dialog closes or reopens fresh
+  // Prefill the input with the user's max withdrawable when the dialog opens.
   useEffect(() => {
-    if (!isWithdrawOpen) {
-      setIsWithdrawComplete(false);
-      return;
-    }
+    if (!isWithdrawOpen) return;
     if (maxWithdrawable > 0) {
       const floored = Math.floor(maxWithdrawable * 100) / 100;
       setWithdrawAmount(floored > 0 ? floored.toString() : '');
@@ -239,7 +235,6 @@ export default function CollateralBalanceButton({
       await executeSudoTransaction(ownerSigner, calls, DEFAULT_CHAIN_ID);
 
       setWithdrawStatus('');
-      setIsWithdrawComplete(true);
       toast({
         title: 'Withdraw Successful',
         description: `${formatDollarLikeBalance(withdrawAmountNum)} ${symbol} sent to ${eoaAddress.slice(0, 6)}...${eoaAddress.slice(-4)}`,
@@ -538,42 +533,43 @@ export default function CollateralBalanceButton({
               </div>
             </div>
 
-            {/* Withdraw Input Section */}
-            {!isWithdrawComplete && (
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1">
+            {/* Withdraw + Bridge in a single row. Withdraw moves SA → wallet
+                on Ethereal (toast confirms); Bridge hands off to Stargate
+                for the cross-chain leg. Both stay visible so users can
+                bridge any time without navigating a "completed" screen. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+                  Withdraw to wallet
+                </p>
+                <div className="flex items-center gap-2">
                   <Input
                     type="number"
                     value={withdrawAmount}
                     onChange={(e) => setWithdrawAmount(e.target.value)}
                     placeholder="0.00"
-                    className="h-11 text-lg font-mono"
+                    className="h-11 text-lg font-mono flex-1"
                     disabled={isWithdrawLoading}
                   />
+                  <Button
+                    className="h-11 px-4 shrink-0"
+                    onClick={handleWithdraw}
+                    disabled={
+                      isWithdrawLoading ||
+                      !smartAccountAddress ||
+                      !isValidWithdraw
+                    }
+                  >
+                    {isWithdrawLoading
+                      ? withdrawStatus || 'Processing...'
+                      : 'Withdraw'}
+                  </Button>
                 </div>
-                <Button
-                  className="h-11 px-4"
-                  onClick={handleWithdraw}
-                  disabled={
-                    isWithdrawLoading ||
-                    !smartAccountAddress ||
-                    !isValidWithdraw
-                  }
-                >
-                  {isWithdrawLoading
-                    ? withdrawStatus || 'Processing...'
-                    : 'Withdraw'}
-                </Button>
               </div>
-            )}
 
-            {/* Success state — surface Stargate so the user can bridge native
-                USDe out to another chain. We pass Ethereal as srcChain since
-                that's where the funds now sit. */}
-            {isWithdrawComplete && (
-              <div className="space-y-3">
-                <p className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-400">
-                  Sent to your Ethereal Account as native {symbol}.
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+                  Bridge to another chain
                 </p>
                 <Button className="h-11 w-full" asChild>
                   <a
@@ -581,18 +577,11 @@ export default function CollateralBalanceButton({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Bridge to another chain via Stargate
+                    Open Stargate
                   </a>
                 </Button>
-                <button
-                  type="button"
-                  onClick={() => setIsWithdrawOpen(false)}
-                  className="block mx-auto text-xs text-muted-foreground hover:text-foreground underline"
-                >
-                  Done
-                </button>
               </div>
-            )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
