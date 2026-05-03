@@ -22,15 +22,10 @@ export default function FundDialog({ open, onOpenChange }: FundDialogProps) {
   const { smartAccountAddress, isCalculatingAddress, isUsingSmartAccount } =
     useSession();
 
-  const { symbol, refetch: refetchSmartAccountBalance } = useCollateralBalance({
+  const { symbol } = useCollateralBalance({
     address: smartAccountAddress as `0x${string}` | undefined,
     chainId: DEFAULT_CHAIN_ID,
     enabled: Boolean(smartAccountAddress),
-  });
-
-  const { refetch: refetchEoaBalance } = useCollateralBalance({
-    address: eoaAddress,
-    chainId: DEFAULT_CHAIN_ID,
   });
 
   return (
@@ -45,10 +40,6 @@ export default function FundDialog({ open, onOpenChange }: FundDialogProps) {
           collateralSymbol={symbol}
           isCalculatingAddress={isCalculatingAddress}
           defaultRecipient={isUsingSmartAccount ? 'smartAccount' : 'eoa'}
-          onDelivered={() => {
-            refetchEoaBalance();
-            refetchSmartAccountBalance();
-          }}
         />
       </DialogContent>
     </Dialog>

@@ -33,9 +33,12 @@ import {
   selectBungeeSourceTokens,
   type BungeeDeposit,
   type BungeeSourceToken,
+  type BungeeStatusEntry,
 } from '~/lib/bungee';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
+import { useBridgeTracker } from '~/hooks/useBridgeTracker';
+import type { BridgeRecord } from '~/lib/bridgeTracker';
 
 type RecipientMode = 'smartAccount' | 'eoa';
 
@@ -50,8 +53,6 @@ interface BungeeBridgePanelProps {
    * the in-panel toggle.
    */
   defaultRecipient?: RecipientMode;
-  /** Called once Bungee reports the destination delivery is fulfilled. */
-  onDelivered?: () => void;
 }
 
 const QUOTE_REFRESH_MS = 30_000;
@@ -143,28 +144,26 @@ export default function BungeeBridgePanel({
   collateralSymbol = 'USDe',
   isCalculatingAddress,
   defaultRecipient = 'smartAccount',
-  onDelivered,
 }: BungeeBridgePanelProps) {
   const { chain: activeChain } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const { sendTransactionAsync } = useSendTransaction();
+  const { bridges, addBridge } = useBridgeTracker();
 
   const [selectedKey, setSelectedKey] = useState<string>('');
   const [amount, setAmount] = useState('');
   const [recipient, setRecipient] = useState<RecipientMode>(defaultRecipient);
-  const [requestHash, setRequestHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
 
   // If the prop changes (e.g. user switches account mode while the dialog is
-  // open), reflect that — but only when we're not mid-bridge, so we don't
-  // retarget an in-flight request.
+  // open), reflect that.
   const lastDefaultRecipient = useRef(defaultRecipient);
   useEffect(() => {
     if (lastDefaultRecipient.current === defaultRecipient) return;
     lastDefaultRecipient.current = defaultRecipient;
-    if (!requestHash) setRecipient(defaultRecipient);
-  }, [defaultRecipient, requestHash]);
+    setRecipient(defaultRecipient);
+  }, [defaultRecipient]);
 
   // Resolve the active receiver address. Falls back to EOA if SA isn't ready.
   const resolvedReceiver: Address | undefined =
@@ -399,16 +398,13 @@ export default function BungeeBridgePanel({
     nativeBalancesLoading,
   ]);
 
-  const isInFlight = !!requestHash;
-
   const quoteEnabled =
     !!eoaAddress &&
     !!resolvedReceiver &&
     !!sourceToken &&
     sourceChainId !== undefined &&
     !!inputAmountWei &&
-    inputAmountWei > 0n &&
-    !isInFlight;
+    inputAmountWei > 0n;
 
   const {
     data: quote,
@@ -462,32 +458,13 @@ export default function BungeeBridgePanel({
   }, [deposit?.expiry]);
   const isQuoteExpired = !!deposit?.expiry && deposit.expiry <= nowSec;
 
-  const { data: statusData } = useQuery({
-    queryKey: ['bungee-status', requestHash],
-    queryFn: ({ signal }) => fetchBungeeStatus(requestHash!, signal),
-    enabled: !!requestHash,
-    refetchInterval: (q) => {
-      const last = q.state.data?.result?.[0];
-      if (last && isBungeeTerminal(last.bungeeStatusCode)) return false;
-      return STATUS_POLL_MS;
-    },
-  });
-  const statusEntry = statusData?.result?.[0];
-  const statusCode = statusEntry?.bungeeStatusCode;
-  const isComplete = isBungeeSuccess(statusCode);
-  const isFailed = isBungeeTerminal(statusCode) && !isBungeeSuccess(statusCode);
-
-  useEffect(() => {
-    if (isComplete && onDelivered) onDelivered();
-  }, [isComplete, onDelivered]);
-
   // Refresh the quote as soon as it expires, so the Bridge button never sits
   // wired to stale txData.
   useEffect(() => {
     if (!isQuoteExpired) return;
-    if (isQuoting || isInFlight || isSending) return;
+    if (isQuoting || isSending) return;
     refetchQuote();
-  }, [isQuoteExpired, isQuoting, isInFlight, isSending, refetchQuote]);
+  }, [isQuoteExpired, isQuoting, isSending, refetchQuote]);
 
   const handleBridge = async () => {
     if (!deposit || !eoaAddress || sourceChainId === undefined) return;
@@ -508,19 +485,16 @@ export default function BungeeBridgePanel({
         data: deposit.txData.data,
         value: BigInt(deposit.txData.value),
       });
-      setRequestHash(deposit.requestHash);
+      // Hand off to the tracker — the BridgeReconciler now owns status
+      // polling, the success/failure toast, and the balance refetches.
+      addBridge(deposit.requestHash, recipient);
+      setAmount('');
     } catch (e) {
       const err = e as { shortMessage?: string; message?: string };
       setErrorMsg(err.shortMessage || err.message || 'Transaction failed');
     } finally {
       setIsSending(false);
     }
-  };
-
-  const handleReset = () => {
-    setRequestHash(null);
-    setErrorMsg(null);
-    setAmount('');
   };
 
   const insufficientFunds =
@@ -538,13 +512,13 @@ export default function BungeeBridgePanel({
   const feePct = deposit ? Number(deposit.totalFeeBps) / 100 : null;
   const eta = deposit?.estimatedTime;
 
-  const inputsLocked = isInFlight && !isComplete && !isFailed;
+  // Inputs stay live — users can stack a second bridge while the first is
+  // still settling. The wallet will sequence by nonce. Only the brief moment
+  // while we wait for a wallet confirmation locks the form.
+  const inputsLocked = isSending;
 
   const buttonLabel = (() => {
-    if (isComplete) return 'Bridge again';
-    if (isFailed) return 'Try again';
     if (isSending) return 'Confirm in wallet…';
-    if (isInFlight) return `${describeBungeeStatus(statusCode)}…`;
     if (isQuoting && !deposit) return 'Getting quote…';
     if (insufficientFunds) return insufficientFundsLabel;
     if (!inputAmountWei) return 'Enter an amount';
@@ -555,16 +529,11 @@ export default function BungeeBridgePanel({
   })();
 
   const buttonDisabled =
-    !isComplete &&
-    !isFailed &&
-    (isSending ||
-      isInFlight ||
-      !deposit ||
-      insufficientFunds ||
-      !inputAmountWei ||
-      isQuoteExpired);
-
-  const buttonOnClick = isComplete || isFailed ? handleReset : handleBridge;
+    isSending ||
+    !deposit ||
+    insufficientFunds ||
+    !inputAmountWei ||
+    isQuoteExpired;
 
   const setAmountFraction = (fraction: number) => {
     if (!sourceToken || maxSpendableSourceBalance === 0n) return;
@@ -578,6 +547,19 @@ export default function BungeeBridgePanel({
 
   return (
     <div className="space-y-3 min-w-0">
+      {/* In-progress bridges. The reconciler polls these regardless of
+          whether the dialog is open; the rows surface them here when it is. */}
+      {bridges.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-mono">
+            In progress
+          </div>
+          {bridges.map((b) => (
+            <BridgeRow key={b.requestHash} record={b} />
+          ))}
+        </div>
+      )}
+
       {/* Amount card */}
       <div className="rounded-lg border-2 border-ethena/40 bg-muted/20 p-4 space-y-3 shadow-[0_0_12px_rgba(136,180,245,0.1)]">
         <div className="flex items-center justify-between gap-2 min-w-0">
@@ -793,26 +775,7 @@ export default function BungeeBridgePanel({
         </div>
       </details>
 
-      {/* Status / errors */}
-      {isInFlight && !isComplete && !isFailed && (
-        <div className="flex items-center gap-2 rounded-lg border border-ethena/40 bg-ethena/10 p-3 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin text-ethena" />
-          <span>Bridging — {describeBungeeStatus(statusCode)}</span>
-        </div>
-      )}
-      {isComplete && (
-        <p className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-400">
-          Funds delivered to your Sapience Account.
-        </p>
-      )}
-      {isFailed && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-400">
-          Bridge {describeBungeeStatus(statusCode).toLowerCase()}.{' '}
-          {statusEntry?.refund?.txHash
-            ? 'Refund processed to your wallet.'
-            : 'Funds were not delivered.'}
-        </p>
-      )}
+      {/* Errors */}
       {noRouteAvailable && (
         <p className="text-xs text-amber-500 px-1">
           No bridge route available for this amount.
@@ -826,7 +789,7 @@ export default function BungeeBridgePanel({
       {errorMsg && <p className="text-xs text-red-400 px-1">{errorMsg}</p>}
 
       <Button
-        onClick={buttonOnClick}
+        onClick={handleBridge}
         disabled={buttonDisabled}
         className="h-12 w-full text-base"
       >
@@ -852,6 +815,112 @@ function renderTokenChipInner(
         />
       </div>
       <span className="font-medium text-sm">{symbol}</span>
+    </div>
+  );
+}
+
+// Per-source-chain explorer for the deposit tx Bungee returns in status.
+const SOURCE_EXPLORER_TX_BASE: Record<number, string> = {
+  1: 'https://etherscan.io/tx/',
+  42161: 'https://arbiscan.io/tx/',
+  8453: 'https://basescan.org/tx/',
+  56: 'https://bscscan.com/tx/',
+  999: 'https://www.hyperscan.com/tx/',
+};
+
+function relativeTime(submittedAt: number): string {
+  const seconds = Math.max(0, Math.floor((Date.now() - submittedAt) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
+function BridgeRow({ record }: { record: BridgeRecord }) {
+  const { removeBridge } = useBridgeTracker();
+  const { data } = useQuery({
+    queryKey: ['bungee-status', record.requestHash],
+    queryFn: ({ signal }) => fetchBungeeStatus(record.requestHash, signal),
+    refetchInterval: (q) => {
+      const last = (
+        q.state.data as { result?: BungeeStatusEntry[] } | undefined
+      )?.result?.[0];
+      return last && isBungeeTerminal(last.bungeeStatusCode)
+        ? false
+        : STATUS_POLL_MS;
+    },
+    retry: 1,
+  });
+  const entry = data?.result?.[0];
+  const code = entry?.bungeeStatusCode;
+  const terminal = isBungeeTerminal(code);
+  const success = isBungeeSuccess(code);
+
+  const recipientLabel =
+    record.recipient === 'smartAccount'
+      ? 'Sapience Account'
+      : 'Ethereal Account';
+
+  // Choose colour for the status pill based on lifecycle state.
+  let pillClass = 'border-ethena/40 bg-ethena/10 text-ethena';
+  if (terminal && success) {
+    pillClass = 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+  } else if (terminal && !success) {
+    pillClass = 'border-red-500/40 bg-red-500/10 text-red-400';
+  }
+
+  const originTxHash = entry?.originData?.txHash;
+  const originChainId = entry?.originData?.chainId;
+  const explorerBase =
+    originChainId !== undefined
+      ? SOURCE_EXPLORER_TX_BASE[originChainId]
+      : undefined;
+  const explorerUrl =
+    originTxHash && explorerBase ? `${explorerBase}${originTxHash}` : undefined;
+
+  return (
+    <div className="rounded-lg border border-border/50 bg-muted/20 p-3 flex items-center gap-3 text-sm">
+      {!terminal ? (
+        <Loader2 className="h-4 w-4 animate-spin text-ethena shrink-0" />
+      ) : (
+        <span
+          className={`inline-block h-2 w-2 rounded-full shrink-0 ${
+            success ? 'bg-emerald-400' : 'bg-red-400'
+          }`}
+        />
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium truncate">→ {recipientLabel}</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded border ${pillClass}`}>
+            {describeBungeeStatus(code)}
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground flex items-center gap-2">
+          <span>{relativeTime(record.submittedAt)}</span>
+          {explorerUrl && (
+            <a
+              href={explorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground underline"
+            >
+              View tx
+            </a>
+          )}
+        </div>
+      </div>
+      {terminal && (
+        <button
+          type="button"
+          onClick={() => removeBridge(record.requestHash)}
+          className="text-muted-foreground hover:text-foreground text-xs"
+          aria-label="Dismiss"
+        >
+          ✕
+        </button>
+      )}
     </div>
   );
 }

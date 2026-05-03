@@ -37,6 +37,7 @@ import {
 import { formatUnits } from 'viem';
 import { useFundDialog } from '~/lib/context/FundDialogContext';
 import SponsorshipBadge from '~/components/shared/SponsorshipBadge';
+import BridgeProgressBadge from '~/components/layout/BridgeProgressBadge';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
 import {
@@ -279,7 +280,9 @@ export default function CollateralBalanceButton({
     !isSponsorLoading;
 
   return (
-    <div className={`flex w-fit mx-3 xl:mx-0 mt-0 ${className ?? ''}`}>
+    <div
+      className={`flex w-fit mx-3 xl:mx-0 mt-0 items-center gap-2 ${className ?? ''}`}
+    >
       {showFundButton ? (
         <button
           type="button"
@@ -385,6 +388,8 @@ export default function CollateralBalanceButton({
           </HoverCardContent>
         </HoverCard>
       )}
+
+      <BridgeProgressBadge />
 
       {/* Withdraw Dialog */}
       <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>

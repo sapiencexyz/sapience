@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import FundDialog from '~/components/layout/FundDialog';
+import BridgeReconciler from '~/components/layout/BridgeReconciler';
 
 interface FundDialogContextValue {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export function FundDialogProvider({ children }: { children: ReactNode }) {
     >
       {children}
       <FundDialog open={isOpen} onOpenChange={setIsOpen} />
+      <BridgeReconciler />
     </FundDialogContext.Provider>
   );
 }
