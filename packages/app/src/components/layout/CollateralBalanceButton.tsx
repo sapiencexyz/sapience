@@ -375,7 +375,7 @@ export default function CollateralBalanceButton({
                     onClick={() => setIsWithdrawOpen(true)}
                     className="text-xs text-muted-foreground hover:text-foreground underline"
                   >
-                    Withdraw from Sapience Account
+                    Withdraw from Sapience
                   </button>
                 )}
               </div>
