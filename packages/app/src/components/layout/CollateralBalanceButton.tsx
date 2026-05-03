@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useSendTransaction } from 'wagmi';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   HoverCard,
@@ -91,6 +91,7 @@ export default function CollateralBalanceButton({
     balance: eoaBalance,
     nativeBalance: eoaNativeBalance,
     wrappedBalance: eoaWrappedBalance,
+    rawWrappedBalance: rawEoaWrappedBalance,
     symbol,
     refetch: refetchEoaBalance,
   } = useCollateralBalance({
@@ -128,9 +129,48 @@ export default function CollateralBalanceButton({
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [isWithdrawLoading, setIsWithdrawLoading] = useState(false);
   const [withdrawStatus, setWithdrawStatus] = useState('');
+  const [isUnwrapping, setIsUnwrapping] = useState(false);
   const { toast } = useToast();
 
   const { switchChainAsync } = useSwitchChain();
+  const { sendTransactionAsync } = useSendTransaction();
+
+  // Unwrap any wUSDe sitting on the EOA. Stargate / most onward flows expect
+  // native USDe, and the SA-side unwrap doesn't help with stray wrapped that
+  // arrived via someone else's transfer or a prior session.
+  const handleUnwrapEoa = async () => {
+    if (!eoaAddress || rawEoaWrappedBalance === 0n) return;
+    setIsUnwrapping(true);
+    try {
+      await switchChainAsync({ chainId: DEFAULT_CHAIN_ID });
+      await sendTransactionAsync({
+        chainId: DEFAULT_CHAIN_ID,
+        to: wusdeAddress,
+        data: encodeFunctionData({
+          abi: WUSDE_ABI,
+          functionName: 'withdraw',
+          args: [rawEoaWrappedBalance],
+        }),
+        value: 0n,
+      });
+      toast({
+        title: 'Unwrapped',
+        description: `${formatDollarLikeBalance(eoaWrappedBalance)} wUSDe → ${symbol}`,
+        duration: 5000,
+      });
+      setTimeout(() => refetchEoaBalance(), 3000);
+    } catch (error: unknown) {
+      const err = error as { shortMessage?: string; message?: string };
+      toast({
+        title: 'Unwrap failed',
+        description: err.shortMessage || err.message || 'Failed to unwrap',
+        variant: 'destructive',
+        duration: 5000,
+      });
+    } finally {
+      setIsUnwrapping(false);
+    }
+  };
 
   // Withdraw validation — covers both wrapped and native USDe in the smart
   // account, since the UserOp can unwrap atomically before transferring native
@@ -420,7 +460,9 @@ export default function CollateralBalanceButton({
                       Step 1 — Withdraw to wallet
                     </p>
                     <div className="mt-1 flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">From</span>
+                      <span className="text-muted-foreground">
+                        From Sapience Account
+                      </span>
                       {isCalculatingAddress ? (
                         <span className="font-mono text-muted-foreground">
                           Calculating...
@@ -436,9 +478,6 @@ export default function CollateralBalanceButton({
                             address={smartAccountAddress}
                             compact
                           />
-                          <span className="text-muted-foreground">
-                            (Sapience Account)
-                          </span>
                         </span>
                       ) : (
                         <span className="font-mono text-muted-foreground">
@@ -518,7 +557,9 @@ export default function CollateralBalanceButton({
                       Step 2 — Bridge to another chain
                     </p>
                     <div className="mt-1 flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">From</span>
+                      <span className="text-muted-foreground">
+                        From Ethereal wallet
+                      </span>
                       {eoaAddress ? (
                         <span className="flex items-center gap-1">
                           <EnsAvatar
@@ -527,9 +568,6 @@ export default function CollateralBalanceButton({
                             height={14}
                           />
                           <AddressDisplay address={eoaAddress} compact />
-                          <span className="text-muted-foreground">
-                            (Ethereal wallet)
-                          </span>
                         </span>
                       ) : (
                         <span className="font-mono text-muted-foreground">
@@ -574,7 +612,26 @@ export default function CollateralBalanceButton({
                     </HoverCardContent>
                   </HoverCard>
                 </div>
-                <div className="pt-2 border-t border-border/30">
+                <div className="pt-2 border-t border-border/30 space-y-2">
+                  {/* If wUSDe is sitting on the EOA, surface a one-click
+                      unwrap so users can hand Stargate native USDe. */}
+                  {eoaWrappedBalance > 0 && (
+                    <div className="flex items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs">
+                      <span className="text-amber-400">
+                        {formatDollarLikeBalance(eoaWrappedBalance)} wUSDe in
+                        wallet — unwrap before bridging.
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-7 px-2 text-xs shrink-0"
+                        onClick={handleUnwrapEoa}
+                        disabled={isUnwrapping}
+                      >
+                        {isUnwrapping ? 'Unwrapping…' : 'Unwrap'}
+                      </Button>
+                    </div>
+                  )}
                   <Button className="h-11 w-full" asChild>
                     <a
                       href="https://stargate.finance/?srcChain=ethereal&srcToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
