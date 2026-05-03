@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { ArrowRight, Gift, Info } from 'lucide-react';
+import { Gift, Info } from 'lucide-react';
 import {
   parseEther,
   encodeFunctionData,
@@ -407,44 +407,58 @@ export default function CollateralBalanceButton({
               .
             </p>
 
-            {/* Two Account Cards (reversed from deposit) */}
-            <div className="flex items-stretch gap-3">
-              {/* Sapience Account Card */}
-              <div className="flex-1 rounded-lg border border-ethena/40 bg-brand-black p-4 space-y-3 shadow-[0_0_12px_rgba(136,180,245,0.15)]">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Sapience Account
-                  </p>
-                  {isCalculatingAddress ? (
-                    <span className="font-mono text-sm text-muted-foreground">
-                      Calculating...
-                    </span>
-                  ) : smartAccountAddress ? (
-                    <div className="flex items-center gap-2">
-                      <EnsAvatar
-                        address={smartAccountAddress}
-                        width={16}
-                        height={16}
-                      />
-                      <AddressDisplay address={smartAccountAddress} compact />
+            {/* Two stacked step cards. Each pairs an account (Sapience for
+                step 1, Ethereal wallet for step 2) with the action that
+                operates on it, so the account context reads as part of
+                the step rather than as a separate "from → to" diagram. */}
+            <div className="space-y-3">
+              {/* Step 1 — Withdraw from Sapience */}
+              <div className="rounded-lg border border-ethena/40 bg-brand-black p-4 space-y-3 shadow-[0_0_12px_rgba(136,180,245,0.15)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+                      Step 1 — Withdraw to wallet
+                    </p>
+                    <div className="mt-1 flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">From</span>
+                      {isCalculatingAddress ? (
+                        <span className="font-mono text-muted-foreground">
+                          Calculating...
+                        </span>
+                      ) : smartAccountAddress ? (
+                        <span className="flex items-center gap-1">
+                          <EnsAvatar
+                            address={smartAccountAddress}
+                            width={14}
+                            height={14}
+                          />
+                          <AddressDisplay
+                            address={smartAccountAddress}
+                            compact
+                          />
+                          <span className="text-muted-foreground">
+                            (Sapience Account)
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="font-mono text-muted-foreground">
+                          Not available
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <span className="font-mono text-sm text-muted-foreground">
-                      Not available
-                    </span>
-                  )}
-                </div>
-                <div className="pt-3 border-t border-border/30">
-                  <p className="text-xs text-muted-foreground">Balance</p>
+                  </div>
                   <HoverCard openDelay={100} closeDelay={100}>
                     <HoverCardTrigger asChild>
-                      <div className="flex items-baseline gap-1.5 cursor-default">
-                        <span className="font-mono text-lg font-medium text-brand-white">
-                          {formatDollarLikeBalance(smartAccountBalance)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {symbol}
-                        </span>
+                      <div className="text-right cursor-default shrink-0">
+                        <p className="text-xs text-muted-foreground">Balance</p>
+                        <div className="flex items-baseline justify-end gap-1.5">
+                          <span className="font-mono text-lg font-medium text-brand-white">
+                            {formatDollarLikeBalance(smartAccountBalance)}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {symbol}
+                          </span>
+                        </div>
                       </div>
                     </HoverCardTrigger>
                     <HoverCardContent side="top" className="w-auto p-3">
@@ -471,79 +485,7 @@ export default function CollateralBalanceButton({
                     </HoverCardContent>
                   </HoverCard>
                 </div>
-              </div>
-
-              {/* Arrow */}
-              <div className="flex items-center justify-center px-1">
-                <ArrowRight className="h-5 w-5 text-muted-foreground" />
-              </div>
-
-              {/* Ethereal Account Card */}
-              <div className="flex-1 rounded-lg border border-border/50 bg-muted/30 p-4 space-y-3">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Ethereal Account
-                  </p>
-                  {eoaAddress ? (
-                    <div className="flex items-center gap-2">
-                      <EnsAvatar address={eoaAddress} width={16} height={16} />
-                      <AddressDisplay address={eoaAddress} compact />
-                    </div>
-                  ) : (
-                    <span className="font-mono text-sm text-muted-foreground">
-                      Not connected
-                    </span>
-                  )}
-                </div>
-                <div className="pt-3 border-t border-border/30">
-                  <p className="text-xs text-muted-foreground">Balance</p>
-                  <HoverCard openDelay={100} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                      <div className="flex items-baseline gap-1.5 cursor-default">
-                        <span className="font-mono text-lg font-medium">
-                          {formatDollarLikeBalance(eoaBalance)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {symbol}
-                        </span>
-                      </div>
-                    </HoverCardTrigger>
-                    <HoverCardContent side="top" className="w-auto p-3">
-                      <div className="space-y-1.5 text-sm">
-                        <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">
-                            Native USDe
-                          </span>
-                          <span className="font-mono">
-                            {formatDollarLikeBalance(eoaNativeBalance)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">
-                            Wrapped USDe
-                          </span>
-                          <span className="font-mono">
-                            {formatDollarLikeBalance(eoaWrappedBalance)}
-                          </span>
-                        </div>
-                      </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                </div>
-              </div>
-            </div>
-
-            {/* Each action is wrapped in its own bordered card so the
-                labels read clearly as "this whole section's header" rather
-                than as a caption for the two-column account-cards row
-                above. Withdraw is the primary path; Stargate is reachable
-                any time as the cross-chain leg. */}
-            <div className="space-y-3">
-              <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-3">
-                <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
-                  Step 1 — Withdraw to wallet
-                </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 pt-2 border-t border-border/30">
                   <Input
                     type="number"
                     value={withdrawAmount}
@@ -568,19 +510,81 @@ export default function CollateralBalanceButton({
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-3">
-                <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
-                  Step 2 — Bridge to another chain
-                </p>
-                <Button className="h-11 w-full" asChild>
-                  <a
-                    href="https://stargate.finance/?srcChain=ethereal&srcToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Open Stargate
-                  </a>
-                </Button>
+              {/* Step 2 — Bridge from Ethereal wallet via Stargate */}
+              <div className="rounded-lg border border-border/50 bg-muted/30 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+                      Step 2 — Bridge to another chain
+                    </p>
+                    <div className="mt-1 flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">From</span>
+                      {eoaAddress ? (
+                        <span className="flex items-center gap-1">
+                          <EnsAvatar
+                            address={eoaAddress}
+                            width={14}
+                            height={14}
+                          />
+                          <AddressDisplay address={eoaAddress} compact />
+                          <span className="text-muted-foreground">
+                            (Ethereal wallet)
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="font-mono text-muted-foreground">
+                          Not connected
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <HoverCard openDelay={100} closeDelay={100}>
+                    <HoverCardTrigger asChild>
+                      <div className="text-right cursor-default shrink-0">
+                        <p className="text-xs text-muted-foreground">Balance</p>
+                        <div className="flex items-baseline justify-end gap-1.5">
+                          <span className="font-mono text-lg font-medium">
+                            {formatDollarLikeBalance(eoaBalance)}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {symbol}
+                          </span>
+                        </div>
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent side="top" className="w-auto p-3">
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">
+                            Native USDe
+                          </span>
+                          <span className="font-mono">
+                            {formatDollarLikeBalance(eoaNativeBalance)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">
+                            Wrapped USDe
+                          </span>
+                          <span className="font-mono">
+                            {formatDollarLikeBalance(eoaWrappedBalance)}
+                          </span>
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                </div>
+                <div className="pt-2 border-t border-border/30">
+                  <Button className="h-11 w-full" asChild>
+                    <a
+                      href="https://stargate.finance/?srcChain=ethereal&srcToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open Stargate
+                    </a>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
