@@ -399,8 +399,17 @@ export default function CollateralBalanceButton({
           </DialogHeader>
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Funds land as native {symbol} in your Ethereal Account, ready to
-              bridge out to another chain via Stargate.
+              Funds land as native {symbol} in your wallet on Ethereal, ready to
+              bridge out via{' '}
+              <a
+                href="https://stargate.finance/?srcChain=ethereal&srcToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gold-link font-medium"
+              >
+                Stargate
+              </a>
+              .
             </p>
 
             {/* Two Account Cards (reversed from deposit) */}
