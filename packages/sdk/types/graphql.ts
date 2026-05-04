@@ -1675,9 +1675,14 @@ export type Query = {
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
   /**
-   * Paginated referral codes with claim count and aggregate trading volume / position
-   * count baked in. Pass `id` to filter to a single code (e.g. for the analytics
-   * dialog). Per-claimant breakdown is available via the nested `claimants` field.
+   * Public referral analytics. Referral codes are attribution hints, not
+   * authorization credentials: using someone else's code credits that referrer's
+   * volume/claims, but does not grant access to funds or admin capabilities.
+   *
+   * Returns paginated referral codes with claim count and aggregate trading volume /
+   * position count baked in. Pass `id` to filter to a single code (e.g. for the
+   * analytics dialog). Per-claimant breakdown is available via the nested
+   * `claimants` field.
    */
   referralCodes: ReferralCodesPage;
   /** Look up a single secondary market trade by its trade hash */
@@ -2047,10 +2052,16 @@ export type QuestionSortField =
   | 'similarMarketVolume';
 
 /**
- * Referral code. `codeHash` is intentionally NOT exposed: redemption takes the
- * plaintext, hashes it server-side, and looks up by hash, so a leaked hash is
- * credential-equivalent against short / dictionary-style codes (keccak256 is
- * unsalted and GPU-fast). Identity for clients is the integer `id`.
+ * Public referral code metadata and analytics. This intentionally includes creator,
+ * claim counts, aggregate volume/position stats, and claimant breakdowns.
+ *
+ * Referral codes are low-security attribution hints: using someone else's code only
+ * credits that referrer; it does not grant access to funds or privileged actions.
+ *
+ * `codeHash` is intentionally omitted from GraphQL because public clients should
+ * not need it, and referral-code identity in this API is the integer `id`.
+ * Credentialed create/update REST paths may still return hashes to the caller that
+ * created or administers the code.
  */
 export type ReferralCode = {
   __typename?: 'ReferralCode';
@@ -2081,10 +2092,16 @@ export type ReferralCode = {
 
 
 /**
- * Referral code. `codeHash` is intentionally NOT exposed: redemption takes the
- * plaintext, hashes it server-side, and looks up by hash, so a leaked hash is
- * credential-equivalent against short / dictionary-style codes (keccak256 is
- * unsalted and GPU-fast). Identity for clients is the integer `id`.
+ * Public referral code metadata and analytics. This intentionally includes creator,
+ * claim counts, aggregate volume/position stats, and claimant breakdowns.
+ *
+ * Referral codes are low-security attribution hints: using someone else's code only
+ * credits that referrer; it does not grant access to funds or privileged actions.
+ *
+ * `codeHash` is intentionally omitted from GraphQL because public clients should
+ * not need it, and referral-code identity in this API is the integer `id`.
+ * Credentialed create/update REST paths may still return hashes to the caller that
+ * created or administers the code.
  */
 export type ReferralCodeClaimantsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
