@@ -874,7 +874,7 @@ export default function BungeeBridgePanel({
       {/* Errors */}
       {noRouteAvailable && (
         <p className="text-xs text-amber-500 px-1">
-          No bridge route for this amount — try a larger amount.
+          No bridge route for this amount. Try a larger amount.
         </p>
       )}
       {quoteError && !deposit && (
