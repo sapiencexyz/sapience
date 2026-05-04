@@ -10,7 +10,18 @@
  * via GraphQL.
  */
 
-import type { PickConfiguration } from '../__generated__/resolvers';
+import type {
+  PickConfiguration,
+  ResolversParentTypes,
+} from '../__generated__/resolvers';
+
+/** Resolver-parent shape for `PickConfiguration` — `picks` element's
+ *  `condition` resolves to a `PrismaConditionRow` (the value the
+ *  Condition resolver expects as parent), not the GraphQL `Condition`
+ *  model type. Returning the parent type avoids a Maybe<Condition>
+ *  vs Maybe<PrismaConditionRow> conflict that the model type would
+ *  cause once Pick has a `condition` field. */
+type PickConfigurationParent = ResolversParentTypes['PickConfiguration'];
 
 /** Prisma shape of a Picks row with its Pick[] children included. */
 export type PicksWithPicks = {
@@ -40,7 +51,7 @@ export type PicksWithPicks = {
 export const mapPickConfig = (
   pc: PicksWithPicks,
   extra?: { predictionId?: string | null }
-): PickConfiguration => ({
+): PickConfigurationParent => ({
   id: pc.id,
   chainId: pc.chainId,
   marketAddress: pc.marketAddress,

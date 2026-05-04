@@ -11,7 +11,7 @@ export const getDefaultForecastsFilterState =
   getDefaultFilterState<ResolutionStatus>;
 
 const FORECASTS_CONFIG: TableFiltersConfig<ResolutionStatus> = {
-  searchPlaceholder: 'Search question or comment',
+  searchPlaceholder: 'Search forecasts',
   statusOptions: [
     { value: 'pending', label: 'Pending' },
     { value: 'yes', label: 'Yes' },

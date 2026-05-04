@@ -16,7 +16,7 @@ const validators = {
     desc: 'Maximum requests per window per IP',
   }),
   GRAPHQL_MAX_COMPLEXITY: num({
-    default: 10000,
+    default: 15000,
     desc: 'Maximum allowed query complexity score',
   }),
   GRAPHQL_MAX_LIST_SIZE: num({

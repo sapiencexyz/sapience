@@ -2,10 +2,9 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchPickConfigurations,
+  type PickConfigurationCondition,
   type PickConfigurationResult,
 } from '@sapience/sdk/queries';
-import type { ConditionById } from '@sapience/sdk/queries/conditions';
-import { useConditionsByIds } from './useConditionsByIds';
 
 export type RecentCombo = {
   pickConfigId: string;
@@ -14,13 +13,15 @@ export type RecentCombo = {
     conditionId: string;
     conditionResolver: string;
     predictedOutcome: number;
-    condition: ConditionById | undefined;
+    condition: PickConfigurationCondition | undefined;
   }[];
 };
 
 /**
  * Fetches the N most recent multi-leg combos that were traded,
- * enriched with condition details.
+ * enriched with condition details. The server pre-loads
+ * `picks.condition` so this is a single round trip — no follow-up
+ * useConditionsByIds query.
  */
 export function useRecentCombos(opts: { chainId: number; count?: number }) {
   const { chainId, count = 3 } = opts;
@@ -57,43 +58,21 @@ export function useRecentCombos(opts: { chainId: number; count?: number }) {
     return result;
   }, [pickConfigs, count]);
 
-  // Collect all unique condition IDs
-  const conditionIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const pc of multiLegConfigs) {
-      for (const pick of pc.picks) {
-        ids.add(pick.conditionId);
-      }
-    }
-    return Array.from(ids);
-  }, [multiLegConfigs]);
-
-  // Fetch condition details
-  const {
-    map: conditionMap,
-    isLoading: isLoadingConditions,
-    error: conditionsError,
-  } = useConditionsByIds(conditionIds);
-
-  // Filter to combos where every condition is still active (not settled),
-  // then cap to the requested count.
-  // Return [] while conditions are loading to avoid flashing settled combos.
+  // Filter to combos where every condition is still active (not settled)
+  // and within the 1%–99% probability band, then cap to the requested count.
   const activeCombos = useMemo(() => {
-    if (conditionMap.size === 0) return [];
     return multiLegConfigs
       .filter((pc) =>
         pc.picks.every((p) => {
-          const c = conditionMap.get(p.conditionId);
+          const c = p.condition;
           if (!c || c.settled) return false;
-          // estimatedPrice is stored as a 0-1 probability; filter out only
-          // near-certain outcomes outside the 1%-99% band.
           const price = c.estimatedPrice ?? null;
           if (price !== null && (price < 0.01 || price > 0.99)) return false;
           return true;
         })
       )
       .slice(0, count);
-  }, [multiLegConfigs, conditionMap, count]);
+  }, [multiLegConfigs, count]);
 
   // Build enriched combos
   const combos: RecentCombo[] = useMemo(
@@ -111,17 +90,19 @@ export function useRecentCombos(opts: { chainId: number; count?: number }) {
           pickConfigId: pc.id,
           probability,
           picks: pc.picks.map((p) => ({
-            ...p,
-            condition: conditionMap.get(p.conditionId),
+            conditionId: p.conditionId,
+            conditionResolver: p.conditionResolver,
+            predictedOutcome: p.predictedOutcome,
+            condition: p.condition ?? undefined,
           })),
         };
       }),
-    [activeCombos, conditionMap]
+    [activeCombos]
   );
 
   return {
     combos,
-    isLoading: isLoadingConfigs || isLoadingConditions,
-    error: configsError || conditionsError,
+    isLoading: isLoadingConfigs,
+    error: configsError,
   };
 }

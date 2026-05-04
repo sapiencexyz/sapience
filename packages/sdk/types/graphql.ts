@@ -1420,6 +1420,8 @@ export type NullsOrder =
 /** Individual outcome pick within a pick configuration */
 export type Pick = {
   __typename?: 'Pick';
+  /** The condition this pick references. May be null if the conditionId is dangling. */
+  condition?: Maybe<Condition>;
   conditionId: Scalars['String']['output'];
   conditionResolver: Scalars['String']['output'];
   id: Scalars['Int']['output'];
@@ -1481,6 +1483,13 @@ export type Position = {
 export type PositionSortField =
   | 'CREATED_AT'
   | 'UPDATED_AT';
+
+/** Paginated wrapper around Position rows with a server-truth hasMore flag */
+export type PositionsPage = {
+  __typename?: 'PositionsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Position>;
+};
 
 /** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
 export type Prediction = {
@@ -1646,6 +1655,8 @@ export type Query = {
   positionCount: Scalars['Int']['output'];
   /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
   positions: Array<Position>;
+  /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. */
+  positionsPage: PositionsPage;
   /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
   /** Count of escrow predictions involving the given address */
@@ -1860,6 +1871,25 @@ export type QueryPositionCountArgs = {
 
 
 export type QueryPositionsArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  collateralMax?: InputMaybe<Scalars['String']['input']>;
+  collateralMin?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  endsAtMax?: InputMaybe<Scalars['Int']['input']>;
+  endsAtMin?: InputMaybe<Scalars['Int']['input']>;
+  holder?: InputMaybe<Scalars['String']['input']>;
+  holderWon?: InputMaybe<Scalars['Boolean']['input']>;
+  orderBy?: InputMaybe<PositionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  result?: InputMaybe<SettlementResult>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryPositionsPageArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;

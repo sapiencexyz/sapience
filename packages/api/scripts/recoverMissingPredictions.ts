@@ -25,11 +25,11 @@
  *   pnpm --filter @sapience/api exec tsx scripts/recoverMissingPredictions.ts --tx 0xabc...,0xdef...
  *   pnpm --filter @sapience/api exec tsx scripts/recoverMissingPredictions.ts --chainId 5064014
  */
-import prisma from '../src/core/db';
-import { contracts } from '@sapience/sdk/contracts';
-import PredictionMarketEscrowIndexer from '../src/workers/indexers/predictionMarketEscrowIndexer';
+import { contracts, normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import type { Block, Log } from 'viem';
+import prisma from '../src/core/db';
 import { getProviderForChain } from '../src/lib/utils';
+import PredictionMarketEscrowIndexer from '../src/workers/indexers/predictionMarketEscrowIndexer';
 
 const DEFAULT_TXS_5064014 = [
   '0x3617d01b5e9cc4967498848ac755d6b618ed271075bc8798ada27302fb675a71',
@@ -59,16 +59,51 @@ async function main(): Promise<void> {
   }
 
   const client = getProviderForChain(chainId);
-  const indexer = new PredictionMarketEscrowIndexer(chainId);
-  // processLog is private; cast to bypass for the one-shot.
-  const processLog = (
-    indexer as unknown as {
-      processLog: (log: Log, block: Block) => Promise<void>;
-    }
-  ).processLog.bind(indexer);
+
+  // Build a per-escrow indexer cache. When dispatching a log we pick the
+  // indexer instance whose contractAddress matches `log.address`, because
+  // the handlers' `getPrediction(predictionId)` RPC call only succeeds
+  // against the escrow that originally minted the prediction. Using the
+  // current escrow for a legacy-minted prediction returns `0x` and forces
+  // the handler down its "RPC failed → create Prediction without
+  // pickConfigId" fallback path, leaving Picks missing.
+  type EscrowEntry = { address: string; isLegacy: boolean; blockCreated: number };
+  const escrows: EscrowEntry[] = [
+    {
+      address: escrowConfig.address.toLowerCase(),
+      isLegacy: false,
+      blockCreated: escrowConfig.blockCreated ?? 0,
+    },
+    ...(escrowConfig.legacy ?? []).map((le) => {
+      const norm = normalizeLegacyEntry(le);
+      return {
+        address: norm.address.toLowerCase(),
+        isLegacy: true,
+        blockCreated: norm.blockCreated,
+      };
+    }),
+  ];
+  const indexerByAddr = new Map<
+    string,
+    (log: Log, block: Block) => Promise<void>
+  >();
+  for (const e of escrows) {
+    const ix = new PredictionMarketEscrowIndexer(
+      chainId,
+      e.address as `0x${string}`,
+      e.isLegacy,
+      e.blockCreated
+    );
+    const dispatch = (
+      ix as unknown as {
+        processLog: (log: Log, block: Block) => Promise<void>;
+      }
+    ).processLog.bind(ix);
+    indexerByAddr.set(e.address, dispatch);
+  }
 
   console.log(
-    `[recover] chainId=${chainId} escrow=${escrowConfig.address}  txs=${txs.length}`
+    `[recover] chainId=${chainId}  txs=${txs.length}  escrows=${escrows.length} (1 primary + ${escrows.length - 1} legacy)`
   );
 
   for (const tx of txs) {
@@ -113,12 +148,22 @@ async function main(): Promise<void> {
       `  Block ${blockNumber}: ${receipt.logs.length} total logs, ${escrowLogs.length} from escrow`
     );
 
-    // 5. Re-dispatch each escrow log through the indexer.
+    // 5. Re-dispatch each escrow log through the indexer instance whose
+    //    contractAddress matches the log's emitter — see comment above the
+    //    indexer cache for why per-escrow dispatch is required.
     for (const log of escrowLogs) {
+      const emitter = log.address.toLowerCase();
+      const dispatch = indexerByAddr.get(emitter);
+      if (!dispatch) {
+        console.log(
+          `    ✗ no indexer registered for emitter=${emitter} — skipping logIndex=${log.logIndex}`
+        );
+        continue;
+      }
       console.log(
-        `    → processLog logIndex=${log.logIndex}  topics0=${log.topics[0]?.slice(0, 14)}…`
+        `    → processLog logIndex=${log.logIndex}  emitter=${emitter.slice(0, 10)}…  topics0=${log.topics[0]?.slice(0, 14)}…`
       );
-      await processLog(log, block);
+      await dispatch(log, block);
     }
 
     // 6. Verify Picks + Prediction now exist.

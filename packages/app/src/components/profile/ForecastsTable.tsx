@@ -25,6 +25,8 @@ import React, { useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronUp, ChevronDown, CircleHelp, Info } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
+import TableLoadingState from '~/components/shared/TableLoadingState';
+import InfiniteScrollFooter from '~/components/shared/InfiniteScrollFooter';
 import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketBadge from '~/components/markets/MarketBadge';
@@ -32,7 +34,6 @@ import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
 import ShareDialog from '~/components/shared/ShareDialog';
 import { formatPercentChance } from '~/lib/format/percentChance';
-import Loader from '~/components/shared/Loader';
 import {
   ForecastsTableFilters,
   getDefaultForecastsFilterState,
@@ -48,6 +49,11 @@ import ConditionStatus from '~/components/shared/ConditionStatus';
 interface ForecastsTableProps {
   attesterAddress: string;
   leftSlot?: React.ReactNode;
+  /** Grow the empty/loading panel via `flex-1` to fill the parent.
+   *  Caller is responsible for the flex ancestor chain (page wrapper
+   *  + bordered container both `flex flex-col flex-1`). Omit for the
+   *  compact rendering used inside dialogs / question page. */
+  fill?: boolean;
 }
 
 type ConditionData = {
@@ -203,7 +209,11 @@ const renderQuestionCell = ({
   );
 };
 
-const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
+const ForecastsTable = ({
+  attesterAddress,
+  leftSlot,
+  fill = false,
+}: ForecastsTableProps) => {
   // Share dialog state
   const [openShareUid, setOpenShareUid] = React.useState<string | null>(null);
 
@@ -700,7 +710,10 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
   };
 
   return (
-    <div>
+    // When fill, propagate the flex-1 chain so the loading/empty box
+    // can grow to fill the parent TabsContent panel. Without this the
+    // wrapping div would clamp to the natural content height.
+    <div className={fill ? 'flex-1 flex flex-col' : ''}>
       <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
         {leftSlot}
         <div className="flex-1">
@@ -711,13 +724,11 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
         </div>
       </div>
       {isInitialLoading ? (
-        <div className="w-full min-h-[300px] flex items-center justify-center bg-brand-black/80">
-          <Loader className="w-6 h-6" />
-        </div>
+        <TableLoadingState message="Loading forecasts…" fill={fill} />
       ) : hasNoData ? (
-        <EmptyTabState centered message="No forecasts found" />
+        <EmptyTabState fill={fill} message="No forecasts found" />
       ) : filteredAttestations.length === 0 ? (
-        <EmptyTabState centered message="No forecasts match your filters" />
+        <EmptyTabState fill={fill} message="No forecasts match your filters" />
       ) : (
         <>
           <div className="overflow-hidden bg-brand-black relative">
@@ -897,23 +908,11 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           </div>
           {/* Infinite scroll sentinel - triggers auto-load when visible */}
           {hasMore && (
-            <div
+            <InfiniteScrollFooter
               ref={loadMoreRef}
-              className="flex items-center justify-center px-4 py-6 bg-brand-black"
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <Loader className="w-3 h-3" />
-                  <span className="text-sm text-muted-foreground">
-                    Loading more forecasts...
-                  </span>
-                </div>
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  Scroll to load more
-                </span>
-              )}
-            </div>
+              isLoading={isLoading}
+              loadingMessage="Loading more forecasts…"
+            />
           )}
         </>
       )}
