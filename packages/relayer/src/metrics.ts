@@ -77,6 +77,84 @@ export const auctionsStarted = new Counter({
   registers: [register],
 });
 
+export const auctionBroadcastSends = new Counter({
+  name: 'relayer_auction_broadcast_sends_total',
+  help: 'Per-client auction.started broadcast attempts',
+  // service+variant are bounded via serviceLabel()/variantLabel() so cardinality
+  // can't grow with arbitrary client-supplied strings.
+  labelNames: ['service', 'variant', 'ok'],
+  registers: [register],
+});
+
+export const auctionReceivedAcks = new Counter({
+  name: 'relayer_auction_received_acks_total',
+  help: 'Per-client auction.received acks gated by the broadcast ledger (proves end-to-end delivery)',
+  labelNames: ['service', 'variant'],
+  registers: [register],
+});
+
+export const auctionReceivedAckRejected = new Counter({
+  name: 'relayer_auction_received_ack_rejected_total',
+  help: 'auction.received messages dropped because the relayer never broadcast that auction to that client',
+  labelNames: ['reason'], // 'not_recipient' (no broadcast record) | 'invalid_payload'
+  registers: [register],
+});
+
+export const clientsIdentified = new Counter({
+  name: 'relayer_clients_identified_total',
+  help: 'Total identify handshakes accepted',
+  labelNames: ['service', 'variant'],
+  registers: [register],
+});
+
+// ============================================================================
+// Service / variant label allowlists
+// ============================================================================
+
+/**
+ * Bounded sets of identifier values that may appear as Prometheus label
+ * values. Anything sent by a client that doesn't match collapses to
+ * `'unknown'` so a misbehaving (or malicious) bot cannot blow up metric
+ * cardinality by sending a fresh string on every connect.
+ *
+ * `service` is the logical service name (kind of bot). `variant` is the
+ * strategy/vault flavor — kept orthogonal so we have at most one bot family
+ * per service, and `sum by (service) (...)` reports across all variants.
+ *
+ * Adding a value requires a code change here AND a relayer redeploy — the
+ * right tradeoff for a Prometheus label.
+ */
+export const KNOWN_SERVICE_LABELS = [
+  'auction-bidder',
+  'estimator',
+  'secondary-bidder',
+  'vault-quoter',
+  'anonymous',
+] as const;
+
+export const KNOWN_VARIANT_LABELS = [
+  'default',
+  'pyth',
+  'experimental',
+] as const;
+
+const KNOWN_SERVICE_LABEL_SET: ReadonlySet<string> = new Set(
+  KNOWN_SERVICE_LABELS
+);
+const KNOWN_VARIANT_LABEL_SET: ReadonlySet<string> = new Set(
+  KNOWN_VARIANT_LABELS
+);
+
+export function serviceLabel(rawService: string | undefined): string {
+  if (!rawService) return 'unknown';
+  return KNOWN_SERVICE_LABEL_SET.has(rawService) ? rawService : 'unknown';
+}
+
+export function variantLabel(rawVariant: string | undefined): string {
+  if (!rawVariant) return 'default';
+  return KNOWN_VARIANT_LABEL_SET.has(rawVariant) ? rawVariant : 'unknown';
+}
+
 export const bidsSubmitted = new Counter({
   name: 'relayer_bids_submitted_total',
   help: 'Total number of bids submitted',

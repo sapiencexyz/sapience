@@ -9,7 +9,22 @@
 /** Opaque handle to a connected client — transport-agnostic. */
 export interface ClientConnection {
   readonly id: string;
-  send(msg: unknown): void;
+  /**
+   * Mutable identity fields populated by the `identify` handshake.
+   * Anonymous clients (pre-handshake or clients that never identify) carry
+   * `service: 'anonymous'` so log lines always have a value.
+   */
+  service: string;
+  /**
+   * Strategy/vault flavor a bot serves (e.g. `'default'`, `'pyth'`).
+   * Used in tandem with `service` to break out metrics — see
+   * `KNOWN_VARIANT_LABELS` in metrics.ts.
+   */
+  variant: string;
+  instanceId?: string;
+  chainId?: number;
+  /** @returns `true` if the underlying transport accepted the message synchronously. */
+  send(msg: unknown): boolean;
   close(code?: number, reason?: string): void;
   readonly isOpen: boolean;
 }
