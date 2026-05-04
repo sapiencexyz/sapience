@@ -16,7 +16,6 @@ import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
-import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
 
 export interface SecondaryBidParams {
   /** Auction ID to bid on */
@@ -49,7 +48,11 @@ interface UseSecondaryBidOptions {
 
 /**
  * Hook for buyers to submit bids on secondary market listings.
- * Signs a TradeApproval with the buyer's address and submits via WS.
+ *
+ * Signs a TradeApproval with the buyer's address and submits via WS. When a
+ * session is active the signature is kernel-wrapped so the escrow can validate
+ * it on-chain via ERC-1271 (`isValidSignature`). buyerSessionKeyData is no
+ * longer populated — the legacy on-chain session-key path is being retired.
  */
 export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
   const {
@@ -64,9 +67,8 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
   const { signTypedDataAsync } = useSignTypedData();
   const {
     effectiveAddress,
-    signTypedDataRaw: sessionSignTypedDataRaw,
+    signTypedData: sessionSignTypedData,
     isUsingSession,
-    tradeSessionKeyApproval,
   } = useSession();
   const { apiBaseUrl } = useSettings();
 
@@ -178,10 +180,10 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       setIsSubmitting(true);
       let buyerSignature: Hex;
       try {
-        if (isUsingSession && sessionSignTypedDataRaw) {
-          // Session mode: raw ECDSA sign with session key (no kernel wrapping).
-          // The contract does ECDSA.recover() so it needs a raw 65-byte signature.
-          buyerSignature = await sessionSignTypedDataRaw({
+        if (isUsingSession && sessionSignTypedData) {
+          // Session mode: kernel-wrapped signature. The escrow validates it
+          // against the smart account via ERC-1271 (isValidSignature).
+          buyerSignature = await sessionSignTypedData({
             domain: {
               ...typedData.domain,
               chainId: Number(typedData.domain.chainId),
@@ -212,15 +214,8 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         };
       }
 
-      // Build buyerSessionKeyData for on-chain session key verification
-      let buyerSessionKeyData: string | undefined;
-      if (isUsingSession && tradeSessionKeyApproval) {
-        buyerSessionKeyData = encodeEscrowSessionKeyData(
-          tradeSessionKeyApproval
-        );
-      }
-
-      // Submit bid via WS
+      // Submit bid via WS — buyerSessionKeyData is no longer populated;
+      // ERC-1271 is the only remaining session validation path.
       const payload: SecondaryBidPayload = {
         auctionId,
         buyer: buyerAddress,
@@ -228,7 +223,6 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         buyerNonce: Number(nonce),
         buyerDeadline: Number(buyerDeadline),
         buyerSignature,
-        buyerSessionKeyData,
       };
 
       try {
@@ -260,9 +254,8 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       publicClient,
       sapienceWriteContract,
       signTypedDataAsync,
-      sessionSignTypedDataRaw,
+      sessionSignTypedData,
       isUsingSession,
-      tradeSessionKeyApproval,
       onSignatureRejected,
       onBidSubmitted,
     ]
