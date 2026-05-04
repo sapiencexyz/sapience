@@ -2,17 +2,30 @@ import type { Address } from 'viem';
 import type { RecipientMode } from './types';
 
 /**
- * Persisted record of a Bungee bridge we initiated. We deliberately keep
- * this minimal — Bungee's `/bungee/status?requestHash=` endpoint is the
- * source of truth for status, source/destination tx hashes, refund info,
- * etc. We just need enough here to (a) re-poll status across page reloads
- * and (b) phrase the success toast in terms the user recognizes.
+ * Persisted record of a Bungee bridge we initiated. The required fields
+ * are what we need to (a) re-poll status across page reloads and (b)
+ * phrase the success toast in terms the user recognizes — Bungee's
+ * `/bungee/status?requestHash=` endpoint stays the source of truth for
+ * delivery status, tx hashes, and refund info.
+ *
+ * Optional context fields are display-only hints captured at submit
+ * time so the in-progress row can immediately say "Bridging 100 USDC
+ * from Base → Sapience Account" instead of waiting on the first status
+ * poll. Treat them as best-effort: status data wins when it arrives.
  */
 export interface BridgeRecord {
   requestHash: string;
   eoaAddress: Address;
   submittedAt: number;
   recipient: RecipientMode;
+  sourceChainId?: number;
+  sourceChainName?: string;
+  sourceTokenSymbol?: string;
+  sourceTokenDecimals?: number;
+  /** Input amount as a wei string (decimals = sourceTokenDecimals). */
+  inputAmount?: string;
+  /** Resolved destination address at submit time. */
+  destinationAddress?: Address;
 }
 
 const STORAGE_PREFIX = 'sapience:bungee-bridges:';
@@ -35,6 +48,48 @@ function storageKey(eoa: Address): string {
   return `${STORAGE_PREFIX}${eoa.toLowerCase()}`;
 }
 
+function isBridgeRecord(value: unknown): value is BridgeRecord {
+  if (!value || typeof value !== 'object') return false;
+  const r = value as Record<string, unknown>;
+  if (typeof r.requestHash !== 'string') return false;
+  if (typeof r.eoaAddress !== 'string') return false;
+  if (typeof r.submittedAt !== 'number') return false;
+  if (r.recipient !== 'smartAccount' && r.recipient !== 'eoa') return false;
+  // Optional context — present-but-wrong-type rejects the whole record so we
+  // never feed garbage into the in-progress row's display.
+  if (r.sourceChainId !== undefined && typeof r.sourceChainId !== 'number') {
+    return false;
+  }
+  if (
+    r.sourceChainName !== undefined &&
+    typeof r.sourceChainName !== 'string'
+  ) {
+    return false;
+  }
+  if (
+    r.sourceTokenSymbol !== undefined &&
+    typeof r.sourceTokenSymbol !== 'string'
+  ) {
+    return false;
+  }
+  if (
+    r.sourceTokenDecimals !== undefined &&
+    typeof r.sourceTokenDecimals !== 'number'
+  ) {
+    return false;
+  }
+  if (r.inputAmount !== undefined && typeof r.inputAmount !== 'string') {
+    return false;
+  }
+  if (
+    r.destinationAddress !== undefined &&
+    typeof r.destinationAddress !== 'string'
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function parseFromStorage(key: string): BridgeRecord[] {
   if (!isBrowser()) return [];
   try {
@@ -42,16 +97,7 @@ function parseFromStorage(key: string): BridgeRecord[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (r): r is BridgeRecord =>
-        !!r &&
-        typeof r === 'object' &&
-        typeof (r as BridgeRecord).requestHash === 'string' &&
-        typeof (r as BridgeRecord).eoaAddress === 'string' &&
-        typeof (r as BridgeRecord).submittedAt === 'number' &&
-        ((r as BridgeRecord).recipient === 'smartAccount' ||
-          (r as BridgeRecord).recipient === 'eoa')
-    );
+    return parsed.filter(isBridgeRecord);
   } catch {
     return [];
   }

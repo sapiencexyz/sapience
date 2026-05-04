@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 import { useAccount } from 'wagmi';
+import type { Address } from 'viem';
 import {
   addBridge,
   getBridges,
@@ -12,6 +13,15 @@ import {
 import type { RecipientMode } from './types';
 
 const EMPTY: BridgeRecord[] = [];
+
+export interface BridgeContext {
+  sourceChainId?: number;
+  sourceChainName?: string;
+  sourceTokenSymbol?: string;
+  sourceTokenDecimals?: number;
+  inputAmount?: string;
+  destinationAddress?: Address;
+}
 
 /**
  * React hook over the Bungee bridge tracker, scoped to the connected EOA.
@@ -29,13 +39,18 @@ export function useBridgeTracker() {
   const bridges = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
 
   const add = useCallback(
-    (requestHash: string, recipient: RecipientMode) => {
+    (
+      requestHash: string,
+      recipient: RecipientMode,
+      context?: BridgeContext
+    ) => {
       if (!address) return;
       addBridge({
         requestHash,
         eoaAddress: address,
         submittedAt: Date.now(),
         recipient,
+        ...context,
       });
     },
     [address]

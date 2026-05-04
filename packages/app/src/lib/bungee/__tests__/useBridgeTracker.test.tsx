@@ -13,13 +13,23 @@ vi.mock('wagmi', () => ({
 import { useBridgeTracker } from '~/lib/bungee/useBridgeTracker';
 import { addBridge } from '~/lib/bungee/bridgeTracker';
 
+// Reset both localStorage and the tracker's in-memory snapshot cache.
+// The cache is invalidated by `storage` events with `key === null` (matching
+// the cross-tab `localStorage.clear()` behaviour), so we dispatch a synthetic
+// one to mirror it. Without this, dedup-by-requestHash inside addBridge sees
+// stale cached records and silently drops the second add.
+function resetTracker() {
+  window.localStorage.clear();
+  window.dispatchEvent(new StorageEvent('storage', { key: null }));
+}
+
 describe('useBridgeTracker', () => {
   beforeEach(() => {
     mockAddress = EOA;
-    window.localStorage.clear();
+    resetTracker();
   });
   afterEach(() => {
-    window.localStorage.clear();
+    resetTracker();
   });
 
   it('returns the live list scoped to the connected EOA', () => {
@@ -35,6 +45,26 @@ describe('useBridgeTracker', () => {
       requestHash: '0xabc',
       eoaAddress: EOA,
       recipient: 'smartAccount',
+    });
+  });
+
+  it('forwards optional context fields when provided', () => {
+    const { result } = renderHook(() => useBridgeTracker());
+    act(() => {
+      result.current.addBridge('0xabc', 'eoa', {
+        sourceChainId: 8453,
+        sourceChainName: 'Base',
+        sourceTokenSymbol: 'USDC',
+        sourceTokenDecimals: 6,
+        inputAmount: '100000000',
+        destinationAddress: EOA,
+      });
+    });
+    expect(result.current.bridges[0]).toMatchObject({
+      requestHash: '0xabc',
+      sourceChainId: 8453,
+      sourceTokenSymbol: 'USDC',
+      destinationAddress: EOA,
     });
   });
 

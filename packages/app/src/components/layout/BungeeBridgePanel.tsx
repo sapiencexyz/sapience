@@ -560,7 +560,17 @@ export default function BungeeBridgePanel({
       });
       // Hand off to the tracker — the BridgeReconciler now owns status
       // polling, the success/failure toast, and the balance refetches.
-      addBridge(deposit.requestHash, recipient);
+      // Display context (source chain/token/amount, destination address) is
+      // captured here so the in-progress row can render meaningful text
+      // before Bungee's first status poll resolves.
+      addBridge(deposit.requestHash, recipient, {
+        sourceChainId,
+        sourceChainName: selectedCombo?.chainName,
+        sourceTokenSymbol: sourceToken?.symbol,
+        sourceTokenDecimals: sourceToken?.decimals,
+        inputAmount: deposit.depositData.amount,
+        destinationAddress: resolvedReceiver,
+      });
       setAmount('');
     } catch (e) {
       const err = e as { shortMessage?: string; message?: string };

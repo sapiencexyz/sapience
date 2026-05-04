@@ -1,8 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAccount, useSendTransaction, useSwitchChain } from 'wagmi';
-import { encodeFunctionData, parseEther, type EIP1193Provider } from 'viem';
+import {
+  encodeFunctionData,
+  formatUnits,
+  parseEther,
+  type EIP1193Provider,
+} from 'viem';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
@@ -88,20 +93,35 @@ export default function WithdrawDialog({
   const [isAwaitingSignature, setIsAwaitingSignature] = useState(false);
   const [isUnwrapping, setIsUnwrapping] = useState(false);
 
-  const withdrawAmountNum = parseFloat(withdrawAmount) || 0;
-  const maxWithdrawable =
-    smartAccountNativeBalance + smartAccountWrappedBalance;
+  const rawTotalWithdrawable =
+    rawSmartAccountNativeBalance + rawSmartAccountWrappedBalance;
+
+  // Parse the input string straight to wei. No float round-trip — money code
+  // shouldn't depend on parseFloat precision when raw balances are already
+  // bigints. Returns null for empty / non-numeric / non-positive input.
+  const rawWithdrawAmount = useMemo<bigint | null>(() => {
+    if (!withdrawAmount) return null;
+    try {
+      const parsed = parseEther(withdrawAmount);
+      return parsed > 0n ? parsed : null;
+    } catch {
+      return null;
+    }
+  }, [withdrawAmount]);
+
   const isValidWithdraw =
-    withdrawAmountNum > 0 && withdrawAmountNum <= maxWithdrawable;
+    rawWithdrawAmount !== null && rawWithdrawAmount <= rawTotalWithdrawable;
 
   // Prefill the input with the user's max withdrawable when the dialog opens.
+  // Truncates to 2 decimals via string ops so the prefilled value can never
+  // exceed the actual balance (a float divide could).
   useEffect(() => {
     if (!open) return;
-    if (maxWithdrawable > 0) {
-      const floored = Math.floor(maxWithdrawable * 100) / 100;
-      setWithdrawAmount(floored > 0 ? floored.toString() : '');
-    }
-  }, [open, maxWithdrawable]);
+    if (rawTotalWithdrawable === 0n) return;
+    const [whole, dec = ''] = formatUnits(rawTotalWithdrawable, 18).split('.');
+    const truncated = dec.slice(0, 2);
+    setWithdrawAmount(truncated ? `${whole}.${truncated}` : whole);
+  }, [open, rawTotalWithdrawable]);
 
   // Unwrap any wUSDe sitting on the EOA. Stargate / most onward flows expect
   // native USDe, and the SA-side unwrap doesn't help with stray wrapped that
@@ -167,11 +187,13 @@ export default function WithdrawDialog({
       return;
     }
 
+    if (rawWithdrawAmount === null) return;
+
     setIsWithdrawLoading(true);
 
     try {
-      const { calls } = planWithdrawCalls({
-        rawAmount: parseEther(withdrawAmountNum.toString()),
+      const { calls, amount: sentAmount } = planWithdrawCalls({
+        rawAmount: rawWithdrawAmount,
         rawNative: rawSmartAccountNativeBalance,
         rawWrapped: rawSmartAccountWrappedBalance,
         recipient: eoaAddress,
@@ -195,7 +217,7 @@ export default function WithdrawDialog({
 
       toast({
         title: 'Withdraw Successful',
-        description: `${formatDollarLikeBalance(withdrawAmountNum)} ${symbol} sent to ${eoaAddress.slice(0, 6)}...${eoaAddress.slice(-4)}`,
+        description: `${formatDollarLikeBalance(formatUnits(sentAmount, 18))} ${symbol} sent to ${eoaAddress.slice(0, 6)}...${eoaAddress.slice(-4)}`,
         duration: 5000,
       });
 

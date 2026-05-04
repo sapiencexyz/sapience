@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
+import { formatUnits } from 'viem';
 import {
   describeBungeeStatus,
   fetchBungeeStatus,
@@ -14,7 +15,24 @@ import {
   type BungeeStatusEntry,
 } from '~/lib/bungee';
 import { SOURCE_EXPLORER_TX_BASE } from '~/lib/bungee/sources';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import EnsAvatar from '~/components/shared/EnsAvatar';
+import { formatBalance } from '~/lib/format/balance';
 import { relativeTime } from '~/lib/format/relativeTime';
+
+function formatPersistedAmount(
+  inputAmount: string | undefined,
+  decimals: number | undefined
+): string | undefined {
+  if (!inputAmount || decimals === undefined) return undefined;
+  try {
+    const n = Number(formatUnits(BigInt(inputAmount), decimals));
+    if (!Number.isFinite(n) || n <= 0) return undefined;
+    return formatBalance(n, 4);
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Single in-progress (or just-finalised) Bungee deposit row, rendered above
@@ -59,6 +77,20 @@ export default function DepositBridgeRow({ record }: { record: BridgeRecord }) {
   const explorerUrl =
     originTxHash && explorerBase ? `${explorerBase}${originTxHash}` : undefined;
 
+  // Compose "100 USDC from Base" when we persisted enough context at submit
+  // time. Falls back to bare "→ Sapience Account" for v1 records that
+  // pre-date the context fields.
+  const formattedAmount = formatPersistedAmount(
+    record.inputAmount,
+    record.sourceTokenDecimals
+  );
+  const sourceSummary =
+    formattedAmount && record.sourceTokenSymbol
+      ? `${formattedAmount} ${record.sourceTokenSymbol}${
+          record.sourceChainName ? ` from ${record.sourceChainName}` : ''
+        }`
+      : undefined;
+
   return (
     <div className="rounded-lg border border-border/50 bg-muted/20 p-3 flex items-center gap-3 text-sm">
       {!terminal ? (
@@ -71,9 +103,24 @@ export default function DepositBridgeRow({ record }: { record: BridgeRecord }) {
         />
       )}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium truncate">
-            → {recipientLabel(record.recipient)}
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          {sourceSummary && (
+            <span className="font-medium truncate">{sourceSummary}</span>
+          )}
+          <span className="font-medium flex items-center gap-1.5 min-w-0">
+            <span className="shrink-0">
+              → {recipientLabel(record.recipient)}
+            </span>
+            {record.destinationAddress && (
+              <span className="flex items-center gap-1 min-w-0 text-muted-foreground">
+                <EnsAvatar
+                  address={record.destinationAddress}
+                  width={14}
+                  height={14}
+                />
+                <AddressDisplay address={record.destinationAddress} compact />
+              </span>
+            )}
           </span>
           <span className={`text-xs px-1.5 py-0.5 rounded border ${pillClass}`}>
             {describeBungeeStatus(code)}

@@ -116,10 +116,54 @@ describe('bungee/bridgeTracker', () => {
           submittedAt: 1,
           recipient: 'mars',
         },
+        {
+          requestHash: 'bad-context-type',
+          eoaAddress: EOA,
+          submittedAt: 1,
+          recipient: 'eoa',
+          sourceChainId: 'not-a-number',
+        },
       ])
     );
     const out = getBridges(EOA);
     expect(out.map((r) => r.requestHash)).toEqual(['0xok']);
+  });
+
+  it('persists optional bridge context fields', () => {
+    addBridge(
+      makeRec({
+        sourceChainId: 8453,
+        sourceChainName: 'Base',
+        sourceTokenSymbol: 'USDC',
+        sourceTokenDecimals: 6,
+        inputAmount: '100000000',
+        destinationAddress: '0x0000000000000000000000000000000000002222',
+      })
+    );
+    const [stored] = getBridges(EOA);
+    expect(stored.sourceChainId).toBe(8453);
+    expect(stored.sourceChainName).toBe('Base');
+    expect(stored.sourceTokenSymbol).toBe('USDC');
+    expect(stored.sourceTokenDecimals).toBe(6);
+    expect(stored.inputAmount).toBe('100000000');
+    expect(stored.destinationAddress).toBe(
+      '0x0000000000000000000000000000000000002222'
+    );
+  });
+
+  it('keeps records lacking optional context (back-compat with v1 records)', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          requestHash: '0xv1',
+          eoaAddress: EOA,
+          submittedAt: 1,
+          recipient: 'smartAccount',
+        },
+      ])
+    );
+    expect(getBridges(EOA).map((r) => r.requestHash)).toEqual(['0xv1']);
   });
 
   it('returns [] when storage payload is not JSON', () => {
