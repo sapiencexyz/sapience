@@ -14,6 +14,8 @@ import {
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import EmptyTabState from '~/components/shared/EmptyTabState';
+import TableLoadingState from '~/components/shared/TableLoadingState';
+import InfiniteScrollFooter from '~/components/shared/InfiniteScrollFooter';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PicksSummary from '~/components/shared/PicksSummary';
 import PicksPopover from '~/components/shared/PicksPopover';
@@ -25,7 +27,6 @@ import {
   type Prediction,
   type PickConfigData,
 } from '~/hooks/graphql/usePositions';
-import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import {
   useAccountActivity,
   type PredictionActivity,
@@ -576,6 +577,7 @@ export default function ActivityTable({
   hiddenColumns,
   filterPickConfigId,
   hideFilters,
+  fill = false,
 }: {
   account?: Address;
   conditionId?: string;
@@ -595,6 +597,11 @@ export default function ActivityTable({
   filterPickConfigId?: string;
   /** Hide the filter toolbar (search/status/value-range/date-range). */
   hideFilters?: boolean;
+  /** Grow the empty/loading panel via `flex-1` to fill the parent.
+   *  Caller is responsible for the flex ancestor chain (page wrapper
+   *  + bordered container both `flex flex-col flex-1`). Omit for the
+   *  compact rendering used inside dialogs / question page. */
+  fill?: boolean;
 }) {
   const isHidden = React.useMemo(
     () => makeIsHidden(hiddenColumns),
@@ -627,18 +634,20 @@ export default function ActivityTable({
 
   const isAccountMode = !!account;
 
-  // ── Condition enrichment for all prediction items ────────────────────────
-  const conditionIds = React.useMemo(() => {
-    const ids = new Set<string>();
+  // Build the condition map from inline `picks.condition` data the server
+  // pre-loads. Avoids the second-round-trip waterfall the previous
+  // `useConditionsByIds(conditionIds)` call produced.
+  const conditionsMap: ConditionsMap = React.useMemo(() => {
+    const m: ConditionsMap = new Map();
     for (const item of items) {
       for (const pick of item.pickConfig?.picks ?? []) {
-        ids.add(pick.conditionId);
+        if (pick.condition && !m.has(pick.conditionId)) {
+          m.set(pick.conditionId, pick.condition);
+        }
       }
     }
-    return Array.from(ids);
+    return m;
   }, [items]);
-
-  const { map: conditionsMap } = useConditionsByIds(conditionIds);
 
   // ── Client-side filters ──────────────────────────────────────────────────
   const filteredItems = React.useMemo(() => {
@@ -750,11 +759,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <div className="flex items-center justify-center py-12">
-          <span className="text-sm text-muted-foreground font-mono uppercase">
-            Loading activity…
-          </span>
-        </div>
+        <TableLoadingState message="Loading activity…" fill={fill} />
       </>
     );
   }
@@ -763,7 +768,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No activity found" />
+        <EmptyTabState message="No activity found" fill={fill} />
       </>
     );
   }
@@ -772,7 +777,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No activity matches your filters" />
+        <EmptyTabState message="No activity matches your filters" fill={fill} />
       </>
     );
   }
@@ -853,7 +858,13 @@ export default function ActivityTable({
           </tbody>
         </table>
       </div>
-      <div ref={loadMoreRef} className="h-0" />
+      {activityHasMore && (
+        <InfiniteScrollFooter
+          ref={loadMoreRef}
+          isLoading={activityFetchingMore}
+          loadingMessage="Loading more activity…"
+        />
+      )}
       {sharePrediction && (
         <SharePredictionDialog
           sharePrediction={sharePrediction}

@@ -1,12 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
-import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
+import PercentChance from '~/components/shared/PercentChance';
 import MarketBadge from '~/components/markets/MarketBadge';
 
 interface TickerMarketCardProps {
@@ -20,13 +19,13 @@ interface TickerMarketCardProps {
     resolver?: string | null;
   };
   color: string;
-  predictionProbability?: number | null;
+  estimatedPrice?: number | null;
 }
 
 const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
   condition,
   color,
-  predictionProbability = null,
+  estimatedPrice = null,
 }) => {
   const {
     id,
@@ -112,12 +111,7 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
 
   return (
     <div className="w-auto">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="flex flex-row items-stretch relative overflow-hidden"
-      >
+      <div className="flex flex-row items-stretch relative overflow-hidden">
         <div className="w-auto max-w-none md:max-w-[720px]">
           <div className="pl-4 pr-0.5 py-2">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
@@ -139,13 +133,15 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
                 />
               </div>
               <div className="flex items-center gap-1 text-sm text-foreground/70 shrink-0">
-                <MarketPredictionRequest
-                  conditionId={id}
-                  className="text-sm"
-                  eager={predictionProbability == null}
-                  suppressLoadingPlaceholder
-                  prefetchedProbability={predictionProbability}
-                />
+                {estimatedPrice != null && (
+                  <PercentChance
+                    probability={estimatedPrice}
+                    showLabel
+                    label="chance"
+                    className="font-mono text-sm"
+                    colorByProbability
+                  />
+                )}
               </div>
               <YesNoSplitButton
                 onYes={handleYes}
@@ -162,7 +158,7 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
@@ -128,6 +128,81 @@ describe('useAccountActivity', () => {
       pickConfigId: 'pc1',
       conditionId: 'c1',
       type: 'trade',
+    });
+  });
+
+  it('fetches only the next page when loading more activity', async () => {
+    const useAccountActivity = await getHook();
+
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        accountActivity: [
+          {
+            type: 'prediction',
+            timestamp: 1700000000,
+            prediction: {
+              id: 'p1',
+              predictionId: '1',
+              predictor: '0xaaa',
+              counterparty: '0xbbb',
+              predictorCollateral: '0',
+              counterpartyCollateral: '0',
+              settled: false,
+              pickConfig: null,
+            },
+            trade: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        accountActivity: [
+          {
+            type: 'prediction',
+            timestamp: 1700000001,
+            prediction: {
+              id: 'p2',
+              predictionId: '2',
+              predictor: '0xccc',
+              counterparty: '0xddd',
+              predictorCollateral: '0',
+              counterpartyCollateral: '0',
+              settled: false,
+              pickConfig: null,
+            },
+            trade: null,
+          },
+        ],
+      });
+
+    const { result } = renderHook(() => useAccountActivity({ pageSize: 1 }), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.items.map((item) => item.timestamp)).toEqual([
+        1700000000 * 1000,
+      ]);
+    });
+
+    await act(async () => {
+      result.current.fetchMore();
+    });
+
+    await waitFor(() => {
+      expect(result.current.items.map((item) => item.timestamp)).toEqual([
+        1700000000 * 1000,
+        1700000001 * 1000,
+      ]);
+    });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
+      take: 1,
+      skip: 0,
+    });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
+      take: 1,
+      skip: 1,
     });
   });
 });

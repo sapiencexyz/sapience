@@ -37,16 +37,18 @@ export default function OpenInterestByCategoryChart() {
 
     const total = merged.reduce((acc, s) => acc + s.raw, 0n);
     const totalNum = Number(total) / 1e18;
-    return merged.map((s) => {
-      const value = Number(s.raw) / 1e18;
-      return {
-        name: s.name,
-        slug: s.slug,
-        color: getCategoryColor(s.slug),
-        value,
-        percent: totalNum > 0 ? (value / totalNum) * 100 : 0,
-      };
-    });
+    return merged
+      .filter((s) => s.raw > 0n)
+      .map((s) => {
+        const value = Number(s.raw) / 1e18;
+        return {
+          name: s.name,
+          slug: s.slug,
+          color: getCategoryColor(s.slug),
+          value,
+          percent: totalNum > 0 ? (value / totalNum) * 100 : 0,
+        };
+      });
   }, [data]);
 
   return (

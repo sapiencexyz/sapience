@@ -1274,6 +1274,10 @@ enum NullsOrder {
 
 """Individual outcome pick within a pick configuration"""
 type Pick {
+  """
+  The condition this pick references. May be null if the conditionId is dangling.
+  """
+  condition: Condition
   conditionId: String!
   conditionResolver: String!
   id: Int!
@@ -1336,6 +1340,14 @@ type Position {
 enum PositionSortField {
   CREATED_AT
   UPDATED_AT
+}
+
+"""
+Paginated wrapper around Position rows with a server-truth hasMore flag
+"""
+type PositionsPage {
+  hasMore: Boolean!
+  items: [Position!]!
 }
 
 """
@@ -1544,6 +1556,11 @@ type Query {
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
   positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
+
+  """
+  Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
+  """
+  positionsPage(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): PositionsPage!
 
   """Look up a single prediction by its on-chain prediction ID"""
   prediction(id: String!): Prediction

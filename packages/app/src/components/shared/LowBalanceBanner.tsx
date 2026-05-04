@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
+import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
+import { useFundDialog } from '~/lib/context/FundDialogContext';
 import { useBannerHeight } from '~/hooks/useBannerHeight';
 
 type LowBalanceBannerProps = {
@@ -28,7 +28,8 @@ const LowBalanceBanner: React.FC<LowBalanceBannerProps> = ({
     enabled: isConnected && !!address,
   });
   const [mounted, setMounted] = useState(false);
-  const bannerRef = useBannerHeight<HTMLAnchorElement>();
+  const bannerRef = useBannerHeight<HTMLButtonElement>();
+  const { openFundDialog } = useFundDialog();
 
   useEffect(() => {
     setMounted(true);
@@ -51,18 +52,17 @@ const LowBalanceBanner: React.FC<LowBalanceBannerProps> = ({
   if (!mounted) return null;
 
   return (
-    <a
+    <button
       ref={bannerRef}
-      href={STARGATE_DEPOSIT_URL}
-      target="_blank"
-      rel="noopener noreferrer"
+      type="button"
+      onClick={openFundDialog}
       className={`relative z-[9999] bg-ethena text-brand-black py-1 leading-none text-center font-mono text-xs font-semibold uppercase tracking-widest hover:opacity-80 transition-opacity duration-300 ease-out cursor-pointer overflow-hidden block whitespace-nowrap w-full ${className ?? ''}`}
     >
       <span className="relative z-10">
         Deposit Ethereal USDe to get started
       </span>
       <span className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-    </a>
+    </button>
   );
 };
 

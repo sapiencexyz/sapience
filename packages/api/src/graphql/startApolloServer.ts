@@ -22,13 +22,28 @@ export interface ApolloContext {
   // operationTimingPlugin in willSendResponse. Optional because the
   // complexity plugin skips pure-introspection queries.
   queryComplexity?: number;
+  /**
+   * Optional per-request cache: conditionId → Prisma Condition row.
+   *
+   * Hot resolvers (positions, accountActivity) batch-load every
+   * referenced Condition up front and populate this map; the
+   * Pick.condition field resolver then returns rows from the cache
+   * without a per-pick round trip. Resolvers that don't pre-populate
+   * fall back to per-pick lookups.
+   *
+   * Stored on context (not as a request-scoped DataLoader) because we
+   * already do the batching ourselves before mapPickConfig and just
+   * need a place to stash the map for the field resolver to read.
+   */
+  pickConditions?: Map<string, unknown>;
 }
 
 export const initializeApolloServer = async () => {
   const schema = await buildApiSchema({ emitSchemaFile: true });
 
-  // Default of 10000 allows all legitimate app queries (max ~8700) while blocking
-  // deeply nested queries like conditions(take: 200) with 5 levels of nesting (~55000)
+  // Default of 15000 covers legitimate app queries (positions(take:50) with
+  // inline Pick.condition tops ~11000) while still blocking deeply nested
+  // queries like conditions(take: 200) with 5 levels of nesting (~55000).
   const maxComplexity = config.GRAPHQL_MAX_COMPLEXITY;
 
   console.log(`GraphQL query complexity limit set to: ${maxComplexity}`);
@@ -49,7 +64,10 @@ export const initializeApolloServer = async () => {
       return formattedError;
     },
     introspection: true,
-    validationRules: [depthLimit(5)],
+    // accountActivity → prediction → pickConfig → picks → condition →
+    // category → slug naturally needs depth 6. Limit kept tight enough to
+    // still block fan-out like conditions(take: 200) with 5+ relations.
+    validationRules: [depthLimit(6)],
     plugins: [
       ApolloServerPluginLandingPageLocalDefault({
         embed: true,
