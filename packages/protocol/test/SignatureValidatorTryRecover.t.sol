@@ -7,29 +7,9 @@ import "../src/PredictionMarketTokenFactory.sol";
 import "../src/resolvers/mocks/ManualConditionResolver.sol";
 import "../src/interfaces/IV2Types.sol";
 import "../src/interfaces/IPredictionMarketEscrow.sol";
-import "../src/utils/IAccountFactory.sol";
 import "../src/utils/SignatureValidator.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./mocks/MockERC20.sol";
-
-/// @notice Mock account factory
-contract MockAccountFactoryTV is IAccountFactory {
-    mapping(address => mapping(uint256 => address)) private _accounts;
-
-    function setAccount(address owner_, uint256 index, address account)
-        external
-    {
-        _accounts[owner_][index] = account;
-    }
-
-    function getAccountAddress(address owner_, uint256 index)
-        external
-        view
-        returns (address)
-    {
-        return _accounts[owner_][index];
-    }
-}
 
 /// @notice Smart account that accepts both 65-byte and 64-byte (EIP-2098 compact) sigs
 contract CompactSigSmartAccount is IERC1271 {
@@ -137,7 +117,6 @@ contract SignatureValidatorTryRecoverTest is Test {
     PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
     MockERC20 public collateralToken;
-    MockAccountFactoryTV public factory;
 
     address public admin;
     address public settler;
@@ -201,11 +180,6 @@ contract SignatureValidatorTryRecoverTest is Test {
         signer2 = vm.addr(signer2Pk);
         signer3 = vm.addr(signer3Pk);
 
-        // Deploy factory and map smart accounts
-        factory = new MockAccountFactoryTV();
-        factory.setAccount(owner, 0, smartAccount);
-        factory.setAccount(owner2, 0, smartAccount2);
-
         // Deploy collateral
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
 
@@ -217,7 +191,6 @@ contract SignatureValidatorTryRecoverTest is Test {
         );
         vm.startPrank(admin);
         tokenFactory.setDeployer(address(market));
-        market.setAccountFactory(address(factory));
         vm.stopPrank();
 
         // Deploy resolver
@@ -301,36 +274,12 @@ contract SignatureValidatorTryRecoverTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function _createSessionKeyData(
-        address _sessionKey,
-        address _owner,
-        uint256 _ownerPk,
-        address _smartAccount,
-        bytes32 permissionsHash
-    ) internal view returns (bytes memory) {
-        uint256 validUntil =
-            block.timestamp + SESSION_DURATION;
-
-        bytes32 sessionApprovalHash = market.getSessionKeyApprovalHash(
-            _sessionKey,
-            _smartAccount,
-            validUntil,
-            permissionsHash,
-            block.chainid
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_ownerPk, sessionApprovalHash);
-        bytes memory ownerSig = abi.encodePacked(r, s, v);
-
-        IV2Types.SessionKeyData memory skData = IV2Types.SessionKeyData({
-            sessionKey: _sessionKey,
-            owner: _owner,
-            validUntil: validUntil,
-            permissionsHash: permissionsHash,
-            chainId: block.chainid,
-            ownerSignature: ownerSig
-        });
-
-        return abi.encode(skData);
+    /// @notice Any non-empty bytes blob — the legacy on-chain session-key
+    /// path is now refused before decode, so the precise contents do not
+    /// matter. The escrow reverts with `LegacySessionKeyDataDisabled` purely
+    /// based on `sessionKeyData.length != 0`.
+    function _legacySessionKeyDataBlob() internal pure returns (bytes memory) {
+        return hex"deadbeef";
     }
 
     function _buildMintRequest(
@@ -812,16 +761,12 @@ contract SignatureValidatorTryRecoverTest is Test {
     // ================================================================
 
     function test_mint_legacySessionKeyData_reverts() public {
-        bytes memory predictorSKData = _createSessionKeyData(
-            sessionKey, owner, ownerPk, smartAccount, keccak256("MINT")
-        );
-
         IV2Types.MintRequest memory request = _buildMintRequest(
             smartAccount,
             eoaCounterparty,
             sessionKeyPk,
             eoaCounterpartyPk,
-            predictorSKData,
+            _legacySessionKeyDataBlob(),
             ""
         );
 
@@ -832,17 +777,13 @@ contract SignatureValidatorTryRecoverTest is Test {
     }
 
     function test_mint_legacySessionKeyData_counterparty_reverts() public {
-        bytes memory counterpartySKData = _createSessionKeyData(
-            sessionKey, owner, ownerPk, smartAccount, keccak256("MINT")
-        );
-
         IV2Types.MintRequest memory request = _buildMintRequest(
             eoaPredictor,
             smartAccount,
             eoaPredictorPk,
             sessionKeyPk,
             "",
-            counterpartySKData
+            _legacySessionKeyDataBlob()
         );
 
         vm.expectRevert(
@@ -851,8 +792,10 @@ contract SignatureValidatorTryRecoverTest is Test {
         market.mint(request);
     }
 
-    // Burn-side legacy reject is exercised in SessionKeyERC1271 / Secondary
-    // tests where ERC-1271 mock accounts can take a successful mint first.
+    // Burn-side legacy reject is exercised in SessionKeyERC1271 where the
+    // mock smart accounts can take a successful ERC-1271 mint first and then
+    // attempt a burn with a legacy blob. See
+    // `test_burn_legacySessionKeyData_*_reverts` there.
 
     // ================================================================
     // 3. EOA PATH: basic coverage for completeness

@@ -89,13 +89,6 @@ contract PredictionMarketEscrow is
 
     // ============ Admin Functions ============
 
-    /// @notice Set the account factory for session key smart account verification
-    /// @param factory_ The account factory address (e.g., ZeroDev Kernel factory)
-    /// @dev Only callable by owner. Set to address(0) to disable strict verification
-    function setAccountFactory(address factory_) external onlyOwner {
-        _setAccountFactory(factory_);
-    }
-
     /// @notice Sweep dust collateral from a fully-redeemed pick configuration
     /// @param pickConfigId The pick configuration to sweep dust from
     /// @param recipient Address to receive the dust

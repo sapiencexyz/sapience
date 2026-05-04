@@ -143,24 +143,6 @@ contract MockMultisig is IERC1271 {
     }
 }
 
-contract MockAccountFactory {
-    mapping(address => mapping(uint256 => address)) private _accounts;
-
-    function setAccount(address owner, uint256 index, address account)
-        external
-    {
-        _accounts[owner][index] = account;
-    }
-
-    function getAccountAddress(address owner, uint256 index)
-        external
-        view
-        returns (address)
-    {
-        return _accounts[owner][index];
-    }
-}
-
 contract SecondaryMarketEscrowTest is Test {
     SecondaryMarketEscrow public escrow;
     MockERC20 public positionToken;
@@ -190,8 +172,7 @@ contract SecondaryMarketEscrowTest is Test {
         buyer = vm.addr(buyerPk);
         relayer = vm.addr(4);
 
-        // Deploy contracts (no account factory for basic tests)
-        escrow = new SecondaryMarketEscrow(address(0));
+        escrow = new SecondaryMarketEscrow();
         positionToken = new MockERC20("Position Token", "POS", 18);
         collateralToken = new MockERC20("Collateral", "USDE", 18);
 
@@ -1110,10 +1091,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
     SecondaryMarketEscrow public escrow;
     MockERC20 public positionToken;
     MockERC20 public collateralToken;
-    MockAccountFactory public factory;
 
-    uint256 public ownerPk;
-    address public owner;
     uint256 public sessionKeyPk;
     address public sessionKey;
 
@@ -1131,18 +1109,13 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
     bytes32 public constant REF_CODE = keccak256("test-ref");
 
     function setUp() public {
-        ownerPk = 10;
-        owner = vm.addr(ownerPk);
         sessionKeyPk = 11;
         sessionKey = vm.addr(sessionKeyPk);
         buyerPk = 12;
         buyer = vm.addr(buyerPk);
         smartAccount = address(0xBEEF);
 
-        factory = new MockAccountFactory();
-        factory.setAccount(owner, 0, smartAccount);
-
-        escrow = new SecondaryMarketEscrow(address(factory));
+        escrow = new SecondaryMarketEscrow();
         positionToken = new MockERC20("Position Token", "POS", 18);
         collateralToken = new MockERC20("Collateral", "USDE", 18);
 
@@ -1184,27 +1157,12 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function _createSessionKeyData() internal view returns (bytes memory) {
-        uint256 validUntil = block.timestamp + 1 days;
-        bytes32 permissionsHash = keccak256("TRADE");
-
-        // Owner signs session key approval
-        bytes32 sessionApprovalHash = escrow.getSessionKeyApprovalHash(
-            sessionKey, smartAccount, validUntil, permissionsHash, block.chainid
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPk, sessionApprovalHash);
-        bytes memory ownerSig = abi.encodePacked(r, s, v);
-
-        IV2Types.SessionKeyData memory skData = IV2Types.SessionKeyData({
-            sessionKey: sessionKey,
-            owner: owner,
-            validUntil: validUntil,
-            permissionsHash: permissionsHash,
-            chainId: block.chainid,
-            ownerSignature: ownerSig
-        });
-
-        return abi.encode(skData);
+    /// @notice Any non-empty bytes blob — the legacy on-chain session-key
+    /// path is now refused before decode, so the precise contents do not
+    /// matter. The escrow reverts with `LegacySessionKeyDataDisabled` purely
+    /// based on `sessionKeyData.length != 0`.
+    function _legacySessionKeyDataBlob() internal pure returns (bytes memory) {
+        return hex"deadbeef";
     }
 
     // The legacy on-chain session-key path used factory CREATE2 derivation as
@@ -1239,7 +1197,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
         request.sellerSignature = sellerSig;
         request.buyerSignature = buyerSig;
         request.refCode = REF_CODE;
-        request.sellerSessionKeyData = _createSessionKeyData();
+        request.sellerSessionKeyData = _legacySessionKeyDataBlob();
         request.buyerSessionKeyData = "";
 
         vm.expectRevert(
@@ -1294,7 +1252,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
         request.buyerSignature = buyerSig;
         request.refCode = REF_CODE;
         request.sellerSessionKeyData = "";
-        request.buyerSessionKeyData = _createSessionKeyData();
+        request.buyerSessionKeyData = _legacySessionKeyDataBlob();
 
         vm.expectRevert(
             ISecondaryMarketEscrow.LegacySessionKeyDataDisabled.selector

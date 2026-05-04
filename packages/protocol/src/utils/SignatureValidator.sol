@@ -4,21 +4,25 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import "./IAccountFactory.sol";
 import "./ECDSAHelper.sol";
 
 /**
  * @title SignatureValidator
- * @notice EIP-712 signature validation for prediction market requests
- * @dev Supports both EOA signatures and ZeroDev session key signatures
+ * @notice EIP-712 signature validation for prediction market mint and burn
+ *         approvals. Accepts EOA ECDSA signatures and smart-account ERC-1271
+ *         (`isValidSignature`) signatures against the request signer.
+ * @dev The legacy `sessionKeyData` blob path (factory CREATE2 derivation as
+ *      proof of authority) was removed in favour of ERC-1271. Smart accounts
+ *      using session keys must do so through their own validator (e.g. Kernel
+ *      permission validator) so the smart account validates the signature
+ *      itself. The escrow refuses any non-empty `sessionKeyData` with
+ *      `LegacySessionKeyDataDisabled`.
  *
- * Session Key Flow (Option B):
- * 1. Owner creates a session key and signs a SessionKeyApproval authorizing it
- * 2. Session key signs the MintApproval message
- * 3. Contract verifies:
- *    - Session key signature on the message
- *    - Owner's session approval proving authorization
- *    - Smart account derivation from owner (verified against account factory)
+ *      The `_revokedSessionKeys` registry below is preserved as an advisory,
+ *      caller-scoped on-chain log so dapps and indexers can keep tracking
+ *      session-key invalidations. The contract no longer reads the registry
+ *      itself — authority is determined exclusively by the smart account's
+ *      ERC-1271 policy.
  */
 abstract contract SignatureValidator is EIP712 {
     /// @notice EIP-712 typehash for mint approval
@@ -31,116 +35,58 @@ abstract contract SignatureValidator is EIP712 {
         "BurnApproval(bytes32 burnHash,address signer,uint256 tokenAmount,uint256 payout,uint256 nonce,uint256 deadline)"
     );
 
-    /// @notice EIP-712 typehash for session key approval (owner authorizing a session key)
-    /// @dev Includes chainId to prevent cross-chain replay attacks
-    bytes32 public constant SESSION_KEY_APPROVAL_TYPEHASH = keccak256(
-        "SessionKeyApproval(address sessionKey,address smartAccount,uint256 validUntil,bytes32 permissionsHash,uint256 chainId)"
-    );
-
-    /// @notice Permission hash for mint operations
-    bytes32 public constant MINT_PERMISSION = keccak256("MINT");
-
-    /// @notice Permission hash for burn operations
-    bytes32 public constant BURN_PERMISSION = keccak256("BURN");
-
-    /// @notice Trusted account factory for smart account verification
-    /// @dev Used to verify that a smart account is derived from the claimed owner
-    IAccountFactory public accountFactory;
-
-    /// @notice Revoked session keys: owner => sessionKey => revokedAt timestamp
+    /// @notice Advisory registry of session-key revocations: caller =>
+    ///         sessionKey => revokedAt timestamp. Indexed by `msg.sender` of
+    ///         `revokeSessionKey`, which is the smart account itself in the
+    ///         normal flow. The contract does not read this mapping during
+    ///         signature validation; it exists for off-chain tooling only.
     mapping(address => mapping(address => uint256)) internal
         _revokedSessionKeys;
 
-    /// @notice Emitted when the account factory is updated
-    event AccountFactoryUpdated(
-        address indexed oldFactory, address indexed newFactory
-    );
-
-    /// @notice Emitted when a session key is revoked
+    /// @notice Emitted when a session key is recorded as revoked
     event SessionKeyRevoked(
         address indexed owner, address indexed sessionKey, uint256 revokedAt
     );
 
-    /// @notice Error when smart account verification fails
-    error SmartAccountVerificationFailed(
-        address owner, address claimedAccount, address expectedAccount
-    );
-
-    /// @notice Error when account factory is not set but session key validation is attempted
-    error AccountFactoryNotSet();
-
-    /// @notice Error when a revoked session key is used
-    error SessionKeyIsRevoked();
-
-    /// @notice Error when a request supplies the legacy session-key data blob.
-    /// @dev The legacy path validated authority via factory CREATE2 derivation,
-    /// which does not reflect the current Kernel validator/owner of a smart
-    /// account. After validator rotation a rotated-out owner could still pass
-    /// the legacy check, so the path is now refused on chain. Use the smart
-    /// account's ERC-1271 (`isValidSignature`) by sending empty
-    /// `sessionKeyData` (`"0x"`) and a kernel-wrapped session-key signature.
+    /// @notice Reverts when a request supplies the legacy session-key data
+    ///         blob. The path validated authority via factory CREATE2
+    ///         derivation, which cannot reflect a smart account's current
+    ///         Kernel validator/owner. Callers must send empty
+    ///         `sessionKeyData` (`"0x"`) and rely on ERC-1271 for smart
+    ///         accounts.
     error LegacySessionKeyDataDisabled();
+
+    /// @notice Gas limit for EIP-1271 signature validation calls
+    /// @dev Prevents malicious contracts from consuming all gas
+    uint256 internal constant EIP1271_GAS_LIMIT = 500_000;
 
     constructor() EIP712("PredictionMarketEscrow", "1") { }
 
-    /// @notice Revoke a session key so it can no longer be used for signing
-    /// @param sessionKey The session key address to revoke
+    /// @notice Record a session-key revocation in the advisory registry.
+    /// @dev The contract no longer enforces this mapping during signature
+    ///      validation — smart-account authority is determined by the
+    ///      account's own ERC-1271 policy. This call exists for off-chain
+    ///      observability (events, indexers).
+    /// @param sessionKey The session key being recorded as revoked
     function revokeSessionKey(address sessionKey) external virtual {
         _revokedSessionKeys[msg.sender][sessionKey] = block.timestamp;
         emit SessionKeyRevoked(msg.sender, sessionKey, block.timestamp);
     }
 
-    /// @notice Check if a session key has been revoked by an owner
-    /// @param owner The owner who may have revoked the key
+    /// @notice Read from the advisory revocation registry.
+    /// @dev Indexed by the caller of `revokeSessionKey`. Not consulted by
+    ///      on-chain signature validation; treat as informational only.
+    /// @param caller The address that may have called `revokeSessionKey`
     /// @param sessionKey The session key to check
-    /// @return revoked True if the session key is revoked
-    function isSessionKeyRevoked(address owner, address sessionKey)
+    /// @return revoked True if a non-zero revocation timestamp is recorded
+    function isSessionKeyRevoked(address caller, address sessionKey)
         external
         view
         virtual
         returns (bool revoked)
     {
-        return _revokedSessionKeys[owner][sessionKey] > 0;
+        return _revokedSessionKeys[caller][sessionKey] > 0;
     }
-
-    /// @notice Set the trusted account factory for smart account verification
-    /// @param factory_ The account factory address (e.g., ZeroDev Kernel factory)
-    /// @dev Should be called by inheriting contract with proper access control
-    function _setAccountFactory(address factory_) internal {
-        address oldFactory = address(accountFactory);
-        accountFactory = IAccountFactory(factory_);
-        emit AccountFactoryUpdated(oldFactory, factory_);
-    }
-
-    /// @notice Validate a mint approval signature
-    /// @param predictionHash Hash of the prediction parameters
-    /// @param signer Expected signer address
-    /// @param collateral Collateral amount for this signer
-    /// @param nonce Nonce for replay protection
-    /// @param deadline Signature expiration timestamp
-    /// @param signature The EIP-712 signature
-    /// @return isValid True if the signature is valid
-    function _isApprovalValid(
-        bytes32 predictionHash,
-        address signer,
-        uint256 collateral,
-        uint256 nonce,
-        uint256 deadline,
-        bytes memory signature
-    ) internal view returns (bool isValid) {
-        if (block.timestamp > deadline) {
-            return false;
-        }
-
-        bytes32 hash = getMintApprovalHash(
-            predictionHash, signer, collateral, nonce, deadline
-        );
-        return ECDSAHelper.isValidECDSASignature(hash, signature, signer);
-    }
-
-    /// @notice Gas limit for EIP-1271 signature validation calls
-    /// @dev Prevents malicious contracts from consuming all gas
-    uint256 internal constant EIP1271_GAS_LIMIT = 500_000;
 
     /// @notice Validate signature using EIP-1271 (for smart contract signers)
     /// @param signer The smart contract address that should validate the signature
@@ -208,6 +154,26 @@ abstract contract SignatureValidator is EIP712 {
         return _validateSignatureWithFallback(hash, signer, signature);
     }
 
+    /// @notice Validate burn signature for EOA or smart contract with EIP-1271 fallback
+    function _isBurnApprovalValidWithEIP1271Fallback(
+        bytes32 burnHash,
+        address signer,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline,
+        bytes memory signature
+    ) internal view returns (bool isValid) {
+        if (block.timestamp > deadline) {
+            return false;
+        }
+
+        bytes32 hash = getBurnApprovalHash(
+            burnHash, signer, tokenAmount, payout, nonce, deadline
+        );
+        return _validateSignatureWithFallback(hash, signer, signature);
+    }
+
     /// @notice Get the hash that should be signed offchain for mint approval
     /// @param predictionHash Hash of the prediction parameters
     /// @param signer Signer address
@@ -233,166 +199,6 @@ abstract contract SignatureValidator is EIP712 {
             )
         );
         return _hashTypedDataV4(structHash);
-    }
-
-    /// @notice Validate a burn approval signature (ECDSA)
-    /// @param burnHash Hash of the burn parameters
-    /// @param signer Expected signer address
-    /// @param tokenAmount Token amount for this signer
-    /// @param payout Payout amount for this signer
-    /// @param nonce Nonce for replay protection
-    /// @param deadline Signature expiration timestamp
-    /// @param signature The EIP-712 signature
-    /// @return isValid True if the signature is valid
-    function _isBurnApprovalValid(
-        bytes32 burnHash,
-        address signer,
-        uint256 tokenAmount,
-        uint256 payout,
-        uint256 nonce,
-        uint256 deadline,
-        bytes memory signature
-    ) internal view returns (bool isValid) {
-        if (block.timestamp > deadline) {
-            return false;
-        }
-
-        bytes32 hash = getBurnApprovalHash(
-            burnHash, signer, tokenAmount, payout, nonce, deadline
-        );
-        return ECDSAHelper.isValidECDSASignature(hash, signature, signer);
-    }
-
-    /// @notice Validate burn signature for EOA or smart contract with EIP-1271 fallback
-    function _isBurnApprovalValidWithEIP1271Fallback(
-        bytes32 burnHash,
-        address signer,
-        uint256 tokenAmount,
-        uint256 payout,
-        uint256 nonce,
-        uint256 deadline,
-        bytes memory signature
-    ) internal view returns (bool isValid) {
-        if (block.timestamp > deadline) {
-            return false;
-        }
-
-        bytes32 hash = getBurnApprovalHash(
-            burnHash, signer, tokenAmount, payout, nonce, deadline
-        );
-        return _validateSignatureWithFallback(hash, signer, signature);
-    }
-
-    /// @notice Shared session key validation: preamble checks, session key sig,
-    ///         owner sig, and account factory verification.
-    /// @param messageDigest The EIP-712 hash of the operation-specific message
-    ///        (mint or burn approval) that the session key signed
-    /// @param smartAccount The smart account address (expected signer)
-    /// @param deadline Signature expiration timestamp
-    /// @param requiredPermission The permission hash required (MINT_PERMISSION or BURN_PERMISSION)
-    /// @param sessionKeySignature The session key's signature on messageDigest
-    /// @param sessionApproval The owner's session key approval
-    /// @return isValid True if all checks pass
-    function _validateSessionKeyApproval(
-        bytes32 messageDigest,
-        address smartAccount,
-        uint256 deadline,
-        bytes32 requiredPermission,
-        bytes memory sessionKeySignature,
-        SessionKeyApproval memory sessionApproval
-    ) internal view returns (bool isValid) {
-        // Deadline and session validity
-        if (block.timestamp > deadline) {
-            return false;
-        }
-        if (block.timestamp > sessionApproval.validUntil) {
-            return false;
-        }
-
-        // Revocation check
-        if (
-            _revokedSessionKeys[
-                    sessionApproval.owner
-                ][sessionApproval.sessionKey] > 0
-        ) {
-            return false;
-        }
-
-        // Permission and smart account match
-        if (sessionApproval.permissionsHash != requiredPermission) {
-            return false;
-        }
-        if (sessionApproval.smartAccount != smartAccount) {
-            return false;
-        }
-
-        // 1. Verify the session key signed the message
-        if (!ECDSAHelper.isValidECDSASignature(
-                messageDigest, sessionKeySignature, sessionApproval.sessionKey
-            )) {
-            return false;
-        }
-
-        // 2. Verify the owner authorized this session key
-        if (sessionApproval.chainId != block.chainid) {
-            return false;
-        }
-
-        bytes32 sessionHash = getSessionKeyApprovalHash(
-            sessionApproval.sessionKey,
-            sessionApproval.smartAccount,
-            sessionApproval.validUntil,
-            sessionApproval.permissionsHash,
-            sessionApproval.chainId
-        );
-        if (!ECDSAHelper.isValidECDSASignature(
-                sessionHash,
-                sessionApproval.ownerSignature,
-                sessionApproval.owner
-            )) {
-            return false;
-        }
-
-        // 3. Verify the smart account is derived from the owner
-        if (address(accountFactory) == address(0)) {
-            revert AccountFactoryNotSet();
-        }
-
-        address expectedAccount =
-            accountFactory.getAccountAddress(sessionApproval.owner, 0);
-        if (expectedAccount != smartAccount) {
-            expectedAccount =
-                accountFactory.getAccountAddress(sessionApproval.owner, 1);
-            if (expectedAccount != smartAccount) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /// @notice Validate a burn approval signed by a session key
-    function _isSessionKeyBurnApprovalValid(
-        bytes32 burnHash,
-        address smartAccount,
-        uint256 tokenAmount,
-        uint256 payout,
-        uint256 nonce,
-        uint256 deadline,
-        bytes memory sessionKeySignature,
-        SessionKeyApproval memory sessionApproval
-    ) internal view returns (bool isValid) {
-        bytes32 burnDigest = getBurnApprovalHash(
-            burnHash, smartAccount, tokenAmount, payout, nonce, deadline
-        );
-        return _validateSessionKeyApproval(
-            burnDigest,
-            smartAccount,
-            deadline,
-            BURN_PERMISSION,
-            sessionKeySignature,
-            sessionApproval
-        );
     }
 
     /// @notice Get the hash that should be signed offchain for burn approval
@@ -429,68 +235,5 @@ abstract contract SignatureValidator is EIP712 {
     /// @return separator The domain separator
     function domainSeparator() external view returns (bytes32 separator) {
         return _domainSeparatorV4();
-    }
-
-    // ============ Session Key Support (Option B) ============
-
-    /// @notice Session key approval data signed by the owner
-    struct SessionKeyApproval {
-        address sessionKey; // The session key address
-        address owner; // The owner who authorized this session key
-        address smartAccount; // The smart account (signer in the mint request)
-        uint256 validUntil; // Expiration timestamp for the session key
-        bytes32 permissionsHash; // Hash of permissions granted to this session key
-        uint256 chainId; // Chain ID to prevent cross-chain replay attacks
-        bytes ownerSignature; // Owner's signature on the session approval
-    }
-
-    /// @notice Validate a mint approval signed by a session key
-    function _isSessionKeyApprovalValid(
-        bytes32 predictionHash,
-        address smartAccount,
-        uint256 collateral,
-        uint256 nonce,
-        uint256 deadline,
-        bytes memory sessionKeySignature,
-        SessionKeyApproval memory sessionApproval
-    ) internal view returns (bool isValid) {
-        bytes32 mintDigest = getMintApprovalHash(
-            predictionHash, smartAccount, collateral, nonce, deadline
-        );
-        return _validateSessionKeyApproval(
-            mintDigest,
-            smartAccount,
-            deadline,
-            MINT_PERMISSION,
-            sessionKeySignature,
-            sessionApproval
-        );
-    }
-
-    /// @notice Get the hash for session key approval (owner signs this)
-    /// @param sessionKey The session key address
-    /// @param smartAccount The smart account address
-    /// @param validUntil Expiration timestamp
-    /// @param permissionsHash Hash of permissions
-    /// @param chainId Chain ID (must match block.chainid during validation)
-    /// @return hash The EIP-712 typed data hash for owner to sign
-    function getSessionKeyApprovalHash(
-        address sessionKey,
-        address smartAccount,
-        uint256 validUntil,
-        bytes32 permissionsHash,
-        uint256 chainId
-    ) public view returns (bytes32 hash) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                SESSION_KEY_APPROVAL_TYPEHASH,
-                sessionKey,
-                smartAccount,
-                validUntil,
-                permissionsHash,
-                chainId
-            )
-        );
-        return _hashTypedDataV4(structHash);
     }
 }

@@ -39,15 +39,22 @@ interface IPredictionMarketEscrow {
 
     // ============ External Functions ============
 
-    /// @notice Revoke a session key so it can no longer be used for signing
-    /// @param sessionKey The session key address to revoke
+    /// @notice Record a session-key revocation in the on-chain advisory
+    ///         registry. The contract no longer enforces this mapping during
+    ///         signature validation — smart-account authority is determined
+    ///         by the account's own ERC-1271 policy. This call exists for
+    ///         off-chain observability (events + indexers).
+    /// @param sessionKey The session key address being recorded as revoked
     function revokeSessionKey(address sessionKey) external;
 
-    /// @notice Check if a session key has been revoked by an owner
-    /// @param owner The owner who may have revoked the key
+    /// @notice Read from the advisory revocation registry, indexed by the
+    ///         caller of `revokeSessionKey`.
+    /// @dev Not consulted by on-chain signature validation; treat as
+    ///      informational only.
+    /// @param caller The address that may have called `revokeSessionKey`
     /// @param sessionKey The session key to check
-    /// @return revoked True if the session key is revoked
-    function isSessionKeyRevoked(address owner, address sessionKey)
+    /// @return revoked True if a non-zero revocation timestamp is recorded
+    function isSessionKeyRevoked(address caller, address sessionKey)
         external
         view
         returns (bool revoked);
@@ -171,12 +178,15 @@ interface IPredictionMarketEscrow {
 
     /// @notice Validate a party's mint signature off-chain (same logic as on-chain validation)
     /// @param predictionHash Hash of the prediction parameters
-    /// @param signer Expected signer address
+    /// @param signer Expected signer address (EOA or smart account)
     /// @param collateral Collateral amount for this signer
     /// @param nonce Nonce for replay protection
     /// @param deadline Signature expiration timestamp
-    /// @param signature The EIP-712 signature
-    /// @param sessionKeyData ABI-encoded SessionKeyData (empty if EOA)
+    /// @param signature The EIP-712 signature (ECDSA for EOAs; ERC-1271
+    ///        signer-validated payload for smart accounts)
+    /// @param sessionKeyData Reserved field — must be empty (`"0x"`). Any
+    ///        non-empty blob causes the on-chain `mint` to revert with
+    ///        `LegacySessionKeyDataDisabled`.
     /// @return isValid True if the signature is valid
     function verifyMintPartySignature(
         bytes32 predictionHash,
@@ -190,13 +200,16 @@ interface IPredictionMarketEscrow {
 
     /// @notice Validate a party's burn signature off-chain (same logic as on-chain validation)
     /// @param burnHash Hash of the burn parameters
-    /// @param signer Expected signer address
+    /// @param signer Expected signer address (EOA or smart account)
     /// @param tokenAmount Token amount for this signer
     /// @param payout Payout amount for this signer
     /// @param nonce Nonce for replay protection
     /// @param deadline Signature expiration timestamp
-    /// @param signature The EIP-712 signature
-    /// @param sessionKeyData ABI-encoded SessionKeyData (empty if EOA)
+    /// @param signature The EIP-712 signature (ECDSA for EOAs; ERC-1271
+    ///        signer-validated payload for smart accounts)
+    /// @param sessionKeyData Reserved field — must be empty (`"0x"`). Any
+    ///        non-empty blob causes the on-chain `burn` to revert with
+    ///        `LegacySessionKeyDataDisabled`.
     /// @return isValid True if the signature is valid
     function verifyBurnPartySignature(
         bytes32 burnHash,
