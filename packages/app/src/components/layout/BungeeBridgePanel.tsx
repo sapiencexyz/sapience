@@ -9,7 +9,15 @@ import {
   useSwitchChain,
 } from 'wagmi';
 import { useQuery } from '@tanstack/react-query';
-import { erc20Abi, formatUnits, parseUnits, type Address } from 'viem';
+import {
+  encodeFunctionData,
+  erc20Abi,
+  formatUnits,
+  parseUnits,
+  type Address,
+} from 'viem';
+import { collateralToken } from '@sapience/sdk/contracts';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   Select,
@@ -20,6 +28,7 @@ import {
 } from '@sapience/ui/components/ui/select';
 import { ArrowDown, ChevronDown, Loader2 } from 'lucide-react';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import {
   BUNGEE_NATIVE_TOKEN,
   BUNGEE_SOURCE_CHAIN_META,
@@ -77,6 +86,13 @@ const STABLE_PRICE_USD: Record<string, number> = {
 
 const SOURCE_CHAIN_IDS = BUNGEE_SOURCE_CHAIN_META.map((c) => c.chainId);
 
+// Ethereal isn't a Bungee source chain, but the EOA can already hold USDe
+// there (e.g. after an earlier Bungee deposit, a transfer from someone else,
+// or unwrapping wUSDe). We surface those balances in the picker as their own
+// combos and route them through a direct transfer instead of Bungee.
+const ETHEREAL_CHAIN_LABEL = 'Ethereal';
+const ETHEREAL_CHAIN_ICON = '/ethereal-logomark.svg';
+
 // Keep native-token max sends below the full balance so the wallet can still
 // pay source-chain gas for the deposit transaction. ERC-20 routes still need
 // native gas too, but their token balance is independent of that gas budget.
@@ -86,6 +102,7 @@ const NATIVE_GAS_RESERVE_WEI_BY_CHAIN_ID: Record<number, bigint> = {
   8453: 500_000_000_000_000n, // 0.0005 ETH (Base)
   56: 5_000_000_000_000_000n, // 0.005 BNB
   999: 10_000_000_000_000_000n, // 0.01 HYPE
+  [DEFAULT_CHAIN_ID]: 10_000_000_000_000_000n, // 0.01 USDe (Ethereal gas)
 };
 
 function getNativeGasReserveWei(chainId: number | undefined): bigint {
@@ -149,6 +166,16 @@ export default function BungeeBridgePanel({
   const { switchChainAsync } = useSwitchChain();
   const { sendTransactionAsync } = useSendTransaction();
   const { bridges, addBridge } = useBridgeTracker();
+  const { toast } = useToast();
+  const wusdeAddress = collateralToken[DEFAULT_CHAIN_ID]?.address;
+  const {
+    rawNativeBalance: rawEoaEtherealNative,
+    rawWrappedBalance: rawEoaEtherealWrapped,
+    refetch: refetchEoaEtherealBalance,
+  } = useCollateralBalance({
+    address: eoaAddress,
+    chainId: DEFAULT_CHAIN_ID,
+  });
 
   const [selectedKey, setSelectedKey] = useState<string>('');
   const [amount, setAmount] = useState('');
@@ -183,18 +210,55 @@ export default function BungeeBridgePanel({
   });
 
   const allCombos = useMemo<SourceCombo[]>(() => {
-    if (!tokensData?.result) return [];
-    return BUNGEE_SOURCE_CHAIN_META.flatMap((meta) => {
-      const apiTokens = tokensData.result[String(meta.chainId)] ?? [];
-      return selectBungeeSourceTokens(apiTokens).map((t) => ({
-        key: `${meta.chainId}:${t.symbol}`,
-        chainId: meta.chainId,
-        chainName: meta.name,
-        chainIconUrl: meta.iconUrl,
-        token: t,
-      }));
-    });
-  }, [tokensData]);
+    const fromBungee = tokensData?.result
+      ? BUNGEE_SOURCE_CHAIN_META.flatMap((meta) => {
+          const apiTokens = tokensData.result[String(meta.chainId)] ?? [];
+          return selectBungeeSourceTokens(apiTokens).map((t) => ({
+            key: `${meta.chainId}:${t.symbol}`,
+            chainId: meta.chainId,
+            chainName: meta.name,
+            chainIconUrl: meta.iconUrl,
+            token: t,
+          }));
+        })
+      : [];
+
+    // Ethereal-native combos. Always offered when the panel mounts so users
+    // who already hold USDe on Ethereal can move it to either recipient
+    // without round-tripping through Bungee.
+    const fromEthereal: SourceCombo[] = [
+      {
+        key: `${DEFAULT_CHAIN_ID}:USDe`,
+        chainId: DEFAULT_CHAIN_ID,
+        chainName: ETHEREAL_CHAIN_LABEL,
+        chainIconUrl: ETHEREAL_CHAIN_ICON,
+        token: {
+          symbol: 'USDe',
+          address: BUNGEE_NATIVE_TOKEN,
+          decimals: 18,
+          isNative: true,
+          iconUrl: '/usde.svg',
+        },
+      },
+    ];
+    if (wusdeAddress) {
+      fromEthereal.push({
+        key: `${DEFAULT_CHAIN_ID}:wUSDe`,
+        chainId: DEFAULT_CHAIN_ID,
+        chainName: ETHEREAL_CHAIN_LABEL,
+        chainIconUrl: ETHEREAL_CHAIN_ICON,
+        token: {
+          symbol: 'wUSDe',
+          address: wusdeAddress,
+          decimals: 18,
+          isNative: false,
+          iconUrl: '/usde.svg',
+        },
+      });
+    }
+
+    return [...fromBungee, ...fromEthereal];
+  }, [tokensData, wusdeAddress]);
 
   // Once the token list arrives, lock in a default selection so the picker
   // is never empty. The auto-balance effect below may override this with the
@@ -221,8 +285,13 @@ export default function BungeeBridgePanel({
   }, [amount, sourceToken]);
 
   // Batch ERC20 balances across all chains in one wagmi multicall set.
+  // Ethereal combos read from useCollateralBalance instead, so we exclude
+  // them here to avoid duplicate fetches.
   const erc20Combos = useMemo(
-    () => allCombos.filter((c) => !c.token.isNative),
+    () =>
+      allCombos.filter(
+        (c) => !c.token.isNative && c.chainId !== DEFAULT_CHAIN_ID
+      ),
     [allCombos]
   );
   const { data: erc20BalancesData } = useReadContracts({
@@ -290,7 +359,11 @@ export default function BungeeBridgePanel({
   const combosWithBalance = useMemo(() => {
     return allCombos.map((c) => {
       let raw: bigint;
-      if (c.token.isNative) {
+      // Ethereal combos read straight from the collateral balance hook —
+      // it's the same data path the rest of the app uses, no double-fetch.
+      if (c.chainId === DEFAULT_CHAIN_ID) {
+        raw = c.token.isNative ? rawEoaEtherealNative : rawEoaEtherealWrapped;
+      } else if (c.token.isNative) {
         raw = nativeBalanceByChainId[c.chainId] ?? 0n;
       } else {
         const idx = erc20Combos.findIndex((e) => e.key === c.key);
@@ -313,6 +386,8 @@ export default function BungeeBridgePanel({
     nativeBalBase.data?.value,
     nativeBalBsc.data?.value,
     nativeBalHyperEvm.data?.value,
+    rawEoaEtherealNative,
+    rawEoaEtherealWrapped,
     nativePricesUsd,
   ]);
 
@@ -398,7 +473,13 @@ export default function BungeeBridgePanel({
     nativeBalancesLoading,
   ]);
 
+  // Ethereal source skips Bungee — funds are already on the destination
+  // chain, so we just do a direct EOA-side transfer to the chosen recipient.
+  const isEtherealSource = sourceChainId === DEFAULT_CHAIN_ID;
+  const isSelfTransfer = isEtherealSource && recipient === 'eoa';
+
   const quoteEnabled =
+    !isEtherealSource &&
     !!eoaAddress &&
     !!resolvedReceiver &&
     !!sourceToken &&
@@ -466,7 +547,57 @@ export default function BungeeBridgePanel({
     refetchQuote();
   }, [isQuoteExpired, isQuoting, isSending, refetchQuote]);
 
-  const handleBridge = async () => {
+  const handleEtherealTransfer = async () => {
+    if (
+      !eoaAddress ||
+      !resolvedReceiver ||
+      !sourceToken ||
+      !inputAmountWei ||
+      isSelfTransfer
+    ) {
+      return;
+    }
+    setErrorMsg(null);
+    setIsSending(true);
+    try {
+      if (activeChain?.id !== DEFAULT_CHAIN_ID) {
+        await switchChainAsync({ chainId: DEFAULT_CHAIN_ID });
+      }
+      if (sourceToken.isNative) {
+        await sendTransactionAsync({
+          chainId: DEFAULT_CHAIN_ID,
+          to: resolvedReceiver,
+          value: inputAmountWei,
+          data: '0x',
+        });
+      } else {
+        await sendTransactionAsync({
+          chainId: DEFAULT_CHAIN_ID,
+          to: sourceToken.address,
+          value: 0n,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: 'transfer',
+            args: [resolvedReceiver, inputAmountWei],
+          }),
+        });
+      }
+      toast({
+        title: 'Transfer complete',
+        description: `Sent ${amount} ${sourceToken.symbol} to your ${recipientLabel}.`,
+        duration: 5000,
+      });
+      setAmount('');
+      setTimeout(() => refetchEoaEtherealBalance(), 3000);
+    } catch (e) {
+      const err = e as { shortMessage?: string; message?: string };
+      setErrorMsg(err.shortMessage || err.message || 'Transaction failed');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleBungeeBridge = async () => {
     if (!deposit || !eoaAddress || sourceChainId === undefined) return;
     // Last-line guard: expiry could have lapsed between render and click.
     if (deposit.expiry > 0 && deposit.expiry <= Math.floor(Date.now() / 1000)) {
@@ -497,6 +628,10 @@ export default function BungeeBridgePanel({
     }
   };
 
+  const handleSubmit = isEtherealSource
+    ? handleEtherealTransfer
+    : handleBungeeBridge;
+
   const insufficientFunds =
     !!inputAmountWei && inputAmountWei > maxSpendableSourceBalance;
   const insufficientFundsLabel = sourceToken?.isNative
@@ -519,9 +654,11 @@ export default function BungeeBridgePanel({
 
   const buttonLabel = (() => {
     if (isSending) return 'Confirm in wallet…';
-    if (isQuoting && !deposit) return 'Getting quote…';
+    if (isSelfTransfer) return 'Already in your wallet';
     if (insufficientFunds) return insufficientFundsLabel;
     if (!inputAmountWei) return 'Enter an amount';
+    if (isEtherealSource) return `Transfer to ${recipientLabel}`;
+    if (isQuoting && !deposit) return 'Getting quote…';
     if (!deposit) return 'No route available';
     if (isQuoteExpired)
       return isQuoting ? 'Refreshing quote…' : 'Quote expired';
@@ -530,10 +667,10 @@ export default function BungeeBridgePanel({
 
   const buttonDisabled =
     isSending ||
-    !deposit ||
+    isSelfTransfer ||
     insufficientFunds ||
     !inputAmountWei ||
-    isQuoteExpired;
+    (!isEtherealSource && (!deposit || isQuoteExpired));
 
   const setAmountFraction = (fraction: number) => {
     if (!sourceToken || maxSpendableSourceBalance === 0n) return;
@@ -727,7 +864,11 @@ export default function BungeeBridgePanel({
         </div>
         <div className="flex items-center justify-between gap-3 min-w-0">
           <span className="text-3xl font-mono text-brand-white truncate">
-            {outputAmount != null ? formatBalance(outputAmount, 4) : '0.00'}
+            {isEtherealSource
+              ? formatBalance(Number(amount) || 0, 4)
+              : outputAmount != null
+                ? formatBalance(outputAmount, 4)
+                : '0.00'}
           </span>
           <div className="flex items-center gap-2 bg-background/60 rounded-md pl-1.5 pr-2.5 py-1.5 border border-border/60 shrink-0">
             <div className="relative">
@@ -750,7 +891,12 @@ export default function BungeeBridgePanel({
           <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
         </summary>
         <div className="px-4 pb-3 space-y-1.5 text-sm">
-          {deposit ? (
+          {isEtherealSource ? (
+            <p className="text-xs text-muted-foreground">
+              Direct transfer on Ethereal — no bridge fee, no slippage. You pay
+              source-chain gas only.
+            </p>
+          ) : deposit ? (
             <>
               <div className="flex justify-between text-muted-foreground">
                 <span>Min received</span>
@@ -789,7 +935,7 @@ export default function BungeeBridgePanel({
       {errorMsg && <p className="text-xs text-red-400 px-1">{errorMsg}</p>}
 
       <Button
-        onClick={handleBridge}
+        onClick={handleSubmit}
         disabled={buttonDisabled}
         className="h-12 w-full text-base"
       >
