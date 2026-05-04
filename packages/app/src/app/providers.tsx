@@ -3,19 +3,24 @@
 import { WagmiProvider, createConfig, createStorage } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
-import { type Chain, arbitrum } from 'viem/chains';
+import { type Chain, arbitrum, base, bsc, mainnet } from 'viem/chains';
 import { injected, coinbaseWallet, walletConnect } from 'wagmi/connectors';
 
 import type React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { hashFn } from 'wagmi/query';
-import { etherealChain, etherealTestnetChain } from '@sapience/sdk/constants';
+import {
+  etherealChain,
+  etherealTestnetChain,
+  hyperEvmChain,
+} from '@sapience/sdk/constants';
 import { httpWithRetry } from '~/lib/utils/util';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
 import { CreatePositionProvider } from '~/lib/context/CreatePositionContext';
 import { SettingsProvider } from '~/lib/context/SettingsContext';
 import { ConnectDialogProvider } from '~/lib/context/ConnectDialogContext';
+import { FundDialogProvider } from '~/lib/context/FundDialogContext';
 import { AuthProvider } from '~/lib/context/AuthContext';
 import { SessionProvider } from '~/lib/context/SessionContext';
 
@@ -37,13 +42,33 @@ const buildChainsAndTransports = () => {
         ? `https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
         : 'https://arbitrum-rpc.publicnode.com'
     ),
+    [mainnet.id]: httpWithRetry(
+      process.env.NEXT_PUBLIC_INFURA_API_KEY
+        ? `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+        : 'https://ethereum-rpc.publicnode.com'
+    ),
+    [base.id]: httpWithRetry(
+      process.env.NEXT_PUBLIC_INFURA_API_KEY
+        ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+        : 'https://base-rpc.publicnode.com'
+    ),
+    [bsc.id]: httpWithRetry('https://bsc-rpc.publicnode.com'),
+    [hyperEvmChain.id]: httpWithRetry(hyperEvmChain.rpcUrls.default.http[0]),
     [etherealChain.id]: httpWithRetry(etherealChain.rpcUrls.default.http[0]),
     [etherealTestnetChain.id]: httpWithRetry(
       etherealTestnetChain.rpcUrls.default.http[0]
     ),
   };
 
-  const chains: Chain[] = [arbitrum, etherealChain, etherealTestnetChain];
+  const chains: Chain[] = [
+    arbitrum,
+    mainnet,
+    base,
+    bsc,
+    hyperEvmChain,
+    etherealChain,
+    etherealTestnetChain,
+  ];
 
   return { chains, transports };
 };
@@ -100,7 +125,11 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
               <SessionProvider>
                 <SapienceProvider>
                   <ConnectDialogProvider>
-                    <CreatePositionProvider>{children}</CreatePositionProvider>
+                    <FundDialogProvider>
+                      <CreatePositionProvider>
+                        {children}
+                      </CreatePositionProvider>
+                    </FundDialogProvider>
                   </ConnectDialogProvider>
                 </SapienceProvider>
               </SessionProvider>
