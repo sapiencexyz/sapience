@@ -1674,6 +1674,12 @@ export type Query = {
   protocolVolume: Array<VolumeDataPoint>;
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
+  /**
+   * Paginated referral codes with claim count and aggregate trading volume / position
+   * count baked in. Pass `id` to filter to a single code (e.g. for the analytics
+   * dialog). Per-claimant breakdown is available via the nested `claimants` field.
+   */
+  referralCodes: ReferralCodesPage;
   /** Look up a single secondary market trade by its trade hash */
   trade?: Maybe<Trade>;
   /**
@@ -1969,6 +1975,13 @@ export type QueryQuestionsArgs = {
 };
 
 
+export type QueryReferralCodesArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  id?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryTradeArgs = {
   id: Scalars['String']['input'];
 };
@@ -2033,11 +2046,18 @@ export type QuestionSortField =
   | 'predictionCount'
   | 'similarMarketVolume';
 
+/**
+ * Referral code. `codeHash` is intentionally NOT exposed: redemption takes the
+ * plaintext, hashes it server-side, and looks up by hash, so a leaked hash is
+ * credential-equivalent against short / dictionary-style codes (keccak256 is
+ * unsalted and GPU-fast). Identity for clients is the integer `id`.
+ */
 export type ReferralCode = {
   __typename?: 'ReferralCode';
-  _count?: Maybe<ReferralCodeCount>;
-  claimedBy: Array<User>;
-  codeHash: Scalars['String']['output'];
+  /** Total number of users who have claimed this code, across all pages. */
+  claimCount: Scalars['Int']['output'];
+  /** Paginated per-claimant breakdown with trading volume + position count. */
+  claimants: ReferralCodeClaimantsPage;
   createdAt: Scalars['DateTimeISO']['output'];
   createdBy: Scalars['String']['output'];
   creatorType: Scalars['String']['output'];
@@ -2045,27 +2065,45 @@ export type ReferralCode = {
   id: Scalars['Int']['output'];
   isActive: Scalars['Boolean']['output'];
   maxClaims: Scalars['Int']['output'];
+  /**
+   * Total position count across every claimant. A position with both predictor
+   * and counterparty in the claimant set is counted twice, matching the
+   * per-side semantics.
+   */
+  totalPositions: Scalars['Int']['output'];
+  /**
+   * Sum of trading volume across every claimant's positions (predictor +
+   * counterparty sides), as a stringified bigint. Aggregated server-side.
+   */
+  totalVolume: Scalars['String']['output'];
   updatedAt: Scalars['DateTimeISO']['output'];
 };
 
 
-export type ReferralCodeClaimedByArgs = {
-  cursor?: InputMaybe<UserWhereUniqueInput>;
-  distinct?: InputMaybe<Array<UserScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<UserOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<UserWhereInput>;
+/**
+ * Referral code. `codeHash` is intentionally NOT exposed: redemption takes the
+ * plaintext, hashes it server-side, and looks up by hash, so a leaked hash is
+ * credential-equivalent against short / dictionary-style codes (keccak256 is
+ * unsalted and GPU-fast). Identity for clients is the integer `id`.
+ */
+export type ReferralCodeClaimantsArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type ReferralCodeCount = {
-  __typename?: 'ReferralCodeCount';
-  claimedBy: Scalars['Int']['output'];
+export type ReferralCodeClaimant = {
+  __typename?: 'ReferralCodeClaimant';
+  address: Scalars['String']['output'];
+  claimedAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['Int']['output'];
+  positionCount: Scalars['Int']['output'];
+  tradingVolume: Scalars['String']['output'];
 };
 
-
-export type ReferralCodeCountClaimedByArgs = {
-  where?: InputMaybe<UserWhereInput>;
+export type ReferralCodeClaimantsPage = {
+  __typename?: 'ReferralCodeClaimantsPage';
+  items: Array<ReferralCodeClaimant>;
+  nextCursor?: Maybe<Scalars['Int']['output']>;
 };
 
 export type ReferralCodeNullableRelationFilter = {
@@ -2074,8 +2112,6 @@ export type ReferralCodeNullableRelationFilter = {
 };
 
 export type ReferralCodeOrderByWithRelationInput = {
-  claimedBy?: InputMaybe<UserOrderByRelationAggregateInput>;
-  codeHash?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   createdBy?: InputMaybe<SortOrder>;
   creatorType?: InputMaybe<SortOrder>;
@@ -2090,8 +2126,6 @@ export type ReferralCodeWhereInput = {
   AND?: InputMaybe<Array<ReferralCodeWhereInput>>;
   NOT?: InputMaybe<Array<ReferralCodeWhereInput>>;
   OR?: InputMaybe<Array<ReferralCodeWhereInput>>;
-  claimedBy?: InputMaybe<UserListRelationFilter>;
-  codeHash?: InputMaybe<StringFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   createdBy?: InputMaybe<StringFilter>;
   creatorType?: InputMaybe<StringFilter>;
@@ -2100,6 +2134,12 @@ export type ReferralCodeWhereInput = {
   isActive?: InputMaybe<BoolFilter>;
   maxClaims?: InputMaybe<IntFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
+};
+
+export type ReferralCodesPage = {
+  __typename?: 'ReferralCodesPage';
+  items: Array<ReferralCode>;
+  nextCursor?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Filter questions by their resolution status */
