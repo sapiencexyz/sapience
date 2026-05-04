@@ -64,6 +64,12 @@ interface ISecondaryMarketEscrow {
     error ZeroAmount();
     error SellerBuyerSame();
     error AccountFactoryNotSet();
+    /// @notice Reverts when an `executeTrade` request supplies the legacy
+    /// session-key data blob. The path validated authority via factory CREATE2
+    /// derivation, which cannot reflect a smart account's current Kernel
+    /// validator/owner. Smart-account session keys must now sign through the
+    /// account itself so ERC-1271 (`isValidSignature`) returns the magic value.
+    error LegacySessionKeyDataDisabled();
 
     // ============ Functions ============
 

@@ -248,7 +248,13 @@ contract SecondaryMarketEscrow is
 
     // ============ Internal: Signature Validation ============
 
-    /// @notice Validate a party's signature (3-tier: ECDSA → EIP-1271 → Session Key)
+    /// @notice Validate a party's signature.
+    /// @dev Accepts an EOA ECDSA signature or a smart-account ERC-1271
+    /// signature. The legacy `sessionKeyData` blob path is no longer supported
+    /// — supplying a non-empty blob reverts with `LegacySessionKeyDataDisabled`.
+    /// Smart accounts using session keys must have the session key authorized
+    /// via the smart account's own validator (e.g. Kernel permission validator)
+    /// so `isValidSignature` returns the magic value.
     function _validatePartySignature(
         bytes32 tradeHash,
         address signer,
@@ -257,20 +263,12 @@ contract SecondaryMarketEscrow is
         bytes calldata signature,
         bytes calldata sessionKeyData
     ) internal view returns (bool isValid) {
-        if (sessionKeyData.length == 0) {
-            // Tier 1 + 2: EOA or EIP-1271
-            return _isTradeApprovalValidWithEIP1271Fallback(
-                tradeHash, signer, nonce, deadline, signature
-            );
-        } else {
-            // Tier 3: Session key
-            IV2Types.SessionKeyData memory skData =
-                abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
-
-            return _isSessionKeyTradeApprovalValid(
-                tradeHash, signer, nonce, deadline, signature, skData
-            );
+        if (sessionKeyData.length != 0) {
+            revert LegacySessionKeyDataDisabled();
         }
+        return _isTradeApprovalValidWithEIP1271Fallback(
+            tradeHash, signer, nonce, deadline, signature
+        );
     }
 
     /// @notice Validate trade approval via ECDSA

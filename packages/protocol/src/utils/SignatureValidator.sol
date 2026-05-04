@@ -72,6 +72,15 @@ abstract contract SignatureValidator is EIP712 {
     /// @notice Error when a revoked session key is used
     error SessionKeyIsRevoked();
 
+    /// @notice Error when a request supplies the legacy session-key data blob.
+    /// @dev The legacy path validated authority via factory CREATE2 derivation,
+    /// which does not reflect the current Kernel validator/owner of a smart
+    /// account. After validator rotation a rotated-out owner could still pass
+    /// the legacy check, so the path is now refused on chain. Use the smart
+    /// account's ERC-1271 (`isValidSignature`) by sending empty
+    /// `sessionKeyData` (`"0x"`) and a kernel-wrapped session-key signature.
+    error LegacySessionKeyDataDisabled();
+
     constructor() EIP712("PredictionMarketEscrow", "1") { }
 
     /// @notice Revoke a session key so it can no longer be used for signing

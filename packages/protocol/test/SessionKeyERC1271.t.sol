@@ -603,10 +603,14 @@ contract SessionKeyERC1271Test is Test {
         market.mint(request);
     }
 
-    // ============ Backward Compatibility Tests ============
+    // ============ Legacy Path Disabled ============
+    //
+    // The legacy `sessionKeyData` blob path used factory CREATE2 derivation
+    // as proof of authority, which could not see Kernel validator rotations.
+    // It is now refused on chain. Smart accounts using session keys must do
+    // so through their own validator (Kernel permission validator + ERC-1271).
 
-    function test_mint_legacySessionKeyData_stillWorks() public {
-        // Use legacy format (full SessionKeyApproval) — should still work
+    function test_mint_legacySessionKeyData_reverts() public {
         bytes memory legacyData = _createLegacySessionKeyData(
             legacySessionKey, legacyOwner, legacySmartAccount, keccak256("MINT")
         );
@@ -620,12 +624,13 @@ contract SessionKeyERC1271Test is Test {
             ""
         );
 
-        (bytes32 predictionId,,) = market.mint(request);
-        assertNotEq(predictionId, bytes32(0));
+        vm.expectRevert(
+            SignatureValidator.LegacySessionKeyDataDisabled.selector
+        );
+        market.mint(request);
     }
 
-    function test_mint_mixedFormats_ERC1271_and_legacy() public {
-        // Predictor uses ERC-1271, counterparty uses legacy session key format
+    function test_mint_legacySessionKeyData_counterpartySide_reverts() public {
         bytes memory legacyData = _createLegacySessionKeyData(
             legacySessionKey, legacyOwner, legacySmartAccount, keccak256("MINT")
         );
@@ -636,30 +641,13 @@ contract SessionKeyERC1271Test is Test {
             predictorSessionKeyPk,
             legacySessionKeyPk,
             "", // ERC-1271
-            legacyData // legacy
+            legacyData // legacy on counterparty
         );
 
-        (bytes32 predictionId,,) = market.mint(request);
-        assertNotEq(predictionId, bytes32(0));
-    }
-
-    function test_mint_mixedFormats_legacy_and_ERC1271() public {
-        // Predictor uses legacy, counterparty uses ERC-1271
-        bytes memory legacyData = _createLegacySessionKeyData(
-            legacySessionKey, legacyOwner, legacySmartAccount, keccak256("MINT")
+        vm.expectRevert(
+            SignatureValidator.LegacySessionKeyDataDisabled.selector
         );
-
-        IV2Types.MintRequest memory request = _buildMintRequest(
-            legacySmartAccount,
-            address(counterpartySmartAccount),
-            legacySessionKeyPk,
-            counterpartySessionKeyPk,
-            legacyData, // legacy
-            "" // ERC-1271
-        );
-
-        (bytes32 predictionId,,) = market.mint(request);
-        assertNotEq(predictionId, bytes32(0));
+        market.mint(request);
     }
 
     // ============ Burn Matrix Tests (ERC-1271) ============

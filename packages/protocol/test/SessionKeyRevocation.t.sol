@@ -242,31 +242,12 @@ contract SessionKeyRevocationTest is Test {
         request.predictorSponsorData = "";
     }
 
-    // ============ PredictionMarketEscrow Revocation Tests ============
-
-    function test_M2_revokedSessionKeyBlocksMint() public {
-        // Owner revokes session key
-        vm.prank(ownerAddr);
-        market.revokeSessionKey(sessionKeyAddr);
-
-        // Attempt to mint with revoked session key
-        IV2Types.MintRequest memory request =
-            _buildMintRequestWithSessionKey(sessionKeyPk, sessionKeyAddr);
-
-        vm.expectRevert(
-            IPredictionMarketEscrow.InvalidPredictorSignature.selector
-        );
-        market.mint(request);
-    }
-
-    function test_M2_unRevokedSessionKeySucceeds() public {
-        // Mint with non-revoked session key should succeed
-        IV2Types.MintRequest memory request =
-            _buildMintRequestWithSessionKey(sessionKeyPk, sessionKeyAddr);
-
-        (bytes32 predictionId,,) = market.mint(request);
-        assertNotEq(predictionId, bytes32(0));
-    }
+    // ============ Revocation Registry Tests ============
+    //
+    // The legacy session-key validation path was removed (it could not see
+    // smart-account validator rotations). The revocation registry remains as
+    // an advisory on-chain record so dapps and indexers can keep tracking
+    // session-key invalidations; the contract itself no longer reads it.
 
     function test_M2_revocationEmitsEvent() public {
         vm.expectEmit(true, true, false, true);
@@ -278,22 +259,6 @@ contract SessionKeyRevocationTest is Test {
         market.revokeSessionKey(sessionKeyAddr);
     }
 
-    function test_M2_onlyOwnersRevocationAffectsTheirKeys() public {
-        // Counterparty revokes the same session key
-        vm.prank(counterparty);
-        market.revokeSessionKey(sessionKeyAddr);
-
-        // Owner's session key is NOT revoked (different owner)
-        assertFalse(market.isSessionKeyRevoked(ownerAddr, sessionKeyAddr));
-        assertTrue(market.isSessionKeyRevoked(counterparty, sessionKeyAddr));
-
-        // Mint with session key should still succeed (owner hasn't revoked)
-        IV2Types.MintRequest memory request =
-            _buildMintRequestWithSessionKey(sessionKeyPk, sessionKeyAddr);
-        (bytes32 predictionId,,) = market.mint(request);
-        assertNotEq(predictionId, bytes32(0));
-    }
-
     function test_M2_isSessionKeyRevokedCorrectness() public {
         assertFalse(market.isSessionKeyRevoked(ownerAddr, sessionKeyAddr));
 
@@ -303,19 +268,14 @@ contract SessionKeyRevocationTest is Test {
         assertTrue(market.isSessionKeyRevoked(ownerAddr, sessionKeyAddr));
     }
 
-    function test_M2_revokingOneKeyDoesNotAffectOthers() public {
-        // Revoke session key 1
-        vm.prank(ownerAddr);
+    function test_M2_revocationIsCallerScoped() public {
+        // Revocations are keyed by msg.sender — different revokers operate
+        // on independent registry slots.
+        vm.prank(counterparty);
         market.revokeSessionKey(sessionKeyAddr);
 
-        assertTrue(market.isSessionKeyRevoked(ownerAddr, sessionKeyAddr));
-        assertFalse(market.isSessionKeyRevoked(ownerAddr, sessionKey2Addr));
-
-        // Session key 2 should still work for minting
-        IV2Types.MintRequest memory request =
-            _buildMintRequestWithSessionKey(sessionKey2Pk, sessionKey2Addr);
-        (bytes32 predictionId,,) = market.mint(request);
-        assertNotEq(predictionId, bytes32(0));
+        assertFalse(market.isSessionKeyRevoked(ownerAddr, sessionKeyAddr));
+        assertTrue(market.isSessionKeyRevoked(counterparty, sessionKeyAddr));
     }
 
     // ============ SecondaryMarket Helpers ============
@@ -415,20 +375,6 @@ contract SessionKeyRevocationTest is Test {
     }
 
     // ============ SecondaryMarketEscrow Revocation Tests ============
-
-    function test_M2_secondaryMarket_revokedSessionKeyBlocksTrade() public {
-        _setupSecondaryMarket();
-
-        // Owner revokes session key on secondary market
-        vm.prank(ownerAddr);
-        secondaryMarket.revokeSessionKey(sessionKeyAddr);
-
-        ISecondaryMarketEscrow.TradeRequest memory request =
-            _buildTradeRequest();
-
-        vm.expectRevert(ISecondaryMarketEscrow.InvalidSignature.selector);
-        secondaryMarket.executeTrade(request);
-    }
 
     function test_M2_secondaryMarket_revocationIsIndependent() public {
         // Revoke on PredictionMarketEscrow
