@@ -6,6 +6,8 @@ import type { PickJson } from '@sapience/sdk/types';
 import { validateBidFull } from '@sapience/sdk/auction/validation';
 import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import type { AuctionBid } from '~/lib/auction/useAuctionBidsHub';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
+import { useSecondTick } from '~/hooks/useSecondTick';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -315,16 +317,18 @@ export function usePreprocessedBids(
     });
   }, [rawBids, validationResults, canValidate]);
 
-  // Filter to valid + non-expired
+  // Filter to valid + non-expired. Tick once per second so a bid drops out
+  // when its (buffered) deadline elapses even if no new bids arrive.
+  const tickedNowMs = useSecondTick();
   const validBids = useMemo((): PreprocessedBid[] => {
-    const nowMs = Date.now();
+    const nowMs = tickedNowMs ?? Date.now();
     return processedBids.filter((bid) => {
       if (bid.validationStatus !== 'valid') return false;
       const deadlineSec = Number(bid.counterpartyDeadline || 0);
       if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return false;
-      return deadlineSec * 1000 > nowMs;
+      return effectiveDeadlineMs(deadlineSec) > nowMs;
     });
-  }, [processedBids]);
+  }, [processedBids, tickedNowMs]);
 
   const excludedBidCount = useMemo(() => {
     return processedBids.filter(

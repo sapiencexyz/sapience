@@ -1,4 +1,5 @@
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 
 export type SelectBestBidResult = {
@@ -44,7 +45,7 @@ export function selectBestBid(
   );
 
   const nonExpiredBids = regularBids.filter(
-    (bid) => bid.counterpartyDeadline * 1000 > nowMs
+    (bid) => effectiveDeadlineMs(bid.counterpartyDeadline) > nowMs
   );
 
   if (nonExpiredBids.length === 0 && estimatorBids.length === 0) {

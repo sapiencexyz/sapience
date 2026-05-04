@@ -12,6 +12,7 @@ import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import type { PredictedOutcomeInputStub } from '@sapience/sdk/auction/buildAuctionPayload';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
 import PercentChance from '~/components/shared/PercentChance';
 
 const FADE_VARIANTS = {
@@ -199,7 +200,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const valid = filteredBids.filter((b) => {
           try {
             const dl = Number(b?.counterpartyDeadline || 0);
-            return Number.isFinite(dl) ? dl * 1000 > nowMs : true;
+            return Number.isFinite(dl) ? effectiveDeadlineMs(dl) > nowMs : true;
           } catch {
             return true;
           }
