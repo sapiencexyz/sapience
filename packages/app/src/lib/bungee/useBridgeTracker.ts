@@ -8,7 +8,8 @@ import {
   removeBridge,
   subscribe,
   type BridgeRecord,
-} from '~/lib/bridgeTracker';
+} from './bridgeTracker';
+import type { RecipientMode } from './types';
 
 const EMPTY: BridgeRecord[] = [];
 
@@ -28,7 +29,7 @@ export function useBridgeTracker() {
   const bridges = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
 
   const add = useCallback(
-    (requestHash: string, recipient: 'smartAccount' | 'eoa') => {
+    (requestHash: string, recipient: RecipientMode) => {
       if (!address) return;
       addBridge({
         requestHash,

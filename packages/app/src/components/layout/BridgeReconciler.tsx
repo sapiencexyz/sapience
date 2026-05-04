@@ -10,14 +10,14 @@ import {
   fetchBungeeStatus,
   isBungeeSuccess,
   isBungeeTerminal,
+  pruneStale,
+  recipientLabel,
+  REMOVE_GRACE_MS,
+  STATUS_POLL_MS,
+  useBridgeTracker,
 } from '~/lib/bungee';
-import { pruneStale } from '~/lib/bridgeTracker';
-import { useBridgeTracker } from '~/hooks/useBridgeTracker';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
-
-const STATUS_POLL_MS = 5_000;
-const REMOVE_GRACE_MS = 30_000;
 
 /**
  * Top-level Bungee bridge reconciler. Owns the status poll for every
@@ -77,15 +77,10 @@ export default function BridgeReconciler() {
       if (handledRef.current.has(bridge.requestHash)) return;
       handledRef.current.add(bridge.requestHash);
 
-      const recipientLabel =
-        bridge.recipient === 'smartAccount'
-          ? 'Sapience Account'
-          : 'Ethereal Account';
-
       if (isBungeeSuccess(code)) {
         toast({
           title: 'Bridge complete',
-          description: `Funds delivered to your ${recipientLabel}.`,
+          description: `Funds delivered to your ${recipientLabel(bridge.recipient)}.`,
           duration: 6000,
         });
         refetchEoaBalance();

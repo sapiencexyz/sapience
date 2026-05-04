@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { useBridgeTracker } from '~/hooks/useBridgeTracker';
+import { useBridgeTracker } from '~/lib/bungee';
 import { useFundDialog } from '~/lib/context/FundDialogContext';
 
 /**

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   useAccount,
-  useBalance,
   useReadContracts,
   useSendTransaction,
   useSwitchChain,
@@ -26,30 +25,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@sapience/ui/components/ui/select';
-import { ArrowDown, ChevronDown, Loader2 } from 'lucide-react';
+import { ArrowDown, ChevronDown } from 'lucide-react';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
+import { useBungeeNativeBalances } from '~/hooks/blockchain/useBungeeNativeBalances';
 import {
   BUNGEE_NATIVE_TOKEN,
   BUNGEE_SOURCE_CHAIN_META,
   BUNGEE_TOKEN_COINGECKO_IDS,
-  describeBungeeStatus,
   fetchBungeeQuote,
-  fetchBungeeStatus,
   fetchBungeeTokens,
-  isBungeeSuccess,
-  isBungeeTerminal,
+  QUOTE_REFRESH_MS,
+  recipientLabel as recipientLabelFor,
   selectBungeeSourceTokens,
+  STABLE_PRICE_USD,
+  useBridgeTracker,
   type BungeeDeposit,
   type BungeeSourceToken,
-  type BungeeStatusEntry,
+  type RecipientMode,
 } from '~/lib/bungee';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
-import { useBridgeTracker } from '~/hooks/useBridgeTracker';
-import type { BridgeRecord } from '~/lib/bridgeTracker';
-
-type RecipientMode = 'smartAccount' | 'eoa';
+import DepositBridgeRow from '~/components/layout/DepositBridgeRow';
+import {
+  formatBalance,
+  formatTokenInput,
+  formatUsd,
+} from '~/lib/format/balance';
 
 interface BungeeBridgePanelProps {
   eoaAddress?: Address;
@@ -64,8 +66,6 @@ interface BungeeBridgePanelProps {
   defaultRecipient?: RecipientMode;
 }
 
-const QUOTE_REFRESH_MS = 30_000;
-const STATUS_POLL_MS = 5_000;
 const NATIVE_PRICE_REFRESH_MS = 60_000;
 const TOKEN_LIST_REFRESH_MS = 10 * 60_000;
 
@@ -76,13 +76,6 @@ interface SourceCombo {
   chainIconUrl: string;
   token: BungeeSourceToken;
 }
-
-const STABLE_PRICE_USD: Record<string, number> = {
-  USDe: 1,
-  USDC: 1,
-  USDT: 1,
-  DAI: 1,
-};
 
 const SOURCE_CHAIN_IDS = BUNGEE_SOURCE_CHAIN_META.map((c) => c.chainId);
 
@@ -109,30 +102,6 @@ function getNativeGasReserveWei(chainId: number | undefined): bigint {
   return chainId == null
     ? 0n
     : (NATIVE_GAS_RESERVE_WEI_BY_CHAIN_ID[chainId] ?? 0n);
-}
-
-function maxBigInt(value: bigint, floor: bigint): bigint {
-  return value > floor ? value : floor;
-}
-
-function formatBalance(value: number, maxDecimals = 4): string {
-  return value.toLocaleString('en-US', { maximumFractionDigits: maxDecimals });
-}
-
-function formatUsd(value: number): string {
-  if (value === 0) return '—';
-  return `$${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
-}
-
-function formatAmountForInput(
-  value: bigint,
-  decimals: number,
-  maxDecimals = 6
-): string {
-  const formatted = formatUnits(value, decimals);
-  const [whole, dec = ''] = formatted.split('.');
-  const trimmed = dec.slice(0, maxDecimals).replace(/0+$/, '');
-  return trimmed ? `${whole}.${trimmed}` : whole;
 }
 
 // Fetch USD prices for every non-stable allowlisted symbol in one CoinGecko
@@ -197,8 +166,7 @@ export default function BungeeBridgePanel({
     recipient === 'smartAccount'
       ? (smartAccountAddress ?? undefined)
       : eoaAddress;
-  const recipientLabel =
-    recipient === 'smartAccount' ? 'Sapience Account' : 'Ethereal Account';
+  const recipientLabel = recipientLabelFor(recipient);
 
   // Bungee's trending list per chain — feeds the source picker. Cached for
   // the session; tokens we expose via the allowlist don't churn meaningfully
@@ -305,46 +273,10 @@ export default function BungeeBridgePanel({
     query: { enabled: !!eoaAddress && erc20Combos.length > 0 },
   });
 
-  // Native balances — one useBalance per supported chain. Static count keeps
-  // hooks consistent across renders. Order must match BUNGEE_SOURCE_CHAIN_META.
-  const nativeBalEthereum = useBalance({
-    chainId: 1,
-    address: eoaAddress,
-    query: { enabled: !!eoaAddress },
-  });
-  const nativeBalArbitrum = useBalance({
-    chainId: 42161,
-    address: eoaAddress,
-    query: { enabled: !!eoaAddress },
-  });
-  const nativeBalBase = useBalance({
-    chainId: 8453,
-    address: eoaAddress,
-    query: { enabled: !!eoaAddress },
-  });
-  const nativeBalBsc = useBalance({
-    chainId: 56,
-    address: eoaAddress,
-    query: { enabled: !!eoaAddress },
-  });
-  const nativeBalHyperEvm = useBalance({
-    chainId: 999,
-    address: eoaAddress,
-    query: { enabled: !!eoaAddress },
-  });
-  const nativeBalanceByChainId: Record<number, bigint> = {
-    1: nativeBalEthereum.data?.value ?? 0n,
-    42161: nativeBalArbitrum.data?.value ?? 0n,
-    8453: nativeBalBase.data?.value ?? 0n,
-    56: nativeBalBsc.data?.value ?? 0n,
-    999: nativeBalHyperEvm.data?.value ?? 0n,
-  };
-  const nativeBalancesLoading =
-    nativeBalEthereum.isLoading ||
-    nativeBalArbitrum.isLoading ||
-    nativeBalBase.isLoading ||
-    nativeBalBsc.isLoading ||
-    nativeBalHyperEvm.isLoading;
+  const {
+    byChainId: nativeBalanceByChainId,
+    isLoading: nativeBalancesLoading,
+  } = useBungeeNativeBalances(eoaAddress);
 
   const { data: nativePricesUsd } = useQuery({
     queryKey: ['bungee-native-prices'],
@@ -376,16 +308,11 @@ export default function BungeeBridgePanel({
         0;
       return { ...c, raw, balance, valueUsd: balance * priceUsd };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     allCombos,
     erc20Combos,
     erc20BalancesData,
-    nativeBalEthereum.data?.value,
-    nativeBalArbitrum.data?.value,
-    nativeBalBase.data?.value,
-    nativeBalBsc.data?.value,
-    nativeBalHyperEvm.data?.value,
+    nativeBalanceByChainId,
     rawEoaEtherealNative,
     rawEoaEtherealWrapped,
     nativePricesUsd,
@@ -418,7 +345,9 @@ export default function BungeeBridgePanel({
     ? getNativeGasReserveWei(sourceChainId)
     : 0n;
   const maxSpendableSourceBalance = sourceToken?.isNative
-    ? maxBigInt(sourceBalance - nativeGasReserveWei, 0n)
+    ? sourceBalance > nativeGasReserveWei
+      ? sourceBalance - nativeGasReserveWei
+      : 0n
     : sourceBalance;
   const sourceBalanceNum = selectedComboData?.balance ?? 0;
   const maxSpendableSourceBalanceNum = sourceToken
@@ -460,7 +389,7 @@ export default function BungeeBridgePanel({
     if (!balanceLoaded) return;
     setAmount(
       maxSpendableSourceBalance > 0n
-        ? formatAmountForInput(maxSpendableSourceBalance, sourceToken.decimals)
+        ? formatTokenInput(maxSpendableSourceBalance, sourceToken.decimals)
         : ''
     );
     lastAutoFillKey.current = key;
@@ -477,6 +406,19 @@ export default function BungeeBridgePanel({
   // chain, so we just do a direct EOA-side transfer to the chosen recipient.
   const isEtherealSource = sourceChainId === DEFAULT_CHAIN_ID;
   const isSelfTransfer = isEtherealSource && recipient === 'eoa';
+
+  // Wallet → Wallet on Ethereal is a no-op self-transfer, so when the user
+  // picks an Ethereal source we force the recipient to the Sapience Account
+  // and hide the toggle. They can switch sources to bridge to their EOA.
+  useEffect(() => {
+    if (
+      isEtherealSource &&
+      recipient !== 'smartAccount' &&
+      smartAccountAddress
+    ) {
+      setRecipient('smartAccount');
+    }
+  }, [isEtherealSource, recipient, smartAccountAddress]);
 
   const quoteEnabled =
     !isEtherealSource &&
@@ -679,7 +621,7 @@ export default function BungeeBridgePanel({
         ? maxSpendableSourceBalance
         : (maxSpendableSourceBalance * BigInt(Math.floor(fraction * 10_000))) /
           10_000n;
-    setAmount(formatAmountForInput(value, sourceToken.decimals));
+    setAmount(formatTokenInput(value, sourceToken.decimals));
   };
 
   return (
@@ -692,7 +634,7 @@ export default function BungeeBridgePanel({
             In progress
           </div>
           {bridges.map((b) => (
-            <BridgeRow key={b.requestHash} record={b} />
+            <DepositBridgeRow key={b.requestHash} record={b} />
           ))}
         </div>
       )}
@@ -833,7 +775,7 @@ export default function BungeeBridgePanel({
               <span className="text-muted-foreground">—</span>
             )}
           </div>
-          {smartAccountAddress && eoaAddress && (
+          {smartAccountAddress && eoaAddress && !isEtherealSource && (
             <div className="flex shrink-0 rounded-md border border-border/60 bg-background/40 p-0.5 text-xs">
               <button
                 type="button"
@@ -884,42 +826,40 @@ export default function BungeeBridgePanel({
         </div>
       </div>
 
-      {/* Transaction Breakdown */}
-      <details className="rounded-lg border border-border/50 group">
-        <summary className="cursor-pointer flex justify-between items-center px-4 py-3 text-sm hover:bg-muted/10 list-none">
-          <span>Transaction Breakdown</span>
-          <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
-        </summary>
-        <div className="px-4 pb-3 space-y-1.5 text-sm">
-          {isEtherealSource ? (
-            <p className="text-xs text-muted-foreground">
-              Direct transfer on Ethereal — no bridge fee, no slippage. You pay
-              source-chain gas only.
-            </p>
-          ) : deposit ? (
-            <>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Min received</span>
-                <span className="font-mono">
-                  {formatBalance(minOut ?? 0, 4)} {collateralSymbol}
-                </span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Bridge fee</span>
-                <span>{feePct?.toFixed(2)}%</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Estimated time</span>
-                <span>~{eta}s</span>
-              </div>
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Enter an amount to see route details.
-            </p>
-          )}
-        </div>
-      </details>
+      {/* Transaction Breakdown — hidden for Ethereal source since there's
+          no bridge fee, slippage, or ETA to show. */}
+      {!isEtherealSource && (
+        <details className="rounded-lg border border-border/50 group">
+          <summary className="cursor-pointer flex justify-between items-center px-4 py-3 text-sm hover:bg-muted/10 list-none">
+            <span>Transaction Breakdown</span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
+          </summary>
+          <div className="px-4 pb-3 space-y-1.5 text-sm">
+            {deposit ? (
+              <>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Min received</span>
+                  <span className="font-mono">
+                    {formatBalance(minOut ?? 0, 4)} {collateralSymbol}
+                  </span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Bridge fee</span>
+                  <span>{feePct?.toFixed(2)}%</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Estimated time</span>
+                  <span>~{eta}s</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Enter an amount to see route details.
+              </p>
+            )}
+          </div>
+        </details>
+      )}
 
       {/* Errors */}
       {noRouteAvailable && (
@@ -937,7 +877,7 @@ export default function BungeeBridgePanel({
       <Button
         onClick={handleSubmit}
         disabled={buttonDisabled}
-        className="h-12 w-full text-base"
+        className="h-12 w-full text-base mt-3"
       >
         {buttonLabel}
       </Button>
@@ -961,112 +901,6 @@ function renderTokenChipInner(
         />
       </div>
       <span className="font-medium text-sm">{symbol}</span>
-    </div>
-  );
-}
-
-// Per-source-chain explorer for the deposit tx Bungee returns in status.
-const SOURCE_EXPLORER_TX_BASE: Record<number, string> = {
-  1: 'https://etherscan.io/tx/',
-  42161: 'https://arbiscan.io/tx/',
-  8453: 'https://basescan.org/tx/',
-  56: 'https://bscscan.com/tx/',
-  999: 'https://www.hyperscan.com/tx/',
-};
-
-function relativeTime(submittedAt: number): string {
-  const seconds = Math.max(0, Math.floor((Date.now() - submittedAt) / 1000));
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
-}
-
-function BridgeRow({ record }: { record: BridgeRecord }) {
-  const { removeBridge } = useBridgeTracker();
-  const { data } = useQuery({
-    queryKey: ['bungee-status', record.requestHash],
-    queryFn: ({ signal }) => fetchBungeeStatus(record.requestHash, signal),
-    refetchInterval: (q) => {
-      const last = (
-        q.state.data as { result?: BungeeStatusEntry[] } | undefined
-      )?.result?.[0];
-      return last && isBungeeTerminal(last.bungeeStatusCode)
-        ? false
-        : STATUS_POLL_MS;
-    },
-    retry: 1,
-  });
-  const entry = data?.result?.[0];
-  const code = entry?.bungeeStatusCode;
-  const terminal = isBungeeTerminal(code);
-  const success = isBungeeSuccess(code);
-
-  const recipientLabel =
-    record.recipient === 'smartAccount'
-      ? 'Sapience Account'
-      : 'Ethereal Account';
-
-  // Choose colour for the status pill based on lifecycle state.
-  let pillClass = 'border-ethena/40 bg-ethena/10 text-ethena';
-  if (terminal && success) {
-    pillClass = 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
-  } else if (terminal && !success) {
-    pillClass = 'border-red-500/40 bg-red-500/10 text-red-400';
-  }
-
-  const originTxHash = entry?.originData?.txHash;
-  const originChainId = entry?.originData?.chainId;
-  const explorerBase =
-    originChainId !== undefined
-      ? SOURCE_EXPLORER_TX_BASE[originChainId]
-      : undefined;
-  const explorerUrl =
-    originTxHash && explorerBase ? `${explorerBase}${originTxHash}` : undefined;
-
-  return (
-    <div className="rounded-lg border border-border/50 bg-muted/20 p-3 flex items-center gap-3 text-sm">
-      {!terminal ? (
-        <Loader2 className="h-4 w-4 animate-spin text-ethena shrink-0" />
-      ) : (
-        <span
-          className={`inline-block h-2 w-2 rounded-full shrink-0 ${
-            success ? 'bg-emerald-400' : 'bg-red-400'
-          }`}
-        />
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium truncate">→ {recipientLabel}</span>
-          <span className={`text-xs px-1.5 py-0.5 rounded border ${pillClass}`}>
-            {describeBungeeStatus(code)}
-          </span>
-        </div>
-        <div className="text-xs text-muted-foreground flex items-center gap-2">
-          <span>{relativeTime(record.submittedAt)}</span>
-          {explorerUrl && (
-            <a
-              href={explorerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-foreground underline"
-            >
-              View tx
-            </a>
-          )}
-        </div>
-      </div>
-      {terminal && (
-        <button
-          type="button"
-          onClick={() => removeBridge(record.requestHash)}
-          className="text-muted-foreground hover:text-foreground text-xs"
-          aria-label="Dismiss"
-        >
-          ✕
-        </button>
-      )}
     </div>
   );
 }

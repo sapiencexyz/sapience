@@ -1,4 +1,5 @@
 import type { Address } from 'viem';
+import type { RecipientMode } from './types';
 
 /**
  * Persisted record of a Bungee bridge we initiated. We deliberately keep
@@ -11,7 +12,7 @@ export interface BridgeRecord {
   requestHash: string;
   eoaAddress: Address;
   submittedAt: number;
-  recipient: 'smartAccount' | 'eoa';
+  recipient: RecipientMode;
 }
 
 const STORAGE_PREFIX = 'sapience:bungee-bridges:';
@@ -88,6 +89,29 @@ function notify(): void {
   for (const cb of listeners) cb();
 }
 
+/**
+ * Cross-tab cache invalidator. Attached once at module load so the snapshot
+ * cache stays correct even when no React component is currently subscribed
+ * (e.g. another tab clears localStorage while this tab has the dialog
+ * closed). Subscribe() just routes notifications; it doesn't gate cache
+ * coherency.
+ */
+function handleStorageEvent(e: StorageEvent): void {
+  if (e.key === null) {
+    // localStorage.clear() in another tab.
+    snapshotCache.clear();
+    notify();
+    return;
+  }
+  if (!e.key.startsWith(STORAGE_PREFIX)) return;
+  snapshotCache.delete(e.key);
+  notify();
+}
+
+if (isBrowser()) {
+  window.addEventListener('storage', handleStorageEvent);
+}
+
 export function getBridges(eoa: Address): BridgeRecord[] {
   return readRaw(eoa);
 }
@@ -120,29 +144,12 @@ export function pruneStale(eoa: Address): void {
 
 /**
  * Subscribe to changes. Fires on same-tab writes (via the in-memory
- * listener set) and on cross-tab writes (via the `storage` event).
+ * listener set) and on cross-tab writes (via the module-level `storage`
+ * event handler, which always runs regardless of subscription state).
  */
 export function subscribe(cb: () => void): () => void {
   listeners.add(cb);
-  let storageHandler: ((e: StorageEvent) => void) | null = null;
-  if (isBrowser()) {
-    storageHandler = (e: StorageEvent) => {
-      // null key means localStorage.clear() — drop everything we cached.
-      if (e.key === null) {
-        snapshotCache.clear();
-        cb();
-        return;
-      }
-      if (!e.key.startsWith(STORAGE_PREFIX)) return;
-      // Another tab mutated this key — drop the cached array so the next
-      // read pulls fresh from localStorage.
-      snapshotCache.delete(e.key);
-      cb();
-    };
-    window.addEventListener('storage', storageHandler);
-  }
   return () => {
     listeners.delete(cb);
-    if (storageHandler) window.removeEventListener('storage', storageHandler);
   };
 }
