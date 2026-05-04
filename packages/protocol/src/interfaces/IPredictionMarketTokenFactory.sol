@@ -19,9 +19,6 @@ interface IPredictionMarketTokenFactory {
     /// @notice Token already exists at computed address
     error TokenAlreadyExists(address token);
 
-    /// @notice Deployment failed
-    error DeploymentFailed();
-
     /// @notice Only authorized deployer can deploy
     error Unauthorized();
 

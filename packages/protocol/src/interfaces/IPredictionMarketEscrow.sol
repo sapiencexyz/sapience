@@ -14,10 +14,8 @@ interface IPredictionMarketEscrow {
 
     error InvalidPredictorSignature();
     error InvalidCounterpartySignature();
-    error ExpiredDeadline();
     error NonceAlreadyUsed();
     error PredictionNotFound();
-    error PredictionNotSettled();
     error PredictionAlreadySettled();
     error PredictionNotResolvable();
     error PickConfigNotResolved();

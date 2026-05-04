@@ -64,46 +64,39 @@ interface IV2Types {
         SettlementResult result; // Outcome when resolved
     }
 
-    /// @notice Session key approval data for ZeroDev integration
-    /// @dev Used when a party signs via session key instead of EOA/smart account directly
-    ///      Includes chainId to prevent cross-chain replay attacks
-    struct SessionKeyData {
-        address sessionKey; // The session key address that signed
-        address owner; // The owner who authorized this session key
-        uint256 validUntil; // Expiration timestamp for the session key
-        bytes32 permissionsHash; // Hash of permissions granted to this session key
-        uint256 chainId; // Chain ID for cross-chain replay protection
-        bytes ownerSignature; // Owner's signature authorizing the session key
-    }
-
-    /// @notice Mint request data for creating a new prediction
-    /// @dev Supports both EOA signatures and session key signatures
+    /// @notice Mint request data for creating a new prediction.
+    /// @dev Signatures may be ECDSA (EOA) or ERC-1271 payloads validated by
+    ///      the signer's smart account. The legacy `*SessionKeyData` blob
+    ///      path was removed; both fields must be empty (`"0x"`) — any
+    ///      non-empty value causes `mint` to revert with
+    ///      `LegacySessionKeyDataDisabled`.
     struct MintRequest {
         Pick[] picks; // Canonical ordered picks
         uint256 predictorCollateral; // Amount from predictor
         uint256 counterpartyCollateral; // Amount from counterparty
-        address predictor; // Predictor address (smart account if using session key)
-        address counterparty; // Counterparty address (smart account if using session key)
+        address predictor; // Predictor address (smart account or EOA)
+        address counterparty; // Counterparty address (smart account or EOA)
         uint256 predictorNonce; // Nonce for predictor signature
         uint256 counterpartyNonce; // Nonce for counterparty signature
         uint256 predictorDeadline; // Deadline for predictor signature
         uint256 counterpartyDeadline; // Deadline for counterparty signature
-        bytes predictorSignature; // EIP-712 signature (from EOA or session key)
-        bytes counterpartySignature; // EIP-712 signature (from EOA or session key)
+        bytes predictorSignature; // ECDSA (EOA) or ERC-1271 (smart account)
+        bytes counterpartySignature; // ECDSA (EOA) or ERC-1271 (smart account)
         bytes32 refCode; // Referral code
-        // Session key support (optional - empty bytes if not using session keys)
-        bytes predictorSessionKeyData; // ABI-encoded SessionKeyData for predictor (empty if EOA)
-        bytes counterpartySessionKeyData; // ABI-encoded SessionKeyData for counterparty (empty if EOA)
+        bytes predictorSessionKeyData; // Must be "0x" (legacy path disabled)
+        bytes counterpartySessionKeyData; // Must be "0x" (legacy path disabled)
         // Sponsorship support (optional - address(0) = self-funded)
         address predictorSponsor; // Sponsor contract that funds predictor's collateral
         bytes predictorSponsorData; // Opaque data passed through to sponsor's fundMint
     }
 
     /// @notice Burn request data for bilateral position exit before resolution
-    /// @dev Both token holders sign to agree on payout split. Total payout must not
-    ///      exceed the pro-rata collateral backing. Any shortfall (payout < backing)
-    ///      remains in the pool for remaining holders; if no holders remain it is
-    ///      locked permanently. Set payouts equal to backing for a full-value exit.
+    /// @dev Both token holders sign to agree on payout split. Total payout
+    ///      must not exceed the pro-rata collateral backing. Any shortfall
+    ///      (payout < backing) remains in the pool for remaining holders; if
+    ///      no holders remain it is locked permanently. Set payouts equal to
+    ///      backing for a full-value exit. Same `*SessionKeyData` rules as
+    ///      `MintRequest` — both fields must be `"0x"`.
     struct BurnRequest {
         bytes32 pickConfigId; // Pick configuration to burn from
         uint256 predictorTokenAmount; // Predictor tokens to burn
@@ -116,11 +109,11 @@ interface IV2Types {
         uint256 counterpartyNonce; // Nonce for counterparty signature
         uint256 predictorDeadline; // Deadline for predictor signature
         uint256 counterpartyDeadline; // Deadline for counterparty signature
-        bytes predictorSignature; // EIP-712 signature (from EOA or session key)
-        bytes counterpartySignature; // EIP-712 signature (from EOA or session key)
+        bytes predictorSignature; // ECDSA (EOA) or ERC-1271 (smart account)
+        bytes counterpartySignature; // ECDSA (EOA) or ERC-1271 (smart account)
         bytes32 refCode; // Referral code
-        bytes predictorSessionKeyData; // ABI-encoded SessionKeyData for predictor (empty if EOA)
-        bytes counterpartySessionKeyData; // ABI-encoded SessionKeyData for counterparty (empty if EOA)
+        bytes predictorSessionKeyData; // Must be "0x" (legacy path disabled)
+        bytes counterpartySessionKeyData; // Must be "0x" (legacy path disabled)
     }
 
     /// @notice Token pair for a prediction
