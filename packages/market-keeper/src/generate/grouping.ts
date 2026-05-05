@@ -172,19 +172,6 @@ export async function groupMarkets(
   const allConditionIds = allFilteredMarkets.map((m) => m.conditionId);
   const existingIds = await checkExistingConditions(apiUrl, allConditionIds);
 
-  // Compute metadata updates for existing conditions by diffing against fresh Polymarket data
-  const metadataUpdates = computeMetadataUpdates(
-    allFilteredMarkets,
-    filteredGroups,
-    existingIds,
-    eventTagMap
-  );
-
-  const groupMetadataUpdates = computeGroupMetadataUpdates(
-    filteredGroups,
-    existingIds
-  );
-
   // Apply LLM pre-filter pipeline to separate new vs existing markets
   const { output: newMarkets, stats: llmFilterStats } = runPipeline(
     allFilteredMarkets,
@@ -277,8 +264,6 @@ export async function groupMarkets(
     },
     groups: conditionGroups,
     ungroupedConditions,
-    metadataUpdates,
-    groupMetadataUpdates,
   };
 }
 
@@ -287,7 +272,7 @@ export async function groupMarkets(
  * of the fields that transformToSapienceCondition writes on initial create.
  * Kept as a single source of truth so the diff and the create paths agree.
  */
-function freshMetadataFor(
+export function freshMetadataFor(
   market: PolymarketMarket,
   groupTitle: string | undefined,
   tags: string[]
@@ -313,7 +298,7 @@ function freshMetadataFor(
  * as sets since Polymarket can reshuffle tag/similarMarkets ordering
  * without any semantic change.
  */
-function fieldsEqual(a: unknown, b: unknown): boolean {
+export function fieldsEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false;
     const sa = [...a].map(String).sort();
@@ -330,7 +315,7 @@ function fieldsEqual(a: unknown, b: unknown): boolean {
  * SyncableFields is re-derived from the current Polymarket market and
  * pushed back if it differs from what we have stored.
  */
-function computeMetadataUpdates(
+export function computeMetadataUpdates(
   markets: PolymarketMarket[],
   groups: Array<{
     title: string;
@@ -433,7 +418,7 @@ function computeMetadataUpdates(
  * up via the group's first market, so we can't double-emit even if future
  * changes allow multi-market groups.
  */
-function computeGroupMetadataUpdates(
+export function computeGroupMetadataUpdates(
   groups: Array<{
     title: string;
     markets: PolymarketMarket[];

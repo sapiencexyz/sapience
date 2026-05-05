@@ -22,12 +22,7 @@ import type { PolymarketMarket } from '../src/types';
 import { DEFAULT_SAPIENCE_API_URL } from '../src/constants';
 import { fetchWithRetry, validatePrivateKey } from '../src/utils';
 import { groupMarkets } from '../src/generate/grouping';
-import {
-  printDryRun,
-  submitToAPI,
-  submitMetadataUpdates,
-  submitGroupMetadataUpdates,
-} from '../src/generate/api';
+import { printDryRun, submitToAPI } from '../src/generate/api';
 
 async function fetchEventBySlug(slug: string): Promise<PolymarketMarket[]> {
   const url = `https://gamma-api.polymarket.com/events?slug=${encodeURIComponent(slug)}`;
@@ -130,18 +125,6 @@ async function main() {
   }
 
   await submitToAPI(apiUrl, privateKey, sapienceData);
-
-  if (sapienceData.metadataUpdates.length > 0) {
-    await submitMetadataUpdates(apiUrl, privateKey, sapienceData.metadataUpdates);
-  }
-
-  if (sapienceData.groupMetadataUpdates.length > 0) {
-    await submitGroupMetadataUpdates(
-      apiUrl,
-      privateKey,
-      sapienceData.groupMetadataUpdates
-    );
-  }
 }
 
 main().catch((error) => {
