@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { createPublicClient, http, formatUnits, type Hex, type Address } from 'viem';
 import { isPredictedYes } from '@sapience/sdk/types/escrow';
 import { computeStats, type Stats } from '../lib/stats';
@@ -258,6 +258,18 @@ export function RelayerBenchmark({ config, conditions }: Props) {
   const [rows, setRows] = useState<AuctionRow[]>([]);
   const [anyBidStats, setAnyBidStats] = useState<Stats | null>(null);
   const [validBidStats, setValidBidStats] = useState<Stats | null>(null);
+  const [filterExtremeOdds, setFilterExtremeOdds] = useState(false);
+
+  const filteredConditions = useMemo(() => {
+    if (!filterExtremeOdds) return conditions;
+    return conditions.filter((c) => {
+      if (c.estimatedPrice == null) return true;
+      return c.estimatedPrice >= 0.01 && c.estimatedPrice <= 0.99;
+    });
+  }, [conditions, filterExtremeOdds]);
+
+  const filteredConditionsRef = useRef(filteredConditions);
+  useEffect(() => { filteredConditionsRef.current = filteredConditions; }, [filteredConditions]);
 
   const abortRef = useRef(false);
   const sessionRef = useRef<RelayerSession | null>(null);
@@ -353,7 +365,10 @@ export function RelayerBenchmark({ config, conditions }: Props) {
 
   const handleStart = async () => {
     if (!privateKey) { setStatus('Enter a private key'); return; }
-    if (conditions.length === 0) { setStatus('No conditions — start GQL first'); return; }
+    if (filteredConditions.length === 0) {
+      setStatus(conditions.length === 0 ? 'No conditions — start GQL first' : 'No conditions match filter');
+      return;
+    }
 
     abortRef.current = false;
     startTimeRef.current = performance.now();
@@ -368,7 +383,7 @@ export function RelayerBenchmark({ config, conditions }: Props) {
     const connect = async (): Promise<WebSocket> => {
       setStatus('Connecting...');
       const ws = await connectWs(wsUrl);
-      setStatus(`Running (${conditions.length} conditions)`);
+      setStatus(`Running (${filteredConditionsRef.current.length} conditions)`);
       return ws;
     };
 
@@ -414,7 +429,7 @@ export function RelayerBenchmark({ config, conditions }: Props) {
           continue;
         }
         try {
-          const picks = buildRandomPicks(conditions);
+          const picks = buildRandomPicks(filteredConditionsRef.current);
           if (picks.length > 0) await sendAuction(session, picks);
         } catch (err) {
           setStatus(`Send error: ${(err as Error).message}`);
@@ -475,11 +490,23 @@ export function RelayerBenchmark({ config, conditions }: Props) {
           Interval (ms)
           <input type="number" min={500} max={30000} step={500} value={intervalMs} onChange={(e) => setIntervalMs(Number(e.target.value))} disabled={running} />
         </label>
-        <button onClick={running ? handleStop : handleStart} className={running ? 'btn-stop' : 'btn-start'} disabled={!running && conditions.length === 0}>
-          {running ? 'Stop' : conditions.length === 0 ? 'Start GQL first' : 'Start'}
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={filterExtremeOdds}
+            onChange={(e) => setFilterExtremeOdds(e.target.checked)}
+          />
+          <span>Exclude conditions with odds &lt;1% or &gt;99%</span>
+        </label>
+        <button onClick={running ? handleStop : handleStart} className={running ? 'btn-stop' : 'btn-start'} disabled={!running && filteredConditions.length === 0}>
+          {running ? 'Stop' : conditions.length === 0 ? 'Start GQL first' : filteredConditions.length === 0 ? 'No conditions match filter' : 'Start'}
         </button>
         {conditions.length > 0 && (
-          <span className="condition-count">{conditions.length} conditions in pool</span>
+          <span className="condition-count">
+            {filterExtremeOdds
+              ? `${filteredConditions.length} / ${conditions.length} conditions in pool`
+              : `${conditions.length} conditions in pool`}
+          </span>
         )}
       </div>
 
