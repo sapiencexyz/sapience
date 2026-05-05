@@ -13,7 +13,7 @@ import type {
   QueryPositionsArgs,
   QueryPositionCountArgs,
 } from '../../__generated__/resolvers';
-import { positions, positionCount } from './escrow';
+import { positions, positionCount, positionsPage } from './escrow';
 
 // Resolvers in the generated module are typed as the
 // `ResolverFn | ResolverWithResolve` union, which TypeScript can't narrow
@@ -447,6 +447,148 @@ describe('positions resolver — ordering', () => {
     const result = await callPositions();
 
     expect(result.map((r) => r.id)).toEqual(['1-sell-0xtrade1', '2']);
+  });
+});
+
+describe('positions resolver — query shape', () => {
+  it('pushes the holder filter into the predictions include so we only pull the holder’s predictions', async () => {
+    // Without this, every prediction on the pickConfiguration is loaded —
+    // including unrelated users — and discarded later in the WAC walk.
+    // For popular pickConfigs this is a 10x+ payload reduction.
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({ holder: ALICE });
+
+    const callArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(callArgs.include?.pickConfiguration?.include?.predictions).toEqual({
+      where: {
+        OR: [
+          { predictor: ALICE.toLowerCase() },
+          { counterparty: ALICE.toLowerCase() },
+        ],
+      },
+    });
+  });
+
+  it('does not narrow predictions when holder is not provided (conditionId path)', async () => {
+    mockPrisma.pick.findMany.mockResolvedValue([{ pickConfigId: PC_ID }]);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({ holder: undefined, conditionId: '0xcond' });
+
+    const callArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(callArgs.include?.pickConfiguration?.include?.predictions).toBe(
+      true
+    );
+  });
+
+  it('runs preloadPickConditions and secondaryTrade.findMany in parallel after position.findMany', async () => {
+    // We can't observe scheduling directly, but we can confirm both
+    // dependent fetches were issued from the resolver. The Promise.all
+    // wrapper means neither blocks the other.
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({ balance: '100' }),
+    ]);
+
+    await callPositions({ holder: ALICE });
+
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
+    // preloadPickConditions issues a condition.findMany when ctx is provided.
+    // We don't pass ctx in this suite, so it's a no-op — but the trades
+    // call is the smoking gun that the parallel branch ran.
+    const tradesArgs = mockPrisma.secondaryTrade.findMany.mock.calls[0][0];
+    expect(tradesArgs.where).toMatchObject({
+      OR: [{ seller: { in: [ALICE] } }, { buyer: { in: [ALICE] } }],
+    });
+  });
+
+  it('skips the secondaryTrade.findMany call when there are no positions to resolve', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({ holder: ALICE });
+
+    expect(mockPrisma.secondaryTrade.findMany).not.toHaveBeenCalled();
+  });
+
+  it('fetches take + 1 raw rows so hasMore can be derived without a count query', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({ holder: ALICE, take: 15 });
+
+    const callArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(callArgs.take).toBe(16);
+  });
+});
+
+describe('positionsPage resolver', () => {
+  type PositionsPageFn = (
+    parent: unknown,
+    args: QueryPositionsArgs,
+    ctx: unknown,
+    info: unknown
+  ) => Promise<{ items: unknown[]; hasMore: boolean }>;
+  const positionsPageFn = positionsPage as unknown as PositionsPageFn;
+
+  const callPositionsPage = (args: Partial<QueryPositionsArgs> = {}) =>
+    positionsPageFn(
+      undefined,
+      { take: 15, skip: 0, holder: ALICE, ...args },
+      undefined,
+      undefined
+    );
+
+  it('reports hasMore=true when raw row fetch returned the extra sentinel row', async () => {
+    // 15 + 1 = 16 raw rows → hasMore is true. We trim to take.
+    const sixteen = Array.from({ length: 16 }, (_, i) =>
+      makePosition({
+        id: i + 1,
+        balance: '100',
+        pickConfiguration: makePickConfig({ predictions: [makePrediction()] }),
+      })
+    );
+    mockPrisma.position.findMany.mockResolvedValue(sixteen);
+
+    const result = await callPositionsPage({ take: 15 });
+
+    expect(result.hasMore).toBe(true);
+    // Synthesized count comes from the first 15 rows (the +1 sentinel is dropped).
+    expect(result.items.length).toBe(15);
+  });
+
+  it('reports hasMore=false when fewer than take + 1 raw rows came back', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({
+        balance: '100',
+        pickConfiguration: makePickConfig({ predictions: [makePrediction()] }),
+      }),
+    ]);
+
+    const result = await callPositionsPage({ take: 15 });
+
+    expect(result.hasMore).toBe(false);
+    expect(result.items.length).toBe(1);
+  });
+
+  it('returns hasMore=true even when the page synthesizes zero items, so the client keeps paging', async () => {
+    // Crucial case: zero-balance unresolved positions with no sells emit
+    // nothing. The naive "stop on empty" client logic would terminate
+    // pagination here. With server-truth hasMore, the client keeps going.
+    const sixteenEmpty = Array.from({ length: 16 }, (_, i) =>
+      makePosition({
+        id: i + 1,
+        balance: '0',
+        pickConfiguration: makePickConfig({
+          resolved: false,
+          predictions: [],
+        }),
+      })
+    );
+    mockPrisma.position.findMany.mockResolvedValue(sixteenEmpty);
+
+    const result = await callPositionsPage({ take: 15 });
+
+    expect(result.items.length).toBe(0);
+    expect(result.hasMore).toBe(true);
   });
 });
 

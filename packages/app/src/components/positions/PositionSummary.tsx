@@ -275,16 +275,12 @@ export default function PositionSummary({
     </div>
   );
 
-  const renderStakeCell = (stake: number, sideWon: boolean | undefined) => (
+  const renderStakeCell = (stake: number) => (
     <div className="flex flex-col gap-1 min-w-0">
       <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
         Position Size
       </div>
-      <span
-        className={`text-sm md:text-base font-medium tabular-nums ${
-          isSettled && sideWon ? 'text-green-600' : 'text-foreground'
-        }`}
-      >
+      <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
         <NumberDisplay value={stake} className="tabular-nums" />
         <span className="ml-1 text-xs font-normal text-muted-foreground">
           {collateralSymbol}
@@ -387,9 +383,9 @@ export default function PositionSummary({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-6">
           {/* Row 1: parties with stakes */}
           {renderPartyCell('Predictor', predictorAddress)}
-          {renderStakeCell(predictorStake, predictorWon)}
+          {renderStakeCell(predictorStake)}
           {renderPartyCell('Counterparty', counterpartyAddress)}
-          {renderStakeCell(counterpartyStake, counterpartyWon)}
+          {renderStakeCell(counterpartyStake)}
 
           {/* Row 2: lifecycle */}
           {renderCreatedCell()}

@@ -372,7 +372,7 @@ const MarketsPage = () => {
           )}
 
           {/* Featured combos (table view only) */}
-          {!useCardGrid && <ExampleCombos className="mt-4 md:mt-0" />}
+          {!useCardGrid && <ExampleCombos className="mt-4 xl:mt-0" />}
 
           {/* Predict Prices (shared) */}
           <div className={`w-full mt-4 mb-2 ${useCardGrid ? 'px-4' : ''}`}>

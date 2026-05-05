@@ -20,9 +20,9 @@ const { mockPrisma, mockReadContract } = vi.hoisted(() => {
   return { mockPrisma, mockReadContract };
 });
 
-vi.mock('../core/db', () => ({ default: mockPrisma }));
+vi.mock('../../core/db', () => ({ default: mockPrisma }));
 
-vi.mock('../../generated/prisma', () => ({
+vi.mock('../../../generated/prisma', () => ({
   SettlementResult: {
     UNRESOLVED: 'UNRESOLVED',
     PREDICTOR_WINS: 'PREDICTOR_WINS',
@@ -31,7 +31,7 @@ vi.mock('../../generated/prisma', () => ({
   },
 }));
 
-vi.mock('../lib/utils', () => ({
+vi.mock('../../lib/utils', () => ({
   getProviderForChain: vi.fn().mockReturnValue({
     readContract: mockReadContract,
   }),
@@ -54,25 +54,13 @@ vi.mock('@sapience/sdk/contracts', () => ({
       42161: { address: '0xEscrow' },
     },
     predictionMarketVault: {
-      42161: {
-        address: '0xVault',
-        blockCreated: 100,
-        legacy: [
-          { address: '0xLegacyVault', blockCreated: 50 },
-          ['0xTupleLegacyVault', 25],
-        ],
-      },
+      42161: { address: '0xVault' },
     },
     pythPredictionMarketVault: {},
     singleLegVault: {},
     predictionMarketVaultStrategyB: {},
   },
-  normalizeLegacyEntry: (
-    entry: { address: string; blockCreated: number } | readonly [string, number]
-  ) =>
-    Array.isArray(entry)
-      ? { address: entry[0], blockCreated: entry[1] }
-      : entry,
+  normalizeLegacyEntry: (entry: unknown) => entry,
 }));
 
 vi.mock('@sapience/sdk/abis', () => ({
@@ -84,16 +72,10 @@ vi.mock('@sapience/sdk/constants', () => ({
 }));
 
 import {
-  calculateVaultSecondaryFlows,
-  calculateVaultAirdrops,
-  fetchVaultDeployed,
   computeAndStoreProtocolStats,
   getLatestProtocolStats,
   getProtocolStatsTimeSeries,
-  buildVaultAggregator,
-  getConfiguredVaultDeploymentAddresses,
-  sumEscrowBalancesAtBlock,
-} from './protocolStats';
+} from './snapshots';
 
 // Helper for the default "no settlement, no flow, no trades, no transfers" baseline.
 function resetEmptyState() {
@@ -106,185 +88,6 @@ function resetEmptyState() {
   mockPrisma.protocolStatsSnapshot.upsert.mockResolvedValue({});
   mockReadContract.mockResolvedValue(1000000000000000000n);
 }
-
-// ─── configured vault deployments ───────────────────────────────────────────
-
-describe('getConfiguredVaultDeploymentAddresses', () => {
-  it('includes current and legacy vault deployments', () => {
-    expect(getConfiguredVaultDeploymentAddresses(42161)).toEqual([
-      '0xvault',
-      '0xlegacyvault',
-      '0xtuplelegacyvault',
-    ]);
-  });
-});
-
-// ─── fetchVaultDeployed ─────────────────────────────────────────────────────
-
-describe('fetchVaultDeployed', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('sums counterpartyCollateral for unsettled predictions', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([
-      { counterpartyCollateral: '500000000000000000' },
-      { counterpartyCollateral: '300000000000000000' },
-      { counterpartyCollateral: '200000000000000000' },
-    ]);
-
-    const result = await fetchVaultDeployed(42161);
-
-    expect(result).toBe(1000000000000000000n);
-    expect(mockPrisma.prediction.findMany).toHaveBeenCalledWith({
-      where: {
-        chainId: 42161,
-        counterparty: '0xvault',
-        OR: [
-          { pickConfigId: null },
-          { pickConfiguration: { resolved: false } },
-        ],
-      },
-      select: { counterpartyCollateral: true },
-    });
-  });
-
-  it('returns 0n when no matching predictions', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([]);
-
-    const result = await fetchVaultDeployed(42161);
-
-    expect(result).toBe(0n);
-  });
-
-  it('filters by atTimestamp when provided', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([
-      { counterpartyCollateral: '100000000000000000' },
-    ]);
-
-    const timestamp = 1700000000;
-    await fetchVaultDeployed(42161, timestamp);
-
-    expect(mockPrisma.prediction.findMany).toHaveBeenCalledWith({
-      where: {
-        chainId: 42161,
-        counterparty: '0xvault',
-        onChainCreatedAt: { lte: timestamp },
-        OR: [
-          { pickConfigId: null },
-          { pickConfiguration: { resolved: false } },
-          {
-            pickConfiguration: {
-              resolved: true,
-              resolvedAt: { gt: timestamp },
-            },
-          },
-        ],
-      },
-      select: { counterpartyCollateral: true },
-    });
-  });
-
-  it('returns 0n when no vault address is configured for chainId', async () => {
-    const result = await fetchVaultDeployed(999);
-
-    expect(result).toBe(0n);
-    expect(mockPrisma.prediction.findMany).not.toHaveBeenCalled();
-  });
-});
-
-// ─── calculateVaultSecondaryFlows ───────────────────────────────────────────
-
-describe('calculateVaultSecondaryFlows', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetEmptyState();
-  });
-
-  it('sums prices on the side where vault is buyer or seller', async () => {
-    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
-      { buyer: '0xvault', seller: '0xother', price: '700000000000000000' },
-      { buyer: '0xother', seller: '0xvault', price: '400000000000000000' },
-      { buyer: '0xother', seller: '0xvault', price: '100000000000000000' },
-    ]);
-
-    const result = await calculateVaultSecondaryFlows(42161);
-
-    expect(result.bought).toBe(700000000000000000n);
-    expect(result.sold).toBe(500000000000000000n);
-  });
-
-  it('returns zero when no trades touch the vault', async () => {
-    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
-    const result = await calculateVaultSecondaryFlows(42161);
-    expect(result).toEqual({ bought: 0n, sold: 0n });
-  });
-
-  it('passes beforeTimestamp through to the executedAt filter', async () => {
-    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
-    await calculateVaultSecondaryFlows(42161, 1700000000);
-    const call = mockPrisma.secondaryTrade.findMany.mock.calls[0][0];
-    expect(call.where.executedAt).toEqual({ lte: 1700000000 });
-  });
-});
-
-// ─── calculateVaultAirdrops ─────────────────────────────────────────────────
-
-describe('calculateVaultAirdrops', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetEmptyState();
-  });
-
-  it('subtracts deposits, settlement payouts, and secondary sale proceeds from gross transfers in', async () => {
-    // 5 wUSDe arrived in the vault. 1 was a deposit, 2 was a settlement
-    // redemption (Claim row), 1 was secondary sale proceeds. The remaining
-    // 1 is airdrop.
-    mockPrisma.collateralTransfer.findMany.mockResolvedValue([
-      { value: '5000000000000000000' },
-    ]);
-    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
-      {
-        assets: '1000000000000000000',
-        eventType: 'deposit',
-        vaultAddress: '0xvault',
-      },
-    ]);
-    mockPrisma.claim.findMany.mockResolvedValue([
-      {
-        holder: '0xvault',
-        collateralPaid: '2000000000000000000',
-        redeemedAt: 1700000000,
-      },
-    ]);
-    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
-      { buyer: '0xother', seller: '0xvault', price: '1000000000000000000' },
-    ]);
-
-    const result = await calculateVaultAirdrops(42161);
-    expect(result).toBe(1000000000000000000n);
-  });
-
-  it('clamps to zero when the explained inflows exceed gross transfers in (indexer drift)', async () => {
-    mockPrisma.collateralTransfer.findMany.mockResolvedValue([
-      { value: '500000000000000000' },
-    ]);
-    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
-      {
-        assets: '2000000000000000000',
-        eventType: 'deposit',
-        vaultAddress: '0xvault',
-      },
-    ]);
-    const result = await calculateVaultAirdrops(42161);
-    expect(result).toBe(0n);
-  });
-
-  it('returns zero when no transfers landed in the vault', async () => {
-    const result = await calculateVaultAirdrops(42161);
-    expect(result).toBe(0n);
-  });
-});
 
 // ─── computeAndStoreProtocolStats ───────────────────────────────────────────
 
@@ -688,280 +491,5 @@ describe('getProtocolStatsTimeSeries', () => {
 
     const call = mockPrisma.protocolStatsSnapshot.findMany.mock.calls[0][0];
     expect(call.where.vaultAddress).toBe('0xMyVault');
-  });
-});
-
-// ─── buildVaultAggregator (in-memory replacements used by backfill) ─────────
-
-describe('buildVaultAggregator', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  // The mocked SDK config exposes vault `0xVault` (lower-cased to `0xvault` in
-  // the helper). Each test seeds a small prediction + flow-event dataset and
-  // exercises the three aggregators. Predicates are ports of the SQL filters
-  // in fetchVaultDeployed / calculateVaultPnL / calculateVaultFlows; the goal
-  // is to lock those predicates so a future SQL change can't silently drift
-  // out of sync with the in-memory port.
-  const T = 1_000_000;
-
-  it('deployedAt: includes pickConfigId=null predictions before t', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([
-      {
-        counterparty: '0xvault',
-        predictor: '0xuser',
-        onChainCreatedAt: T - 100,
-        counterpartyCollateral: '500',
-        predictorCollateral: '0',
-        pickConfigId: null,
-        pickConfiguration: null,
-      },
-    ]);
-    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
-
-    const agg = await buildVaultAggregator(42161);
-    expect(agg.deployedAt(T, '0xvault')).toBe(500n);
-  });
-
-  it('deployedAt: excludes predictions created after t', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([
-      {
-        counterparty: '0xvault',
-        predictor: '0xuser',
-        onChainCreatedAt: T + 1,
-        counterpartyCollateral: '500',
-        predictorCollateral: '0',
-        pickConfigId: null,
-        pickConfiguration: null,
-      },
-    ]);
-    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
-
-    const agg = await buildVaultAggregator(42161);
-    expect(agg.deployedAt(T, '0xvault')).toBe(0n);
-  });
-
-  it('deployedAt: pickConfiguration resolved before t excludes prediction', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([
-      {
-        counterparty: '0xvault',
-        predictor: '0xuser',
-        onChainCreatedAt: T - 100,
-        counterpartyCollateral: '500',
-        predictorCollateral: '0',
-        pickConfigId: 'pc1',
-        pickConfiguration: {
-          resolved: true,
-          resolvedAt: T - 10,
-          result: 'PREDICTOR_WINS',
-        },
-      },
-    ]);
-    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
-
-    const agg = await buildVaultAggregator(42161);
-    expect(agg.deployedAt(T, '0xvault')).toBe(0n);
-  });
-
-  it('deployedAt: pickConfiguration resolved after t still counts as deployed', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([
-      {
-        counterparty: '0xvault',
-        predictor: '0xuser',
-        onChainCreatedAt: T - 100,
-        counterpartyCollateral: '500',
-        predictorCollateral: '0',
-        pickConfigId: 'pc1',
-        pickConfiguration: {
-          resolved: true,
-          resolvedAt: T + 10,
-          result: 'PREDICTOR_WINS',
-        },
-      },
-    ]);
-    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
-
-    const agg = await buildVaultAggregator(42161);
-    expect(agg.deployedAt(T, '0xvault')).toBe(500n);
-  });
-
-  it('pnlAt: gross payouts via Claim minus primary collateral, with UNRESOLVED + future-claim skips', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([
-      // Vault wins as counterparty: cost basis 700, gross payout 1000 → +300
-      {
-        predictor: '0xuser',
-        counterparty: '0xvault',
-        predictorCollateral: '300',
-        counterpartyCollateral: '700',
-        onChainCreatedAt: T - 200,
-        pickConfigId: 'pc1',
-        pickConfiguration: {
-          resolved: true,
-          resolvedAt: T - 50,
-          result: 'COUNTERPARTY_WINS',
-        },
-      },
-      // Vault loses as predictor: cost basis 500, gross payout 0 → -500
-      {
-        predictor: '0xvault',
-        counterparty: '0xuser',
-        predictorCollateral: '500',
-        counterpartyCollateral: '500',
-        onChainCreatedAt: T - 150,
-        pickConfigId: 'pc2',
-        pickConfiguration: {
-          resolved: true,
-          resolvedAt: T - 40,
-          result: 'COUNTERPARTY_WINS',
-        },
-      },
-      // UNRESOLVED — primary collateral skipped
-      {
-        predictor: '0xuser',
-        counterparty: '0xvault',
-        predictorCollateral: '999',
-        counterpartyCollateral: '999',
-        onChainCreatedAt: T - 100,
-        pickConfigId: 'pc3',
-        pickConfiguration: {
-          resolved: true,
-          resolvedAt: T - 10,
-          result: 'UNRESOLVED',
-        },
-      },
-      // Resolved AFTER t — primary collateral skipped at this snapshot
-      {
-        predictor: '0xuser',
-        counterparty: '0xvault',
-        predictorCollateral: '111',
-        counterpartyCollateral: '111',
-        onChainCreatedAt: T - 100,
-        pickConfigId: 'pc4',
-        pickConfiguration: {
-          resolved: true,
-          resolvedAt: T + 10,
-          result: 'COUNTERPARTY_WINS',
-        },
-      },
-    ]);
-    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
-    // Claim rows = TokensRedeemed events. pc1: vault received 1000.
-    // pc2: vault lost — no claim row. Future-redeemed claim is skipped.
-    mockPrisma.claim.findMany.mockResolvedValue([
-      { holder: '0xvault', collateralPaid: '1000', redeemedAt: T - 50 },
-      // future-redeemed (after t) — skipped
-      { holder: '0xvault', collateralPaid: '999', redeemedAt: T + 5 },
-    ]);
-    mockPrisma.close.findMany.mockResolvedValue([]);
-    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
-    mockPrisma.collateralTransfer.findMany.mockResolvedValue([]);
-
-    const agg = await buildVaultAggregator(42161);
-    const result = agg.pnlAt(T, '0xvault');
-    // grossPayouts = 1000 (pc1; pc2 lost = no claim; pc4 future-redeemed skipped)
-    // primaryCollateral = 700 (pc1) + 500 (pc2) = 1200 (pc3 unresolved + pc4 future-resolved skipped)
-    // realizedPnL = 1000 − 1200 = −200
-    expect(result.realizedPnL).toBe(-200n);
-    expect(result.positionsWon).toBe(1);
-    expect(result.positionsLost).toBe(1);
-    expect(result.totalCollateralWon).toBe(1000n);
-    expect(result.totalCollateralLost).toBe(1200n);
-  });
-
-  it('flowsAt: filters by timestamp <= t and partitions deposit vs withdrawal', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([]);
-    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
-      {
-        timestamp: T - 100,
-        eventType: 'deposit',
-        assets: '1000',
-        vaultAddress: '0xvault',
-      },
-      {
-        timestamp: T - 50,
-        eventType: 'withdrawal',
-        assets: '200',
-        vaultAddress: '0xvault',
-      },
-      {
-        timestamp: T - 25,
-        eventType: 'deposit',
-        assets: '500',
-        vaultAddress: '0xvault',
-      },
-      // After t — skipped
-      {
-        timestamp: T + 10,
-        eventType: 'deposit',
-        assets: '999',
-        vaultAddress: '0xvault',
-      },
-    ]);
-
-    const agg = await buildVaultAggregator(42161);
-    const result = agg.flowsAt(T, '0xvault');
-    expect(result.totalDeposits).toBe(1500n);
-    expect(result.totalWithdrawals).toBe(200n);
-  });
-
-  it('returns zero-aggregators when chain has no vault configured', async () => {
-    const agg = await buildVaultAggregator(999);
-    expect(agg.deployedAt(T, '0xvault')).toBe(0n);
-    expect(agg.pnlAt(T, '0xvault').realizedPnL).toBe(0n);
-    expect(agg.flowsAt(T, '0xvault').totalDeposits).toBe(0n);
-    expect(mockPrisma.prediction.findMany).not.toHaveBeenCalled();
-  });
-});
-
-// ─── sumEscrowBalancesAtBlock catch narrowing ───────────────────────────────
-
-describe('sumEscrowBalancesAtBlock', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('treats ContractFunctionExecutionError as 0 balance for the failing address', async () => {
-    const { ContractFunctionExecutionError } = await import('viem');
-    // Two escrow addresses (mocked SDK config has only the primary, so we
-    // use the same address for both client calls and rely on mock sequencing).
-    const local = vi
-      .fn()
-      .mockResolvedValueOnce(1000n)
-      .mockRejectedValueOnce(
-        new ContractFunctionExecutionError(
-          new Error('execution reverted') as unknown as ConstructorParameters<
-            typeof ContractFunctionExecutionError
-          >[0],
-          {
-            abi: [],
-            functionName: 'balanceOf',
-          } as ConstructorParameters<typeof ContractFunctionExecutionError>[1]
-        )
-      );
-    const total = await sumEscrowBalancesAtBlock(
-      { readContract: local } as unknown as Parameters<
-        typeof sumEscrowBalancesAtBlock
-      >[0],
-      42161,
-      999n
-    );
-    // The mock SDK config only registers a single primary escrow; second
-    // mockResolvedValue is never consumed. Just confirm: the first call
-    // succeeded, total = first value.
-    expect(total).toBe(1000n);
-  });
-
-  it('rethrows non-revert errors (rate-limit / network)', async () => {
-    const local = vi.fn().mockRejectedValue(new Error('429 Too Many Requests'));
-    await expect(
-      sumEscrowBalancesAtBlock(
-        { readContract: local } as unknown as Parameters<
-          typeof sumEscrowBalancesAtBlock
-        >[0],
-        42161,
-        999n
-      )
-    ).rejects.toThrow('429 Too Many Requests');
   });
 });

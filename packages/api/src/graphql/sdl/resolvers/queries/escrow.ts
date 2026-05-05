@@ -17,16 +17,25 @@
  * shape. `mapPickConfig` lives in the shared `pickConfigHelpers.ts`.
  */
 
-import type { QueryResolvers, Prediction } from '../../__generated__/resolvers';
+import type {
+  QueryResolvers,
+  QueryPositionsArgs,
+  Prediction,
+  ResolversParentTypes,
+} from '../../__generated__/resolvers';
+import type { ApolloContext } from '../../../startApolloServer';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
+import { preloadPickConditions } from '../preloadPickConditions';
 
 type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
 }>;
 
-const mapPrediction = (r: PredictionWithPickConfig): Prediction => ({
+const mapPrediction = (
+  r: PredictionWithPickConfig
+): ResolversParentTypes['Prediction'] => ({
   id: r.id,
   predictionId: r.predictionId,
   chainId: r.chainId,
@@ -92,7 +101,8 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     isLegacy,
     orderBy,
     orderDirection,
-  }
+  },
+  ctx
 ) => {
   const cappedTake = Math.max(1, Math.min(take, 100));
   const addr = address?.toLowerCase();
@@ -134,23 +144,29 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     skip,
     include: { pickConfiguration: { include: { picks: true } } },
   });
+  await preloadPickConditions(
+    ctx,
+    rows.map((r) => r.pickConfiguration)
+  );
   return rows.map(mapPrediction);
 };
 
 export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   _parent,
-  { id }
+  { id },
+  ctx
 ) => {
   const r = await prisma.prediction.findUnique({
     where: { predictionId: id.toLowerCase() },
     include: { pickConfiguration: { include: { picks: true } } },
   });
+  if (r) await preloadPickConditions(ctx, [r.pickConfiguration]);
   return r ? mapPrediction(r) : null;
 };
 
 export const pickConfigurations: NonNullable<
   QueryResolvers['pickConfigurations']
-> = async (_parent, { take, skip, chainId, resolved, result, tokens }) => {
+> = async (_parent, { take, skip, chainId, resolved, result, tokens }, ctx) => {
   const cappedTake = Math.max(1, Math.min(take, 100));
   const where: Prisma.PicksWhereInput = {};
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
@@ -175,21 +191,38 @@ export const pickConfigurations: NonNullable<
     skip,
     include: { picks: true },
   });
+  await preloadPickConditions(ctx, rows);
   return rows.map((r) => mapPickConfig(r));
 };
 
 export const pickConfiguration: NonNullable<
   QueryResolvers['pickConfiguration']
-> = async (_parent, { id }) => {
+> = async (_parent, { id }, ctx) => {
   const r = await prisma.picks.findUnique({
     where: { id: id.toLowerCase() },
     include: { picks: true },
   });
+  if (r) await preloadPickConditions(ctx, [r]);
   return r ? mapPickConfig(r) : null;
 };
 
-export const positions: NonNullable<QueryResolvers['positions']> = async (
-  _parent,
+type PositionShape = ResolversParentTypes['Position'] & {
+  id: string;
+  chainId: number;
+  tokenAddress: string;
+  pickConfigId: string;
+  isPredictorToken: boolean;
+  holder: string;
+  balance: string;
+  userCollateral: string | null;
+  totalPayout: string | null;
+  realizedPnL: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  pickConfig: ReturnType<typeof mapPickConfig> | null;
+};
+
+const runPositions = async (
   {
     holder,
     conditionId,
@@ -206,9 +239,14 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     collateralMax,
     orderBy,
     orderDirection,
-  }
-) => {
-  const cappedTake = Math.max(1, Math.min(take, 100));
+  }: QueryPositionsArgs,
+  ctx: ApolloContext | undefined
+): Promise<{
+  items: PositionShape[];
+  hasMore: boolean;
+}> => {
+  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
+  const skipVal = skip ?? 0;
   const holderLower = holder?.toLowerCase();
   const pickConfigIdLower = pickConfigId?.toLowerCase();
 
@@ -225,12 +263,13 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
       distinct: ['pickConfigId'],
     });
     const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
-    if (pickConfigIds.length === 0) return [];
+    if (pickConfigIds.length === 0) return { items: [], hasMore: false };
     where.pickConfigId = { in: pickConfigIds };
   }
 
   // Require at least one filter — prevents accidentally-unbounded queries.
-  if (!holderLower && !conditionId && !pickConfigIdLower) return [];
+  if (!holderLower && !conditionId && !pickConfigIdLower)
+    return { items: [], hasMore: false };
 
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (pickConfigIdLower && !conditionId) where.pickConfigId = pickConfigIdLower;
@@ -311,7 +350,7 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
       HAVING SUM(CAST("counterpartyCollateral" AS DECIMAL)) >= ${minVal.toString()}::DECIMAL
         ${maxVal !== null ? Prisma.sql`AND SUM(CAST("counterpartyCollateral" AS DECIMAL)) <= ${maxVal.toString()}::DECIMAL` : Prisma.empty}
     `;
-    if (matchingConfigs.length === 0) return [];
+    if (matchingConfigs.length === 0) return { items: [], hasMore: false };
     const validPickConfigIds = matchingConfigs.map((r) => r.pickConfigId);
     if (
       where.pickConfigId &&
@@ -323,7 +362,8 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
         in: existing.filter((id) => validPickConfigIds.includes(id)),
       };
     } else if (where.pickConfigId && typeof where.pickConfigId === 'string') {
-      if (!validPickConfigIds.includes(where.pickConfigId)) return [];
+      if (!validPickConfigIds.includes(where.pickConfigId))
+        return { items: [], hasMore: false };
     } else {
       where.pickConfigId = { in: validPickConfigIds };
     }
@@ -337,15 +377,38 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     [posOrderField]: posOrderDirection,
   };
 
-  const rows = await prisma.position.findMany({
+  // The PickConfiguration → Prediction relation is many-to-many in spirit:
+  // any user who has predicted on this market shows up here. We only need
+  // the rows where the holder is a counterparty to compute their cost
+  // basis, so push the filter into the include and avoid pulling every
+  // other user's prediction back over the wire. When `holder` isn't
+  // pinned (conditionId / pickConfigId path), keep the full set.
+  const predictionsInclude: Prisma.Picks$predictionsArgs | true = holderLower
+    ? {
+        where: {
+          OR: [{ predictor: holderLower }, { counterparty: holderLower }],
+        },
+      }
+    : true;
+
+  // Fetch take+1 to detect a `hasMore`-style next page without a count
+  // query. Synthesized event-stream rows from raw positions can be
+  // empty (zero-balance unresolved with no sells), so client-side
+  // `lastPage.length === 0` is unreliable as a stop signal — we need
+  // server-truth pagination.
+  const rawRows = await prisma.position.findMany({
     where,
     orderBy: orderByClause,
-    take: cappedTake,
-    skip,
+    take: cappedTake + 1,
+    skip: skipVal,
     include: {
-      pickConfiguration: { include: { picks: true, predictions: true } },
+      pickConfiguration: {
+        include: { picks: true, predictions: predictionsInclude },
+      },
     },
   });
+  const hasMore = rawRows.length > cappedTake;
+  const rows = rawRows.slice(0, cappedTake);
 
   // For each Position row we build a chronological event stream of primary
   // mints (Predictions) and secondary trades (buys + sells matching
@@ -358,10 +421,28 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
   const chainIds = Array.from(new Set(rows.map((r) => r.chainId)));
   const tokenAddresses = Array.from(new Set(rows.map((r) => r.tokenAddress)));
   const holders = Array.from(new Set(rows.map((r) => r.holder)));
-  const trades =
+
+  type TradeRow = {
+    chainId: number;
+    token: string;
+    seller: string;
+    buyer: string;
+    price: string;
+    tokenAmount: string;
+    executedAt: number;
+    tradeHash: string;
+  };
+
+  // preloadPickConditions and the trades fetch are independent — both only
+  // need `rows`. Run them in parallel to overlap their network round trips.
+  const [, trades] = await Promise.all([
+    preloadPickConditions(
+      ctx,
+      rows.map((r) => r.pickConfiguration)
+    ),
     rows.length === 0
-      ? []
-      : await prisma.secondaryTrade.findMany({
+      ? Promise.resolve([] as TradeRow[])
+      : prisma.secondaryTrade.findMany({
           where: {
             chainId: { in: chainIds },
             token: { in: tokenAddresses },
@@ -377,7 +458,8 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
             executedAt: true,
             tradeHash: true,
           },
-        });
+        }),
+  ]);
 
   const positionKey = (chainId: number, token: string, holder: string) =>
     `${chainId}:${token}:${holder}`;
@@ -390,22 +472,6 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
       else tradesByPos.set(k, [t]);
     }
   }
-
-  type PositionShape = {
-    id: string;
-    chainId: number;
-    tokenAddress: string;
-    pickConfigId: string;
-    isPredictorToken: boolean;
-    holder: string;
-    balance: string;
-    userCollateral: string | null;
-    totalPayout: string | null;
-    realizedPnL: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    pickConfig: ReturnType<typeof mapPickConfig> | null;
-  };
 
   const synthesized: PositionShape[] = [];
   for (const r of rows) {
@@ -565,7 +631,22 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     const diff = b[sortKey].getTime() - a[sortKey].getTime();
     return posOrderDirection === 'asc' ? -diff : diff;
   });
-  return synthesized;
+  return { items: synthesized, hasMore };
+};
+
+export const positions: NonNullable<QueryResolvers['positions']> = async (
+  _parent,
+  args,
+  ctx
+) => {
+  const { items } = await runPositions(args, ctx);
+  return items;
+};
+
+export const positionsPage: NonNullable<
+  QueryResolvers['positionsPage']
+> = async (_parent, args, ctx) => {
+  return runPositions(args, ctx);
 };
 
 export const closes: NonNullable<QueryResolvers['closes']> = async (

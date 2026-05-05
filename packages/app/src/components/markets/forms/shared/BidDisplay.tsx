@@ -8,6 +8,10 @@ import RiskDisclaimer from './RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import { formatNumber } from '~/lib/utils/util';
 import { quoteBidsToAuctionBids } from '~/lib/auction/bidAdapter';
+import {
+  isBidExpired as checkBidExpired,
+  remainingMsToDeadline,
+} from '~/lib/auction/bidExpiry';
 import AuctionBidsChart from '~/components/shared/AuctionBidsChart';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 
@@ -136,9 +140,10 @@ export default function BidDisplay({
   // Convert QuoteBids to AuctionBidData for the chart
   const chartBids = useMemo(() => quoteBidsToAuctionBids(allBids), [allBids]);
 
-  // Check if the current best bid is expired
+  // Check if the current best bid is expired (uses a small buffer ahead of
+  // the on-chain deadline so the user has room for inclusion latency)
   const isBidExpired = bestBid
-    ? bestBid.counterpartyDeadline * 1000 - nowMs <= 0
+    ? checkBidExpired(bestBid.counterpartyDeadline, nowMs)
     : true;
 
   // Unified UI state - single source of truth for all UI rendering
@@ -166,7 +171,10 @@ export default function BidDisplay({
 
     const humanTotalVal = calculatePayoutAmount(bestBid, positionSize);
 
-    const remainingMs = bestBid.counterpartyDeadline * 1000 - nowMs;
+    const remainingMs = remainingMsToDeadline(
+      bestBid.counterpartyDeadline,
+      nowMs
+    );
     const secs = Math.max(0, Math.ceil(remainingMs / 1000));
 
     return { humanTotal: humanTotalVal, remainingSecs: secs };

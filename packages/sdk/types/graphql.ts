@@ -1420,6 +1420,8 @@ export type NullsOrder =
 /** Individual outcome pick within a pick configuration */
 export type Pick = {
   __typename?: 'Pick';
+  /** The condition this pick references. May be null if the conditionId is dangling. */
+  condition?: Maybe<Condition>;
   conditionId: Scalars['String']['output'];
   conditionResolver: Scalars['String']['output'];
   id: Scalars['Int']['output'];
@@ -1481,6 +1483,13 @@ export type Position = {
 export type PositionSortField =
   | 'CREATED_AT'
   | 'UPDATED_AT';
+
+/** Paginated wrapper around Position rows with a server-truth hasMore flag */
+export type PositionsPage = {
+  __typename?: 'PositionsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Position>;
+};
 
 /** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
 export type Prediction = {
@@ -1646,6 +1655,8 @@ export type Query = {
   positionCount: Scalars['Int']['output'];
   /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
   positions: Array<Position>;
+  /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. */
+  positionsPage: PositionsPage;
   /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
   /** Count of escrow predictions involving the given address */
@@ -1663,6 +1674,17 @@ export type Query = {
   protocolVolume: Array<VolumeDataPoint>;
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
+  /**
+   * Public referral analytics. Referral codes are attribution hints, not
+   * authorization credentials: using someone else's code credits that referrer's
+   * volume/claims, but does not grant access to funds or admin capabilities.
+   *
+   * Returns paginated referral codes with claim count and aggregate trading volume /
+   * position count baked in. Pass `id` to filter to a single code (e.g. for the
+   * analytics dialog). Per-claimant breakdown is available via the nested
+   * `claimants` field.
+   */
+  referralCodes: ReferralCodesPage;
   /** Look up a single secondary market trade by its trade hash */
   trade?: Maybe<Trade>;
   /**
@@ -1878,6 +1900,25 @@ export type QueryPositionsArgs = {
 };
 
 
+export type QueryPositionsPageArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  collateralMax?: InputMaybe<Scalars['String']['input']>;
+  collateralMin?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  endsAtMax?: InputMaybe<Scalars['Int']['input']>;
+  endsAtMin?: InputMaybe<Scalars['Int']['input']>;
+  holder?: InputMaybe<Scalars['String']['input']>;
+  holderWon?: InputMaybe<Scalars['Boolean']['input']>;
+  orderBy?: InputMaybe<PositionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  result?: InputMaybe<SettlementResult>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
 export type QueryPredictionArgs = {
   id: Scalars['String']['input'];
 };
@@ -1936,6 +1977,13 @@ export type QueryQuestionsArgs = {
   sortField?: InputMaybe<QuestionSortField>;
   tag?: InputMaybe<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
+};
+
+
+export type QueryReferralCodesArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  id?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2003,11 +2051,24 @@ export type QuestionSortField =
   | 'predictionCount'
   | 'similarMarketVolume';
 
+/**
+ * Public referral code metadata and analytics. This intentionally includes creator,
+ * claim counts, aggregate volume/position stats, and claimant breakdowns.
+ *
+ * Referral codes are low-security attribution hints: using someone else's code only
+ * credits that referrer; it does not grant access to funds or privileged actions.
+ *
+ * `codeHash` is intentionally omitted from GraphQL because public clients should
+ * not need it, and referral-code identity in this API is the integer `id`.
+ * Credentialed create/update REST paths may still return hashes to the caller that
+ * created or administers the code.
+ */
 export type ReferralCode = {
   __typename?: 'ReferralCode';
-  _count?: Maybe<ReferralCodeCount>;
-  claimedBy: Array<User>;
-  codeHash: Scalars['String']['output'];
+  /** Total number of users who have claimed this code, across all pages. */
+  claimCount: Scalars['Int']['output'];
+  /** Paginated per-claimant breakdown with trading volume + position count. */
+  claimants: ReferralCodeClaimantsPage;
   createdAt: Scalars['DateTimeISO']['output'];
   createdBy: Scalars['String']['output'];
   creatorType: Scalars['String']['output'];
@@ -2015,27 +2076,51 @@ export type ReferralCode = {
   id: Scalars['Int']['output'];
   isActive: Scalars['Boolean']['output'];
   maxClaims: Scalars['Int']['output'];
+  /**
+   * Total position count across every claimant. A position with both predictor
+   * and counterparty in the claimant set is counted twice, matching the
+   * per-side semantics.
+   */
+  totalPositions: Scalars['Int']['output'];
+  /**
+   * Sum of trading volume across every claimant's positions (predictor +
+   * counterparty sides), as a stringified bigint. Aggregated server-side.
+   */
+  totalVolume: Scalars['String']['output'];
   updatedAt: Scalars['DateTimeISO']['output'];
 };
 
 
-export type ReferralCodeClaimedByArgs = {
-  cursor?: InputMaybe<UserWhereUniqueInput>;
-  distinct?: InputMaybe<Array<UserScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<UserOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<UserWhereInput>;
+/**
+ * Public referral code metadata and analytics. This intentionally includes creator,
+ * claim counts, aggregate volume/position stats, and claimant breakdowns.
+ *
+ * Referral codes are low-security attribution hints: using someone else's code only
+ * credits that referrer; it does not grant access to funds or privileged actions.
+ *
+ * `codeHash` is intentionally omitted from GraphQL because public clients should
+ * not need it, and referral-code identity in this API is the integer `id`.
+ * Credentialed create/update REST paths may still return hashes to the caller that
+ * created or administers the code.
+ */
+export type ReferralCodeClaimantsArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type ReferralCodeCount = {
-  __typename?: 'ReferralCodeCount';
-  claimedBy: Scalars['Int']['output'];
+export type ReferralCodeClaimant = {
+  __typename?: 'ReferralCodeClaimant';
+  address: Scalars['String']['output'];
+  claimedAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['Int']['output'];
+  positionCount: Scalars['Int']['output'];
+  tradingVolume: Scalars['String']['output'];
 };
 
-
-export type ReferralCodeCountClaimedByArgs = {
-  where?: InputMaybe<UserWhereInput>;
+export type ReferralCodeClaimantsPage = {
+  __typename?: 'ReferralCodeClaimantsPage';
+  items: Array<ReferralCodeClaimant>;
+  nextCursor?: Maybe<Scalars['Int']['output']>;
 };
 
 export type ReferralCodeNullableRelationFilter = {
@@ -2044,8 +2129,6 @@ export type ReferralCodeNullableRelationFilter = {
 };
 
 export type ReferralCodeOrderByWithRelationInput = {
-  claimedBy?: InputMaybe<UserOrderByRelationAggregateInput>;
-  codeHash?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   createdBy?: InputMaybe<SortOrder>;
   creatorType?: InputMaybe<SortOrder>;
@@ -2060,8 +2143,6 @@ export type ReferralCodeWhereInput = {
   AND?: InputMaybe<Array<ReferralCodeWhereInput>>;
   NOT?: InputMaybe<Array<ReferralCodeWhereInput>>;
   OR?: InputMaybe<Array<ReferralCodeWhereInput>>;
-  claimedBy?: InputMaybe<UserListRelationFilter>;
-  codeHash?: InputMaybe<StringFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   createdBy?: InputMaybe<StringFilter>;
   creatorType?: InputMaybe<StringFilter>;
@@ -2070,6 +2151,12 @@ export type ReferralCodeWhereInput = {
   isActive?: InputMaybe<BoolFilter>;
   maxClaims?: InputMaybe<IntFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
+};
+
+export type ReferralCodesPage = {
+  __typename?: 'ReferralCodesPage';
+  items: Array<ReferralCode>;
+  nextCursor?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Filter questions by their resolution status */
