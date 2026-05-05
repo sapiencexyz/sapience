@@ -1595,7 +1595,7 @@ type Query {
   Public referral analytics. Referral codes are attribution hints, not
   authorization credentials: using someone else's code credits that referrer's
   volume/claims, but does not grant access to funds or admin capabilities.
-
+  
   Returns paginated referral codes with claim count and aggregate trading volume /
   position count baked in. Pass `id` to filter to a single code (e.g. for the
   analytics dialog). Per-claimant breakdown is available via the nested
