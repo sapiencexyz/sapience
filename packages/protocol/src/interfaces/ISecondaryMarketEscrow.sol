@@ -32,8 +32,13 @@ interface ISecondaryMarketEscrow {
         bytes sellerSignature; // ECDSA (EOA) or ERC-1271 (smart account) sig
         bytes buyerSignature; // ECDSA (EOA) or ERC-1271 (smart account) sig
         bytes32 refCode; // Referral code
-        bytes sellerSessionKeyData; // Must be "0x" (legacy path disabled)
-        bytes buyerSessionKeyData; // Must be "0x" (legacy path disabled)
+        /// @custom:deprecated Must be `"0x"`. The legacy session-key path was
+        /// removed; supplying any non-empty value reverts with
+        /// `LegacySessionKeyDataDisabled`. Field will be dropped in a future
+        /// ABI break once telemetry confirms no producer remains. See PR #1673.
+        bytes sellerSessionKeyData;
+        /// @custom:deprecated Must be `"0x"`. See `sellerSessionKeyData`.
+        bytes buyerSessionKeyData;
     }
 
     // ============ Events ============

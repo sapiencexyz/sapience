@@ -83,8 +83,13 @@ interface IV2Types {
         bytes predictorSignature; // ECDSA (EOA) or ERC-1271 (smart account)
         bytes counterpartySignature; // ECDSA (EOA) or ERC-1271 (smart account)
         bytes32 refCode; // Referral code
-        bytes predictorSessionKeyData; // Must be "0x" (legacy path disabled)
-        bytes counterpartySessionKeyData; // Must be "0x" (legacy path disabled)
+        /// @custom:deprecated Must be `"0x"`. The legacy session-key path was
+        /// removed; supplying any non-empty value reverts with
+        /// `LegacySessionKeyDataDisabled`. Field will be dropped in a future
+        /// ABI break once telemetry confirms no producer remains. See PR #1673.
+        bytes predictorSessionKeyData;
+        /// @custom:deprecated Must be `"0x"`. See `predictorSessionKeyData`.
+        bytes counterpartySessionKeyData;
         // Sponsorship support (optional - address(0) = self-funded)
         address predictorSponsor; // Sponsor contract that funds predictor's collateral
         bytes predictorSponsorData; // Opaque data passed through to sponsor's fundMint
@@ -112,8 +117,10 @@ interface IV2Types {
         bytes predictorSignature; // ECDSA (EOA) or ERC-1271 (smart account)
         bytes counterpartySignature; // ECDSA (EOA) or ERC-1271 (smart account)
         bytes32 refCode; // Referral code
-        bytes predictorSessionKeyData; // Must be "0x" (legacy path disabled)
-        bytes counterpartySessionKeyData; // Must be "0x" (legacy path disabled)
+        /// @custom:deprecated Must be `"0x"`. See `MintRequest.predictorSessionKeyData`.
+        bytes predictorSessionKeyData;
+        /// @custom:deprecated Must be `"0x"`. See `MintRequest.predictorSessionKeyData`.
+        bytes counterpartySessionKeyData;
     }
 
     /// @notice Token pair for a prediction
