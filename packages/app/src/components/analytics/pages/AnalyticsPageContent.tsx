@@ -92,7 +92,6 @@ type ChartTooltipProps = {
   label?: string;
   dataKey: string;
   collateralSymbol: string;
-  subDaily: boolean;
 };
 
 function ChartTooltip({
@@ -101,7 +100,6 @@ function ChartTooltip({
   label,
   dataKey,
   collateralSymbol,
-  subDaily,
 }: ChartTooltipProps): React.ReactNode {
   if (!active || !payload?.length) return null;
 
@@ -114,7 +112,6 @@ function ChartTooltip({
     maximumFractionDigits: 2,
   });
 
-  // Format timestamp (Unix seconds) to date string
   let dateLabel = '';
   if (label != null) {
     const date = new Date(Number(label) * 1000);
@@ -133,11 +130,6 @@ function ChartTooltip({
       'Dec',
     ];
     dateLabel = `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
-    if (subDaily) {
-      const hh = String(date.getUTCHours()).padStart(2, '0');
-      const mm = String(date.getUTCMinutes()).padStart(2, '0');
-      dateLabel += ` ${hh}:${mm} UTC`;
-    }
   }
 
   return (
@@ -152,23 +144,9 @@ function ChartTooltip({
   );
 }
 
-// X-axis tick formatter. Includes HH:MM only when the dataset is sub-daily
-// (a snapshot timestamp not aligned to UTC midnight) AND the visible period
-// is short enough that multiple ticks land on the same day. For 1M/3M/ALL
-// the time component is noise — the date alone is unambiguous.
-function makeTimestampTickFormatter(
-  subDaily: boolean,
-  period: Period
-): (value: number) => string {
-  const showTime = subDaily && period === '1W';
-  return (value: number) => {
-    const date = new Date(value * 1000);
-    const md = `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
-    if (!showTime) return md;
-    const hh = String(date.getUTCHours()).padStart(2, '0');
-    const mm = String(date.getUTCMinutes()).padStart(2, '0');
-    return `${md} ${hh}:${mm}`;
-  };
+function formatTimestampTick(value: number): string {
+  const date = new Date(value * 1000);
+  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
 const CHART_AXIS_STYLE = {
@@ -191,6 +169,18 @@ function filterDataByPeriod<T extends { timestamp: number }>(
   const now = Math.floor(Date.now() / 1000);
   const cutoff = now - days * 86400;
   return data.filter((item) => item.timestamp >= cutoff);
+}
+
+// Collapse sub-daily snapshots to one point per UTC day, keeping the last
+// observation in the day. Used for stock-like metrics (OI, TVL) where summing
+// would be wrong; the input is assumed to be in chronological order.
+function bucketStatsByDay<T extends { timestamp: number }>(data: T[]): T[] {
+  const byDay = new Map<number, T>();
+  for (const point of data) {
+    const dayStart = Math.floor(point.timestamp / 86400) * 86400;
+    byDay.set(dayStart, { ...point, timestamp: dayStart });
+  }
+  return [...byDay.values()].sort((a, b) => a.timestamp - b.timestamp);
 }
 
 function AnalyticsPageContent(): React.ReactElement {
@@ -236,41 +226,33 @@ function AnalyticsPageContent(): React.ReactElement {
     }));
   }, [protocolStats]);
 
-  const filteredVolumeData = useMemo(
-    () => filterDataByPeriod(volumeChartData, volumePeriod),
-    [volumeChartData, volumePeriod]
-  );
+  // Aggregate sub-daily snapshots into UTC-day buckets. The cron interval is
+  // configurable and often runs multiple times per day, so without this the
+  // "Daily Volume" bar chart shows N bars per day instead of one.
+  const filteredVolumeData = useMemo(() => {
+    const filtered = filterDataByPeriod(volumeChartData, volumePeriod);
+    const byDay = new Map<number, number>();
+    for (const point of filtered) {
+      const dayStart = Math.floor(point.timestamp / 86400) * 86400;
+      byDay.set(dayStart, (byDay.get(dayStart) ?? 0) + point.volume);
+    }
+    return [...byDay.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([timestamp, volume]) => ({ timestamp, volume }));
+  }, [volumeChartData, volumePeriod]);
 
+  // Bucket sub-daily snapshots into UTC days, keeping the last snapshot of
+  // each day (closing value) so OI/TVL line charts render one point per day
+  // instead of N. OI and TVL are stocks, not flows — picking the last sample
+  // matches how end-of-day balances are conventionally reported.
   const filteredOiData = useMemo(
-    () => filterDataByPeriod(statsChartData, oiPeriod),
+    () => bucketStatsByDay(filterDataByPeriod(statsChartData, oiPeriod)),
     [statsChartData, oiPeriod]
   );
 
   const filteredTvlData = useMemo(
-    () => filterDataByPeriod(statsChartData, tvlPeriod),
+    () => bucketStatsByDay(filterDataByPeriod(statsChartData, tvlPeriod)),
     [statsChartData, tvlPeriod]
-  );
-
-  // The cron's snapshot interval is configurable. When it's sub-daily (4h /
-  // hourly / 15-min), at least one snapshot timestamp won't land on UTC
-  // midnight — the chart should then surface HH:MM in tick + tooltip labels
-  // so consecutive points are distinguishable.
-  const subDaily = useMemo(
-    () => (protocolStats ?? []).some((p) => p.timestamp % 86400 !== 0),
-    [protocolStats]
-  );
-
-  const formatVolumeTick = useMemo(
-    () => makeTimestampTickFormatter(subDaily, volumePeriod),
-    [subDaily, volumePeriod]
-  );
-  const formatOiTick = useMemo(
-    () => makeTimestampTickFormatter(subDaily, oiPeriod),
-    [subDaily, oiPeriod]
-  );
-  const formatTvlTick = useMemo(
-    () => makeTimestampTickFormatter(subDaily, tvlPeriod),
-    [subDaily, tvlPeriod]
   );
 
   const isLoading = statsLoading;
@@ -420,7 +402,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <XAxis
                           dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatVolumeTick}
+                          tickFormatter={formatTimestampTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
@@ -434,7 +416,6 @@ function AnalyticsPageContent(): React.ReactElement {
                               {...props}
                               dataKey="volume"
                               collateralSymbol={collateralSymbol}
-                              subDaily={subDaily}
                             />
                           )}
                         />
@@ -500,7 +481,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <XAxis
                           dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatOiTick}
+                          tickFormatter={formatTimestampTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
@@ -514,7 +495,6 @@ function AnalyticsPageContent(): React.ReactElement {
                               {...props}
                               dataKey="openInterest"
                               collateralSymbol={collateralSymbol}
-                              subDaily={subDaily}
                             />
                           )}
                         />
@@ -581,7 +561,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <XAxis
                           dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatTvlTick}
+                          tickFormatter={formatTimestampTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
@@ -595,7 +575,6 @@ function AnalyticsPageContent(): React.ReactElement {
                               {...props}
                               dataKey="protocolTvl"
                               collateralSymbol={collateralSymbol}
-                              subDaily={subDaily}
                             />
                           )}
                         />
