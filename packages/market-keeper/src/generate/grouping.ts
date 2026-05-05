@@ -249,6 +249,29 @@ export async function groupMarkets(
     );
   });
 
+  // Enforce category uniformity within each event-title bucket. The DB's
+  // ConditionGroup is keyed by name (find-or-create), so multiple keeper
+  // groups sharing a title collapse onto a single row server-side. Without
+  // this pass, sibling conditions can carry per-market LLM categories that
+  // disagree with each other AND with the group's stored category (which
+  // gets stamped by whichever sibling submits first). Vote once per title
+  // and rewrite both the group payload and every condition under it.
+  const titleBuckets = new Map<string, SapienceConditionGroup[]>();
+  for (const group of conditionGroups) {
+    const bucket = titleBuckets.get(group.title) ?? [];
+    bucket.push(group);
+    titleBuckets.set(group.title, bucket);
+  }
+  for (const bucket of titleBuckets.values()) {
+    const allConditions = bucket.flatMap((g) => g.conditions);
+    if (allConditions.length === 0) continue;
+    const voted = computeGroupCategory(allConditions);
+    for (const g of bucket) {
+      g.categorySlug = voted;
+      for (const c of g.conditions) c.categorySlug = voted;
+    }
+  }
+
   // Count total conditions after filtering
   const totalConditions =
     conditionGroups.reduce((sum, g) => sum + g.conditions.length, 0) +

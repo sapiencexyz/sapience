@@ -667,4 +667,69 @@ describe('groupMarkets new-condition routing', () => {
     expect(condition.shortName).not.toBe('BTC 200k');
     expect(condition.shortName).toBe('Bitcoin above $200k?');
   });
+
+  it('forces sibling conditions sharing an event title onto the majority category', async () => {
+    // Three sibling markets in "Champions League QF" — two LLM-classified as
+    // sports, one as culture. Expected outcome: all three (and all three
+    // single-market groups) end up tagged sports after the uniformity pass.
+    // Without that pass the DB ConditionGroup gets whichever sibling submits
+    // first as its category, and the other siblings disagree.
+    const markets = [
+      makeMarket({
+        conditionId: '0xa',
+        question: 'Will Real Madrid beat Arsenal?',
+        events: [{ title: 'Champions League QF', slug: 'ucl-qf' }],
+      }),
+      makeMarket({
+        conditionId: '0xb',
+        question: 'Will Barcelona beat PSG?',
+        events: [{ title: 'Champions League QF', slug: 'ucl-qf' }],
+      }),
+      makeMarket({
+        conditionId: '0xc',
+        question: 'Will the halftime musician forget the lyrics?',
+        events: [{ title: 'Champions League QF', slug: 'ucl-qf' }],
+      }),
+    ];
+
+    mockCheckExisting.mockResolvedValue(new Map());
+
+    const result = await groupMarkets(markets, API_URL);
+
+    // All three should land in three keeper-side groups sharing the title.
+    const titleGroups = result.groups.filter(
+      (g) => g.title === 'Champions League QF'
+    );
+    expect(titleGroups).toHaveLength(3);
+
+    // Two markets have sports-style questions, one has a culture-style
+    // question. inferSapienceCategorySlug (the LLM-disabled fallback used
+    // here) returns 'sports' for the first two and 'culture' for the third,
+    // so the majority is sports. After the uniformity pass, all three
+    // groups + their conditions agree on sports.
+    const categories = titleGroups.map((g) => g.categorySlug);
+    expect(new Set(categories).size).toBe(1);
+
+    const conditionCategories = titleGroups.flatMap((g) =>
+      g.conditions.map((c) => c.categorySlug)
+    );
+    expect(new Set(conditionCategories).size).toBe(1);
+    expect(conditionCategories[0]).toBe(categories[0]);
+  });
+
+  it('leaves a single-condition group alone (no siblings to vote against)', async () => {
+    const market = makeMarket({
+      conditionId: '0xsolo',
+      question: 'Will the halftime musician forget the lyrics?',
+      events: [{ title: 'Some Solo Event', slug: 'solo' }],
+    });
+
+    mockCheckExisting.mockResolvedValue(new Map());
+
+    const result = await groupMarkets([market], API_URL);
+    const group = result.groups[0];
+    expect(group).toBeDefined();
+    // Single-condition bucket — vote returns that one condition's category.
+    expect(group.categorySlug).toBe(group.conditions[0].categorySlug);
+  });
 });
