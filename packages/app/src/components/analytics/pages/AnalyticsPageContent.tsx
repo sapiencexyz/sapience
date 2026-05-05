@@ -236,10 +236,20 @@ function AnalyticsPageContent(): React.ReactElement {
     }));
   }, [protocolStats]);
 
-  const filteredVolumeData = useMemo(
-    () => filterDataByPeriod(volumeChartData, volumePeriod),
-    [volumeChartData, volumePeriod]
-  );
+  // Aggregate sub-daily snapshots into UTC-day buckets. The cron interval is
+  // configurable and often runs multiple times per day, so without this the
+  // "Daily Volume" bar chart shows N bars per day instead of one.
+  const filteredVolumeData = useMemo(() => {
+    const filtered = filterDataByPeriod(volumeChartData, volumePeriod);
+    const byDay = new Map<number, number>();
+    for (const point of filtered) {
+      const dayStart = Math.floor(point.timestamp / 86400) * 86400;
+      byDay.set(dayStart, (byDay.get(dayStart) ?? 0) + point.volume);
+    }
+    return [...byDay.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([timestamp, volume]) => ({ timestamp, volume }));
+  }, [volumeChartData, volumePeriod]);
 
   const filteredOiData = useMemo(
     () => filterDataByPeriod(statsChartData, oiPeriod),
@@ -260,9 +270,11 @@ function AnalyticsPageContent(): React.ReactElement {
     [protocolStats]
   );
 
+  // Volume bars are aggregated to UTC-day buckets above, so HH:MM in the tick
+  // would always be "00:00" — pass false so the formatter just emits M/D.
   const formatVolumeTick = useMemo(
-    () => makeTimestampTickFormatter(subDaily, volumePeriod),
-    [subDaily, volumePeriod]
+    () => makeTimestampTickFormatter(false, volumePeriod),
+    [volumePeriod]
   );
   const formatOiTick = useMemo(
     () => makeTimestampTickFormatter(subDaily, oiPeriod),
@@ -434,7 +446,7 @@ function AnalyticsPageContent(): React.ReactElement {
                               {...props}
                               dataKey="volume"
                               collateralSymbol={collateralSymbol}
-                              subDaily={subDaily}
+                              subDaily={false}
                             />
                           )}
                         />

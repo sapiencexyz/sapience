@@ -37,8 +37,9 @@ export default function OpenInterestByCategoryChart() {
 
     const total = merged.reduce((acc, s) => acc + s.raw, 0n);
     const totalNum = Number(total) / 1e18;
+    // Drop slices that would render as "0.0%" — the legend uses toFixed(1),
+    // so anything under 0.05% is rounded down and looks like a no-op row.
     return merged
-      .filter((s) => s.raw > 0n)
       .map((s) => {
         const value = Number(s.raw) / 1e18;
         return {
@@ -48,7 +49,8 @@ export default function OpenInterestByCategoryChart() {
           value,
           percent: totalNum > 0 ? (value / totalNum) * 100 : 0,
         };
-      });
+      })
+      .filter((s) => s.percent >= 0.05);
   }, [data]);
 
   return (
