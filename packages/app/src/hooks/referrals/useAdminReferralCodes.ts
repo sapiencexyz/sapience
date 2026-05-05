@@ -8,11 +8,11 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useAdminApi } from '~/hooks/useAdminApi';
 
 export type AdminReferralCodeRow = {
   id: number;
-  codeHash: string;
   maxClaims: number;
   isActive: boolean;
   expiresAt: number | null;
@@ -20,18 +20,20 @@ export type AdminReferralCodeRow = {
   creatorType: 'admin' | 'user';
   createdAt: string;
   claimCount: number;
+  totalVolume: string;
+  totalPositions: number;
 };
 
 export type AdminReferralAnalytics = {
-  codeHash: string;
+  id: number;
   claimCount: number;
+  totalVolume: string;
+  totalPositions: number;
   claimants: Array<{
     address: string;
     tradingVolume: string;
     positionCount: number;
   }>;
-  totalVolume: string;
-  totalPositions: number;
 };
 
 export type CreateAdminReferralCodeInput = {
@@ -50,19 +52,21 @@ export type UpdateAdminReferralCodeInput = {
 
 const ADMIN_CODES_QUERY_KEY = ['admin', 'referralCodes'] as const;
 
-// The referral admin endpoints live at `/referrals/admin/...` on the API root,
-// not under the `/admin` prefix exposed by `useAdminApi`.
-function useReferralAdminFetch() {
+// useAdminApi.base ends in `/admin`; mutations stay there. Reads now go to
+// GraphQL, so we strip the suffix to derive the API root for fetch URLs.
+function useApiBaseUrl(): string {
   const adminApi = useAdminApi();
-  const apiBaseUrl = useMemo(
-    () => adminApi.base.replace(/\/admin$/, ''),
-    [adminApi.base]
-  );
+  return useMemo(() => adminApi.base.replace(/\/admin$/, ''), [adminApi.base]);
+}
+
+function useReferralAdminMutate() {
+  const adminApi = useAdminApi();
+  const apiBaseUrl = useApiBaseUrl();
 
   return useCallback(
     async <T>(
       path: string,
-      method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+      method: 'POST' | 'PUT' | 'DELETE',
       body?: Record<string, unknown>
     ): Promise<T> => {
       const { signature, signatureTimestamp } = await adminApi.sign();
@@ -88,31 +92,124 @@ function useReferralAdminFetch() {
   );
 }
 
+// Reads use public GraphQL intentionally. Referral analytics are public because
+// codes only affect attribution; create/update/delete mutations remain signed
+// admin REST requests.
+const REFERRAL_CODES_QUERY = `
+  query AdminReferralCodes($limit: Int!, $cursor: Int) {
+    referralCodes(limit: $limit, cursor: $cursor) {
+      items {
+        id
+        maxClaims
+        isActive
+        expiresAt
+        createdBy
+        creatorType
+        createdAt
+        claimCount
+        totalVolume
+        totalPositions
+      }
+      nextCursor
+    }
+  }
+`;
+
+// Server caps `limit` at 500 per page. We auto-paginate so the admin UI
+// doesn't silently truncate at 500 codes; MAX_PAGES is a safety net against
+// a buggy server returning a non-progressing cursor.
+const PAGE_SIZE = 500;
+const MAX_PAGES = 50;
+
+type ReferralCodesPageResponse = {
+  referralCodes: {
+    items: AdminReferralCodeRow[];
+    nextCursor: number | null;
+  };
+};
+
+const REFERRAL_CODE_ANALYTICS_QUERY = `
+  query AdminReferralCodeAnalytics($id: Int!, $claimantsLimit: Int!) {
+    referralCodes(id: $id, limit: 1) {
+      items {
+        id
+        claimCount
+        totalVolume
+        totalPositions
+        claimants(limit: $claimantsLimit) {
+          items {
+            address
+            tradingVolume
+            positionCount
+          }
+          nextCursor
+        }
+      }
+    }
+  }
+`;
+
 export function useAdminReferralCodes(): UseQueryResult<
   AdminReferralCodeRow[]
 > {
-  const referralAdminFetch = useReferralAdminFetch();
   return useQuery<AdminReferralCodeRow[]>({
     queryKey: ADMIN_CODES_QUERY_KEY,
-    queryFn: () =>
-      referralAdminFetch<AdminReferralCodeRow[]>(
-        '/referrals/admin/codes',
-        'GET'
-      ),
+    queryFn: async () => {
+      const all: AdminReferralCodeRow[] = [];
+      let cursor: number | null = null;
+      for (let page = 0; page < MAX_PAGES; page += 1) {
+        const data: ReferralCodesPageResponse =
+          await graphqlRequest<ReferralCodesPageResponse>(
+            REFERRAL_CODES_QUERY,
+            { limit: PAGE_SIZE, cursor }
+          );
+        all.push(...data.referralCodes.items);
+        if (data.referralCodes.nextCursor == null) return all;
+        cursor = data.referralCodes.nextCursor;
+      }
+      console.warn(
+        `useAdminReferralCodes: stopped at MAX_PAGES (${MAX_PAGES}); results may be truncated`
+      );
+      return all;
+    },
   });
 }
 
 export function useAdminReferralCodeAnalytics(
   id: number | undefined
 ): UseQueryResult<AdminReferralAnalytics> {
-  const referralAdminFetch = useReferralAdminFetch();
   return useQuery<AdminReferralAnalytics>({
     queryKey: ['admin', 'referralCodeAnalytics', id],
-    queryFn: () =>
-      referralAdminFetch<AdminReferralAnalytics>(
-        `/referrals/admin/codes/${id}/analytics`,
-        'GET'
-      ),
+    queryFn: async () => {
+      const data = await graphqlRequest<{
+        referralCodes: {
+          items: Array<{
+            id: number;
+            claimCount: number;
+            totalVolume: string;
+            totalPositions: number;
+            claimants: {
+              items: Array<{
+                address: string;
+                tradingVolume: string;
+                positionCount: number;
+              }>;
+            };
+          }>;
+        };
+      }>(REFERRAL_CODE_ANALYTICS_QUERY, { id, claimantsLimit: 500 });
+      const code = data.referralCodes.items[0];
+      if (!code) {
+        throw new Error('Referral code not found');
+      }
+      return {
+        id: code.id,
+        claimCount: code.claimCount,
+        totalVolume: code.totalVolume,
+        totalPositions: code.totalPositions,
+        claimants: code.claimants.items,
+      };
+    },
     enabled: typeof id === 'number',
   });
 }
@@ -122,11 +219,11 @@ export function useCreateAdminReferralCode(): UseMutationResult<
   Error,
   CreateAdminReferralCodeInput
 > {
-  const referralAdminFetch = useReferralAdminFetch();
+  const referralAdminMutate = useReferralAdminMutate();
   const queryClient = useQueryClient();
   return useMutation<void, Error, CreateAdminReferralCodeInput>({
     mutationFn: (input) =>
-      referralAdminFetch<void>('/referrals/admin/codes', 'POST', {
+      referralAdminMutate<void>('/referrals/admin/codes', 'POST', {
         code: input.code,
         maxClaims: input.maxClaims,
         expiresAt: input.expiresAt,
@@ -143,11 +240,11 @@ export function useUpdateAdminReferralCode(): UseMutationResult<
   Error,
   UpdateAdminReferralCodeInput
 > {
-  const referralAdminFetch = useReferralAdminFetch();
+  const referralAdminMutate = useReferralAdminMutate();
   const queryClient = useQueryClient();
   return useMutation<void, Error, UpdateAdminReferralCodeInput>({
     mutationFn: ({ id, ...body }) =>
-      referralAdminFetch<void>(`/referrals/admin/codes/${id}`, 'PUT', body),
+      referralAdminMutate<void>(`/referrals/admin/codes/${id}`, 'PUT', body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ADMIN_CODES_QUERY_KEY });
     },
@@ -159,11 +256,11 @@ export function useDeleteAdminReferralCode(): UseMutationResult<
   Error,
   { id: number }
 > {
-  const referralAdminFetch = useReferralAdminFetch();
+  const referralAdminMutate = useReferralAdminMutate();
   const queryClient = useQueryClient();
   return useMutation<void, Error, { id: number }>({
     mutationFn: ({ id }) =>
-      referralAdminFetch<void>(`/referrals/admin/codes/${id}`, 'DELETE'),
+      referralAdminMutate<void>(`/referrals/admin/codes/${id}`, 'DELETE'),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ADMIN_CODES_QUERY_KEY });
     },

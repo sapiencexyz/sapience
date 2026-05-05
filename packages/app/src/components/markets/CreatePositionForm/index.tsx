@@ -60,6 +60,7 @@ import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
+import { isBidExpired } from '~/lib/auction/bidExpiry';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import {
   CollateralBalanceProvider,
@@ -651,10 +652,9 @@ const CreatePositionFormInner = ({
       return;
     }
 
-    // Validate the bid hasn't expired
-    const nowSec = Math.floor(Date.now() / 1000);
-
-    if (bid.counterpartyDeadline <= nowSec) {
+    // Validate the bid hasn't expired (with a small buffer so the inclusion
+    // latency doesn't push us past the on-chain deadline)
+    if (isBidExpired(bid.counterpartyDeadline, Date.now())) {
       toast({
         title: 'Bid expired',
         description: 'The bid has expired. Please wait for new bids.',

@@ -9,6 +9,7 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import type { OutcomeSide } from '@sapience/sdk/types';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
@@ -163,7 +164,7 @@ export function useComboQuotes(combos: RecentCombo[], chainId: number) {
       const nowMs = Date.now();
       const valid = bids.filter((b) => {
         const dl = Number(b?.counterpartyDeadline || 0);
-        return Number.isFinite(dl) ? dl * 1000 > nowMs : true;
+        return Number.isFinite(dl) ? effectiveDeadlineMs(dl) > nowMs : true;
       });
       const list = valid.length > 0 ? valid : bids;
       const best = list.reduce((acc, cur) =>

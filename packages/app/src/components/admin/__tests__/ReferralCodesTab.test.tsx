@@ -7,7 +7,6 @@ const analyticsHookCalls: Array<number | undefined> = [];
 
 const sampleCode = {
   id: 1,
-  codeHash: '0xabc123deadbeef',
   maxClaims: 5,
   isActive: true,
   expiresAt: null,

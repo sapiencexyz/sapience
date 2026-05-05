@@ -27,7 +27,11 @@ const Layout = ({ children }: { children: ReactNode }) => {
       style={{ '--sidebar-width': '12rem' } as React.CSSProperties}
     >
       <div
-        className="min-h-[100dvh] flex flex-col w-full relative z-10"
+        // The footer is `sm:fixed` (~33px tall on sm+); reserve space so
+        // page content doesn't slide underneath it. On mobile the footer
+        // is `position: relative` and flows with the page, so no padding
+        // is needed there.
+        className="min-h-[100dvh] flex flex-col w-full relative z-10 sm:pb-[33px]"
         style={
           {
             '--page-top-offset':

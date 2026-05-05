@@ -1274,6 +1274,10 @@ enum NullsOrder {
 
 """Individual outcome pick within a pick configuration"""
 type Pick {
+  """
+  The condition this pick references. May be null if the conditionId is dangling.
+  """
+  condition: Condition
   conditionId: String!
   conditionResolver: String!
   id: Int!
@@ -1336,6 +1340,14 @@ type Position {
 enum PositionSortField {
   CREATED_AT
   UPDATED_AT
+}
+
+"""
+Paginated wrapper around Position rows with a server-truth hasMore flag
+"""
+type PositionsPage {
+  hasMore: Boolean!
+  items: [Position!]!
 }
 
 """
@@ -1545,6 +1557,11 @@ type Query {
   """
   positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
 
+  """
+  Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
+  """
+  positionsPage(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): PositionsPage!
+
   """Look up a single prediction by its on-chain prediction ID"""
   prediction(id: String!): Prediction
 
@@ -1573,6 +1590,18 @@ type Query {
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """
   questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
+
+  """
+  Public referral analytics. Referral codes are attribution hints, not
+  authorization credentials: using someone else's code credits that referrer's
+  volume/claims, but does not grant access to funds or admin capabilities.
+  
+  Returns paginated referral codes with claim count and aggregate trading volume /
+  position count baked in. Pass `id` to filter to a single code (e.g. for the
+  analytics dialog). Per-claimant breakdown is available via the nested
+  `claimants` field.
+  """
+  referralCodes(cursor: Int, id: Int, limit: Int = 100): ReferralCodesPage!
 
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade
@@ -1620,10 +1649,24 @@ enum QuestionSortField {
   similarMarketVolume
 }
 
+"""
+Public referral code metadata and analytics. This intentionally includes creator,
+claim counts, aggregate volume/position stats, and claimant breakdowns.
+
+Referral codes are low-security attribution hints: using someone else's code only
+credits that referrer; it does not grant access to funds or privileged actions.
+
+`codeHash` is intentionally omitted from GraphQL because public clients should
+not need it, and referral-code identity in this API is the integer `id`.
+Credentialed create/update REST paths may still return hashes to the caller that
+created or administers the code.
+"""
 type ReferralCode {
-  _count: ReferralCodeCount
-  claimedBy(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
-  codeHash: String!
+  """Total number of users who have claimed this code, across all pages."""
+  claimCount: Int!
+
+  """Paginated per-claimant breakdown with trading volume + position count."""
+  claimants(cursor: Int, limit: Int = 100): ReferralCodeClaimantsPage!
   createdAt: DateTimeISO!
   createdBy: String!
   creatorType: String!
@@ -1631,11 +1674,33 @@ type ReferralCode {
   id: Int!
   isActive: Boolean!
   maxClaims: Int!
+
+  """
+  Total position count across every claimant. A position with both predictor
+  and counterparty in the claimant set is counted twice, matching the
+  per-side semantics.
+  """
+  totalPositions: Int!
+
+  """
+  Sum of trading volume across every claimant's positions (predictor +
+  counterparty sides), as a stringified bigint. Aggregated server-side.
+  """
+  totalVolume: String!
   updatedAt: DateTimeISO!
 }
 
-type ReferralCodeCount {
-  claimedBy(where: UserWhereInput): Int!
+type ReferralCodeClaimant {
+  address: String!
+  claimedAt: DateTimeISO!
+  id: Int!
+  positionCount: Int!
+  tradingVolume: String!
+}
+
+type ReferralCodeClaimantsPage {
+  items: [ReferralCodeClaimant!]!
+  nextCursor: Int
 }
 
 input ReferralCodeNullableRelationFilter {
@@ -1644,8 +1709,6 @@ input ReferralCodeNullableRelationFilter {
 }
 
 input ReferralCodeOrderByWithRelationInput {
-  claimedBy: UserOrderByRelationAggregateInput
-  codeHash: SortOrder
   createdAt: SortOrder
   createdBy: SortOrder
   creatorType: SortOrder
@@ -1660,8 +1723,6 @@ input ReferralCodeWhereInput {
   AND: [ReferralCodeWhereInput!]
   NOT: [ReferralCodeWhereInput!]
   OR: [ReferralCodeWhereInput!]
-  claimedBy: UserListRelationFilter
-  codeHash: StringFilter
   createdAt: DateTimeFilter
   createdBy: StringFilter
   creatorType: StringFilter
@@ -1670,6 +1731,11 @@ input ReferralCodeWhereInput {
   isActive: BoolFilter
   maxClaims: IntFilter
   updatedAt: DateTimeFilter
+}
+
+type ReferralCodesPage {
+  items: [ReferralCode!]!
+  nextCursor: Int
 }
 
 """Filter questions by their resolution status"""

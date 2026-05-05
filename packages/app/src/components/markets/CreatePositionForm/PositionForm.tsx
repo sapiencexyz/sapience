@@ -44,6 +44,7 @@ import {
   parsePythEndDate,
 } from '~/lib/auction/pythPredictionDisplay';
 import { selectBestBid } from '~/lib/auction/selectBestBid';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -429,7 +430,7 @@ export default function PositionForm({
     // Estimator bids use deadline=1 (sentinel) and should not cause clearing.
     const hasAnyNonExpired = bids.some(
       (b) =>
-        b.counterpartyDeadline * 1000 > nowMs ||
+        effectiveDeadlineMs(b.counterpartyDeadline) > nowMs ||
         b.counterparty?.toLowerCase() ===
           PREFERRED_ESTIMATE_QUOTER.toLowerCase()
     );

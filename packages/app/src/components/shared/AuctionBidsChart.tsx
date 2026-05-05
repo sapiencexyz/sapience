@@ -19,6 +19,7 @@ import {
 import { formatEther } from 'viem';
 import TradePopoverContent from '~/components/shared/TradePopoverContent';
 import ExpiresInLabel from '~/components/shared/ExpiresInLabel';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
 
 export type AuctionBidData = {
   auctionId: string;
@@ -120,7 +121,7 @@ const AuctionBidsChart: React.FC<Props> = ({
           }
           // Use receivedAtMs if available, otherwise estimate from deadline
           const start = Number(b?.receivedAtMs || nowMs - 30000);
-          const end = Number(b?.counterpartyDeadline || 0) * 1000;
+          const end = effectiveDeadlineMs(Number(b?.counterpartyDeadline || 0));
           if (
             !Number.isFinite(amount) ||
             amount <= 0 ||

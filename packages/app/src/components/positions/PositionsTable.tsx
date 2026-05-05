@@ -22,8 +22,10 @@ import { formatDistanceToNow } from 'date-fns';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useAccount } from 'wagmi';
 import EmptyTabState from '~/components/shared/EmptyTabState';
+import TableLoadingState from '~/components/shared/TableLoadingState';
+import InfiniteScrollFooter from '~/components/shared/InfiniteScrollFooter';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import Loader from '~/components/shared/Loader';
+import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
 import CountdownCell from '~/components/shared/CountdownCell';
 import {
@@ -36,7 +38,6 @@ import {
   usePositionBalancesByConditionId,
   type PositionBalance,
 } from '~/hooks/graphql/usePositions';
-import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import PicksSummary from '~/components/shared/PicksSummary';
 import LegacyBadge from '~/components/shared/LegacyBadge';
 import PositionDialog from '~/components/positions/PositionDialog';
@@ -353,6 +354,23 @@ function PositionRow({
       {/* Ends */}
       <TableCell className="whitespace-nowrap">
         {(() => {
+          const closedWithProfit =
+            isClosed && pnlValue !== null && pnlValue > 0;
+          const closedWithLoss = isClosed && pnlValue !== null && pnlValue < 0;
+          if ((isResolved && holderWon) || closedWithProfit) {
+            return (
+              <span className="whitespace-nowrap font-mono uppercase text-green-500">
+                WON
+              </span>
+            );
+          }
+          if ((isResolved && holderLost) || closedWithLoss) {
+            return (
+              <span className="whitespace-nowrap font-mono uppercase text-red-500">
+                LOST
+              </span>
+            );
+          }
           const endsAt = Math.max(
             0,
             ...rawPicks.map(
@@ -444,12 +462,18 @@ export default function PositionsTable({
   showHeaderText = true,
   chainId,
   leftSlot,
+  fill = false,
 }: {
   account?: Address;
   conditionId?: string;
   showHeaderText?: boolean;
   chainId?: number;
   leftSlot?: React.ReactNode;
+  /** Grow the empty/loading panel via `flex-1` to fill the parent.
+   *  Caller is responsible for the flex ancestor chain (page wrapper
+   *  + bordered container both `flex flex-col flex-1`). Omit for the
+   *  compact rendering used inside dialogs / question page. */
+  fill?: boolean;
 }) {
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
@@ -473,6 +497,9 @@ export default function PositionsTable({
   const {
     data: accountPositions,
     isLoading: accountLoading,
+    isFetchingMore: accountFetchingMore,
+    hasMore: accountHasMore,
+    fetchMore: accountFetchMore,
     error: accountError,
     refetch: accountRefetch,
   } = usePositionBalances({
@@ -485,6 +512,9 @@ export default function PositionsTable({
   const {
     data: conditionPositions,
     isLoading: conditionLoading,
+    isFetchingMore: conditionFetchingMore,
+    hasMore: conditionHasMore,
+    fetchMore: conditionFetchMore,
     error: conditionError,
     refetch: conditionRefetch,
   } = usePositionBalancesByConditionId({
@@ -494,21 +524,33 @@ export default function PositionsTable({
 
   const positions = account ? accountPositions : conditionPositions;
   const isLoading = account ? accountLoading : conditionLoading;
+  const isFetchingMore = account ? accountFetchingMore : conditionFetchingMore;
+  const hasMore = account ? accountHasMore : conditionHasMore;
+  const fetchMore = account ? accountFetchMore : conditionFetchMore;
   const error = account ? accountError : conditionError;
   const refetch = account ? accountRefetch : conditionRefetch;
 
-  // Collect all unique conditionIds to fetch category data
-  const conditionIds = React.useMemo(() => {
-    const ids = new Set<string>();
+  const { loadMoreRef } = useInfiniteScroll({
+    hasMore,
+    isLoading,
+    isFetchingMore,
+    onFetchMore: fetchMore,
+  });
+
+  // Build the condition map from the inline `picks.condition` data the
+  // server pre-loads. Avoids the second-round-trip waterfall the previous
+  // `useConditionsByIds(conditionIds)` call produced.
+  const conditionsMap: ConditionsMap = React.useMemo(() => {
+    const m: ConditionsMap = new Map();
     for (const p of positions) {
       for (const pick of p.pickConfig?.picks ?? []) {
-        ids.add(pick.conditionId);
+        if (pick.condition && !m.has(pick.conditionId)) {
+          m.set(pick.conditionId, pick.condition);
+        }
       }
     }
-    return Array.from(ids);
+    return m;
   }, [positions]);
-
-  const { map: conditionsMap } = useConditionsByIds(conditionIds);
 
   // Apply client-side filters
   const filteredPositions = React.useMemo(() => {
@@ -693,9 +735,7 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <div className="flex items-center justify-center py-8">
-          <Loader />
-        </div>
+        <TableLoadingState message="Loading positions…" fill={fill} />
       </>
     );
   }
@@ -704,7 +744,11 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <div className="text-destructive text-center py-8">
+        <div
+          className={`flex items-center justify-center text-destructive ${
+            fill ? 'flex-1' : 'py-12'
+          }`}
+        >
           Error loading positions
         </div>
       </>
@@ -715,16 +759,28 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No positions found" />
+        <EmptyTabState message="No positions found" fill={fill} />
       </>
     );
   }
 
+  // Filters are applied client-side, so a page with 0 matches doesn't
+  // mean there are no matches at all — later pages may have some.
+  // Render the sentinel below the empty state when there are more
+  // pages so infinite scroll can keep fetching.
   if (filteredPositions.length === 0) {
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No positions match your filters" />
+        <EmptyTabState
+          fill={fill}
+          message={
+            hasMore && isFetchingMore
+              ? 'Loading more positions…'
+              : 'No positions match your filters'
+          }
+        />
+        {hasMore && <div ref={loadMoreRef} className="h-0" />}
       </>
     );
   }
@@ -808,6 +864,13 @@ export default function PositionsTable({
           </TableBody>
         </Table>
       </div>
+      {hasMore && (
+        <InfiniteScrollFooter
+          ref={loadMoreRef}
+          isLoading={isFetchingMore}
+          loadingMessage="Loading more positions…"
+        />
+      )}
       <PositionDialog
         open={dialogPosition !== null}
         onOpenChange={(open) => {

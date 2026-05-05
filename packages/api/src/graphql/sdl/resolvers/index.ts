@@ -28,6 +28,7 @@ import { ConditionGroup } from './ConditionGroup';
 import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
+import { Pick } from './Pick';
 import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
@@ -59,6 +60,7 @@ import {
   pickConfigurations,
   positionCount,
   positions,
+  positionsPage,
   prediction,
   predictionCount,
   predictions,
@@ -70,6 +72,7 @@ import {
   accountAccuracyRank,
   accuracyLeaderboard,
 } from './queries/score';
+import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import {
   accountBalance,
@@ -117,6 +120,7 @@ export const resolvers: Resolvers = {
     pickConfigurations,
     positionCount,
     positions,
+    positionsPage,
     prediction,
     predictionCount,
     predictions,
@@ -124,6 +128,8 @@ export const resolvers: Resolvers = {
     trade,
     tradeCount,
     trades,
+    // Referrals
+    referralCodes,
     // Tags
     popularTags,
     // CRUD passthroughs
@@ -143,6 +149,7 @@ export const resolvers: Resolvers = {
   LegacyPosition,
   LegacyPrediction,
   LimitOrder,
+  Pick,
   ReferralCode,
   User,
 };

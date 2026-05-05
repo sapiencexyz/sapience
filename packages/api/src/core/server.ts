@@ -101,6 +101,7 @@ const startServer = async () => {
     expressMiddleware(apolloServer, {
       context: async () => ({
         prisma,
+        pickConditions: new Map<string, unknown>(),
       }),
     })
   );
