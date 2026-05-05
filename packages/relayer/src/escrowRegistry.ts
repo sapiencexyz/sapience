@@ -8,6 +8,12 @@ import type { EscrowAuctionRecord, BidPayload } from './escrowTypes';
 import { computePickConfigId } from '@sapience/sdk/auction/escrowEncoding';
 import type { Pick } from '@sapience/sdk/types';
 import type { Address, Hex } from 'viem';
+import { legacySessionKeyDataSeen } from './metrics';
+
+/** Phase 2 telemetry: blob considered legacy when it has any payload bytes. */
+function isLegacySessionKeyBlob(blob: string | undefined): boolean {
+  return typeof blob === 'string' && blob.length > 2;
+}
 
 const escrowAuctions = new Map<string, EscrowAuctionRecord>();
 
@@ -18,6 +24,17 @@ export function upsertEscrowAuction(auction: AuctionRFQPayload): string {
   const auctionId = crypto.randomUUID();
   const ttl = 60_000; // default 60s
   const deadlineMs = Date.now() + Math.max(5_000, Math.min(ttl, 5 * 60_000));
+
+  if (isLegacySessionKeyBlob(auction.predictorSessionKeyData)) {
+    legacySessionKeyDataSeen.inc({
+      surface: 'auction.start.predictor',
+      chain_id: String(auction.chainId),
+    });
+    console.warn(
+      `[EscrowRegistry] Legacy predictorSessionKeyData on auction.start ` +
+        `predictor=${auction.predictor.slice(0, 10)} chain=${auction.chainId}`
+    );
+  }
 
   // Compute pickConfigId from picks
   const sdkPicks: Pick[] = auction.picks.map((p) => ({
@@ -71,6 +88,17 @@ export function addEscrowBid(
     rec.bids.some((b) => b.counterpartySignature === bid.counterpartySignature)
   ) {
     return undefined;
+  }
+
+  if (isLegacySessionKeyBlob(bid.counterpartySessionKeyData)) {
+    legacySessionKeyDataSeen.inc({
+      surface: 'auction.start.counterparty',
+      chain_id: String(rec.auction.chainId),
+    });
+    console.warn(
+      `[EscrowRegistry] Legacy counterpartySessionKeyData on bid ` +
+        `counterparty=${bid.counterparty.slice(0, 10)} chain=${rec.auction.chainId}`
+    );
   }
 
   const validated: ValidatedBid = {

@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { type Address, type Hex, encodeFunctionData } from 'viem';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
@@ -35,13 +36,13 @@ interface BurnRequest {
 }
 
 export function useEscrowWrite(
-  params: { chainId?: number; escrowAddress?: Address } = {}
+  options: { chainId?: number; escrowAddress?: Address } = {}
 ) {
-  const chainId = params.chainId ?? DEFAULT_CHAIN_ID;
+  const chainId = options.chainId ?? DEFAULT_CHAIN_ID;
   const defaultAddress = predictionMarketEscrow[chainId]?.address as
     | Address
     | undefined;
-  const contractAddress = params.escrowAddress ?? defaultAddress;
+  const contractAddress = options.escrowAddress ?? defaultAddress;
 
   const successRef = useRef(false);
 
@@ -53,53 +54,79 @@ export function useEscrowWrite(
     },
   });
 
-  function writeEscrow(
-    functionName: string,
-    args: readonly unknown[]
-  ): Promise<EscrowWriteResult> {
-    if (!contractAddress) {
-      return Promise.resolve({
-        success: false,
-        error: 'Escrow contract not available',
-      });
-    }
+  const writeEscrow = useMemo(
+    () =>
+      (
+        functionName: string,
+        args: readonly unknown[]
+      ): Promise<EscrowWriteResult> => {
+        if (!contractAddress) {
+          return Promise.resolve({
+            success: false,
+            error: 'Escrow contract not available',
+          });
+        }
 
-    successRef.current = false;
-    return writeContract({
-      abi: predictionMarketEscrowAbi,
-      address: contractAddress,
-      functionName,
-      args,
-      chainId,
-    }).then(() => ({ success: successRef.current }));
-  }
-
-  const settle = useCallback(
-    (params: {
-      predictionId: Hex;
-      refCode?: Hex;
-    }): Promise<EscrowWriteResult> => {
-      const { predictionId, refCode = ZERO_BYTES32 } = params;
-      return writeEscrow('settle', [predictionId, refCode]);
-    },
+        successRef.current = false;
+        return writeContract({
+          abi: predictionMarketEscrowAbi,
+          address: contractAddress,
+          functionName,
+          args,
+          chainId,
+        }).then(() => ({ success: successRef.current }));
+      },
     [contractAddress, chainId, writeContract]
   );
 
+  const settle = useCallback(
+    (args: {
+      predictionId: Hex;
+      refCode?: Hex;
+    }): Promise<EscrowWriteResult> => {
+      const { predictionId, refCode = ZERO_BYTES32 } = args;
+      return writeEscrow('settle', [predictionId, refCode]);
+    },
+    [writeEscrow]
+  );
+
   const redeem = useCallback(
-    (params: {
+    (args: {
       positionToken: Address;
       amount: bigint;
       refCode?: Hex;
     }): Promise<EscrowWriteResult> => {
-      const { positionToken, amount, refCode = ZERO_BYTES32 } = params;
+      const { positionToken, amount, refCode = ZERO_BYTES32 } = args;
       return writeEscrow('redeem', [positionToken, amount, refCode]);
     },
-    [contractAddress, chainId, writeContract]
+    [writeEscrow]
   );
 
   const burn = useCallback(
-    (params: { burnRequest: BurnRequest }): Promise<EscrowWriteResult> => {
-      const { burnRequest: r } = params;
+    (args: { burnRequest: BurnRequest }): Promise<EscrowWriteResult> => {
+      const { burnRequest: r } = args;
+      // Telemetry: track any burn that still carries legacy session-key data
+      // so we can confirm the on-chain path is unused before retiring it.
+      const predictorSkLen = r.predictorSessionKeyData
+        ? (r.predictorSessionKeyData.length - 2) / 2
+        : 0;
+      const counterpartySkLen = r.counterpartySessionKeyData
+        ? (r.counterpartySessionKeyData.length - 2) / 2
+        : 0;
+      if (predictorSkLen > 0 || counterpartySkLen > 0) {
+        Sentry.addBreadcrumb({
+          category: 'burn.legacy_session_key',
+          level: 'warning',
+          message: 'burn_carries_legacy_session_key_data',
+          data: {
+            predictorHolder: r.predictorHolder,
+            counterpartyHolder: r.counterpartyHolder,
+            predictorByteLength: predictorSkLen,
+            counterpartyByteLength: counterpartySkLen,
+            chainId,
+          },
+        });
+      }
       const burnRequestTuple = [
         r.pickConfigId,
         r.predictorTokenAmount,
@@ -120,11 +147,11 @@ export function useEscrowWrite(
       ] as const;
       return writeEscrow('burn', [burnRequestTuple]);
     },
-    [contractAddress, chainId, writeContract]
+    [writeEscrow, chainId]
   );
 
   const settleAndRedeem = useCallback(
-    async (params: {
+    async (args: {
       predictionId: Hex;
       positionToken: Address;
       amount: bigint;
@@ -139,7 +166,7 @@ export function useEscrowWrite(
         positionToken,
         amount,
         refCode = ZERO_BYTES32,
-      } = params;
+      } = args;
 
       const settleData = encodeFunctionData({
         abi: predictionMarketEscrowAbi,
