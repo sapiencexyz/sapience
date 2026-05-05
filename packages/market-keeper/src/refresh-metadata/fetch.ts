@@ -22,6 +22,15 @@ const GAMMA_CONCURRENCY = 10;
 const EVENT_TAGS_BATCH_SIZE = 50;
 const EVENT_TAGS_CONCURRENCY = 10;
 
+// Polymarket's default `limit` is 20 (verified empirically) — passing limit
+// is load-bearing, not optional. We size it well above each request's batch
+// so the response is bounded by the `id=`/`condition_ids=` filter, not by
+// the page cap. Headroom is intentional: even if the API ever returned more
+// rows than expected per ID (related-events, soft match, etc.), we still
+// wouldn't silently truncate.
+const GAMMA_RESPONSE_LIMIT = GAMMA_BATCH_SIZE * 4;
+const EVENT_TAGS_RESPONSE_LIMIT = EVENT_TAGS_BATCH_SIZE * 4;
+
 /**
  * Paginate Sapience GraphQL conditions to collect every refreshable row.
  * Filters: public=true, settled=false, similarMarkets non-empty.
@@ -162,30 +171,48 @@ export async function fetchMarketsByConditionIds(
   }
   const totalBatches = batches.length;
 
-  const fetchBatch = async (
+  // Polymarket /markets defaults to `closed=false` — markets that have
+  // resolved on Polymarket but are still `settled=false` on Sapience would
+  // silently fall out of the result set. Query both states and merge.
+  const fetchOneSide = async (
     batch: string[],
-    batchIdx: number
-  ): Promise<void> => {
+    closed: boolean
+  ): Promise<PolymarketMarket[]> => {
     const params = batch
       .map((id) => `condition_ids=${encodeURIComponent(id)}`)
       .join('&');
-    const url = `https://gamma-api.polymarket.com/markets?${params}&limit=${GAMMA_BATCH_SIZE}`;
-    const batchStart = Date.now();
+    const url = `https://gamma-api.polymarket.com/markets?${params}&closed=${closed}&limit=${GAMMA_RESPONSE_LIMIT}`;
     const response = await fetchWithRetry(url, {
       headers: { Accept: 'application/json' },
     });
     if (!response.ok) {
       console.warn(
-        `[RefreshMetadata]   Gamma batch ${batchIdx}/${totalBatches} failed: HTTP ${response.status}`
+        `[RefreshMetadata]   Gamma fetch (closed=${closed}) failed: HTTP ${response.status}`
       );
-      return;
+      return [];
     }
-    const markets = (await response.json()) as PolymarketMarket[];
-    for (const m of markets) {
-      if (m.conditionId) out.set(m.conditionId, m);
+    return (await response.json()) as PolymarketMarket[];
+  };
+
+  const fetchBatch = async (
+    batch: string[],
+    batchIdx: number
+  ): Promise<void> => {
+    const batchStart = Date.now();
+    const [open, closed] = await Promise.all([
+      fetchOneSide(batch, false),
+      fetchOneSide(batch, true),
+    ]);
+    const seen = new Set<string>();
+    for (const m of [...open, ...closed]) {
+      if (m.conditionId && !seen.has(m.conditionId)) {
+        seen.add(m.conditionId);
+        out.set(m.conditionId, m);
+      }
     }
+    const matched = open.length + closed.length;
     console.log(
-      `[RefreshMetadata]   Gamma batch ${batchIdx}/${totalBatches}: ${markets.length}/${batch.length} markets (cumulative ${out.size}, ${Date.now() - batchStart}ms)`
+      `[RefreshMetadata]   Gamma batch ${batchIdx}/${totalBatches}: ${matched}/${batch.length} markets (open ${open.length} + closed ${closed.length}, cumulative ${out.size}, ${Date.now() - batchStart}ms)`
     );
   };
 
@@ -232,7 +259,7 @@ export async function fetchEventTagsByIds(
     totalBatches: number
   ): Promise<void> => {
     const params = batch.map((id) => `id=${encodeURIComponent(id)}`).join('&');
-    const url = `https://gamma-api.polymarket.com/events?limit=${EVENT_TAGS_BATCH_SIZE}&${params}`;
+    const url = `https://gamma-api.polymarket.com/events?limit=${EVENT_TAGS_RESPONSE_LIMIT}&${params}`;
     const batchStart = Date.now();
     const response = await fetchWithRetry(url, {
       headers: { Accept: 'application/json' },

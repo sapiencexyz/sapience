@@ -198,62 +198,63 @@ describe('fetchMarketsByConditionIds', () => {
     expect(fetchCalls).toHaveLength(0);
   });
 
-  it('builds Gamma URLs with repeated condition_ids params', async () => {
-    fetchQueue.push(() =>
-      jsonResponse([
-        makeMarket({ conditionId: '0x1' }),
-        makeMarket({ conditionId: '0x2' }),
-      ])
-    );
+  it('issues paired closed=false / closed=true requests with repeated condition_ids params', async () => {
+    // Each batch fires two requests (closed=false then closed=true) so we
+    // pick up both open and resolved-but-not-yet-Sapience-settled markets.
+    fetchQueue.push(() => jsonResponse([makeMarket({ conditionId: '0x1' })]));
+    fetchQueue.push(() => jsonResponse([makeMarket({ conditionId: '0x2' })]));
 
     await fetchMarketsByConditionIds(['0x1', '0x2']);
 
-    expect(fetchCalls).toHaveLength(1);
-    const url = fetchCalls[0].url;
-    expect(url).toMatch(/^https:\/\/gamma-api\.polymarket\.com\/markets\?/);
-    expect(url).toContain('condition_ids=0x1');
-    expect(url).toContain('condition_ids=0x2');
-    // Plural-param style (not condition_id=, not a CSV)
-    expect(url).not.toContain('condition_id=');
-    expect(url).not.toContain('0x1%2C0x2');
+    expect(fetchCalls).toHaveLength(2);
+    const sides = fetchCalls.map((c) => {
+      const m = c.url.match(/[?&]closed=(true|false)/);
+      return m ? m[1] : null;
+    });
+    expect(new Set(sides)).toEqual(new Set(['true', 'false']));
+
+    for (const c of fetchCalls) {
+      expect(c.url).toMatch(/^https:\/\/gamma-api\.polymarket\.com\/markets\?/);
+      expect(c.url).toContain('condition_ids=0x1');
+      expect(c.url).toContain('condition_ids=0x2');
+      expect(c.url).not.toContain('condition_id=');
+      expect(c.url).not.toContain('0x1%2C0x2');
+    }
   });
 
-  it('batches input into Gamma calls of at most 50 IDs', async () => {
+  it('batches input into Gamma calls of at most 50 IDs (each batch = 2 requests)', async () => {
     const ids = Array.from({ length: 75 }, (_, i) => `0x${i + 1}`);
-    fetchQueue.push(() => jsonResponse([])); // batch 1: 50 IDs
-    fetchQueue.push(() => jsonResponse([])); // batch 2: 25 IDs
+    // 2 batches × 2 sides = 4 requests
+    fetchQueue.push(() => jsonResponse([])); // batch 1, closed=false
+    fetchQueue.push(() => jsonResponse([])); // batch 1, closed=true
+    fetchQueue.push(() => jsonResponse([])); // batch 2, closed=false
+    fetchQueue.push(() => jsonResponse([])); // batch 2, closed=true
 
     await fetchMarketsByConditionIds(ids);
 
-    expect(fetchCalls).toHaveLength(2);
-    const batch1Count = (fetchCalls[0].url.match(/condition_ids=/g) || [])
-      .length;
-    const batch2Count = (fetchCalls[1].url.match(/condition_ids=/g) || [])
-      .length;
-    expect(batch1Count).toBe(50);
-    expect(batch2Count).toBe(25);
+    expect(fetchCalls).toHaveLength(4);
+    const idCounts = fetchCalls.map(
+      (c) => (c.url.match(/condition_ids=/g) || []).length
+    );
+    // First two requests are batch 1 (50 IDs each), second two are batch 2 (25 IDs each)
+    expect(idCounts.slice(0, 2).every((n) => n === 50)).toBe(true);
+    expect(idCounts.slice(2, 4).every((n) => n === 25)).toBe(true);
   });
 
-  it('keys the returned Map by conditionId regardless of response order', async () => {
-    fetchQueue.push(() =>
-      jsonResponse([
-        makeMarket({ conditionId: '0xb' }),
-        makeMarket({ conditionId: '0xa' }),
-      ])
-    );
+  it('keys the returned Map by conditionId and merges open + closed markets', async () => {
+    // Open side returns 0xa, closed side returns 0xb — both should land
+    // in the result Map.
+    fetchQueue.push(() => jsonResponse([makeMarket({ conditionId: '0xa' })]));
+    fetchQueue.push(() => jsonResponse([makeMarket({ conditionId: '0xb' })]));
 
     const result = await fetchMarketsByConditionIds(['0xa', '0xb']);
     expect([...result.keys()].sort()).toEqual(['0xa', '0xb']);
   });
 
-  it('skips missing conditionIds (delisted) without including them in the result', async () => {
-    // Caller asks for 3 IDs; Gamma only returns 2.
-    fetchQueue.push(() =>
-      jsonResponse([
-        makeMarket({ conditionId: '0xa' }),
-        makeMarket({ conditionId: '0xc' }),
-      ])
-    );
+  it('skips missing conditionIds (delisted on both sides) without including them', async () => {
+    // Caller asks for 3 IDs; open returns 0xa, closed returns 0xc, 0xb is gone.
+    fetchQueue.push(() => jsonResponse([makeMarket({ conditionId: '0xa' })]));
+    fetchQueue.push(() => jsonResponse([makeMarket({ conditionId: '0xc' })]));
 
     const result = await fetchMarketsByConditionIds(['0xa', '0xb', '0xc']);
     expect(result.has('0xa')).toBe(true);
@@ -261,8 +262,10 @@ describe('fetchMarketsByConditionIds', () => {
     expect(result.has('0xc')).toBe(true);
   });
 
-  it('continues batching even if one batch errors', async () => {
-    const ids = Array.from({ length: 60 }, (_, i) => `0x${i + 1}`);
+  it('continues batching even if one side of one batch errors', async () => {
+    // Single batch (60 IDs, but limited to 1 batch worth = 50). Open side
+    // errors; closed side succeeds and contributes one market.
+    const ids = Array.from({ length: 50 }, (_, i) => `0x${i + 1}`);
     fetchQueue.push(
       () => new Response('oops', { status: 502, statusText: 'Bad Gateway' })
     );
@@ -282,7 +285,7 @@ describe('fetchEventTagsByIds', () => {
     expect(fetchCalls).toHaveLength(0);
   });
 
-  it('batches up to 50 unique IDs per /events request with repeated id= params and limit=50', async () => {
+  it('batches up to 50 unique IDs per /events request with repeated id= params and a generous limit', async () => {
     fetchQueue.push(() =>
       jsonResponse([
         { id: '1', slug: 'a', tags: [{ label: 'Politics' }] },
@@ -295,7 +298,12 @@ describe('fetchEventTagsByIds', () => {
     expect(fetchCalls).toHaveLength(1);
     const url = fetchCalls[0].url;
     expect(url).toMatch(/^https:\/\/gamma-api\.polymarket\.com\/events\?/);
-    expect(url).toContain('limit=50');
+    // Limit must exceed the batch size (defensive headroom — Polymarket's
+    // default limit is 20, so passing a too-small value would silently
+    // truncate). 50 batch × 4 = 200 today.
+    const limitMatch = url.match(/[?&]limit=(\d+)/);
+    expect(limitMatch).not.toBeNull();
+    expect(Number(limitMatch![1])).toBeGreaterThanOrEqual(50);
     expect(url).toContain('id=1');
     expect(url).toContain('id=2');
     // Plural-param style — not CSV, not single-id
