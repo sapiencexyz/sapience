@@ -38,6 +38,7 @@ import { useSession } from '~/lib/context/SessionContext';
 import {
   ethereal,
   executeSudoTransaction,
+  markSessionInstalledOnChain,
   type OwnerSigner,
 } from '~/lib/session/sessionKeyManager';
 
@@ -132,6 +133,7 @@ export function useSapienceWriteContract({
     isUsingSession,
     isUsingSmartAccount,
     smartAccountAddress,
+    sessionKeyAddress,
     chainClients,
     sessionConfig,
     hasArbitrumSession,
@@ -388,9 +390,22 @@ export function useSapienceWriteContract({
         }
       );
       console.log(`[SessionTx] Total: ${Date.now() - startTime}ms`);
+      // A successful session userOp installs the kernel permission validator
+      // (ENABLE mode the first time, USE mode thereafter). Mark it so flows
+      // that use sudo-mode userOps + ERC-1271 (e.g. secondary trade accept)
+      // can skip a redundant warmup.
+      if (sessionKeyAddress) {
+        markSessionInstalledOnChain(_chainId, sessionKeyAddress);
+      }
       return hash;
     },
-    [sessionConfig, onTxSending, onTxSent, onReceiptConfirmed]
+    [
+      sessionConfig,
+      onTxSending,
+      onTxSent,
+      onReceiptConfirmed,
+      sessionKeyAddress,
+    ]
   );
 
   // Wrapper for Arbitrum session creation that provides user-friendly error messages.

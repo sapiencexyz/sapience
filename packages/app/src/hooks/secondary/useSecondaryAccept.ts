@@ -3,7 +3,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import { useAccount, useChainId, useSignTypedData } from 'wagmi';
-import { erc20Abi, type Address, type Hex } from 'viem';
+import {
+  encodeFunctionData,
+  erc20Abi,
+  zeroAddress,
+  type Address,
+  type Hex,
+} from 'viem';
 import { buildSellerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
 import {
   prepareExecuteTradeCalls,
@@ -13,11 +19,16 @@ import {
   secondaryMarketEscrow,
   collateralToken,
 } from '@sapience/sdk/contracts';
+import { secondaryMarketEscrowAbi } from '@sapience/sdk/abis';
 import { generateRandomNonce } from '@sapience/sdk';
 import type { SecondaryValidatedBid } from '@sapience/sdk/types/secondary';
 import { useSession } from '~/lib/context/SessionContext';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { getPublicClientForChainId } from '~/lib/utils/util';
+import {
+  isSessionInstalledOnChain,
+  markSessionInstalledOnChain,
+} from '~/lib/session/sessionKeyManager';
 
 export interface AcceptBidParams {
   /** Position token address */
@@ -69,6 +80,8 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
     effectiveAddress,
     signTypedData: sessionSignTypedData,
     isUsingSession,
+    sessionKeyAddress,
+    chainClients,
   } = useSession();
 
   const [isAccepting, setIsAccepting] = useState(false);
@@ -128,6 +141,59 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
       setIsAccepting(true);
 
       try {
+        // 0. Install the kernel permission validator if it has not been
+        //    activated on this chain yet. The trade userOp itself is sent in
+        //    sudo mode (owner-signed) to bypass the ZeroDev paymaster
+        //    CallPolicy on `executeTrade`, but sudo userOps DO NOT install
+        //    the validator. If no prior session-signed userOp has run, the
+        //    contract's `isValidSignature` call against the seller will
+        //    revert with `InvalidValidator()` and the trade fails. Send a
+        //    no-op session-signed warmup (`revokeSessionKey(0x0)`) to force
+        //    ENABLE-mode validator install.
+        if (
+          isUsingSession &&
+          sessionKeyAddress &&
+          chainClients.ethereal &&
+          !isSessionInstalledOnChain(chainId, sessionKeyAddress)
+        ) {
+          try {
+            const warmupHash = await chainClients.ethereal.sendUserOperation({
+              calls: [
+                {
+                  to: escrowAddress,
+                  data: encodeFunctionData({
+                    abi: secondaryMarketEscrowAbi,
+                    functionName: 'revokeSessionKey',
+                    args: [zeroAddress],
+                  }),
+                  value: 0n,
+                },
+              ],
+            });
+            const warmupReceipt =
+              await chainClients.ethereal.waitForUserOperationReceipt({
+                hash: warmupHash,
+              });
+            if (!warmupReceipt.success) {
+              throw new Error('Session install warmup userOp reverted');
+            }
+            markSessionInstalledOnChain(chainId, sessionKeyAddress);
+          } catch (warmErr: unknown) {
+            const error =
+              warmErr instanceof Error ? warmErr : new Error(String(warmErr));
+            Sentry.captureException(error, {
+              tags: { component: 'secondary.session-warmup' },
+              extra: { chainId, sessionKeyAddress },
+            });
+            setIsAccepting(false);
+            onError?.(error);
+            return {
+              success: false,
+              error: `Could not prepare session for trade: ${error.message}`,
+            };
+          }
+        }
+
         // 1. Seller signs TradeApproval
         const sellerNonce = generateRandomNonce();
         const nowSec = Math.floor(Date.now() / 1000);
@@ -266,6 +332,8 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
       signTypedDataAsync,
       sessionSignTypedData,
       isUsingSession,
+      sessionKeyAddress,
+      chainClients.ethereal,
       sendCalls,
       onError,
       onSignatureRejected,

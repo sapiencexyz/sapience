@@ -1374,6 +1374,52 @@ function createChainClient(
  */
 export const SESSION_STORAGE_KEY = 'sapience:session';
 
+// ─── Session install tracking ────────────────────────────────────────────────
+//
+// A Kernel V3 permission validator is installed on the smart account the
+// first time a session-signed userOp uses ENABLE mode (0x02). After that,
+// subsequent session signatures use USE mode (0x01) cheaply. Owner-signed
+// userOps (sudo mode) DO NOT install the permission validator. So a flow
+// that signs a TradeApproval with the session key and submits the userOp
+// in sudo mode (e.g. `useSecondaryAccept`) reverts with `InvalidValidator()`
+// when the contract calls `isValidSignature` — unless some prior session
+// userOp already installed the validator.
+//
+// Track install state in-memory per page load. Any successful session
+// userOp marks the (chainId, sessionKey) pair installed; consumers can
+// run a warmup before a sudo-mode flow if not yet marked. Lost on reload,
+// which only costs a one-time redundant warmup userOp.
+
+const sessionInstalledOnChain = new Set<string>();
+
+function sessionInstallKey(
+  chainId: number,
+  sessionKeyAddress: Address
+): string {
+  return `${chainId}:${sessionKeyAddress.toLowerCase()}`;
+}
+
+export function markSessionInstalledOnChain(
+  chainId: number,
+  sessionKeyAddress: Address
+): void {
+  sessionInstalledOnChain.add(sessionInstallKey(chainId, sessionKeyAddress));
+}
+
+export function isSessionInstalledOnChain(
+  chainId: number,
+  sessionKeyAddress: Address
+): boolean {
+  return sessionInstalledOnChain.has(
+    sessionInstallKey(chainId, sessionKeyAddress)
+  );
+}
+
+/** @internal — for tests only. */
+export function _resetSessionInstallTracking(): void {
+  sessionInstalledOnChain.clear();
+}
+
 /**
  * Save session to localStorage.
  */
