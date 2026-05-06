@@ -64,7 +64,17 @@ export const initializeApolloServer = async () => {
     // All data is public, CORS is strict, and error responses are excluded from caching.
     csrfPrevention: false,
     formatError: (formattedError, error) => {
-      log.error({ err: error }, 'GraphQL Error');
+      // Split client errors from internal exceptions: GraphQLErrors with an
+      // `extensions.code` are structured client errors (validation, depth
+      // limit, complexity limit, business-rule rejections) and shouldn't
+      // page Sentry. Internal exceptions (no code, or non-GraphQLError)
+      // surface real bugs and warrant Sentry forwarding via log.error.
+      const code = formattedError.extensions?.code;
+      if (code) {
+        log.warn({ err: error, code }, 'GraphQL client error');
+      } else {
+        log.error({ err: error }, 'GraphQL internal error');
+      }
       if (!config.isDev) {
         delete formattedError.extensions?.stacktrace;
       }

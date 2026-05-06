@@ -4,7 +4,6 @@ import pino, {
   type DestinationStream,
 } from 'pino';
 import Sentry from './instrument';
-import { config } from './config';
 
 /**
  * House logging conventions (object-first):
@@ -20,7 +19,39 @@ import { config } from './config';
  * In production, level >= 50 is forwarded to Sentry via the multistream
  * destination below. In development, Sentry is disabled (see instrument.ts)
  * and logs are pretty-printed.
+ *
+ * NOTE: this module reads `process.env` directly rather than going through
+ * `core/config`. Importing `config` would force envalid to validate the
+ * full env (including DATABASE_URL with no default) at logger-import time,
+ * which breaks any context that doesn't have DATABASE_URL set — build
+ * scripts, isolated tests, etc. The `LOG_LEVEL` envalid entry in config.ts
+ * still exists for documentation + validation when something else reads it.
  */
+
+const PINO_LEVELS = [
+  'trace',
+  'debug',
+  'info',
+  'warn',
+  'error',
+  'fatal',
+  'silent',
+] as const;
+type PinoLevel = (typeof PINO_LEVELS)[number];
+
+const isPinoLevel = (v: unknown): v is PinoLevel =>
+  typeof v === 'string' && (PINO_LEVELS as readonly string[]).includes(v);
+
+const resolveLogLevel = (): PinoLevel => {
+  const raw = process.env.LOG_LEVEL;
+  if (isPinoLevel(raw)) return raw;
+  const nodeEnv = process.env.NODE_ENV;
+  return nodeEnv === 'development' || nodeEnv === 'test' ? 'debug' : 'info';
+};
+
+// Mirrors envalid's `isDev` semantics: only NODE_ENV === 'development'.
+// Pretty-printing is dev-only; Sentry is disabled in dev (see instrument.ts).
+const resolveIsDev = (): boolean => process.env.NODE_ENV === 'development';
 
 const REDACT_PATHS = [
   'req.headers.authorization',
@@ -29,9 +60,7 @@ const REDACT_PATHS = [
 ];
 
 const baseOptions: LoggerOptions = {
-  // Fallback to 'info' if config doesn't expose LOG_LEVEL — tests sometimes
-  // mock the config module with a partial shape (e.g. middleware.test.ts).
-  level: config.LOG_LEVEL ?? 'info',
+  level: resolveLogLevel(),
   redact: {
     paths: REDACT_PATHS,
     censor: '[Redacted]',
@@ -123,7 +152,7 @@ const sentryStream: DestinationStream = {
 };
 
 const buildLogger = (): Logger => {
-  if (config.isDev) {
+  if (resolveIsDev()) {
     return pino({
       ...baseOptions,
       transport: {
