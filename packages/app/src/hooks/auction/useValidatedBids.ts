@@ -74,10 +74,12 @@ export function useValidatedBids(
   const validatedSignaturesRef = useRef<Set<string>>(new Set());
 
   // Input fingerprint: a validation in flight is only safe to commit if the
-  // prediction inputs (picks, predictor collateral, predictor nonce) still
-  // match the snapshot taken when validation started. If inputs changed, the
-  // result is stale (validateBidOnChain hashed against the OLD predictor
-  // info) and must be discarded.
+  // validation context (every input flowing into validateBidOnChain) still
+  // matches the snapshot taken when validation started. The ref is updated
+  // synchronously during render (below, after validationContextKey is
+  // computed) so an in-flight validation that resolves between a render
+  // with a new context and the cleanup effect still sees the latest key
+  // and drops itself as stale.
   const inputFingerprintRef = useRef<string>('');
 
   // Can we validate?
@@ -156,15 +158,22 @@ export function useValidatedBids(
     ]
   );
 
+  // Track the latest validation context synchronously during render. An
+  // in-flight validation that resolves between a render with a new context
+  // and the cleanup useEffect below would otherwise read a stale ref and
+  // commit under the wrong context. Mutating a ref during render is the
+  // standard React pattern for "always-current value visible to async
+  // closures" and is idempotent under concurrent rendering.
+  inputFingerprintRef.current = validationContextKey;
+
   useEffect(() => {
     // Invalidate cached results when any input that affects the on-chain
-    // validation digest changes. Bump the fingerprint so any in-flight
-    // validation (started under the previous context) detects itself as
-    // stale and skips its setValidationResults commit.
+    // validation digest changes. The fingerprint ref is updated above
+    // during render — this effect only handles the state-mutating side of
+    // the cleanup (clearing the maps).
     validatedSignaturesRef.current.clear();
     validatingRef.current.clear();
     setValidationResults(new Map());
-    inputFingerprintRef.current = validationContextKey;
   }, [validationContextKey]);
 
   // Validate new bids when they arrive
