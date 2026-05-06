@@ -58,7 +58,7 @@ export default function ForecastingBotSection() {
             <img
               src="/openclaw-bg.svg"
               alt="OpenClaw Agent"
-              className="w-full rounded-lg"
+              className="w-full rounded-lg bg-black"
             />
           </div>
         </div>
