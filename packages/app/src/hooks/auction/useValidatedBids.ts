@@ -112,8 +112,6 @@ export function useValidatedBids(
     [picks]
   );
 
-  // Invalidate cached results when prediction inputs change
-  // (predictionHash changes, so all previous validations are stale)
   const picksKey = useMemo(
     () =>
       picks
@@ -127,16 +125,47 @@ export function useValidatedBids(
     [picks]
   );
 
+  // Single source of truth for "what is `validateBidOnChain` going to hash
+  // against?" — every input that flows into the on-chain digest must be in
+  // here. Used both to invalidate the cache when context changes and to
+  // detect in-flight results that completed against an obsolete context.
+  // Sponsor address is only included when isSponsored is true, mirroring
+  // how `runValidation` passes it (undefined otherwise).
+  const validationContextKey = useMemo(
+    () =>
+      [
+        picksKey,
+        predictorAddress?.toLowerCase() ?? '',
+        predictorCollateral ?? '',
+        predictorNonce ?? '',
+        isSponsored ? (sponsorAddress?.toLowerCase() ?? '') : '',
+        String(chainId),
+        predictionMarketAddress?.toLowerCase() ?? '',
+        collateralTokenAddress?.toLowerCase() ?? '',
+      ].join('::'),
+    [
+      picksKey,
+      predictorAddress,
+      predictorCollateral,
+      predictorNonce,
+      isSponsored,
+      sponsorAddress,
+      chainId,
+      predictionMarketAddress,
+      collateralTokenAddress,
+    ]
+  );
+
   useEffect(() => {
-    // Clear all cached validation when prediction inputs change
+    // Invalidate cached results when any input that affects the on-chain
+    // validation digest changes. Bump the fingerprint so any in-flight
+    // validation (started under the previous context) detects itself as
+    // stale and skips its setValidationResults commit.
     validatedSignaturesRef.current.clear();
     validatingRef.current.clear();
     setValidationResults(new Map());
-    // Bump the fingerprint so any in-flight validation (hashed against the
-    // previous predictor snapshot) can detect itself as stale and skip its
-    // setValidationResults commit.
-    inputFingerprintRef.current = `${picksKey}::${predictorCollateral ?? ''}::${predictorNonce ?? ''}`;
-  }, [picksKey, predictorCollateral, predictorNonce]);
+    inputFingerprintRef.current = validationContextKey;
+  }, [validationContextKey]);
 
   // Validate new bids when they arrive
   useEffect(() => {
@@ -170,10 +199,11 @@ export function useValidatedBids(
     }
     setIsValidating(true);
 
-    // Snapshot inputs at validation start. If they change before commit,
-    // the result is stale (validateBidOnChain hashed against this snapshot,
-    // which no longer reflects the active prediction) — drop it.
-    const startFingerprint = `${picksKey}::${predictorCollateral ?? ''}::${predictorNonce ?? ''}`;
+    // Snapshot the validation context at start. If `validationContextKey`
+    // changes before commit (any input that flows into the on-chain digest:
+    // picks, predictor, collateral, nonce, sponsor, chain, escrow, token),
+    // the result is stale and must be dropped.
+    const startFingerprint = validationContextKey;
 
     const runValidation = async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -274,6 +304,9 @@ export function useValidatedBids(
     };
 
     runValidation();
+    // Listed individually so the lint rule is satisfied for each closure
+    // read; validationContextKey duplicates the same trigger set as a single
+    // string used for stale-result detection in `runValidation`.
   }, [
     rawBids,
     canValidate,
@@ -284,9 +317,9 @@ export function useValidatedBids(
     predictorCollateral,
     predictorNonce,
     picksJson,
-    picksKey,
     isSponsored,
     sponsorAddress,
+    validationContextKey,
   ]);
 
   // Clean up stale entries (bids no longer in rawBids)

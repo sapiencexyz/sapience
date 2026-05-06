@@ -421,6 +421,47 @@ describe('useValidatedBids', () => {
     expect(result.current.validBids).toHaveLength(0);
   });
 
+  it('drops a validation result if predictorAddress changes before it commits', async () => {
+    // predictorAddress flows into the on-chain digest via validateBidOnChain;
+    // a change must invalidate the in-flight result the same way a
+    // predictorNonce or picks change does.
+    const bid = makeBid({ counterpartySignature: '0xstale_predictor' });
+
+    const resolvers: Array<(v: { status: string }) => void> = [];
+    mockValidateBidOnChain.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        })
+    );
+
+    const { result, rerender } = renderStable([bid], {
+      ...DEFAULT_OPTS,
+      predictorAddress: '0xPredictorA' as `0x${string}`,
+    });
+    await flush(1);
+
+    rerender({
+      bids: [bid],
+      opts: {
+        ...DEFAULT_OPTS,
+        predictorAddress: '0xPredictorB' as `0x${string}`,
+      },
+    });
+    await flush(1);
+
+    await act(async () => {
+      resolvers[0]({ status: 'valid' });
+      await new Promise<void>((r) => setTimeout(r, 0));
+    });
+    await flush();
+
+    const validated = result.current.validatedBids.find(
+      (b) => b.counterpartySignature === '0xstale_predictor'
+    );
+    expect(validated?.validationStatus).toBe('pending');
+  });
+
   it('drops a validation result if picks change before it commits', async () => {
     const bid = makeBid({ counterpartySignature: '0xstale_picks' });
 
