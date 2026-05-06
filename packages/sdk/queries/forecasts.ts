@@ -1,8 +1,8 @@
 import { getAddress } from 'viem';
+import { FORECAST_SCHEMA_UID } from '../constants/resolver';
 import { graphqlRequest } from './client/graphqlClient';
 
-const DEFAULT_SCHEMA_UID =
-  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
+const DEFAULT_SCHEMA_UID = FORECAST_SCHEMA_UID;
 
 interface RawAttestation {
   id: string;

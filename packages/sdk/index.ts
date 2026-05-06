@@ -1,6 +1,7 @@
 export * from './types';
 export * from './constants';
 export * from './contracts';
+export * from './utils';
 export * from './onchain/tx';
 export * from './onchain/eas';
 export * from './onchain/attest';
