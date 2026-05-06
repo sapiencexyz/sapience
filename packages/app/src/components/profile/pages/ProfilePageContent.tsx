@@ -120,7 +120,7 @@ const ProfilePageContent = ({
     // (ContentArea is itself a flex column under the layout root).
     <div className="mx-auto px-3 md:px-6 lg:px-8 w-full pt-4 md:pt-0 flex-1 flex flex-col">
       <ShareAfterRedirect address={address} />
-      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="mb-6 flex flex-col min-[1900px]:flex-row min-[1900px]:items-center min-[1900px]:justify-between gap-4">
         <ProfileHeader address={address} className="mb-0" />
         {hasLoadedOnce ? (
           <ProfileQuickMetrics

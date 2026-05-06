@@ -741,7 +741,7 @@ export default function ActivityTable({
   // ── Render ───────────────────────────────────────────────────────────────
   const headerContent =
     hideFilters && !leftSlot ? null : (
-      <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
+      <div className="px-4 py-4 border-b border-border/60 flex flex-col xl:flex-row xl:items-center gap-4 bg-white/[0.03]">
         {leftSlot && leftSlot}
         {!hideFilters && (
           <div className="flex-1">
