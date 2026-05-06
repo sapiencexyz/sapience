@@ -10,51 +10,16 @@ import { arbitrum } from 'viem/chains';
 import dotenv from 'dotenv';
 import { fromRoot } from './fromRoot';
 import * as viem from 'viem';
-import * as viemChains from 'viem/chains';
+import {
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+  etherealChain,
+  etherealTestnetChain,
+} from '@sapience/sdk/constants';
 
 import { createLogger } from '../core/logger';
 
 const log = createLogger('lib.utils');
-
-export const etherealChain: viem.Chain = {
-  id: 5064014,
-  name: 'Ethereal Chain',
-  nativeCurrency: {
-    name: 'Ethena USDe',
-    symbol: 'USDe',
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: {
-      http: [process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade'],
-    },
-    public: { http: ['https://rpc.ethereal.trade'] },
-  },
-};
-
-export const etherealTestnetChain: viem.Chain = {
-  id: 13374202,
-  name: 'Ethereal Testnet',
-  nativeCurrency: {
-    name: 'Ethena USDe',
-    symbol: 'USDe',
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: {
-      http: [
-        process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net/',
-      ],
-    },
-    public: { http: ['https://rpc.etherealtest.net/'] },
-  },
-};
-
-export const chains: viem.Chain[] = [
-  ...Object.values(viemChains),
-  etherealChain,
-  etherealTestnetChain,
-];
 
 // Load environment variables
 dotenv.config({ path: fromRoot('.env') });
@@ -91,7 +56,7 @@ const createChainClient = (
   network: string,
   useLocalhost = false
 ) => {
-  if (chain.id === 5064014) {
+  if (chain.id === CHAIN_ID_ETHEREAL) {
     const rpcUrl =
       process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade';
     return createPublicClient({
@@ -103,7 +68,7 @@ const createChainClient = (
     });
   }
 
-  if (chain.id === 13374202) {
+  if (chain.id === CHAIN_ID_ETHEREAL_TESTNET) {
     const rpcUrl =
       process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net/';
     return createPublicClient({
@@ -127,10 +92,7 @@ const createChainClient = (
   });
 };
 
-export const arbitrumPublicClient = createChainClient(
-  arbitrum,
-  'arbitrum-mainnet'
-);
+const arbitrumPublicClient = createChainClient(arbitrum, 'arbitrum-mainnet');
 
 export function getProviderForChain(chainId: number): PublicClient {
   if (clientMap.has(chainId)) {
@@ -143,10 +105,10 @@ export function getProviderForChain(chainId: number): PublicClient {
     case 42161:
       newClient = arbitrumPublicClient as PublicClient;
       break;
-    case 5064014:
+    case CHAIN_ID_ETHEREAL:
       newClient = createChainClient(etherealChain, 'ethereal');
       break;
-    case 13374202:
+    case CHAIN_ID_ETHEREAL_TESTNET:
       newClient = createChainClient(etherealTestnetChain, 'ethereal-testnet');
       break;
     default:

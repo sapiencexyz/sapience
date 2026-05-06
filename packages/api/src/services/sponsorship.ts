@@ -8,7 +8,7 @@ import {
   parseUnits,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { etherealTestnetChain, etherealChain } from '../lib/utils';
+import { etherealTestnetChain, etherealChain } from '@sapience/sdk/constants';
 import { computeSmartAccountAddress } from '@sapience/sdk/session';
 
 import { createLogger } from '../core/logger';

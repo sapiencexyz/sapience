@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { createPublicClient, http, type HttpTransportConfig } from 'viem';
+import { createPublicClient } from 'viem';
 import * as chains from 'viem/chains';
 import { mainnet } from 'viem/chains';
 import {
@@ -10,47 +10,20 @@ import {
   etherealChain,
   etherealTestnetChain,
 } from '@sapience/sdk/constants';
+import {
+  DEFAULT_RETRY_COUNT,
+  DEFAULT_RETRY_DELAY_MS,
+  httpWithRetry,
+  withRetry,
+} from '@sapience/sdk/utils';
 
-/** Default number of retries for transient RPC / async failures. */
-export const DEFAULT_RETRY_COUNT = 3;
-/** Default initial delay (ms) between retries. */
-export const DEFAULT_RETRY_DELAY_MS = 1000;
-
-/**
- * Viem HTTP transport with default retry configuration.
- * Use this instead of bare `http()` so every RPC transport retries on transient failures.
- */
-export function httpWithRetry(url?: string, config?: HttpTransportConfig) {
-  return http(url, {
-    retryCount: DEFAULT_RETRY_COUNT,
-    retryDelay: DEFAULT_RETRY_DELAY_MS,
-    ...config,
-  });
-}
-
-/**
- * Retry an async operation with exponential backoff.
- */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  retries = DEFAULT_RETRY_COUNT,
-  delayMs = DEFAULT_RETRY_DELAY_MS
-): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (attempt < retries) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, delayMs * 2 ** attempt)
-        );
-      }
-    }
-  }
-  throw lastError;
-}
+// Re-exported from SDK so existing imports of these from this module keep working.
+export {
+  DEFAULT_RETRY_COUNT,
+  DEFAULT_RETRY_DELAY_MS,
+  httpWithRetry,
+  withRetry,
+};
 
 // Mainnet client for ENS resolution
 export const mainnetClient = createPublicClient({
