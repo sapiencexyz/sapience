@@ -159,8 +159,6 @@ export function useValidatedBids(
     }
     setIsValidating(true);
 
-    let cancelled = false;
-
     const runValidation = async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const publicClient = getPublicClientForChainId(chainId) as any;
@@ -232,8 +230,10 @@ export function useValidatedBids(
         )
       );
 
-      if (cancelled) return;
-
+      // Commit unconditionally: results are sig-keyed and idempotent. Stale
+      // entries (sigs no longer in rawBids) are pruned by the cleanup effect
+      // below, so an effect re-run from a dep ref change must not discard
+      // an in-flight validation that completes after the new effect started.
       setValidationResults((prev) => {
         const updated = new Map(prev);
         for (const [sig, result] of results) {
@@ -248,10 +248,6 @@ export function useValidatedBids(
     };
 
     runValidation();
-
-    return () => {
-      cancelled = true;
-    };
   }, [
     rawBids,
     canValidate,

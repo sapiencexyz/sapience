@@ -333,4 +333,40 @@ describe('useValidatedBids', () => {
     );
     expect(validated?.validationStatus).toBe('valid');
   });
+
+  // ---- Mid-flight rerender must not discard the in-flight result ----
+
+  it('commits a validation result that completes after a rerender changes the bids ref', async () => {
+    // Same signature, two array references — relayer rebroadcasts the same
+    // bid, parent passes a fresh array each time. Until this test was added,
+    // the cleanup fired by the array-ref change cancelled the in-flight
+    // validation, leaving the bid stuck on `pending` forever.
+    const bid = makeBid({ counterpartySignature: '0xmid_flight' });
+
+    let resolveValidation: ((v: { status: string }) => void) | undefined;
+    mockValidateBidOnChain.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveValidation = resolve;
+      })
+    );
+
+    const { result, rerender } = renderStable([bid]);
+
+    // Rerender with a fresh array reference but the same bid before the
+    // validation Promise resolves. This used to set `cancelled = true`.
+    rerender({ bids: [{ ...bid }], opts: DEFAULT_OPTS });
+
+    // Now resolve the in-flight validation.
+    await act(async () => {
+      resolveValidation!({ status: 'valid' });
+      await new Promise<void>((r) => setTimeout(r, 0));
+    });
+    await flush();
+
+    const validated = result.current.validatedBids.find(
+      (b) => b.counterpartySignature === '0xmid_flight'
+    );
+    expect(validated?.validationStatus).toBe('valid');
+    expect(result.current.validBids).toHaveLength(1);
+  });
 });
