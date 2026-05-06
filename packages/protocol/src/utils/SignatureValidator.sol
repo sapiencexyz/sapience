@@ -47,13 +47,10 @@ abstract contract SignatureValidator is EIP712 {
         address indexed owner, address indexed sessionKey, uint256 revokedAt
     );
 
-    /// @notice Reverts when a request supplies the legacy session-key data
-    ///         blob. The path validated authority via factory CREATE2
-    ///         derivation, which cannot reflect a smart account's current
-    ///         Kernel validator/owner. Callers must send empty
-    ///         `sessionKeyData` (`"0x"`) and rely on ERC-1271 for smart
-    ///         accounts.
-    error LegacySessionKeyDataDisabled();
+    // `LegacySessionKeyDataDisabled` is declared on `IPredictionMarketEscrow`
+    // (so it's visible to interface-only ABI consumers) and inherited by
+    // `PredictionMarketEscrow`, which uses this validator. Re-declaring here
+    // would shadow that and reject the inherited identifier at compile time.
 
     /// @notice Gas limit for EIP-1271 signature validation calls
     /// @dev Prevents malicious contracts from consuming all gas

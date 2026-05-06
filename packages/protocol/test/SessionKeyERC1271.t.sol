@@ -556,7 +556,7 @@ contract SessionKeyERC1271Test is Test {
         );
 
         vm.expectRevert(
-            SignatureValidator.LegacySessionKeyDataDisabled.selector
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
         );
         market.mint(request);
     }
@@ -572,7 +572,7 @@ contract SessionKeyERC1271Test is Test {
         );
 
         vm.expectRevert(
-            SignatureValidator.LegacySessionKeyDataDisabled.selector
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
         );
         market.mint(request);
     }
@@ -601,7 +601,7 @@ contract SessionKeyERC1271Test is Test {
         );
 
         vm.expectRevert(
-            SignatureValidator.LegacySessionKeyDataDisabled.selector
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
         );
         market.burn(request);
     }
@@ -629,7 +629,7 @@ contract SessionKeyERC1271Test is Test {
         );
 
         vm.expectRevert(
-            SignatureValidator.LegacySessionKeyDataDisabled.selector
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
         );
         market.burn(request);
     }

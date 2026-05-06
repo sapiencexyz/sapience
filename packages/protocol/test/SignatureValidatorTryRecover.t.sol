@@ -771,7 +771,7 @@ contract SignatureValidatorTryRecoverTest is Test {
         );
 
         vm.expectRevert(
-            SignatureValidator.LegacySessionKeyDataDisabled.selector
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
         );
         market.mint(request);
     }
@@ -787,7 +787,7 @@ contract SignatureValidatorTryRecoverTest is Test {
         );
 
         vm.expectRevert(
-            SignatureValidator.LegacySessionKeyDataDisabled.selector
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
         );
         market.mint(request);
     }
