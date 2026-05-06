@@ -64,14 +64,21 @@ export const initializeApolloServer = async () => {
     // All data is public, CORS is strict, and error responses are excluded from caching.
     csrfPrevention: false,
     formatError: (formattedError, error) => {
-      // Split client errors from internal exceptions: GraphQLErrors with an
-      // `extensions.code` are structured client errors (validation, depth
-      // limit, complexity limit, business-rule rejections) and shouldn't
-      // page Sentry. Internal exceptions (no code, or non-GraphQLError)
-      // surface real bugs and warrant Sentry forwarding via log.error.
-      const code = formattedError.extensions?.code;
-      if (code) {
-        log.warn({ err: error, code }, 'GraphQL client error');
+      // Apollo auto-attaches `code: 'INTERNAL_SERVER_ERROR'` to formattedError
+      // whenever a resolver throws a non-GraphQLError, so the presence of a
+      // code is NOT a reliable client/internal signal. The reliable signal is
+      // whether the error was thrown as a GraphQLError on purpose: a direct
+      // `throw new GraphQLError(...)` has `originalError === undefined`,
+      // whereas a wrapped non-GraphQLError exposes the underlying cause via
+      // `originalError`. Internal exceptions go to log.error (→ Sentry);
+      // intentional client-facing errors go to log.warn (stdout-only).
+      const isClientError =
+        error instanceof GraphQLError && error.originalError === undefined;
+      if (isClientError) {
+        log.warn(
+          { err: error, code: formattedError.extensions?.code },
+          'GraphQL client error'
+        );
       } else {
         log.error({ err: error }, 'GraphQL internal error');
       }
