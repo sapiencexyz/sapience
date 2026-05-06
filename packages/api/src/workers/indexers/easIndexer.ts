@@ -11,6 +11,7 @@ import { SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
 import { IIndexer } from '../../interfaces';
 import { upsertAttestationScoreFromAttestation } from '../../services/scoringService';
 import { eas } from '@sapience/sdk/contracts/addresses';
+import { FORECAST_SCHEMA_UID } from '@sapience/sdk/constants';
 
 import { createLogger } from '../../core/logger';
 
@@ -27,10 +28,8 @@ const EAS_START_BLOCK = {
   42161: 367337046,
 } as const; // FROM https://github.com/ethereum-attestation-service/eas-indexing-service/blob/master/utils.ts
 
-// Forecast schema
-// Schema: address resolver, bytes condition, uint256 forecast, string comment
-const FORECAST_SCHEMA_ID =
-  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
+// Forecast schema: address resolver, bytes condition, uint256 forecast, string comment
+const FORECAST_SCHEMA_ID = FORECAST_SCHEMA_UID;
 const schemaEncoder = new SchemaEncoder(
   'address resolver,bytes condition,uint256 forecast,string comment'
 );
