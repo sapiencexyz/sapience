@@ -533,7 +533,10 @@ describe('executeTransaction', () => {
       expect(result.path).toBe('eoa');
     });
 
-    it('uses sendCalls for Ethereal writeContract with value (wrapping)', async () => {
+    it('runs Ethereal writeContract-with-value sequentially via sendTransactionAsync (wrap + call)', async () => {
+      // MetaMask routes EOA wallet_sendCalls through EIP-7702, which Ethereal
+      // does not support. The executor falls back to sequential
+      // eth_sendTransaction calls instead.
       const callsWithValue: TransactionCall[] = [
         {
           to: '0x1111111111111111111111111111111111111111',
@@ -541,22 +544,60 @@ describe('executeTransaction', () => {
           value: 100n,
         },
       ];
-      const sendCallsAsync = vi.fn().mockResolvedValue({
-        receipts: [{ transactionHash: '0xwrapped' }],
-      });
+      const hashes: string[] = ['0xwrap', '0xcall'];
+      const sendTransactionAsync = vi
+        .fn()
+        .mockImplementation(async () => hashes.shift());
+      const sendCallsAsync = vi.fn();
 
       const result = await executeTransaction(
         callsWithValue,
         CHAIN_ID_ETHEREAL,
         'eoa',
-        { sendCallsAsync, writeContractAsync: vi.fn() },
+        { sendCallsAsync, sendTransactionAsync, writeContractAsync: vi.fn() },
         'writeContract'
       );
 
-      expect(sendCallsAsync).toHaveBeenCalled();
-      const sentCalls = sendCallsAsync.mock.calls[0][0].calls;
-      expect(sentCalls).toHaveLength(2);
-      expect(result.hash).toBe('0xwrapped');
+      expect(sendCallsAsync).not.toHaveBeenCalled();
+      // 2 calls: deposit (wrap) + the original write
+      expect(sendTransactionAsync).toHaveBeenCalledTimes(2);
+      // Hash of the LAST tx is what's surfaced
+      expect(result.hash).toBe('0xcall');
+      expect(result.path).toBe('eoa');
+    });
+
+    it('runs Ethereal sendCalls batch sequentially via sendTransactionAsync', async () => {
+      // Same fallback applies for plain sendCalls mode (no wrapping).
+      const calls: TransactionCall[] = [
+        {
+          to: '0x1111111111111111111111111111111111111111',
+          data: '0xaa',
+          value: 0n,
+        },
+        {
+          to: '0x2222222222222222222222222222222222222222',
+          data: '0xbb',
+          value: 0n,
+        },
+      ];
+      const hashes: string[] = ['0xfirst', '0xsecond'];
+      const sendTransactionAsync = vi
+        .fn()
+        .mockImplementation(async () => hashes.shift());
+      const sendCallsAsync = vi.fn();
+
+      const result = await executeTransaction(
+        calls,
+        CHAIN_ID_ETHEREAL,
+        'eoa',
+        { sendCallsAsync, sendTransactionAsync },
+        'sendCalls'
+      );
+
+      expect(sendCallsAsync).not.toHaveBeenCalled();
+      expect(sendTransactionAsync).toHaveBeenCalledTimes(2);
+      expect(result.hash).toBe('0xsecond');
+      expect(result.path).toBe('eoa');
     });
   });
 });

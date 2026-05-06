@@ -93,6 +93,13 @@ export interface ExecutionDeps {
   writeContractAsync?: (...args: any[]) => Promise<Hash>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- wagmi hook return types use complex generics
   sendCallsAsync?: (params: any) => Promise<SendCallsResult>;
+  // Fallback for EOAs on Ethereal: MetaMask's `wallet_sendCalls` routes EOA
+  // batches through EIP-7702, which Ethereal does not support. wagmi's
+  // `experimental_fallback` does not catch that case (returns success
+  // without executing), so we run calls sequentially via plain
+  // `eth_sendTransaction` instead.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- wagmi hook return types use complex generics
+  sendTransactionAsync?: (params: any) => Promise<Hash>;
   validateAndSwitchChain?: (chainId: number) => Promise<void>;
 
   // Lifecycle callbacks
@@ -402,20 +409,14 @@ export async function executeTransaction(
 
   if (mode === 'writeContract' && deps.writeContractAsync) {
     // Single-call writeContract path
-    // If Ethereal with value, needs wrapping via sendCalls batch
+    // If Ethereal with value, needs wrapping (USDe → wUSDe) before the call.
     if (isEtherealChain(chainId) && calls.length === 1 && calls[0].value > 0n) {
-      if (!deps.sendCallsAsync) {
-        throw new Error(
-          'sendCallsAsync required for Ethereal wrapping in EOA mode'
-        );
-      }
-      const result = await deps.sendCallsAsync({
+      const lastHash = await sendCallsEoaSequential(
+        wrappedCalls,
         chainId,
-        calls: wrappedCalls,
-        experimental_fallback: true,
-      });
-      const txHash = pickFinalTransactionHash(result);
-      return { hash: txHash as Hash | undefined, data: result, path: 'eoa' };
+        deps
+      );
+      return { hash: lastHash, path: 'eoa' };
     }
 
     // Simple single call - use writeContractAsync directly
@@ -424,6 +425,16 @@ export async function executeTransaction(
   }
 
   // Batch sendCalls path
+  if (isEtherealChain(chainId)) {
+    // MetaMask routes EOA `wallet_sendCalls` through EIP-7702, which
+    // Ethereal does not support. wagmi's `experimental_fallback` does not
+    // catch that case (returns success without executing), so we send calls
+    // sequentially via `eth_sendTransaction` instead. The user pays gas per
+    // tx — acceptable since the chain does not offer batched EOA execution.
+    const lastHash = await sendCallsEoaSequential(calls, chainId, deps);
+    return { hash: lastHash, path: 'eoa' };
+  }
+
   if (!deps.sendCallsAsync) {
     throw new Error('sendCallsAsync not available');
   }
@@ -434,4 +445,31 @@ export async function executeTransaction(
   });
 
   return { data, path: 'eoa' };
+}
+
+/**
+ * Run `calls` sequentially via `eth_sendTransaction`. Used in EOA mode on
+ * chains that lack EIP-5792 / EIP-7702 support (Ethereal). Returns the hash
+ * of the final tx, or `undefined` if no calls were sent.
+ */
+async function sendCallsEoaSequential(
+  calls: TransactionCall[],
+  chainId: number,
+  deps: ExecutionDeps
+): Promise<Hash | undefined> {
+  if (!deps.sendTransactionAsync) {
+    throw new Error(
+      'sendTransactionAsync required for EOA sequential sendCalls fallback'
+    );
+  }
+  let lastHash: Hash | undefined;
+  for (const call of calls) {
+    lastHash = await deps.sendTransactionAsync({
+      chainId,
+      to: call.to,
+      data: call.data,
+      value: call.value ?? 0n,
+    });
+  }
+  return lastHash;
 }

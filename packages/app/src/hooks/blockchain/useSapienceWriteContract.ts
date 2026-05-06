@@ -5,6 +5,7 @@ import type { useTransactionReceipt } from 'wagmi';
 import {
   useWriteContract,
   useSendCalls,
+  useSendTransaction,
   useConnectorClient,
   useAccount,
 } from 'wagmi';
@@ -368,6 +369,11 @@ export function useSapienceWriteContract({
     reset: resetCalls,
   } = useSendCalls();
 
+  // Sequential fallback for EOAs on Ethereal: MetaMask routes
+  // wallet_sendCalls through EIP-7702 which Ethereal does not support, so
+  // the executor falls back to plain eth_sendTransaction in a loop.
+  const { sendTransactionAsync } = useSendTransaction();
+
   // Helper to execute transaction via session key (shared by writeContract and sendCalls)
   const executeViaSessionKey = useCallback(
     async (
@@ -499,6 +505,7 @@ export function useSapienceWriteContract({
             executeViaOwnerSigning,
             writeContractAsync,
             sendCallsAsync,
+            sendTransactionAsync,
             validateAndSwitchChain,
           },
           'writeContract',
@@ -518,6 +525,7 @@ export function useSapienceWriteContract({
       validateAndSwitchChain,
       writeContractAsync,
       sendCallsAsync,
+      sendTransactionAsync,
       completeTransaction,
       getExecutionPathForChain,
       getSessionClient,
@@ -588,6 +596,7 @@ export function useSapienceWriteContract({
             executeViaSessionKey,
             executeViaOwnerSigning,
             sendCallsAsync,
+            sendTransactionAsync,
             validateAndSwitchChain,
           },
           'sendCalls',
@@ -613,6 +622,7 @@ export function useSapienceWriteContract({
       resetCalls,
       validateAndSwitchChain,
       sendCallsAsync,
+      sendTransactionAsync,
       client,
       getExecutionPathForChain,
       getSessionClient,
