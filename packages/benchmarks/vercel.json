@@ -1,7 +1,0 @@
-{
-  "buildCommand": "cd ../.. && pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/benchmarks run build",
-  "outputDirectory": "dist",
-  "installCommand": "cd ../.. && pnpm install",
-  "framework": null,
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
