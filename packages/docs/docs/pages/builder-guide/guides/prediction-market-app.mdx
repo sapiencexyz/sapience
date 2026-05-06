@@ -171,29 +171,13 @@ export async function fetchQuestions() {
 
 ### Theming and UI
 
-`@sapience/ui` ships with shadcn-like primitives and a Tailwind preset. Import the preset and include it in your Tailwind config.
-
-```typescript
-// tailwind.config.ts
-import type { Config } from 'tailwindcss';
-import sapiencePreset from '@sapience/ui/tailwind-preset';
-
-export default {
-  presets: [sapiencePreset],
-  content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './node_modules/@sapience/ui/**/*.{js,mjs,ts,tsx}',
-  ],
-} satisfies Config;
-```
+Use your app's own Tailwind setup and component system. The Sapience app and Storybook are useful references for interaction patterns, but the published SDK does not include a reusable UI package.
 
 ### Next Steps
 
 - Add market data via [GraphQL](/builder-guide/api/graphql)
 - Add [Auction Relayer](/builder-guide/api/auction-relayer) for trading via auctions
-- Browse available [UI Components](/builder-guide/storybook) in Storybook
+- Use [Storybook](/builder-guide/storybook) as a reference for Sapience UI patterns
 
 </div>
 
