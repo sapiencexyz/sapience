@@ -20,6 +20,11 @@ export default defineConfig({
         __dirname,
         '../sdk/constants/chain.ts'
       ),
+      // onchain/secondaryTrade is not in the SDK export map either
+      '@sapience/sdk/onchain/secondaryTrade': path.resolve(
+        __dirname,
+        '../sdk/onchain/secondaryTrade.ts'
+      ),
     },
   },
 });

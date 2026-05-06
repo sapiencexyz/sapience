@@ -48,6 +48,7 @@ export function TableFilters<TStatus extends string>({
   config,
   className,
   inline,
+  searchClassName,
 }: {
   filters: TableFilterState<TStatus>;
   onFiltersChange: (filters: TableFilterState<TStatus>) => void;
@@ -55,6 +56,8 @@ export function TableFilters<TStatus extends string>({
   className?: string;
   /** When true, renders filter elements without a wrapping grid container (for embedding in a parent grid). */
   inline?: boolean;
+  /** Extra classes applied to the search input wrapper (useful for grid placement when inline). */
+  searchClassName?: string;
 }) {
   const isMobile = useIsMobile();
   const dateMin = config.dateRange.min ?? DEFAULT_DATE_MIN;
@@ -106,7 +109,7 @@ export function TableFilters<TStatus extends string>({
 
   const content = (
     <>
-      <div className="relative flex items-center">
+      <div className={cn('relative flex items-center', searchClassName)}>
         <Search className="hidden md:block absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none z-10" />
         <input
           type="text"

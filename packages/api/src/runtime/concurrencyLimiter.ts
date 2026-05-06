@@ -10,6 +10,9 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
+import { createLogger } from '../core/logger';
+
+const log = createLogger('concurrency-limiter');
 
 export interface ConcurrencyLimiterOptions {
   maxConcurrent: number;
@@ -63,8 +66,14 @@ export function createConcurrencyLimiter(opts: ConcurrencyLimiterOptions) {
 
     // Global limit
     if (activeOperations >= maxConcurrent) {
-      console.warn(
-        `[Server] 429 load shed: ${activeOperations}/${maxConcurrent} active, ip=${ip}, path=${req.path}`
+      log.warn(
+        {
+          activeOperations,
+          maxConcurrent,
+          ip,
+          path: req.path,
+        },
+        '429 load shed (global)'
       );
       opts.onGlobalShed?.(ip, activeOperations);
       res
@@ -84,8 +93,9 @@ export function createConcurrencyLimiter(opts: ConcurrencyLimiterOptions) {
     // Per-IP limit
     const ipOps = activePerIp.get(ip) ?? 0;
     if (ipOps >= maxConcurrentPerIp) {
-      console.warn(
-        `[Server] 429 per-IP limit: ${ipOps}/${maxConcurrentPerIp} active for ip=${ip}`
+      log.warn(
+        { ipOps, maxConcurrentPerIp, ip },
+        '429 per-IP concurrency limit'
       );
       res
         .set('Retry-After', '1')

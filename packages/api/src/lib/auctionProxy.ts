@@ -4,6 +4,9 @@ import http from 'http';
 import https from 'https';
 import type { Request, Response } from 'express';
 import type { Socket } from 'net';
+import { createLogger } from '../core/logger';
+
+const log = createLogger('auction-proxy');
 
 /**
  * Get the relayer service URL from environment or default to localhost.
@@ -20,7 +23,7 @@ function getAuctionServiceUrl(): string {
  */
 export function createAuctionProxyMiddleware() {
   const target = getAuctionServiceUrl();
-  console.log('[Auction Proxy] Auction service URL:', target);
+  log.info({ target }, '[Auction Proxy] Auction service URL');
 
   return createProxyMiddleware<Request, Response>({
     target,
@@ -28,14 +31,20 @@ export function createAuctionProxyMiddleware() {
     ws: false, // We handle WebSocket upgrades separately
     on: {
       error: (err: Error, req: Request, res: Response | Socket) => {
-        console.error('[Auction Proxy] Error proxying request:', err.message);
+        log.error(
+          { err: err.message },
+          '[Auction Proxy] Error proxying request:'
+        );
         // Only handle HTTP responses, not WebSocket sockets
         if ('status' in res && !res.headersSent) {
           res.status(502).json({ error: 'Auction service unavailable' });
         }
       },
       proxyReq: (proxyReq: http.ClientRequest, req: Request) => {
-        console.log('[Auction Proxy] Proxy request:', req.method, req.url);
+        log.info(
+          { method: req.method, url: req.url },
+          '[Auction Proxy] Proxy request'
+        );
         // Preserve original host header for proper routing
         if (req.headers.host) {
           proxyReq.setHeader('X-Forwarded-Host', req.headers.host);
@@ -45,11 +54,11 @@ export function createAuctionProxyMiddleware() {
         // Log all responses for monitoring
         if (proxyRes.statusCode) {
           if (proxyRes.statusCode >= 200 && proxyRes.statusCode < 300) {
-            console.log(
+            log.info(
               `[Auction Proxy] Successfully proxied ${req.method} ${req.url} -> ${proxyRes.statusCode}`
             );
           } else if (proxyRes.statusCode >= 400) {
-            console.warn(
+            log.warn(
               `[Auction Proxy] Upstream returned ${proxyRes.statusCode} for ${req.method} ${req.url}`
             );
           }
@@ -72,7 +81,7 @@ export async function proxyAuctionWebSocket(
   const url = new URL(request.url || '/auction', target);
 
   return new Promise((resolve) => {
-    console.log('[Auction Proxy] Creating proxy request for:', url.toString());
+    log.info({ url: url.toString() }, '[Auction Proxy] Creating proxy request');
 
     // Use https module for HTTPS URLs, http for HTTP
     const requestModule = url.protocol === 'https:' ? https : http;
@@ -94,11 +103,7 @@ export async function proxyAuctionWebSocket(
     });
 
     proxyReq.on('error', (err: Error) => {
-      console.error(
-        '[Auction Proxy] WebSocket proxy error:',
-        err.message,
-        err.stack
-      );
+      log.error({ err }, '[Auction Proxy] WebSocket proxy error');
       try {
         socket.destroy();
       } catch {
@@ -109,7 +114,7 @@ export async function proxyAuctionWebSocket(
 
     // Handle response (non-upgrade) - this shouldn't happen for WebSocket but log it
     proxyReq.on('response', (res) => {
-      console.warn(
+      log.warn(
         `[Auction Proxy] Received non-upgrade response ${res.statusCode} for WebSocket request to ${url.toString()}`
       );
       // If we get a regular response instead of upgrade, something went wrong
@@ -130,17 +135,20 @@ export async function proxyAuctionWebSocket(
       ) => {
         // Log successful WebSocket upgrade
         if (proxyRes.statusCode === 101) {
-          console.log(
+          log.info(
             `[Auction Proxy] Successfully proxied WebSocket upgrade for ${request.url}`
           );
         } else {
-          console.warn(
+          log.warn(
             `[Auction Proxy] WebSocket upgrade returned ${proxyRes.statusCode} for ${request.url}`
           );
         }
         // Upgrade successful, pipe the connection
         proxySocket.on('error', (err: Error) => {
-          console.error('[Auction Proxy] Proxy socket error:', err.message);
+          log.error(
+            { err: err.message },
+            '[Auction Proxy] Proxy socket error:'
+          );
           try {
             socket.destroy();
           } catch {
@@ -149,7 +157,10 @@ export async function proxyAuctionWebSocket(
         });
 
         socket.on('error', (err: Error) => {
-          console.error('[Auction Proxy] Client socket error:', err.message);
+          log.error(
+            { err: err.message },
+            '[Auction Proxy] Client socket error:'
+          );
           try {
             proxySocket.destroy();
           } catch {

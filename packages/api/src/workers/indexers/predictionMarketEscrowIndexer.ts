@@ -2,7 +2,6 @@ import prisma from '../../core/db';
 import { Prisma, type PrismaClient } from '../../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../../lib/utils';
 import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
-import Sentry from '../../core/instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import {
@@ -17,6 +16,10 @@ import {
 import { PYTH_FEED_NAMES, PYTH_FEEDS } from '@sapience/sdk/constants';
 import { isPredictedYes, normalizeOutcomeSide } from '@sapience/sdk/types';
 import { sendPositionAlert } from '../../services/discordAlert';
+
+import { createLogger } from '../../core/logger';
+
+const logger = createLogger('predictionMarketEscrowIndexer');
 
 type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -196,7 +199,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       this.blockCreated = BigInt(contractEntry.blockCreated || 0);
     }
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated}, legacy: ${this.isLegacy})`
     );
   }
@@ -207,24 +210,24 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     endTimestamp?: number
   ): Promise<boolean> {
     try {
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Indexing blocks from timestamp ${startTimestamp} to ${endTimestamp || 'latest'} on contract ${this.contractAddress}`
       );
 
       const startBlock = await getBlockByTimestamp(this.client, startTimestamp);
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Found start block: ${startBlock.number} at timestamp ${startBlock.timestamp}`
       );
 
       let endBlock: Block;
       if (endTimestamp) {
         endBlock = await getBlockByTimestamp(this.client, endTimestamp);
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Found end block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
         );
       } else {
         endBlock = await this.client.getBlock({ blockTag: 'latest' });
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Using latest block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
         );
       }
@@ -238,7 +241,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         i += BLOCK_BATCH_SIZE
       ) {
         const batchEnd = Math.min(i + BLOCK_BATCH_SIZE - 1, endBlockNumber);
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Processing blocks ${i} to ${batchEnd}`
         );
 
@@ -251,7 +254,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       }
 
       // Update indexer state
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Persisting watermark block=${endBlockNumber}`
       );
       await prisma.indexerState.upsert({
@@ -275,11 +278,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error indexing blocks:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[PredictionMarketEscrowIndexer] Error indexing blocks'
       );
-      Sentry.captureException(error);
       throw error;
     }
   }
@@ -296,7 +298,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         toBlock: BigInt(toBlock),
       });
 
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Found ${logs.length} logs in blocks ${fromBlock}-${toBlock}`
       );
 
@@ -320,24 +322,23 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error processing blocks ${fromBlock}-${toBlock}:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId, fromBlock, toBlock },
+        '[PredictionMarketEscrowIndexer] Error processing block range'
       );
-      Sentry.captureException(error);
       throw error;
     }
   }
 
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Already watching ${resourceSlug}`
       );
       return;
     }
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Starting to poll contract ${this.contractAddress} for ${resourceSlug}`
     );
 
@@ -345,7 +346,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
     // Set up SIGINT handler
     this.sigintHandler = () => {
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Received SIGINT, stopping...`
       );
       this.stop();
@@ -364,25 +365,25 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       });
       if (state) {
         this.lastProcessedBlock = BigInt(state.lastIndexedBlock);
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Resuming from watermark block ${this.lastProcessedBlock}`
         );
       } else if (this.blockCreated > 0n) {
         // Start from contract creation block to index historical events
         this.lastProcessedBlock = this.blockCreated - 1n;
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Starting from blockCreated ${this.blockCreated} for historical indexing`
         );
       } else {
         try {
           this.lastProcessedBlock = await this.client.getBlockNumber();
-          console.log(
+          logger.info(
             `[PredictionMarketEscrowIndexer:${this.chainId}] No watermark found, starting from current block ${this.lastProcessedBlock}`
           );
         } catch (error) {
-          console.error(
-            `[PredictionMarketEscrowIndexer:${this.chainId}] Error getting initial block:`,
-            error
+          logger.error(
+            { err: error },
+            `[PredictionMarketEscrowIndexer:${this.chainId}] Error getting initial block:`
           );
           this.lastProcessedBlock = 0n;
         }
@@ -408,7 +409,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           });
 
           if (logs.length > 0) {
-            console.log(
+            logger.info(
               `[PredictionMarketEscrowIndexer:${this.chainId}] Found ${logs.length} events in blocks ${fromBlock}-${toBlock}`
             );
 
@@ -419,11 +420,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
                 });
                 await this.processLog(log, block);
               } catch (error) {
-                console.error(
-                  `[PredictionMarketEscrowIndexer:${this.chainId}] Error processing log:`,
-                  error
+                logger.error(
+                  { err: error, chainId: this.chainId },
+                  '[PredictionMarketEscrowIndexer] Error processing log'
                 );
-                Sentry.captureException(error);
               }
             }
           }
@@ -431,7 +431,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           this.lastProcessedBlock = currentBlock;
 
           // Persist indexer state for resume on restart
-          console.log(
+          logger.info(
             `[PredictionMarketEscrowIndexer:${this.chainId}] Persisting watermark block=${currentBlock}`
           );
           await prisma.indexerState.upsert({
@@ -454,11 +454,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           });
         }
       } catch (error) {
-        console.error(
-          `[PredictionMarketEscrowIndexer:${this.chainId}] Polling error:`,
-          error
+        logger.error(
+          { err: error, chainId: this.chainId },
+          '[PredictionMarketEscrowIndexer] Polling error'
         );
-        Sentry.captureException(error);
       }
     };
 
@@ -479,7 +478,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log(`[PredictionMarketEscrowIndexer:${this.chainId}] Stopped`);
+    logger.info(`[PredictionMarketEscrowIndexer:${this.chainId}] Stopped`);
   }
 
   private async processLog(log: Log, block: Block): Promise<void> {
@@ -605,11 +604,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         throw e;
       }
     } catch (error) {
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error processing log:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[PredictionMarketEscrowIndexer] Error processing log (outer)'
       );
-      Sentry.captureException(error);
     }
   }
 
@@ -618,7 +616,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing PredictionCreated event: predictionId=${event.predictionId}`
     );
 
@@ -634,7 +632,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       // SAP-767: If prediction exists but pickConfigId is null, a previous RPC
       // call failed after the prediction row was created. Attempt repair.
       if (!existingPrediction.pickConfigId) {
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} missing pickConfigId, attempting repair...`
         );
         const repairData = await this.readPickConfigData(event, log);
@@ -646,22 +644,23 @@ class PredictionMarketEscrowIndexer implements IIndexer {
               data: { pickConfigId: repairData.pickConfigId },
             });
           });
-          console.log(
+          logger.info(
             `[PredictionMarketEscrowIndexer:${this.chainId}] Repaired prediction ${predictionIdLower} with pickConfigId=${repairData.pickConfigId}`
           );
         } else {
-          console.error(
-            `[PredictionMarketEscrowIndexer:${this.chainId}] CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing, will retry next cycle`,
-            { predictionId: predictionIdLower, chainId: this.chainId }
-          );
-          Sentry.captureException(
-            new Error(
-              `CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing`
-            )
+          logger.error(
+            {
+              err: new Error(
+                `CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing`
+              ),
+              predictionId: predictionIdLower,
+              chainId: this.chainId,
+            },
+            '[PredictionMarketEscrowIndexer] CRITICAL: Repair RPC failed; positions still missing, will retry next cycle'
           );
         }
       } else {
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
         );
       }
@@ -672,14 +671,16 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const onChainData = await this.readPickConfigData(event, log);
 
     if (!onChainData) {
-      console.warn(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] RPC failed for prediction ${predictionIdLower} — creating prediction without positions, will repair on next encounter`,
-        { predictionId: predictionIdLower, chainId: this.chainId }
-      );
-      Sentry.captureException(
-        new Error(
-          `RPC failed reading pick config for prediction ${predictionIdLower} — positions deferred`
-        )
+      logger.error(
+        {
+          err: new Error(
+            `RPC failed reading pick config for prediction ${predictionIdLower} — positions deferred`
+          ),
+          sentryLevel: 'warning',
+          predictionId: predictionIdLower,
+          chainId: this.chainId,
+        },
+        '[PredictionMarketEscrowIndexer] RPC failed for prediction — creating without positions, will repair on next encounter'
       );
     }
 
@@ -754,14 +755,14 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           predictionId: predictionIdLower,
         });
       } catch (err) {
-        console.error(
-          `[PredictionMarketEscrowIndexer:${this.chainId}] Discord alert failed:`,
-          err
+        logger.error(
+          { err: err },
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Discord alert failed:`
         );
       }
     })();
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processed PredictionCreated ${predictionIdLower}`
     );
   }
@@ -825,11 +826,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         picksOnChain,
       };
     } catch (error) {
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error reading on-chain pick config data:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[PredictionMarketEscrowIndexer] Error reading on-chain pick config data'
       );
-      Sentry.captureException(error);
       return null;
     }
   }
@@ -893,7 +893,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
             ...(categoryId != null ? { categoryId } : {}),
           },
         });
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Upserted Pyth condition ${conditionId} — ${pythData.shortName}`
         );
       }
@@ -945,7 +945,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         `;
       }
 
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Created Picks config ${pickConfigId}`
       );
     } else {
@@ -987,7 +987,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       DO UPDATE SET balance = ("Position".balance::NUMERIC + ${counterpartyMinted}::NUMERIC)::TEXT, "updatedAt" = NOW()
     `;
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Upserted position balances for pickConfig ${pickConfigId}`
     );
   }
@@ -997,7 +997,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing PredictionSettled event: predictionId=${event.predictionId}, result=${event.result}`
     );
 
@@ -1046,7 +1046,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       }
     });
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Marked prediction ${predictionIdLower} as settled with result ${mapSettlementResult(event.result)}`
     );
   }
@@ -1056,7 +1056,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing TokensRedeemed event: pickConfigId=${event.pickConfigId}, holder=${event.holder}`
     );
 
@@ -1109,7 +1109,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     // RPC reads.
     await this.checkFullyRedeemed(positionTokenLower);
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Created/replayed claim record for prediction ${predictionIdLower}`
     );
   }
@@ -1119,7 +1119,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing CollateralDeposited event: predictionId=${event.predictionId}, totalAmount=${event.totalAmount}`
     );
 
@@ -1135,7 +1135,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       },
     });
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Updated collateral deposited for prediction ${predictionIdLower}`
     );
   }
@@ -1147,12 +1147,12 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     _log: Log, // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing DustSwept event: pickConfigId=${event.pickConfigId}, amount=${event.amount}`
     );
 
     // DustSwept is informational - log it but no DB action needed
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Dust swept: ${event.amount} to ${event.recipient} for pickConfigId ${event.pickConfigId}`
     );
   }
@@ -1162,7 +1162,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing PositionsBurned event: pickConfigId=${event.pickConfigId}`
     );
 
@@ -1230,7 +1230,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     // Check if fully redeemed (involves RPC calls, so outside the transaction)
     await this.checkFullyRedeemedByPickConfig(pickConfigIdLower);
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Created close record for pickConfig ${pickConfigIdLower}`
     );
   }
@@ -1279,14 +1279,14 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           where: { id: pickConfigId },
           data: { fullyRedeemed: true },
         });
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Marked pickConfig ${pickConfigId} as fullyRedeemed`
         );
       }
     } catch (error) {
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error checking fullyRedeemed for pickConfig ${pickConfigId}:`,
-        error
+      logger.error(
+        { err: error },
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Error checking fullyRedeemed for pickConfig ${pickConfigId}:`
       );
     }
   }

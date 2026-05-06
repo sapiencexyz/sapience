@@ -146,6 +146,16 @@ export interface ValidateAuctionRFQOptions {
   chainId?: number;
   requireSignature?: boolean; // default true
   maxDeadlineSeconds?: number; // upper bound on deadline window (anti-spam)
+  /**
+   * Optional public client. Enables ERC-1271 fallback when the predictor is a
+   * smart account whose intent signature does not recover via ECDSA (the
+   * migrated app emits kernel-wrapped session-key signatures). When provided,
+   * smart-account predictors with valid ERC-1271 signatures resolve to
+   * `valid`; smart-account predictors whose signature can't be verified
+   * offline resolve to `unverified` (not `invalid`) so callers can passthrough
+   * to the on-chain `mint()` which is the authoritative gate.
+   */
+  publicClient?: PublicClient;
 }
 
 /**
@@ -323,17 +333,28 @@ export async function validateAuctionRFQ(
       predictorSessionKeyData: payload.predictorSessionKeyData,
       verifyingContract: opts.verifyingContract,
       chainId: payload.chainId,
+      publicClient: opts.publicClient,
     });
 
-    if (!sigResult.valid) {
+    if (sigResult.valid) {
+      return { status: 'valid', recoveredSigner: sigResult.recoveredAddress };
+    }
+
+    if (sigResult.unverifiedContractSigner) {
       return {
-        status: 'invalid',
-        code: 'INVALID_SIGNATURE',
-        reason: 'Intent signature verification failed',
+        status: 'unverified',
+        code: 'SIGNATURE_UNVERIFIABLE',
+        reason:
+          'Predictor is a smart account; intent signature could not be ' +
+          'verified offline. Passthrough — on-chain mint() is the authority.',
       };
     }
 
-    return { status: 'valid', recoveredSigner: sigResult.recoveredAddress };
+    return {
+      status: 'invalid',
+      code: 'INVALID_SIGNATURE',
+      reason: 'Intent signature verification failed',
+    };
   }
 
   // No signature required — pass

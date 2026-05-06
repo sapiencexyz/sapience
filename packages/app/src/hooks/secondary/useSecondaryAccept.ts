@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { useAccount, useChainId, useSignTypedData } from 'wagmi';
 import { erc20Abi, type Address, type Hex } from 'viem';
 import { buildSellerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
@@ -17,7 +18,6 @@ import type { SecondaryValidatedBid } from '@sapience/sdk/types/secondary';
 import { useSession } from '~/lib/context/SessionContext';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { getPublicClientForChainId } from '~/lib/utils/util';
-import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
 
 export interface AcceptBidParams {
   /** Position token address */
@@ -46,9 +46,12 @@ interface UseSecondaryAcceptOptions {
  * Hook for sellers to accept a bid on their secondary market listing.
  *
  * Flow:
- * 1. Seller signs TradeApproval with session key (auto) or EOA wallet
- * 2. Position token approve via owner signing (forceOwnerPath — dynamic contract)
- * 3. executeTrade via session key with sellerSessionKeyData for on-chain verification
+ * 1. Seller signs TradeApproval with session key (kernel-wrapped, ERC-1271)
+ *    or EOA wallet
+ * 2. Position token approve via owner signing (forceOwnerPath)
+ * 3. executeTrade — contract validates the seller signature via the smart
+ *    account's isValidSignature() (ERC-1271). sellerSessionKeyData is always
+ *    sent as '0x' so the on-chain legacy session-key path is no longer used.
  */
 export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
   const {
@@ -64,9 +67,8 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
   const { signTypedDataAsync } = useSignTypedData();
   const {
     effectiveAddress,
-    signTypedDataRaw: sessionSignTypedDataRaw,
+    signTypedData: sessionSignTypedData,
     isUsingSession,
-    tradeSessionKeyApproval,
   } = useSession();
 
   const [isAccepting, setIsAccepting] = useState(false);
@@ -85,9 +87,10 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
   );
 
   // Both approve + executeTrade via owner signing in a single batch.
-  // Owner signing bypasses ZeroDev paymaster CallPolicy validation
-  // which rejects session key UserOps for executeTrade. The contract verifies signatures
-  // internally using the sellerSessionKeyData/buyerSessionKeyData.
+  // Owner signing bypasses ZeroDev paymaster CallPolicy validation which
+  // rejects session-key UserOps for executeTrade. The seller TradeApproval
+  // signature itself is still produced by the session key (kernel-wrapped)
+  // so the escrow validates it via ERC-1271 against the smart account.
   const { sendCalls, isPending: isTxPending } = useSapienceWriteContract({
     onSuccess: () => {
       setIsAccepting(false);
@@ -145,10 +148,10 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
 
         let sellerSignature: Hex;
         try {
-          if (isUsingSession && sessionSignTypedDataRaw) {
-            // Session mode: raw ECDSA sign with session key (no kernel wrapping).
-            // The contract does ECDSA.recover() so it needs a raw 65-byte signature.
-            sellerSignature = await sessionSignTypedDataRaw({
+          if (isUsingSession && sessionSignTypedData) {
+            // Session mode: kernel-wrapped signature. The escrow validates
+            // it against the smart account via ERC-1271 (isValidSignature).
+            sellerSignature = await sessionSignTypedData({
               domain: {
                 ...typedData.domain,
                 chainId: Number(typedData.domain.chainId),
@@ -192,14 +195,24 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           // Continue — will include approve in batch
         }
 
-        // 3. Build sellerSessionKeyData for on-chain session key verification
-        // When using session, the contract needs the SessionKeyData struct to verify
-        // the session key signature via TRADE_PERMISSION (not EIP-1271).
-        let sellerSessionKeyData: Hex = '0x';
-        if (isUsingSession && tradeSessionKeyApproval) {
-          sellerSessionKeyData = encodeEscrowSessionKeyData(
-            tradeSessionKeyApproval
-          );
+        // 3. Seller path no longer uses on-chain session-key data: the
+        // signature above (kernel-wrapped when session is active) is verified
+        // via ERC-1271. Buyer side is forwarded as received from the bid; if
+        // a legacy client sent a non-empty blob we record telemetry so the
+        // contract-side legacy path can be retired safely.
+        const buyerSessionKeyData: Hex =
+          (bid.buyerSessionKeyData as Hex | undefined) ?? '0x';
+        if (buyerSessionKeyData !== '0x') {
+          Sentry.addBreadcrumb({
+            category: 'secondary.legacy_session_key',
+            level: 'warning',
+            message: 'accept_received_legacy_buyer_session_key_data',
+            data: {
+              auctionId: bid.auctionId,
+              buyer: bid.buyer,
+              byteLength: (buyerSessionKeyData.length - 2) / 2,
+            },
+          });
         }
 
         // 4. Build trade params
@@ -217,8 +230,8 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           sellerSignature,
           buyerSignature: bid.buyerSignature as Hex,
           refCode: refCode ?? (('0x' + '00'.repeat(32)) as Hex),
-          sellerSessionKeyData,
-          buyerSessionKeyData: (bid.buyerSessionKeyData as Hex) ?? '0x',
+          sellerSessionKeyData: '0x',
+          buyerSessionKeyData,
         };
 
         // 5. Build approve (if needed) + executeTrade as a single batch
@@ -251,9 +264,8 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
       collateralAddress,
       publicClient,
       signTypedDataAsync,
-      sessionSignTypedDataRaw,
+      sessionSignTypedData,
       isUsingSession,
-      tradeSessionKeyApproval,
       sendCalls,
       onError,
       onSignatureRejected,

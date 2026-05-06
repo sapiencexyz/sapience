@@ -1,5 +1,8 @@
 import { Request, Response, Router } from 'express';
 import prisma from '../core/db';
+import { createLogger } from '../core/logger';
+
+const log = createLogger('routes.conditions');
 
 const router = Router();
 
@@ -135,7 +138,7 @@ router.post('/batch-create', async (req: Request, res: Response) => {
             });
             if (existing) groupByName.set(name, existing.id);
           } else {
-            console.error(
+            log.error(
               `[BatchCreate] Failed to create group "${name}": ${message}`
             );
             failedGroups.push(name);
@@ -200,9 +203,7 @@ router.post('/batch-create', async (req: Request, res: Response) => {
         if (message.includes('Unique constraint')) {
           skipped++;
         } else {
-          console.error(
-            `[BatchCreate] Failed ${item.conditionHash}: ${message}`
-          );
+          log.error(`[BatchCreate] Failed ${item.conditionHash}: ${message}`);
           failed++;
         }
       }
@@ -215,7 +216,7 @@ router.post('/batch-create', async (req: Request, res: Response) => {
       ...(failedGroups.length > 0 ? { failedGroups } : {}),
     });
   } catch (error: unknown) {
-    console.error('Error in batch create conditions:', error);
+    log.error({ err: error }, 'Error in batch create conditions:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -416,11 +417,11 @@ router.post('/', async (req: Request, res: Response) => {
           message: 'Condition already exists',
         });
       }
-      console.error('Error creating condition:', e);
+      log.error({ err: e }, 'Error creating condition:');
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   } catch (error: unknown) {
-    console.error('Error in create condition:', error);
+    log.error({ err: error }, 'Error in create condition:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -495,7 +496,7 @@ router.put('/prices', async (req: Request, res: Response) => {
       requested: updates.length,
     });
   } catch (error: unknown) {
-    console.error('Error in batch price update:', error);
+    log.error({ err: error }, 'Error in batch price update:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -578,7 +579,7 @@ router.put('/volume', async (req: Request, res: Response) => {
       requested: updates.length,
     });
   } catch (error: unknown) {
-    console.error('Error in batch volume update:', error);
+    log.error({ err: error }, 'Error in batch volume update:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -698,7 +699,7 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
 
     return res.status(200).json({ updated, failed, requested: updates.length });
   } catch (error: unknown) {
-    console.error('Error in batch metadata update:', error);
+    log.error({ err: error }, 'Error in batch metadata update:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -768,7 +769,7 @@ router.put('/batch-private', async (req: Request, res: Response) => {
       found: existing,
     });
   } catch (error: unknown) {
-    console.error('Error in batch update conditions:', error);
+    log.error({ err: error }, 'Error in batch update conditions:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -964,11 +965,11 @@ router.put('/:id', async (req: Request, res: Response) => {
         )
       );
     } catch (e: unknown) {
-      console.error('Error updating condition:', e);
+      log.error({ err: e }, 'Error updating condition:');
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   } catch (error: unknown) {
-    console.error('Error in update condition:', error);
+    log.error({ err: error }, 'Error in update condition:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });

@@ -12,6 +12,7 @@ import { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from '../fixtures';
 import prisma from './db';
 import { config } from './config';
+import { createLogger } from './logger';
 import { createConcurrencyLimiter } from '../runtime/concurrencyLimiter';
 import {
   createAuctionProxyMiddleware,
@@ -19,6 +20,8 @@ import {
 } from '../lib/auctionProxy';
 import { cdnCacheMiddleware } from '../graphql/plugins/httpCacheHeadersPlugin';
 import { requestContext } from './db';
+
+const log = createLogger('server');
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
@@ -28,8 +31,8 @@ const startServer = async () => {
   await initializeDataSource();
 
   if (config.isDev && process.env.DATABASE_URL?.includes('railway')) {
-    console.log(
-      'Skipping fixtures initialization since we are in development mode and using production database'
+    log.info(
+      'Skipping fixtures initialization (dev mode + production database)'
     );
   } else {
     // Initialize fixtures from fixtures.json
@@ -77,11 +80,19 @@ const startServer = async () => {
       requestContext.run(store, () => {
         const start = performance.now();
         const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
-        const tag = requestId ? `[http:${requestId}]` : '[http]';
         res.on('finish', () => {
-          const ms = (performance.now() - start).toFixed(1);
-          console.log(
-            `${tag} ${req.method} /graphql ${res.statusCode} ${ms}ms (${store.count} queries) ip=${ip}`
+          const durationMs = Number((performance.now() - start).toFixed(1));
+          log.info(
+            {
+              event: 'http_graphql_request',
+              method: req.method,
+              statusCode: res.statusCode,
+              durationMs,
+              prismaQueryCount: store.count,
+              ip,
+              requestId: requestId || undefined,
+            },
+            'http /graphql'
           );
         });
         next();
@@ -99,9 +110,12 @@ const startServer = async () => {
       next: NextFunction
     ) => void,
     expressMiddleware(apolloServer, {
-      context: async () => ({
+      context: async ({ req }) => ({
         prisma,
         pickConditions: new Map<string, unknown>(),
+        // pino-http attaches `id` and `log` to req; passed through so the
+        // operation-timing plugin can include reqId in the structured log.
+        req,
       }),
     })
   );
@@ -110,7 +124,7 @@ const startServer = async () => {
   const auctionProxyEnabled = process.env.ENABLE_AUCTION_PROXY !== 'false';
   if (auctionProxyEnabled) {
     app.use('/auction', createAuctionProxyMiddleware());
-    console.log('Auction proxy enabled: /auction -> auction service');
+    log.info('Auction proxy enabled: /auction -> auction service');
   }
 
   const httpServer = createServer(app);
@@ -157,7 +171,7 @@ const startServer = async () => {
           // If proxy failed, fall through to destroy socket
         }
       } catch (err) {
-        console.error('[Server] Upgrade handler error:', err);
+        log.error({ err }, 'Upgrade handler error');
       }
       // If not handled, destroy the socket
       try {
@@ -169,19 +183,14 @@ const startServer = async () => {
   );
 
   httpServer.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-    console.log(`GraphQL endpoint available at /graphql`);
-    console.log(`Chat WebSocket endpoint at /chat`);
-    if (auctionProxyEnabled) {
-      console.log(`Auction WebSocket endpoint proxied at /auction`);
-    }
+    log.info({ port: PORT, auctionProxyEnabled }, 'Server listening');
   });
 
   // Graceful shutdown — drain in-flight requests before exiting
   const shutdown = async () => {
-    console.log('[Server] Shutting down gracefully...');
+    log.info('Shutting down gracefully');
     httpServer.close(() => {
-      console.log('[Server] HTTP server closed');
+      log.info('HTTP server closed');
       prisma.$disconnect().then(() => process.exit(0));
     });
     setTimeout(() => process.exit(1), 10_000);
@@ -198,7 +207,7 @@ const startServer = async () => {
   // Needs the unused _next parameter to be passed in: https://expressjs.com/en/guide/error-handling.html
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('An error occurred:', err.message);
+    log.error({ err }, 'Unhandled error in request pipeline');
     if (!res.headersSent) {
       res.status(500).json({ error: 'Internal server error' });
     }
@@ -207,6 +216,6 @@ const startServer = async () => {
 
 try {
   await startServer();
-} catch (e) {
-  console.error('Unable to start server: ', e);
+} catch (err) {
+  log.fatal({ err }, 'Unable to start server');
 }

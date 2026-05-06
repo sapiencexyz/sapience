@@ -229,7 +229,13 @@ describe('processPythMarketSettled', () => {
 
   it('creates event and warns when no condition is found', async () => {
     mockPrisma.condition.findUnique.mockResolvedValue(null);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const writes: string[] = [];
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((
+      chunk: unknown
+    ) => {
+      if (typeof chunk === 'string') writes.push(chunk);
+      return true;
+    }) as never);
 
     await processPythMarketSettled(
       MOCK_CTX,
@@ -240,11 +246,11 @@ describe('processPythMarketSettled', () => {
     expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
     expect(mockPrisma.event.create).toHaveBeenCalledOnce();
     expect(mockPrisma.condition.update).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('no matching Condition found')
+    expect(writes.some((w) => w.includes('no matching Condition found'))).toBe(
+      true
     );
 
-    warnSpy.mockRestore();
+    stdoutSpy.mockRestore();
   });
 
   it('catches scoring errors without propagating them', async () => {
@@ -255,7 +261,13 @@ describe('processPythMarketSettled', () => {
     vi.mocked(scoreSelectedForecastsForSettledMarket).mockRejectedValue(
       new Error('scoring failure')
     );
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const writes: string[] = [];
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((
+      chunk: unknown
+    ) => {
+      if (typeof chunk === 'string') writes.push(chunk);
+      return true;
+    }) as never);
 
     await expect(
       processPythMarketSettled(MOCK_CTX, makeMarketSettledLog(), MOCK_BLOCK)
@@ -264,12 +276,11 @@ describe('processPythMarketSettled', () => {
     expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
     expect(mockPrisma.condition.update).toHaveBeenCalled();
 
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Error scoring forecasts'),
-      expect.any(Error)
+    expect(writes.some((w) => w.includes('Error scoring forecasts'))).toBe(
+      true
     );
 
-    errorSpy.mockRestore();
+    stdoutSpy.mockRestore();
   });
 
   it('calls resolvePickConfigsForCondition inside the transaction', async () => {

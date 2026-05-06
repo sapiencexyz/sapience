@@ -11,6 +11,10 @@ import {
   type SessionApprovalPayload,
 } from '@sapience/sdk/session';
 
+import { createLogger } from '../core/logger';
+
+const log = createLogger('websocket.chatAuth');
+
 export type ChatSession = { address: string; expiresAt: number };
 export type NonceRecord = { message: string; expiresAt: number; used: boolean };
 
@@ -168,16 +172,16 @@ export async function verifySessionAndCreateToken(params: {
   // Validate nonce exists and is unused
   const record = nonces.get(params.nonce);
   if (!record) {
-    console.warn('[ChatAuth] Session auth failed: nonce not found');
+    log.warn('[ChatAuth] Session auth failed: nonce not found');
     return null;
   }
   if (record.used) {
-    console.warn('[ChatAuth] Session auth failed: nonce already used');
+    log.warn('[ChatAuth] Session auth failed: nonce already used');
     return null;
   }
   if (Date.now() > record.expiresAt) {
     nonces.delete(params.nonce);
-    console.warn('[ChatAuth] Session auth failed: nonce expired');
+    log.warn('[ChatAuth] Session auth failed: nonce expired');
     return null;
   }
 
@@ -199,9 +203,9 @@ export async function verifySessionAndCreateToken(params: {
   );
 
   if (!sessionResult.valid || !sessionResult.sessionKeyAddress) {
-    console.warn(
-      '[ChatAuth] Session approval verification failed:',
-      sessionResult.error
+    log.warn(
+      { err: sessionResult.error },
+      '[ChatAuth] Session approval verification failed'
     );
     return null;
   }
@@ -217,14 +221,20 @@ export async function verifySessionAndCreateToken(params: {
       recoveredSigner.toLowerCase() !==
       sessionResult.sessionKeyAddress.toLowerCase()
     ) {
-      console.warn('[ChatAuth] Challenge signature not from session key:', {
-        expected: sessionResult.sessionKeyAddress,
-        recovered: recoveredSigner,
-      });
+      log.warn(
+        {
+          expected: sessionResult.sessionKeyAddress,
+          recovered: recoveredSigner,
+        },
+        '[ChatAuth] Challenge signature not from session key'
+      );
       return null;
     }
   } catch (error) {
-    console.error('[ChatAuth] Failed to verify challenge signature:', error);
+    log.error(
+      { err: error },
+      '[ChatAuth] Failed to verify challenge signature:'
+    );
     return null;
   }
 
@@ -240,7 +250,7 @@ export async function verifySessionAndCreateToken(params: {
   enforceCap(sessions, MAX_SESSIONS);
 
   if (process.env.NODE_ENV !== 'production') {
-    console.debug('[ChatAuth] Session auth successful for:', address);
+    log.debug({ address }, '[ChatAuth] Session auth successful');
   }
 
   return { token, expiresAt, address };

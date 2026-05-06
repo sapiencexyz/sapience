@@ -91,6 +91,4 @@ export interface SapienceOutput {
   };
   groups: SapienceConditionGroup[];
   ungroupedConditions: SapienceCondition[];
-  metadataUpdates: MetadataUpdate[];
-  groupMetadataUpdates: GroupMetadataUpdate[];
 }

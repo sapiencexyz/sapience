@@ -71,6 +71,11 @@ export interface SecondaryAuctionRequestPayload {
   escrowContract: string; // Secondary escrow contract address
   refCode?: string;
   sellerSessionKeyData?: string;
+  /** When true, this is a price discovery request — not a real listing.
+   *  Relayer will exclude it from the listings snapshot and include quoteOnly
+   *  on feed broadcasts so observers can identify it as quote traffic.
+   *  The vault quoter responds with a simplified price. */
+  quoteOnly?: boolean;
 }
 
 /**
@@ -111,6 +116,8 @@ export interface SecondaryAuctionDetails {
   chainId: number;
   escrowContract: string;
   createdAt: string; // ISO timestamp
+  /** True when this is a price discovery request (not a real listing) */
+  quoteOnly?: boolean;
 }
 
 /** Validated secondary bid */

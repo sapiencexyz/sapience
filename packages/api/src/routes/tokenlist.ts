@@ -11,6 +11,10 @@ import type { Address, Hex } from 'viem';
 import { isPredictedYes } from '@sapience/sdk/types';
 import prisma from '../core/db';
 
+import { createLogger } from '../core/logger';
+
+const log = createLogger('routes.tokenlist');
+
 const router = Router();
 
 // Token lists are public data — allow any origin so DeFi aggregators
@@ -221,7 +225,7 @@ router.get('/tokenlist.json', async (_req: Request, res: Response) => {
     res.set('ETag', etag);
     res.send(body);
   } catch (error: unknown) {
-    console.error('Error building token list:', error);
+    log.error({ err: error }, 'Error building token list:');
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
