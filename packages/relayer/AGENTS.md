@@ -63,9 +63,39 @@ Test files:
 - `__tests__/ws.connectionManagement.integration.test.ts` — rate limiting, idle timeout, connection limits
 - `__tests__/ws.e2e.test.ts` — end-to-end auction lifecycle with real EIP-712 signatures
 
+## Observability
+
+Sentry is initialised on boot (`src/instrument.ts`) and only fires in production. Logs are stdout-only — there is no Pino setup yet (the API has one; see root AGENTS.md).
+
+Prometheus metrics are exposed at `GET /metrics` on the same HTTP port as the WebSocket server. Scrape them or browse directly. Defined in `src/metrics.ts`:
+
+| Metric                                        | Shape                                                                          |
+| --------------------------------------------- | ------------------------------------------------------------------------------ |
+| `relayer_connections_active`                  | gauge — current open WebSocket connections                                     |
+| `relayer_connections_total`                   | counter — lifetime opened connections                                          |
+| `relayer_connections_closed_total`            | counter — lifetime closed, labelled by reason                                  |
+| `relayer_messages_received_total`             | counter — labelled by message `type`                                           |
+| `relayer_messages_sent_total`                 | counter — labelled by message `type`                                           |
+| `relayer_message_processing_duration_seconds` | histogram — labelled by `type`                                                 |
+| `relayer_auctions_started_total`              | counter                                                                        |
+| `relayer_bids_submitted_total`                | counter                                                                        |
+| `relayer_subscriptions_active`                | gauge — labelled by `subscription_type`                                        |
+| `relayer_rate_limit_hits_total`               | counter                                                                        |
+| `relayer_errors_total`                        | counter — labelled by error `type` and `message_type`                          |
+| `relayer_auction_broadcast_sends_total`       | counter — per-client broadcast attempts (labelled by `service`/`variant`/`ok`) |
+| `relayer_auction_received_acks_total`         | counter — client-side delivery confirmations                                   |
+| `relayer_clients_identified_total`            | counter — labelled by `service`/`variant`                                      |
+
+Per-client broadcast logging (`auction.broadcast.send ok=…`) is the ground truth for "did we attempt to deliver this auction to that bot." Without it, a silent miss is indistinguishable from a relayer-side failure — keep these log lines.
+
+## Scaling and state
+
+Auction state is in-memory in `escrowRegistry.ts` / `secondaryMarketRegistry.ts`. The relayer has **no shared store** — running multiple instances behind a load balancer requires either sticky sessions or moving state to Redis. The latter is in progress as a separate workstream (see staging branch).
+
 ## Key Dependencies
 
 - `@sapience/sdk` — validation, signing, types, contract addresses
 - `ws` — WebSocket server
 - `viem` — Ethereum signature verification
 - `prom-client` — Prometheus metrics
+- `@zerodev/sdk` / `@zerodev/ecdsa-validator` — smart-account signature verification (older pins than the app; see `docs/SESSION_KEYS.md`)

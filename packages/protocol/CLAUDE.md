@@ -11,9 +11,11 @@ Sapience Protocol is a decentralized prediction market protocol with fungible pr
 ### Development
 
 ```bash
-pnpm test                   # Run all tests using Forge
+pnpm test                   # forge build --ast && forge test
 pnpm docgen                 # Generate documentation with Forge
 ```
+
+`forge test` alone fails — the `--ast` build is required because some tests pull AST-derived metadata. Use `pnpm test` rather than calling `forge test` directly.
 
 ### Testing Individual Files
 
@@ -49,8 +51,8 @@ src/
 └── scripts/
     ├── debug/           # Debug scripts
     ├── deploy/          # Unified deployment scripts (use --env testnet|mainnet)
-    ├── mainnet/         # Mainnet .env and deployments.json
-    └── testnet/         # Testnet .env and deployments.json
+    ├── mainnet/         # Mainnet .env.example and config.json
+    └── testnet/         # Testnet .env.example and config.json
 test/
 ├── fixtures/            # Hash fixture generation for SDK golden tests
 ├── mocks/               # Mock contracts for testing
@@ -78,7 +80,7 @@ forge verify-contract \
 forge verify-contract \
   $CONTRACT_ADDRESS \
   $CONTRACT_PATH \
-  --chain-id 5066318 \
+  --chain-id 5064014 \
   --constructor-args $CONSTRUCTOR_ARGS \
   --verifier blockscout \
   --verifier-url https://explorer.ethereal.trade/api/

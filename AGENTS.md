@@ -9,10 +9,13 @@ This document captures the context agents need when working in the Sapience mono
 - Monorepo packages:
   - `packages/protocol` – Solidity smart contracts for the Sapience protocol (see `packages/protocol/CLAUDE.md` for a deeper contract-specific brief).
   - `packages/api` – TypeGraphQL + Prisma application with background workers, candle cache, and auction utilities.
-  - `packages/app` – Next.js 14 product app consuming the SDK and API.
-  - `packages/sdk` – Shared TypeScript SDK (ABIs, hooks, UI kit, GraphQL helpers) built via `tsup` and Storybook.
+  - `packages/app` – Next.js 15 product app consuming the SDK and API.
+  - `packages/sdk` – Shared TypeScript SDK (ABIs, validation, signing, GraphQL types) built via `tsup`.
+  - `packages/ui` – Shared React component library (shadcn-style primitives + a few high-level components) with Storybook.
+  - `packages/relayer` – WebSocket relayer that brokers auctions between predictors and counterparties.
   - `packages/docs` – Documentation portal powered by Vocs.
-  - `packages/market-keeper` – Cron scripts for managing Sapience conditions from Polymarket markets.
+  - `packages/market-keeper` – Cron pipeline that ingests Polymarket markets, generates conditions, and runs settlement.
+  - `packages/edge-cache` – Cloudflare Worker that proxies and caches the GraphQL endpoint.
 - Backend services deploy on Railway with per-service build/start commands (see `railway.toml` and the Railway dashboard).
 
 ## Core Commands
@@ -31,7 +34,7 @@ Package-specific highlights:
 
 - Protocol: `pnpm --filter protocol run test` (Forge).
 - API: `pnpm --filter @sapience/api run prisma:setup` before local runs; use `vitest` (`test`/`test:watch`) and `tsx` CLIs (e.g., `start:reindex-*`).
-- SDK: build with `pnpm --filter @sapience/sdk run build:lib`; Storybook lives at `packages/sdk`.
+- SDK: build with `pnpm --filter @sapience/sdk run build:lib`. Storybook lives at `packages/ui`, not the SDK.
 - App: standard Next.js commands (`dev`, `build`, `lint`, `type-check`).
 
 ## Environment Notes
