@@ -34,11 +34,10 @@ A full deployment (`all`) runs these steps automatically, in order:
 | 3    | `DeployPredictionMarket`      | `PREDICTION_MARKET_ADDRESS`       | `FACTORY_ADDRESS`, `COLLATERAL_TOKEN_ADDRESS`                                                  |
 | 4    | `ConfigureFactory`            | —                                 | `FACTORY_ADDRESS`, `PREDICTION_MARKET_ADDRESS`                                                 |
 | 5    | `DeployEtherealBridge`        | `PM_NETWORK_BRIDGE_ADDRESS`       | `FACTORY_ADDRESS`, `PM_NETWORK_LZ_ENDPOINT`                                                    |
-| 6    | `DeployAccountFactory`        | `ACCOUNT_FACTORY_ADDRESS`         | `PREDICTION_MARKET_ADDRESS`                                                                    |
-| 7    | `DeploySecondaryMarketEscrow` | `SECONDARY_MARKET_ESCROW_ADDRESS` | `ACCOUNT_FACTORY_ADDRESS`                                                                      |
-| 8    | `DeployOnboardingSponsor`     | `ONBOARDING_SPONSOR_ADDRESS`      | `PREDICTION_MARKET_ADDRESS`, `COLLATERAL_TOKEN_ADDRESS`, `MAX_ENTRY_PRICE_BPS`, vault deployed |
+| 6    | `DeploySecondaryMarketEscrow` | `SECONDARY_MARKET_ESCROW_ADDRESS` | —                                                                                              |
+| 7    | `DeployOnboardingSponsor`     | `ONBOARDING_SPONSOR_ADDRESS`      | `PREDICTION_MARKET_ADDRESS`, `COLLATERAL_TOKEN_ADDRESS`, `MAX_ENTRY_PRICE_BPS`, vault deployed |
 
-> **Step 8 prerequisite:** The PredictionMarketVault should be deployed first (`deploy-vault`). The vault's manager address (`VAULT_MANAGER`) is used as the default `REQUIRED_COUNTERPARTY` if not explicitly set. Step 8 is skipped if `MAX_ENTRY_PRICE_BPS` is not set — run `deploy-sponsor` later if needed.
+> **Step 7 prerequisite:** The PredictionMarketVault should be deployed first (`deploy-vault`). The vault's manager address (`VAULT_MANAGER`) is used as the default `REQUIRED_COUNTERPARTY` if not explicitly set. Step 7 is skipped if `MAX_ENTRY_PRICE_BPS` is not set — run `deploy-sponsor` later if needed.
 
 ### Phase 2 — SM Network (Arbitrum)
 
@@ -82,7 +81,7 @@ SKIP_VERIFY=1 ./deploy.sh --env testnet deploy-vault
 
 ## Upgrade Flow
 
-When redeploying core contracts (e.g. after contract changes), use `upgrade-escrow`. This redeploys Factory, Escrow, Bridges, AccountFactory, SecondaryMarketEscrow, and OnboardingSponsor — then reconfigures cross-chain bridges and DVN:
+When redeploying core contracts (e.g. after contract changes), use `upgrade-escrow`. This redeploys Factory, Escrow, Bridges, SecondaryMarketEscrow, and OnboardingSponsor — then reconfigures cross-chain bridges and DVN:
 
 ```bash
 SKIP_VERIFY=1 ./deploy.sh --env testnet upgrade-escrow
