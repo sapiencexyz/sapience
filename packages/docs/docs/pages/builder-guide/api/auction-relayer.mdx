@@ -1,16 +1,22 @@
 ---
 title: 'Auction Relayer API'
-description: 'Connect to the real-time WebSocket API to submit and fill prediction market auctions.'
+description: 'Connect to the real-time WebSocket service that brokers prediction-market auctions between predictors and counterparties.'
 ---
+
+import AuctionTypes from './_auction-types.mdx';
 
 # Auction Relayer API
 
-The Auction Relayer is a WebSocket service that facilitates real-time matching between **requesters** and **responders** for prediction market positions.
+The Auction Relayer is a WebSocket service that brokers a request-for-quote (RFQ) flow between two roles:
 
-- **Requester**: Creates an auction by specifying a position size and predictions (including one or many picks). Referred to as `taker` in payloads.
-- **Responder**: Submits bids offering to take the opposite side. Referred to as `maker` in payloads.
+- **Predictor** — initiates an auction by broadcasting picks and the collateral they want to commit. Authenticated by an EIP-712 `AuctionIntent` signature.
+- **Counterparty** — typically a vault bot, watches every auction and submits a `BidPayload` containing the EIP-712 `MintApproval` signature that lets the predictor mint the on-chain prediction.
 
-The relayer validates messages, broadcasts auctions to all connected clients, and streams bids to subscribed requesters.
+The relayer never holds custody. It validates messages, broadcasts auctions, and streams bids — the actual mint happens on-chain when the predictor calls `PredictionMarketEscrow.mint()` with both signatures.
+
+:::note
+Source of truth for everything on this page: [`packages/sdk/types/escrow.ts`](https://github.com/sapiencexyz/sapience/blob/main/packages/sdk/types/escrow.ts), [`packages/sdk/auction/escrowSigning.ts`](https://github.com/sapiencexyz/sapience/blob/main/packages/sdk/auction/escrowSigning.ts), [`packages/sdk/auction/validation.ts`](https://github.com/sapiencexyz/sapience/blob/main/packages/sdk/auction/validation.ts), and the relayer handlers under [`packages/relayer/src/handlers/`](https://github.com/sapiencexyz/sapience/tree/main/packages/relayer/src/handlers). The type tables further down are auto-generated from the SDK; if this prose drifts, trust those.
+:::
 
 ## Endpoint
 
@@ -18,381 +24,234 @@ The relayer validates messages, broadcasts auctions to all connected clients, an
 wss://relayer.sapience.xyz/auction
 ```
 
-This is the standard relayer deployment. You can configure a different relayer in the app at [sapience.xyz/settings](https://sapience.xyz/settings).
+The same host serves three logical channels on different message-type prefixes:
 
-## Message Flow
+| Channel          | Message types                                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| Escrow auctions  | `auction.start`, `auction.subscribe`, `bid.submit`, `auction.received`                                      |
+| Secondary market | `secondary.auction.start`, `secondary.bid.submit`, `secondary.feed.subscribe`, `secondary.listings.request` |
+| Vault quotes     | `vault_quote.subscribe`, `vault_quote.update`                                                               |
+
+All three share the same connection. There is no separate URL per channel.
+
+## Identifying your client
+
+Right after `open`, send an `identify` message so the relayer can label your connection in metrics and logs. This is optional but recommended for any long-running bot.
+
+```ts
+ws.send(
+  JSON.stringify({
+    type: 'identify',
+    payload: {
+      service: 'my-vault-bot',
+      instanceId: '<stable-per-process-uuid>',
+      chainId: 5064014,
+      version: '1.0.0',
+    },
+  })
+);
+```
+
+See `IdentifyPayload` below for the optional fields (`serviceInstance`, `variant`, etc.).
+
+## Escrow auction flow
 
 ```
-Requester                    Relayer                     Responder
+Predictor                    Relayer                  Counterparty (vault)
     │                           │                            │
-    │─── auction.start ────────▶│                            │
-    │◀── auction.ack ───────────│                            │
-    │                           │─── auction.started ───────▶│
+    │── auction.start ─────────▶│                            │
+    │◀─ auction.ack ────────────│                            │
+    │                           │── auction.started ────────▶│
     │                           │                            │
-    │                           │◀── bid.submit ─────────────│
-    │                           │─── bid.ack ───────────────▶│
-    │◀── auction.bids ──────────│                            │
+    │                           │◀──────────── bid.submit ───│
+    │                           │── bid.ack ────────────────▶│
+    │◀─ auction.bids ───────────│                            │
     │                           │                            │
+    │  (predictor selects a bid, calls escrow.mint() on-chain)
 ```
 
-1. Requester sends `auction.start` with position size and picks
-2. Relayer responds with `auction.ack` (includes `auctionId` and optional `id` if provided) and broadcasts `auction.started` to all clients
-3. Responders send `bid.submit` with their position size offer and signature
-4. Relayer replies `bid.ack` and streams `auction.bids` to the requester
+1. Predictor sends `auction.start` carrying an `AuctionRFQPayload` with their picks, predictor address, nonce, deadline, and an EIP-712 `AuctionIntent` signature.
+2. Relayer validates the payload + intent signature, assigns an `auctionId`, replies with `auction.ack`, and broadcasts `auction.started` to every connected client.
+3. One or more counterparties reply with `bid.submit` carrying a `BidPayload` — their collateral, nonce, deadline, and an EIP-712 `MintApproval` signature.
+4. The predictor's connection receives every accepted bid via `auction.bids`, picks one, and calls `mint()` on the escrow contract with both signatures.
 
-Requesters are auto-subscribed to their auction's bid stream.
+The predictor's WS connection is automatically subscribed to its own auction's bid stream.
 
-## Quick Start
+### Step 1 — Predictor: sign and send the RFQ
 
-### Requester: Start an Auction
-
-**Basic example (without signature):**
+The predictor signs an EIP-712 `AuctionIntent` over their picks, predictor address, collateral, nonce, and deadline. The verifying contract is the escrow address for the chain.
 
 ```ts
 import WebSocket from 'ws';
+import { privateKeyToAccount } from 'viem/accounts';
+import { buildAuctionIntentTypedData } from '@sapience/sdk/auction/escrowSigning';
+import { contracts } from '@sapience/sdk/contracts';
+
+const chainId = 5064014;
+const escrowContract = contracts.predictionMarketEscrow[chainId].address;
+const predictor = privateKeyToAccount('0x...');
+
+const picks = [
+  {
+    conditionResolver: '0x49E848A5aBb356c40b025e05Dd0F7eFE95721d55',
+    conditionId: '0x...',
+    predictedOutcome: 1, // 0 = NO, 1 = YES
+  },
+];
+
+const predictorCollateral = 1_000_000_000_000_000_000n; // 1 wUSDe (18 dec)
+const predictorNonce = BigInt(Date.now());
+const predictorDeadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+
+const typedData = buildAuctionIntentTypedData({
+  picks,
+  predictor: predictor.address,
+  predictorCollateral,
+  predictorNonce,
+  predictorDeadline,
+  verifyingContract: escrowContract,
+  chainId,
+});
+
+const intentSignature = await predictor.signTypedData(typedData);
 
 const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
-
-// Initialize an auction
 ws.on('open', () => {
   ws.send(
     JSON.stringify({
       type: 'auction.start',
       payload: {
-        taker: '0xRequesterAddress...',
-        wager: '1000000000000000000', // 1 USDe in wei
-        resolver: '0xResolverContract...',
-        predictedOutcomes: ['0xEncodedPick1', '0xEncodedPick2'],
-        takerNonce: 1,
-        chainId: 42161,
+        picks: picks.map((p) => ({
+          conditionResolver: p.conditionResolver,
+          conditionId: p.conditionId,
+          predictedOutcome: p.predictedOutcome,
+        })),
+        predictor: predictor.address,
+        predictorCollateral: predictorCollateral.toString(),
+        predictorNonce: Number(predictorNonce),
+        predictorDeadline: Number(predictorDeadline),
+        intentSignature,
+        chainId,
+        escrowContract,
       },
     })
   );
 });
 ```
 
-**With signature (required by some market makers like the vault to respond with actionable bids):**
+`escrowContract` is required — without it the relayer rejects the request with `error: 'missing_escrow_contract'`. Pass an `id` field on the outer message to receive it back on the ack for client-side correlation.
+
+`intentSignature` is **optional** at the protocol level, but vault counterparties only respond with actionable bids to signed RFQs. Treat unsigned RFQs as price-discovery only.
+
+### Step 2 — Counterparty: bid with a `MintApproval`
+
+The counterparty signs an EIP-712 `MintApproval` over the prediction hash (which deterministically commits to picks + both collaterals + both party addresses + sponsor data) and sends it as a `bid.submit`.
 
 ```ts
-import WebSocket from 'ws';
-import {
-  createAuctionStartSiweMessage,
-  extractSiweDomainAndUri,
-} from '@sapience/sdk';
-import { privateKeyToAccount } from 'viem/accounts';
+import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/escrowSigning';
 
-const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
-const account = privateKeyToAccount('0xYourPrivateKey...');
+ws.on('message', async (raw) => {
+  const msg = JSON.parse(String(raw));
+  if (msg.type !== 'auction.started') return;
 
-ws.on('open', async () => {
-  const payload = {
-    taker: account.address,
-    wager: '1000000000000000000',
-    resolver: '0xResolverContract...',
-    predictedOutcomes: ['0xEncodedPick1', '0xEncodedPick2'],
-    takerNonce: 1,
-    chainId: 42161,
-  };
+  const auction = msg.payload; // AuctionDetails
+  const counterpartyCollateral = pickQuote(auction); // your strategy
+  const counterpartyNonce = BigInt(Date.now());
+  const counterpartyDeadline = BigInt(Math.floor(Date.now() / 1000) + 60);
 
-  // Generate SIWE signature
-  const { domain, uri } = extractSiweDomainAndUri(
-    'wss://relayer.sapience.xyz/auction'
-  );
-  const issuedAt = new Date().toISOString();
-  const message = createAuctionStartSiweMessage(payload, domain, uri, issuedAt);
-  const signature = await account.signMessage({ message });
+  const typedData = buildCounterpartyMintTypedData({
+    picks: auction.picks,
+    predictorCollateral: BigInt(auction.predictorCollateral),
+    counterpartyCollateral,
+    predictor: auction.predictor,
+    counterparty: counterparty.address,
+    counterpartyNonce,
+    counterpartyDeadline,
+    verifyingContract: auction.escrowContract,
+    chainId: auction.chainId,
+  });
+
+  const counterpartySignature = await counterparty.signTypedData(typedData);
 
   ws.send(
     JSON.stringify({
-      type: 'auction.start',
+      type: 'bid.submit',
       payload: {
-        ...payload,
-        takerSignature: signature,
-        takerSignedAt: issuedAt,
+        auctionId: auction.auctionId,
+        counterparty: counterparty.address,
+        counterpartyCollateral: counterpartyCollateral.toString(),
+        counterpartyNonce: Number(counterpartyNonce),
+        counterpartyDeadline: Number(counterpartyDeadline),
+        counterpartySignature,
       },
     })
   );
 });
-
-// Listen for bids
-ws.on('message', (data) => {
-  const msg = JSON.parse(String(data));
-
-  if (msg.type === 'auction.ack') {
-    console.log('Auction started:', msg.payload.auctionId);
-  }
-
-  if (msg.type === 'auction.bids') {
-    const bids = msg.payload.bids;
-    // Filter out quote-only bids (zero address/signature) and expired bids
-    const actionableBids = bids.filter((b) => {
-      return (
-        b.maker !== '0x0000000000000000000000000000000000000000' &&
-        b.makerSignature !==
-          '0x0000000000000000000000000000000000000000000000000000000000000000' &&
-        b.makerDeadline > Date.now() / 1000
-      );
-    });
-    // Select best bid by highest makerWager
-    actionableBids.sort((a, b) =>
-      BigInt(b.makerWager) > BigInt(a.makerWager) ? 1 : -1
-    );
-    console.log('Best actionable bid:', actionableBids[0]);
-  }
-});
 ```
 
-### Responder: Submit a Bid
+The relayer performs structural validation only on the bid signature format. The signature is verified on-chain when the predictor calls `mint()` — that is the authoritative gate.
 
-```ts
-const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
+### Step 3 — Predictor: select a bid and mint
 
-// Listen for auctions
-ws.on('message', (data) => {
-  const msg = JSON.parse(String(data));
+Bids arrive on the predictor's connection as `auction.bids` messages. Pick one (the SDK ranks by `counterpartyCollateral` — higher is better for the predictor), then assemble an `AuctionRequestPayload` client-side and call `mint()` on the escrow contract. The on-chain mint never goes through the relayer.
 
-  if (msg.type === 'auction.started') {
-    const auction = msg.payload;
-    const now = Math.floor(Date.now() / 1000);
+A reference end-to-end example lives in [`starters/market-maker/`](https://github.com/sapiencexyz/sapience/tree/main/starters/market-maker).
 
-    ws.send(JSON.stringify({
-      type: 'bid.submit',
-      payload: {
-        auctionId: auction.auctionId,
-        maker: '0xResponderAddress...',
-        makerWager: (BigInt(auction.wager) / 2n).toString(),
-        makerDeadline: now + 60,
-        makerSignature: '0x...', // EIP-712 typed signature
-        makerNonce: 1
-      }
-    }));
-  }
-};
-```
+## Smart-account predictors
 
-## Payloads
+The relayer accepts intent signatures from smart accounts via four verification paths, in order:
 
-### `auction.start`
+1. **Escrow session key** (ABI-encoded `predictorSessionKeyData`): the relayer decodes the SessionKeyApproval, verifies the owner authorized the session key, then checks the `intentSignature` was produced by that key.
+2. **EOA**: standard `recoverTypedDataAddress` against the predictor address.
+3. **Smart-account owner via CREATE2**: recovers the EOA, derives the smart account address from it, checks against the predictor.
+4. **ZeroDev session approval (JSON `predictorSessionKeyData`)**: parses `{ approval, typedData }`, verifies the session key approval, then checks the intent signature recovers to the authorized session key.
+5. **ERC-1271 fallback**: when an RPC client is configured, the relayer calls `isValidSignature` on the predictor contract. Signatures that can't be verified offline land here; if `isValidSignature` reverts, the auction is still accepted as `unverified` (passthrough), since the on-chain `mint()` is the authoritative gate.
 
-```ts
-{
-  type: 'auction.start',
-  id?: string,                   // Optional request ID for correlation
-  payload: {
-    taker: string,              // Requester's address (0x...) - EOA or smart account
-    wager: string,              // Position size in wei
-    resolver: string,           // Resolver contract address
-    predictedOutcomes: string[], // Encoded picks (bytes strings)
-    takerNonce: number,
-    chainId: number,
-    takerSignature?: string,    // Optional: EIP-191 signature of the taker (SIWE format)
-    takerSignedAt?: string,     // Optional: ISO timestamp when signature was created (required if takerSignature is provided)
-    sessionApproval?: string,   // ZeroDev session approval (base64) for smart account auth
-    sessionTypedData?: object   // EIP-712 typed data (required when sessionApproval is provided)
-  }
-}
-```
+`predictorSessionKeyData` accepts two formats:
 
-If `id` is provided, it will be echoed back in the `auction.ack` response for client-side correlation.
+- ABI-encoded hex (escrow-native session keys): `0x` followed by an `abi.encode((address sessionKey, address owner, uint256 validUntil, bytes32 permissionsHash, uint256 chainId, bytes ownerSignature))` payload.
+- JSON string (ZeroDev session approval): `{"approval":"<base64>","typedData":{...}}`.
 
-**Signature Requirements:**
+There is no top-level `sessionTypedData` field on `AuctionRFQPayload` — for ZeroDev session keys, embed it inside `predictorSessionKeyData`.
 
-- `takerSignature` and `takerSignedAt` are **optional** fields
-- **Unsigned requests**: Used for price discovery/quoting only. Market makers may respond with quote-only bids (see below)
-- **Signed requests**: Required by some market makers (like the vault) to respond with actionable, signed bids that can be executed on-chain
-- When provided, the relayer verifies the signature to ensure the requester authorized the auction request
-- Use the SDK's `createAuctionStartSiweMessage` and `extractSiweDomainAndUri` helpers to generate the signature
+## Other channels
 
-**Smart Account Authentication:**
+### Secondary market
 
-- For smart account users (ZeroDev Kernel accounts), the `sessionApproval` and `sessionTypedData` fields enable session-based authentication
-- **Both fields are required together** - `sessionTypedData` must be provided when using `sessionApproval`
-- The `sessionApproval` is a base64-encoded ZeroDev permission account (with private key stripped for security)
-- The `sessionTypedData` contains the EIP-712 typed data that was signed during session creation
-- This allows the relayer to verify smart account ownership without on-chain RPC calls
-- The relayer recovers the owner from the enable signature and verifies the smart account address matches
+Atomic OTC swap of position tokens after mint. Roles invert: the **seller** lists position tokens, the **buyer** bids collateral. Same WebSocket connection; message-type prefix `secondary.`.
 
-### `bid.submit`
+A `quoteOnly: true` flag on `secondary.auction.start` marks a price-discovery request — the listing is excluded from the snapshot returned by `secondary.listings.request` and broadcast events flag it so observers can ignore quote traffic.
 
-```ts
-{
-  type: 'bid.submit',
-  payload: {
-    auctionId: string,
-    maker: string,              // Responder's address - EOA or smart account
-    makerWager: string,         // Responder's position size in wei
-    makerDeadline: number,      // Unix timestamp (must be future)
-    makerSignature: string,     // EIP-712 signature
-    makerNonce: number
-  }
-}
-```
+### Vault quotes
 
-**Note:** The `makerSignature` is verified on-chain when the taker accepts the bid and calls `mint()`. The relayer performs structural validation only.
-
-### `auction.bids`
-
-Streamed to auction subscribers:
-
-```ts
-{
-  type: 'auction.bids',
-  payload: {
-    auctionId: string,
-    bids: Array<{
-      auctionId: string,
-      maker: string,
-      makerWager: string,
-      makerDeadline: number,
-      makerSignature: string,
-      makerNonce: number
-    }>
-  }
-}
-```
-
-**Quote-only vs Actionable Bids:**
-
-- **Quote-only bids**: When `maker` is `0x0000000000000000000000000000000000000000` and `makerSignature` is `0x0000...` (all zeros), this indicates a price quote only, not an actionable bid that can be executed on-chain. These are typically returned in response to unsigned auction requests.
-- **Actionable bids**: When `maker` is a valid address and `makerSignature` is a real signature, the bid can be accepted and executed on-chain. These are returned in response to signed auction requests (required by some market makers like the vault).
+Subscribe with `{type: 'vault_quote.subscribe', payload: {chainId, vaultAddress}}` and receive `vault_quote.update` messages carrying `vaultCollateralPerShare`. Used by the app to display live vault pricing without polling RPC.
 
 ## Validation
 
-**Auction** (`auction.start`):
+`auction.start` is rejected with one of the error codes below if any of these checks fail. The relayer returns the human-readable reason from the SDK in `auction.ack.payload.error`; the SDK's machine-readable `ValidationErrorCode` enum is in [`packages/sdk/auction/validation.ts`](https://github.com/sapiencexyz/sapience/blob/main/packages/sdk/auction/validation.ts).
 
-- `predictedOutcomes` has ≥1 non-empty bytes string
-- `taker` is a valid address
-- `resolver` is provided
-- If `takerSignature` is provided, it must be a valid EIP-191 signature and `takerSignedAt` must be provided
-- If signature verification fails, the relayer returns `error: 'invalid_signature'` or `error: 'signature_verification_failed'`
+| Code                      | Cause                                                                                  |
+| ------------------------- | -------------------------------------------------------------------------------------- |
+| `missing_escrow_contract` | `escrowContract` field is absent. Relayer-level.                                       |
+| `MISSING_FIELD`           | Required field on the payload is missing.                                              |
+| `INVALID_PICKS`           | Picks array is empty, malformed, or contains an invalid pick.                          |
+| `EXPIRED_DEADLINE`        | `predictorDeadline` is in the past.                                                    |
+| `DEADLINE_TOO_FAR`        | Deadline exceeds `maxDeadlineSeconds` (default 7200s).                                 |
+| `INVALID_SIGNATURE`       | Signature does not recover to `predictor` and no smart-account path matches.           |
+| `SIGNATURE_UNVERIFIABLE`  | Smart-account signature couldn't be verified offline; passed through to on-chain mint. |
+| `CHAIN_MISMATCH`          | `chainId` doesn't match the configured value for verification.                         |
+| `VALIDATION_ERROR`        | Unexpected validation error.                                                           |
 
-**Bid** (`bid.submit`):
+`bid.submit` performs a lighter check: structural validation of fields (address shape, signature format, deadline freshness, auction existence). The full `MintApproval` signature is verified on-chain at mint time; the SDK exposes `validateBidOnChain()` and `simulateMint()` for callers that want pre-submit confidence.
 
-- `auctionId` matches an active auction
-- `makerWager` > 0
-- `makerDeadline` is in the future
-- `makerSignature` is valid hex format
+## Connection limits
 
-## Smart Account Authentication
+- **Rate limit**: 100 messages per 10 seconds per connection. Excess messages are dropped; sustained abuse closes the connection with code `1008`.
+- **Message size**: 64 KB max. Larger messages close the connection with `1009`.
+- **Per-IP cap**: 50 concurrent connections by default. Configurable via the relayer's `WS_MAX_CONNECTIONS_PER_IP`.
+- **Validation-failure penalty**: 10 signature-validation failures or 20 invalid-message failures within a session disconnect the client and apply a per-IP cooldown.
+- **Idle timeout**: 5 minutes with no messages closes the connection. Send `{type: 'ping'}` to keep alive; the relayer replies `{type: 'pong'}`.
 
-The relayer supports ZeroDev Kernel smart accounts with session-based authentication for **auction requesters** (takers). This allows requesters to create a session once and submit multiple auction requests without signing each one individually with their wallet.
+## Type reference
 
-**Note:** Bid signatures (`makerSignature`) are not verified by the relayer. They are verified on-chain when the taker accepts a bid.
-
-### Authentication Flow
-
-The relayer uses a 3-path verification strategy:
-
-1. **Session Approval Path** (for `auction.start` only): If `sessionApproval` and `sessionTypedData` are provided:
-
-   - Parse the base64-encoded approval to extract the enable signature
-   - Use the provided typed data to recover the owner who authorized the session
-   - Compute the expected smart account address from the recovered owner
-   - Verify it matches the claimed `taker` address
-   - Extract the authorized session key from the signed `validatorData`
-   - Verify the request signature (`takerSignature`) was signed by that authorized session key
-
-2. **EOA Path**: Try direct signature verification against the address (works for EOAs)
-
-3. **Smart Account Owner Path**: If EOA verification fails:
-   - Recover the signer from the signature
-   - Compute their smart account address
-   - Verify it matches the claimed address
-
-### Security Properties
-
-- **No RPC calls**: All verification is deterministic using CREATE2 address computation
-- **One-time session signature**: Users sign once during session creation; the enable signature proves ownership
-- **Counterfactual accounts**: Works even for smart accounts that haven't been deployed yet
-- **Unspoofable**: The smart account address is deterministically derived from the owner's EOA
-- **Session key extraction**: The authorized session key is extracted from the cryptographically signed `validatorData`, not from client-provided data. This prevents attackers from claiming authorization for arbitrary session keys
-
-### Session Typed Data Structure
-
-The `sessionTypedData` object has the following structure:
-
-```ts
-{
-  domain: {
-    name: 'Kernel',
-    version: '0.3.1',
-    chainId: number,
-    verifyingContract: string  // Smart account address
-  },
-  types: {
-    Enable: [
-      { name: 'validationId', type: 'bytes21' },
-      { name: 'nonce', type: 'uint32' },
-      { name: 'hook', type: 'address' },
-      { name: 'validatorData', type: 'bytes' },
-      { name: 'hookData', type: 'bytes' },
-      { name: 'selectorData', type: 'bytes' }
-    ]
-  },
-  primaryType: 'Enable',
-  message: {
-    validationId: string,  // Hex
-    nonce: number,
-    hook: string,         // Address
-    validatorData: string, // Hex
-    hookData: string,      // Hex
-    selectorData: string   // Hex
-  }
-}
-```
-
-This typed data is captured during session creation and must be included with requests for reliable verification.
-
-## Additional Messages
-
-### auction.subscribe
-
-Subscribe to an existing auction's bid stream without starting a new auction:
-
-```ts
-{
-  type: 'auction.subscribe',
-  payload: {
-    auctionId: string
-  }
-}
-```
-
-This is useful when a secondary client needs to monitor bids for an auction started by another connection.
-
-## Connection Limits
-
-- **Rate limit**: 100 messages per 10 seconds. Exceeding closes connection with code `1008`.
-- **Message size**: Max 64KB per message. Exceeding closes connection with code `1009`.
-
-## Error Codes
-
-Returned in `auction.ack.payload.error` or `bid.ack.payload.error`:
-
-**Auction errors:**
-
-- `invalid_signature` – Taker signature verification failed
-- `signature_verification_failed` – Error during signature verification process
-
-**Session authentication errors:**
-
-- `typed_data_required` – `sessionTypedData` must be provided when using `sessionApproval`
-- `chain_id_mismatch` – Chain ID in payload doesn't match typed data domain
-- `verifying_contract_mismatch` – Typed data verifyingContract doesn't match claimed address
-- `account_mismatch` – Account address in approval doesn't match claimed address
-- `owner_mismatch` – Recovered owner's smart account doesn't match claimed address
-
-**Bid errors:**
-
-- `invalid_payload` – Malformed message structure
-- `auction_not_found_or_expired` – Unknown or expired auction
-- `quote_expired` – `makerDeadline` has passed
-- `invalid_maker_wager` – Position size is zero or invalid
-- `invalid_maker` – Maker address is invalid
-- `invalid_maker_bid_signature_format` – Signature format invalid
-
-## Bid Acceptance
-
-After selecting a bid, the requester constructs a `MintComboRequestData` struct and calls `mint()` on the PredictionMarket contract. Both parties must have ERC-20 approvals set for the contract to pull their collateral (USDe).
-
-Reference implementation: [`packages/relayer/src/botExample.ts`](https://github.com/sapiencexyz/sapience/blob/main/packages/relayer/src/botExample.ts)
+<AuctionTypes />

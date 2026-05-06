@@ -1,6 +1,6 @@
 ---
-title: "GraphQL API"
-description: "Query markets, positions, and protocol data from the Sapience API."
+title: 'GraphQL API'
+description: 'Query questions, conditions, predictions, positions, and protocol data from the Sapience API.'
 ---
 
 # GraphQL API
@@ -17,45 +17,50 @@ The sandbox includes full schema documentation, autocomplete, and lets you run q
 https://api.sapience.xyz/graphql
 ```
 
-## TypeScript Types
+## TypeScript types
 
 The SDK exports all GraphQL types for use in your TypeScript projects:
 
 ```typescript
-import type { 
-  Category
-} from '@sapience/sdk';
+import type { Category, Question, Condition } from '@sapience/sdk';
 ```
 
-View the full type definitions on GitHub: [packages/sdk/types/graphql.ts](https://github.com/sapiencexyz/sapience/blob/main/packages/sdk/types/graphql.ts)
+View the full type definitions on GitHub: [packages/sdk/types/graphql.ts](https://github.com/sapiencexyz/sapience/blob/main/packages/sdk/types/graphql.ts).
 
-## Quick Example
+## Quick example
 
 ```typescript
 import { ApolloClient, InMemoryCache, gql } from '@apollo/client';
 
 const client = new ApolloClient({
   uri: 'https://api.sapience.xyz/graphql',
-  cache: new InMemoryCache()
+  cache: new InMemoryCache(),
 });
 
 const { data } = await client.query({
   query: gql`
-    query GetCategories {
-      categories {
-        id
-        name
+    query Questions {
+      questions(take: 10, sortField: endTime, sortDirection: desc) {
+        questionType
+        predictionCount
+        condition {
+          id
+          endTime
+        }
+        group {
+          id
+        }
       }
     }
-  `
+  `,
 });
 
-data.categories.forEach(category => {
-  console.log(category.name);
-});
+console.log(data.questions);
 ```
 
 ## Notes
 
-- APIs are currently public; please be considerate and cache when possible
-- Pagination is supported via `take`, `skip`, `orderBy`
+- The API is currently public; please be considerate and cache when possible.
+- Use `slug` (not `id`) when you need a stable, human-friendly identifier — most ID fields on Sapience entities are `Int!` and shift between environments.
+- Pagination args vary by query. The Prisma-backed list queries (`categories`, `conditions`, `conditionGroups`, etc.) accept `cursor`, `distinct`, `orderBy`, `skip`, `take`, `where`. Curated queries (`questions`, leaderboard queries) take a smaller fixed set — check the sandbox before assuming.
+- Some queries are marked `@deprecated` in the schema (`accountAccuracy`, `accountProfitRank`, `claims`, `closes`, `conditionGroup`, `pickConfiguration`, `protocolVolume`, `tradeCount`, `users`). They still respond, but rely on them at your own risk — read the schema before depending on one.
