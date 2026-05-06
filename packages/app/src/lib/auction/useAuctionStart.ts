@@ -125,9 +125,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const { apiBaseUrl } = useSettings();
   const { address: walletAddress } = useAccount();
   const {
-    etherealSessionApproval,
     signMessage: sessionSignMessage,
-    signTypedDataRaw: sessionSignTypedDataRaw,
+    signTypedData: sessionSignTypedData,
     effectiveAddress,
     isUsingSmartAccount,
     isUsingSession,
@@ -136,9 +135,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
   // Stable refs for session state — read at call time, don't trigger requestQuotes recreation
   const effectiveAddressRef = useRef(effectiveAddress);
-  const etherealSessionApprovalRef = useRef(etherealSessionApproval);
   const sessionSignMessageRef = useRef(sessionSignMessage);
-  const sessionSignTypedDataRawRef = useRef(sessionSignTypedDataRaw);
+  const sessionSignTypedDataRef = useRef(sessionSignTypedData);
   const isUsingSmartAccountRef = useRef(isUsingSmartAccount);
   const isUsingSessionRef = useRef(isUsingSession);
 
@@ -146,14 +144,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
     effectiveAddressRef.current = effectiveAddress;
   }, [effectiveAddress]);
   useEffect(() => {
-    etherealSessionApprovalRef.current = etherealSessionApproval;
-  }, [etherealSessionApproval]);
-  useEffect(() => {
     sessionSignMessageRef.current = sessionSignMessage;
   }, [sessionSignMessage]);
   useEffect(() => {
-    sessionSignTypedDataRawRef.current = sessionSignTypedDataRaw;
-  }, [sessionSignTypedDataRaw]);
+    sessionSignTypedDataRef.current = sessionSignTypedData;
+  }, [sessionSignTypedData]);
   useEffect(() => {
     isUsingSmartAccountRef.current = isUsingSmartAccount;
   }, [isUsingSmartAccount]);
@@ -441,14 +436,14 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // EIP-712 typed data building, signing, payload assembly, self-validation.
       const canSign =
         walletAddress ||
-        (isUsingSessionRef.current && sessionSignTypedDataRawRef.current);
+        (isUsingSessionRef.current && sessionSignTypedDataRef.current);
       const skipSigning = !shouldSignIntent || !canSign;
 
       if (!shouldSignIntent) {
         log('[auction] Intent signing disabled (skipIntentSigning=true)');
       } else if (!canSign) {
         log(
-          `[auction] Intent signing skipped: canSign=false (wallet=${!!walletAddress}, isUsingSession=${isUsingSessionRef.current}, hasSessionSigner=${!!sessionSignTypedDataRawRef.current})`
+          `[auction] Intent signing skipped: canSign=false (wallet=${!!walletAddress}, isUsingSession=${isUsingSessionRef.current}, hasSessionSigner=${!!sessionSignTypedDataRef.current})`
         );
       }
 
@@ -469,12 +464,13 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           chainId,
           nonce: canonicalizedParams.predictorNonce,
           signIntent: async (typedData: SignableTypedData): Promise<Hex> => {
-            if (
-              isUsingSessionRef.current &&
-              sessionSignTypedDataRawRef.current
-            ) {
-              log('[auction] Signing intent with session key');
-              return sessionSignTypedDataRawRef.current({
+            if (isUsingSessionRef.current && sessionSignTypedDataRef.current) {
+              // Session mode: kernel-wrapped signature. The relayer / SDK
+              // validate the intent against the smart account's ERC-1271
+              // policy (or treat it as unverified passthrough). The legacy
+              // `sessionKeyData` blob path is no longer populated.
+              log('[auction] Signing intent with session key (ERC-1271)');
+              return sessionSignTypedDataRef.current({
                 domain: typedData.domain,
                 types: typedData.types,
                 primaryType: typedData.primaryType,
@@ -494,12 +490,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             skipIntentSigning: skipSigning,
             predictorSponsor: canonicalizedParams.predictorSponsor,
             predictorSponsorData: canonicalizedParams.predictorSponsorData,
-            sessionKeyData: etherealSessionApprovalRef.current
-              ? JSON.stringify({
-                  approval: etherealSessionApprovalRef.current.approval,
-                  typedData: etherealSessionApprovalRef.current.typedData,
-                })
-              : undefined,
+            // sessionKeyData intentionally omitted — the legacy blob path is
+            // disabled in PR #1673; intents now validate via ERC-1271 against
+            // the smart account.
             // Skip self-validation — the relayer validates on receipt
             skipSelfValidation: true,
           },
@@ -540,7 +533,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       setAuctionId(messageId);
 
       log(
-        `[auction] Sending auction.start: auctionId=${messageId.slice(0, 8)}, keys=${Object.keys(escrowPayload).join(',')}, hasIntentSig=${!!escrowPayload.intentSignature}, hasSessionKeyData=${!!escrowPayload.predictorSessionKeyData}`
+        `[auction] Sending auction.start: auctionId=${messageId.slice(0, 8)}, keys=${Object.keys(escrowPayload).join(',')}, hasIntentSig=${!!escrowPayload.intentSignature}`
       );
 
       client.send({

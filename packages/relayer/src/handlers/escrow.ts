@@ -41,6 +41,7 @@ import {
 } from '../metrics';
 import { recordBroadcast, wasBroadcastTo } from '../broadcastLedger';
 import { config } from '../config';
+import { getProviderForChain } from '../utils/getProviderForChain';
 
 // Identity helpers — keep clientId/instanceId short in logs.
 const short = (s: string | undefined): string =>
@@ -108,13 +109,25 @@ export async function handleAuctionStart(
     return true;
   }
 
+  // Public client enables ERC-1271 fallback for smart-account predictors
+  // that emit kernel-wrapped intent signatures (the migrated app path).
+  // If the chain isn't configured, we proceed without the client and the
+  // SDK handles smart-account predictors as `unverified` passthrough below.
+  let publicClient: ReturnType<typeof getProviderForChain> | undefined;
+  try {
+    publicClient = getProviderForChain(payload.chainId);
+  } catch {
+    publicClient = undefined;
+  }
+
   // Validate auction request structure + intent signature in one call
   const validation = await validateAuctionRFQ(payload, {
     verifyingContract: payload.escrowContract as Address,
     requireSignature: !!payload.intentSignature,
     maxDeadlineSeconds: 7200,
+    publicClient,
   });
-  if (validation.status !== 'valid') {
+  if (validation.status === 'invalid') {
     errorsTotal.inc({ type: 'validation', message_type: 'auction.start' });
     console.warn(`[Relayer] auction.start rejected: ${validation.reason}`);
     client.send({
@@ -125,6 +138,14 @@ export async function handleAuctionStart(
       },
     });
     return true;
+  }
+  if (validation.status === 'unverified') {
+    // Smart-account predictor with a kernel-wrapped intent signature that we
+    // couldn't verify offline. Pass through — the on-chain mint() is the
+    // authoritative gate. Log it so operators can spot anomalies.
+    console.warn(
+      `[Relayer] auction.start unverified (passthrough): ${validation.reason}`
+    );
   }
 
   const auctionId = upsertEscrowAuction(payload);

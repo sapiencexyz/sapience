@@ -172,19 +172,6 @@ export async function groupMarkets(
   const allConditionIds = allFilteredMarkets.map((m) => m.conditionId);
   const existingIds = await checkExistingConditions(apiUrl, allConditionIds);
 
-  // Compute metadata updates for existing conditions by diffing against fresh Polymarket data
-  const metadataUpdates = computeMetadataUpdates(
-    allFilteredMarkets,
-    filteredGroups,
-    existingIds,
-    eventTagMap
-  );
-
-  const groupMetadataUpdates = computeGroupMetadataUpdates(
-    filteredGroups,
-    existingIds
-  );
-
   // Apply LLM pre-filter pipeline to separate new vs existing markets
   const { output: newMarkets, stats: llmFilterStats } = runPipeline(
     allFilteredMarkets,
@@ -262,6 +249,29 @@ export async function groupMarkets(
     );
   });
 
+  // Enforce category uniformity within each event-title bucket. The DB's
+  // ConditionGroup is keyed by name (find-or-create), so multiple keeper
+  // groups sharing a title collapse onto a single row server-side. Without
+  // this pass, sibling conditions can carry per-market LLM categories that
+  // disagree with each other AND with the group's stored category (which
+  // gets stamped by whichever sibling submits first). Vote once per title
+  // and rewrite both the group payload and every condition under it.
+  const titleBuckets = new Map<string, SapienceConditionGroup[]>();
+  for (const group of conditionGroups) {
+    const bucket = titleBuckets.get(group.title) ?? [];
+    bucket.push(group);
+    titleBuckets.set(group.title, bucket);
+  }
+  for (const bucket of titleBuckets.values()) {
+    const allConditions = bucket.flatMap((g) => g.conditions);
+    if (allConditions.length === 0) continue;
+    const voted = computeGroupCategory(allConditions);
+    for (const g of bucket) {
+      g.categorySlug = voted;
+      for (const c of g.conditions) c.categorySlug = voted;
+    }
+  }
+
   // Count total conditions after filtering
   const totalConditions =
     conditionGroups.reduce((sum, g) => sum + g.conditions.length, 0) +
@@ -277,8 +287,6 @@ export async function groupMarkets(
     },
     groups: conditionGroups,
     ungroupedConditions,
-    metadataUpdates,
-    groupMetadataUpdates,
   };
 }
 
@@ -287,7 +295,7 @@ export async function groupMarkets(
  * of the fields that transformToSapienceCondition writes on initial create.
  * Kept as a single source of truth so the diff and the create paths agree.
  */
-function freshMetadataFor(
+export function freshMetadataFor(
   market: PolymarketMarket,
   groupTitle: string | undefined,
   tags: string[]
@@ -313,7 +321,7 @@ function freshMetadataFor(
  * as sets since Polymarket can reshuffle tag/similarMarkets ordering
  * without any semantic change.
  */
-function fieldsEqual(a: unknown, b: unknown): boolean {
+export function fieldsEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false;
     const sa = [...a].map(String).sort();
@@ -330,7 +338,7 @@ function fieldsEqual(a: unknown, b: unknown): boolean {
  * SyncableFields is re-derived from the current Polymarket market and
  * pushed back if it differs from what we have stored.
  */
-function computeMetadataUpdates(
+export function computeMetadataUpdates(
   markets: PolymarketMarket[],
   groups: Array<{
     title: string;
@@ -433,7 +441,7 @@ function computeMetadataUpdates(
  * up via the group's first market, so we can't double-emit even if future
  * changes allow multi-market groups.
  */
-function computeGroupMetadataUpdates(
+export function computeGroupMetadataUpdates(
   groups: Array<{
     title: string;
     markets: PolymarketMarket[];

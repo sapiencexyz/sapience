@@ -72,8 +72,6 @@ const emptySapienceOutput: SapienceOutput = {
   },
   groups: [],
   ungroupedConditions: [],
-  metadataUpdates: [],
-  groupMetadataUpdates: [],
 };
 
 beforeEach(() => {

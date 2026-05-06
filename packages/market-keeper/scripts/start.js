@@ -3,6 +3,7 @@ const { execSync } = require('child_process');
 
 const run = (cmd) => execSync(cmd, { stdio: 'inherit' });
 
+run('node dist/scripts/refresh-metadata.js');
 run('node dist/scripts/generate.js');
 run('node dist/scripts/relist.js');
 run('node dist/scripts/prices-and-1d-7d-volume.js');

@@ -186,6 +186,20 @@ export const secondaryBidsSubmitted = new Counter({
   registers: [register],
 });
 
+// Phase 2 telemetry: counts payloads still carrying the legacy on-chain
+// session-key blob (sessionKeyData != "0x"). Used to verify the deprecation
+// window before stripping the legacy path from the escrow contracts.
+export const legacySessionKeyDataSeen = new Counter({
+  name: 'relayer_legacy_session_key_data_seen_total',
+  help:
+    'Number of payloads received with non-empty legacy sessionKeyData. ' +
+    'Should trend to zero before the on-chain path is removed.',
+  // surface: 'auction.start.predictor' | 'auction.start.counterparty'
+  //        | 'secondary.listing.seller' | 'secondary.bid.buyer'
+  labelNames: ['surface', 'chain_id'],
+  registers: [register],
+});
+
 // ============================================================================
 // Error Metrics
 // ============================================================================
