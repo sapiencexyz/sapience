@@ -96,7 +96,7 @@ See `src/spec.md` for the complete specification.
 
 - **Pick**: A single prediction (conditionResolver, conditionId, predictedOutcome)
 - **Pick Configuration**: Set of picks that share fungible tokens, identified by `pickConfigId = keccak256(picks)`
-- **Prediction**: Individual prediction with unique `predictionId = keccak256(pickConfigId, predictor, counterparty, nonce)`
+- **Prediction**: Individual prediction with unique `predictionId = keccak256(pickConfigId, predictor, counterparty, _globalNonce)`
 - **Position Tokens**: ERC20 tokens representing shares in the collateral pool (1:1 ratio with collateral)
 
 ### Parimutuel Model

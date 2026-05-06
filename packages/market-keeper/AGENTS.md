@@ -18,7 +18,7 @@ Manages Sapience conditions sourced from external markets, plus the settlement p
 
 ## Commands
 
-All scripts have `:dry-run` (no writes) and `:execute` (or `:execute:wait`) variants. Examples:
+Most operational scripts have dry-run variants; settlement/cleanup scripts have execute variants. See `package.json` for the exact script list. Examples:
 
 ```bash
 # Ingestion
@@ -41,7 +41,7 @@ pnpm --filter @sapience/market-keeper cleanup-polymarket:execute
 pnpm --filter @sapience/market-keeper start
 ```
 
-The `start` script orchestrates the full set; `scripts/start.js` is the source of truth for ordering. Settlement script selection is chain-dependent — mainnet (`5064014`) runs `settle-polymarket`, testnet runs `settle-manual`.
+The `start` script orchestrates `refresh-metadata → generate → relist → prices-and-1d-7d-volume → refresh-volume → cleanup-polymarket → settle-polymarket/manual → settle-pyth`; `scripts/start.js` is the source of truth for ordering. Settlement script selection is chain-dependent — mainnet (`5064014`) runs `settle-polymarket`, testnet runs `settle-manual`.
 
 ## Environment Variables
 

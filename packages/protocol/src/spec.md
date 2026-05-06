@@ -73,10 +73,10 @@ The protocol uses fungible prediction pools where users with the same picks shar
 
 #### Two-Level ID System
 
-| ID             | Formula                                                   | Purpose                                                                          |
-| -------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `pickConfigId` | `keccak256(picks)`                                        | Identifies the fungible token pair (reusable across predictions with same picks) |
-| `predictionId` | `keccak256(pickConfigId, predictor, counterparty, nonce)` | Identifies individual prediction (unique per mint, for audit trail)              |
+| ID             | Formula                                                          | Purpose                                                                          |
+| -------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `pickConfigId` | `keccak256(picks)`                                               | Identifies the fungible token pair (reusable across predictions with same picks) |
+| `predictionId` | `keccak256(pickConfigId, predictor, counterparty, _globalNonce)` | Identifies individual prediction (unique per mint, for audit trail)              |
 
 #### Token Minting: Both Sides Receive totalCollateral Tokens (C-1)
 
@@ -362,7 +362,7 @@ flowchart TB
     subgraph ARBITRUM["⛓️ ARBITRUM (Secondary Market)"]
         PMBR["PredictionMarketBridgeRemote<br/>mint & burn bridged tokens"]
         PMTF["PredictionMarketTokenFactory<br/>CREATE3 deployment"]
-        PMTB["PredictionMarketTokenBridged<br/>wrapped position tokens"]
+        PMTB["PredictionMarketToken<br/>bridged position tokens"]
         SMT["Secondary Market Trading"]
     end
 
@@ -703,13 +703,14 @@ When `emergencyMode` is enabled by owner:
 
 #### Admin Functions
 
-| Function                       | Description                          |
-| ------------------------------ | ------------------------------------ |
-| `setManager(address)`          | Change the manager address           |
-| `setInteractionDelay(uint256)` | Set delay between user requests      |
-| `setExpirationTime(uint256)`   | Set request expiration time          |
-| `toggleEmergencyMode()`        | Enable/disable emergency withdrawals |
-| `pause()` / `unpause()`        | Pause/unpause contract operations    |
+| Function                                 | Description                           |
+| ---------------------------------------- | ------------------------------------- |
+| `setManager(address)`                    | Change the manager address            |
+| `setDepositInteractionDelay(uint256)`    | Set delay between deposit requests    |
+| `setWithdrawalInteractionDelay(uint256)` | Set delay between withdrawal requests |
+| `setExpirationTime(uint256)`             | Set request expiration time           |
+| `toggleEmergencyMode()`                  | Enable/disable emergency withdrawals  |
+| `pause()` / `unpause()`                  | Pause/unpause contract operations     |
 
 #### Share Transfer Restrictions
 

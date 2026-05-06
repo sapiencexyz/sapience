@@ -492,7 +492,7 @@ predictedOutcome)`.
   picks that share fungible position tokens, identified by `pickConfigId =
 keccak256(picks)`. One `Picks` row may have many `Prediction` rows.
 - **Prediction** — individual prediction with unique `predictionId =
-keccak256(pickConfigId, predictor, counterparty, nonce)`. Stores who paid
+keccak256(pickConfigId, predictor, counterparty, _globalNonce)`. Stores who paid
   what at mint time and the parameters of the deal.
 - **Position token** — ERC-20 representing a share in a `Picks` collateral
   pool. Two per pickConfig: predictor-token + counterparty-token. Holders can

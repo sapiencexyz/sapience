@@ -12,8 +12,15 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import prettier from 'prettier';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const formatMdx = (input) =>
+  prettier.format(input, {
+    parser: 'mdx',
+    singleQuote: true,
+  });
 const sdkDist = resolve(__dirname, '../../sdk/dist/contracts/addresses.mjs');
 
 if (!existsSync(sdkDist)) {
@@ -231,7 +238,7 @@ const supportedChainsTable = [
   }),
 ].join('\n');
 
-const body = [
+const rawBody = [
   '---',
   "title: 'Contracts & Addresses'",
   "description: 'Deployed contract addresses and supported chains.'",
@@ -265,6 +272,7 @@ const body = [
   ...chainsInOrder.map(renderChainSection),
   '',
 ].join('\n');
+const body = await formatMdx(rawBody);
 
 const args = process.argv.slice(2);
 if (args.includes('--check')) {

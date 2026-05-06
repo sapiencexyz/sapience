@@ -49,7 +49,7 @@ Per-condition flow:
 
 ## settle-manual (staging)
 
-Identical-shape pipeline to `settle-polymarket` but writes resolution directly to `ManualConditionResolver` on Ethereal testnet, sourcing outcomes from Polymarket's REST API rather than from on-chain Polygon state. Staging-only. Refuses to run if the resolver address doesn't match `ManualConditionResolver` — a guardrail to prevent accidentally pointing it at production.
+Staging/testnet pipeline for conditions where the resolver is `ManualConditionResolver`. It uses Polymarket/Gamma REST outcomes and writes directly on Ethereal testnet; unlike `settle-polymarket`, it does not call Polygon `ConditionalTokensReader` or LayerZero. Staging-only. Refuses to run if the resolver address doesn't match `ManualConditionResolver` — a guardrail to prevent accidentally pointing it at production.
 
 ## Idempotency
 
@@ -59,7 +59,7 @@ There is no transaction-level deduplication — if two instances race to settle 
 
 ## Failure modes worth knowing
 
-- **Polygon RPC outages** halt `settle-polymarket` and `settle-manual` — both depend on reading Polygon state. The cron retries on the next pipeline run; no manual intervention needed unless the outage exceeds several pipeline cycles.
+- **Polygon RPC outages** halt `settle-polymarket` because it depends on reading Polygon state. `settle-manual` uses Polymarket/Gamma REST plus Ethereal writes instead. The cron retries on the next pipeline run; no manual intervention needed unless the outage exceeds several pipeline cycles.
 - **POL exhaustion** silently stops settling. There is no current alert for low admin-wallet POL balance — flag for ops.
 - **LayerZero message stuck in flight.** The Polygon-side request confirms but Ethereal never receives the resolution. Rare; manual diagnosis via the LayerZero scan UI. There is no script-level retry for stuck messages.
 - **Pyth Lazer staleness.** If the requested timestamp is too old, Pyth returns an error and the script logs but does not raise. Check the cron logs after each run.

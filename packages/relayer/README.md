@@ -1,6 +1,6 @@
 # @sapience/relayer
 
-WebSocket relayer that brokers auctions between predictors and counterparties (vault bots, market makers). Stateless message router — every signature is verified on-chain at mint time.
+WebSocket relayer that brokers auctions between predictors and counterparties (vault bots, market makers). In-memory message router — every signature is ultimately verified on-chain at mint time.
 
 ## Quick start
 
@@ -39,7 +39,7 @@ For internal architecture (how the package is laid out, transport vs handlers, o
 | `SENTRY_DSN`                | -             | Sentry error reporting                                      |
 | `NODE_ENV`                  | `development` | Environment                                                 |
 
-Full set in [`src/config.ts`](src/config.ts).
+Core relayer env vars are in [`src/config.ts`](src/config.ts); chain RPC overrides are read by `@sapience/sdk/constants` via `CHAIN_<chainId>_RPC_URL`.
 
 ## Vault quote channel
 

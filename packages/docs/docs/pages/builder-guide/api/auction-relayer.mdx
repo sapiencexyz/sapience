@@ -189,7 +189,7 @@ ws.on('message', async (raw) => {
 });
 ```
 
-The relayer performs structural validation only on the bid signature format. The signature is verified on-chain when the predictor calls `mint()` — that is the authoritative gate.
+The relayer runs Tier 1 `validateBid()`: it rejects malformed or expired bids and invalid signature formats, verifies signatures offline when possible, and relays unverifiable smart-contract-style signatures as passthrough. The on-chain `mint()` remains the authoritative gate.
 
 ### Step 3 — Predictor: select a bid and mint
 
@@ -199,7 +199,7 @@ A reference end-to-end example lives in [`starters/market-maker/`](https://githu
 
 ## Smart-account predictors
 
-The relayer accepts intent signatures from smart accounts via four verification paths, in order:
+The relayer accepts intent signatures from smart accounts via five verification paths, in order:
 
 1. **Escrow session key** (ABI-encoded `predictorSessionKeyData`): the relayer decodes the SessionKeyApproval, verifies the owner authorized the session key, then checks the `intentSignature` was produced by that key.
 2. **EOA**: standard `recoverTypedDataAddress` against the predictor address.
@@ -228,7 +228,7 @@ Subscribe with `{type: 'vault_quote.subscribe', payload: {chainId, vaultAddress}
 
 ## Validation
 
-`auction.start` is rejected with one of the error codes below if any of these checks fail. The relayer returns the human-readable reason from the SDK in `auction.ack.payload.error`; the SDK's machine-readable `ValidationErrorCode` enum is in [`packages/sdk/auction/validation.ts`](https://github.com/sapiencexyz/sapience/blob/main/packages/sdk/auction/validation.ts).
+`auction.start` is rejected if any of these checks fail. The relayer returns the human-readable reason from the SDK in `auction.ack.payload.error`; the SDK's machine-readable `ValidationErrorCode` enum is in [`packages/sdk/auction/validation.ts`](https://github.com/sapiencexyz/sapience/blob/main/packages/sdk/auction/validation.ts). `missing_escrow_contract` is a relayer-level wire error.
 
 | Code                      | Cause                                                                                  |
 | ------------------------- | -------------------------------------------------------------------------------------- |
@@ -242,7 +242,7 @@ Subscribe with `{type: 'vault_quote.subscribe', payload: {chainId, vaultAddress}
 | `CHAIN_MISMATCH`          | `chainId` doesn't match the configured value for verification.                         |
 | `VALIDATION_ERROR`        | Unexpected validation error.                                                           |
 
-`bid.submit` performs a lighter check: structural validation of fields (address shape, signature format, deadline freshness, auction existence). The full `MintApproval` signature is verified on-chain at mint time; the SDK exposes `validateBidOnChain()` and `simulateMint()` for callers that want pre-submit confidence.
+`bid.submit` performs Tier 1 validation: field/deadline/auction checks plus offline signature verification when possible. Malformed bids are rejected; valid or unverifiable smart-contract signatures are relayed, with final authority on-chain. The SDK exposes `validateBidOnChain()` and `simulateMint()` for callers that want pre-submit confidence.
 
 ## Connection limits
 

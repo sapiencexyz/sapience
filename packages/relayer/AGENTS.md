@@ -34,10 +34,9 @@ In-memory state stores with TTL-based cleanup. No transport or handler awareness
 
 The relayer delegates all validation to `@sapience/sdk/auction/validation`.
 It is NOT the authority on validity — each consumer validates independently.
-The relayer has **no RPC dependency** for message handling — all on-chain
-validation is the client's responsibility.
+The relayer keeps bid validation offline; `auction.start` may use an RPC-backed ERC-1271 fallback, and `vault_quote.publish` checks manager authorization on-chain. Its hard gates are:
 
-- `auction.start` → `validateAuctionRFQ()` (Tier 1 hard gate, offline only)
+- `auction.start` → `validateAuctionRFQ()` (Tier 1 hard gate plus optional ERC-1271 RPC fallback)
 - `bid.submit` → `validateBid()` (Tier 1 hard gate, offline only, no `publicClient`)
   - Provably invalid bids (missing fields, expired, malformed signature) → rejected
   - Signature mismatches (recovered ≠ counterparty) → relayed as unverified (could be ERC-1271 smart contract)
@@ -67,7 +66,7 @@ Test files:
 
 Sentry is initialised on boot (`src/instrument.ts`) and only fires in production. Logs are stdout-only — there is no Pino setup yet (the API has one; see root AGENTS.md).
 
-Prometheus metrics are exposed at `GET /metrics` on the same HTTP port as the WebSocket server. Scrape them or browse directly. Defined in `src/metrics.ts`:
+Prometheus metrics are exposed at `GET /metrics` on the same HTTP port as the WebSocket server. Scrape them or browse directly. Key metrics include:
 
 | Metric                                        | Shape                                                                          |
 | --------------------------------------------- | ------------------------------------------------------------------------------ |

@@ -50,7 +50,7 @@ Three tiers, each more expensive than the last. Pick the cheapest tier that give
 | 2    | `auction/validation.ts` (`validateBidOnChain`) | RPC reads             | Pre-submit on bids — checks nonce freshness, balances, allowances |
 | 3    | `auction/simulate.ts`                          | RPC + state overrides | Pre-submit, full mint simulation via `eth_call`                   |
 
-The relayer is intentionally Tier 1 only — no RPC dependency, so it stays cheap and stateless. Authoritative validation is on-chain at `mint()` time. Tier 2/3 are _advisory_ tools for clients that want pre-submit confidence.
+The relayer keeps bid validation Tier 1/offline, but `auction.start` may use an RPC-backed ERC-1271 fallback and `vault_quote.publish` uses RPC to verify the vault manager. Authoritative validation is on-chain at `mint()` time. Tier 2/3 are _advisory_ tools for clients that want pre-submit confidence.
 
 ## Generated files
 

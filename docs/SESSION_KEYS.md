@@ -70,15 +70,15 @@ ZeroDev's **Kernel** is an ERC-4337 smart account implementation with a **plugin
 
 ### Key Files
 
-| File                                                            | Purpose                                                                                                 |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `packages/app/src/lib/session/sessionKeyManager.ts`             | Core session creation, restoration, and client management                                               |
-| `packages/app/src/lib/context/SessionContext.tsx`               | React context provider for session state across the app                                                 |
-| `packages/sdk/session/verification.ts`                          | `verifySessionApproval`, `extractSessionKeyFromValidatorData` (formerly relayer-only)                   |
-| `packages/sdk/session/smartAccount.ts`                          | `computeSmartAccountAddress` — deterministic CREATE2 derivation                                         |
-| `packages/sdk/auction/escrowSigning.ts`                         | `verifyAuctionIntentSignature` / `verifyCounterpartyMintSignature` — applies all four session-key paths |
-| `packages/sdk/auction/validation.ts`                            | Tier 1 validation entry points used by the relayer                                                      |
-| `packages/app/src/hooks/blockchain/useSapienceWriteContract.ts` | Hook for contract writes with session key routing                                                       |
+| File                                                            | Purpose                                                                                                                                                                                                   |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/app/src/lib/session/sessionKeyManager.ts`             | Core session creation, restoration, and client management                                                                                                                                                 |
+| `packages/app/src/lib/context/SessionContext.tsx`               | React context provider for session state across the app                                                                                                                                                   |
+| `packages/sdk/session/verification.ts`                          | `verifySessionApproval`, `extractSessionKeyFromValidatorData` (formerly relayer-only)                                                                                                                     |
+| `packages/sdk/session/smartAccount.ts`                          | `computeSmartAccountAddress` — deterministic CREATE2 derivation                                                                                                                                           |
+| `packages/sdk/auction/escrowSigning.ts`                         | `verifyAuctionIntentSignature` / `verifyCounterpartyMintSignature` — predictor supports escrow/EOA/smart-account-owner/ZeroDev/ERC-1271 paths; counterparty supports escrow/EOA/smart-account-owner paths |
+| `packages/sdk/auction/validation.ts`                            | Tier 1 validation entry points used by the relayer                                                                                                                                                        |
+| `packages/app/src/hooks/blockchain/useSapienceWriteContract.ts` | Hook for contract writes with session key routing                                                                                                                                                         |
 
 The session-key verification logic lived in the relayer until it was consolidated into the SDK so app, relayer, and bots all share one implementation. The relayer now imports these helpers from `@sapience/sdk/session` and `@sapience/sdk/auction/*`.
 

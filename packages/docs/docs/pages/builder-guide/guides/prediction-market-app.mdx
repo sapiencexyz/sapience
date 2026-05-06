@@ -9,7 +9,7 @@ description: 'Fork the Sapience app or build a custom prediction market interfac
 
 # Apps and Interfaces
 
-Build your own prediction market products by customizing the open source [Sapience app](https://sapience.xyz) or starting fresh with [the components in the SDK](/builder-guide/storybook).
+Build your own prediction market products by customizing the open source [Sapience app](https://sapience.xyz) or starting fresh with [the components in `@sapience/ui`](/builder-guide/storybook).
 
 :::code-group
 
@@ -91,7 +91,7 @@ git push -u origin my-customization
 
 ## Build from Scratch with the SDK
 
-Scaffold a Next.js app that uses the `@sapience/sdk` package for forms and components, and wires data via GraphQL and the Auction APIs.
+Scaffold a Next.js app that uses `@sapience/sdk` for protocol, types, and data helpers, `@sapience/ui` for forms and components, and wires data via GraphQL and the Auction APIs.
 
 ### Create a new Next.js app
 
@@ -102,17 +102,17 @@ pnpm create next-app my-sapience-app --ts --tailwind --eslint --app --use-pnpm -
 cd my-sapience-app
 ```
 
-### Install @sapience/sdk
+### Install Sapience packages
 
 ```bash
-pnpm add @sapience/sdk
+pnpm add @sapience/sdk @sapience/ui graphql-request
 ```
 
 ### Install peer dependencies
 
-`@sapience/sdk` expects certain libraries to be provided by your app. Install the core set below, then add optional ones as you use the corresponding components.
+The examples and UI components below use the libraries in this section. Install the core set, then add optional ones as you use the corresponding features.
 
-**Core peer deps:**
+**Core app dependencies:**
 
 ```bash
 pnpm add next react react-dom react-hook-form @tanstack/react-query wagmi viem graphql @apollo/client lucide-react lightweight-charts framer-motion next-themes
