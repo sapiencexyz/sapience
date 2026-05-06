@@ -199,13 +199,14 @@ A reference end-to-end example lives in [`starters/market-maker/`](https://githu
 
 ## Smart-account predictors
 
-The relayer accepts intent signatures from smart accounts via five verification paths, in order:
+The relayer accepts intent signatures from smart accounts via four offline verification paths, plus an optional ERC-1271 RPC fallback:
 
 1. **Escrow session key** (ABI-encoded `predictorSessionKeyData`): the relayer decodes the SessionKeyApproval, verifies the owner authorized the session key, then checks the `intentSignature` was produced by that key.
 2. **EOA**: standard `recoverTypedDataAddress` against the predictor address.
 3. **Smart-account owner via CREATE2**: recovers the EOA, derives the smart account address from it, checks against the predictor.
 4. **ZeroDev session approval (JSON `predictorSessionKeyData`)**: parses `{ approval, typedData }`, verifies the session key approval, then checks the intent signature recovers to the authorized session key.
-5. **ERC-1271 fallback**: when an RPC client is configured, the relayer calls `isValidSignature` on the predictor contract. Signatures that can't be verified offline land here; if `isValidSignature` reverts, the auction is still accepted as `unverified` (passthrough), since the on-chain `mint()` is the authoritative gate.
+
+- **Optional ERC-1271 fallback**: when an RPC client is configured, the relayer calls `isValidSignature` on the predictor contract after the offline paths fail. Signatures that can't be verified offline are still accepted as `unverified` passthrough, since the on-chain `mint()` is the authoritative gate.
 
 `predictorSessionKeyData` accepts two formats:
 

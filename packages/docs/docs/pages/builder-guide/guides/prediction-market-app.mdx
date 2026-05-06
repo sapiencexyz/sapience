@@ -9,7 +9,7 @@ description: 'Fork the Sapience app or build a custom prediction market interfac
 
 # Apps and Interfaces
 
-Build your own prediction market products by customizing the open source [Sapience app](https://sapience.xyz) or starting fresh with [the components in `@sapience/ui`](/builder-guide/storybook).
+Build your own prediction market products by customizing the open source [Sapience app](https://sapience.xyz) or starting fresh with the SDK and your own interface components.
 
 :::code-group
 
@@ -91,7 +91,7 @@ git push -u origin my-customization
 
 ## Build from Scratch with the SDK
 
-Scaffold a Next.js app that uses `@sapience/sdk` for protocol, types, and data helpers, `@sapience/ui` for forms and components, and wires data via GraphQL and the Auction APIs.
+Scaffold a Next.js app that uses `@sapience/sdk` for protocol, types, and data helpers, then wire your own UI to GraphQL and the Auction APIs.
 
 ### Create a new Next.js app
 
@@ -105,12 +105,12 @@ cd my-sapience-app
 ### Install Sapience packages
 
 ```bash
-pnpm add @sapience/sdk @sapience/ui graphql-request
+pnpm add @sapience/sdk graphql-request
 ```
 
 ### Install peer dependencies
 
-The examples and UI components below use the libraries in this section. Install the core set, then add optional ones as you use the corresponding features.
+The examples below use the libraries in this section. Install the core set, then add optional ones as you use the corresponding features.
 
 **Core app dependencies:**
 
@@ -132,13 +132,9 @@ Tip: If you run into version conflicts, check `@sapience/sdk`'s `peerDependencie
 pnpm dev
 ```
 
-### Import components
+### Build the interface
 
-`@sapience/ui` exports a small set of high-level components — see [Storybook](/builder-guide/storybook) for the canonical list. As of this writing, the public components are `CreatePythPredictionForm`, `PredictionListItem`, and `PythOracleMark`, plus the shadcn-style primitives under `@sapience/ui/components/ui/`.
-
-```tsx
-import { CreatePythPredictionForm } from '@sapience/ui';
-```
+The SDK does not ship React components. Use the [Sapience app](https://github.com/sapiencexyz/sapience/tree/main/packages/app) and [Storybook](/builder-guide/storybook) as implementation references, then copy or recreate the pieces your app needs.
 
 ### Connect data
 
