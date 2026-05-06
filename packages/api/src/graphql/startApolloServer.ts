@@ -1,3 +1,4 @@
+import type { Request } from 'express';
 import prisma from '../core/db';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
@@ -13,11 +14,17 @@ import {
   createComplexityEstimators,
 } from './queryComplexity.js';
 import { config } from '../core/config';
-import Sentry from '../core/instrument';
+import { createLogger } from '../core/logger';
 import { buildApiSchema } from './buildSchema';
+
+const log = createLogger('graphql');
 
 export interface ApolloContext {
   prisma: typeof prisma;
+  // Populated by core/server.ts when wiring expressMiddleware so the
+  // operation log can pick up the reqId pino-http attaches to each request.
+  // pino-http augments IncomingMessage with `id: ReqId` (string | number | object).
+  req?: Request;
   // Set by the inline complexity plugin in didResolveOperation; read by
   // operationTimingPlugin in willSendResponse. Optional because the
   // complexity plugin skips pure-introspection queries.
@@ -46,7 +53,7 @@ export const initializeApolloServer = async () => {
   // queries like conditions(take: 200) with 5 levels of nesting (~55000).
   const maxComplexity = config.GRAPHQL_MAX_COMPLEXITY;
 
-  console.log(`GraphQL query complexity limit set to: ${maxComplexity}`);
+  log.info({ maxComplexity }, 'GraphQL query complexity limit set');
 
   // Create Apollo Server with the combined schema, depth limit, and query complexity limit
   const apolloServer = new ApolloServer({
@@ -57,7 +64,7 @@ export const initializeApolloServer = async () => {
     // All data is public, CORS is strict, and error responses are excluded from caching.
     csrfPrevention: false,
     formatError: (formattedError, error) => {
-      console.error('GraphQL Error:', error);
+      log.error({ err: error }, 'GraphQL Error');
       if (!config.isDev) {
         delete formattedError.extensions?.stacktrace;
       }
@@ -121,28 +128,23 @@ export const initializeApolloServer = async () => {
               // Bridge to operationTimingPlugin's willSendResponse logger.
               contextValue.queryComplexity = complexity;
 
-              if (config.isDev) {
-                console.log(`Query complexity: ${complexity}`);
-              }
+              log.debug({ complexity }, 'Query complexity computed');
 
               if (complexity > maxComplexity) {
                 const errorMessage = `Query complexity limit exceeded. Maximum allowed: ${maxComplexity}, Actual: ${complexity}`;
                 const exceededBy = complexity - maxComplexity;
-
-                console.error(
-                  `Complexity limit exceeded! Max: ${maxComplexity}, Actual: ${complexity} (exceeded by ${exceededBy})`
-                );
-
-                // Only report to Sentry if complexity is significantly exceeded (>50% over limit)
+                // Sentry only for genuinely abusive queries (>50% over).
+                // Bounded queries that just nudge the limit stay stdout-only.
                 const exceededThreshold = maxComplexity * 1.5;
                 if (complexity > exceededThreshold) {
-                  Sentry.captureException(new Error(errorMessage), {
-                    level: 'warning',
-                    tags: {
-                      type: 'query_complexity_exceeded',
-                      graphql: 'validation',
-                    },
-                    extra: {
+                  log.error(
+                    {
+                      err: new Error(errorMessage),
+                      sentryLevel: 'warning',
+                      tags: {
+                        type: 'query_complexity_exceeded',
+                        graphql: 'validation',
+                      },
                       maxComplexity,
                       actualComplexity: complexity,
                       exceededBy,
@@ -150,7 +152,17 @@ export const initializeApolloServer = async () => {
                         (exceededBy / maxComplexity) * 100
                       ),
                     },
-                  });
+                    'Complexity limit exceeded (Sentry-reported)'
+                  );
+                } else {
+                  log.warn(
+                    {
+                      maxComplexity,
+                      actualComplexity: complexity,
+                      exceededBy,
+                    },
+                    'Complexity limit exceeded'
+                  );
                 }
 
                 throw new GraphQLError(errorMessage, {

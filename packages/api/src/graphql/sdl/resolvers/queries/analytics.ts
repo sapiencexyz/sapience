@@ -34,6 +34,10 @@ import {
 } from '../../../../services/protocolStats';
 import { getProviderForChain } from '../../../../lib/utils';
 
+import { createLogger } from '../../../../core/logger';
+
+const log = createLogger('graphql.analytics');
+
 interface CumulativeVolumeRow {
   timestamp: bigint;
   cumulative_volume: string | null;
@@ -311,9 +315,9 @@ export const protocolStats: NonNullable<
       periodVolume: livePeriodVolume,
     });
   } catch (err) {
-    console.error(
-      '[protocolStats] live candle failed, falling back to snapshots only:',
-      err
+    log.error(
+      { err: err },
+      '[protocolStats] live candle failed, falling back to snapshots only:'
     );
   }
 

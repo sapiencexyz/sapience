@@ -7,9 +7,12 @@ import {
   parseAbiItem,
   zeroAddress as ZERO_ADDRESS,
 } from 'viem';
-import Sentry from '../../core/instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
+
+import { createLogger } from '../../core/logger';
+
+const logger = createLogger('positionTokenTransferIndexer');
 
 const BLOCK_BATCH_SIZE = 1000;
 const POLLING_INTERVAL_MS = 10_000;
@@ -71,7 +74,7 @@ class PositionTokenTransferIndexer implements IIndexer {
       ? `:${contractOverride.slice(0, 10).toLowerCase()}`
       : '';
 
-    console.log(
+    logger.info(
       `[TransferIndexer:${this.chainId}${this.indexerStateKeySuffix}] Initialized (legacy: ${this.isLegacy})`
     );
   }
@@ -108,11 +111,10 @@ class PositionTokenTransferIndexer implements IIndexer {
       try {
         await this.pollCycle();
       } catch (error) {
-        console.error(
-          `[TransferIndexer:${this.chainId}] Poll cycle error:`,
-          error
+        logger.error(
+          { err: error, chainId: this.chainId },
+          '[TransferIndexer] Poll cycle error'
         );
-        Sentry.captureException(error);
       }
     };
 
@@ -130,7 +132,7 @@ class PositionTokenTransferIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log(`[TransferIndexer:${this.chainId}] Stopped`);
+    logger.info(`[TransferIndexer:${this.chainId}] Stopped`);
   }
 
   // --- Core polling logic ---
@@ -138,7 +140,7 @@ class PositionTokenTransferIndexer implements IIndexer {
   private async pollCycle(): Promise<void> {
     const watchList = await this.loadWatchList();
     if (watchList.tokenAddresses.length === 0) {
-      console.log(
+      logger.info(
         `[TransferIndexer:${this.chainId}] No tokens to watch (all pickConfigs fullyRedeemed or none exist)`
       );
       return;
@@ -149,7 +151,7 @@ class PositionTokenTransferIndexer implements IIndexer {
     if (currentBlock <= lastBlock) return;
 
     const blocksToProcess = currentBlock - lastBlock;
-    console.log(
+    logger.info(
       `[TransferIndexer:${this.chainId}] Processing blocks ${lastBlock + 1n}..${currentBlock} (${blocksToProcess} blocks, watching ${watchList.tokenAddresses.length} tokens)`
     );
 
@@ -174,7 +176,7 @@ class PositionTokenTransferIndexer implements IIndexer {
       });
 
       if (logs.length > 0) {
-        console.log(
+        logger.info(
           `[TransferIndexer:${this.chainId}] Found ${logs.length} Transfer events in blocks ${start}..${end}`
         );
       }
@@ -223,7 +225,7 @@ class PositionTokenTransferIndexer implements IIndexer {
 
     // Skip mints — handled by the escrow indexer on PredictionCreated
     if (fromLower === ZERO_ADDRESS) {
-      console.log(
+      logger.info(
         `[TransferIndexer:${this.chainId}] Skipping mint event for ${tokenAddress} (to=${toLower}, value=${value})`
       );
       return;
@@ -232,7 +234,7 @@ class PositionTokenTransferIndexer implements IIndexer {
 
     const info = tokenInfoMap.get(tokenAddress);
     if (!info) {
-      console.warn(
+      logger.warn(
         `[TransferIndexer:${this.chainId}] Unknown token ${tokenAddress} not in watch list, skipping`
       );
       return;
@@ -279,7 +281,7 @@ class PositionTokenTransferIndexer implements IIndexer {
             AND holder = ${fromLower}
         `;
         if (rowsUpdated === 0) {
-          console.warn(
+          logger.warn(
             `[TransferIndexer:${this.chainId}] No Position row found to decrement for holder=${fromLower} token=${tokenAddress} (tx=${log.transactionHash})`
           );
         }
@@ -304,7 +306,7 @@ class PositionTokenTransferIndexer implements IIndexer {
       throw e;
     }
 
-    console.log(
+    logger.info(
       `[TransferIndexer:${this.chainId}] ${isBurn ? 'Burn' : 'Transfer'} ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr} pickConfig=${info.pickConfigId} block=${log.blockNumber} tx=${log.transactionHash}`
     );
   }
@@ -376,7 +378,7 @@ class PositionTokenTransferIndexer implements IIndexer {
     const startBlock = await this.findBlockByTimestamp(
       APPROXIMATE_DEPLOY_TIMESTAMP
     );
-    console.log(
+    logger.info(
       `[TransferIndexer:${this.chainId}] No cursor found, estimated deploy block ${startBlock}`
     );
     return startBlock > 0n ? startBlock - 1n : 0n;
@@ -403,7 +405,7 @@ class PositionTokenTransferIndexer implements IIndexer {
   }
 
   private async setLastIndexedBlock(block: number): Promise<void> {
-    console.log(
+    logger.info(
       `[TransferIndexer:${this.chainId}${this.indexerStateKeySuffix}] Persisting watermark block=${block}`
     );
     const key = `${INDEXER_STATE_KEY}:${this.chainId}${this.indexerStateKeySuffix}`;

@@ -1,10 +1,12 @@
 import prisma from '../../core/db';
 import { getProviderForChain, getBlockByTimestamp } from '../../lib/utils';
 import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
-import Sentry from '../../core/instrument';
 import { IIndexer } from '../../interfaces';
 import { secondaryMarketEscrow } from '@sapience/sdk/contracts';
 import { secondaryMarketEscrowAbi } from '@sapience/sdk/abis';
+import { createLogger } from '../../core/logger';
+
+const logger = createLogger('secondaryMarketIndexer');
 
 const BLOCK_BATCH_SIZE = 100;
 const POLLING_INTERVAL_MS = 10_000;
@@ -61,7 +63,7 @@ class SecondaryMarketIndexer implements IIndexer {
       this.blockCreated = BigInt(contractEntry.blockCreated || 0);
     }
 
-    console.log(
+    logger.info(
       `[SecondaryMarketIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated}, legacy: ${this.isLegacy})`
     );
   }
@@ -72,7 +74,7 @@ class SecondaryMarketIndexer implements IIndexer {
     endTimestamp?: number
   ): Promise<boolean> {
     try {
-      console.log(
+      logger.info(
         `[SecondaryMarketIndexer:${this.chainId}] Indexing blocks from timestamp ${startTimestamp} to ${endTimestamp || 'latest'} on contract ${this.contractAddress}`
       );
 
@@ -93,7 +95,7 @@ class SecondaryMarketIndexer implements IIndexer {
         i += BLOCK_BATCH_SIZE
       ) {
         const batchEnd = Math.min(i + BLOCK_BATCH_SIZE - 1, endBlockNumber);
-        console.log(
+        logger.info(
           `[SecondaryMarketIndexer:${this.chainId}] Processing blocks ${i} to ${batchEnd}`
         );
 
@@ -104,7 +106,7 @@ class SecondaryMarketIndexer implements IIndexer {
         await this.indexBlocks(resourceSlug, batchBlocks);
       }
 
-      console.log(
+      logger.info(
         `[SecondaryMarketIndexer:${this.chainId}] Persisting watermark block=${endBlockNumber}`
       );
       await prisma.secondaryIndexerState.upsert({
@@ -123,11 +125,10 @@ class SecondaryMarketIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error(
-        `[SecondaryMarketIndexer:${this.chainId}] Error indexing blocks:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[SecondaryMarketIndexer] Error indexing blocks'
       );
-      Sentry.captureException(error);
       throw error;
     }
   }
@@ -144,7 +145,7 @@ class SecondaryMarketIndexer implements IIndexer {
         toBlock: BigInt(toBlock),
       });
 
-      console.log(
+      logger.info(
         `[SecondaryMarketIndexer:${this.chainId}] Found ${logs.length} logs in blocks ${fromBlock}-${toBlock}`
       );
 
@@ -166,31 +167,30 @@ class SecondaryMarketIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error(
-        `[SecondaryMarketIndexer:${this.chainId}] Error processing blocks ${fromBlock}-${toBlock}:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId, fromBlock, toBlock },
+        '[SecondaryMarketIndexer] Error processing block range'
       );
-      Sentry.captureException(error);
       throw error;
     }
   }
 
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
-      console.log(
+      logger.info(
         `[SecondaryMarketIndexer:${this.chainId}] Already watching ${resourceSlug}`
       );
       return;
     }
 
-    console.log(
+    logger.info(
       `[SecondaryMarketIndexer:${this.chainId}] Starting to poll contract ${this.contractAddress} for ${resourceSlug}`
     );
 
     this.isWatching = true;
 
     this.sigintHandler = () => {
-      console.log(
+      logger.info(
         `[SecondaryMarketIndexer:${this.chainId}] Received SIGINT, stopping...`
       );
       this.stop();
@@ -204,24 +204,24 @@ class SecondaryMarketIndexer implements IIndexer {
       });
       if (state) {
         this.lastProcessedBlock = BigInt(state.lastIndexedBlock);
-        console.log(
+        logger.info(
           `[SecondaryMarketIndexer:${this.chainId}] Resuming from watermark block ${this.lastProcessedBlock}`
         );
       } else if (this.blockCreated > 0n) {
         this.lastProcessedBlock = this.blockCreated - 1n;
-        console.log(
+        logger.info(
           `[SecondaryMarketIndexer:${this.chainId}] Starting from blockCreated ${this.blockCreated} for historical indexing`
         );
       } else {
         try {
           this.lastProcessedBlock = await this.client.getBlockNumber();
-          console.log(
+          logger.info(
             `[SecondaryMarketIndexer:${this.chainId}] No watermark found, starting from current block ${this.lastProcessedBlock}`
           );
         } catch (error) {
-          console.error(
-            `[SecondaryMarketIndexer:${this.chainId}] Error getting initial block:`,
-            error
+          logger.error(
+            { err: error },
+            `[SecondaryMarketIndexer:${this.chainId}] Error getting initial block:`
           );
           this.lastProcessedBlock = 0n;
         }
@@ -245,7 +245,7 @@ class SecondaryMarketIndexer implements IIndexer {
           });
 
           if (logs.length > 0) {
-            console.log(
+            logger.info(
               `[SecondaryMarketIndexer:${this.chainId}] Found ${logs.length} events in blocks ${fromBlock}-${toBlock}`
             );
 
@@ -256,18 +256,17 @@ class SecondaryMarketIndexer implements IIndexer {
                 });
                 await this.processLog(log, block);
               } catch (error) {
-                console.error(
-                  `[SecondaryMarketIndexer:${this.chainId}] Error processing log:`,
-                  error
+                logger.error(
+                  { err: error, chainId: this.chainId },
+                  '[SecondaryMarketIndexer] Error processing log'
                 );
-                Sentry.captureException(error);
               }
             }
           }
 
           this.lastProcessedBlock = currentBlock;
 
-          console.log(
+          logger.info(
             `[SecondaryMarketIndexer:${this.chainId}] Persisting watermark block=${currentBlock}`
           );
           await prisma.secondaryIndexerState.upsert({
@@ -285,11 +284,10 @@ class SecondaryMarketIndexer implements IIndexer {
           });
         }
       } catch (error) {
-        console.error(
-          `[SecondaryMarketIndexer:${this.chainId}] Polling error:`,
-          error
+        logger.error(
+          { err: error, chainId: this.chainId },
+          '[SecondaryMarketIndexer] Polling error'
         );
-        Sentry.captureException(error);
       }
     };
 
@@ -307,7 +305,7 @@ class SecondaryMarketIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log(`[SecondaryMarketIndexer:${this.chainId}] Stopped`);
+    logger.info(`[SecondaryMarketIndexer:${this.chainId}] Stopped`);
   }
 
   private async processLog(log: Log, block: Block): Promise<void> {
@@ -332,11 +330,10 @@ class SecondaryMarketIndexer implements IIndexer {
         );
       }
     } catch (error) {
-      console.error(
-        `[SecondaryMarketIndexer:${this.chainId}] Error processing log:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[SecondaryMarketIndexer] Error processing log (outer)'
       );
-      Sentry.captureException(error);
     }
   }
 
@@ -345,7 +342,7 @@ class SecondaryMarketIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[SecondaryMarketIndexer:${this.chainId}] Processing TradeExecuted event: tradeHash=${event.tradeHash}`
     );
 
@@ -371,7 +368,7 @@ class SecondaryMarketIndexer implements IIndexer {
       update: {},
     });
 
-    console.log(
+    logger.info(
       `[SecondaryMarketIndexer:${this.chainId}] Indexed trade ${tradeHashLower}`
     );
   }

@@ -29,7 +29,9 @@ const REDACT_PATHS = [
 ];
 
 const baseOptions: LoggerOptions = {
-  level: config.LOG_LEVEL,
+  // Fallback to 'info' if config doesn't expose LOG_LEVEL — tests sometimes
+  // mock the config module with a partial shape (e.g. middleware.test.ts).
+  level: config.LOG_LEVEL ?? 'info',
   redact: {
     paths: REDACT_PATHS,
     censor: '[Redacted]',
@@ -42,7 +44,21 @@ const baseOptions: LoggerOptions = {
  * Reconstructs an Error from the serialized `err` object so Sentry's
  * existing `beforeSend` filter (which inspects err.statusCode / err.status
  * to drop expected 4xx) keeps working.
+ *
+ * Recognized merging-object fields:
+ *   err          → Error (message/stack/name/statusCode preserved)
+ *   tags         → forwarded as Sentry tags (string-keyed)
+ *   sentryLevel  → 'warning' | 'error' | 'fatal' (overrides level-derived default)
+ * Everything else lands in Sentry's `extra`.
+ *
+ * Non-exception messages: use `Sentry.captureMessage(...)` directly. The 3
+ * existing call sites are intentional — message-events are semantically
+ * distinct from exceptions and shouldn't go through this funnel.
  */
+type SentryLevel = 'warning' | 'error' | 'fatal';
+const isSentryLevel = (v: unknown): v is SentryLevel =>
+  v === 'warning' || v === 'error' || v === 'fatal';
+
 const sentryStream: DestinationStream = {
   write(line: string) {
     try {
@@ -77,9 +93,27 @@ const sentryStream: DestinationStream = {
             )
           : new Error(typeof obj.msg === 'string' ? obj.msg : 'logged error');
 
-      const { err: _omit, ...rest } = obj;
+      const sentryLevel: SentryLevel = isSentryLevel(obj.sentryLevel)
+        ? obj.sentryLevel
+        : level >= 60
+          ? 'fatal'
+          : 'error';
+
+      const tags =
+        obj.tags && typeof obj.tags === 'object' && !Array.isArray(obj.tags)
+          ? (obj.tags as Record<string, string | number | boolean | null>)
+          : undefined;
+
+      const {
+        err: _omitErr,
+        tags: _omitTags,
+        sentryLevel: _omitLevel,
+        ...rest
+      } = obj;
+
       Sentry.captureException(error, {
-        level: level >= 60 ? 'fatal' : 'error',
+        level: sentryLevel,
+        ...(tags && { tags }),
         extra: rest,
       });
     } catch {

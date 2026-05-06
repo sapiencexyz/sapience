@@ -16,6 +16,10 @@ import {
 import { GAP_DEBUG, formatGapDecomposition } from './gapDecomposition';
 import type { ProtocolStatsData } from './types';
 
+import { createLogger } from '../../core/logger';
+
+const log = createLogger('services.protocolStats.backfill');
+
 // Phase 1 (block resolution) is RPC-only: 1 inflight RPC per worker.
 // 10 workers ≈ 10 req/sec peak.
 const BACKFILL_BLOCK_RESOLUTION_CONCURRENCY = 10;
@@ -66,13 +70,13 @@ export async function backfillProtocolStats(
   const client = getProviderForChain(chainId);
   const vaults = getConfiguredVaults(chainId);
   if (vaults.length === 0) {
-    console.log(`[ProtocolStats] No vaults configured for chain ${chainId}`);
+    log.info(`[ProtocolStats] No vaults configured for chain ${chainId}`);
     return;
   }
 
   const interval = resolveSnapshotIntervalSeconds(intervalSeconds);
 
-  console.log(
+  log.info(
     `[ProtocolStats] Starting backfill for ${days} days on chain ${chainId}, ` +
       `${vaults.length} vault(s): ${vaults.map((v) => `${v.kind}@${v.address}`).join(', ')}, ` +
       `interval ${interval}s, phase1-concurrency ${BACKFILL_BLOCK_RESOLUTION_CONCURRENCY}, ` +
@@ -104,7 +108,7 @@ export async function backfillProtocolStats(
   const preLaunch = timestamps.filter((t) => t < ETHEREAL_MAINNET_LAUNCH);
   const postLaunch = timestamps.filter((t) => t >= ETHEREAL_MAINNET_LAUNCH);
 
-  console.log(
+  log.info(
     `[ProtocolStats] Timestamps built: total=${timestamps.length}, preLaunch=${preLaunch.length}, postLaunch=${postLaunch.length}`
   );
 
@@ -119,7 +123,7 @@ export async function backfillProtocolStats(
     const tResolve = performance.now();
     let blocks: Block[] = [];
     if (postLaunch.length > 0) {
-      console.log(
+      log.info(
         `[ProtocolStats] Phase 1: starting block resolution for ${postLaunch.length} post-launch timestamps...`
       );
       blocks = await resolveBlocksForTimestamps(client, postLaunch, {
@@ -127,13 +131,11 @@ export async function backfillProtocolStats(
         logPrefix: '[ProtocolStats] Phase 1',
       });
     } else {
-      console.log(
-        `[ProtocolStats] Phase 1: skipped (no post-launch timestamps)`
-      );
+      log.info(`[ProtocolStats] Phase 1: skipped (no post-launch timestamps)`);
     }
     totals.resolveBlocks = performance.now() - tResolve;
 
-    console.log(
+    log.info(
       `[ProtocolStats] Phase 1: resolved ${postLaunch.length} target blocks in ${(totals.resolveBlocks / 1000).toFixed(1)}s`
     );
 
@@ -141,7 +143,7 @@ export async function backfillProtocolStats(
     for (let i = 0; i < postLaunch.length; i++) {
       const blockNumber = blocks[i]?.number;
       if (blockNumber === null || blockNumber === undefined) {
-        console.log(
+        log.info(
           `[ProtocolStats] Skipping ${postLaunch[i]} - no block resolved`
         );
         continue;
@@ -160,14 +162,14 @@ export async function backfillProtocolStats(
     // calls per iter.
     const tAggBuild = performance.now();
     const aggregator = await buildVaultAggregator(chainId);
-    console.log(
+    log.info(
       `[ProtocolStats] Phase 2 prep: built in-memory aggregator in ${(performance.now() - tAggBuild).toFixed(0)}ms`
     );
 
     // Pre-launch zero-fills first — just DB upserts, no RPC. One row per
     // configured vault per pre-launch timestamp.
     if (preLaunch.length > 0) {
-      console.log(
+      log.info(
         `[ProtocolStats] Phase 2a: upserting ${preLaunch.length} × ${vaults.length} pre-launch zero-fills...`
       );
       const tPreLaunch = performance.now();
@@ -188,21 +190,21 @@ export async function backfillProtocolStats(
             totals.upsert += performance.now() - t0;
             skipCount++;
             if (skipCount % preStep === 0 || skipCount === totalPreUpserts) {
-              console.log(
+              log.info(
                 `[ProtocolStats] Phase 2a: ${skipCount}/${totalPreUpserts} (${((performance.now() - tPreLaunch) / 1000).toFixed(1)}s)`
               );
             }
           }
         }
       );
-      console.log(
+      log.info(
         `[ProtocolStats] Phase 2a: done in ${((performance.now() - tPreLaunch) / 1000).toFixed(1)}s`
       );
     }
 
     // Real on-chain snapshots — fan out per-vault inside each timestamp.
     if (resolved.length > 0) {
-      console.log(
+      log.info(
         `[ProtocolStats] Phase 2b: fetching on-chain state + DB aggregates for ${resolved.length} timestamps × ${vaults.length} vault(s) (concurrency ${BACKFILL_SNAPSHOT_CONCURRENCY})...`
       );
     }
@@ -329,7 +331,7 @@ export async function backfillProtocolStats(
           // See `computeAndStoreProtocolStats` for the rationale on why this
           // stays at log-level rather than error.
           if (reconciliationDelta !== 0n) {
-            console.log(
+            log.info(
               `[ProtocolStats] reconciliation Δ ≠ 0 for ${vault.kind}@${historicalAddrLower} ts=${timestamp}: Δ=${formatUnits(reconciliationDelta, 18)} USDe ` +
                 `(LHS balance+deployed=${formatUnits(actualTotalAssets, 18)} vs RHS=${formatUnits(expectedTotalAssets, 18)})`
             );
@@ -340,7 +342,7 @@ export async function backfillProtocolStats(
               timestamp,
               historicalAddrLower
             );
-            console.log(
+            log.info(
               formatGapDecomposition(
                 `ts=${timestamp} ${vault.kind}@${historicalAddrLower}`,
                 decomp,
@@ -383,7 +385,7 @@ export async function backfillProtocolStats(
 
         totals.rpcReads += rpcMs;
         const iterMs = performance.now() - iterStart;
-        console.log(
+        log.info(
           `[ProtocolStats] ${dateStr} block=${blockNumber} [${doneCount}/${totalRealUpserts}] ` +
             `iter=${iterMs.toFixed(0)}ms ` +
             `escrow=${formatUnits(escrowBalance, 18)} ` +
@@ -393,9 +395,9 @@ export async function backfillProtocolStats(
     );
   } catch (err) {
     crashError = err;
-    console.error(
-      '[ProtocolStats] Backfill threw — printing partial stats below:',
-      err
+    log.error(
+      { err: err },
+      '[ProtocolStats] Backfill threw — printing partial stats below:'
     );
   }
 
@@ -408,7 +410,7 @@ export async function backfillProtocolStats(
   const cumShare = (ms: number) =>
     `${(ms / 1000).toFixed(1)}s cumulative across workers (${phase2CumulativeMs > 0 ? ((ms / phase2CumulativeMs) * 100).toFixed(1) : '0'}% of phase-2 work)`;
   const verdict = crashError ? 'INCOMPLETE (see error above)' : 'complete';
-  console.log(
+  log.info(
     `[ProtocolStats] Backfill ${verdict}: ${successCount} snapshot upserts (across ${vaults.length} vault(s)), ${skipCount} pre-launch zero-fills, ${Math.max(0, postLaunch.length - resolved.length) * vaults.length} skipped in ${(elapsedMs / 1000).toFixed(1)}s\n` +
       `  Phase 1 (block resolution): ${wallPct(totals.resolveBlocks)}\n` +
       `  Phase 2 (per-snapshot work): ${wallPct(phase2WallMs)}\n` +

@@ -14,6 +14,10 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 
+import { createLogger } from '../core/logger';
+
+const log = createLogger('services.discordAlert');
+
 const WEBHOOK_PREFIX = 'https://discord.com/api/webhooks/';
 const APP_BASE_URL = 'https://sapience.xyz';
 
@@ -23,7 +27,7 @@ const DISCORD_WEBHOOK_URLS: string[] = (process.env.DISCORD_WEBHOOK_URLS || '')
   .filter((u) => {
     if (!u) return false;
     if (!u.startsWith(WEBHOOK_PREFIX)) {
-      console.warn(
+      log.warn(
         `[discordAlert] Ignoring invalid webhook URL (must start with ${WEBHOOK_PREFIX})`
       );
       return false;
@@ -199,7 +203,7 @@ export function sendPositionAlert(data: PositionAlertData): void {
   // Skip stale blocks (reindex safety)
   const nowSec = Math.floor(Date.now() / 1000);
   if (nowSec - data.blockTimestamp > STALE_BLOCK_THRESHOLD_S) {
-    console.debug(
+    log.debug(
       `[discordAlert] Skipping stale block (age=${nowSec - data.blockTimestamp}s, threshold=${STALE_BLOCK_THRESHOLD_S}s)`
     );
     return;
@@ -210,7 +214,7 @@ export function sendPositionAlert(data: PositionAlertData): void {
 
   // Rate limit check
   if (isRateLimited()) {
-    console.warn('[discordAlert] Rate limited, skipping position alert');
+    log.warn('[discordAlert] Rate limited, skipping position alert');
     return;
   }
 
@@ -232,7 +236,7 @@ export function sendPositionAlert(data: PositionAlertData): void {
           res
             .text()
             .then((body) => {
-              console.error(
+              log.error(
                 `[discordAlert] Webhook HTTP ${res.status}: ${body.slice(0, 200)}`
               );
             })
@@ -240,7 +244,7 @@ export function sendPositionAlert(data: PositionAlertData): void {
         }
       })
       .catch((err) => {
-        console.error(
+        log.error(
           `[discordAlert] Webhook failed (network):`,
           err?.message || err
         );

@@ -24,6 +24,10 @@ import {
 } from './gapDecomposition';
 import type { ProtocolStatsData } from './types';
 
+import { createLogger } from '../../core/logger';
+
+const log = createLogger('services.protocolStats.snapshots');
+
 /**
  * Get UTC midnight timestamp for a given date.
  */
@@ -115,13 +119,13 @@ export async function computeAndStoreProtocolStats(
   const client = getProviderForChain(chainId);
   const vaults = getConfiguredVaults(chainId);
   if (vaults.length === 0) {
-    console.log(`[ProtocolStats] No vaults configured for chain ${chainId}`);
+    log.info(`[ProtocolStats] No vaults configured for chain ${chainId}`);
     return;
   }
 
   const interval = resolveSnapshotIntervalSeconds(intervalSeconds);
 
-  console.log(
+  log.info(
     `[ProtocolStats] Starting stats computation for chain ${chainId}, ` +
       `${vaults.length} vault(s): ${vaults.map((v) => `${v.kind}@${v.address}`).join(', ')}, ` +
       `interval ${interval}s`
@@ -140,7 +144,7 @@ export async function computeAndStoreProtocolStats(
       `[ProtocolStats] Resolved a pending block for timestamp ${timestamp}; refusing to write a snapshot at chain-head state.`
     );
   }
-  console.log(
+  log.info(
     `[ProtocolStats] Resolved block ${blockNumber} for timestamp ${timestamp} (block ts=${targetBlock.timestamp})`
   );
 
@@ -155,7 +159,7 @@ export async function computeAndStoreProtocolStats(
     chainId,
     blockNumber
   );
-  console.log(
+  log.info(
     `[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe (V2 primary + past deploys)`
   );
 
@@ -236,7 +240,7 @@ export async function computeAndStoreProtocolStats(
       airdropGains;
     const reconciliationDelta = actualTotalAssets - expectedTotalAssets;
 
-    console.log(
+    log.info(
       `[ProtocolStats] ${vault.kind}@${vault.address}: ` +
         `balance=${formatUnits(vaultBalance, 18)}, available=${formatUnits(vaultAvailableAssets, 18)}, ` +
         `deployed=${formatUnits(vaultDeployed, 18)}, unredeemed=${formatUnits(unredeemedClaim, 18)}, ` +
@@ -257,7 +261,7 @@ export async function computeAndStoreProtocolStats(
     // because cumulative-balance drift persists across every subsequent
     // snapshot — making it loud causes alert fatigue rather than action.
     if (reconciliationDelta !== 0n) {
-      console.log(
+      log.info(
         `[ProtocolStats] reconciliation Δ ≠ 0 for ${vault.kind}@${vault.address} ts=${timestamp}: Δ=${formatUnits(reconciliationDelta, 18)} USDe ` +
           `(LHS balance+deployed=${formatUnits(actualTotalAssets, 18)} vs RHS=${formatUnits(expectedTotalAssets, 18)})`
       );
@@ -265,7 +269,7 @@ export async function computeAndStoreProtocolStats(
 
     if (GAP_DEBUG()) {
       const decomp = await decomposeVaultGap(chainId, timestamp, vault.address);
-      console.log(
+      log.info(
         formatGapDecomposition(
           `ts=${timestamp} ${vault.kind}@${vault.address}`,
           decomp,
@@ -299,7 +303,7 @@ export async function computeAndStoreProtocolStats(
     });
   }
 
-  console.log(
+  log.info(
     `[ProtocolStats] Snapshots stored: ${vaults.length} row(s) at ts=${timestamp}`
   );
 }

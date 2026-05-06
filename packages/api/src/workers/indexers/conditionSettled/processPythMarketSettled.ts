@@ -1,7 +1,9 @@
 import { decodeAbiParameters, type Log, type Block } from 'viem';
-import Sentry from '../../../core/instrument';
 import type { HandlerContext } from './handlerContext';
 import { settleCondition } from './settleCondition';
+import { createLogger } from '../../../core/logger';
+
+const logger = createLogger('processPythMarketSettled');
 
 /**
  * ABI parameter types for the non-indexed data fields of the MarketSettled event.
@@ -85,7 +87,6 @@ export async function processPythMarketSettled(
       },
     });
   } catch (error) {
-    console.error(`${tag} Error processing MarketSettled:`, error);
-    Sentry.captureException(error);
+    logger.error({ err: error }, `${tag} Error processing MarketSettled`);
   }
 }
