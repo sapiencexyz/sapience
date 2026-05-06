@@ -1,7 +1,9 @@
 import { decodeAbiParameters, type Log, type Block } from 'viem';
-import Sentry from '../../../core/instrument';
 import type { HandlerContext } from './handlerContext';
 import { settleCondition } from './settleCondition';
+import { createLogger } from '../../../core/logger';
+
+const logger = createLogger('processConditionResolved');
 
 /**
  * ABI parameter types for the unified ConditionResolved event from IConditionResolver.
@@ -59,7 +61,6 @@ export async function processConditionResolved(
       },
     });
   } catch (error) {
-    console.error(`${tag} Error processing ConditionResolved:`, error);
-    Sentry.captureException(error);
+    logger.error({ err: error }, `${tag} Error processing ConditionResolved`);
   }
 }

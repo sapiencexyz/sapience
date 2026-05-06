@@ -1347,7 +1347,13 @@ describe('PredictionMarketEscrowIndexer', () => {
     it('should warn and still create prediction when initial RPC fails', async () => {
       const indexer = new PredictionMarketEscrowIndexer(42161);
       const log = makePredictionCreatedLog();
-      const consoleWarnSpy = vi.spyOn(console, 'warn');
+      const writes: string[] = [];
+      const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((
+        chunk: unknown
+      ) => {
+        if (typeof chunk === 'string') writes.push(chunk);
+        return true;
+      }) as never);
 
       // RPC call to getPrediction fails
       indexer.client = {
@@ -1363,13 +1369,10 @@ describe('PredictionMarketEscrowIndexer', () => {
       const predCreate = mockPrisma.prediction.create.mock.calls[0][0];
       expect(predCreate.data.pickConfigId).toBeNull();
 
-      // Should log a warning about the RPC failure
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('RPC failed'),
-        expect.anything()
-      );
+      // Should log via pino → stdout about the RPC failure
+      expect(writes.some((w) => w.includes('RPC failed'))).toBe(true);
 
-      consoleWarnSpy.mockRestore();
+      stdoutSpy.mockRestore();
     });
 
     it('should repair positions when re-encountering a prediction with null pickConfigId', async () => {
@@ -1443,7 +1446,13 @@ describe('PredictionMarketEscrowIndexer', () => {
     it('should log a severe error when repair RPC also fails', async () => {
       const indexer = new PredictionMarketEscrowIndexer(42161);
       const log = makePredictionCreatedLog();
-      const consoleErrorSpy = vi.spyOn(console, 'error');
+      const writes: string[] = [];
+      const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((
+        chunk: unknown
+      ) => {
+        if (typeof chunk === 'string') writes.push(chunk);
+        return true;
+      }) as never);
 
       // Prediction exists but pickConfigId is null
       mockPrisma.prediction.findUnique.mockResolvedValue({
@@ -1461,17 +1470,14 @@ describe('PredictionMarketEscrowIndexer', () => {
       await indexer.indexBlocks('test', [50]);
 
       // Should NOT crash the indexer
-      // Should log a severe/critical error
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('CRITICAL'),
-        expect.anything()
-      );
+      // Should log a severe/critical error via pino → stdout
+      expect(writes.some((w) => w.includes('CRITICAL'))).toBe(true);
 
       // No writes should happen
       expect(mockPrisma.$transaction).not.toHaveBeenCalled();
       expect(mockPrisma.prediction.create).not.toHaveBeenCalled();
 
-      consoleErrorSpy.mockRestore();
+      stdoutSpy.mockRestore();
     });
   });
 });

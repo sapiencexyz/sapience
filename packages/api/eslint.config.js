@@ -23,6 +23,23 @@ export default [
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': 'warn',
       'import/order': 'warn',
+      // Use `logger` from src/core/logger.ts. Object-first call shape:
+      //   logger.info({ field }, 'message')
+      //   logger.error({ err }, 'message')   // err in object preserves stack
+      'no-console': 'error',
+    },
+  },
+  {
+    // instrument.ts runs Sentry init before the logger module loads, so it
+    // can't use `logger`. One-off scripts (src/scripts/*) and prisma/seed.ts
+    // are CLI tools where console output is the intentional UX.
+    files: [
+      'src/core/instrument.ts',
+      'src/scripts/**',
+      'prisma/seed.ts',
+    ],
+    rules: {
+      'no-console': 'off',
     },
   },
   {

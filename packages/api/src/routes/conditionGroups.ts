@@ -1,5 +1,8 @@
 import { Request, Response, Router } from 'express';
 import prisma from '../core/db';
+import { createLogger } from '../core/logger';
+
+const log = createLogger('routes.conditionGroups');
 
 /** Convert BigInt values to numbers so JSON.stringify doesn't throw. */
 function toJsonSafe<T>(obj: T): T {
@@ -26,7 +29,7 @@ router.get('/', async (_req: Request, res: Response) => {
     });
     return res.json(toJsonSafe(groups));
   } catch (error: unknown) {
-    console.error('Error fetching condition groups:', error);
+    log.error({ err: error }, 'Error fetching condition groups:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -86,11 +89,11 @@ router.post('/', async (req: Request, res: Response) => {
           message: 'A condition group with this name already exists',
         });
       }
-      console.error('Error creating condition group:', e);
+      log.error({ err: e }, 'Error creating condition group:');
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   } catch (error: unknown) {
-    console.error('Error in create condition group:', error);
+    log.error({ err: error }, 'Error in create condition group:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -167,11 +170,11 @@ router.put('/:id', async (req: Request, res: Response) => {
           message: 'A condition group with this name already exists',
         });
       }
-      console.error('Error updating condition group:', e);
+      log.error({ err: e }, 'Error updating condition group:');
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   } catch (error: unknown) {
-    console.error('Error in update condition group:', error);
+    log.error({ err: error }, 'Error in update condition group:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -244,11 +247,11 @@ router.put('/:id/conditions', async (req: Request, res: Response) => {
       });
       return res.json(toJsonSafe(group));
     } catch (e: unknown) {
-      console.error('Error updating condition group conditions:', e);
+      log.error({ err: e }, 'Error updating condition group conditions:');
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   } catch (error: unknown) {
-    console.error('Error in update condition group conditions:', error);
+    log.error({ err: error }, 'Error in update condition group conditions:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -284,11 +287,11 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
       return res.status(204).send();
     } catch (e: unknown) {
-      console.error('Error deleting condition group:', e);
+      log.error({ err: e }, 'Error deleting condition group:');
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   } catch (error: unknown) {
-    console.error('Error in delete condition group:', error);
+    log.error({ err: error }, 'Error in delete condition group:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });

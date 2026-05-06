@@ -5,6 +5,10 @@ import {
   backfillProtocolStats,
 } from '../../services/protocolStats';
 
+import { createLogger } from '../../core/logger';
+
+const log = createLogger('workers.jobs');
+
 const callReindexEAS = async (argv: string[]) => {
   const chainId = parseInt(argv[3], 10);
   const startTimestamp =
@@ -14,7 +18,7 @@ const callReindexEAS = async (argv: string[]) => {
   const overwriteExisting = argv[6] === 'true';
 
   if (isNaN(chainId)) {
-    console.error(
+    log.error(
       'Invalid arguments. Usage: tsx src/worker.ts reindexEAS <chainId> [startTimestamp] [endTimestamp] [overwriteExisting]'
     );
     process.exit(1);
@@ -28,17 +32,17 @@ const callReindexEAS = async (argv: string[]) => {
   );
 
   if (!result) {
-    console.error('Failed to reindex EAS');
+    log.error('Failed to reindex EAS');
     process.exit(1);
   }
 
-  console.log('Done reindexing EAS');
+  log.info('Done reindexing EAS');
   process.exit(0);
 };
 
 const callBackfillAccuracy = async () => {
   await backfillAccuracy();
-  console.log('Done backfilling accuracy scores');
+  log.info('Done backfilling accuracy scores');
   process.exit(0);
 };
 
@@ -58,7 +62,7 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
       const chainId = argv[3] ? parseInt(argv[3], 10) : undefined;
       const intervalSeconds = argv[4] ? parseInt(argv[4], 10) : undefined;
       await computeAndStoreProtocolStats(chainId, intervalSeconds);
-      console.log('Done computing protocol stats');
+      log.info('Done computing protocol stats');
       process.exit(0);
       return true;
     }
@@ -67,7 +71,7 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
       const chainId = argv[4] ? parseInt(argv[4], 10) : undefined;
       const intervalSeconds = argv[5] ? parseInt(argv[5], 10) : undefined;
       await backfillProtocolStats(chainId, days, intervalSeconds);
-      console.log('Done backfilling protocol stats');
+      log.info('Done backfilling protocol stats');
       process.exit(0);
       return true;
     }

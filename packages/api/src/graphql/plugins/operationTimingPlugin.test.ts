@@ -50,21 +50,28 @@ const findLog = (logs: string[], match: string): Record<string, unknown> => {
 describe('operationTimingPlugin', () => {
   let apollo: ApolloServer<ApolloContext>;
   let logs: string[];
-  let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     apollo = buildTestServer();
     await apollo.start();
     logs = [];
-    consoleSpy = vi
-      .spyOn(console, 'log')
-      .mockImplementation((line: unknown) => {
-        if (typeof line === 'string') logs.push(line);
-      });
+    // Pino writes serialized JSON lines via process.stdout.write, not console.
+    vi.spyOn(process.stdout, 'write').mockImplementation(((chunk: unknown) => {
+      const text =
+        typeof chunk === 'string'
+          ? chunk
+          : chunk instanceof Uint8Array
+            ? Buffer.from(chunk).toString('utf8')
+            : '';
+      for (const line of text.split('\n')) {
+        if (line) logs.push(line);
+      }
+      return true;
+    }) as never);
   });
 
   afterEach(async () => {
-    consoleSpy.mockRestore();
+    vi.restoreAllMocks();
     await apollo.stop();
   });
 

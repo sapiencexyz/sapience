@@ -1,6 +1,8 @@
 import { initializeDataSource } from '../../core/db';
-import * as Sentry from '@sentry/node';
 import EASPredictionIndexer from '../indexers/easIndexer';
+import { createLogger } from '../../core/logger';
+
+const log = createLogger('workers.jobs.reindexEAS');
 
 export async function reindexEAS(
   chainId: number,
@@ -9,7 +11,7 @@ export async function reindexEAS(
   overwriteExisting: boolean = false
 ) {
   try {
-    console.log(
+    log.info(
       `[EAS Reindex] Reindexing EAS attestations on chain ${chainId} from ${startTimestamp ? new Date(startTimestamp * 1000).toISOString() : 'beginning'} to ${endTimestamp ? new Date(endTimestamp * 1000).toISOString() : 'now'}`
     );
 
@@ -25,7 +27,7 @@ export async function reindexEAS(
       startTimestamp || Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60; // Default to 7 days ago
     const endTime = endTimestamp || Math.floor(Date.now() / 1000);
 
-    console.log(
+    log.info(
       `[EAS Reindex] Starting EAS reindexing for resource ${resourceSlug} on chain ${chainId}`
     );
 
@@ -37,24 +39,21 @@ export async function reindexEAS(
     );
 
     if (result) {
-      console.log(
+      log.info(
         `[EAS Reindex] Successfully completed EAS reindexing for chain ${chainId}`
       );
     } else {
-      console.error(
+      log.error(
         `[EAS Reindex] Failed to complete EAS reindexing for chain ${chainId}`
       );
     }
 
     return result;
   } catch (error) {
-    console.error('Error in reindexEAS:', error);
-    Sentry.withScope((scope: Sentry.Scope) => {
-      scope.setExtra('chainId', chainId);
-      scope.setExtra('startTimestamp', startTimestamp);
-      scope.setExtra('endTimestamp', endTimestamp);
-      Sentry.captureException(error);
-    });
+    log.error(
+      { err: error, chainId, startTimestamp, endTimestamp },
+      'Error in reindexEAS'
+    );
     throw error;
   }
 }

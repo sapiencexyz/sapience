@@ -16,6 +16,10 @@ import {
 } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
+import { createLogger } from './core/logger';
+
+const log = createLogger('fixtures');
+
 // Environment variable to control whether escrow indexers are enabled
 const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS === 'true';
 
@@ -98,11 +102,11 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
     const legacySecondaryCount = secondaryEntry?.legacy?.length ?? 0;
     const legacyResolverCount =
       getLegacyResolverAddressesForChain(chainId).length;
-    console.log(
+    log.info(
       `[Indexers] Escrow indexers enabled for chain ${chainId} (${getResolverAddressesForChain(chainId).length} resolvers, ${legacyEscrowCount} legacy escrow, ${legacySecondaryCount} legacy secondary, ${legacyResolverCount} legacy resolvers)`
     );
   } else {
-    console.log(
+    log.info(
       '[Indexers] Escrow indexers disabled (ENABLE_ESCROW_INDEXERS=false)'
     );
   }
@@ -114,7 +118,7 @@ export const INDEXERS: { [key: string]: IIndexer } = buildIndexers();
 
 // Function to initialize fixtures - upsert categories from fixtures.json
 export const initializeFixtures = async (): Promise<void> => {
-  console.log('Initializing fixtures from fixtures.json');
+  log.info('Initializing fixtures from fixtures.json');
 
   for (const categoryData of fixturesData.CATEGORIES) {
     let category = await prisma.category.findFirst({
@@ -128,7 +132,7 @@ export const initializeFixtures = async (): Promise<void> => {
           slug: categoryData.slug,
         },
       });
-      console.log('Created category:', categoryData.name);
+      log.info({ name: categoryData.name }, 'Created category');
     }
   }
 };

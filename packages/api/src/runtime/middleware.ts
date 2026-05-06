@@ -4,7 +4,12 @@ import helmet from 'helmet';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { recoverMessageAddress } from 'viem';
+import pinoHttp from 'pino-http';
+import { randomUUID } from 'node:crypto';
 import { config } from '../core/config';
+import { logger, createLogger } from '../core/logger';
+
+const log = createLogger('middleware');
 
 // ─── Admin auth ──────────────────────────────────────────────────────────────
 
@@ -45,14 +50,15 @@ export async function isValidWalletSignature(
       recoveredAddress.toLowerCase()
     );
     if (!isAllowed) {
-      console.warn(
-        `Admin auth failed: address ${recoveredAddress} not in allowlist`
+      log.warn(
+        { recoveredAddress },
+        'Admin auth failed: address not in allowlist'
       );
     }
 
     return isAllowed;
-  } catch (error) {
-    console.error('Error recovering address for admin auth', error);
+  } catch (err) {
+    log.error({ err }, 'Error recovering address for admin auth');
     return false;
   }
 }
@@ -153,6 +159,36 @@ const corsOptions: cors.CorsOptions = {
  * Creates fresh rate limiter instances per call so tests get isolation.
  */
 export function setupMiddleware(app: Express) {
+  // Request logging — must run first so every other middleware (and the
+  // global error handler) can use `req.log` and inherit the request id.
+  // /graphql is skipped because the Apollo operationTimingPlugin emits its
+  // own structured log per request; /health and /ready are skipped to keep
+  // load-balancer probes out of the log stream.
+  app.use(
+    pinoHttp({
+      logger,
+      genReqId: (req, res) => {
+        const upstream = req.headers['x-request-id'];
+        const id =
+          typeof upstream === 'string' && upstream ? upstream : randomUUID();
+        res.setHeader('x-request-id', id);
+        return id;
+      },
+      autoLogging: {
+        ignore: (req) => {
+          const url = req.url ?? '';
+          return (
+            url === '/health' || url === '/ready' || url.startsWith('/graphql')
+          );
+        },
+      },
+      customLogLevel: (_req, res, err) => {
+        if (err || res.statusCode >= 500) return 'error';
+        return 'info';
+      },
+    })
+  );
+
   // Base middleware
   // Configure Helmet CSP to allow Apollo Sandbox's embedded explorer
   app.use(

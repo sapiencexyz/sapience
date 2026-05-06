@@ -10,48 +10,16 @@ import { arbitrum } from 'viem/chains';
 import dotenv from 'dotenv';
 import { fromRoot } from './fromRoot';
 import * as viem from 'viem';
-import * as viemChains from 'viem/chains';
-import * as Sentry from '@sentry/node';
-
-export const etherealChain: viem.Chain = {
-  id: 5064014,
-  name: 'Ethereal Chain',
-  nativeCurrency: {
-    name: 'Ethena USDe',
-    symbol: 'USDe',
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: {
-      http: [process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade'],
-    },
-    public: { http: ['https://rpc.ethereal.trade'] },
-  },
-};
-
-export const etherealTestnetChain: viem.Chain = {
-  id: 13374202,
-  name: 'Ethereal Testnet',
-  nativeCurrency: {
-    name: 'Ethena USDe',
-    symbol: 'USDe',
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: {
-      http: [
-        process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net/',
-      ],
-    },
-    public: { http: ['https://rpc.etherealtest.net/'] },
-  },
-};
-
-export const chains: viem.Chain[] = [
-  ...Object.values(viemChains),
+import {
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
   etherealChain,
   etherealTestnetChain,
-];
+} from '@sapience/sdk/constants';
+
+import { createLogger } from '../core/logger';
+
+const log = createLogger('lib.utils');
 
 // Load environment variables
 dotenv.config({ path: fromRoot('.env') });
@@ -88,7 +56,7 @@ const createChainClient = (
   network: string,
   useLocalhost = false
 ) => {
-  if (chain.id === 5064014) {
+  if (chain.id === CHAIN_ID_ETHEREAL) {
     const rpcUrl =
       process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade';
     return createPublicClient({
@@ -100,7 +68,7 @@ const createChainClient = (
     });
   }
 
-  if (chain.id === 13374202) {
+  if (chain.id === CHAIN_ID_ETHEREAL_TESTNET) {
     const rpcUrl =
       process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net/';
     return createPublicClient({
@@ -124,10 +92,7 @@ const createChainClient = (
   });
 };
 
-export const arbitrumPublicClient = createChainClient(
-  arbitrum,
-  'arbitrum-mainnet'
-);
+const arbitrumPublicClient = createChainClient(arbitrum, 'arbitrum-mainnet');
 
 export function getProviderForChain(chainId: number): PublicClient {
   if (clientMap.has(chainId)) {
@@ -140,10 +105,10 @@ export function getProviderForChain(chainId: number): PublicClient {
     case 42161:
       newClient = arbitrumPublicClient as PublicClient;
       break;
-    case 5064014:
+    case CHAIN_ID_ETHEREAL:
       newClient = createChainClient(etherealChain, 'ethereal');
       break;
-    case 13374202:
+    case CHAIN_ID_ETHEREAL_TESTNET:
       newClient = createChainClient(etherealTestnetChain, 'ethereal-testnet');
       break;
     default:
@@ -180,7 +145,7 @@ export async function getBlockByTimestamp(
 
   // If the requested timestamp is in the future, return the latest block
   if (timestamp > Number(latestBlock.timestamp)) {
-    console.log(
+    log.info(
       `Requested timestamp ${timestamp} is in the future. Using latest block ${latestBlockNumber} with timestamp ${latestBlock.timestamp} instead.`
     );
     return latestBlock;
@@ -273,7 +238,7 @@ export async function resolveBlocksForTimestamps(
   const chunks = opts.chunks ?? Math.max(concurrency + 1, Math.round(1.44 * N));
   const prefix = opts.logPrefix ?? '[resolveBlocks]';
 
-  console.log(
+  log.info(
     `${prefix} starting: ${N} targets, ${chunks + 1} skeleton boundaries, concurrency ${concurrency}`
   );
 
@@ -283,7 +248,7 @@ export async function resolveBlocksForTimestamps(
     blockNumber: latestBlockNumber,
   });
   const latestTs = Number(latestBlock.timestamp);
-  console.log(
+  log.info(
     `${prefix} latest block: ${latestBlockNumber} (ts=${latestTs}) in ${(performance.now() - tLatest).toFixed(0)}ms`
   );
 
@@ -306,14 +271,14 @@ export async function resolveBlocksForTimestamps(
       const b = await client.getBlock({ blockNumber });
       skeletonDone++;
       if (skeletonDone % skeletonStep === 0 || skeletonDone === chunks + 1) {
-        console.log(
+        log.info(
           `${prefix} skeleton: ${skeletonDone}/${chunks + 1} boundaries fetched (${(performance.now() - tSkeleton).toFixed(0)}ms)`
         );
       }
       return b;
     }
   );
-  console.log(
+  log.info(
     `${prefix} skeleton ready in ${((performance.now() - tSkeleton) / 1000).toFixed(1)}s`
   );
   const skeleton: Array<{ blockNumber: bigint; timestamp: bigint }> =
@@ -380,7 +345,7 @@ export async function resolveBlocksForTimestamps(
       const elapsed = (performance.now() - tLookups) / 1000;
       const rate = lookupsDone / elapsed;
       const eta = (N - lookupsDone) / rate;
-      console.log(
+      log.info(
         `${prefix} lookups: ${lookupsDone}/${N} (${elapsed.toFixed(1)}s elapsed, ETA ${eta.toFixed(1)}s)`
       );
     }
@@ -407,21 +372,18 @@ export async function withRetry<T>(
       return await operation();
     } catch (error) {
       lastError = error as Error;
-      console.error(
-        `Attempt ${attempt}/${maxRetries} failed for ${name}:`,
-        error
+      log.error(
+        {
+          err: error,
+          attempt,
+          maxRetries,
+          operationName: name,
+        },
+        `Attempt ${attempt}/${maxRetries} failed for ${name}`
       );
 
-      // Report error to Sentry with context
-      Sentry.withScope((scope) => {
-        scope.setExtra('attempt', attempt);
-        scope.setExtra('maxRetries', maxRetries);
-        scope.setExtra('operationName', name);
-        Sentry.captureException(error);
-      });
-
       if (attempt < maxRetries) {
-        console.log(`Retrying ${name} in ${RETRY_DELAY / 1000} seconds...`);
+        log.info(`Retrying ${name} in ${RETRY_DELAY / 1000} seconds...`);
         await delay(RETRY_DELAY);
       }
     }
@@ -429,7 +391,10 @@ export async function withRetry<T>(
   const finalError = new Error(
     `All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`
   );
-  Sentry.captureException(finalError);
+  log.error(
+    { err: finalError, operationName: name, maxRetries },
+    'All retries exhausted'
+  );
   throw finalError;
 }
 
@@ -443,9 +408,9 @@ export function createResilientProcess<T>(
         // Use the `withRetry` from this module
         return await withRetry(process, name);
       } catch (error) {
-        console.error(
-          `Process ${name} failed after all retries. Restarting...`,
-          error
+        log.error(
+          { err: error },
+          `Process ${name} failed after all retries. Restarting...`
         );
         // Use the `delay` from this module and the RETRY_DELAY constant
         await delay(RETRY_DELAY);

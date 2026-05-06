@@ -8,9 +8,12 @@ import {
   parseUnits,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { etherealTestnetChain, etherealChain } from '../lib/utils';
+import { etherealTestnetChain, etherealChain } from '@sapience/sdk/constants';
 import { computeSmartAccountAddress } from '@sapience/sdk/session';
-import * as Sentry from '@sentry/node';
+
+import { createLogger } from '../core/logger';
+
+const log = createLogger('services.sponsorship');
 
 // OnboardingSponsor ABI — only the functions we need
 const SPONSOR_ABI = [
@@ -116,7 +119,7 @@ export async function grantSponsorshipBudget(
 ): Promise<string | null> {
   const config = getConfig();
   if (!config) {
-    console.log(
+    log.info(
       '[sponsorship] Not configured (missing BUDGET_MANAGER_PRIVATE_KEY or ONBOARDING_SPONSOR_ADDRESS)'
     );
     return null;
@@ -128,7 +131,7 @@ export async function grantSponsorshipBudget(
     // Derive the smart account address from the EOA — the sponsor contract
     // tracks budgets by smart account address, not raw EOA.
     const smartAccount = computeSmartAccountAddress(beneficiary);
-    console.log(
+    log.info(
       `[sponsorship] Derived smart account ${smartAccount} for EOA ${beneficiary}`
     );
 
@@ -141,7 +144,7 @@ export async function grantSponsorshipBudget(
     })) as bigint;
 
     if (existing > 0n) {
-      console.log(
+      log.info(
         `[sponsorship] ${smartAccount} (EOA ${beneficiary}) already has budget: ${existing}`
       );
       return null;
@@ -159,7 +162,7 @@ export async function grantSponsorshipBudget(
       account,
     });
 
-    console.log(
+    log.info(
       `[sponsorship] setBudget tx sent for ${smartAccount} (EOA ${beneficiary}): ${hash}`
     );
 
@@ -167,31 +170,33 @@ export async function grantSponsorshipBudget(
     publicClient
       .waitForTransactionReceipt({ hash })
       .then((receipt) => {
-        console.log(
+        log.info(
           `[sponsorship] setBudget confirmed for ${smartAccount} (EOA ${beneficiary}) in block ${receipt.blockNumber}`
         );
       })
       .catch((err) => {
-        console.error(
-          `[sponsorship] setBudget confirmation failed for ${smartAccount} (EOA ${beneficiary}):`,
-          err
+        log.error(
+          {
+            err,
+            tags: { service: 'sponsorship' },
+            beneficiary,
+            smartAccount,
+            hash,
+          },
+          '[sponsorship] setBudget confirmation failed'
         );
-        Sentry.captureException(err, {
-          tags: { service: 'sponsorship' },
-          extra: { beneficiary, smartAccount, hash },
-        });
       });
 
     return hash;
   } catch (err) {
-    console.error(
-      `[sponsorship] Failed to grant budget to ${beneficiary}:`,
-      err
+    log.error(
+      {
+        err,
+        tags: { service: 'sponsorship' },
+        beneficiary,
+      },
+      '[sponsorship] Failed to grant budget'
     );
-    Sentry.captureException(err, {
-      tags: { service: 'sponsorship' },
-      extra: { beneficiary },
-    });
     return null;
   }
 }
@@ -223,9 +228,9 @@ export async function getRemainingBudget(
 
     return remaining;
   } catch (err) {
-    console.error(
-      `[sponsorship] Failed to read budget for ${smartAccount} (EOA ${beneficiary}):`,
-      err
+    log.error(
+      { err: err },
+      `[sponsorship] Failed to read budget for ${smartAccount} (EOA ${beneficiary}):`
     );
     return null;
   }

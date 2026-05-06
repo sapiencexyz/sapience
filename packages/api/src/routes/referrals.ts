@@ -4,6 +4,9 @@ import { hashReferralCode } from '../services';
 import { recoverMessageAddress, type Address } from 'viem';
 import { adminAuth } from '../runtime/middleware';
 import { grantSponsorshipBudget } from '../services/sponsorship';
+import { createLogger } from '../core/logger';
+
+const log = createLogger('routes.referrals');
 
 const router = Router();
 
@@ -150,7 +153,7 @@ router.post('/code', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Invalid signature' });
     }
   } catch (e) {
-    console.error('Error verifying referral code signature', e);
+    log.error({ err: e }, 'Error verifying referral code signature');
     return res.status(400).json({ message: 'Failed to verify signature' });
   }
 
@@ -165,7 +168,7 @@ router.post('/code', async (req: Request, res: Response) => {
       });
     }
   } catch (e) {
-    console.error('Error checking trading volume', e);
+    log.error({ err: e }, 'Error checking trading volume');
     return res.status(500).json({ message: 'Failed to verify trading volume' });
   }
 
@@ -241,7 +244,7 @@ router.post('/code', async (req: Request, res: Response) => {
         message: 'Unable to set referral code. Please choose a different code.',
       });
     }
-    console.error('Error setting referral code:', e);
+    log.error({ err: e }, 'Error setting referral code:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -280,7 +283,7 @@ router.post('/claim', async (req: Request, res: Response) => {
       });
     }
   } catch (e) {
-    console.error('Error verifying referral claim signature', e);
+    log.error({ err: e }, 'Error verifying referral claim signature');
     return res.status(400).json({
       message:
         'Signature verification failed. Your wallet may not support this signing method.',
@@ -364,9 +367,9 @@ router.post('/claim', async (req: Request, res: Response) => {
     const sponsorTxHash = await grantSponsorshipBudget(
       normalizeAddress(walletAddress) as Address
     ).catch((err) => {
-      console.error(
-        '[referrals] sponsorship grant failed (non-blocking):',
-        err
+      log.error(
+        { err: err },
+        '[referrals] sponsorship grant failed (non-blocking):'
       );
       return null;
     });
@@ -376,7 +379,7 @@ router.post('/claim', async (req: Request, res: Response) => {
       ...(sponsorTxHash ? { sponsorTxHash } : {}),
     });
   } catch (e) {
-    console.error('Error claiming referral code:', e);
+    log.error({ err: e }, 'Error claiming referral code:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -442,7 +445,7 @@ router.post('/admin/codes', adminAuth, async (req: Request, res: Response) => {
       claimCount: 0,
     });
   } catch (e) {
-    console.error('Error creating referral code:', e);
+    log.error({ err: e }, 'Error creating referral code:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -495,7 +498,7 @@ router.put(
         claimCount: updatedCode._count.claimedBy,
       });
     } catch (e) {
-      console.error('Error updating referral code:', e);
+      log.error({ err: e }, 'Error updating referral code:');
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   }
@@ -524,7 +527,7 @@ router.delete(
 
       return res.status(200).json({ message: 'Referral code deactivated' });
     } catch (e) {
-      console.error('Error deleting referral code:', e);
+      log.error({ err: e }, 'Error deleting referral code:');
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   }
