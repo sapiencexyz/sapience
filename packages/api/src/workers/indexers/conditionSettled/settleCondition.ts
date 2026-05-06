@@ -8,6 +8,10 @@ import { resolvePickConfigsForCondition } from './resolvePickConfigs';
 import type { Prisma } from '../../../../generated/prisma';
 import type { Log, Block } from 'viem';
 
+import { createLogger } from '../../../core/logger';
+
+const logger = createLogger('settleCondition');
+
 /**
  * Shared settlement pipeline used by both processConditionSettled and
  * processPythMarketSettled after they decode their respective ABI events.
@@ -57,7 +61,7 @@ export async function settleCondition(
     });
 
     if (existingEvent) {
-      console.log(
+      logger.info(
         `${tag} Skipping duplicate event tx=${eventKey.transactionHash} block=${eventKey.blockNumber} logIndex=${eventKey.logIndex}`
       );
       return null;
@@ -69,7 +73,7 @@ export async function settleCondition(
 
     if (!condition) {
       await tx.event.create({ data: eventRow });
-      console.warn(
+      logger.warn(
         `${tag} Settled but no matching Condition found for conditionId=${conditionId}`
       );
       return null;
@@ -121,7 +125,7 @@ export async function settleCondition(
 
   if (!settledCondition) return;
 
-  console.log(`${tag} Updated Condition ${conditionId} to settled`);
+  logger.info(`${tag} Updated Condition ${conditionId} to settled`);
 
   // Score forecasts outside the transaction — scoring is idempotent and can
   // be retried independently if it fails.
@@ -133,17 +137,17 @@ export async function settleCondition(
         settledCondition.id
       );
       await computeAndStoreMarketTwErrors(resolverAddress, settledCondition.id);
-      console.log(
+      logger.info(
         `${tag} Scored forecasts and computed TW errors for ${conditionId}`
       );
     } catch (scoringError) {
-      console.error(
-        `${tag} Error scoring forecasts for ${conditionId}:`,
-        scoringError
+      logger.error(
+        {
+          err: scoringError,
+          tags: { conditionId, resolverAddress },
+        },
+        `${tag} Error scoring forecasts for ${conditionId}`
       );
-      Sentry.captureException(scoringError, {
-        tags: { conditionId, resolverAddress },
-      });
     }
   }
 }

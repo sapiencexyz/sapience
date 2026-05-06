@@ -2,6 +2,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../generated/prisma';
 import { config } from './config';
+import { createLogger } from './logger';
+
+const log = createLogger('prisma');
 
 export const requestContext = new AsyncLocalStorage<{
   count: number;
@@ -59,11 +62,18 @@ function getInstance(): PrismaClient {
         const start = performance.now();
         try {
           const result = await Promise.race([query(args), timeoutPromise]);
-          const ms = performance.now() - start;
-          const rid = store?.requestId ?? '';
-          const prefix = rid ? `[prisma:${rid}]` : '[prisma]';
-          console.log(
-            `${prefix} ${model ?? 'raw'}.${operation} ${ms.toFixed(1)}ms`
+          const durationMs = performance.now() - start;
+          // Per-query logs at debug level — one Prisma operation per
+          // resolver field gets noisy fast in production. Filter with
+          // LOG_LEVEL=debug while investigating.
+          log.debug(
+            {
+              model: model ?? 'raw',
+              operation,
+              durationMs: Number(durationMs.toFixed(1)),
+              requestId: store?.requestId || undefined,
+            },
+            'prisma.query'
           );
           return result;
         } finally {
@@ -80,9 +90,9 @@ function getInstance(): PrismaClient {
 export const initializeDataSource = async () => {
   try {
     await getInstance().$connect();
-    console.log('Prisma has connected to the database!');
+    log.info('Prisma connected');
   } catch (err) {
-    console.error('Error during Prisma connection', err);
+    log.error({ err }, 'Prisma connection failed');
     throw err;
   }
 };

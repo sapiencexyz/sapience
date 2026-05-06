@@ -2,6 +2,9 @@ import { Router } from 'express';
 import { handleAsyncErrors } from '../services/handleAsyncErrors';
 import prisma from '../core/db';
 import { backfillProtocolStats } from '../services/protocolStats';
+import { createLogger } from '../core/logger';
+
+const log = createLogger('routes.reindex');
 
 const router = Router();
 
@@ -48,11 +51,11 @@ router.post(
           where: { id: job.id },
           data: { status: 'completed' },
         });
-        console.log(`[reindex/protocol-stats] Job ${job.id} completed`);
+        log.info(`[reindex/protocol-stats] Job ${job.id} completed`);
       } catch (error) {
-        console.error(
-          `[reindex/protocol-stats] Job ${job.id} failed:`,
-          error instanceof Error ? error.message : error
+        log.error(
+          { err: error, jobId: job.id },
+          '[reindex/protocol-stats] Job failed'
         );
         await prisma.backgroundJob
           .update({ where: { id: job.id }, data: { status: 'failed' } })

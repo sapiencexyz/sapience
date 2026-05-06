@@ -50,6 +50,22 @@ const validators = {
     default: 25,
     desc: 'Max concurrent GraphQL operations per IP before rejecting with 429',
   }),
+  LOG_LEVEL: str({
+    choices: [
+      'trace',
+      'debug',
+      'info',
+      'warn',
+      'error',
+      'fatal',
+      'silent',
+    ] as const,
+    default:
+      process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+        ? 'debug'
+        : 'info',
+    desc: 'Pino log level (trace|debug|info|warn|error|fatal|silent)',
+  }),
 };
 
 type Config = Readonly<ReturnType<typeof cleanEnv<typeof validators>>>;
