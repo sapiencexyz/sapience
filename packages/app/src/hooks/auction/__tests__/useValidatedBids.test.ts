@@ -369,4 +369,96 @@ describe('useValidatedBids', () => {
     expect(validated?.validationStatus).toBe('valid');
     expect(result.current.validBids).toHaveLength(1);
   });
+
+  // ---- Stale input: must drop in-flight results when inputs change ----
+
+  it('drops a validation result if predictorNonce changes before it commits', async () => {
+    // Validation hashes against the predictor snapshot (picks, collateral,
+    // nonce). If those change while a validation is in flight, the
+    // returned result was computed against an obsolete snapshot and must
+    // not be committed — otherwise the cache says "valid" for a bid that
+    // is no longer valid against the active prediction.
+    const bid = makeBid({ counterpartySignature: '0xstale_inputs' });
+
+    // First call (against OLD nonce) resolves to valid; the second call
+    // (against NEW nonce, after rerender) is held pending so it cannot
+    // commit a fresh "valid" result and mask the bug under test.
+    const resolvers: Array<(v: { status: string }) => void> = [];
+    mockValidateBidOnChain.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        })
+    );
+
+    const { result, rerender } = renderStable([bid], {
+      ...DEFAULT_OPTS,
+      predictorNonce: 1,
+    });
+    await flush(1);
+
+    // Inputs change mid-flight. The cleanup effect clears the cache and
+    // bumps the fingerprint so the in-flight result is recognized stale.
+    rerender({
+      bids: [bid],
+      opts: { ...DEFAULT_OPTS, predictorNonce: 2 },
+    });
+    await flush(1);
+
+    // Resolve the FIRST validation (queued against OLD nonce). Stale.
+    await act(async () => {
+      resolvers[0]({ status: 'valid' });
+      await new Promise<void>((r) => setTimeout(r, 0));
+    });
+    await flush();
+
+    const validated = result.current.validatedBids.find(
+      (b) => b.counterpartySignature === '0xstale_inputs'
+    );
+    // The second validation is still pending — bid must not show as valid
+    // from the stale first result.
+    expect(validated?.validationStatus).toBe('pending');
+    expect(result.current.validBids).toHaveLength(0);
+  });
+
+  it('drops a validation result if picks change before it commits', async () => {
+    const bid = makeBid({ counterpartySignature: '0xstale_picks' });
+
+    const resolvers: Array<(v: { status: string }) => void> = [];
+    mockValidateBidOnChain.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        })
+    );
+
+    const { result, rerender } = renderStable([bid]);
+    await flush(1);
+
+    rerender({
+      bids: [bid],
+      opts: {
+        ...DEFAULT_OPTS,
+        picks: [
+          {
+            conditionResolver: '0xResolver' as `0x${string}`,
+            conditionId: '0xCondition2' as `0x${string}`,
+            predictedOutcome: OutcomeSide.YES,
+          },
+        ],
+      },
+    });
+    await flush(1);
+
+    await act(async () => {
+      resolvers[0]({ status: 'valid' });
+      await new Promise<void>((r) => setTimeout(r, 0));
+    });
+    await flush();
+
+    const validated = result.current.validatedBids.find(
+      (b) => b.counterpartySignature === '0xstale_picks'
+    );
+    expect(validated?.validationStatus).toBe('pending');
+  });
 });

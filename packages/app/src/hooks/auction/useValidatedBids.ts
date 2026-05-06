@@ -73,6 +73,13 @@ export function useValidatedBids(
   const validatingRef = useRef<Set<string>>(new Set());
   const validatedSignaturesRef = useRef<Set<string>>(new Set());
 
+  // Input fingerprint: a validation in flight is only safe to commit if the
+  // prediction inputs (picks, predictor collateral, predictor nonce) still
+  // match the snapshot taken when validation started. If inputs changed, the
+  // result is stale (validateBidOnChain hashed against the OLD predictor
+  // info) and must be discarded.
+  const inputFingerprintRef = useRef<string>('');
+
   // Can we validate?
   const canValidate = useMemo(() => {
     if (!enabled || !predictionMarketAddress || !collateralTokenAddress)
@@ -125,6 +132,10 @@ export function useValidatedBids(
     validatedSignaturesRef.current.clear();
     validatingRef.current.clear();
     setValidationResults(new Map());
+    // Bump the fingerprint so any in-flight validation (hashed against the
+    // previous predictor snapshot) can detect itself as stale and skip its
+    // setValidationResults commit.
+    inputFingerprintRef.current = `${picksKey}::${predictorCollateral ?? ''}::${predictorNonce ?? ''}`;
   }, [picksKey, predictorCollateral, predictorNonce]);
 
   // Validate new bids when they arrive
@@ -158,6 +169,11 @@ export function useValidatedBids(
       validatingRef.current.add(bid.counterpartySignature);
     }
     setIsValidating(true);
+
+    // Snapshot inputs at validation start. If they change before commit,
+    // the result is stale (validateBidOnChain hashed against this snapshot,
+    // which no longer reflects the active prediction) — drop it.
+    const startFingerprint = `${picksKey}::${predictorCollateral ?? ''}::${predictorNonce ?? ''}`;
 
     const runValidation = async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -230,10 +246,20 @@ export function useValidatedBids(
         )
       );
 
-      // Commit unconditionally: results are sig-keyed and idempotent. Stale
-      // entries (sigs no longer in rawBids) are pruned by the cleanup effect
-      // below, so an effect re-run from a dep ref change must not discard
-      // an in-flight validation that completes after the new effect started.
+      // Drop stale results: if prediction inputs changed during the
+      // request, the validation hashed against an obsolete predictor
+      // snapshot and committing would poison the cache. validatingRef is
+      // cleared by the input-change effect, so no need to clean it here.
+      if (inputFingerprintRef.current !== startFingerprint) {
+        setIsValidating(validatingRef.current.size > 0);
+        return;
+      }
+
+      // Commit: results are sig-keyed and idempotent. Stale entries (sigs
+      // no longer in rawBids) are pruned by the cleanup effect below; this
+      // commit path also runs after a same-input rerender (relayer
+      // rebroadcast of the same bid), so we must NOT discard purely on the
+      // basis of effect re-run.
       setValidationResults((prev) => {
         const updated = new Map(prev);
         for (const [sig, result] of results) {
@@ -258,6 +284,7 @@ export function useValidatedBids(
     predictorCollateral,
     predictorNonce,
     picksJson,
+    picksKey,
     isSponsored,
     sponsorAddress,
   ]);
