@@ -948,7 +948,7 @@ export type CounterpartyVaultEvent = {
   blockNumber: Scalars['Int']['output'];
   chainId: Scalars['Int']['output'];
   counterparty: Scalars['String']['output'];
-  /** One of "deposit", "withdraw", "slash"  */
+  /** One of `deposit`, `withdraw`, `slash` */
   eventType: Scalars['String']['output'];
   id: Scalars['String']['output'];
   indexedAt: Scalars['DateTimeISO']['output'];
@@ -1042,7 +1042,7 @@ export type InsurancePoolEvent = {
   blockNumber: Scalars['Int']['output'];
   chainId: Scalars['Int']['output'];
   commitmentHash?: Maybe<Scalars['String']['output']>;
-  /** One of "funded", "drawn"  */
+  /** One of `funded`, `drawn` */
   eventType: Scalars['String']['output'];
   fromCounterparty?: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];

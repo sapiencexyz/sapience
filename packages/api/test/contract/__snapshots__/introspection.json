@@ -8557,7 +8557,7 @@
           },
           {
             "name": "eventType",
-            "description": "One of \"deposit\", \"withdraw\", \"slash\" ",
+            "description": "One of `deposit`, `withdraw`, `slash`",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -9498,7 +9498,7 @@
           },
           {
             "name": "eventType",
-            "description": "One of \"funded\", \"drawn\" ",
+            "description": "One of `funded`, `drawn`",
             "args": [],
             "type": {
               "kind": "NON_NULL",

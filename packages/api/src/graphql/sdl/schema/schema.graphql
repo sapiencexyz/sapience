@@ -839,7 +839,7 @@ type CounterpartyVaultEvent {
   chainId: Int!
   counterparty: String!
 
-  """One of "deposit", "withdraw", "slash" """
+  """One of `deposit`, `withdraw`, `slash`"""
   eventType: String!
   id: String!
   indexedAt: DateTimeISO!
@@ -944,7 +944,7 @@ type InsurancePoolEvent {
   chainId: Int!
   commitmentHash: String
 
-  """One of "funded", "drawn" """
+  """One of `funded`, `drawn`"""
   eventType: String!
   fromCounterparty: String
   id: String!
