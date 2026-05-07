@@ -7,8 +7,11 @@ import type { Filter, FilterResult } from './types';
 /**
  * UnionFilter: Keep items that pass ANY of the sub-filters (OR logic)
  *
- * Use this when you want to keep items that match at least one condition.
- * Each sub-filter can be tested and reused independently.
+ * Each sub-filter is invoked once on the full input, and an item is kept
+ * if any sub-filter's `kept` set contains it. Passing the whole list (not
+ * one item at a time) is what lets sibling-aware sub-filters work — e.g. a
+ * negRisk basket rescue that keeps low-volume children when at least one of
+ * their event-siblings has high volume.
  */
 export class UnionFilter<T> implements Filter<T> {
   name: string;
@@ -20,15 +23,17 @@ export class UnionFilter<T> implements Filter<T> {
   }
 
   apply(items: T[]): FilterResult<T> {
+    const keptSet = new Set<T>();
+    for (const f of this.filters) {
+      for (const item of f.apply(items).kept) {
+        keptSet.add(item);
+      }
+    }
+
     const kept: T[] = [];
     const removed: T[] = [];
-
     for (const item of items) {
-      // Keep if ANY filter would keep this item
-      const wouldKeep = this.filters.some(
-        (f) => f.apply([item]).kept.length > 0
-      );
-      if (wouldKeep) {
+      if (keptSet.has(item)) {
         kept.push(item);
       } else {
         removed.push(item);
