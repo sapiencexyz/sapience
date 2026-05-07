@@ -48,10 +48,8 @@ contract MockSmartAccount is IERC1271 {
 }
 
 /// @notice Non-EIP1271 contract (no isValidSignature function)
-contract NonEIP1271Contract {
-    // Intentionally empty - does not implement IERC1271
-
-    }
+/// @dev Intentionally empty — does not implement IERC1271
+contract NonEIP1271Contract { }
 
 /// @notice Contract that reverts on isValidSignature
 contract RevertingEIP1271Contract is IERC1271 {

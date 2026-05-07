@@ -280,6 +280,7 @@ export async function handleCommitmentSubmit(
   const broadcast: CommitmentBroadcast = {
     commitment: payload.commitment,
     signature: payload.signature,
+    picks: payload.picks,
     ...(payload.predictorSponsor
       ? { predictorSponsor: payload.predictorSponsor }
       : {}),

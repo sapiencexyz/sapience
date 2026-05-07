@@ -109,6 +109,7 @@ async function seedCommitment(): Promise<{
     signature,
     chainId: CHAIN_ID,
     executorContract: EXEC,
+    picks: [],
   };
 
   const hash = computeCommitmentHash(c, EXEC, CHAIN_ID);

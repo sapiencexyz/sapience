@@ -444,6 +444,78 @@ export type CollateralTransferType = {
   value: Scalars['String']['output'];
 };
 
+/** An on-chain committed intent signed by a predictor (PRD-001 §1). Tracks signed parameters, lifecycle status, and all slices and slashes observed during execute(). */
+export type Commitment = {
+  __typename?: 'Commitment';
+  amountIn: Scalars['String']['output'];
+  chainId: Scalars['Int']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  createdBlock: Scalars['Int']['output'];
+  createdTxHash: Scalars['String']['output'];
+  deadline: Scalars['Int']['output'];
+  executorTip: Scalars['String']['output'];
+  filledIn?: Maybe<Scalars['String']['output']>;
+  filledOut?: Maybe<Scalars['String']['output']>;
+  /** EIP-712 commitment hash (0x-prefixed) */
+  id: Scalars['String']['output'];
+  minAmountOut: Scalars['String']['output'];
+  minFillIn: Scalars['String']['output'];
+  nonce: Scalars['String']['output'];
+  pickConfigId: Scalars['String']['output'];
+  predictor: Scalars['String']['output'];
+  predictorWindowEnd: Scalars['Int']['output'];
+  refundedIn?: Maybe<Scalars['String']['output']>;
+  settledAt?: Maybe<Scalars['Int']['output']>;
+  settledTxHash?: Maybe<Scalars['String']['output']>;
+  slashes: Array<CommitmentSlash>;
+  slices: Array<CommitmentSlice>;
+  sponsorReleased?: Maybe<Scalars['String']['output']>;
+  sponsorUse: Scalars['String']['output'];
+  status: CommitmentStatus;
+  tipPaid?: Maybe<Scalars['String']['output']>;
+  walletRefunded?: Maybe<Scalars['String']['output']>;
+  walletUse: Scalars['String']['output'];
+};
+
+/** A counterparty slash recorded during execute() — vault drained, make-whole credit, insurance pool flows */
+export type CommitmentSlash = {
+  __typename?: 'CommitmentSlash';
+  blockNumber: Scalars['Int']['output'];
+  chainId: Scalars['Int']['output'];
+  commitmentHash: Scalars['String']['output'];
+  counterparty: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  makeWhole: Scalars['String']['output'];
+  poolContribution: Scalars['String']['output'];
+  poolReceived: Scalars['String']['output'];
+  txHash: Scalars['String']['output'];
+  vaultDrained: Scalars['String']['output'];
+};
+
+/** A single slice fill within a committed intent — the on-chain result of one counterparty quote */
+export type CommitmentSlice = {
+  __typename?: 'CommitmentSlice';
+  blockNumber: Scalars['Int']['output'];
+  chainId: Scalars['Int']['output'];
+  commitmentHash: Scalars['String']['output'];
+  counterparty: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  predictionId: Scalars['String']['output'];
+  quoteHash: Scalars['String']['output'];
+  sliceBonus: Scalars['String']['output'];
+  sliceIn: Scalars['String']['output'];
+  sliceIndex: Scalars['Int']['output'];
+  sliceOut: Scalars['String']['output'];
+  txHash: Scalars['String']['output'];
+};
+
+/** Lifecycle state of a committed intent: OPEN (awaiting execute), EXECUTED (settled with mint), EXPIRED (refunded after deadline), SLASH_ONLY_STAY_ALIVE (T2 silent-no-mint observation, may still settle). */
+export type CommitmentStatus =
+  | 'EXECUTED'
+  | 'EXPIRED'
+  | 'OPEN'
+  | 'SLASH_ONLY_STAY_ALIVE';
+
 export type Condition = {
   __typename?: 'Condition';
   _count?: Maybe<ConditionCount>;
@@ -869,6 +941,20 @@ export type ConditionWhereUniqueInput = {
   tags?: InputMaybe<StringNullableListFilter>;
 };
 
+/** Vault-level deposit, withdrawal, or slash event on the CounterpartyVault */
+export type CounterpartyVaultEvent = {
+  __typename?: 'CounterpartyVaultEvent';
+  amount: Scalars['String']['output'];
+  blockNumber: Scalars['Int']['output'];
+  chainId: Scalars['Int']['output'];
+  counterparty: Scalars['String']['output'];
+  /** One of "deposit", "withdraw", "slash"  */
+  eventType: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  indexedAt: Scalars['DateTimeISO']['output'];
+  txHash: Scalars['String']['output'];
+};
+
 export type DateTimeFilter = {
   equals?: InputMaybe<Scalars['DateTimeISO']['input']>;
   gt?: InputMaybe<Scalars['DateTimeISO']['input']>;
@@ -947,6 +1033,21 @@ export type ForecasterScore = {
   numTimeWeighted: Scalars['Int']['output'];
   sumErrorSquared: Scalars['Float']['output'];
   sumTimeWeightedError: Scalars['Float']['output'];
+};
+
+/** Insurance pool funding or draw event emitted from CommittedIntentExecutor during slash handling */
+export type InsurancePoolEvent = {
+  __typename?: 'InsurancePoolEvent';
+  amount: Scalars['String']['output'];
+  blockNumber: Scalars['Int']['output'];
+  chainId: Scalars['Int']['output'];
+  commitmentHash?: Maybe<Scalars['String']['output']>;
+  /** One of "funded", "drawn"  */
+  eventType: Scalars['String']['output'];
+  fromCounterparty?: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  indexedAt: Scalars['DateTimeISO']['output'];
+  txHash: Scalars['String']['output'];
 };
 
 export type IntFilter = {
@@ -1633,11 +1734,21 @@ export type Query = {
   collateralBalance: CollateralBalanceType;
   collateralBalanceHistory: Array<CollateralBalanceSnapshotType>;
   collateralTransfers: Array<CollateralTransferType>;
+  /** Look up a single committed intent by its EIP-712 commitmentHash, including all slices and slashes indexed against it */
+  commitment?: Maybe<Commitment>;
+  /** Paginated list of committed intents, filterable by predictor and status */
+  commitments: Array<Commitment>;
   condition?: Maybe<Condition>;
   /** @deprecated Field no longer supported */
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
+  /** Derived CounterpartyVault balance for an address, computed as sum(deposit) - sum(withdraw) - sum(slash) over indexed events. Returns stringified wei. */
+  counterpartyVaultBalance: Scalars['String']['output'];
+  /** Vault event history for a counterparty (deposits, withdrawals, slashes), ordered by block descending */
+  counterpartyVaultHistory: Array<CounterpartyVaultEvent>;
+  /** Paginated list of insurance-pool funding / draw events, most recent first */
+  insurancePoolEvents: Array<InsurancePoolEvent>;
   /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
   openInterestByCategory: Array<CategoryOpenInterest>;
   /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
@@ -1829,6 +1940,19 @@ export type QueryCollateralTransfersArgs = {
 };
 
 
+export type QueryCommitmentArgs = {
+  commitmentHash: Scalars['String']['input'];
+};
+
+
+export type QueryCommitmentsArgs = {
+  limit?: Scalars['Int']['input'];
+  offset?: Scalars['Int']['input'];
+  predictor?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<CommitmentStatus>;
+};
+
+
 export type QueryConditionArgs = {
   where: ConditionWhereUniqueInput;
 };
@@ -1856,6 +1980,22 @@ export type QueryConditionsArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<ConditionWhereInput>;
+};
+
+
+export type QueryCounterpartyVaultBalanceArgs = {
+  address: Scalars['String']['input'];
+};
+
+
+export type QueryCounterpartyVaultHistoryArgs = {
+  address: Scalars['String']['input'];
+  limit?: Scalars['Int']['input'];
+};
+
+
+export type QueryInsurancePoolEventsArgs = {
+  limit?: Scalars['Int']['input'];
 };
 
 

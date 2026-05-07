@@ -129,16 +129,16 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
       indexers[`committed-intent-${chainId}`] = new CommittedIntentIndexer(
         chainId
       );
-      console.log(
+      log.info(
         `[Indexers] Committed Intent indexer enabled for chain ${chainId} (executor ${executorAddress})`
       );
     } else {
-      console.log(
+      log.info(
         `[Indexers] Committed Intent indexer flag is ON but COMMITTED_INTENT_EXECUTOR_ADDRESS is unset — skipping`
       );
     }
   } else {
-    console.log(
+    log.info(
       '[Indexers] Committed Intent indexer disabled (COMMITTED_INTENT_INDEXER_ENABLED=false)'
     );
   }

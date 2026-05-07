@@ -192,6 +192,11 @@ export function useSubmitCommitment({
           predictorSponsorData: params.predictorSponsorData,
           chainId,
           executorContract: executorAddress,
+          picks: params.picks.map((p) => ({
+            conditionResolver: p.conditionResolver,
+            conditionId: p.conditionId,
+            predictedOutcome: p.predictedOutcome,
+          })),
         };
 
         await wsClient.submitCommitment(signedJson);

@@ -2,11 +2,14 @@ import prisma from '../../core/db';
 import { getProviderForChain } from '../../lib/utils';
 import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
 import Sentry from '../../core/instrument';
+import { createLogger } from '../../core/logger';
 import { IIndexer } from '../../interfaces';
 import {
   committedIntentExecutorAbi,
   counterpartyVaultAbi,
 } from '@sapience/sdk/abis';
+
+const logger = createLogger('committedIntentIndexer');
 
 /**
  * Committed Intent Indexer
@@ -161,7 +164,7 @@ class CommittedIntentIndexer implements IIndexer {
       Number(readEnv('COMMITTED_INTENT_BLOCK_CREATED', chainId) ?? '0');
     this.blockCreated = BigInt(blockCreatedRaw || 0);
 
-    console.log(
+    logger.info(
       `[CommittedIntentIndexer:${this.chainId}] Initialized executor=${this.executorAddress} vault=${this.vaultAddress ?? 'none'} blockCreated=${this.blockCreated}`
     );
   }
@@ -185,7 +188,7 @@ class CommittedIntentIndexer implements IIndexer {
     this.isWatching = true;
 
     this.sigintHandler = () => {
-      console.log(
+      logger.info(
         `[CommittedIntentIndexer:${this.chainId}] Received SIGINT, stopping...`
       );
       this.stop();
@@ -212,7 +215,7 @@ class CommittedIntentIndexer implements IIndexer {
           this.lastProcessedBlock = 0n;
         }
       }
-      console.log(
+      logger.info(
         `[CommittedIntentIndexer:${this.chainId}] Starting from block ${this.lastProcessedBlock}`
       );
     }
@@ -246,9 +249,9 @@ class CommittedIntentIndexer implements IIndexer {
           });
         }
       } catch (error) {
-        console.error(
-          `[CommittedIntentIndexer:${this.chainId}] Poll error:`,
-          error
+        logger.error(
+          { err: error },
+          `[CommittedIntentIndexer:${this.chainId}] Poll error`
         );
         Sentry.captureException(error);
       }
@@ -268,7 +271,7 @@ class CommittedIntentIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log(`[CommittedIntentIndexer:${this.chainId}] Stopped`);
+    logger.info(`[CommittedIntentIndexer:${this.chainId}] Stopped`);
   }
 
   // --- Core indexing ---
@@ -343,9 +346,9 @@ class CommittedIntentIndexer implements IIndexer {
         })) as Log[];
       } catch (error) {
         if (attempt === MAX_RETRIES) throw error;
-        console.warn(
-          `[CommittedIntentIndexer:${this.chainId}] getLogs failed (attempt ${attempt}/${MAX_RETRIES}):`,
-          error instanceof Error ? error.message : error
+        logger.warn(
+          { err: error, attempt, maxRetries: MAX_RETRIES },
+          `[CommittedIntentIndexer:${this.chainId}] getLogs failed (attempt ${attempt}/${MAX_RETRIES})`
         );
         await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
       }
@@ -420,9 +423,9 @@ class CommittedIntentIndexer implements IIndexer {
           break;
       }
     } catch (error) {
-      console.error(
-        `[CommittedIntentIndexer:${this.chainId}] Error processing ${eventName} at tx ${log.transactionHash}:`,
-        error
+      logger.error(
+        { err: error, eventName, txHash: log.transactionHash },
+        `[CommittedIntentIndexer:${this.chainId}] Error processing ${eventName} at tx ${log.transactionHash}`
       );
       Sentry.captureException(error);
     }
@@ -457,7 +460,7 @@ class CommittedIntentIndexer implements IIndexer {
       update: {},
     });
 
-    console.log(
+    logger.info(
       `[CommittedIntentIndexer:${this.chainId}] CommitmentCreated ${commitmentHash}`
     );
   }
@@ -508,7 +511,7 @@ class CommittedIntentIndexer implements IIndexer {
       }
     }
 
-    console.log(
+    logger.info(
       `[CommittedIntentIndexer:${this.chainId}] Executed ${commitmentHash} status=${status} filledIn=${event.filledIn}`
     );
   }
@@ -561,7 +564,7 @@ class CommittedIntentIndexer implements IIndexer {
         settledTxHash: log.transactionHash ?? '',
       },
     });
-    console.log(
+    logger.info(
       `[CommittedIntentIndexer:${this.chainId}] CommitmentExpired ${commitmentHash}`
     );
   }
@@ -698,9 +701,9 @@ class CommittedIntentIndexer implements IIndexer {
       // are not tracked here: SlashTotal is mirrored from the executor's
       // CounterpartySlashed event (canonical) and the others are operational.
     } catch (error) {
-      console.error(
-        `[CommittedIntentIndexer:${this.chainId}] Error processing vault ${eventName}:`,
-        error
+      logger.error(
+        { err: error, eventName },
+        `[CommittedIntentIndexer:${this.chainId}] Error processing vault ${eventName}`
       );
       Sentry.captureException(error);
     }

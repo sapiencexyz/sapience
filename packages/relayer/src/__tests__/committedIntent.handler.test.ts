@@ -130,6 +130,7 @@ async function buildSigned(
     signature,
     chainId: CHAIN_ID,
     executorContract: EXEC,
+    picks: [],
     ...(overrides?.sponsored
       ? { predictorSponsor: '0x00000000000000000000000000000000000000f1' }
       : {}),
@@ -190,6 +191,7 @@ describe('handleCommitmentSubmit', () => {
       signature,
       chainId: CHAIN_ID,
       executorContract: EXEC,
+      picks: [],
     };
 
     const client = mockClient();

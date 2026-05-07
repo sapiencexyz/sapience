@@ -102,6 +102,7 @@ async function seedCommitment(): Promise<{ hash: string; deadline: bigint }> {
     signature,
     chainId: CHAIN_ID,
     executorContract: EXEC,
+    picks: [],
   };
   await handleCommitmentSubmit(mockClient(), signed, mockSubs());
   return {
