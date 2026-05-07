@@ -1,14 +1,22 @@
-import prisma from '../../db';
-import { getProviderForChain } from '../../utils/utils';
-import { type PublicClient, type Log, parseAbiItem } from 'viem';
-import Sentry from '../../instrument';
+import prisma from '../../core/db';
+import { Prisma } from '../../../generated/prisma';
+import { getProviderForChain } from '../../lib/utils';
+import {
+  type PublicClient,
+  type Log,
+  parseAbiItem,
+  zeroAddress as ZERO_ADDRESS,
+} from 'viem';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
+
+import { createLogger } from '../../core/logger';
+
+const logger = createLogger('positionTokenTransferIndexer');
 
 const BLOCK_BATCH_SIZE = 1000;
 const POLLING_INTERVAL_MS = 10_000;
 const INDEXER_STATE_KEY = 'v2-transfer-indexer';
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 // Deploy date for predictionMarketEscrow (2026-02-26T00:00:00Z) used as
 // fallback when blockCreated is not set in the SDK contract config.
@@ -66,7 +74,7 @@ class PositionTokenTransferIndexer implements IIndexer {
       ? `:${contractOverride.slice(0, 10).toLowerCase()}`
       : '';
 
-    console.log(
+    logger.info(
       `[TransferIndexer:${this.chainId}${this.indexerStateKeySuffix}] Initialized (legacy: ${this.isLegacy})`
     );
   }
@@ -103,11 +111,10 @@ class PositionTokenTransferIndexer implements IIndexer {
       try {
         await this.pollCycle();
       } catch (error) {
-        console.error(
-          `[TransferIndexer:${this.chainId}] Poll cycle error:`,
-          error
+        logger.error(
+          { err: error, chainId: this.chainId },
+          '[TransferIndexer] Poll cycle error'
         );
-        Sentry.captureException(error);
       }
     };
 
@@ -125,7 +132,7 @@ class PositionTokenTransferIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log(`[TransferIndexer:${this.chainId}] Stopped`);
+    logger.info(`[TransferIndexer:${this.chainId}] Stopped`);
   }
 
   // --- Core polling logic ---
@@ -133,7 +140,7 @@ class PositionTokenTransferIndexer implements IIndexer {
   private async pollCycle(): Promise<void> {
     const watchList = await this.loadWatchList();
     if (watchList.tokenAddresses.length === 0) {
-      console.log(
+      logger.info(
         `[TransferIndexer:${this.chainId}] No tokens to watch (all pickConfigs fullyRedeemed or none exist)`
       );
       return;
@@ -144,7 +151,7 @@ class PositionTokenTransferIndexer implements IIndexer {
     if (currentBlock <= lastBlock) return;
 
     const blocksToProcess = currentBlock - lastBlock;
-    console.log(
+    logger.info(
       `[TransferIndexer:${this.chainId}] Processing blocks ${lastBlock + 1n}..${currentBlock} (${blocksToProcess} blocks, watching ${watchList.tokenAddresses.length} tokens)`
     );
 
@@ -169,7 +176,7 @@ class PositionTokenTransferIndexer implements IIndexer {
       });
 
       if (logs.length > 0) {
-        console.log(
+        logger.info(
           `[TransferIndexer:${this.chainId}] Found ${logs.length} Transfer events in blocks ${start}..${end}`
         );
       }
@@ -218,7 +225,7 @@ class PositionTokenTransferIndexer implements IIndexer {
 
     // Skip mints — handled by the escrow indexer on PredictionCreated
     if (fromLower === ZERO_ADDRESS) {
-      console.log(
+      logger.info(
         `[TransferIndexer:${this.chainId}] Skipping mint event for ${tokenAddress} (to=${toLower}, value=${value})`
       );
       return;
@@ -227,7 +234,7 @@ class PositionTokenTransferIndexer implements IIndexer {
 
     const info = tokenInfoMap.get(tokenAddress);
     if (!info) {
-      console.warn(
+      logger.warn(
         `[TransferIndexer:${this.chainId}] Unknown token ${tokenAddress} not in watch list, skipping`
       );
       return;
@@ -238,58 +245,68 @@ class PositionTokenTransferIndexer implements IIndexer {
     const txHash = log.transactionHash || '';
     const logIdx = log.logIndex || 0;
 
-    // Idempotency: skip if we already recorded this exact event
-    const existing = await prisma.event.findFirst({
-      where: {
-        transactionHash: txHash,
-        logIndex: logIdx,
-        logData: { path: ['source'], equals: 'PositionTokenTransfer' },
-      },
-      select: { id: true },
-    });
-    if (existing) return;
+    // Wrap everything in a transaction so the event record and the balance
+    // arithmetic commit atomically. `event` has a unique constraint on
+    // (transactionHash, logIndex), so a replay from the reconciler hits P2002
+    // on create and we roll back the whole thing — no double-debit, no
+    // double-credit on Position balances.
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.event.create({
+          data: {
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: txHash,
+            timestamp: blockTimestamp,
+            logIndex: logIdx,
+            logData: {
+              source: 'PositionTokenTransfer',
+              chainId: this.chainId,
+              eventName: isBurn ? 'Burn' : 'Transfer',
+              args: {
+                from: fromLower,
+                to: toLower,
+                value: valueStr,
+                tokenAddress,
+              },
+            },
+          },
+        });
 
-    // Record raw event
-    await prisma.event.create({
-      data: {
-        blockNumber: Number(log.blockNumber || 0),
-        transactionHash: txHash,
-        timestamp: blockTimestamp,
-        logIndex: logIdx,
-        logData: {
-          source: 'PositionTokenTransfer',
-          chainId: this.chainId,
-          eventName: isBurn ? 'Burn' : 'Transfer',
-          args: { from: fromLower, to: toLower, value: valueStr, tokenAddress },
-        },
-      },
-    });
+        // Decrement sender balance
+        const rowsUpdated = await tx.$executeRaw`
+          UPDATE "Position"
+          SET balance = (balance::NUMERIC - ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
+          WHERE "chainId" = ${this.chainId}
+            AND "tokenAddress" = ${tokenAddress}
+            AND holder = ${fromLower}
+        `;
+        if (rowsUpdated === 0) {
+          logger.warn(
+            `[TransferIndexer:${this.chainId}] No Position row found to decrement for holder=${fromLower} token=${tokenAddress} (tx=${log.transactionHash})`
+          );
+        }
 
-    // Decrement sender balance
-    const rowsUpdated = await prisma.$executeRaw`
-      UPDATE "Position"
-      SET balance = (balance::NUMERIC - ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
-      WHERE "chainId" = ${this.chainId}
-        AND "tokenAddress" = ${tokenAddress}
-        AND holder = ${fromLower}
-    `;
-    if (rowsUpdated === 0) {
-      console.warn(
-        `[TransferIndexer:${this.chainId}] No Position row found to decrement for holder=${fromLower} token=${tokenAddress} (tx=${log.transactionHash})`
-      );
+        // Upsert receiver balance (skip for burns — no recipient)
+        if (!isBurn) {
+          await tx.$executeRaw`
+            INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
+            VALUES (${this.chainId}, ${tokenAddress}, ${info.pickConfigId}, ${info.isPredictorToken}, ${toLower}, ${valueStr}, NOW(), NOW())
+            ON CONFLICT ("chainId", "tokenAddress", holder)
+            DO UPDATE SET balance = ("Position".balance::NUMERIC + ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
+          `;
+        }
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        return;
+      }
+      throw e;
     }
 
-    // Upsert receiver balance (skip for burns — no recipient)
-    if (!isBurn) {
-      await prisma.$executeRaw`
-        INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
-        VALUES (${this.chainId}, ${tokenAddress}, ${info.pickConfigId}, ${info.isPredictorToken}, ${toLower}, ${valueStr}, NOW(), NOW())
-        ON CONFLICT ("chainId", "tokenAddress", holder)
-        DO UPDATE SET balance = ("Position".balance::NUMERIC + ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
-      `;
-    }
-
-    console.log(
+    logger.info(
       `[TransferIndexer:${this.chainId}] ${isBurn ? 'Burn' : 'Transfer'} ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr} pickConfig=${info.pickConfigId} block=${log.blockNumber} tx=${log.transactionHash}`
     );
   }
@@ -361,7 +378,7 @@ class PositionTokenTransferIndexer implements IIndexer {
     const startBlock = await this.findBlockByTimestamp(
       APPROXIMATE_DEPLOY_TIMESTAMP
     );
-    console.log(
+    logger.info(
       `[TransferIndexer:${this.chainId}] No cursor found, estimated deploy block ${startBlock}`
     );
     return startBlock > 0n ? startBlock - 1n : 0n;
@@ -388,7 +405,7 @@ class PositionTokenTransferIndexer implements IIndexer {
   }
 
   private async setLastIndexedBlock(block: number): Promise<void> {
-    console.log(
+    logger.info(
       `[TransferIndexer:${this.chainId}${this.indexerStateKeySuffix}] Persisting watermark block=${block}`
     );
     const key = `${INDEXER_STATE_KEY}:${this.chainId}${this.indexerStateKeySuffix}`;

@@ -19,15 +19,13 @@ const WUSDE_DEPOSIT_ABI = parseAbi(['function deposit() payable']);
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/escrowSigning';
 import type { OutcomeSide } from '@sapience/sdk';
 import { type Pick as EscrowPick } from '@sapience/sdk';
+import { generateRandomNonce } from '@sapience/sdk';
+import { validateCounterpartyFunds } from '@sapience/sdk/onchain/position';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
-
-import { useToast } from '@sapience/ui/hooks/use-toast';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { generateRandomNonce } from '@sapience/sdk';
-import { validateCounterpartyFunds } from '@sapience/sdk/onchain/position';
 
 export type EscrowBidSubmissionParams = {
   auctionId: string;
@@ -99,10 +97,8 @@ export function useEscrowBidSubmission(
     effectiveAddress,
     signTypedData: sessionSignTypedData,
     isUsingSession,
-    isUsingSmartAccount,
     chainClients,
   } = useSession();
-  const { toast } = useToast();
 
   // Get wUSDe contract address for the chain
   const wusdeAddress = collateralTokenAddresses[chainId]?.address as
@@ -427,7 +423,6 @@ export function useEscrowBidSubmission(
       };
     },
     [
-      address,
       chainId,
       verifyingContract,
       wsUrl,
@@ -435,13 +430,10 @@ export function useEscrowBidSubmission(
       onSignatureRejected,
       effectiveAddress,
       isUsingSession,
-      isUsingSmartAccount,
-      sessionSignTypedData,
       sessionSignTypedData,
       chainClients,
       wusdeAddress,
       formatAmount,
-      toast,
     ]
   );
 

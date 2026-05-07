@@ -1,7 +1,9 @@
 import { decodeEventLog, type Log, type Block } from 'viem';
-import Sentry from '../../../instrument';
 import type { HandlerContext } from './handlerContext';
 import { settleCondition } from './settleCondition';
+import { createLogger } from '../../../core/logger';
+
+const logger = createLogger('processConditionSettled');
 
 const CONDITION_SETTLED_EVENT_ABI = [
   {
@@ -68,7 +70,6 @@ export async function processConditionSettled(
       },
     });
   } catch (error) {
-    console.error(`${tag} Error processing ConditionSettled:`, error);
-    Sentry.captureException(error);
+    logger.error({ err: error }, `${tag} Error processing ConditionSettled`);
   }
 }

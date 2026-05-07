@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket, RawData } from 'ws';
-import prisma from '../db';
+import prisma from '../core/db';
 import {
   createChallenge,
   refreshToken,

@@ -45,7 +45,7 @@
     "framer-motion": "12.23.23",
     "graphql": "16.10.0",
     "lucide-react": "0.461.0",
-    "next": "15.5.9",
+    "next": "15.5.15",
     "next-themes": "0.3.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -63,7 +63,7 @@
   "devDependencies": {
     "@eslint/js": "9.18.0",
     "@graphql-eslint/eslint-plugin": "4.4.0",
-    "@next/eslint-plugin-next": "15.5.9",
+    "@next/eslint-plugin-next": "15.5.15",
     "@playwright/test": "1.55.1",
     "@tanstack/react-query-devtools": "5.84.2",
     "@testing-library/react": "16.3.1",
@@ -87,7 +87,7 @@
     "vitest": "2.1.9"
   },
   "engines": {
-    "node": ">=22.x",
+    "node": ">=22.12",
     "pnpm": "9.x"
   }
 }

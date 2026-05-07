@@ -1,16 +1,11 @@
-import 'reflect-metadata';
-import { buildSchema, type NonEmptyArray } from 'type-graphql';
-import {
-  relationResolvers,
-  ConditionGroupRelationsResolver,
-  ConditionRelationsResolver,
-} from '@generated/type-graphql';
-import { prisma } from './resolvers/GeneratedResolvers';
+import type { Request } from 'express';
+import prisma from '../core/db';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import { httpCacheHeadersPlugin } from './plugins/httpCacheHeadersPlugin';
+import { operationTimingPlugin } from './plugins/operationTimingPlugin';
 import depthLimit from 'graphql-depth-limit';
 import { GraphQLError } from 'graphql';
 import { validateQuery } from './queryValidation.js';
@@ -18,109 +13,47 @@ import {
   getComplexity,
   createComplexityEstimators,
 } from './queryComplexity.js';
-import { config } from '../config';
-import Sentry from '../instrument';
+import { config } from '../core/config';
+import { createLogger } from '../core/logger';
+import { buildApiSchema } from './buildSchema';
 
-// Import only the actively-used query resolvers from generated TypeGraphQL
-// See graphql-audit._ljm_.md for the full audit of which resolvers are used by consumers
-import {
-  FindManyAttestationResolver,
-  FindManyCategoryResolver,
-  FindUniqueConditionResolver,
-  FindManyConditionGroupResolver,
-  FindUniqueConditionGroupResolver,
-  FindManyUserResolver,
-  FindUniqueUserResolver,
-} from '@generated/type-graphql';
-
-// Import the custom resolvers to keep
-import {
-  PnLResolver,
-  ScoreResolver,
-  EscrowResolver,
-  AnalyticsResolver,
-  ConditionResolver,
-  VolumeResolver,
-  QuestionsResolver,
-  TradeResolver,
-  TimeSeriesResolver,
-  CollateralBalanceResolver,
-  ConditionGroupConditionsResolver,
-  ConditionFieldsResolver,
-  ActivityResolver,
-  TagsResolver,
-  CommittedIntentResolver,
-} from './resolvers';
+const log = createLogger('graphql');
 
 export interface ApolloContext {
   prisma: typeof prisma;
+  // Populated by core/server.ts when wiring expressMiddleware so the
+  // operation log can pick up the reqId pino-http attaches to each request.
+  // pino-http augments IncomingMessage with `id: ReqId` (string | number | object).
+  req?: Request;
+  // Set by the inline complexity plugin in didResolveOperation; read by
+  // operationTimingPlugin in willSendResponse. Optional because the
+  // complexity plugin skips pure-introspection queries.
+  queryComplexity?: number;
+  /**
+   * Optional per-request cache: conditionId → Prisma Condition row.
+   *
+   * Hot resolvers (positions, accountActivity) batch-load every
+   * referenced Condition up front and populate this map; the
+   * Pick.condition field resolver then returns rows from the cache
+   * without a per-pick round trip. Resolvers that don't pre-populate
+   * fall back to per-pick lookups.
+   *
+   * Stored on context (not as a request-scoped DataLoader) because we
+   * already do the batching ourselves before mapPickConfig and just
+   * need a place to stash the map for the field resolver to read.
+   */
+  pickConditions?: Map<string, unknown>;
 }
 
 export const initializeApolloServer = async () => {
-  // Generated query resolvers — only those with verified consumer usage
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  const queryResolvers: Function[] = [
-    FindManyAttestationResolver,
-    FindManyCategoryResolver,
-    FindUniqueConditionResolver,
-    FindManyConditionGroupResolver,
-    FindUniqueConditionGroupResolver,
-    FindManyUserResolver,
-    FindUniqueUserResolver,
-  ];
+  const schema = await buildApiSchema({ emitSchemaFile: true });
 
-  // Filter out generated relation resolvers replaced by custom implementations:
-  // - ConditionGroupRelationsResolver → ConditionGroupConditionsResolver (filters public = true)
-  // - ConditionRelationsResolver → ConditionFieldsResolver (returns pre-loaded data to avoid N+1)
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  const replacedResolvers: Set<Function> = new Set([
-    ConditionGroupRelationsResolver,
-    ConditionRelationsResolver,
-  ]);
-  const filteredRelationResolvers = relationResolvers.filter(
-    (r) => !replacedResolvers.has(r)
-  );
-  if (
-    filteredRelationResolvers.length !==
-    relationResolvers.length - replacedResolvers.size
-  ) {
-    throw new Error(
-      'Failed to filter generated relation resolvers — check that ConditionGroupRelationsResolver and ConditionRelationsResolver are still exported from @generated/type-graphql'
-    );
-  }
-
-  // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers
-  const allResolvers = queryResolvers
-    .concat(filteredRelationResolvers)
-    .concat([
-      PnLResolver,
-      ScoreResolver,
-      EscrowResolver,
-      AnalyticsResolver,
-      ConditionResolver,
-      VolumeResolver,
-      QuestionsResolver,
-      TradeResolver,
-      TimeSeriesResolver,
-      CollateralBalanceResolver,
-      ConditionGroupConditionsResolver,
-      ConditionFieldsResolver,
-      ActivityResolver,
-      TagsResolver,
-      CommittedIntentResolver,
-    ]);
-  const schema = await buildSchema({
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- type-graphql's buildSchema API requires NonEmptyArray<Function>
-    resolvers: allResolvers as NonEmptyArray<Function>,
-    validate: false,
-    emitSchemaFile: true,
-  });
-
-  // Default of 10000 allows all legitimate app queries (max ~8700) while blocking
-  // deeply nested queries like conditions(take: 200) with 5 levels of nesting (~55000)
+  // Default of 15000 covers legitimate app queries (positions(take:50) with
+  // inline Pick.condition tops ~11000) while still blocking deeply nested
+  // queries like conditions(take: 200) with 5 levels of nesting (~55000).
   const maxComplexity = config.GRAPHQL_MAX_COMPLEXITY;
 
-  console.log(`GraphQL query complexity limit set to: ${maxComplexity}`);
+  log.info({ maxComplexity }, 'GraphQL query complexity limit set');
 
   // Create Apollo Server with the combined schema, depth limit, and query complexity limit
   const apolloServer = new ApolloServer({
@@ -131,20 +64,41 @@ export const initializeApolloServer = async () => {
     // All data is public, CORS is strict, and error responses are excluded from caching.
     csrfPrevention: false,
     formatError: (formattedError, error) => {
-      console.error('GraphQL Error:', error);
+      // Apollo auto-attaches `code: 'INTERNAL_SERVER_ERROR'` to formattedError
+      // whenever a resolver throws a non-GraphQLError, so the presence of a
+      // code is NOT a reliable client/internal signal. The reliable signal is
+      // whether the error was thrown as a GraphQLError on purpose: a direct
+      // `throw new GraphQLError(...)` has `originalError === undefined`,
+      // whereas a wrapped non-GraphQLError exposes the underlying cause via
+      // `originalError`. Internal exceptions go to log.error (→ Sentry);
+      // intentional client-facing errors go to log.warn (stdout-only).
+      const isClientError =
+        error instanceof GraphQLError && error.originalError === undefined;
+      if (isClientError) {
+        log.warn(
+          { err: error, code: formattedError.extensions?.code },
+          'GraphQL client error'
+        );
+      } else {
+        log.error({ err: error }, 'GraphQL internal error');
+      }
       if (!config.isDev) {
         delete formattedError.extensions?.stacktrace;
       }
       return formattedError;
     },
     introspection: true,
-    validationRules: [depthLimit(5)],
+    // accountActivity → prediction → pickConfig → picks → condition →
+    // category → slug naturally needs depth 6. Limit kept tight enough to
+    // still block fan-out like conditions(take: 200) with 5+ relations.
+    validationRules: [depthLimit(6)],
     plugins: [
       ApolloServerPluginLandingPageLocalDefault({
         embed: true,
         includeCookies: true,
       }),
       httpCacheHeadersPlugin(),
+      operationTimingPlugin(),
       responseCachePlugin(),
       // Query complexity plugin
       // Note: Uses local adaptation of graphql-query-complexity to avoid
@@ -153,7 +107,7 @@ export const initializeApolloServer = async () => {
       {
         async requestDidStart() {
           return {
-            async didResolveOperation({ request, document }) {
+            async didResolveOperation({ request, document, contextValue }) {
               // Skip validation for pure introspection queries
               // (queries that ONLY contain __schema or __type fields)
               // Introspection is already gated by the introspection: true setting
@@ -188,28 +142,26 @@ export const initializeApolloServer = async () => {
                 ),
               });
 
-              if (config.isDev) {
-                console.log(`Query complexity: ${complexity}`);
-              }
+              // Bridge to operationTimingPlugin's willSendResponse logger.
+              contextValue.queryComplexity = complexity;
+
+              log.debug({ complexity }, 'Query complexity computed');
 
               if (complexity > maxComplexity) {
                 const errorMessage = `Query complexity limit exceeded. Maximum allowed: ${maxComplexity}, Actual: ${complexity}`;
                 const exceededBy = complexity - maxComplexity;
-
-                console.error(
-                  `Complexity limit exceeded! Max: ${maxComplexity}, Actual: ${complexity} (exceeded by ${exceededBy})`
-                );
-
-                // Only report to Sentry if complexity is significantly exceeded (>50% over limit)
+                // Sentry only for genuinely abusive queries (>50% over).
+                // Bounded queries that just nudge the limit stay stdout-only.
                 const exceededThreshold = maxComplexity * 1.5;
                 if (complexity > exceededThreshold) {
-                  Sentry.captureException(new Error(errorMessage), {
-                    level: 'warning',
-                    tags: {
-                      type: 'query_complexity_exceeded',
-                      graphql: 'validation',
-                    },
-                    extra: {
+                  log.error(
+                    {
+                      err: new Error(errorMessage),
+                      sentryLevel: 'warning',
+                      tags: {
+                        type: 'query_complexity_exceeded',
+                        graphql: 'validation',
+                      },
                       maxComplexity,
                       actualComplexity: complexity,
                       exceededBy,
@@ -217,7 +169,17 @@ export const initializeApolloServer = async () => {
                         (exceededBy / maxComplexity) * 100
                       ),
                     },
-                  });
+                    'Complexity limit exceeded (Sentry-reported)'
+                  );
+                } else {
+                  log.warn(
+                    {
+                      maxComplexity,
+                      actualComplexity: complexity,
+                      exceededBy,
+                    },
+                    'Complexity limit exceeded'
+                  );
                 }
 
                 throw new GraphQLError(errorMessage, {

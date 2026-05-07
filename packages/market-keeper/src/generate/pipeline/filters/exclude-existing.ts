@@ -10,12 +10,15 @@ export interface ExistingCondition {
   endTime: number;
   question?: string;
   shortName?: string;
+  optionName?: string;
   description?: string;
   similarMarkets?: string[];
   tags?: string[];
   similarMarketVolume?: number;
   similarMarketImage?: string;
   groupName?: string;
+  conditionGroupId?: number;
+  conditionGroupSimilarMarkets?: string[];
 }
 
 /**
@@ -41,13 +44,16 @@ export async function checkExistingConditions(
           endTime
           question
           shortName
+          optionName
           description
           similarMarkets
           tags
           similarMarketVolume
           similarMarketImage
           conditionGroup {
+            id
             name
+            similarMarkets
           }
         }
       }
@@ -80,12 +86,16 @@ export async function checkExistingConditions(
           endTime: condition.endTime,
           question: condition.question ?? undefined,
           shortName: condition.shortName ?? undefined,
+          optionName: condition.optionName ?? undefined,
           description: condition.description ?? undefined,
           similarMarkets: condition.similarMarkets ?? undefined,
           tags: condition.tags ?? undefined,
           similarMarketVolume: condition.similarMarketVolume ?? undefined,
           similarMarketImage: condition.similarMarketImage ?? undefined,
           groupName: condition.conditionGroup?.name ?? undefined,
+          conditionGroupId: condition.conditionGroup?.id ?? undefined,
+          conditionGroupSimilarMarkets:
+            condition.conditionGroup?.similarMarkets ?? undefined,
         });
       }
     }

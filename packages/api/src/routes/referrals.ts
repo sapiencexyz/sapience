@@ -1,9 +1,12 @@
 import { Request, Response, Router } from 'express';
-import prisma from '../db';
-import { hashReferralCode } from '../helpers';
+import prisma from '../core/db';
+import { hashReferralCode } from '../services';
 import { recoverMessageAddress, type Address } from 'viem';
-import { adminAuth } from '../middleware';
+import { adminAuth } from '../runtime/middleware';
 import { grantSponsorshipBudget } from '../services/sponsorship';
+import { createLogger } from '../core/logger';
+
+const log = createLogger('routes.referrals');
 
 const router = Router();
 
@@ -150,7 +153,7 @@ router.post('/code', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Invalid signature' });
     }
   } catch (e) {
-    console.error('Error verifying referral code signature', e);
+    log.error({ err: e }, 'Error verifying referral code signature');
     return res.status(400).json({ message: 'Failed to verify signature' });
   }
 
@@ -165,7 +168,7 @@ router.post('/code', async (req: Request, res: Response) => {
       });
     }
   } catch (e) {
-    console.error('Error checking trading volume', e);
+    log.error({ err: e }, 'Error checking trading volume');
     return res.status(500).json({ message: 'Failed to verify trading volume' });
   }
 
@@ -241,7 +244,7 @@ router.post('/code', async (req: Request, res: Response) => {
         message: 'Unable to set referral code. Please choose a different code.',
       });
     }
-    console.error('Error setting referral code:', e);
+    log.error({ err: e }, 'Error setting referral code:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -280,7 +283,7 @@ router.post('/claim', async (req: Request, res: Response) => {
       });
     }
   } catch (e) {
-    console.error('Error verifying referral claim signature', e);
+    log.error({ err: e }, 'Error verifying referral claim signature');
     return res.status(400).json({
       message:
         'Signature verification failed. Your wallet may not support this signing method.',
@@ -364,9 +367,9 @@ router.post('/claim', async (req: Request, res: Response) => {
     const sponsorTxHash = await grantSponsorshipBudget(
       normalizeAddress(walletAddress) as Address
     ).catch((err) => {
-      console.error(
-        '[referrals] sponsorship grant failed (non-blocking):',
-        err
+      log.error(
+        { err: err },
+        '[referrals] sponsorship grant failed (non-blocking):'
       );
       return null;
     });
@@ -376,7 +379,7 @@ router.post('/claim', async (req: Request, res: Response) => {
       ...(sponsorTxHash ? { sponsorTxHash } : {}),
     });
   } catch (e) {
-    console.error('Error claiming referral code:', e);
+    log.error({ err: e }, 'Error claiming referral code:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -442,92 +445,10 @@ router.post('/admin/codes', adminAuth, async (req: Request, res: Response) => {
       claimCount: 0,
     });
   } catch (e) {
-    console.error('Error creating referral code:', e);
+    log.error({ err: e }, 'Error creating referral code:');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
-
-// GET /referrals/admin/codes - list all codes with claim counts
-router.get('/admin/codes', adminAuth, async (_req: Request, res: Response) => {
-  try {
-    const codes = await prisma.referralCode.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { claimedBy: true },
-        },
-      },
-    });
-
-    return res.status(200).json(
-      codes.map((c) => ({
-        id: c.id,
-        codeHash: c.codeHash,
-        maxClaims: c.maxClaims,
-        isActive: c.isActive,
-        expiresAt: c.expiresAt,
-        createdBy: c.createdBy,
-        creatorType: c.creatorType,
-        createdAt: c.createdAt,
-        claimCount: c._count.claimedBy,
-      }))
-    );
-  } catch (e) {
-    console.error('Error listing referral codes:', e);
-    return res.status(500).json({ message: 'Internal Server Error' });
-  }
-});
-
-// GET /referrals/admin/codes/:id - get single code with claimants
-router.get(
-  '/admin/codes/:id',
-  adminAuth,
-  async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (Number.isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid id' });
-      }
-
-      const code = await prisma.referralCode.findUnique({
-        where: { id },
-        include: {
-          claimedBy: {
-            select: {
-              id: true,
-              address: true,
-              createdAt: true,
-            },
-          },
-        },
-      });
-
-      if (!code) {
-        return res.status(404).json({ message: 'Referral code not found' });
-      }
-
-      return res.status(200).json({
-        id: code.id,
-        codeHash: code.codeHash,
-        maxClaims: code.maxClaims,
-        isActive: code.isActive,
-        expiresAt: code.expiresAt,
-        createdBy: code.createdBy,
-        creatorType: code.creatorType,
-        createdAt: code.createdAt,
-        claimCount: code.claimedBy.length,
-        claimants: code.claimedBy.map((u) => ({
-          id: u.id,
-          address: u.address,
-          claimedAt: u.createdAt,
-        })),
-      });
-    } catch (e) {
-      console.error('Error fetching referral code:', e);
-      return res.status(500).json({ message: 'Internal Server Error' });
-    }
-  }
-);
 
 // PUT /referrals/admin/codes/:id - update code settings
 router.put(
@@ -577,7 +498,7 @@ router.put(
         claimCount: updatedCode._count.claimedBy,
       });
     } catch (e) {
-      console.error('Error updating referral code:', e);
+      log.error({ err: e }, 'Error updating referral code:');
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   }
@@ -606,140 +527,7 @@ router.delete(
 
       return res.status(200).json({ message: 'Referral code deactivated' });
     } catch (e) {
-      console.error('Error deleting referral code:', e);
-      return res.status(500).json({ message: 'Internal Server Error' });
-    }
-  }
-);
-
-// GET /referrals/admin/codes/:id/analytics - full analytics for a code
-router.get(
-  '/admin/codes/:id/analytics',
-  adminAuth,
-  async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (Number.isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid id' });
-      }
-
-      const code = await prisma.referralCode.findUnique({
-        where: { id },
-        include: {
-          claimedBy: {
-            select: {
-              address: true,
-            },
-          },
-        },
-      });
-
-      if (!code) {
-        return res.status(404).json({ message: 'Referral code not found' });
-      }
-
-      const userAddresses = code.claimedBy.map((u) => u.address);
-
-      if (userAddresses.length === 0) {
-        return res.status(200).json({
-          codeHash: code.codeHash,
-          claimCount: 0,
-          claimants: [],
-          totalVolume: '0',
-          totalPositions: 0,
-        });
-      }
-
-      // Get all positions for these users
-      const positions = await prisma.legacyPosition.findMany({
-        where: {
-          OR: [
-            { predictor: { in: userAddresses, mode: 'insensitive' } },
-            { counterparty: { in: userAddresses, mode: 'insensitive' } },
-          ],
-        },
-        select: {
-          predictor: true,
-          counterparty: true,
-          predictorCollateral: true,
-          counterpartyCollateral: true,
-        },
-      });
-
-      // Calculate per-user trading volume and position count
-      const userStats = new Map<
-        string,
-        { volume: bigint; positionCount: number }
-      >();
-
-      for (const addr of userAddresses) {
-        userStats.set(addr.toLowerCase(), {
-          volume: BigInt(0),
-          positionCount: 0,
-        });
-      }
-
-      for (const position of positions) {
-        const predictorLower = position.predictor.toLowerCase();
-        const counterpartyLower = position.counterparty.toLowerCase();
-
-        // Count position for predictor if they're in our user set
-        if (userStats.has(predictorLower)) {
-          const stats = userStats.get(predictorLower)!;
-          stats.positionCount += 1;
-          if (position.predictorCollateral) {
-            try {
-              stats.volume += BigInt(position.predictorCollateral);
-            } catch {
-              // Skip invalid values
-            }
-          }
-        }
-
-        // Count position for counterparty if they're in our user set
-        if (userStats.has(counterpartyLower)) {
-          const stats = userStats.get(counterpartyLower)!;
-          stats.positionCount += 1;
-          if (position.counterpartyCollateral) {
-            try {
-              stats.volume += BigInt(position.counterpartyCollateral);
-            } catch {
-              // Skip invalid values
-            }
-          }
-        }
-      }
-
-      // Build claimants array with stats
-      const claimants = userAddresses.map((addr) => {
-        const stats = userStats.get(addr.toLowerCase()) || {
-          volume: BigInt(0),
-          positionCount: 0,
-        };
-        return {
-          address: addr,
-          tradingVolume: stats.volume.toString(),
-          positionCount: stats.positionCount,
-        };
-      });
-
-      // Calculate totals
-      let totalVolume = BigInt(0);
-      let totalPositions = 0;
-      userStats.forEach((stats) => {
-        totalVolume += stats.volume;
-        totalPositions += stats.positionCount;
-      });
-
-      return res.status(200).json({
-        codeHash: code.codeHash,
-        claimCount: code.claimedBy.length,
-        claimants,
-        totalVolume: totalVolume.toString(),
-        totalPositions,
-      });
-    } catch (e) {
-      console.error('Error fetching referral code analytics:', e);
+      log.error({ err: e }, 'Error deleting referral code:');
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   }

@@ -17,7 +17,7 @@ Run from repo root unless stated otherwise.
 pnpm --filter @sapience/api install --prod=false  # ensure deps present (includes dev)
 pnpm --filter @sapience/api run prisma:setup      # deploy migrations + generate client
 pnpm run dev:api                                  # starts service, worker, and codegen with tsx watch
-pnpm --filter @sapience/api run dev:service       # API server only (tsx watch src/server.ts)
+pnpm --filter @sapience/api run dev:service       # API server only (tsx watch src/core/server.ts)
 pnpm --filter @sapience/api run dev:worker        # background worker (prediction market indexers)
 pnpm --filter @sapience/api run generate-types    # GraphQL Codegen
 pnpm --filter @sapience/api run compile           # lint, prisma generate, tsc
@@ -35,12 +35,12 @@ Reindex/backfill helpers (`start:reindex-*`, `start:backfill-accuracy`) are CLIs
   - GraphQL schema + SDK types: `generate-types` runs `prisma:generate` → `emit-schema` → `graphql-codegen`. No database connection needed.
   - `emit-schema` can also be run standalone to regenerate just `schema.graphql`.
 - Sentry sourcemaps: production build (`build`) invokes `sentry:sourcemaps`; ensure credentials are configured before running.
-- Centralize environment variables in `src/config.ts` via the envalid-powered `config.*` exports. Never read from `process.env` directly in the codebase; add new vars to `config.ts` and consume them as `config.MY_ENV_VAR`.
-- **Lazy initialization**: `config.ts` and `db.ts` use Proxy-based lazy init — env vars are validated and PrismaClient is created on first property access, not at import time. This allows build-time scripts to import resolver modules without needing a database or env vars.
+- Centralize environment variables in `src/core/config.ts` via the envalid-powered `config.*` exports. Never read from `process.env` directly in the codebase; add new vars to `core/config.ts` and consume them as `config.MY_ENV_VAR`.
+- **Lazy initialization**: `core/config.ts` and `core/db.ts` use Proxy-based lazy init — env vars are validated and PrismaClient is created on first property access, not at import time. This allows build-time scripts to import resolver modules without needing a database or env vars.
 
 ## Folder Layout Highlights
 
-- `src/server.ts` – Express/Apollo entrypoint.
+- `src/core/server.ts` – Express/Apollo entrypoint.
 - `src/workers/` – Background job runner, including `worker.ts` (prediction market and EAS indexing).
 - `prisma/` – Schema, migrations, seeds (`prisma/seed.ts`).
 - **Note**: Auction WebSocket service has been extracted to `packages/relayer` (package name: `@sapience/relayer`).

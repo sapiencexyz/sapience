@@ -8,6 +8,7 @@ import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { useSession } from '~/lib/context/SessionContext';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
 
 interface UseSingleConditionAuctionProps {
   conditionId: string | null;
@@ -67,7 +68,7 @@ export function useSingleConditionAuction({
     if (!bids || bids.length === 0) return null;
 
     const validBids = bids.filter(
-      (bid) => bid.counterpartyDeadline * 1000 > nowMs
+      (bid) => effectiveDeadlineMs(bid.counterpartyDeadline) > nowMs
     );
     if (validBids.length === 0) return null;
 
@@ -111,7 +112,7 @@ export function useSingleConditionAuction({
           null;
         const params: AuctionParams = {
           wager: positionSizeWei,
-          predictor: selectedTakerAddress,
+          predictor: selectedTakerAddressRef.current,
           predictorNonce: Number(generateRandomNonce()),
           chainId,
           picks: effectiveResolver

@@ -28,6 +28,8 @@ import { _clearExposureForTesting } from '../committedIntentExposure';
 function mockClient(id = crypto.randomUUID()): ClientConnection {
   return {
     id,
+    service: 'anonymous',
+    variant: 'default',
     send: vi.fn(),
     close: vi.fn(),
     get isOpen() {

@@ -16,7 +16,7 @@ export type Scalars = {
   BigInt: { input: any; output: any; }
   /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format. */
   DateTimeISO: { input: any; output: any; }
-  /** GraphQL Scalar representing the Prisma.Decimal type, based on Decimal.js library. */
+  /** Prisma.Decimal — round-tripped as a decimal string with arbitrary precision. */
   Decimal: { input: any; output: any; }
 };
 
@@ -336,6 +336,14 @@ export type CategoryNullableRelationFilter = {
   isNot?: InputMaybe<CategoryWhereInput>;
 };
 
+/** Open-interest aggregated for a single category. */
+export type CategoryOpenInterest = {
+  __typename?: 'CategoryOpenInterest';
+  category: Category;
+  /** Open interest in wei (decimal string) */
+  openInterest: Scalars['String']['output'];
+};
+
 export type CategoryOrderByWithRelationInput = {
   conditionGroups?: InputMaybe<ConditionGroupOrderByRelationAggregateInput>;
   conditions?: InputMaybe<ConditionOrderByRelationAggregateInput>;
@@ -456,6 +464,7 @@ export type Condition = {
   id: Scalars['String']['output'];
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
+  optionName?: Maybe<Scalars['String']['output']>;
   predictionCount: Scalars['Int']['output'];
   predictions: Array<LegacyPrediction>;
   public: Scalars['Boolean']['output'];
@@ -470,16 +479,16 @@ export type Condition = {
   similarMarketImage?: Maybe<Scalars['String']['output']>;
   /** USD total trading volume from Polymarket similar market */
   similarMarketVolume: Scalars['Float']['output'];
+  similarMarketVolume1h: Scalars['Float']['output'];
+  similarMarketVolume4h: Scalars['Float']['output'];
+  similarMarketVolume7d: Scalars['Float']['output'];
+  similarMarketVolume24h: Scalars['Float']['output'];
+  similarMarketVolumeFiltered1h: Scalars['Float']['output'];
+  similarMarketVolumeFiltered4h: Scalars['Float']['output'];
+  similarMarketVolumeFiltered7d: Scalars['Float']['output'];
+  similarMarketVolumeFiltered24h: Scalars['Float']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
   tags: Array<Scalars['String']['output']>;
-  volume1h: Scalars['Float']['output'];
-  volume4h: Scalars['Float']['output'];
-  volume7d: Scalars['Float']['output'];
-  volume24h: Scalars['Float']['output'];
-  volumeFiltered1h: Scalars['Float']['output'];
-  volumeFiltered4h: Scalars['Float']['output'];
-  volumeFiltered7d: Scalars['Float']['output'];
-  volumeFiltered24h: Scalars['Float']['output'];
 };
 
 
@@ -593,14 +602,14 @@ export type ConditionGroupOrderByWithRelationInput = {
   similarMarkets?: InputMaybe<SortOrder>;
   totalOpenInterest?: InputMaybe<SortOrder>;
   totalPredictionCount?: InputMaybe<SortOrder>;
-  totalVolume1h?: InputMaybe<SortOrder>;
-  totalVolume4h?: InputMaybe<SortOrder>;
-  totalVolume7d?: InputMaybe<SortOrder>;
-  totalVolume24h?: InputMaybe<SortOrder>;
-  totalVolumeFiltered1h?: InputMaybe<SortOrder>;
-  totalVolumeFiltered4h?: InputMaybe<SortOrder>;
-  totalVolumeFiltered7d?: InputMaybe<SortOrder>;
-  totalVolumeFiltered24h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolume1h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolume4h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolume7d?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolume24h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered1h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered4h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered7d?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered24h?: InputMaybe<SortOrder>;
 };
 
 export type ConditionGroupScalarFieldEnum =
@@ -614,14 +623,14 @@ export type ConditionGroupScalarFieldEnum =
   | 'similarMarkets'
   | 'totalOpenInterest'
   | 'totalPredictionCount'
-  | 'totalVolume1h'
-  | 'totalVolume4h'
-  | 'totalVolume7d'
-  | 'totalVolume24h'
-  | 'totalVolumeFiltered1h'
-  | 'totalVolumeFiltered4h'
-  | 'totalVolumeFiltered7d'
-  | 'totalVolumeFiltered24h';
+  | 'totalSimilarMarketVolume1h'
+  | 'totalSimilarMarketVolume4h'
+  | 'totalSimilarMarketVolume7d'
+  | 'totalSimilarMarketVolume24h'
+  | 'totalSimilarMarketVolumeFiltered1h'
+  | 'totalSimilarMarketVolumeFiltered4h'
+  | 'totalSimilarMarketVolumeFiltered7d'
+  | 'totalSimilarMarketVolumeFiltered24h';
 
 export type ConditionGroupWhereInput = {
   AND?: InputMaybe<Array<ConditionGroupWhereInput>>;
@@ -639,14 +648,14 @@ export type ConditionGroupWhereInput = {
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   totalOpenInterest?: InputMaybe<DecimalFilter>;
   totalPredictionCount?: InputMaybe<IntFilter>;
-  totalVolume1h?: InputMaybe<DecimalFilter>;
-  totalVolume4h?: InputMaybe<DecimalFilter>;
-  totalVolume7d?: InputMaybe<DecimalFilter>;
-  totalVolume24h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered1h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered4h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered7d?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered24h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume1h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume4h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume7d?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume24h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered1h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered4h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered7d?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered24h?: InputMaybe<DecimalFilter>;
 };
 
 export type ConditionGroupWhereUniqueInput = {
@@ -665,14 +674,14 @@ export type ConditionGroupWhereUniqueInput = {
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   totalOpenInterest?: InputMaybe<DecimalFilter>;
   totalPredictionCount?: InputMaybe<IntFilter>;
-  totalVolume1h?: InputMaybe<DecimalFilter>;
-  totalVolume4h?: InputMaybe<DecimalFilter>;
-  totalVolume7d?: InputMaybe<DecimalFilter>;
-  totalVolume24h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered1h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered4h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered7d?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered24h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume1h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume4h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume7d?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume24h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered1h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered4h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered7d?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered24h?: InputMaybe<DecimalFilter>;
 };
 
 export type ConditionListRelationFilter = {
@@ -707,6 +716,7 @@ export type ConditionOrderByWithRelationInput = {
   id?: InputMaybe<SortOrder>;
   nonDecisive?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
+  optionName?: InputMaybe<SortOrderInput>;
   predictionCount?: InputMaybe<SortOrder>;
   predictions?: InputMaybe<LegacyPredictionOrderByRelationAggregateInput>;
   public?: InputMaybe<SortOrder>;
@@ -718,16 +728,16 @@ export type ConditionOrderByWithRelationInput = {
   shortName?: InputMaybe<SortOrderInput>;
   similarMarketImage?: InputMaybe<SortOrderInput>;
   similarMarketVolume?: InputMaybe<SortOrder>;
+  similarMarketVolume1h?: InputMaybe<SortOrder>;
+  similarMarketVolume4h?: InputMaybe<SortOrder>;
+  similarMarketVolume7d?: InputMaybe<SortOrder>;
+  similarMarketVolume24h?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered1h?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered4h?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered7d?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered24h?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
   tags?: InputMaybe<SortOrder>;
-  volume1h?: InputMaybe<SortOrder>;
-  volume4h?: InputMaybe<SortOrder>;
-  volume7d?: InputMaybe<SortOrder>;
-  volume24h?: InputMaybe<SortOrder>;
-  volumeFiltered1h?: InputMaybe<SortOrder>;
-  volumeFiltered4h?: InputMaybe<SortOrder>;
-  volumeFiltered7d?: InputMaybe<SortOrder>;
-  volumeFiltered24h?: InputMaybe<SortOrder>;
 };
 
 export type ConditionRelationFilter = {
@@ -749,6 +759,7 @@ export type ConditionScalarFieldEnum =
   | 'id'
   | 'nonDecisive'
   | 'openInterest'
+  | 'optionName'
   | 'predictionCount'
   | 'public'
   | 'question'
@@ -759,16 +770,16 @@ export type ConditionScalarFieldEnum =
   | 'shortName'
   | 'similarMarketImage'
   | 'similarMarketVolume'
+  | 'similarMarketVolume1h'
+  | 'similarMarketVolume4h'
+  | 'similarMarketVolume7d'
+  | 'similarMarketVolume24h'
+  | 'similarMarketVolumeFiltered1h'
+  | 'similarMarketVolumeFiltered4h'
+  | 'similarMarketVolumeFiltered7d'
+  | 'similarMarketVolumeFiltered24h'
   | 'similarMarkets'
-  | 'tags'
-  | 'volume1h'
-  | 'volume4h'
-  | 'volume7d'
-  | 'volume24h'
-  | 'volumeFiltered1h'
-  | 'volumeFiltered4h'
-  | 'volumeFiltered7d'
-  | 'volumeFiltered24h';
+  | 'tags';
 
 export type ConditionWhereInput = {
   AND?: InputMaybe<Array<ConditionWhereInput>>;
@@ -790,6 +801,7 @@ export type ConditionWhereInput = {
   id?: InputMaybe<StringFilter>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
+  optionName?: InputMaybe<StringNullableFilter>;
   predictionCount?: InputMaybe<IntFilter>;
   predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
@@ -801,16 +813,16 @@ export type ConditionWhereInput = {
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarketImage?: InputMaybe<StringNullableFilter>;
   similarMarketVolume?: InputMaybe<FloatFilter>;
+  similarMarketVolume1h?: InputMaybe<FloatFilter>;
+  similarMarketVolume4h?: InputMaybe<FloatFilter>;
+  similarMarketVolume7d?: InputMaybe<FloatFilter>;
+  similarMarketVolume24h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered1h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered4h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered7d?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered24h?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
-  volume1h?: InputMaybe<FloatFilter>;
-  volume4h?: InputMaybe<FloatFilter>;
-  volume7d?: InputMaybe<FloatFilter>;
-  volume24h?: InputMaybe<FloatFilter>;
-  volumeFiltered1h?: InputMaybe<FloatFilter>;
-  volumeFiltered4h?: InputMaybe<FloatFilter>;
-  volumeFiltered7d?: InputMaybe<FloatFilter>;
-  volumeFiltered24h?: InputMaybe<FloatFilter>;
 };
 
 export type ConditionWhereUniqueInput = {
@@ -833,6 +845,7 @@ export type ConditionWhereUniqueInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
+  optionName?: InputMaybe<StringNullableFilter>;
   predictionCount?: InputMaybe<IntFilter>;
   predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
@@ -844,16 +857,16 @@ export type ConditionWhereUniqueInput = {
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarketImage?: InputMaybe<StringNullableFilter>;
   similarMarketVolume?: InputMaybe<FloatFilter>;
+  similarMarketVolume1h?: InputMaybe<FloatFilter>;
+  similarMarketVolume4h?: InputMaybe<FloatFilter>;
+  similarMarketVolume7d?: InputMaybe<FloatFilter>;
+  similarMarketVolume24h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered1h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered4h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered7d?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered24h?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
-  volume1h?: InputMaybe<FloatFilter>;
-  volume4h?: InputMaybe<FloatFilter>;
-  volume7d?: InputMaybe<FloatFilter>;
-  volume24h?: InputMaybe<FloatFilter>;
-  volumeFiltered1h?: InputMaybe<FloatFilter>;
-  volumeFiltered4h?: InputMaybe<FloatFilter>;
-  volumeFiltered7d?: InputMaybe<FloatFilter>;
-  volumeFiltered24h?: InputMaybe<FloatFilter>;
 };
 
 export type DateTimeFilter = {
@@ -1407,6 +1420,8 @@ export type NullsOrder =
 /** Individual outcome pick within a pick configuration */
 export type Pick = {
   __typename?: 'Pick';
+  /** The condition this pick references. May be null if the conditionId is dangling. */
+  condition?: Maybe<Condition>;
   conditionId: Scalars['String']['output'];
   conditionResolver: Scalars['String']['output'];
   id: Scalars['Int']['output'];
@@ -1453,12 +1468,14 @@ export type Position = {
   chainId: Scalars['Int']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   holder: Scalars['String']['output'];
-  id: Scalars['Int']['output'];
+  id: Scalars['String']['output'];
   isPredictorToken: Scalars['Boolean']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   pickConfigId: Scalars['String']['output'];
+  realizedPnL?: Maybe<Scalars['String']['output']>;
   tokenAddress: Scalars['String']['output'];
   totalPayout?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTimeISO']['output'];
   userCollateral?: Maybe<Scalars['String']['output']>;
 };
 
@@ -1466,6 +1483,13 @@ export type Position = {
 export type PositionSortField =
   | 'CREATED_AT'
   | 'UPDATED_AT';
+
+/** Paginated wrapper around Position rows with a server-truth hasMore flag */
+export type PositionsPage = {
+  __typename?: 'PositionsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Position>;
+};
 
 /** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
 export type Prediction = {
@@ -1533,15 +1557,21 @@ export type ProfitRank = {
   totalPnL: Scalars['String']['output'];
 };
 
-/** Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL */
+/**
+ * Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
+ * Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
+ * deltas over that interval.
+ */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
   cumulativeVolume: Scalars['String']['output'];
-  dailyPnL: Scalars['String']['output'];
-  dailyVolume: Scalars['String']['output'];
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
-  /** Unix epoch timestamp (seconds) for midnight UTC of the snapshot day */
+  /** Realized PnL delta over the snapshot interval */
+  periodPnL: Scalars['String']['output'];
+  /** Cumulative-volume delta over the snapshot interval */
+  periodVolume: Scalars['String']['output'];
+  /** Unix epoch timestamp (seconds) aligned to the snapshot interval boundary */
   timestamp: Scalars['Int']['output'];
   vaultAirdropGains: Scalars['String']['output'];
   vaultAvailableAssets: Scalars['String']['output'];
@@ -1551,12 +1581,21 @@ export type ProtocolStat = {
   vaultDeposits: Scalars['String']['output'];
   vaultPositionsLost: Scalars['Int']['output'];
   vaultPositionsWon: Scalars['Int']['output'];
+  /** Cumulative wUSDe paid by the vault on secondary-market buys */
+  vaultSecondaryBought: Scalars['String']['output'];
+  /** Cumulative wUSDe received by the vault on secondary-market sells */
+  vaultSecondarySold: Scalars['String']['output'];
+  /** wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins */
+  vaultUnredeemedClaim: Scalars['String']['output'];
   vaultWithdrawals: Scalars['String']['output'];
 };
 
 export type Query = {
   __typename?: 'Query';
-  /** Accuracy score for a single forecaster address, or null if no scored attestations exist */
+  /**
+   * Accuracy score for a single forecaster address, or null if no scored attestations exist
+   * @deprecated Field no longer supported
+   */
   accountAccuracy?: Maybe<ForecasterScore>;
   /** Accuracy rank and score for a single address relative to all forecasters */
   accountAccuracyRank: AccuracyRank;
@@ -1568,7 +1607,10 @@ export type Query = {
   accountPnl: Array<PnlDataPoint>;
   /** Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time */
   accountPredictionCount: Array<PredictionCountDataPoint>;
-  /** Profit rank and total PnL for a single address relative to all participants */
+  /**
+   * Profit rank and total PnL for a single address relative to all participants
+   * @deprecated Field no longer supported
+   */
   accountProfitRank: ProfitRank;
   /** Total lifetime trading volume in wei for the given address across all prediction types */
   accountTotalVolume: Scalars['String']['output'];
@@ -1578,18 +1620,32 @@ export type Query = {
   accuracyLeaderboard: Array<ForecasterScore>;
   attestations: Array<Attestation>;
   categories: Array<Category>;
-  /** Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain */
+  /**
+   * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
+   * @deprecated Field no longer supported
+   */
   claims: Array<Claim>;
-  /** Paginated list of position close (burn) records, filterable by address, pick config, and chain */
+  /**
+   * Paginated list of position close (burn) records, filterable by address, pick config, and chain
+   * @deprecated Field no longer supported
+   */
   closes: Array<Close>;
   collateralBalance: CollateralBalanceType;
   collateralBalanceHistory: Array<CollateralBalanceSnapshotType>;
   collateralTransfers: Array<CollateralTransferType>;
   condition?: Maybe<Condition>;
+  /** @deprecated Field no longer supported */
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
-  /** Look up a single pick configuration by ID */
+  /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
+  openInterestByCategory: Array<CategoryOpenInterest>;
+  /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
+  openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
+  /**
+   * Look up a single pick configuration by ID
+   * @deprecated Field no longer supported
+   */
   pickConfiguration?: Maybe<PickConfiguration>;
   /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
   pickConfigurations: Array<PickConfiguration>;
@@ -1599,6 +1655,8 @@ export type Query = {
   positionCount: Scalars['Int']['output'];
   /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
   positions: Array<Position>;
+  /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. */
+  positionsPage: PositionsPage;
   /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
   /** Count of escrow predictions involving the given address */
@@ -1607,19 +1665,37 @@ export type Query = {
   predictions: Array<Prediction>;
   /** Profit leaderboard — addresses ranked by total PnL across all positions */
   profitLeaderboard: Array<ProfitEntry>;
-  /** Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest */
+  /** Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest */
   protocolStats: Array<ProtocolStat>;
-  /** Time-bucketed total protocol trading volume across all users */
+  /**
+   * Time-bucketed total protocol trading volume across all users
+   * @deprecated Field no longer supported
+   */
   protocolVolume: Array<VolumeDataPoint>;
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
+  /**
+   * Public referral analytics. Referral codes are attribution hints, not
+   * authorization credentials: using someone else's code credits that referrer's
+   * volume/claims, but does not grant access to funds or admin capabilities.
+   *
+   * Returns paginated referral codes with claim count and aggregate trading volume /
+   * position count baked in. Pass `id` to filter to a single code (e.g. for the
+   * analytics dialog). Per-claimant breakdown is available via the nested
+   * `claimants` field.
+   */
+  referralCodes: ReferralCodesPage;
   /** Look up a single secondary market trade by its trade hash */
   trade?: Maybe<Trade>;
-  /** Count of secondary market trades matching the given filters */
+  /**
+   * Count of secondary market trades matching the given filters
+   * @deprecated Field no longer supported
+   */
   tradeCount: Scalars['Int']['output'];
   /** Paginated list of secondary market trades, filterable by seller, buyer, token, and chain */
   trades: Array<Trade>;
   user?: Maybe<User>;
+  /** @deprecated Field no longer supported */
   users: Array<User>;
 };
 
@@ -1636,6 +1712,8 @@ export type QueryAccountAccuracyRankArgs = {
 
 export type QueryAccountActivityArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
   type?: InputMaybe<Scalars['String']['input']>;
@@ -1745,6 +1823,7 @@ export type QueryCollateralBalanceHistoryArgs = {
 export type QueryCollateralTransfersArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
+  excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: Scalars['Int']['input'];
   offset?: Scalars['Int']['input'];
 };
@@ -1821,6 +1900,25 @@ export type QueryPositionsArgs = {
 };
 
 
+export type QueryPositionsPageArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  collateralMax?: InputMaybe<Scalars['String']['input']>;
+  collateralMin?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  endsAtMax?: InputMaybe<Scalars['Int']['input']>;
+  endsAtMin?: InputMaybe<Scalars['Int']['input']>;
+  holder?: InputMaybe<Scalars['String']['input']>;
+  holderWon?: InputMaybe<Scalars['Boolean']['input']>;
+  orderBy?: InputMaybe<PositionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  result?: InputMaybe<SettlementResult>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
 export type QueryPredictionArgs = {
   id: Scalars['String']['input'];
 };
@@ -1851,6 +1949,11 @@ export type QueryProfitLeaderboardArgs = {
 };
 
 
+export type QueryProtocolStatsArgs = {
+  vaultAddress?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryProtocolVolumeArgs = {
   from?: InputMaybe<Scalars['DateTimeISO']['input']>;
   interval: TimeInterval;
@@ -1861,18 +1964,26 @@ export type QueryProtocolVolumeArgs = {
 export type QueryQuestionsArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  excludeLowOdds?: InputMaybe<Scalars['Boolean']['input']>;
   maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  maxSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
   minEndTime?: InputMaybe<Scalars['Int']['input']>;
   minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  minSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   search?: InputMaybe<Scalars['String']['input']>;
+  similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
   skip?: Scalars['Int']['input'];
   sortDirection?: SortOrder;
   sortField?: InputMaybe<QuestionSortField>;
   tag?: InputMaybe<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
-  volumeWindow?: InputMaybe<VolumeWindow>;
+};
+
+
+export type QueryReferralCodesArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  id?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -1938,14 +2049,26 @@ export type QuestionSortField =
   | 'endTime'
   | 'openInterest'
   | 'predictionCount'
-  | 'similarMarketVolume'
-  | 'volume';
+  | 'similarMarketVolume';
 
+/**
+ * Public referral code metadata and analytics. This intentionally includes creator,
+ * claim counts, aggregate volume/position stats, and claimant breakdowns.
+ *
+ * Referral codes are low-security attribution hints: using someone else's code only
+ * credits that referrer; it does not grant access to funds or privileged actions.
+ *
+ * `codeHash` is intentionally omitted from GraphQL because public clients should
+ * not need it, and referral-code identity in this API is the integer `id`.
+ * Credentialed create/update REST paths may still return hashes to the caller that
+ * created or administers the code.
+ */
 export type ReferralCode = {
   __typename?: 'ReferralCode';
-  _count?: Maybe<ReferralCodeCount>;
-  claimedBy: Array<User>;
-  codeHash: Scalars['String']['output'];
+  /** Total number of users who have claimed this code, across all pages. */
+  claimCount: Scalars['Int']['output'];
+  /** Paginated per-claimant breakdown with trading volume + position count. */
+  claimants: ReferralCodeClaimantsPage;
   createdAt: Scalars['DateTimeISO']['output'];
   createdBy: Scalars['String']['output'];
   creatorType: Scalars['String']['output'];
@@ -1953,27 +2076,51 @@ export type ReferralCode = {
   id: Scalars['Int']['output'];
   isActive: Scalars['Boolean']['output'];
   maxClaims: Scalars['Int']['output'];
+  /**
+   * Total position count across every claimant. A position with both predictor
+   * and counterparty in the claimant set is counted twice, matching the
+   * per-side semantics.
+   */
+  totalPositions: Scalars['Int']['output'];
+  /**
+   * Sum of trading volume across every claimant's positions (predictor +
+   * counterparty sides), as a stringified bigint. Aggregated server-side.
+   */
+  totalVolume: Scalars['String']['output'];
   updatedAt: Scalars['DateTimeISO']['output'];
 };
 
 
-export type ReferralCodeClaimedByArgs = {
-  cursor?: InputMaybe<UserWhereUniqueInput>;
-  distinct?: InputMaybe<Array<UserScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<UserOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<UserWhereInput>;
+/**
+ * Public referral code metadata and analytics. This intentionally includes creator,
+ * claim counts, aggregate volume/position stats, and claimant breakdowns.
+ *
+ * Referral codes are low-security attribution hints: using someone else's code only
+ * credits that referrer; it does not grant access to funds or privileged actions.
+ *
+ * `codeHash` is intentionally omitted from GraphQL because public clients should
+ * not need it, and referral-code identity in this API is the integer `id`.
+ * Credentialed create/update REST paths may still return hashes to the caller that
+ * created or administers the code.
+ */
+export type ReferralCodeClaimantsArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type ReferralCodeCount = {
-  __typename?: 'ReferralCodeCount';
-  claimedBy: Scalars['Int']['output'];
+export type ReferralCodeClaimant = {
+  __typename?: 'ReferralCodeClaimant';
+  address: Scalars['String']['output'];
+  claimedAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['Int']['output'];
+  positionCount: Scalars['Int']['output'];
+  tradingVolume: Scalars['String']['output'];
 };
 
-
-export type ReferralCodeCountClaimedByArgs = {
-  where?: InputMaybe<UserWhereInput>;
+export type ReferralCodeClaimantsPage = {
+  __typename?: 'ReferralCodeClaimantsPage';
+  items: Array<ReferralCodeClaimant>;
+  nextCursor?: Maybe<Scalars['Int']['output']>;
 };
 
 export type ReferralCodeNullableRelationFilter = {
@@ -1982,8 +2129,6 @@ export type ReferralCodeNullableRelationFilter = {
 };
 
 export type ReferralCodeOrderByWithRelationInput = {
-  claimedBy?: InputMaybe<UserOrderByRelationAggregateInput>;
-  codeHash?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   createdBy?: InputMaybe<SortOrder>;
   creatorType?: InputMaybe<SortOrder>;
@@ -1998,8 +2143,6 @@ export type ReferralCodeWhereInput = {
   AND?: InputMaybe<Array<ReferralCodeWhereInput>>;
   NOT?: InputMaybe<Array<ReferralCodeWhereInput>>;
   OR?: InputMaybe<Array<ReferralCodeWhereInput>>;
-  claimedBy?: InputMaybe<UserListRelationFilter>;
-  codeHash?: InputMaybe<StringFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   createdBy?: InputMaybe<StringFilter>;
   creatorType?: InputMaybe<StringFilter>;
@@ -2008,6 +2151,12 @@ export type ReferralCodeWhereInput = {
   isActive?: InputMaybe<BoolFilter>;
   maxClaims?: InputMaybe<IntFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
+};
+
+export type ReferralCodesPage = {
+  __typename?: 'ReferralCodesPage';
+  items: Array<ReferralCode>;
+  nextCursor?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Filter questions by their resolution status */
@@ -2078,6 +2227,24 @@ export type TimeInterval =
   | 'HOUR'
   | 'MONTH'
   | 'WEEK';
+
+/**
+ * Open-interest aggregated by time-to-resolution bucket. Each unsettled
+ * prediction's collateral is bucketed by the latest endTime among the conditions
+ * it touches (the moment its OI can finally be claimed). One row per non-empty
+ * bucket, ordered from soonest (bucket = 1) to furthest out.
+ */
+export type TimeToResolutionBucket = {
+  __typename?: 'TimeToResolutionBucket';
+  /** Sort order: 1 = soonest, increasing for further-out buckets */
+  bucket: Scalars['Int']['output'];
+  /** Display label, e.g. ≤1d / 2-7d / 1-2mo */
+  label: Scalars['String']['output'];
+  /** Open interest in wei (decimal string) */
+  openInterest: Scalars['String']['output'];
+  /** Number of predictions contributing to this bucket */
+  predictionCount: Scalars['Int']['output'];
+};
 
 /** Secondary market trade record where position tokens are exchanged between users */
 export type Trade = {
@@ -2250,6 +2417,10 @@ export type VolumeDataPoint = {
 /** Time window for volume-based sorting */
 export type VolumeWindow =
   | 'fourHours'
+  | 'fourHoursFiltered'
   | 'oneHour'
+  | 'oneHourFiltered'
   | 'sevenDays'
-  | 'twentyFourHours';
+  | 'sevenDaysFiltered'
+  | 'twentyFourHours'
+  | 'twentyFourHoursFiltered';

@@ -11,21 +11,28 @@ export function createWsClientConnection(
   hooks?: ConnectionHooks
 ): ClientConnection {
   const id = crypto.randomUUID();
-  return {
+  const conn: ClientConnection = {
     id,
-    send(msg: unknown) {
+    service: 'anonymous',
+    variant: 'default',
+    instanceId: undefined,
+    chainId: undefined,
+    send(msg: unknown): boolean {
       if (ws.readyState !== WebSocket.OPEN) {
         console.warn(
-          `[Relayer] Attempted to send on non-OPEN socket (state=${ws.readyState})`
+          `[Relayer] Attempted to send on non-OPEN socket clientId=${id.slice(0, 8)} service=${conn.service} state=${ws.readyState}`
         );
-        return;
+        return false;
       }
       const data = typeof msg === 'string' ? msg : JSON.stringify(msg);
       try {
         ws.send(data);
       } catch (err) {
-        console.warn('[Relayer] ws.send() failed:', err);
-        return;
+        console.warn(
+          `[Relayer] ws.send() failed clientId=${id.slice(0, 8)} service=${conn.service}:`,
+          err
+        );
+        return false;
       }
       // Fire onSend hook — extract message type for metrics
       if (hooks?.onSend) {
@@ -40,6 +47,7 @@ export function createWsClientConnection(
           hooks.onSend('unknown');
         }
       }
+      return true;
     },
     close(code?: number, reason?: string) {
       ws.close(code, reason);
@@ -48,4 +56,5 @@ export function createWsClientConnection(
       return ws.readyState === WebSocket.OPEN;
     },
   };
+  return conn;
 }

@@ -7,6 +7,7 @@ import type {
   SapienceConditionGroup,
   SapienceOutput,
   SyncableFields,
+  GroupMetadataUpdate,
 } from '../types';
 import { RESOLVER_ADDRESS, END_TIME_BUFFER_SECONDS } from '../constants';
 import { fetchWithRetry, getAdminAuthHeaders } from '../utils';
@@ -98,6 +99,7 @@ export async function submitCondition(
         conditionHash: condition.conditionHash,
         question: condition.question,
         shortName: condition.shortName,
+        optionName: condition.optionName,
         categorySlug: condition.categorySlug,
         endTime:
           (condition.endTimeOverride ?? toUnixTimestamp(condition.endDate)) +
@@ -476,6 +478,71 @@ export async function submitMetadataUpdates(
 }
 
 /**
+ * Submit metadata updates for existing condition groups whose Polymarket
+ * data has changed (event slug renames, earlier broken URL format, etc.).
+ * The admin API only exposes per-id updates, so this loops rather than
+ * batching. Volume is low — one request per drifted group per run.
+ */
+export async function submitGroupMetadataUpdates(
+  apiUrl: string,
+  privateKey: `0x${string}`,
+  updates: GroupMetadataUpdate[]
+): Promise<void> {
+  if (updates.length === 0) {
+    return;
+  }
+
+  console.log(
+    `[Metadata] Submitting ${updates.length} group metadata updates...`
+  );
+
+  let updated = 0;
+  let failed = 0;
+
+  for (let i = 0; i < updates.length; i++) {
+    const update = updates[i];
+    try {
+      const authHeaders = await getAdminAuthHeaders(privateKey);
+      const response = await fetchWithRetry(
+        `${apiUrl}/admin/conditionGroups/${update.groupId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders,
+          },
+          body: JSON.stringify(update.fields),
+        }
+      );
+
+      if (response.ok) {
+        updated++;
+      } else {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: 'Unknown error' }));
+        console.error(
+          `[Metadata] Group ${update.groupId} failed: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
+        );
+        failed++;
+      }
+    } catch (error) {
+      console.error(
+        `[Metadata] Group ${update.groupId} error:`,
+        error instanceof Error ? error.message : String(error)
+      );
+      failed++;
+    }
+
+    if (i + 1 < updates.length) {
+      await delay(SUBMISSION_DELAY_MS);
+    }
+  }
+
+  console.log(`[Metadata] ${updated} groups updated, ${failed} failed`);
+}
+
+/**
  * Submit all condition groups and conditions to the API
  */
 export async function submitToAPI(
@@ -528,6 +595,7 @@ export async function submitToAPI(
     conditionHash: condition.conditionHash,
     question: condition.question,
     shortName: condition.shortName,
+    optionName: condition.optionName,
     categorySlug: condition.categorySlug,
     endTime:
       (condition.endTimeOverride ?? toUnixTimestamp(condition.endDate)) +
@@ -550,10 +618,7 @@ export async function submitToAPI(
   let totalFailed = 0;
   const allFailedGroups = new Set<string>();
 
-  async function submitBatches(
-    batchList: typeof payloads[],
-    label: string
-  ) {
+  async function submitBatches(batchList: (typeof payloads)[], label: string) {
     for (let batchIdx = 0; batchIdx < batchList.length; batchIdx++) {
       const batch = batchList[batchIdx];
       const batchNum = batchIdx + 1;
@@ -637,9 +702,7 @@ export async function submitToAPI(
   const uniqueGroups = new Set(
     allConditions.map((c) => c.groupTitle).filter(Boolean)
   ).size;
-  console.log(
-    `Groups: ${uniqueGroups} unique (auto-created via batch-create)`
-  );
+  console.log(`Groups: ${uniqueGroups} unique (auto-created via batch-create)`);
   console.log(
     `Conditions: ${totalCreated} created, ${totalSkipped} skipped, ${totalFailed} failed`
   );

@@ -49,6 +49,29 @@ export const etherealChain = {
 } as const satisfies Chain;
 
 /**
+ * HyperEVM (Hyperliquid L1 EVM) chain definition for viem/wagmi.
+ * Used as a Bungee source chain for funding the Sapience smart account.
+ */
+export const hyperEvmChain = {
+  id: 999,
+  name: 'HyperEVM',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'HYPE',
+    symbol: 'HYPE',
+  },
+  rpcUrls: {
+    default: { http: ['https://rpc.hyperliquid.xyz/evm'] },
+  },
+  blockExplorers: {
+    default: {
+      name: 'HyperEVM Explorer',
+      url: 'https://www.hyperscan.com',
+    },
+  },
+} as const satisfies Chain;
+
+/**
  * Ethereal Testnet chain definition for viem/wagmi.
  * Single source of truth - import from @sapience/sdk/constants.
  */

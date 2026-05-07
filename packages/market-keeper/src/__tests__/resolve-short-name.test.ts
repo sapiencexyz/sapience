@@ -22,72 +22,80 @@ function makeMarket(
 }
 
 describe('resolveShortName', () => {
-  it('returns groupItemTitle when present', () => {
+  it('ignores groupItemTitle and falls through to regex inference', () => {
     const market = makeMarket({
-      question: 'Will the next Prime Minister of Hungary be Viktor Orban?',
-      groupItemTitle: 'Viktor Orban',
+      question: 'Bitcoin above $200k?',
+      outcomes: ['Yes', 'No'],
+      groupItemTitle: 'BTC 200k Target',
     });
-    expect(resolveShortName(market)).toBe('Viktor Orban');
-  });
-
-  it('trims whitespace from groupItemTitle', () => {
-    const market = makeMarket({
-      groupItemTitle: '  Viktor Orban  ',
-    });
-    expect(resolveShortName(market)).toBe('Viktor Orban');
-  });
-
-  it('skips empty groupItemTitle and falls back to regex', () => {
-    const market = makeMarket({
-      question: 'Lakers vs. Celtics',
-      outcomes: ['Lakers', 'Celtics'],
-      groupItemTitle: '',
-    });
-    // Should use regex Rule 4 (team matchups)
     const result = resolveShortName(market);
-    expect(result).not.toBeNull();
-    expect(result).not.toBe('');
-    expect(result).toContain('LAL');
+    expect(result).not.toBe('BTC 200k Target');
+    expect(result).toContain('BTC');
   });
 
-  it('skips whitespace-only groupItemTitle', () => {
+  it('returns regex inference for team matchups', () => {
     const market = makeMarket({
       question: 'Lakers vs. Celtics',
       outcomes: ['Lakers', 'Celtics'],
-      groupItemTitle: '   ',
+      groupItemTitle: undefined,
     });
     const result = resolveShortName(market);
     expect(result).not.toBeNull();
     expect(result).toContain('LAL');
   });
 
-  it('falls back to regex when groupItemTitle is undefined', () => {
+  it('returns regex inference for crypto threshold questions', () => {
     const market = makeMarket({
       question: 'Bitcoin above $100,000?',
       outcomes: ['Yes', 'No'],
       groupItemTitle: undefined,
     });
-    // Should match crypto threshold regex
     const result = resolveShortName(market);
     expect(result).not.toBeNull();
     expect(result).toContain('BTC');
   });
 
-  it('returns null when no groupItemTitle and no regex match', () => {
+  it('returns null when no regex rule matches (LLM fallback path)', () => {
     const market = makeMarket({
       question: 'Some obscure question with no pattern?',
-      groupItemTitle: undefined,
+      groupItemTitle: 'Some Option',
     });
     expect(resolveShortName(market)).toBeNull();
   });
 
-  it('prefers groupItemTitle over regex match', () => {
-    // This question would match the crypto regex, but groupItemTitle takes priority
+  it('does not append a period to full-game moneyline matchups', () => {
     const market = makeMarket({
-      question: 'Will Bitcoin reach $200k?',
-      outcomes: ['Yes', 'No'],
-      groupItemTitle: 'BTC 200k Target',
+      question: 'Hawks vs. Knicks',
+      outcomes: ['Hawks', 'Knicks'],
+      sportsMarketType: 'moneyline',
     });
-    expect(resolveShortName(market)).toBe('BTC 200k Target');
+    expect(resolveShortName(market)).toBe('ATL win vs NYK');
+  });
+
+  it('appends 1H to first-half moneyline matchups', () => {
+    const market = makeMarket({
+      question: 'Hawks vs. Knicks: 1H Moneyline',
+      outcomes: ['Hawks', 'Knicks'],
+      sportsMarketType: 'first_half_moneyline',
+    });
+    expect(resolveShortName(market)).toBe('ATL win vs NYK 1H');
+  });
+
+  it('appends 2H to second-half moneyline matchups', () => {
+    const market = makeMarket({
+      question: 'Hawks vs. Knicks: 2H Moneyline',
+      outcomes: ['Hawks', 'Knicks'],
+      sportsMarketType: 'second_half_moneyline',
+    });
+    expect(resolveShortName(market)).toBe('ATL win vs NYK 2H');
+  });
+
+  it('does not append a period for matchups without sportsMarketType', () => {
+    const market = makeMarket({
+      question: 'Lakers vs. Celtics',
+      outcomes: ['Lakers', 'Celtics'],
+      sportsMarketType: undefined,
+    });
+    expect(resolveShortName(market)).toBe('LAL win vs BOS');
   });
 });

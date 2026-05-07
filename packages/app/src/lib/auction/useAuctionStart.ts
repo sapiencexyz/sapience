@@ -2,15 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
-import type { Hex } from 'viem';
+import { zeroAddress as ZERO_ADDRESS, type Hex } from 'viem';
 import type { Pick } from '@sapience/sdk/types';
 import {
   prepareAuctionRFQ,
   type SignableTypedData,
 } from '@sapience/sdk/auction/initiate';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { logAuction, formatBidForLog } from '~/lib/auction/bidLogger';
 
@@ -124,9 +125,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const { apiBaseUrl } = useSettings();
   const { address: walletAddress } = useAccount();
   const {
-    etherealSessionApproval,
     signMessage: sessionSignMessage,
-    signTypedDataRaw: sessionSignTypedDataRaw,
+    signTypedData: sessionSignTypedData,
     effectiveAddress,
     isUsingSmartAccount,
     isUsingSession,
@@ -135,9 +135,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
   // Stable refs for session state — read at call time, don't trigger requestQuotes recreation
   const effectiveAddressRef = useRef(effectiveAddress);
-  const etherealSessionApprovalRef = useRef(etherealSessionApproval);
   const sessionSignMessageRef = useRef(sessionSignMessage);
-  const sessionSignTypedDataRawRef = useRef(sessionSignTypedDataRaw);
+  const sessionSignTypedDataRef = useRef(sessionSignTypedData);
   const isUsingSmartAccountRef = useRef(isUsingSmartAccount);
   const isUsingSessionRef = useRef(isUsingSession);
 
@@ -145,14 +144,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
     effectiveAddressRef.current = effectiveAddress;
   }, [effectiveAddress]);
   useEffect(() => {
-    etherealSessionApprovalRef.current = etherealSessionApproval;
-  }, [etherealSessionApproval]);
-  useEffect(() => {
     sessionSignMessageRef.current = sessionSignMessage;
   }, [sessionSignMessage]);
   useEffect(() => {
-    sessionSignTypedDataRawRef.current = sessionSignTypedDataRaw;
-  }, [sessionSignTypedDataRaw]);
+    sessionSignTypedDataRef.current = sessionSignTypedData;
+  }, [sessionSignTypedData]);
   useEffect(() => {
     isUsingSmartAccountRef.current = isUsingSmartAccount;
   }, [isUsingSmartAccount]);
@@ -295,7 +291,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             ? (data.payload.bids as Array<Record<string, unknown>>)
             : [];
 
-          const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
           const normalized: QuoteBid[] = rawBids
             .map((b): QuoteBid | null => {
               try {
@@ -370,12 +365,28 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         ? (effectiveAddressRef.current ?? params.predictor)
         : (walletAddress ?? params.predictor);
 
+      // Canonicalize picks once up-front: bidders sign over the canonical
+      // (keccak256-sorted) order shipped by prepareAuctionRFQ, so every
+      // downstream consumer (mint payload, off-chain validation, indexer
+      // tracking) must agree on that order or predictionHash diverges and the
+      // counterparty signature won't validate. Doing this here guarantees
+      // currentAuctionParams, lastAuctionRef, and the RFQ all use the same
+      // pick order.
+      const canonicalizedParams: AuctionParams = {
+        ...params,
+        picks: params.picks?.length
+          ? (canonicalizePicks(
+              params.picks as Pick[]
+            ) as AuctionParams['picks'])
+          : params.picks,
+      };
+
       const requestPayload = {
-        wager: params.wager,
-        picks: params.picks,
+        wager: canonicalizedParams.wager,
+        picks: canonicalizedParams.picks,
         predictor: effectivePredictor,
-        predictorNonce: params.predictorNonce,
-        chainId: params.chainId,
+        predictorNonce: canonicalizedParams.predictorNonce,
+        chainId: canonicalizedParams.chainId,
       };
 
       const key = jsonStableStringify({
@@ -398,10 +409,19 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       setBids([]);
       pendingBidsRef.current.clear();
       // Store params with effectivePredictor so buildMintRequestDataFromBid uses the correct address
-      lastAuctionRef.current = { ...params, predictor: effectivePredictor };
-      setCurrentAuctionParams({ ...params, predictor: effectivePredictor });
+      lastAuctionRef.current = {
+        ...canonicalizedParams,
+        predictor: effectivePredictor,
+      };
+      setCurrentAuctionParams({
+        ...canonicalizedParams,
+        predictor: effectivePredictor,
+      });
 
-      if (!params.picks || params.picks.length === 0) {
+      if (
+        !canonicalizedParams.picks ||
+        canonicalizedParams.picks.length === 0
+      ) {
         console.error(
           '[Auction] Escrow picks missing — all auctions require escrow format'
         );
@@ -409,21 +429,21 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         return;
       }
 
-      const chainId = params.chainId;
+      const chainId = canonicalizedParams.chainId;
 
       // Build the signed auction payload via SDK
       // prepareAuctionRFQ handles: pick canonicalization, deadline computation,
       // EIP-712 typed data building, signing, payload assembly, self-validation.
       const canSign =
         walletAddress ||
-        (isUsingSessionRef.current && sessionSignTypedDataRawRef.current);
+        (isUsingSessionRef.current && sessionSignTypedDataRef.current);
       const skipSigning = !shouldSignIntent || !canSign;
 
       if (!shouldSignIntent) {
         log('[auction] Intent signing disabled (skipIntentSigning=true)');
       } else if (!canSign) {
         log(
-          `[auction] Intent signing skipped: canSign=false (wallet=${!!walletAddress}, isUsingSession=${isUsingSessionRef.current}, hasSessionSigner=${!!sessionSignTypedDataRawRef.current})`
+          `[auction] Intent signing skipped: canSign=false (wallet=${!!walletAddress}, isUsingSession=${isUsingSessionRef.current}, hasSessionSigner=${!!sessionSignTypedDataRef.current})`
         );
       }
 
@@ -432,24 +452,25 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       try {
         const prepared = await prepareAuctionRFQ({
-          picks: params.picks.map(
+          picks: canonicalizedParams.picks.map(
             (p): Pick => ({
               conditionResolver: p.conditionResolver,
               conditionId: p.conditionId,
               predictedOutcome: p.predictedOutcome,
             })
           ),
-          predictorCollateral: BigInt(params.wager),
+          predictorCollateral: BigInt(canonicalizedParams.wager),
           predictor: effectivePredictor,
           chainId,
-          nonce: params.predictorNonce,
+          nonce: canonicalizedParams.predictorNonce,
           signIntent: async (typedData: SignableTypedData): Promise<Hex> => {
-            if (
-              isUsingSessionRef.current &&
-              sessionSignTypedDataRawRef.current
-            ) {
-              log('[auction] Signing intent with session key');
-              return sessionSignTypedDataRawRef.current({
+            if (isUsingSessionRef.current && sessionSignTypedDataRef.current) {
+              // Session mode: kernel-wrapped signature. The relayer / SDK
+              // validate the intent against the smart account's ERC-1271
+              // policy (or treat it as unverified passthrough). The legacy
+              // `sessionKeyData` blob path is no longer populated.
+              log('[auction] Signing intent with session key (ERC-1271)');
+              return sessionSignTypedDataRef.current({
                 domain: typedData.domain,
                 types: typedData.types,
                 primaryType: typedData.primaryType,
@@ -467,14 +488,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           options: {
             deadlineSeconds: 30,
             skipIntentSigning: skipSigning,
-            predictorSponsor: params.predictorSponsor,
-            predictorSponsorData: params.predictorSponsorData,
-            sessionKeyData: etherealSessionApprovalRef.current
-              ? JSON.stringify({
-                  approval: etherealSessionApprovalRef.current.approval,
-                  typedData: etherealSessionApprovalRef.current.typedData,
-                })
-              : undefined,
+            predictorSponsor: canonicalizedParams.predictorSponsor,
+            predictorSponsorData: canonicalizedParams.predictorSponsorData,
+            // sessionKeyData intentionally omitted — the legacy blob path is
+            // disabled in PR #1673; intents now validate via ERC-1271 against
+            // the smart account.
             // Skip self-validation — the relayer validates on receipt
             skipSelfValidation: true,
           },
@@ -496,7 +514,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         return;
       }
 
-      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid can access it
+      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid
+      // can access it. Picks were already canonicalized up-front and stamped
+      // into both lastAuctionRef and currentAuctionParams; nothing to overwrite.
       lastAuctionRef.current = {
         ...lastAuctionRef.current,
         predictorDeadline,
@@ -513,7 +533,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       setAuctionId(messageId);
 
       log(
-        `[auction] Sending auction.start: auctionId=${messageId.slice(0, 8)}, keys=${Object.keys(escrowPayload).join(',')}, hasIntentSig=${!!escrowPayload.intentSignature}, hasSessionKeyData=${!!escrowPayload.predictorSessionKeyData}`
+        `[auction] Sending auction.start: auctionId=${messageId.slice(0, 8)}, keys=${Object.keys(escrowPayload).join(',')}, hasIntentSig=${!!escrowPayload.intentSignature}`
       );
 
       client.send({

@@ -18,7 +18,6 @@ import {
 import {
   Activity,
   ArrowLeftRight,
-  Bot,
   FileText,
   DollarSign,
   Handshake,
@@ -39,9 +38,9 @@ import ConditionForecastForm from '~/components/conditions/ConditionForecastForm
 import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
-import ResearchAgent from '~/components/markets/ResearchAgent';
 import ActivityTable from '~/components/positions/ActivityTable';
 import PositionsTable from '~/components/positions/PositionsTable';
+import EmptyTabState from '~/components/shared/EmptyTabState';
 import { usePredictionsByConditionId } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
@@ -223,7 +222,7 @@ export default function QuestionPageContent({
     });
 
   // Fetch forecasts for this condition
-  const { data: forecasts } = useForecasts({
+  const { data: forecasts, isLoading: isLoadingForecasts } = useForecasts({
     conditionId,
     options: {
       enabled: Boolean(conditionId),
@@ -257,7 +256,7 @@ export default function QuestionPageContent({
             otherPicks.length > 0
               ? otherPicks.map((p) => ({
                   conditionId: p.conditionId,
-                  question: p.conditionId,
+                  resolverAddress: p.conditionResolver ?? undefined,
                   prediction:
                     (p.predictedOutcome as OutcomeSide) === OutcomeSide.YES,
                 }))
@@ -386,17 +385,14 @@ export default function QuestionPageContent({
     return transformed;
   }, [forecasts]);
 
-  // Computed flags for conditional rendering
+  // Positions tab is hidden when no predictions exist for this condition.
   const hasPositions = predictions.length > 0;
-  const hasForecasts = forecastScatterData.length > 0;
-  const shouldShowChart = hasPositions || hasForecasts || isLoadingPredictions;
 
   type PrimaryTab =
     | 'predictions'
     | 'positions'
     | 'forecasts'
     | 'resolution'
-    | 'agent'
     | 'techspecs';
 
   const TAB_VALUES: PrimaryTab[] = [
@@ -404,7 +400,6 @@ export default function QuestionPageContent({
     'positions',
     'forecasts',
     'resolution',
-    'agent',
     'techspecs',
   ];
 
@@ -414,16 +409,14 @@ export default function QuestionPageContent({
     return (TAB_VALUES as string[]).includes(raw) ? (raw as PrimaryTab) : null;
   };
 
-  // Keep primary tab controlled so we can default to Positions when available
-  const [primaryTab, setPrimaryTab] = React.useState<PrimaryTab>('forecasts');
-  const hashOverrideRef = React.useRef(false);
+  // Activity is the default landing tab; empty-state falls through naturally.
+  const [primaryTab, setPrimaryTab] = React.useState<PrimaryTab>('predictions');
 
   // Read hash on mount
   React.useEffect(() => {
     const fromHash = getTabFromHash();
     if (fromHash) {
       setPrimaryTab(fromHash);
-      hashOverrideRef.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -451,27 +444,13 @@ export default function QuestionPageContent({
     }
   };
 
+  // Positions tab is hidden until the condition has predictions; if routed
+  // there without any, fall back to Activity (the default).
   const primaryTabValue = useMemo(() => {
-    if (
-      !hasPositions &&
-      (primaryTab === 'predictions' || primaryTab === 'positions')
-    ) {
-      return 'forecasts';
+    if (!hasPositions && primaryTab === 'positions') {
+      return 'predictions';
     }
     return primaryTab;
-  }, [hasPositions, primaryTab]);
-
-  // Default to Positions once when they first become available; thereafter respect user choice
-  const hasEverHadPositionsRef = React.useRef(hasPositions);
-  React.useEffect(() => {
-    if (hasPositions) {
-      if (!hasEverHadPositionsRef.current && !hashOverrideRef.current) {
-        setPrimaryTab('predictions');
-      }
-      hasEverHadPositionsRef.current = true;
-    } else if (primaryTab === 'predictions') {
-      setPrimaryTab('forecasts');
-    }
   }, [hasPositions, primaryTab]);
 
   // Calculate X axis domain and ticks based on all chart data
@@ -628,23 +607,21 @@ export default function QuestionPageContent({
         {/* Header with all tabs */}
         <div className="flex items-center gap-4 px-2 py-2.5 border-b border-border/60 bg-muted/10 overflow-x-auto">
           <TabsList className="h-auto p-0 bg-transparent gap-2 flex-nowrap">
+            <TabsTrigger
+              value="predictions"
+              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <Activity className="h-3.5 w-3.5" />
+              Activity
+            </TabsTrigger>
             {hasPositions && (
-              <>
-                <TabsTrigger
-                  value="predictions"
-                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
-                >
-                  <Activity className="h-3.5 w-3.5" />
-                  Activity
-                </TabsTrigger>
-                <TabsTrigger
-                  value="positions"
-                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
-                >
-                  <ArrowLeftRight className="h-3.5 w-3.5" />
-                  Positions
-                </TabsTrigger>
-              </>
+              <TabsTrigger
+                value="positions"
+                className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+                Positions
+              </TabsTrigger>
             )}
             <TabsTrigger
               value="forecasts"
@@ -659,13 +636,6 @@ export default function QuestionPageContent({
             >
               <Handshake className="h-3.5 w-3.5" />
               Resolution
-            </TabsTrigger>
-            <TabsTrigger
-              value="agent"
-              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
-            >
-              <Bot className="h-3.5 w-3.5" />
-              Agent
             </TabsTrigger>
             <TabsTrigger
               value="techspecs"
@@ -698,12 +668,16 @@ export default function QuestionPageContent({
               />
             </div>
           )}
-          <Comments
-            selectedCategory={CommentFilters.SelectedQuestion}
-            question={data.question}
-            conditionId={conditionId}
-            refetchTrigger={refetchTrigger}
-          />
+          {data?.settled && !isLoadingForecasts && forecasts.length === 0 ? (
+            <EmptyTabState message="No forecasts" />
+          ) : (
+            <Comments
+              selectedCategory={CommentFilters.SelectedQuestion}
+              question={data.question}
+              conditionId={conditionId}
+              refetchTrigger={refetchTrigger}
+            />
+          )}
         </TabsContent>
         {/* Content area - Resolution */}
         <TabsContent value="resolution" className="m-0 p-4">
@@ -765,14 +739,6 @@ export default function QuestionPageContent({
             </span>
           )}
         </TabsContent>
-        {/* Content area - Agent */}
-        <TabsContent value="agent" className="m-0">
-          <ResearchAgent
-            question={data.question}
-            endTime={data.endTime}
-            description={data.description}
-          />
-        </TabsContent>
         {/* Content area - Tech Specs */}
         <TabsContent value="techspecs" className="m-0">
           {renderTechSpecsCard(false)}
@@ -791,23 +757,21 @@ export default function QuestionPageContent({
         {/* Header with integrated tabs */}
         <div className="flex items-center gap-4 px-2 py-2.5 border-b border-border/60 bg-muted/10">
           <TabsList className="h-auto p-0 bg-transparent gap-2">
+            <TabsTrigger
+              value="predictions"
+              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
+            >
+              <Activity className="h-3.5 w-3.5" />
+              Activity
+            </TabsTrigger>
             {hasPositions && (
-              <>
-                <TabsTrigger
-                  value="predictions"
-                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
-                >
-                  <Activity className="h-3.5 w-3.5" />
-                  Activity
-                </TabsTrigger>
-                <TabsTrigger
-                  value="positions"
-                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
-                >
-                  <ArrowLeftRight className="h-3.5 w-3.5" />
-                  Positions
-                </TabsTrigger>
-              </>
+              <TabsTrigger
+                value="positions"
+                className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+                Positions
+              </TabsTrigger>
             )}
             <TabsTrigger
               value="forecasts"
@@ -822,13 +786,6 @@ export default function QuestionPageContent({
             >
               <Handshake className="h-3.5 w-3.5" />
               Resolution
-            </TabsTrigger>
-            <TabsTrigger
-              value="agent"
-              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
-            >
-              <Bot className="h-3.5 w-3.5" />
-              Agent
             </TabsTrigger>
           </TabsList>
         </div>
@@ -852,12 +809,16 @@ export default function QuestionPageContent({
               />
             </div>
           )}
-          <Comments
-            selectedCategory={CommentFilters.SelectedQuestion}
-            question={data.question}
-            conditionId={conditionId}
-            refetchTrigger={refetchTrigger}
-          />
+          {data?.settled && !isLoadingForecasts && forecasts.length === 0 ? (
+            <EmptyTabState message="No forecasts" />
+          ) : (
+            <Comments
+              selectedCategory={CommentFilters.SelectedQuestion}
+              question={data.question}
+              conditionId={conditionId}
+              refetchTrigger={refetchTrigger}
+            />
+          )}
         </TabsContent>
         <TabsContent value="resolution" className="m-0 p-4">
           <div className="mb-4 flex items-center gap-3 flex-wrap">
@@ -918,13 +879,6 @@ export default function QuestionPageContent({
             </span>
           )}
         </TabsContent>
-        <TabsContent value="agent" className="m-0">
-          <ResearchAgent
-            question={data.question}
-            endTime={data.endTime}
-            description={data.description}
-          />
-        </TabsContent>
       </div>
     </Tabs>
   );
@@ -942,14 +896,16 @@ export default function QuestionPageContent({
             {displayTitle}
           </h1>
 
-          {/* Badges Row: Category, Open Interest, End Time */}
+          {/* Badges Row: Category, Open Interest, End Time. Open interest and
+              end-time read as historical noise once a question is resolved, so
+              we hide them and let the Resolved card on the right carry status. */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
             {/* Focus Area Badge */}
             {categorySlug && <FocusAreaBadge categorySlug={categorySlug} />}
 
-            {/* Open Interest Badge */}
-            {(() => {
-              return (
+            {!data.settled && (
+              <>
+                {/* Open Interest Badge */}
                 <Badge
                   variant="outline"
                   className="h-9 items-center px-3.5 text-sm leading-none inline-flex bg-card border-brand-white/20 text-brand-white font-medium"
@@ -962,68 +918,44 @@ export default function QuestionPageContent({
                   />
                   <span className="whitespace-nowrap text-foreground font-normal ml-1.5 md:ml-0">
                     {(() => {
-                      // Get open interest from data and format it
                       const openInterestWei = data?.openInterest || '0';
                       try {
                         const etherValue = parseFloat(
                           formatEther(BigInt(openInterestWei))
                         );
-                        const formattedValue = etherValue.toFixed(2);
-                        return `${formattedValue} USDe`;
+                        return `${etherValue.toFixed(2)} USDe`;
                       } catch {
                         return '0 USDe';
                       }
                     })()}
                   </span>
                 </Badge>
-              );
-            })()}
 
-            {/* End Time Badge */}
-            <EndTimeDisplay
-              endTime={data.endTime ?? null}
-              settled={data.settled}
-              size="large"
-              appearance="brandWhite"
-            />
+                {/* End Time Badge */}
+                <EndTimeDisplay
+                  endTime={data.endTime ?? null}
+                  settled={data.settled}
+                  size="large"
+                  appearance="brandWhite"
+                />
+              </>
+            )}
           </div>
 
-          {/* When we have chart data, keep scatter plot on the left and sidebar cards on the right */}
-          {shouldShowChart && (
-            <>
-              <div className="hidden lg:grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 mb-6 items-stretch">
-                {renderScatterPlotCard()}
-                {sidebarContent}
-              </div>
+          {/* Scatter plot on the left, sidebar cards on the right; tabs below */}
+          <div className="hidden lg:grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 mb-6 items-stretch">
+            {renderScatterPlotCard()}
+            {sidebarContent}
+          </div>
 
-              <div className="lg:hidden flex flex-col gap-6 mb-12">
-                {renderPredictionFormCard()}
-                {renderScatterPlotCard()}
-                {renderTechSpecsCard()}
-                {mobileTabs}
-              </div>
-            </>
-          )}
+          <div className="lg:hidden flex flex-col gap-6 mb-12">
+            {renderPredictionFormCard()}
+            {renderScatterPlotCard()}
+            {renderTechSpecsCard()}
+            {mobileTabs}
+          </div>
 
-          {/* When there is no chart data, use the tabs in the left slot and keep sidebar on the right */}
-          {!shouldShowChart && (
-            <>
-              <div className="hidden lg:grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 mb-6 items-stretch">
-                <div className="min-w-0">{desktopTabs}</div>
-                {sidebarContent}
-              </div>
-              <div className="lg:hidden flex flex-col gap-6 mb-12">
-                {renderPredictionFormCard()}
-                {renderTechSpecsCard()}
-                {mobileTabs}
-              </div>
-            </>
-          )}
-
-          {/* Desktop tabs: show here only when the chart is present (otherwise rendered in grid) */}
-          {shouldShowChart && (
-            <div className="hidden lg:block mb-12">{desktopTabs}</div>
-          )}
+          <div className="hidden lg:block mb-12">{desktopTabs}</div>
         </div>
       </div>
 

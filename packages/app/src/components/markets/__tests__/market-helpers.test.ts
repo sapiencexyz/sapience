@@ -1,23 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { filterRows, type TopLevelRow } from '../market-helpers';
+import {
+  collapsePriceCategories,
+  filterRows,
+  type TopLevelRow,
+} from '../market-helpers';
 import type { FilterState } from '../TableFilters';
 
 const NO_FILTER_RANGES: Pick<
   FilterState,
   | 'openInterestRange'
   | 'similarMarketVolumeRange'
-  | 'volume1hRange'
-  | 'volume4hRange'
-  | 'volume24hRange'
-  | 'volume7dRange'
+  | 'similarMarketVolume1hRange'
+  | 'similarMarketVolume4hRange'
+  | 'similarMarketVolume24hRange'
+  | 'similarMarketVolume7dRange'
   | 'timeToResolutionRange'
 > = {
   openInterestRange: [0, Infinity],
   similarMarketVolumeRange: [0, Infinity],
-  volume1hRange: [0, Infinity],
-  volume4hRange: [0, Infinity],
-  volume24hRange: [0, Infinity],
-  volume7dRange: [0, Infinity],
+  similarMarketVolume1hRange: [0, Infinity],
+  similarMarketVolume4hRange: [0, Infinity],
+  similarMarketVolume24hRange: [0, Infinity],
+  similarMarketVolume7dRange: [0, Infinity],
   timeToResolutionRange: [-Infinity, Infinity],
 };
 
@@ -34,14 +38,10 @@ function makeConditionRow(
       openInterest: '0',
       endTime: Math.floor(Date.now() / 1000) + 86400,
       similarMarketVolume: 0,
-      volume1h: 0,
-      volume4h: 0,
-      volume24h: 0,
-      volume7d: 0,
-      volumeFiltered1h: 0,
-      volumeFiltered4h: 0,
-      volumeFiltered24h: 0,
-      volumeFiltered7d: 0,
+      similarMarketVolume1h: 0,
+      similarMarketVolume4h: 0,
+      similarMarketVolume24h: 0,
+      similarMarketVolume7d: 0,
       ...overrides,
     } as unknown as TopLevelRow extends { condition: infer C } ? C : never,
   };
@@ -56,9 +56,9 @@ describe('filterRows — time-bucketed volume windows', () => {
   };
 
   const rows: TopLevelRow[] = [
-    makeConditionRow('low-7d', { volume7d: 500 }),
-    makeConditionRow('mid-7d', { volume7d: 50_000 }),
-    makeConditionRow('high-7d', { volume7d: 2_000_000 }),
+    makeConditionRow('low-7d', { similarMarketVolume7d: 500 }),
+    makeConditionRow('mid-7d', { similarMarketVolume7d: 50_000 }),
+    makeConditionRow('high-7d', { similarMarketVolume7d: 2_000_000 }),
   ];
 
   it('passes all rows through when every window range is [0, Infinity]', () => {
@@ -68,7 +68,7 @@ describe('filterRows — time-bucketed volume windows', () => {
   it('filters by a 7d minimum', () => {
     const result = filterRows(rows, {
       ...baseFilters,
-      volume7dRange: [10_000, Infinity],
+      similarMarketVolume7dRange: [10_000, Infinity],
     });
     expect(result.map((r) => r.id)).toEqual(['mid-7d', 'high-7d']);
   });
@@ -76,7 +76,7 @@ describe('filterRows — time-bucketed volume windows', () => {
   it('filters by a 7d maximum', () => {
     const result = filterRows(rows, {
       ...baseFilters,
-      volume7dRange: [0, 100_000],
+      similarMarketVolume7dRange: [0, 100_000],
     });
     expect(result.map((r) => r.id)).toEqual(['low-7d', 'mid-7d']);
   });
@@ -84,14 +84,20 @@ describe('filterRows — time-bucketed volume windows', () => {
   it('applies each window range independently', () => {
     const input: TopLevelRow[] = [
       // Passes 24h floor, fails 1h floor
-      makeConditionRow('row-a', { volume24h: 100_000, volume1h: 10 }),
+      makeConditionRow('row-a', {
+        similarMarketVolume24h: 100_000,
+        similarMarketVolume1h: 10,
+      }),
       // Passes both floors
-      makeConditionRow('row-b', { volume24h: 100_000, volume1h: 5_000 }),
+      makeConditionRow('row-b', {
+        similarMarketVolume24h: 100_000,
+        similarMarketVolume1h: 5_000,
+      }),
     ];
     const result = filterRows(input, {
       ...baseFilters,
-      volume24hRange: [50_000, Infinity],
-      volume1hRange: [1_000, Infinity],
+      similarMarketVolume24hRange: [50_000, Infinity],
+      similarMarketVolume1hRange: [1_000, Infinity],
     });
     expect(result.map((r) => r.id)).toEqual(['row-b']);
   });
@@ -110,7 +116,51 @@ describe('filterRows — time-bucketed volume windows', () => {
     };
     expect(filterRows([sparseRow], baseFilters)).toHaveLength(1);
     expect(
-      filterRows([sparseRow], { ...baseFilters, volume24hRange: [1, Infinity] })
+      filterRows([sparseRow], {
+        ...baseFilters,
+        similarMarketVolume24hRange: [1, Infinity],
+      })
     ).toHaveLength(0);
+  });
+});
+
+describe('collapsePriceCategories', () => {
+  it('returns rows unchanged when no price sub-categories are present', () => {
+    const rows = [
+      { slug: 'crypto', name: 'Crypto', raw: 100n },
+      { slug: 'sports', name: 'Sports', raw: 50n },
+    ];
+    const result = collapsePriceCategories(rows);
+    expect(result).toEqual([
+      { slug: 'crypto', name: 'Crypto', raw: 100n, source: rows[0] },
+      { slug: 'sports', name: 'Sports', raw: 50n, source: rows[1] },
+    ]);
+  });
+
+  it('merges all prices-* sub-categories into a single Prices aggregate', () => {
+    const rows = [
+      { slug: 'crypto', name: 'Crypto', raw: 100n },
+      { slug: 'prices-crypto', name: 'Crypto Prices', raw: 30n },
+      { slug: 'prices-equity', name: 'Equity Prices', raw: 20n },
+      { slug: 'prices-commodities', name: 'Commodities Prices', raw: 10n },
+    ];
+    const result = collapsePriceCategories(rows);
+    expect(result).toHaveLength(2);
+    expect(result.find((r) => r.slug === 'crypto')?.raw).toBe(100n);
+    const merged = result.find((r) => r.slug === 'prices');
+    expect(merged).toBeDefined();
+    expect(merged?.name).toBe('Prices');
+    expect(merged?.raw).toBe(60n);
+    expect(merged?.source).toBeUndefined();
+  });
+
+  it('merges a single prices-* row into the Prices aggregate', () => {
+    const rows = [{ slug: 'prices-crypto', name: 'Crypto Prices', raw: 7n }];
+    const result = collapsePriceCategories(rows);
+    expect(result).toEqual([{ slug: 'prices', name: 'Prices', raw: 7n }]);
+  });
+
+  it('handles an empty input', () => {
+    expect(collapsePriceCategories([])).toEqual([]);
   });
 });

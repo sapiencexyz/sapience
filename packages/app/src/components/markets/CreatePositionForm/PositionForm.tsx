@@ -6,11 +6,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
-import { parseUnits } from 'viem';
+import { parseUnits, zeroAddress as ZERO_ADDRESS } from 'viem';
 import { useAccount } from 'wagmi';
 import { generateRandomNonce } from '@sapience/sdk';
 import {
@@ -24,14 +29,22 @@ import {
   type PythPrediction,
   type PredictionListItemData,
 } from '@sapience/ui';
+import { buildPythAuctionStartPayload } from '@sapience/sdk/auction/buildAuctionPayload';
 import SponsorshipIndicator from './SponsorshipIndicator';
 import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
-import { PositionSizeInput } from '~/components/markets/forms';
+import { PositionSizeInput } from '~/components/markets/forms/inputs/PositionSizeInput';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
-import { buildPythAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import {
+  formatPythDurationFromNow,
+  formatPythFeedLabel,
+  formatPythTargetPriceDisplay,
+  parsePythEndDate,
+} from '~/lib/auction/pythPredictionDisplay';
+import { selectBestBid } from '~/lib/auction/selectBestBid';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -120,6 +133,12 @@ export default function PositionForm({
   // a previous request for a different prediction set. We only want to display
   // bids after *this* form initiates an auction for the current inputs.
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
+  // Tracks whether a legit (valid, non-expired) bid has been shown for the
+  // current auction. Once it has, we suppress the estimate fallback when the
+  // bid expires — the user has already seen a real price, so dropping back to
+  // an estimator placeholder would be misleading. They should see the
+  // request-again state instead. Reset whenever a new auction starts.
+  const hasShownValidBidRef = useRef(false);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const {
@@ -162,7 +181,6 @@ export default function PositionForm({
   // This MUST match the logic in useAuctionStart.requestQuotes
   // - If using session signing (smart account with active session): use effectiveAddress (smart account)
   // - Otherwise (signing with wallet): use predictorAddress (wallet)
-  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
   const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
   const triggerMode = getAuctionTriggerMode(
     willUseSessionSigning,
@@ -211,6 +229,18 @@ export default function PositionForm({
     return !Number.isNaN(sizeNum) && sizeNum > 1000;
   }, [positionSizeValue]);
 
+  // Pick-composition flags drive which bid-estimate hint we surface:
+  // mixed combos attract fewer bids; all-Pyth combos get the shorter-duration
+  // nudge (Polymarket conditions have fixed end times the user doesn't control).
+  const { hasMixedResolvers, isAllPyth } = useMemo(() => {
+    const hasPolymarket = selections.length > 0;
+    const hasPyth = (pythPredictions?.length ?? 0) > 0;
+    return {
+      hasMixedResolvers: hasPolymarket && hasPyth,
+      isAllPyth: hasPyth && !hasPolymarket,
+    };
+  }, [selections, pythPredictions]);
+
   // Calculate predictor position size in wei for auction chart
   const predictorPositionSizeWei = useMemo(() => {
     const decimals = collateralDecimals ?? 18;
@@ -221,10 +251,10 @@ export default function PositionForm({
     }
   }, [positionSizeValue, collateralDecimals]);
 
-  // Create a stable key from all prediction legs (UMA + Pyth) to detect changes
+  // Create a stable key from all prediction legs (Polymarket + Pyth) to detect changes
   // and ensure we clear/re-key bids correctly when *either* leg set changes.
   const predictionsKey = useMemo(() => {
-    const umaKey = selections
+    const polymarketKey = selections
       .map((s) => `${s.conditionId}:${s.prediction}`)
       .sort()
       .join('|');
@@ -235,7 +265,7 @@ export default function PositionForm({
       )
       .sort()
       .join('|');
-    return [umaKey, pythKey].filter(Boolean).join('||');
+    return [polymarketKey, pythKey].filter(Boolean).join('||');
   }, [selections, pythPredictions]);
   const prevPredictionsKeyRef = useRef<string>(predictionsKey);
 
@@ -247,6 +277,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      hasShownValidBidRef.current = false;
       resetSponsor();
       setLastQuoteRequestMs(null); // Reset cooldown when position size changes
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
@@ -265,6 +296,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      hasShownValidBidRef.current = false;
       resetSponsor();
       setLastQuoteRequestMs(null);
       currentRequestKeyRef.current = null;
@@ -283,6 +315,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      hasShownValidBidRef.current = false;
       resetSponsor();
       setLastQuoteRequestMs(null);
       currentRequestKeyRef.current = null;
@@ -297,6 +330,7 @@ export default function PositionForm({
       logPositionForm('Predictions changed, clearing bids');
       setValidBids([]);
       setStickyEstimateBid(null);
+      hasShownValidBidRef.current = false;
       resetSponsor();
       setLastQuoteRequestMs(null); // Reset cooldown when selections change
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
@@ -339,113 +373,52 @@ export default function PositionForm({
   // Track previous filter result to avoid logging on every tick
   const prevFilterResultRef = useRef<string | null>(null);
 
-  // Filter bids: only show bids marked as valid as best bids
   const { bestBid, estimateBid } = useMemo(() => {
+    const selection = selectBestBid(validBids, nowMs);
+
+    // Logging is gated on a state-change signature so a periodic re-render
+    // (e.g. the 1s `nowMs` tick) doesn't spam the log.
+    let resultKey: string | null = null;
     if (!validBids || validBids.length === 0) {
-      prevFilterResultRef.current = null;
-      return { bestBid: null, estimateBid: null };
-    }
-
-    // Separate estimator bids (vault-bot with deadline=1 sentinel) from regular bids
-    const estimatorBids = validBids.filter(
-      (bid) =>
-        bid.counterparty?.toLowerCase() ===
-          PREFERRED_ESTIMATE_QUOTER.toLowerCase() &&
-        bid.validationStatus === 'valid'
-    );
-    const regularBids = validBids.filter(
-      (bid) =>
-        bid.counterparty?.toLowerCase() !==
-        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
-    );
-
-    // Apply expiry filter only to regular bids (estimator bids use deadline=1 sentinel)
-    const nonExpiredBids = regularBids.filter(
-      (bid) => bid.counterpartyDeadline * 1000 > nowMs
-    );
-
-    if (nonExpiredBids.length === 0 && estimatorBids.length === 0) {
-      const resultKey = 'all-expired';
+      resultKey = null;
+    } else if (!selection.bestBid && !selection.estimateBid) {
+      resultKey = 'all-expired';
       if (prevFilterResultRef.current !== resultKey) {
         logPositionForm(
           `[bestBid] All ${validBids.length} bid(s) expired. First deadline=${validBids[0]?.counterpartyDeadline}, nowSec=${Math.floor(nowMs / 1000)}`
         );
-        prevFilterResultRef.current = resultKey;
       }
-      return { bestBid: null, estimateBid: null };
-    }
-
-    // Only bids marked as valid are valid for submission
-    const validFilteredBids = nonExpiredBids.filter(
-      (bid) => bid.validationStatus === 'valid'
-    );
-
-    // If we have no valid bids and exactly one invalid bid, show it as an estimate.
-    // This matches the "single failing bid shows ESTIMATE" behavior.
-    const failedBids = nonExpiredBids.filter(
-      (bid) => bid.validationStatus === 'invalid'
-    );
-
-    const estimateFromFailed =
-      validFilteredBids.length === 0 && failedBids.length === 1
-        ? failedBids[0]
-        : null;
-
-    if (validFilteredBids.length === 0) {
-      // No valid regular bids — fall back to best estimator bid or failed estimate
-      const bestEstimator =
-        estimatorBids.length > 0
-          ? estimatorBids.reduce((acc, current) => {
-              try {
-                return BigInt(current.counterpartyCollateral) >
-                  BigInt(acc.counterpartyCollateral)
-                  ? current
-                  : acc;
-              } catch {
-                return acc;
-              }
-            })
-          : null;
-
-      const estimate = bestEstimator ?? estimateFromFailed;
-      const resultKey = estimate
-        ? `estimate:${estimate.counterparty}`
-        : `no-valid:${failedBids.length}`;
+    } else if (selection.estimateBid) {
+      resultKey = `estimate:${selection.estimateBid.counterparty}`;
       if (prevFilterResultRef.current !== resultKey) {
-        if (estimate) {
-          logPositionForm(
-            `Using estimate: ${formatBidForLog(estimate, collateralDecimals)}`
-          );
-        }
-        prevFilterResultRef.current = resultKey;
+        logPositionForm(
+          `Using estimate: ${formatBidForLog(selection.estimateBid, collateralDecimals)}`
+        );
       }
-      return { bestBid: null, estimateBid: estimate };
-    }
-
-    // Select the bid with highest counterpartyCollateral (highest payout for user)
-    const best = validFilteredBids.reduce((acc, current) => {
-      try {
-        return BigInt(current.counterpartyCollateral) >
-          BigInt(acc.counterpartyCollateral)
-          ? current
-          : acc;
-      } catch {
-        return acc;
+    } else if (selection.bestBid) {
+      resultKey = `best:${selection.bestBid.counterparty}:${selection.bestBid.counterpartyCollateral}`;
+      if (prevFilterResultRef.current !== resultKey) {
+        logPositionForm(
+          `Best bid: ${formatBidForLog(selection.bestBid, collateralDecimals)}`
+        );
       }
-    });
-
-    const resultKey = `best:${best.counterparty}:${best.counterpartyCollateral}`;
-    if (prevFilterResultRef.current !== resultKey) {
-      logPositionForm(`Best bid: ${formatBidForLog(best, collateralDecimals)}`);
-      prevFilterResultRef.current = resultKey;
     }
+    prevFilterResultRef.current = resultKey;
 
-    return { bestBid: best, estimateBid: null };
+    return selection;
   }, [validBids, nowMs, collateralDecimals]);
 
   // Make estimate "sticky" so it doesn't disappear while we're still waiting for a success bid.
   useEffect(() => {
     if (bestBid) {
+      hasShownValidBidRef.current = true;
+      setStickyEstimateBid(null);
+      return;
+    }
+    // Once a real bid has been shown for this auction, don't fall back to an
+    // estimator placeholder when it expires — the user has already seen a
+    // legit price. Surface the request-again state until a fresh auction.
+    if (hasShownValidBidRef.current) {
       setStickyEstimateBid(null);
       return;
     }
@@ -457,7 +430,7 @@ export default function PositionForm({
     // Estimator bids use deadline=1 (sentinel) and should not cause clearing.
     const hasAnyNonExpired = bids.some(
       (b) =>
-        b.counterpartyDeadline * 1000 > nowMs ||
+        effectiveDeadlineMs(b.counterpartyDeadline) > nowMs ||
         b.counterparty?.toLowerCase() ===
           PREFERRED_ESTIMATE_QUOTER.toLowerCase()
     );
@@ -467,10 +440,15 @@ export default function PositionForm({
   // Cooldown duration for showing loader after requesting bids (15 seconds)
   const QUOTE_COOLDOWN_MS = 15000;
 
-  // Check if we recently made a request - show loader during cooldown
+  // Check if we recently made a request - show loader during cooldown.
+  // Once a legit bid has been shown for this auction, the cooldown's purpose
+  // (suppressing a flicker before bids arrive) no longer applies — the user
+  // has already seen a real price, so on expiry we want to drop straight to
+  // the request-again button instead of a "listening for bids" intermediate.
   const recentlyRequested =
     lastQuoteRequestMs != null &&
-    nowMs - lastQuoteRequestMs < QUOTE_COOLDOWN_MS;
+    nowMs - lastQuoteRequestMs < QUOTE_COOLDOWN_MS &&
+    !hasShownValidBidRef.current;
 
   // Restart cooldown when we receive an estimate bid (failed simulation)
   // This keeps the loader showing while waiting for valid bids
@@ -504,10 +482,10 @@ export default function PositionForm({
         return;
       }
 
-      const hasUma = selections.length > 0;
+      const hasPolymarket = selections.length > 0;
       const hasPyth = pythPredictions.length > 0;
 
-      if (!hasUma && !hasPyth) {
+      if (!hasPolymarket && !hasPyth) {
         return;
       }
       if (hasFormErrors) {
@@ -523,6 +501,7 @@ export default function PositionForm({
         // Reset display state for a new request (prevents stale "active bid" while awaiting quotes).
         setValidBids([]);
         setStickyEstimateBid(null);
+        hasShownValidBidRef.current = false;
 
         // Fetch fresh nonce via wagmi refetch (bypasses stale cache)
         const nonceResult = await refetchTakerNonce();
@@ -566,7 +545,7 @@ export default function PositionForm({
         let picks: AuctionParams['picks'] = [];
         if (hasPyth && pythEscrowPicks) {
           picks = pythEscrowPicks;
-        } else if (hasUma) {
+        } else if (hasPolymarket) {
           const conditionPicks = getPolymarketPicks();
           if (conditionPicks.length > 0) {
             picks = conditionPicks;
@@ -674,7 +653,7 @@ export default function PositionForm({
     // Don't auto-trigger if there are form errors (auto mode only)
     if (triggerMode === 'auto' && hasFormErrors) return;
 
-    // Must have at least one UMA prediction or at least one Pyth prediction
+    // Must have at least one Polymarket prediction or at least one Pyth prediction
     const hasPredictions = selections.length >= 1 || pythPredictions.length > 0;
     if (!hasPredictions) return;
 
@@ -722,7 +701,7 @@ export default function PositionForm({
   // Since automatic auction trigger is disabled, show button immediately when no bids
   const showNoBidsHint = !bestBid && !recentlyRequested;
 
-  // Show "Some combinations may not receive bids" hint after 3 seconds of no bids
+  // Show "Some predictions may not receive bids" hint after 3 seconds of no bids
   // This replaces the disclaimer after waiting for bids without success
   const HINT_DELAY_MS = 3000;
   const showNoBidsWarning =
@@ -807,19 +786,66 @@ export default function PositionForm({
           ].map((item, index) => {
             if (item.kind === 'pyth') {
               const p = item.p;
-              const predictionData: PredictionListItemData = {
-                id: p.id,
-                question: `${p.priceFeedLabel ?? 'Crypto'} OVER $${p.targetPrice.toLocaleString()}`,
-                prediction: p.direction === 'over',
-              };
+              const feedLabel = formatPythFeedLabel(p.priceFeedLabel);
+              const directionSymbol = p.direction === 'over' ? '>' : '<';
+              const priceDisplay = formatPythTargetPriceDisplay(
+                p.targetPriceRaw,
+                p.targetPrice
+              );
+              const endDate = parsePythEndDate(p.dateTimeLocal);
+              const durationStr = endDate
+                ? formatPythDurationFromNow(endDate.getTime(), nowMs)
+                : null;
+              const exactTimestamp = endDate
+                ? new Intl.DateTimeFormat(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZoneName: 'short',
+                  }).format(endDate)
+                : null;
+              const pythTitle = `${feedLabel} ${directionSymbol}$${priceDisplay}${durationStr ? ` IN ${durationStr}` : ''}`;
               return (
                 <div
                   key={p.id}
                   className={`-mx-4 px-4 py-2.5 border-b border-brand-white/10 ${index === 0 ? 'border-t' : ''}`}
                 >
                   <PredictionListItem
-                    prediction={predictionData}
+                    prediction={{
+                      id: p.id,
+                      question: pythTitle,
+                      prediction: p.direction === 'over',
+                    }}
                     leading={<PythMarketBadge className="w-5 h-5" />}
+                    showChoice={false}
+                    title={
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="truncate text-brand-white font-mono text-sm cursor-default">
+                            {pythTitle}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          className="max-w-xs text-xs whitespace-normal break-words font-mono"
+                        >
+                          <div>{p.priceFeedLabel ?? 'Crypto'}</div>
+                          {priceDisplay && (
+                            <div className="mt-1">
+                              {directionSymbol} ${priceDisplay}
+                            </div>
+                          )}
+                          {exactTimestamp && (
+                            <div className="mt-1 text-muted-foreground">
+                              {exactTimestamp}
+                            </div>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    }
                     onRemove={onRemovePythPrediction}
                   />
                 </div>
@@ -922,6 +948,8 @@ export default function PositionForm({
               }
               enableRainbowHover={isRainbowHoverEnabled}
               hintMounted={hintMounted}
+              hasMixedResolvers={hasMixedResolvers}
+              isAllPyth={isAllPyth}
               disclaimerMounted={disclaimerMounted}
               allBids={validBids}
               predictorPositionSizeWei={predictorPositionSizeWei}
@@ -933,6 +961,7 @@ export default function PositionForm({
               hasFormErrors={hasFormErrors}
               isLoggedOut={!hasConnectedWallet}
               onConnectClick={openConnectDialog}
+              hasShownValidBid={hasShownValidBidRef.current}
             />
           </div>
           {error && (

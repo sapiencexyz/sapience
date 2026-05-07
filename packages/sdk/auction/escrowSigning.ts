@@ -7,6 +7,7 @@ import {
   zeroAddress,
   type Address,
   type Hex,
+  type PublicClient,
   type TypedDataDomain,
 } from 'viem';
 import type { Pick, MintRequest, BurnRequest } from '../types/escrow';
@@ -16,6 +17,20 @@ import {
   type SessionApprovalPayload,
 } from '../session/verification';
 import { verifyEip712Signature } from '../session/eip712Verify';
+
+const ERC1271_MAGIC_VALUE = '0x1626ba7e' as const;
+const ERC1271_ABI = [
+  {
+    name: 'isValidSignature',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'hash', type: 'bytes32' },
+      { name: 'signature', type: 'bytes' },
+    ],
+    outputs: [{ name: '', type: 'bytes4' }],
+  },
+] as const;
 
 // ============================================================================
 // EIP-712 Domain & Types
@@ -637,7 +652,25 @@ export async function verifyAuctionIntentSignature(params: {
   predictorSessionKeyData?: string;
   verifyingContract: Address;
   chainId: number;
-}): Promise<{ valid: boolean; recoveredAddress?: Address }> {
+  /**
+   * Optional public client. When provided, the verifier falls back to ERC-1271
+   * (`isValidSignature`) for smart-account predictors after the legacy
+   * EOA / factory-derivation paths fail. Without it, smart-account intent
+   * signatures (kernel-wrapped) come back as `valid: false` and the caller
+   * must decide whether to passthrough on-chain anyway.
+   */
+  publicClient?: PublicClient;
+}): Promise<{
+  valid: boolean;
+  recoveredAddress?: Address;
+  /**
+   * Set when the predictor is a smart account whose signature could not be
+   * verified offline (kernel-wrapped sig + no `publicClient` for ERC-1271
+   * fallback). Callers should treat this as a passthrough — the on-chain
+   * `mint()` is the authoritative gate.
+   */
+  unverifiedContractSigner?: boolean;
+}> {
   try {
     const rawTypedData = buildAuctionIntentTypedData({
       picks: params.picks,
@@ -707,6 +740,7 @@ export async function verifyAuctionIntentSignature(params: {
     // The session key signs with raw ECDSA; the approval proves the owner
     // authorized this session key for the predictor's smart account.
     if (
+      recovered &&
       params.predictorSessionKeyData &&
       !params.predictorSessionKeyData.startsWith('0x')
     ) {
@@ -742,6 +776,46 @@ export async function verifyAuctionIntentSignature(params: {
         }
       } catch {
         // Session verification failed — fall through
+      }
+    }
+
+    // Path 5: ERC-1271 — predictor is a smart account that validates the
+    // signature itself. Only reachable when a publicClient is supplied.
+    // The migrated app produces kernel-wrapped session-key signatures that
+    // recover to the wrong address via standard ECDSA but pass through the
+    // smart account's `isValidSignature`.
+    if (params.publicClient) {
+      try {
+        const code = await params.publicClient.getCode({
+          address: params.predictor,
+        });
+        const hasCode = code !== undefined && code !== '0x' && code.length > 2;
+        if (hasCode) {
+          const intentDigest = hashTypedData(typedData);
+          try {
+            const result = await params.publicClient.readContract({
+              address: params.predictor,
+              abi: ERC1271_ABI,
+              functionName: 'isValidSignature',
+              args: [intentDigest, params.intentSignature],
+            });
+            if (result === ERC1271_MAGIC_VALUE) {
+              return { valid: true, recoveredAddress: params.predictor };
+            }
+          } catch {
+            // ERC-1271 call reverted — fall through to unverified.
+          }
+          // Smart account exists but signature couldn't be verified offline.
+          // Caller decides whether to passthrough; the on-chain `mint()` is
+          // the authoritative gate.
+          return {
+            valid: false,
+            recoveredAddress: recovered,
+            unverifiedContractSigner: true,
+          };
+        }
+      } catch {
+        // getCode failed — fall through to plain failure.
       }
     }
 

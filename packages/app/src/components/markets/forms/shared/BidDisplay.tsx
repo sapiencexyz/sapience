@@ -8,6 +8,10 @@ import RiskDisclaimer from './RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import { formatNumber } from '~/lib/utils/util';
 import { quoteBidsToAuctionBids } from '~/lib/auction/bidAdapter';
+import {
+  isBidExpired as checkBidExpired,
+  remainingMsToDeadline,
+} from '~/lib/auction/bidExpiry';
 import AuctionBidsChart from '~/components/shared/AuctionBidsChart';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 
@@ -40,6 +44,10 @@ interface BidDisplayProps {
   disclaimerMounted?: boolean;
   /** Whether hint is mounted */
   hintMounted?: boolean;
+  /** Combo mixes oracle types / resolvers — surface a specific reason bids may be scarce */
+  hasMixedResolvers?: boolean;
+  /** Every pick is a Pyth price prediction — show the "shorter durations" nudge */
+  isAllPyth?: boolean;
   /** Optional className for the container */
   className?: string;
   /** All bids for auction chart display */
@@ -60,6 +68,10 @@ interface BidDisplayProps {
   isLoggedOut?: boolean;
   /** Callback to open connect dialog */
   onConnectClick?: () => void;
+  /** A legit (valid, non-expired) bid has been shown for the current auction.
+   * When the bid then expires we surface this so the idle button can read
+   * "RESTART AUCTION" instead of "INITIATE AUCTION". */
+  hasShownValidBid?: boolean;
 }
 
 /**
@@ -81,6 +93,8 @@ export default function BidDisplay({
   enableRainbowHover = false,
   disclaimerMounted = true,
   hintMounted = false,
+  hasMixedResolvers = false,
+  isAllPyth = false,
   className,
   allBids = [],
   predictorPositionSizeWei,
@@ -91,18 +105,16 @@ export default function BidDisplay({
   hasFormErrors = false,
   isLoggedOut = false,
   onConnectClick,
+  hasShownValidBid = false,
 }: BidDisplayProps): React.ReactElement {
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
 
   // Helper function to calculate payout amount
   const calculatePayoutAmount = useCallback(
-    (bid: QuoteBid, positionSize: string): string => {
+    (bid: QuoteBid, size: string): string => {
       let userPositionSizeWei: bigint = 0n;
       try {
-        userPositionSizeWei = parseUnits(
-          positionSize || '0',
-          collateralDecimals
-        );
+        userPositionSizeWei = parseUnits(size || '0', collateralDecimals);
       } catch {
         userPositionSizeWei = 0n;
       }
@@ -128,9 +140,10 @@ export default function BidDisplay({
   // Convert QuoteBids to AuctionBidData for the chart
   const chartBids = useMemo(() => quoteBidsToAuctionBids(allBids), [allBids]);
 
-  // Check if the current best bid is expired
+  // Check if the current best bid is expired (uses a small buffer ahead of
+  // the on-chain deadline so the user has room for inclusion latency)
   const isBidExpired = bestBid
-    ? bestBid.counterpartyDeadline * 1000 - nowMs <= 0
+    ? checkBidExpired(bestBid.counterpartyDeadline, nowMs)
     : true;
 
   // Unified UI state - single source of truth for all UI rendering
@@ -158,7 +171,10 @@ export default function BidDisplay({
 
     const humanTotalVal = calculatePayoutAmount(bestBid, positionSize);
 
-    const remainingMs = bestBid.counterpartyDeadline * 1000 - nowMs;
+    const remainingMs = remainingMsToDeadline(
+      bestBid.counterpartyDeadline,
+      nowMs
+    );
     const secs = Math.max(0, Math.ceil(remainingMs / 1000));
 
     return { humanTotal: humanTotalVal, remainingSecs: secs };
@@ -225,7 +241,9 @@ export default function BidDisplay({
         }
         return {
           text: showRequestBidsButton
-            ? 'INITIATE AUCTION'
+            ? hasShownValidBid
+              ? 'RESTART AUCTION'
+              : 'INITIATE AUCTION'
             : 'WAITING FOR BIDS...',
           disabled:
             !showRequestBidsButton || hasFormErrors || showAddPredictionsHint,
@@ -527,12 +545,21 @@ export default function BidDisplay({
         )}
       </Button>
 
-      {/* Position-specific hint for combinations that may not receive bids */}
+      {/* Position-specific hint for combos that may not receive bids.
+          Surfaces a targeted hint for mixed-resolver combos or a
+          shorter-duration nudge for Pyth-only combos; falls back to a generic
+          message otherwise. */}
       {hintMounted && (
-        <div className="text-xs text-foreground font-medium mt-3">
-          <span className="text-accent-gold">
-            Some combinations may not receive bids
-          </span>
+        <div className="text-xs text-foreground font-medium mt-3 space-y-1">
+          <div>
+            <span className="text-accent-gold">
+              {hasMixedResolvers
+                ? 'Predictions that mix oracle types may attract fewer bids.'
+                : isAllPyth
+                  ? 'Shorter price prediction durations attract more bids.'
+                  : 'Some predictions may not receive bids.'}
+            </span>
+          </div>
         </div>
       )}
 

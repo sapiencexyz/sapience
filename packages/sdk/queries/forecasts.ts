@@ -1,8 +1,8 @@
 import { getAddress } from 'viem';
+import { FORECAST_SCHEMA_UID } from '../constants/resolver';
 import { graphqlRequest } from './client/graphqlClient';
 
-const DEFAULT_SCHEMA_UID =
-  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
+const DEFAULT_SCHEMA_UID = FORECAST_SCHEMA_UID;
 
 interface RawAttestation {
   id: string;
@@ -30,7 +30,7 @@ type AttestationsQueryResponse = {
   attestations: RawAttestation[];
 };
 
-const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
+export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
   query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
     attestations(where: $where, orderBy: { time: desc }, take: $take) {
       id
@@ -44,7 +44,7 @@ const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
   }
 `;
 
-const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
+export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
   query FindAttestationsPaginated(
     $where: AttestationWhereInput!
     $take: Int!

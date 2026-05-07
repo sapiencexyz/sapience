@@ -22,7 +22,7 @@ import {
 import { useReadContracts, useBalance, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
-import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
+import { useVaultShareQuoteWs } from '~/hooks/ws/useVaultShareQuoteWs';
 
 const DEFAULT_VAULT_ADDRESS = predictionMarketVault[DEFAULT_CHAIN_ID]?.address;
 const VAULT_ABI: Abi = predictionMarketVaultAbi;

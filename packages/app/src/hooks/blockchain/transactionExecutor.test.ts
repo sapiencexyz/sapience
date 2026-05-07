@@ -257,9 +257,14 @@ describe('resolveEoaBatchResult', () => {
 describe('executeViaSessionKeyDefault', () => {
   const mockEncodeCalls = vi.fn().mockResolvedValue('0xencoded');
   const mockSendUserOperation = vi.fn().mockResolvedValue('0xuserophash');
+  const mockWaitForReceipt = vi.fn().mockResolvedValue({
+    success: true,
+    receipt: { transactionHash: '0xtxhash' },
+  });
   const mockClient: SessionClient = {
     account: { encodeCalls: mockEncodeCalls },
     sendUserOperation: mockSendUserOperation,
+    waitForUserOperationReceipt: mockWaitForReceipt,
   };
 
   beforeEach(() => {
@@ -307,9 +312,25 @@ describe('executeViaSessionKeyDefault', () => {
     ).rejects.toThrow(/Session expired/);
   });
 
+  it('throws when UserOp reverts on-chain and surfaces the revert reason', async () => {
+    mockWaitForReceipt.mockResolvedValueOnce({
+      success: false,
+      reason: 'CounterpartyDeadlineExceeded',
+      receipt: { transactionHash: '0xreverttx' },
+    });
+    const onReceiptConfirmed = vi.fn();
+    await expect(
+      executeViaSessionKeyDefault(mockClient, [], CHAIN_ID_ETHEREAL, {
+        onReceiptConfirmed,
+      })
+    ).rejects.toThrow(/CounterpartyDeadlineExceeded/);
+    expect(onReceiptConfirmed).not.toHaveBeenCalled();
+  });
+
   it('throws if account is missing', async () => {
     const noAccountClient: SessionClient = {
       sendUserOperation: mockSendUserOperation,
+      waitForUserOperationReceipt: mockWaitForReceipt,
     };
     await expect(
       executeViaSessionKeyDefault(noAccountClient, [], CHAIN_ID_ETHEREAL, {})
@@ -339,6 +360,7 @@ describe('executeTransaction', () => {
           sessionClient: {
             account: { encodeCalls: vi.fn() },
             sendUserOperation: vi.fn(),
+            waitForUserOperationReceipt: vi.fn(),
           },
           executeViaSessionKey,
         }
@@ -353,6 +375,7 @@ describe('executeTransaction', () => {
       const newClient: SessionClient = {
         account: { encodeCalls: vi.fn() },
         sendUserOperation: vi.fn(),
+        waitForUserOperationReceipt: vi.fn(),
       };
       const createArbitrumSessionIfNeeded = vi
         .fn()
@@ -390,6 +413,25 @@ describe('executeTransaction', () => {
       expect(result.path).toBe('owner');
       expect(result.hash).toBe('0xownerhash');
     });
+
+    it('preserves original error as cause when session throws', async () => {
+      const originalError = new Error('paymaster AA23 reverted');
+      const executeViaSessionKey = vi.fn().mockRejectedValue(originalError);
+
+      await expect(
+        executeTransaction(dummyCalls, CHAIN_ID_ETHEREAL, 'session', {
+          sessionClient: {
+            account: { encodeCalls: vi.fn() },
+            sendUserOperation: vi.fn(),
+            waitForUserOperationReceipt: vi.fn(),
+          },
+          executeViaSessionKey,
+        })
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Session key transaction failed'),
+        cause: originalError,
+      });
+    });
   });
 
   describe('owner path', () => {
@@ -408,6 +450,20 @@ describe('executeTransaction', () => {
       expect(executeViaOwnerSigning).toHaveBeenCalled();
       expect(result.hash).toBe('0xownertx');
       expect(result.path).toBe('owner');
+    });
+
+    it('preserves original error as cause when owner path throws', async () => {
+      const originalError = new Error('wallet connection lost');
+      const executeViaOwnerSigning = vi.fn().mockRejectedValue(originalError);
+
+      await expect(
+        executeTransaction(dummyCalls, CHAIN_ID_ETHEREAL, 'owner', {
+          executeViaOwnerSigning,
+        })
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Smart account transaction failed'),
+        cause: originalError,
+      });
     });
 
     it('wraps calls on Ethereal with value', async () => {

@@ -37,6 +37,8 @@ export function isEscrowClientMessage(
       msgObj.type === 'auction.subscribe' ||
       msgObj.type === 'auction.unsubscribe' ||
       msgObj.type === 'bid.submit' ||
+      msgObj.type === 'identify' ||
+      msgObj.type === 'auction.received' ||
       msgObj.type === 'ping')
   );
 }

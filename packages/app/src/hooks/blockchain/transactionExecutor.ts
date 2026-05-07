@@ -5,6 +5,7 @@
  * extracted from useSapienceWriteContract. All functions take their dependencies
  * as arguments, making them trivially testable without React or wagmi mocking.
  */
+import * as Sentry from '@sentry/nextjs';
 import type { Abi, Hash, Hex } from 'viem';
 import { encodeFunctionData } from 'viem';
 import { waitForCallsStatus } from 'viem/actions';
@@ -40,11 +41,20 @@ export interface WriteContractParams {
   chainId?: number;
 }
 
+export interface UserOperationReceipt {
+  success: boolean;
+  reason?: string;
+  receipt: { transactionHash: Hash };
+}
+
 export interface SessionClient {
   account?: {
     encodeCalls: (calls: TransactionCall[]) => Promise<Hex>;
   };
   sendUserOperation: (params: { callData: Hex }) => Promise<Hash>;
+  waitForUserOperationReceipt: (params: {
+    hash: Hash;
+  }) => Promise<UserOperationReceipt>;
 }
 
 export interface SessionConfig {
@@ -215,6 +225,13 @@ export async function resolveEoaBatchResult(
     return pickFinalTransactionHash(data);
   } catch (error) {
     console.error('[resolveEoaBatchResult] Failed to resolve tx hash:', error);
+    Sentry.captureException(error, {
+      tags: { component: 'rpc' },
+      extra: {
+        function: 'resolveEoaBatchResult',
+        bundleId: data?.id,
+      },
+    });
     return undefined;
   }
 }
@@ -259,6 +276,25 @@ export async function executeViaSessionKeyDefault(
   });
 
   deps.onTxSent?.(userOpHash);
+
+  // Wait for the UserOp to be included on-chain so we can surface execution
+  // reverts to the caller. Without this, a reverted UserOp returns silently
+  // and the UI hangs (e.g. "INDEXING POSITION..." forever) because the
+  // indexer never sees the position.
+  const receipt = await sessionClient.waitForUserOperationReceipt({
+    hash: userOpHash,
+  });
+
+  if (!receipt.success) {
+    const txHash = receipt.receipt?.transactionHash;
+    const detail = receipt.reason
+      ? `: ${receipt.reason}`
+      : txHash
+        ? ` (tx ${txHash})`
+        : '';
+    throw new Error(`Transaction reverted onchain${detail}`);
+  }
+
   deps.onReceiptConfirmed?.();
 
   return userOpHash;
@@ -321,8 +357,8 @@ export async function executeTransaction(
 
     const executeSession =
       deps.executeViaSessionKey ??
-      ((c, calls, cid) =>
-        executeViaSessionKeyDefault(c, calls, cid, {
+      ((c, sessionCalls, cid) =>
+        executeViaSessionKeyDefault(c, sessionCalls, cid, {
           sessionConfig: deps.sessionConfig,
           onTxSending: deps.onTxSending,
           onTxSent: deps.onTxSent,
@@ -334,8 +370,11 @@ export async function executeTransaction(
       // Don't return userOpHash as hash - it's not a real tx hash
       return { path: 'session' };
     } catch (sessionError: unknown) {
+      // Preserve the original error via `cause` so Sentry's exception-chain
+      // integration surfaces the underlying viem/paymaster error.
       throw new Error(
-        `Session key transaction failed: ${formatSessionError(sessionError)}`
+        `Session key transaction failed: ${formatSessionError(sessionError)}`,
+        { cause: sessionError }
       );
     }
   }
@@ -350,7 +389,8 @@ export async function executeTransaction(
       return { hash, path: 'owner' };
     } catch (ownerError: unknown) {
       throw new Error(
-        `Smart account transaction failed: ${formatSessionError(ownerError)}`
+        `Smart account transaction failed: ${formatSessionError(ownerError)}`,
+        { cause: ownerError }
       );
     }
   }

@@ -9,11 +9,11 @@ const mockPrisma = vi.hoisted(() => ({
   $transaction: vi.fn(),
 }));
 
-vi.mock('../../../../db', () => ({ default: mockPrisma }));
-vi.mock('../../../../instrument', () => ({
+vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
+vi.mock('../../../../core/instrument', () => ({
   default: { captureException: vi.fn() },
 }));
-vi.mock('../../../../helpers/scoringService', () => ({
+vi.mock('../../../../services/scoringService', () => ({
   scoreSelectedForecastsForSettledMarket: vi.fn(),
   computeAndStoreMarketTwErrors: vi.fn(),
 }));
@@ -25,7 +25,7 @@ import { processConditionSettled } from '../processConditionSettled';
 import {
   scoreSelectedForecastsForSettledMarket,
   computeAndStoreMarketTwErrors,
-} from '../../../../helpers/scoringService';
+} from '../../../../services/scoringService';
 import { resolvePickConfigsForCondition } from '../resolvePickConfigs';
 import type { HandlerContext } from '../handlerContext';
 
@@ -189,7 +189,13 @@ describe('processConditionSettled', () => {
 
   it('creates event and warns when no condition is found', async () => {
     mockPrisma.condition.findUnique.mockResolvedValue(null);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const writes: string[] = [];
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((
+      chunk: unknown
+    ) => {
+      if (typeof chunk === 'string') writes.push(chunk);
+      return true;
+    }) as never);
 
     await processConditionSettled(
       MOCK_CTX,
@@ -200,11 +206,11 @@ describe('processConditionSettled', () => {
     expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
     expect(mockPrisma.event.create).toHaveBeenCalledOnce();
     expect(mockPrisma.condition.update).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('no matching Condition found')
+    expect(writes.some((w) => w.includes('no matching Condition found'))).toBe(
+      true
     );
 
-    warnSpy.mockRestore();
+    stdoutSpy.mockRestore();
   });
 
   it('catches scoring errors without propagating them', async () => {
@@ -215,7 +221,13 @@ describe('processConditionSettled', () => {
     vi.mocked(scoreSelectedForecastsForSettledMarket).mockRejectedValue(
       new Error('scoring failure')
     );
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const writes: string[] = [];
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((
+      chunk: unknown
+    ) => {
+      if (typeof chunk === 'string') writes.push(chunk);
+      return true;
+    }) as never);
 
     // Should NOT throw
     await expect(
@@ -226,13 +238,12 @@ describe('processConditionSettled', () => {
     expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
     expect(mockPrisma.condition.update).toHaveBeenCalled();
 
-    // Scoring error should be logged
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Error scoring forecasts'),
-      expect.any(Error)
+    // Scoring error should be logged via pino → stdout
+    expect(writes.some((w) => w.includes('Error scoring forecasts'))).toBe(
+      true
     );
 
-    errorSpy.mockRestore();
+    stdoutSpy.mockRestore();
   });
 
   it('updates condition when resolver is not set on condition (falsy)', async () => {

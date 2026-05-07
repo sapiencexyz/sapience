@@ -7,7 +7,12 @@
  * does the definitive verification for those.
  */
 
-import { verifyTypedData, type Address, type Hex } from 'viem';
+import {
+  verifyTypedData,
+  zeroAddress as ZERO_ADDRESS,
+  type Address,
+  type Hex,
+} from 'viem';
 import { secondaryMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import {
   computeTradeHash,
@@ -18,8 +23,12 @@ import type {
   SecondaryAuctionRequestPayload,
   SecondaryBidPayload,
 } from '@sapience/sdk/types/secondary';
+import { legacySessionKeyDataSeen } from './metrics';
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
+/** True when the hex blob carries actual session-key data (not "0x"). */
+function isNonEmptyHex(blob: string | undefined): boolean {
+  return typeof blob === 'string' && blob.length > 2;
+}
 
 /**
  * Get the verifying contract address for a chain
@@ -68,6 +77,15 @@ export async function verifySellerSignature(
     if (!/^0x[a-fA-F0-9]+$/.test(payload.sellerSessionKeyData)) {
       console.warn('[Secondary-Sig] Invalid sellerSessionKeyData hex format');
       return false;
+    }
+    if (isNonEmptyHex(payload.sellerSessionKeyData)) {
+      legacySessionKeyDataSeen.inc({
+        surface: 'secondary.listing.seller',
+        chain_id: String(payload.chainId),
+      });
+      console.warn(
+        `[Secondary-Sig] Legacy sellerSessionKeyData seen seller=${payload.seller.slice(0, 10)} chain=${payload.chainId}`
+      );
     }
     return true;
   }
@@ -144,6 +162,15 @@ export async function verifyBuyerSignature(
     if (!/^0x[a-fA-F0-9]+$/.test(bid.buyerSessionKeyData)) {
       console.warn('[Secondary-Sig] Invalid buyerSessionKeyData hex format');
       return false;
+    }
+    if (isNonEmptyHex(bid.buyerSessionKeyData)) {
+      legacySessionKeyDataSeen.inc({
+        surface: 'secondary.bid.buyer',
+        chain_id: String(listing.chainId),
+      });
+      console.warn(
+        `[Secondary-Sig] Legacy buyerSessionKeyData seen buyer=${bid.buyer.slice(0, 10)} chain=${listing.chainId}`
+      );
     }
     return true;
   }

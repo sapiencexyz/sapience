@@ -16,14 +16,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { Info } from 'lucide-react';
+import { Info, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import * as React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useAccount } from 'wagmi';
 import EmptyTabState from '~/components/shared/EmptyTabState';
+import TableLoadingState from '~/components/shared/TableLoadingState';
+import InfiniteScrollFooter from '~/components/shared/InfiniteScrollFooter';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import Loader from '~/components/shared/Loader';
+import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
 import CountdownCell from '~/components/shared/CountdownCell';
 import {
@@ -36,10 +38,9 @@ import {
   usePositionBalancesByConditionId,
   type PositionBalance,
 } from '~/hooks/graphql/usePositions';
-import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import PicksSummary from '~/components/shared/PicksSummary';
 import LegacyBadge from '~/components/shared/LegacyBadge';
-import PredictionDialog from '~/components/positions/PredictionDialog';
+import PositionDialog from '~/components/positions/PositionDialog';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
   PositionsTableFilters,
@@ -54,7 +55,15 @@ import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useSession } from '~/lib/context/SessionContext';
 import SellPositionDialog from '~/components/secondary/SellPositionDialog';
-import { useFeatureFlag } from '~/hooks/useFeatureFlag';
+
+// Render an ROI percentage with sign. Sub-1%-magnitude non-zero values
+// collapse to "<1%" so a 0.4% gain doesn't render as "+0%". Color carries
+// the direction at the call site, so the sign on tiny values is omitted.
+const formatRoi = (roi: number): string => {
+  if (roi !== 0 && Math.abs(roi) < 1) return '<1%';
+  const sign = roi >= 0 ? '+' : '';
+  return `${sign}${Math.round(roi).toLocaleString()}%`;
+};
 
 function PositionRow({
   position,
@@ -63,7 +72,6 @@ function PositionRow({
   onShare,
   onOpenDialog,
   onRefetch,
-  showSell,
 }: {
   position: PositionBalance;
   collateralSymbol: string;
@@ -71,7 +79,6 @@ function PositionRow({
   onShare: (position: PositionBalance) => void;
   onOpenDialog: () => void;
   onRefetch?: () => void;
-  showSell: boolean;
 }) {
   const { pickConfig, isPredictorToken } = position;
   const rawPicks = pickConfig?.picks ?? [];
@@ -117,12 +124,24 @@ function PositionRow({
     ((isPredictorToken && result === 'COUNTERPARTY_WINS') ||
       (!isPredictorToken && result === 'PREDICTOR_WINS'));
 
-  // PnL: profit if won (payout - positionSize), loss if lost (-positionSize)
+  // Synthetic sell rows have ids like `${dbId}-sell-${tradeHash}`; the open
+  // / parent row is just `${dbId}`.
+  const isSoldRow = position.id.includes('-sell-');
+  const isClosed = !isResolved && BigInt(position.balance) === 0n;
+  const realizedPnLFormatted =
+    position.realizedPnL != null
+      ? parseFloat(formatEther(BigInt(position.realizedPnL)))
+      : null;
+
+  // PnL: profit if won (payout - positionSize), loss if lost (-positionSize),
+  // or the resolver-computed realized value for closed-but-unresolved positions.
   const pnlValue = isResolved
     ? holderWon
       ? payoutFormatted - positionSizeFormatted
       : -positionSizeFormatted
-    : null;
+    : isClosed
+      ? realizedPnLFormatted
+      : null;
   const roi =
     pnlValue !== null && positionSizeFormatted > 0
       ? (pnlValue / positionSizeFormatted) * 100
@@ -189,8 +208,7 @@ function PositionRow({
             <span
               className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-500' : 'text-red-500'}`}
             >
-              {roi >= 0 ? '+' : ''}
-              {Math.round(roi).toLocaleString()}%
+              {formatRoi(roi)}
             </span>
           )}
         </div>
@@ -229,7 +247,7 @@ function PositionRow({
           <span className="text-green-500">{collateralSymbol}</span>
           {positionSizeFormatted > 0 && (
             <span className="text-[10px] leading-tight tabular-nums font-mono text-green-500">
-              +{Math.round(roi).toLocaleString()}%
+              {formatRoi(roi)}
             </span>
           )}
         </div>
@@ -252,13 +270,41 @@ function PositionRow({
       );
     }
 
+    // Closed (balance=0, unresolved) → realized PnL from secondary trades + claims
+    if (isClosed && pnlValue !== null) {
+      const colorClass =
+        pnlValue > 0
+          ? 'text-green-500'
+          : pnlValue < 0
+            ? 'text-red-500'
+            : 'text-muted-foreground';
+      return (
+        <div
+          className={`whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 ${colorClass}`}
+        >
+          <NumberDisplay
+            value={pnlValue}
+            className={`tabular-nums font-mono ${colorClass}`}
+          />{' '}
+          <span className={colorClass}>{collateralSymbol}</span>
+          {positionSizeFormatted > 0 && (
+            <span
+              className={`text-[10px] leading-tight tabular-nums font-mono ${colorClass}`}
+            >
+              {formatRoi(roi)}
+            </span>
+          )}
+        </div>
+      );
+    }
+
     // Not resolved → PENDING + optional Sell button
     return (
       <div className="flex items-center gap-2">
         <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
           PENDING
         </span>
-        {showSell && isOwnPosition && BigInt(position.balance) > 0n && (
+        {isOwnPosition && BigInt(position.balance) > 0n && (
           <SellPositionDialog position={position} onSuccess={onRefetch}>
             <button
               type="button"
@@ -275,13 +321,19 @@ function PositionRow({
   return (
     <TableRow>
       <TableCell>
-        <PicksSummary
-          picks={picks}
-          isCounterparty={!isPredictorToken}
-          predictionId={pickConfig?.predictionId}
-          onClick={onOpenDialog}
-        />
-        {pickConfig?.isLegacy && <LegacyBadge />}
+        <div className="flex items-center gap-2 flex-wrap">
+          <PicksSummary
+            picks={picks}
+            predictionId={pickConfig?.predictionId}
+            onClick={onOpenDialog}
+          />
+          {pickConfig?.isLegacy && <LegacyBadge />}
+          {isSoldRow && (
+            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono uppercase border border-muted-foreground/40 bg-muted/20 text-muted-foreground">
+              SOLD
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <NumberDisplay
@@ -302,6 +354,23 @@ function PositionRow({
       {/* Ends */}
       <TableCell className="whitespace-nowrap">
         {(() => {
+          const closedWithProfit =
+            isClosed && pnlValue !== null && pnlValue > 0;
+          const closedWithLoss = isClosed && pnlValue !== null && pnlValue < 0;
+          if ((isResolved && holderWon) || closedWithProfit) {
+            return (
+              <span className="whitespace-nowrap font-mono uppercase text-green-500">
+                WON
+              </span>
+            );
+          }
+          if ((isResolved && holderLost) || closedWithLoss) {
+            return (
+              <span className="whitespace-nowrap font-mono uppercase text-red-500">
+                LOST
+              </span>
+            );
+          }
           const endsAt = Math.max(
             0,
             ...rawPicks.map(
@@ -343,20 +412,69 @@ function PositionRow({
   );
 }
 
+type SortKey = 'updatedAt' | 'positionSize' | 'payout' | 'pnl' | 'ends';
+type SortDir = 'asc' | 'desc';
+type SortState = { key: SortKey; dir: SortDir };
+
+const DEFAULT_SORT_DIRS: Record<SortKey, SortDir> = {
+  updatedAt: 'desc',
+  positionSize: 'desc',
+  payout: 'desc',
+  pnl: 'desc',
+  ends: 'asc',
+};
+
+function SortableHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+}: {
+  label: React.ReactNode;
+  sortKey: SortKey;
+  sort: SortState | null;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sort?.key === sortKey;
+  return (
+    <button
+      type="button"
+      className="flex items-center gap-1 hover:text-foreground text-muted-foreground"
+      onClick={() => onSort(sortKey)}
+    >
+      {label}
+      {active ? (
+        sort.dir === 'asc' ? (
+          <ArrowUp className="h-3 w-3" />
+        ) : (
+          <ArrowDown className="h-3 w-3" />
+        )
+      ) : (
+        <ArrowUpDown className="h-3 w-3 opacity-50" />
+      )}
+    </button>
+  );
+}
+
 export default function PositionsTable({
   account,
   conditionId,
   showHeaderText = true,
   chainId,
   leftSlot,
+  fill = false,
 }: {
   account?: Address;
   conditionId?: string;
   showHeaderText?: boolean;
   chainId?: number;
   leftSlot?: React.ReactNode;
+  /** Grow the empty/loading panel via `flex-1` to fill the parent.
+   *  Caller is responsible for the flex ancestor chain (page wrapper
+   *  + bordered container both `flex flex-col flex-1`). Omit for the
+   *  compact rendering used inside dialogs / question page. */
+  fill?: boolean;
 }) {
-  const showSell = useFeatureFlag('secondaryMarket', 'secondaryMarket');
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
   const [filters, setFilters] = React.useState<PositionsFilterState>(
@@ -379,6 +497,9 @@ export default function PositionsTable({
   const {
     data: accountPositions,
     isLoading: accountLoading,
+    isFetchingMore: accountFetchingMore,
+    hasMore: accountHasMore,
+    fetchMore: accountFetchMore,
     error: accountError,
     refetch: accountRefetch,
   } = usePositionBalances({
@@ -391,6 +512,9 @@ export default function PositionsTable({
   const {
     data: conditionPositions,
     isLoading: conditionLoading,
+    isFetchingMore: conditionFetchingMore,
+    hasMore: conditionHasMore,
+    fetchMore: conditionFetchMore,
     error: conditionError,
     refetch: conditionRefetch,
   } = usePositionBalancesByConditionId({
@@ -400,21 +524,33 @@ export default function PositionsTable({
 
   const positions = account ? accountPositions : conditionPositions;
   const isLoading = account ? accountLoading : conditionLoading;
+  const isFetchingMore = account ? accountFetchingMore : conditionFetchingMore;
+  const hasMore = account ? accountHasMore : conditionHasMore;
+  const fetchMore = account ? accountFetchMore : conditionFetchMore;
   const error = account ? accountError : conditionError;
   const refetch = account ? accountRefetch : conditionRefetch;
 
-  // Collect all unique conditionIds to fetch category data
-  const conditionIds = React.useMemo(() => {
-    const ids = new Set<string>();
+  const { loadMoreRef } = useInfiniteScroll({
+    hasMore,
+    isLoading,
+    isFetchingMore,
+    onFetchMore: fetchMore,
+  });
+
+  // Build the condition map from the inline `picks.condition` data the
+  // server pre-loads. Avoids the second-round-trip waterfall the previous
+  // `useConditionsByIds(conditionIds)` call produced.
+  const conditionsMap: ConditionsMap = React.useMemo(() => {
+    const m: ConditionsMap = new Map();
     for (const p of positions) {
       for (const pick of p.pickConfig?.picks ?? []) {
-        ids.add(pick.conditionId);
+        if (pick.condition && !m.has(pick.conditionId)) {
+          m.set(pick.conditionId, pick.condition);
+        }
       }
     }
-    return Array.from(ids);
+    return m;
   }, [positions]);
-
-  const { map: conditionsMap } = useConditionsByIds(conditionIds);
 
   // Apply client-side filters
   const filteredPositions = React.useMemo(() => {
@@ -482,6 +618,64 @@ export default function PositionsTable({
     return result;
   }, [positions, filters, conditionsMap]);
 
+  // Sorting
+  const [sort, setSort] = React.useState<SortState | null>(null);
+  const handleSort = React.useCallback((key: SortKey) => {
+    setSort((prev) => {
+      if (prev?.key === key) {
+        return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, dir: DEFAULT_SORT_DIRS[key] };
+    });
+  }, []);
+
+  const sortedPositions = React.useMemo(() => {
+    if (!sort) return filteredPositions;
+    const { key, dir } = sort;
+    const multiplier = dir === 'asc' ? 1 : -1;
+    const getValue = (p: PositionBalance): number => {
+      const rawPicks = p.pickConfig?.picks ?? [];
+      const size = parseFloat(formatEther(BigInt(p.userCollateral || '0')));
+      const payout = parseFloat(formatEther(BigInt(p.totalPayout || '0')));
+      switch (key) {
+        case 'updatedAt':
+          return new Date(p.updatedAt).getTime();
+        case 'positionSize':
+          return size;
+        case 'payout':
+          return payout;
+        case 'pnl': {
+          const onChainResolved = p.pickConfig?.resolved ?? false;
+          const computed = !onChainResolved
+            ? computeResultFromConditions(rawPicks, conditionsMap)
+            : null;
+          const res = onChainResolved
+            ? (p.pickConfig?.result ?? 'UNRESOLVED')
+            : (computed?.result ?? 'UNRESOLVED');
+          const isResolved = onChainResolved || res !== 'UNRESOLVED';
+          if (!isResolved) return 0;
+          const holderWon =
+            (p.isPredictorToken && res === 'PREDICTOR_WINS') ||
+            (!p.isPredictorToken && res === 'COUNTERPARTY_WINS');
+          return holderWon ? payout - size : -size;
+        }
+        case 'ends': {
+          const endsAt = Math.max(
+            0,
+            ...rawPicks.map(
+              (pk) => conditionsMap.get(pk.conditionId)?.endTime ?? 0
+            )
+          );
+          // Missing end time sinks to the bottom regardless of direction
+          return endsAt === 0 ? Number.POSITIVE_INFINITY : endsAt;
+        }
+      }
+    };
+    return [...filteredPositions].sort(
+      (a, b) => (getValue(a) - getValue(b)) * multiplier
+    );
+  }, [filteredPositions, sort, conditionsMap]);
+
   // Share dialog state
   const [sharePosition, setSharePosition] =
     React.useState<PositionBalance | null>(null);
@@ -541,9 +735,7 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <div className="flex items-center justify-center py-8">
-          <Loader />
-        </div>
+        <TableLoadingState message="Loading positions…" fill={fill} />
       </>
     );
   }
@@ -552,7 +744,11 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <div className="text-destructive text-center py-8">
+        <div
+          className={`flex items-center justify-center text-destructive ${
+            fill ? 'flex-1' : 'py-12'
+          }`}
+        >
           Error loading positions
         </div>
       </>
@@ -563,16 +759,28 @@ export default function PositionsTable({
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No positions found" />
+        <EmptyTabState message="No positions found" fill={fill} />
       </>
     );
   }
 
+  // Filters are applied client-side, so a page with 0 matches doesn't
+  // mean there are no matches at all — later pages may have some.
+  // Render the sentinel below the empty state when there are more
+  // pages so infinite scroll can keep fetching.
   if (filteredPositions.length === 0) {
     return (
       <>
         {headerContent}
-        <EmptyTabState message="No positions match your filters" />
+        <EmptyTabState
+          fill={fill}
+          message={
+            hasMore && isFetchingMore
+              ? 'Loading more positions…'
+              : 'No positions match your filters'
+          }
+        />
+        {hasMore && <div ref={loadMoreRef} className="h-0" />}
       </>
     );
   }
@@ -584,30 +792,65 @@ export default function PositionsTable({
         <Table>
           <TableHeader>
             <TableRow className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60">
-              <TableHead className="h-auto py-3">Position</TableHead>
-              <TableHead className="h-auto py-3">Position Size</TableHead>
-              <TableHead className="h-auto py-3">Payout</TableHead>
-              <TableHead className="h-auto py-3">Profit/Loss</TableHead>
               <TableHead className="h-auto py-3">
-                <span className="flex items-center gap-1">
-                  Ends
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex cursor-help">
-                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      End times are estimates and may vary
-                    </TooltipContent>
-                  </Tooltip>
-                </span>
+                <SortableHeader
+                  label="Position"
+                  sortKey="updatedAt"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label="Position Size"
+                  sortKey="positionSize"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label="Payout"
+                  sortKey="payout"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label="Profit/Loss"
+                  sortKey="pnl"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label={
+                    <span className="flex items-center gap-1">
+                      Ends
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex cursor-help">
+                            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          End times are estimates and may vary
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
+                  }
+                  sortKey="ends"
+                  sort={sort}
+                  onSort={handleSort}
+                />
               </TableHead>
               <TableHead className="h-auto py-3"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredPositions.map((position) => (
+            {sortedPositions.map((position) => (
               <PositionRow
                 key={position.id}
                 position={position}
@@ -616,62 +859,28 @@ export default function PositionsTable({
                 onShare={setSharePosition}
                 onOpenDialog={() => setDialogPosition(position)}
                 onRefetch={refetch}
-                showSell={showSell}
               />
             ))}
           </TableBody>
         </Table>
       </div>
-      {dialogPosition &&
-        (() => {
-          const dp = dialogPosition;
-          const pc = dp.pickConfig;
-          // Build a minimal Prediction object from the PositionBalance
-          const prediction = pc
-            ? {
-                id: dp.id,
-                predictionId: pc.predictionId ?? '',
-                predictor: dp.isPredictorToken ? dp.holder : '',
-                counterparty: dp.isPredictorToken ? '' : dp.holder,
-                predictorCollateral: pc.totalPredictorCollateral,
-                counterpartyCollateral: pc.totalCounterpartyCollateral,
-                settled: pc.resolved,
-                result: (pc.result ?? 'UNRESOLVED') as
-                  | 'UNRESOLVED'
-                  | 'PREDICTOR_WINS'
-                  | 'COUNTERPARTY_WINS'
-                  | 'NON_DECISIVE',
-                createdAt: dp.createdAt,
-                chainId: dp.chainId,
-                marketAddress: pc.marketAddress,
-                predictorToken: pc.predictorToken ?? '',
-                counterpartyToken: pc.counterpartyToken ?? '',
-                collateralDeposited: null,
-                collateralDepositedAt: null,
-                settledAt: pc.resolvedAt ?? null,
-                predictorClaimable: null,
-                counterpartyClaimable: null,
-                createTxHash: '',
-                settleTxHash: null,
-                refCode: null,
-                isLegacy: pc.isLegacy,
-                pickConfig: pc,
-              }
-            : null;
-          return prediction ? (
-            <PredictionDialog
-              open
-              onOpenChange={(open) => {
-                if (!open) setDialogPosition(null);
-              }}
-              prediction={prediction}
-              pickConfig={pc ?? null}
-              isPredictorSide={dp.isPredictorToken}
-              conditionsMap={conditionsMap}
-              collateralSymbol={collateralSymbol}
-            />
-          ) : null;
-        })()}
+      {hasMore && (
+        <InfiniteScrollFooter
+          ref={loadMoreRef}
+          isLoading={isFetchingMore}
+          loadingMessage="Loading more positions…"
+        />
+      )}
+      <PositionDialog
+        open={dialogPosition !== null}
+        onOpenChange={(open) => {
+          if (!open) setDialogPosition(null);
+        }}
+        position={dialogPosition}
+        conditionsMap={conditionsMap}
+        collateralSymbol={collateralSymbol}
+      />
+
       {sharePosition && shareImageSrc && (
         <OgShareDialogBase
           imageSrc={shareImageSrc}

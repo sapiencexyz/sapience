@@ -1,4 +1,5 @@
 'use client';
+import * as Sentry from '@sentry/nextjs';
 import { useCallback, useMemo, useRef, useState, useContext } from 'react';
 import type { useTransactionReceipt } from 'wagmi';
 import {
@@ -15,6 +16,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { arbitrum } from 'viem/chains';
 import { useSwitchChain } from 'wagmi';
 
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   getExecutionPath,
   encodeWriteContractToCall,
@@ -28,12 +30,11 @@ import {
 import {
   handleViemError,
   isSessionPolicyError,
-} from '~/utils/blockchain/handleViemError';
+} from '~/lib/utils/handleViemError';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 import { CreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   ethereal,
   executeSudoTransaction,
@@ -386,29 +387,38 @@ export function useSapienceWriteContract({
           onReceiptConfirmed,
         }
       );
-      console.log(
-        `[SessionTx] Total: ${Date.now() - startTime}ms (skipping on-chain wait)`
-      );
+      console.log(`[SessionTx] Total: ${Date.now() - startTime}ms`);
       return hash;
     },
     [sessionConfig, onTxSending, onTxSent, onReceiptConfirmed]
   );
 
-  // Wrapper for Arbitrum session creation that provides user-friendly error messages
+  // Wrapper for Arbitrum session creation that provides user-friendly error messages.
+  // The underlying error is already reported to Sentry inside
+  // createArbitrumSessionIfNeeded (SessionContext); preserve it via `cause` so
+  // Sentry's exception-chain integration keeps the original stack if this
+  // wrapped error bubbles up elsewhere.
   const wrapArbitrumSessionCreation = useCallback(async () => {
     try {
       return await createArbitrumSessionIfNeeded();
     } catch (e) {
       console.error('[Session] Failed to create Arbitrum session:', e);
-      throw new Error('Please approve the Arbitrum session to continue');
+      throw new Error('Please approve the Arbitrum session to continue', {
+        cause: e,
+      });
     }
   }, [createArbitrumSessionIfNeeded]);
 
   /** Handle catch errors from writeContract / sendCalls — detects stale session keys */
   const handleCatchError = useCallback(
-    (error: unknown, label: string) => {
+    (
+      error: unknown,
+      label: string,
+      ctx: { chainId?: number; executionPath?: string } = {}
+    ) => {
       setIsSubmitting(false);
-      if (isSessionPolicyError(error)) {
+      const isStaleSession = isSessionPolicyError(error);
+      if (isStaleSession) {
         console.warn(
           `[${label}] Session key policy mismatch — clearing stale session`,
           error
@@ -428,6 +438,17 @@ export function useSapienceWriteContract({
           variant: 'destructive',
         });
       }
+      Sentry.captureException(error, {
+        tags: {
+          component: isStaleSession ? 'session' : 'rpc',
+          executionPath: ctx.executionPath,
+        },
+        extra: {
+          function: label,
+          chainId: ctx.chainId,
+          isSessionPolicyError: isStaleSession,
+        },
+      });
       onError?.(error as Error);
     },
     [endSession, toast, fallbackErrorMessage, onError]
@@ -442,15 +463,16 @@ export function useSapienceWriteContract({
       }
       setChainId(_chainId);
 
+      // Determine execution path based on account mode and session state.
+      // Lifted out of the try so it's available in catch for Sentry context.
+      const executionPath = getExecutionPathForChain(_chainId);
+
       try {
         // Reset state
         setTxHash(undefined);
         resetWrite();
         didRedirectRef.current = false;
         didShowSuccessToastRef.current = false;
-
-        // Determine execution path based on account mode and session state
-        const executionPath = getExecutionPathForChain(_chainId);
 
         // Capture the address at transaction submission time to avoid race conditions
         // if user toggles account mode while transaction is in-flight
@@ -485,7 +507,10 @@ export function useSapienceWriteContract({
 
         completeTransaction(result.hash);
       } catch (error) {
-        handleCatchError(error, 'WriteContract');
+        handleCatchError(error, 'WriteContract', {
+          chainId: _chainId,
+          executionPath,
+        });
       }
     },
     [
@@ -493,10 +518,6 @@ export function useSapienceWriteContract({
       validateAndSwitchChain,
       writeContractAsync,
       sendCallsAsync,
-      toast,
-      fallbackErrorMessage,
-      onError,
-      endSession,
       completeTransaction,
       getExecutionPathForChain,
       getSessionClient,
@@ -504,6 +525,7 @@ export function useSapienceWriteContract({
       wrapArbitrumSessionCreation,
       executeViaSessionKey,
       executeViaOwnerSigning,
+      handleCatchError,
       wagmiAddress,
       smartAccountAddress,
       sessionConfig,
@@ -519,15 +541,17 @@ export function useSapienceWriteContract({
       }
 
       setChainId(_chainId);
+
+      // Determine execution path based on account mode and session state.
+      // Lifted out of the try so it's available in catch for Sentry context.
+      const executionPath = getExecutionPathForChain(_chainId);
+
       try {
         // Reset state
         setTxHash(undefined);
         resetCalls();
         didRedirectRef.current = false;
         didShowSuccessToastRef.current = false;
-
-        // Determine execution path based on account mode and session state
-        const executionPath = getExecutionPathForChain(_chainId);
 
         // Capture the address at transaction submission time to avoid race conditions
         // if user toggles account mode while transaction is in-flight
@@ -579,7 +603,10 @@ export function useSapienceWriteContract({
         }
         completeTransaction(finalHash);
       } catch (error) {
-        handleCatchError(error, 'SendCalls');
+        handleCatchError(error, 'SendCalls', {
+          chainId: _chainId,
+          executionPath,
+        });
       }
     },
     [
@@ -587,10 +614,6 @@ export function useSapienceWriteContract({
       validateAndSwitchChain,
       sendCallsAsync,
       client,
-      toast,
-      fallbackErrorMessage,
-      onError,
-      endSession,
       getExecutionPathForChain,
       getSessionClient,
       needsArbitrumSession,
@@ -598,6 +621,7 @@ export function useSapienceWriteContract({
       executeViaSessionKey,
       executeViaOwnerSigning,
       completeTransaction,
+      handleCatchError,
       wagmiAddress,
       smartAccountAddress,
       sessionConfig,

@@ -1,5 +1,5 @@
-import prisma from '../../db';
-import { getProviderForChain, getBlockByTimestamp } from '../../utils/utils';
+import prisma from '../../core/db';
+import { getProviderForChain, getBlockByTimestamp } from '../../lib/utils';
 import {
   type PublicClient,
   type Log,
@@ -7,13 +7,16 @@ import {
   keccak256,
   toHex,
 } from 'viem';
-import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { processConditionResolved } from './conditionSettled/processConditionResolved';
 import { processConditionSettled } from './conditionSettled/processConditionSettled';
 import { processPythMarketSettled } from './conditionSettled/processPythMarketSettled';
 import { processManualConditionSettled } from './conditionSettled/processManualConditionSettled';
 import type { HandlerContext } from './conditionSettled/handlerContext';
+
+import { createLogger } from '../../core/logger';
+
+const logger = createLogger('conditionSettledIndexer');
 
 const BLOCK_BATCH_SIZE = 2000;
 const POLLING_INTERVAL_MS = 10_000;
@@ -66,7 +69,7 @@ class ConditionSettledIndexer implements IIndexer {
     this.client = getProviderForChain(chainId);
     this.contractAddress = resolverAddress;
 
-    console.log(
+    logger.info(
       `[ConditionSettledIndexer:${chainId}] Initialized with resolver ${this.contractAddress} (legacy: ${this.isLegacy})`
     );
   }
@@ -79,7 +82,7 @@ class ConditionSettledIndexer implements IIndexer {
   }
 
   private async persistIndexerState(blockNumber: number): Promise<void> {
-    console.log(
+    logger.info(
       `[ConditionSettledIndexer:${this.chainId}] Persisting watermark block=${blockNumber}`
     );
     await prisma.indexerState.upsert({
@@ -108,7 +111,7 @@ class ConditionSettledIndexer implements IIndexer {
     endTimestamp?: number
   ): Promise<boolean> {
     try {
-      console.log(
+      logger.info(
         `[ConditionSettledIndexer:${this.chainId}] Indexing blocks from timestamp ${startTimestamp} to ${endTimestamp || 'latest'} on contract ${this.contractAddress}`
       );
 
@@ -140,11 +143,10 @@ class ConditionSettledIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error(
-        `[ConditionSettledIndexer:${this.chainId}] Error indexing blocks:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[ConditionSettledIndexer] Error indexing blocks'
       );
-      Sentry.captureException(error);
       throw error;
     }
   }
@@ -161,7 +163,7 @@ class ConditionSettledIndexer implements IIndexer {
         toBlock: BigInt(toBlock),
       });
 
-      console.log(
+      logger.info(
         `[ConditionSettledIndexer:${this.chainId}] Found ${logs.length} logs in blocks ${fromBlock}-${toBlock}`
       );
 
@@ -183,31 +185,30 @@ class ConditionSettledIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error(
-        `[ConditionSettledIndexer:${this.chainId}] Error processing blocks ${fromBlock}-${toBlock}:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId, fromBlock, toBlock },
+        '[ConditionSettledIndexer] Error processing block range'
       );
-      Sentry.captureException(error);
       throw error;
     }
   }
 
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
-      console.log(
+      logger.info(
         `[ConditionSettledIndexer:${this.chainId}] Already watching ${resourceSlug}`
       );
       return;
     }
 
-    console.log(
+    logger.info(
       `[ConditionSettledIndexer:${this.chainId}] Starting to poll contract ${this.contractAddress} for ${resourceSlug}`
     );
 
     this.isWatching = true;
 
     this.sigintHandler = () => {
-      console.log(
+      logger.info(
         `[ConditionSettledIndexer:${this.chainId}] Received SIGINT, stopping...`
       );
       this.stop();
@@ -225,24 +226,24 @@ class ConditionSettledIndexer implements IIndexer {
       });
       if (state) {
         this.lastProcessedBlock = BigInt(state.lastIndexedBlock);
-        console.log(
+        logger.info(
           `[ConditionSettledIndexer:${this.chainId}] Resuming from watermark block ${this.lastProcessedBlock}`
         );
       } else if (this.blockCreated > 0n) {
         this.lastProcessedBlock = this.blockCreated - 1n;
-        console.log(
+        logger.info(
           `[ConditionSettledIndexer:${this.chainId}] Starting from blockCreated ${this.blockCreated} for historical indexing`
         );
       } else {
         try {
           this.lastProcessedBlock = await this.client.getBlockNumber();
-          console.log(
+          logger.info(
             `[ConditionSettledIndexer:${this.chainId}] No watermark found, starting from current block ${this.lastProcessedBlock}`
           );
         } catch (error) {
-          console.error(
-            `[ConditionSettledIndexer:${this.chainId}] Error getting initial block:`,
-            error
+          logger.error(
+            { err: error },
+            `[ConditionSettledIndexer:${this.chainId}] Error getting initial block:`
           );
           this.lastProcessedBlock = 0n;
         }
@@ -266,7 +267,7 @@ class ConditionSettledIndexer implements IIndexer {
           });
 
           if (logs.length > 0) {
-            console.log(
+            logger.info(
               `[ConditionSettledIndexer:${this.chainId}] Found ${logs.length} events in blocks ${fromBlock}-${toBlock}`
             );
 
@@ -277,11 +278,10 @@ class ConditionSettledIndexer implements IIndexer {
                 });
                 await this.processLog(log, block);
               } catch (error) {
-                console.error(
-                  `[ConditionSettledIndexer:${this.chainId}] Error processing log:`,
-                  error
+                logger.error(
+                  { err: error, chainId: this.chainId },
+                  '[ConditionSettledIndexer] Error processing log'
                 );
-                Sentry.captureException(error);
               }
             }
           }
@@ -292,11 +292,10 @@ class ConditionSettledIndexer implements IIndexer {
           await this.persistIndexerState(Number(currentBlock));
         }
       } catch (error) {
-        console.error(
-          `[ConditionSettledIndexer:${this.chainId}] Polling error:`,
-          error
+        logger.error(
+          { err: error, chainId: this.chainId },
+          '[ConditionSettledIndexer] Polling error'
         );
-        Sentry.captureException(error);
       }
     };
 
@@ -314,7 +313,7 @@ class ConditionSettledIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log(`[ConditionSettledIndexer:${this.chainId}] Stopped`);
+    logger.info(`[ConditionSettledIndexer:${this.chainId}] Stopped`);
   }
 
   private async processLog(log: Log, block: Block): Promise<void> {
@@ -334,11 +333,10 @@ class ConditionSettledIndexer implements IIndexer {
         await processManualConditionSettled(this.handlerContext, log, block);
       }
     } catch (error) {
-      console.error(
-        `[ConditionSettledIndexer:${this.chainId}] Error processing log:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[ConditionSettledIndexer] Error processing log (outer)'
       );
-      Sentry.captureException(error);
     }
   }
 }

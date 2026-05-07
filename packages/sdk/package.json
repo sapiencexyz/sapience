@@ -123,6 +123,16 @@
       "import": "./dist/auction/initiate.mjs",
       "require": "./dist/auction/initiate.js"
     },
+    "./auction/buildAuctionPayload": {
+      "types": "./dist/auction/buildAuctionPayload.d.ts",
+      "import": "./dist/auction/buildAuctionPayload.mjs",
+      "require": "./dist/auction/buildAuctionPayload.js"
+    },
+    "./auction/decodePredictedOutcomes": {
+      "types": "./dist/auction/decodePredictedOutcomes.d.ts",
+      "import": "./dist/auction/decodePredictedOutcomes.mjs",
+      "require": "./dist/auction/decodePredictedOutcomes.js"
+    },
     "./session": {
       "types": "./dist/session/index.d.ts",
       "import": "./dist/session/index.mjs",
@@ -152,12 +162,17 @@
       "types": "./dist/types/committedIntent.d.ts",
       "import": "./dist/types/committedIntent.mjs",
       "require": "./dist/types/committedIntent.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.mjs",
+      "require": "./dist/utils/index.js"
     }
   },
   "scripts": {
     "prepare": "pnpm run build:lib",
-    "dev": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/committedIntentEncoding.ts auction/committedIntentSigning.ts relayer/escrowAuctionWs.ts relayer/committedIntentMessages.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/committedIntent.ts types/secondary.ts types/graphql.ts session/index.ts session/eip712Verify.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/committedIntentEncoding.ts auction/committedIntentSigning.ts relayer/escrowAuctionWs.ts relayer/committedIntentMessages.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/committedIntent.ts types/secondary.ts types/graphql.ts session/index.ts session/eip712Verify.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "dev": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/buildAuctionPayload.ts auction/decodePredictedOutcomes.ts auction/committedIntentEncoding.ts auction/committedIntentSigning.ts relayer/escrowAuctionWs.ts relayer/committedIntentMessages.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/committedIntent.ts types/secondary.ts types/graphql.ts session/index.ts session/eip712Verify.ts utils/index.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/buildAuctionPayload.ts auction/decodePredictedOutcomes.ts auction/committedIntentEncoding.ts auction/committedIntentSigning.ts relayer/escrowAuctionWs.ts relayer/committedIntentMessages.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/committedIntent.ts types/secondary.ts types/graphql.ts session/index.ts session/eip712Verify.ts utils/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix --quiet && pnpm format",
@@ -224,6 +239,6 @@
     "ws": "^8.18.0"
   },
   "engines": {
-    "node": ">=20.14"
+    "node": ">=22.12"
   }
 }

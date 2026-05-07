@@ -20,13 +20,15 @@
  *   RECONCILER_LOOKBACK_BLOCKS   — fallback lookback if no watermark (default: 5000)
  */
 
-import 'reflect-metadata';
-import prisma from '../db';
-import { initializeDataSource } from '../db';
+import prisma from '../core/db';
+import { initializeDataSource } from '../core/db';
 import { initializeFixtures, INDEXERS } from '../fixtures';
-import { createResilientProcess, getProviderForChain } from '../utils/utils';
+import { createResilientProcess, getProviderForChain } from '../lib/utils';
 import type { PublicClient } from 'viem';
 import { IIndexer } from '../interfaces';
+import { createLogger } from '../core/logger';
+
+const log = createLogger('reconcilerWorker');
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -95,7 +97,7 @@ function getIndexersByChain(): Map<
     // aggressive rate limits. The Background Worker handles EAS; the
     // reconciler focuses on Ethereal chain events.
     if (slug.startsWith('attestation-')) {
-      console.log(
+      log.info(
         `${LOG_PREFIX} Skipping ${slug} (EAS on Arbitrum — rate-limited)`
       );
       continue;
@@ -119,7 +121,7 @@ async function reconcileOnce(): Promise<void> {
   const indexersByChain = getIndexersByChain();
 
   if (indexersByChain.size === 0) {
-    console.log(`${LOG_PREFIX} No indexers with chain clients found, skipping`);
+    log.info(`${LOG_PREFIX} No indexers with chain clients found, skipping`);
     await setStatus('idle', 'No indexers configured');
     return;
   }
@@ -134,9 +136,9 @@ async function reconcileOnce(): Promise<void> {
     try {
       currentBlock = await client.getBlockNumber();
     } catch (err) {
-      console.error(
-        `${LOG_PREFIX} Chain ${chainId}: failed to get block number:`,
-        err
+      log.error(
+        { err: err },
+        `${LOG_PREFIX} Chain ${chainId}: failed to get block number:`
       );
       continue;
     }
@@ -155,14 +157,14 @@ async function reconcileOnce(): Promise<void> {
     }
 
     if (fromBlock > currentBlock) {
-      console.log(
+      log.info(
         `${LOG_PREFIX} Chain ${chainId}: up to date (watermark=${watermark}, head=${currentBlock})`
       );
       continue;
     }
 
     const range = currentBlock - fromBlock;
-    console.log(
+    log.info(
       `${LOG_PREFIX} Chain ${chainId}: scanning blocks ${fromBlock}→${currentBlock} (range=${range})`
     );
 
@@ -188,9 +190,9 @@ async function reconcileOnce(): Promise<void> {
             await indexer.indexBlocks(slug, blockNumbers);
             totalIndexerRuns++;
           } catch (err) {
-            console.error(
-              `${LOG_PREFIX} Chain ${chainId} indexer "${slug}": error on blocks ${batchStart}-${batchEnd}:`,
-              err
+            log.error(
+              { err: err },
+              `${LOG_PREFIX} Chain ${chainId} indexer "${slug}": error on blocks ${batchStart}-${batchEnd}:`
             );
             // Continue — don't let one indexer failure stop others
           }
@@ -200,18 +202,16 @@ async function reconcileOnce(): Promise<void> {
       }
 
       await setWatermark(chainId, currentBlock);
-      console.log(
-        `${LOG_PREFIX} Chain ${chainId}: watermark → ${currentBlock}`
-      );
+      log.info(`${LOG_PREFIX} Chain ${chainId}: watermark → ${currentBlock}`);
     } catch (err) {
-      console.error(
-        `${LOG_PREFIX} Chain ${chainId}: reconciliation failed:`,
-        err
+      log.error(
+        { err: err },
+        `${LOG_PREFIX} Chain ${chainId}: reconciliation failed:`
       );
     }
   }
 
-  console.log(
+  log.info(
     `${LOG_PREFIX} Pass complete: chains=${indexersByChain.size}, blocks=${totalBlocksScanned}, indexerRuns=${totalIndexerRuns}`
   );
 
@@ -230,7 +230,7 @@ async function runReconcilerLoop(): Promise<void> {
   await initializeDataSource();
   await initializeFixtures();
 
-  console.log(
+  log.info(
     `${LOG_PREFIX} Starting reconciler (interval=${INTERVAL_SECONDS}s, fallbackLookback=${FALLBACK_LOOKBACK} blocks)`
   );
 
@@ -239,7 +239,7 @@ async function runReconcilerLoop(): Promise<void> {
     try {
       await reconcileOnce();
     } catch (err) {
-      console.error(`${LOG_PREFIX} Reconciliation pass failed:`, err);
+      log.error({ err: err }, `${LOG_PREFIX} Reconciliation pass failed:`);
     }
 
     await new Promise((resolve) =>

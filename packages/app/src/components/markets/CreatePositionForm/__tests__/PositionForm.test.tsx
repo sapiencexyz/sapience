@@ -119,7 +119,7 @@ vi.mock('@sapience/sdk/contracts', () => ({
 }));
 
 // buildAuctionPayload — return minimal valid payloads
-vi.mock('~/lib/auction/buildAuctionPayload', () => ({
+vi.mock('@sapience/sdk/auction/buildAuctionPayload', () => ({
   buildAuctionStartPayload: vi.fn().mockReturnValue({
     resolver: '0xResolver',
     predictedOutcomes: '0x01',
@@ -138,7 +138,7 @@ vi.mock('~/lib/auction/bidLogger', () => ({
 }));
 
 // Stub heavy child components to keep tests fast
-vi.mock('~/components/markets/forms', () => ({
+vi.mock('~/components/markets/forms/inputs/PositionSizeInput', () => ({
   PositionSizeInput: () => <div data-testid="position-size-input" />,
 }));
 
@@ -156,6 +156,7 @@ vi.mock('~/components/markets/forms/shared/BidDisplay', () => {
         ''
       }
       data-is-submit-disabled={String(props.isSubmitDisabled)}
+      data-has-shown-valid-bid={String(!!props.hasShownValidBid)}
     >
       <button
         data-testid="initiate-auction-btn"
@@ -225,6 +226,7 @@ vi.mock('viem', () => ({
     BigInt(Math.round(Number(value) * 10 ** decimals)),
   formatUnits: (value: bigint, decimals: number) =>
     (Number(value) / 10 ** decimals).toString(),
+  zeroAddress: '0x0000000000000000000000000000000000000000',
 }));
 
 // @sapience/ui — stub UI components used by PositionForm
@@ -908,6 +910,139 @@ describe('PositionForm', () => {
       expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe(
         'true'
       );
+    });
+
+    it('skips the "listening for bids" pending state when a legit bid expires within the quote cooldown', async () => {
+      // Bid deadline 5s out — well inside the 15s quote cooldown so
+      // `recentlyRequested` would otherwise still be true when it expires.
+      const REGULAR_DEADLINE_SEC = Math.floor(Date.now() / 1000) + 5;
+      const regularBid = {
+        counterparty: '0xRealMaker',
+        counterpartyCollateral: '8000000000000000000',
+        counterpartyDeadline: REGULAR_DEADLINE_SEC,
+        counterpartyNonce: 1,
+        validationStatus: 'valid' as const,
+        counterpartySignature: '0xSig',
+        counterpartyChainId: 42161,
+        predictorCollateral: '10000000000000000000',
+      };
+
+      const { getByTestId, rerender } = renderForm();
+
+      // Auto-fire — sets lastQuoteRequestMs.
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+
+      // Inject a regular legit bid → bestBid takes over.
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={[regularBid]}
+          />
+        );
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+      expect(getByTestId('bid-display').dataset.hasBestBid).toBe('true');
+
+      // Advance past the bid's 5s deadline but stay inside the 15s cooldown.
+      await act(async () => {
+        vi.advanceTimersByTime(5_500);
+      });
+
+      const bidDisplay = getByTestId('bid-display');
+      expect(bidDisplay.dataset.hasBestBid).toBe('false');
+      expect(bidDisplay.dataset.hasEstimateBid).toBe('false');
+      // Should go straight to the request-again button — no intermediate
+      // "LISTENING FOR BIDS..." pending state.
+      expect(bidDisplay.dataset.isAuctionPending).toBe('false');
+      expect(bidDisplay.dataset.showRequestBidsButton).toBe('true');
+      // BidDisplay receives this flag so it can render "RESTART AUCTION"
+      // (rather than "INITIATE AUCTION") since the user is returning to
+      // this state after seeing a real bid.
+      expect(bidDisplay.dataset.hasShownValidBid).toBe('true');
+    });
+
+    it('does not fall back to estimate after a legit bid was shown and then expired', async () => {
+      const estimatorBid = makeEstimatorBid();
+      const REGULAR_DEADLINE_SEC = Math.floor(Date.now() / 1000) + 60;
+      const regularBid = {
+        counterparty: '0xRealMaker',
+        counterpartyCollateral: '8000000000000000000',
+        counterpartyDeadline: REGULAR_DEADLINE_SEC,
+        counterpartyNonce: 1,
+        validationStatus: 'valid' as const,
+        counterpartySignature: '0xSig',
+        counterpartyChainId: 42161,
+        predictorCollateral: '10000000000000000000',
+      };
+
+      const { getByTestId, rerender } = renderForm();
+
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+
+      // Phase 1 — estimator-only: estimate is surfaced.
+      const onlyEstimator = [estimatorBid];
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={onlyEstimator}
+          />
+        );
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+      expect(getByTestId('bid-display').dataset.hasEstimateBid).toBe('true');
+
+      // Phase 2 — legit bid arrives: bestBid takes over.
+      const bothBids = [estimatorBid, regularBid];
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={bothBids}
+          />
+        );
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+      expect(getByTestId('bid-display').dataset.hasBestBid).toBe('true');
+      expect(getByTestId('bid-display').dataset.hasEstimateBid).toBe('false');
+
+      // Phase 3 — advance past the regular bid's deadline. The estimator
+      // bid still has deadline=1 (sentinel) and selectBestBid will surface
+      // it as estimate, but once a legit bid has been shown we should NOT
+      // fall back to the estimate; the user should see the request-again
+      // state instead.
+      await act(async () => {
+        vi.advanceTimersByTime(61_000);
+      });
+      const bidDisplay = getByTestId('bid-display');
+      expect(bidDisplay.dataset.hasBestBid).toBe('false');
+      expect(bidDisplay.dataset.hasEstimateBid).toBe('false');
     });
 
     it('prefers regular valid bids over estimator bids', async () => {

@@ -1,5 +1,5 @@
-import prisma from '../../db';
-import { getBlockByTimestamp, getProviderForChain } from '../../utils/utils';
+import prisma from '../../core/db';
+import { getBlockByTimestamp, getProviderForChain } from '../../lib/utils';
 import {
   type PublicClient,
   parseAbiItem,
@@ -7,11 +7,15 @@ import {
   decodeAbiParameters,
   GetContractReturnType,
 } from 'viem';
-import Sentry from '../../instrument';
 import { SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
 import { IIndexer } from '../../interfaces';
-import { upsertAttestationScoreFromAttestation } from '../../helpers/scoringService';
+import { upsertAttestationScoreFromAttestation } from '../../services/scoringService';
 import { eas } from '@sapience/sdk/contracts/addresses';
+import { FORECAST_SCHEMA_UID } from '@sapience/sdk/constants';
+
+import { createLogger } from '../../core/logger';
+
+const logger = createLogger('easIndexer');
 
 const BLOCK_BATCH_SIZE = 100;
 
@@ -24,10 +28,8 @@ const EAS_START_BLOCK = {
   42161: 367337046,
 } as const; // FROM https://github.com/ethereum-attestation-service/eas-indexing-service/blob/master/utils.ts
 
-// Forecast schema
-// Schema: address resolver, bytes condition, uint256 forecast, string comment
-const FORECAST_SCHEMA_ID =
-  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
+// Forecast schema: address resolver, bytes condition, uint256 forecast, string comment
+const FORECAST_SCHEMA_ID = FORECAST_SCHEMA_UID;
 const schemaEncoder = new SchemaEncoder(
   'address resolver,bytes condition,uint256 forecast,string comment'
 );
@@ -153,9 +155,9 @@ class EASPredictionIndexer implements IIndexer {
         data: result.data,
       };
     } catch (error) {
-      console.error(
-        `[EASPredictionIndexer:${this.chainId}] Error fetching attestation data for ${uid}:`,
-        error
+      logger.error(
+        { err: error },
+        `[EASPredictionIndexer:${this.chainId}] Error fetching attestation data for ${uid}:`
       );
       return null;
     }
@@ -179,9 +181,9 @@ class EASPredictionIndexer implements IIndexer {
         comment: decoded[3].toString(),
       };
     } catch (error) {
-      console.error(
-        `[EASPredictionIndexer:${this.chainId}] Error decoding forecast data:`,
-        error
+      logger.error(
+        { err: error },
+        `[EASPredictionIndexer:${this.chainId}] Error decoding forecast data:`
       );
       return null;
     }
@@ -228,9 +230,9 @@ class EASPredictionIndexer implements IIndexer {
 
       return events;
     } catch (error) {
-      console.error(
-        `[EASPredictionIndexer:${this.chainId}] Error fetching prediction market events from block ${fromBlock} to ${toBlock}:`,
-        error
+      logger.error(
+        { err: error },
+        `[EASPredictionIndexer:${this.chainId}] Error fetching prediction market events from block ${fromBlock} to ${toBlock}:`
       );
       return [];
     }
@@ -242,7 +244,7 @@ class EASPredictionIndexer implements IIndexer {
     try {
       const attestationData = await this.getAttestationData(event.uid);
       if (!attestationData) {
-        console.warn(
+        logger.warn(
           `[EASPredictionIndexer:${this.chainId}] Could not fetch attestation data for ${event.uid}`
         );
         return;
@@ -250,7 +252,7 @@ class EASPredictionIndexer implements IIndexer {
 
       const decodedData = this.decodeForecastData(attestationData.data);
       if (!decodedData) {
-        console.warn(
+        logger.warn(
           `[EASPredictionIndexer:${this.chainId}] Could not decode forecast data for ${event.uid}`
         );
         return;
@@ -293,19 +295,14 @@ class EASPredictionIndexer implements IIndexer {
 
       await upsertAttestationScoreFromAttestation(att.id);
 
-      console.log(
+      logger.info(
         `[EASPredictionIndexer:${this.chainId}] Stored forecast attestation ${event.uid} (resolver: ${decodedData.resolver}) with forecast ${decodedData.forecast}`
       );
     } catch (error) {
-      console.error(
-        `[EASPredictionIndexer:${this.chainId}] Error storing prediction attestation:`,
-        error
+      logger.error(
+        { err: error, event, chainId: this.chainId },
+        '[EASPredictionIndexer] Error storing prediction attestation'
       );
-      Sentry.withScope((scope: Sentry.Scope) => {
-        scope.setExtra('event', event);
-        scope.setExtra('chainId', this.chainId);
-        Sentry.captureException(error);
-      });
     }
   }
 
@@ -343,7 +340,7 @@ class EASPredictionIndexer implements IIndexer {
       );
       const endBlockNumber = Number(endBlock.number);
 
-      console.log(
+      logger.info(
         `[EASPredictionIndexer:${this.chainId}] Indexing prediction market attestations from block ${currentBlock} to ${endBlockNumber}`
       );
 
@@ -354,7 +351,7 @@ class EASPredictionIndexer implements IIndexer {
           endBlockNumber
         );
 
-        console.log(
+        logger.info(
           `[EASPredictionIndexer:${this.chainId}] Processing batch: blocks ${currentBlock} to ${batchEnd}`
         );
 
@@ -373,7 +370,7 @@ class EASPredictionIndexer implements IIndexer {
             });
 
             if (existingAttestations) {
-              console.log(
+              logger.info(
                 `[EASPredictionIndexer:${this.chainId}] Already have data for block ${blockNumber}, skipping...`
               );
               skipBlocks.push(blockNumber);
@@ -388,14 +385,14 @@ class EASPredictionIndexer implements IIndexer {
             BigInt(batchEnd)
           );
           if (events.length > 0) {
-            console.log(
+            logger.info(
               `[EASPredictionIndexer:${this.chainId}] Found ${events.length} prediction market attestations in blocks ${currentBlock} to ${batchEnd}`
             );
           }
         } catch (error) {
-          console.error(
-            `[EASPredictionIndexer:${this.chainId}] Error fetching prediction market events for blocks ${currentBlock} to ${batchEnd}:`,
-            error
+          logger.error(
+            { err: error },
+            `[EASPredictionIndexer:${this.chainId}] Error fetching prediction market events for blocks ${currentBlock} to ${batchEnd}:`
           );
 
           // Try one by one
@@ -414,7 +411,7 @@ class EASPredictionIndexer implements IIndexer {
             );
 
             if (events.length > 0) {
-              console.log(
+              logger.info(
                 `[EASPredictionIndexer:${this.chainId}] Found ${events.length} prediction market attestations in block ${blockNumber}`
               );
               events.push(...currentEvents);
@@ -431,15 +428,14 @@ class EASPredictionIndexer implements IIndexer {
 
             await this.storeForecastAttestation(event);
           } catch (error) {
-            console.error(
-              `[EASPredictionIndexer:${this.chainId}] Error processing block ${event.blockNumber}:`,
-              error
+            logger.error(
+              {
+                err: error,
+                blockNumber: event.blockNumber,
+                chainId: this.chainId,
+              },
+              '[EASPredictionIndexer] Error processing block (timestamp range)'
             );
-            Sentry.withScope((scope: Sentry.Scope) => {
-              scope.setExtra('blockNumber', event.blockNumber);
-              scope.setExtra('chainId', this.chainId);
-              Sentry.captureException(error);
-            });
           }
         }
 
@@ -450,23 +446,22 @@ class EASPredictionIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error(
-        `[EASPredictionIndexer:${this.chainId}] Error in indexBlocksFromTimestamp:`,
-        error
+      logger.error(
+        {
+          err: error,
+          startTimestamp,
+          endTimestamp,
+          chainId: this.chainId,
+        },
+        '[EASPredictionIndexer] Error in indexBlocksFromTimestamp'
       );
-      Sentry.withScope((scope: Sentry.Scope) => {
-        scope.setExtra('startTimestamp', startTimestamp);
-        scope.setExtra('endTimestamp', endTimestamp);
-        scope.setExtra('chainId', this.chainId);
-        Sentry.captureException(error);
-      });
       return false;
     }
   }
 
   async indexBlocks(_resourceSlug: string, blocks: number[]): Promise<boolean> {
     try {
-      console.log(
+      logger.info(
         `[EASPredictionIndexer:${this.chainId}] Indexing ${blocks.length} specific blocks`
       );
 
@@ -478,7 +473,7 @@ class EASPredictionIndexer implements IIndexer {
           );
 
           if (events.length > 0) {
-            console.log(
+            logger.info(
               `[EASPredictionIndexer:${this.chainId}] Found ${events.length} prediction market attestations in block ${blockNumber}`
             );
 
@@ -487,29 +482,19 @@ class EASPredictionIndexer implements IIndexer {
             }
           }
         } catch (error) {
-          console.error(
-            `[EASPredictionIndexer:${this.chainId}] Error processing block ${blockNumber}:`,
-            error
+          logger.error(
+            { err: error, blockNumber, chainId: this.chainId },
+            '[EASPredictionIndexer] Error processing block (specific blocks)'
           );
-          Sentry.withScope((scope: Sentry.Scope) => {
-            scope.setExtra('blockNumber', blockNumber);
-            scope.setExtra('chainId', this.chainId);
-            Sentry.captureException(error);
-          });
         }
       }
 
       return true;
     } catch (error) {
-      console.error(
-        `[EASPredictionIndexer:${this.chainId}] Error in indexSpecificBlocks:`,
-        error
+      logger.error(
+        { err: error, blocks, chainId: this.chainId },
+        '[EASPredictionIndexer] Error in indexSpecificBlocks'
       );
-      Sentry.withScope((scope: Sentry.Scope) => {
-        scope.setExtra('blocks', blocks);
-        scope.setExtra('chainId', this.chainId);
-        Sentry.captureException(error);
-      });
       return false;
     }
   }
@@ -517,14 +502,14 @@ class EASPredictionIndexer implements IIndexer {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async watchBlocksForResource(_resourceSlug: string): Promise<void> {
     if (this.isWatching) {
-      console.log(
+      logger.info(
         `[EASPredictionIndexer:${this.chainId}] Already watching for new predictions`
       );
       return;
     }
 
     this.isWatching = true;
-    console.log(
+    logger.info(
       `[EASPredictionIndexer:${this.chainId}] Starting to watch for new prediction market attestations`
     );
 
@@ -542,7 +527,7 @@ class EASPredictionIndexer implements IIndexer {
             try {
               if (log.args.schemaUID !== FORECAST_SCHEMA_ID) {
                 // Skip if not a prediction market attestation for this schema
-                console.log(
+                logger.info(
                   `[EASPredictionIndexer:${this.chainId}] Skipping event with schema ${log.args.schemaUID}`
                 );
                 continue;
@@ -563,21 +548,21 @@ class EASPredictionIndexer implements IIndexer {
               };
 
               await this.storeForecastAttestation(event);
-              console.log(
+              logger.info(
                 `[EASPredictionIndexer:${this.chainId}] Processed new prediction: ${event.uid}`
               );
             } catch (error) {
-              console.error(
-                `[EASPredictionIndexer:${this.chainId}] Error processing prediction event:`,
-                error
+              logger.error(
+                { err: error },
+                `[EASPredictionIndexer:${this.chainId}] Error processing prediction event:`
               );
             }
           }
         },
         onError: (error) => {
-          console.error(
-            `[EASPredictionIndexer:${this.chainId}] Error in prediction watcher:`,
-            error
+          logger.error(
+            { err: error },
+            `[EASPredictionIndexer:${this.chainId}] Error in prediction watcher:`
           );
         },
       });
@@ -588,15 +573,11 @@ class EASPredictionIndexer implements IIndexer {
         this.isWatching = false;
       });
     } catch (error) {
-      console.error(
-        `[EASPredictionIndexer:${this.chainId}] Error setting up watcher:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[EASPredictionIndexer] Error setting up watcher'
       );
       this.isWatching = false;
-      Sentry.withScope((scope: Sentry.Scope) => {
-        scope.setExtra('chainId', this.chainId);
-        Sentry.captureException(error);
-      });
     }
   }
 }

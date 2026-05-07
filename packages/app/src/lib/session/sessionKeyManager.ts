@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import type { http } from 'viem';
 import {
@@ -1246,6 +1247,13 @@ export async function restoreSession(
             serialized.escrowSessionKeyApproval.sessionKey,
         }
       );
+      Sentry.captureException(
+        new Error('Escrow session key mismatch on restore'),
+        {
+          tags: { component: 'session' },
+          extra: { function: 'restoreSession' },
+        }
+      );
       // Clear the corrupted session and throw - user must create a new session
       clearSession();
       throw new Error(
@@ -1385,6 +1393,10 @@ function createChainClient(
             `[SessionKeyManager] Paymaster error after ${paymasterMs}ms:`,
             errorMessage
           );
+          Sentry.captureException(error, {
+            tags: { component: 'paymaster' },
+            extra: { chainId: chain.id, paymasterMs },
+          });
           throw error;
         }
       },
@@ -1417,6 +1429,15 @@ export function saveSession(serialized: SerializedSession): void {
         {
           derivedFromPrivateKey: derivedAddress,
           inEscrowApproval: serialized.escrowSessionKeyApproval.sessionKey,
+        }
+      );
+      Sentry.captureException(
+        new Error(
+          'Session key mismatch between private key and escrow approval'
+        ),
+        {
+          tags: { component: 'session' },
+          extra: { function: 'saveSession' },
         }
       );
       throw new Error(

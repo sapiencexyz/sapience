@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 /**
@@ -35,6 +36,24 @@ export type Prediction = {
   pickConfig?: PickConfigData | null;
 };
 
+/** Embedded condition metadata on a Pick. Mirrors the shape that
+ *  `useConditionsByIds` returns so consumers can build a conditionsMap
+ *  without a follow-up query. */
+export type PickConditionData = {
+  id: string;
+  shortName?: string | null;
+  optionName?: string | null;
+  question?: string | null;
+  description?: string | null;
+  endTime?: number | null;
+  resolver?: string | null;
+  category?: { slug?: string | null } | null;
+  settled?: boolean;
+  resolvedToYes?: boolean;
+  nonDecisive?: boolean;
+  estimatedPrice?: number | null;
+};
+
 /** Pick in a pick configuration */
 export type PickData = {
   id: number;
@@ -42,6 +61,7 @@ export type PickData = {
   conditionResolver: string;
   conditionId: string;
   predictedOutcome: number;
+  condition?: PickConditionData | null;
 };
 
 /** Pick Configuration data */
@@ -65,10 +85,20 @@ export type PickConfigData = {
 };
 
 /**
+ * Server-truth paginated wrapper. `hasMore` reflects whether at least one
+ * more raw position row exists past this page; trust this over
+ * `items.length`, which the resolver can return as 0 for non-final pages.
+ */
+export type PositionBalancePage = {
+  items: PositionBalance[];
+  hasMore: boolean;
+};
+
+/**
  * Position Balance - ERC20 token balance for a user
  */
 export type PositionBalance = {
-  id: number;
+  id: string;
   chainId: number;
   tokenAddress: string;
   pickConfigId: string;
@@ -77,11 +107,37 @@ export type PositionBalance = {
   balance: string;
   userCollateral?: string | null;
   totalPayout?: string | null;
+  realizedPnL?: string | null;
   createdAt: string;
+  updatedAt: string;
   pickConfig?: PickConfigData | null;
 };
 
 // GraphQL queries
+//
+// `picks.condition` is fetched inline so consumers can render the full
+// row without a follow-up `useConditionsByIds` round trip. The server
+// pre-loads conditions per request — see Pick resolver + escrow/activity
+// resolvers.
+const PICK_CONDITION_FRAGMENT = `
+  condition {
+    id
+    shortName
+    optionName
+    question
+    description
+    endTime
+    resolver
+    settled
+    resolvedToYes
+    nonDecisive
+    estimatedPrice
+    category {
+      slug
+    }
+  }
+`;
+
 const PICK_CONFIG_FRAGMENT = `
   pickConfig {
     id
@@ -98,12 +154,14 @@ const PICK_CONFIG_FRAGMENT = `
     counterpartyToken
     endsAt
     isLegacy
+    predictionId
     picks {
       id
       pickConfigId
       conditionResolver
       conditionId
       predictedOutcome
+      ${PICK_CONDITION_FRAGMENT}
     }
   }
 `;
@@ -147,39 +205,29 @@ const PREDICTIONS_QUERY = /* GraphQL */ `
   }
 `;
 
+// Slim projection for the question page chart — only the fields scatterData
+// reads. Keeps server-side query complexity under the 15k limit at take=100;
+// the full PICK_CONFIG_FRAGMENT (with embedded conditions) blew past it.
 const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
-  query PredictionsByCondition(
-    $conditionId: String!
-    $take: Int
-    $skip: Int
-  ) {
-    predictions(
-      conditionId: $conditionId
-      take: $take
-      skip: $skip
-    ) {
+  query PredictionsByCondition($conditionId: String!, $take: Int, $skip: Int) {
+    predictions(conditionId: $conditionId, take: $take, skip: $skip) {
       id
       predictionId
-      chainId
       marketAddress
       predictor
       counterparty
-      predictorToken
-      counterpartyToken
       predictorCollateral
       counterpartyCollateral
-      collateralDeposited
       collateralDepositedAt
-      settled
-      settledAt
-      settleTxHash
-      result
-      predictorClaimable
-      counterpartyClaimable
-      createTxHash
       createdAt
-      refCode
-      ${PICK_CONFIG_FRAGMENT}
+      pickConfig {
+        id
+        picks {
+          conditionId
+          conditionResolver
+          predictedOutcome
+        }
+      }
     }
   }
 `;
@@ -219,42 +267,40 @@ const PREDICTION_QUERY = /* GraphQL */ `
   }
 `;
 
+// Server-truth paginated query. The resolver synthesizes events per raw
+// position and can emit zero rows for some pages (zero-balance unresolved
+// positions with no sells), so the client-side `lastPage.length === 0`
+// stop signal is unsafe — use the response's `hasMore` flag instead.
 const POSITION_BALANCES_QUERY = /* GraphQL */ `
-  query Positions($holder: String!, $chainId: Int, $settled: Boolean) {
-    positions(holder: $holder, chainId: $chainId, settled: $settled) {
-      id
-      chainId
-      tokenAddress
-      pickConfigId
-      isPredictorToken
-      holder
-      balance
-      userCollateral
-      totalPayout
-      createdAt
-      pickConfig {
+  query Positions(
+    $holder: String!
+    $chainId: Int
+    $settled: Boolean
+    $take: Int
+    $skip: Int
+  ) {
+    positionsPage(
+      holder: $holder
+      chainId: $chainId
+      settled: $settled
+      take: $take
+      skip: $skip
+    ) {
+      hasMore
+      items {
         id
         chainId
-        marketAddress
-        totalPredictorCollateral
-        totalCounterpartyCollateral
-        claimedPredictorCollateral
-        claimedCounterpartyCollateral
-        resolved
-        result
-        resolvedAt
-        predictorToken
-        counterpartyToken
-        endsAt
-        isLegacy
-        predictionId
-        picks {
-          id
-          pickConfigId
-          conditionResolver
-          conditionId
-          predictedOutcome
-        }
+        tokenAddress
+        pickConfigId
+        isPredictorToken
+        holder
+        balance
+        userCollateral
+        totalPayout
+        realizedPnL
+        createdAt
+        updatedAt
+        ${PICK_CONFIG_FRAGMENT}
       }
     }
   }
@@ -267,45 +313,27 @@ const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
     $skip: Int
     $settled: Boolean
   ) {
-    positions(
+    positionsPage(
       conditionId: $conditionId
       take: $take
       skip: $skip
       settled: $settled
     ) {
-      id
-      chainId
-      tokenAddress
-      pickConfigId
-      isPredictorToken
-      holder
-      balance
-      userCollateral
-      totalPayout
-      createdAt
-      pickConfig {
+      hasMore
+      items {
         id
         chainId
-        marketAddress
-        totalPredictorCollateral
-        totalCounterpartyCollateral
-        claimedPredictorCollateral
-        claimedCounterpartyCollateral
-        resolved
-        result
-        resolvedAt
-        predictorToken
-        counterpartyToken
-        endsAt
-        isLegacy
-        predictionId
-        picks {
-          id
-          pickConfigId
-          conditionResolver
-          conditionId
-          predictedOutcome
-        }
+        tokenAddress
+        pickConfigId
+        isPredictorToken
+        holder
+        balance
+        userCollateral
+        totalPayout
+        realizedPnL
+        createdAt
+        updatedAt
+        ${PICK_CONFIG_FRAGMENT}
       }
     }
   }
@@ -375,79 +403,146 @@ export function usePredictions(params: {
   };
 }
 
+const DEFAULT_POSITIONS_PAGE_SIZE = 15;
+
 /**
- * Hook to get position balances (ERC20 tokens) for a user
+ * Hook to get position balances (ERC20 tokens) for a user, paginated.
  */
 export function usePositionBalances(params: {
   holder?: string;
   chainId?: number;
   settled?: boolean;
+  pageSize?: number;
 }) {
-  const { holder, chainId, settled } = params;
+  const {
+    holder,
+    chainId,
+    settled,
+    pageSize = DEFAULT_POSITIONS_PAGE_SIZE,
+  } = params;
   const enabled = Boolean(holder);
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['positionBalances', holder, chainId, settled],
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['positionBalances', holder, chainId, settled, pageSize],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    queryFn: async () => {
+    initialPageParam: 0,
+    // The server uses a `take + 1` raw-row trick to compute hasMore
+    // server-truth. Synthesized event-stream rows from the resolver can be
+    // empty for some pages (zero-balance unresolved positions with no
+    // sells), so we cannot infer "exhausted" from `items.length === 0`.
+    // Trust the API's hasMore flag.
+    getNextPageParam: (lastPage: PositionBalancePage, allPages) =>
+      lastPage.hasMore ? allPages.length * pageSize : undefined,
+    queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        positions: PositionBalance[];
+        positionsPage: PositionBalancePage;
       }>(POSITION_BALANCES_QUERY, {
         holder,
         chainId: chainId ?? null,
         settled: settled ?? null,
+        take: pageSize,
+        skip: pageParam,
       });
-      return resp?.positions ?? [];
+      return resp?.positionsPage ?? { items: [], hasMore: false };
     },
   });
 
+  const items = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data]
+  );
+  const fetchMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   return {
-    data: data ?? [],
-    isLoading: !!enabled && (isLoading || isFetching),
+    data: items,
+    isLoading: !!enabled && isLoading,
+    isFetchingMore: isFetchingNextPage,
+    isFetching: !!enabled && isFetching,
+    hasMore: Boolean(hasNextPage),
+    fetchMore,
     error,
     refetch,
   };
 }
 
 /**
- * Hook to get position balances for a condition (all holders)
+ * Hook to get position balances for a condition (all holders), paginated.
  */
 export function usePositionBalancesByConditionId(params: {
   conditionId?: string;
-  take?: number;
-  skip?: number;
+  pageSize?: number;
   settled?: boolean;
 }) {
-  const { conditionId, take = 100, skip = 0, settled } = params;
+  const {
+    conditionId,
+    pageSize = DEFAULT_POSITIONS_PAGE_SIZE,
+    settled,
+  } = params;
   const enabled = Boolean(conditionId);
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['positionBalancesByCondition', conditionId, take, skip, settled],
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['positionBalancesByCondition', conditionId, pageSize, settled],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    queryFn: async () => {
+    initialPageParam: 0,
+    // Same hasMore-from-server signal — see `usePositionBalances` for why.
+    getNextPageParam: (lastPage: PositionBalancePage, allPages) =>
+      lastPage.hasMore ? allPages.length * pageSize : undefined,
+    queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        positions: PositionBalance[];
+        positionsPage: PositionBalancePage;
       }>(POSITION_BALANCES_BY_CONDITION_QUERY, {
         conditionId,
-        take,
-        skip,
+        take: pageSize,
+        skip: pageParam,
         settled: settled ?? null,
       });
-      return resp?.positions ?? [];
+      return resp?.positionsPage ?? { items: [], hasMore: false };
     },
   });
 
+  const items = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data]
+  );
+  const fetchMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   return {
-    data: data ?? [],
-    isLoading: !!enabled && (isLoading || isFetching),
+    data: items,
+    isLoading: !!enabled && isLoading,
+    isFetchingMore: isFetchingNextPage,
+    isFetching: !!enabled && isFetching,
+    hasMore: Boolean(hasNextPage),
+    fetchMore,
     error,
     refetch,
   };

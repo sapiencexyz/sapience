@@ -76,6 +76,7 @@ RULES for "name" (shortName):
 - For date ranges ("from X to Y"), include BOTH dates: "Elon 50+ Feb 8 - Feb 14" not "Elon 50+ Feb 8"
 - Always put a SPACE between month abbreviation and day number: "Feb 8" not "Feb8", "Jan 14" not "Jan14"
 - If the condition refers to a specific part of the match (map, half, quarter, set, etc.), ALWAYS include it in the short name in parentheses
+- PERSON NAMES: When the subject is a person (candidate, politician, athlete, nominee, etc.), ALWAYS use their full "First Last" name if both appear anywhere in the question, description, event title, or outcomes. NEVER use a first name alone ("Xavier wins", "Kamala wins"). Last-name-only is acceptable ONLY for globally recognizable figures where the last name is unambiguous (Trump, Biden, Putin, Musk, Macron, Modi). If unsure, default to first+last.
 
 COMMON MISTAKES TO AVOID:
 - BAD: "KT vs PPLE" for "Will KT Party win most seats?" -> GOOD: KT wins Thailand
@@ -85,6 +86,9 @@ COMMON MISTAKES TO AVOID:
 - BAD: "G2 win" for "Will G2 win Map 2?" -> GOOD: G2 win vs MOUZ (Map 2)
 - BAD: "Chelsea > ATL" for "Chelsea scores more than Atletico in the second half" -> GOOD: Chelsea > ATL (2H)
 - BAD: "Elon 50+ Feb 8" for "Elon tweets 50+ times from Feb 8 to Feb 14?" -> GOOD: Elon 50+ Feb 8 - Feb 14
+- BAD: "Xavier wins CA 2026" for "Will Xavier Becerra win the 2026 California Governor election?" -> GOOD: Xavier Becerra wins CA 2026
+- BAD: "Kamala wins CA 2026" for "Will Kamala Harris win the 2026 California Governor election?" -> GOOD: Kamala Harris wins CA 2026
+- BAD: "Chad wins CA 2026" for a market about Chad Bianco -> GOOD: Chad Bianco wins CA 2026
 
 MARKET TYPE FORMATS:
 
@@ -111,9 +115,19 @@ MARKET TYPE FORMATS:
 6. Price movement ("Asset Up or Down on Date"):
    -> SOL up Jan 14
 
-7. Other markets:
+7. Candidate / person wins (elections, nominations, awards, appointments):
+   - Use the candidate's full "First Last" name. First-name-only is NEVER acceptable.
+   - Elections: "Will Xavier Becerra win CA Governor 2026?" -> Xavier Becerra wins CA 2026
+   - Primaries / nominations: "Will JD Vance be the 2028 Republican nominee?" -> JD Vance 2028 GOP
+   - Papal conclave: "Will Pietro Parolin be the next Pope?" -> Pietro Parolin next Pope
+   - Nobel / prizes: "Will Yulia Navalnaya win the Nobel Peace Prize 2026?" -> Yulia Navalnaya Nobel Peace 2026
+   - Oscars / cultural awards: "Will Cillian Murphy win Best Actor 2026?" -> Cillian Murphy Best Actor 2026
+   - Time Person of the Year: "Will Taylor Swift be Time POTY 2026?" -> Taylor Swift Time POTY 2026
+   - Corporate appointments: "Will Lisa Su be the next Intel CEO?" -> Lisa Su next Intel CEO
+   - Globally recognizable figures may use last name only: "Trump wins 2024?" -> Trump 2024
+
+8. Other markets:
    - "Fed rate cut January?" -> Fed cut Jan
-   - "Trump wins 2024?" -> Trump 2024
    - "Bitcoin above $100k by Feb 14?" -> BTC >$100k Feb 14
 
 IMPORTANT: Never shorten or truncate the market ID - copy it exactly as provided.
@@ -162,6 +176,7 @@ RULES for "name" (shortName):
 - For date ranges ("from X to Y"), include BOTH dates: "Elon 50+ Feb 8 - Feb 14" not "Elon 50+ Feb 8"
 - Always put a SPACE between month abbreviation and day number: "Feb 8" not "Feb8", "Jan 14" not "Jan14"
 - If the condition refers to a specific part of the match (map, half, quarter, set, etc.), ALWAYS include it in the short name in parentheses
+- PERSON NAMES: When the subject is a person (candidate, politician, athlete, nominee, etc.), ALWAYS use their full "First Last" name if both appear anywhere in the question, description, event title, or outcomes. NEVER use a first name alone ("Xavier wins", "Kamala wins"). Last-name-only is acceptable ONLY for globally recognizable figures where the last name is unambiguous (Trump, Biden, Putin, Musk, Macron, Modi). If unsure, default to first+last.
 
 COMMON MISTAKES TO AVOID:
 - BAD: "KT vs PPLE" for "Will KT Party win most seats?" -> GOOD: KT wins Thailand
@@ -171,6 +186,9 @@ COMMON MISTAKES TO AVOID:
 - BAD: "G2 win" for "Will G2 win Map 2?" -> GOOD: G2 win vs MOUZ (Map 2)
 - BAD: "Chelsea > ATL" for "Chelsea scores more than Atletico in the second half" -> GOOD: Chelsea > ATL (2H)
 - BAD: "Elon 50+ Feb 8" for "Elon tweets 50+ times from Feb 8 to Feb 14?" -> GOOD: Elon 50+ Feb 8 - Feb 14
+- BAD: "Xavier wins CA 2026" for "Will Xavier Becerra win the 2026 California Governor election?" -> GOOD: Xavier Becerra wins CA 2026
+- BAD: "Kamala wins CA 2026" for "Will Kamala Harris win the 2026 California Governor election?" -> GOOD: Kamala Harris wins CA 2026
+- BAD: "Chad wins CA 2026" for a market about Chad Bianco -> GOOD: Chad Bianco wins CA 2026
 
 MARKET TYPE FORMATS:
 
@@ -223,9 +241,19 @@ MARKET TYPE FORMATS:
     - "Will Kupp win Super Bowl MVP?" -> Kupp SB MVP
     - "Will Henderson be NFL OROY?" -> Henderson OROY
 
-13. Other markets:
+13. Candidate / person wins (elections, nominations, awards, appointments):
+    - Use the candidate's full "First Last" name. First-name-only is NEVER acceptable.
+    - Elections: "Will Xavier Becerra win CA Governor 2026?" -> Xavier Becerra wins CA 2026
+    - Primaries / nominations: "Will JD Vance be the 2028 Republican nominee?" -> JD Vance 2028 GOP
+    - Papal conclave: "Will Pietro Parolin be the next Pope?" -> Pietro Parolin next Pope
+    - Nobel / prizes: "Will Yulia Navalnaya win the Nobel Peace Prize 2026?" -> Yulia Navalnaya Nobel Peace 2026
+    - Oscars / cultural awards: "Will Cillian Murphy win Best Actor 2026?" -> Cillian Murphy Best Actor 2026
+    - Time Person of the Year: "Will Taylor Swift be Time POTY 2026?" -> Taylor Swift Time POTY 2026
+    - Corporate appointments: "Will Lisa Su be the next Intel CEO?" -> Lisa Su next Intel CEO
+    - Globally recognizable figures may use last name only: "Trump wins 2024?" -> Trump 2024
+
+14. Other markets:
     - "Fed rate cut January?" -> Fed cut Jan
-    - "Trump wins 2024?" -> Trump 2024
     - "Bitcoin above $100k?" -> BTC >$100k
     - "Bitcoin above $100k by Feb 14?" -> BTC >$100k Feb 14
 
@@ -267,6 +295,8 @@ TODAY'S DATE: ${new Date().toISOString().split('T')[0]}
 
 IMPORTANT CONTEXT: These are prediction markets with YES/NO outcomes. You do NOT need to predict the answer — you only need to determine WHEN the answer will become available. For example, "Will X be the next PM of Y?" does not require knowing who will be PM — it requires knowing when the PM will be announced (e.g. after coalition talks conclude). Similarly, "Will X happen between March 17-23?" just needs the end of that date range, not whether X actually happened.
 
+OPTIMISTIC RESOLUTION PRINCIPLE: Most events resolve on their scheduled / announced date. Default to that date. Only deviate when there is positive evidence of postponement, cancellation, or unusual delay (an explicit news article, a "rescheduled to" note in the description, etc.). Do NOT pad scheduled dates with speculative buffers in case of "what if it slips" — return the actual scheduled resolution time. Fallback dates (constitutional deadlines, end-of-quarter, etc.) are a last resort, not a hedge.
+
 STEP 1 — CHECK DATES IN THE QUESTION: If the question contains a date or date range, check whether it is before today (${new Date().toISOString().split('T')[0]}).
 - If the date/range is entirely in the past (e.g. "between March 17-23" and today is March 27): the outcome is ALREADY knowable. Return the end of that date range (e.g. March 23 end-of-day in the relevant timezone). Do NOT add extra days for "data reporting" — prediction markets resolve based on the stated date.
 - If the date is in the future: proceed to Step 2.
@@ -278,13 +308,15 @@ STEP 2 — CHECK IF THE EVENT ALREADY HAPPENED: Search for whether the event has
 - Any event: search "[event] results" or "[event] outcome" first.
 If the event already happened and the outcome is known, return the date/time when the outcome became known (e.g. when results were announced, when the game ended, when the vote was counted). Do NOT return a future date for an event that already occurred.
 
-STEP 3 — SEARCH FOR SCHEDULED TIME (only if the event has NOT happened yet): Construct a targeted search query from the question text to find the exact scheduled time. Examples:
+STEP 3 — SEARCH FOR SCHEDULED TIME (only if the event has NOT happened yet): Construct a targeted search query from the question text to find the exact scheduled time. Exhaust search BEFORE falling back — a discoverable scheduled date always beats a generic deadline. Examples:
 - Sports: search "[team1] vs [team2] [date] start time"
 - Esports: search "[team1] vs [team2] [tournament] schedule"
 - Financial: search "[company] earnings date Q[N] [year]" or "Fed meeting [month] [year] announcement time"
 - If description says the event was "postponed" or "rescheduled to [new date]": search for the new date; if not found, use the date directly
 - If description contains a resolution source URL (e.g. vlr.gg, hltv.org, flashscore.com): search that site directly for the match schedule
 - Elections without a specific date in the question: search "[country/region] [year] election date" to find the actual scheduled date
+
+When you find a scheduled date, trust it. Do not silently substitute a more conservative date "in case the event slips" — the OPTIMISTIC RESOLUTION PRINCIPLE applies.
 
 STEP 4 — COMPUTE END TIME: Return when the outcome will be KNOWN, not the start time.
 - If the question contains a past date/range (from Step 1): return end of that date/range
@@ -300,9 +332,12 @@ STEP 4 — COMPUTE END TIME: Return when the outcome will be KNOWN, not the star
 - Elections already held but leader not yet chosen (e.g. coalition talks): estimate when the new government will be formed — search for "[country] coalition talks timeline" and give a realistic near-term estimate, NOT a constitutional maximum deadline
 - If there is a deadline in the question/description (e.g. "Will X happen by Y?"): use Y directly
 
-STEP 5 — FALLBACK: Only if start time cannot be found after searching, use end of day (23:59:59) in the event's local timezone. NEVER return UNKNOWN just because a specific time is missing — if the date is known, end-of-day is always an acceptable fallback.
+STEP 5 — FALLBACK (last resort, after exhausting search):
+- If you found the date but not the exact time: use end of day (23:59:59) in the event's local timezone. This is an acceptable fallback for the *time*, not for the *date*.
+- If you cannot find any scheduled date AND no deadline is stated in the question: only then may you fall back to a constitutional / end-of-period deadline. Make this the genuine outer bound — not a "safe" guess when an actual date probably exists but you didn't search hard enough.
+- NEVER return UNKNOWN just because a specific time is missing — if the date is known, end-of-day is always an acceptable fallback.
 
-CRITICAL: The returned date must be the EARLIEST time the outcome can be known. Never return a "must be held by" constitutional deadline when the actual event date is known. Never return a future date for an event that search results confirm has already happened.
+CRITICAL: The returned date must be the EARLIEST time the outcome can be known. Never return a "must be held by" constitutional deadline when the actual event date is known. Never return a future date for an event that search results confirm has already happened. Default to optimism — assume the scheduled date holds unless evidence says otherwise.
 
 OTHER RULES:
 - Always output UTC (convert from local timezone)

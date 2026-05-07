@@ -4,13 +4,8 @@ generator client {
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
-generator typegraphql {
-  provider = "typegraphql-prisma"
-}
-
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Category {
@@ -18,9 +13,7 @@ model Category {
   createdAt       DateTime         @default(now()) @db.Timestamp(6)
   name            String           @db.VarChar
   slug            String           @unique(map: "UQ_cb73208f151aa71cdd78f662d70") @db.VarChar
-  /// @TypeGraphQL.field(name: "conditions")
   condition       Condition[]
-  /// @TypeGraphQL.field(name: "conditionGroups")
   condition_group ConditionGroup[]
 
   @@index([slug], map: "IDX_cb73208f151aa71cdd78f662d7")
@@ -36,6 +29,7 @@ model Event {
   logIndex        Int
   logData         Json     @db.Json
 
+  @@unique([transactionHash, logIndex], map: "UQ_event_txhash_logindex")
   @@index([timestamp], map: "IDX_2c15918ff289396205521c5f3c")
   @@index([blockNumber], map: "IDX_5430e2d7fe1df2bcada2c12deb")
   @@map("event")
@@ -169,6 +163,7 @@ model Condition {
   createdAt           DateTime  @default(now()) @db.Timestamp(6)
   question            String    @db.VarChar
   shortName           String?   @db.VarChar
+  optionName          String?   @db.VarChar
   categoryId          Int?
   category            Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   endTime             Int
@@ -188,16 +183,18 @@ model Condition {
   /// YES probability from Polymarket (0.0–1.0), null for non-Polymarket
   estimatedPrice      Float?
 
-  // Time-bucketed Polymarket volume (USD)
-  volume1h          Float @default(0)
-  volume4h          Float @default(0)
-  volume24h         Float @default(0)
-  volume7d          Float @default(0)
-  // Filtered volume: only trades priced in [0.01, 0.99]
-  volumeFiltered1h  Float @default(0)
-  volumeFiltered4h  Float @default(0)
-  volumeFiltered24h Float @default(0)
-  volumeFiltered7d  Float @default(0)
+  // Time-bucketed Polymarket volume (USD), computed from Polymarket Data API trades.
+  // DB columns were originally named volume*; we keep them mapped to avoid DB migrations.
+  similarMarketVolume1h  Float @default(0) @map("volume1h")
+  similarMarketVolume4h  Float @default(0) @map("volume4h")
+  similarMarketVolume24h Float @default(0) @map("volume24h")
+  similarMarketVolume7d  Float @default(0) @map("volume7d")
+
+  // Time-bucketed Polymarket volume excluding extreme-odds trades (price outside [0.01, 0.99])
+  similarMarketVolumeFiltered1h  Float @default(0) @map("volumeFiltered1h")
+  similarMarketVolumeFiltered4h  Float @default(0) @map("volumeFiltered4h")
+  similarMarketVolumeFiltered24h Float @default(0) @map("volumeFiltered24h")
+  similarMarketVolumeFiltered7d  Float @default(0) @map("volumeFiltered7d")
 
   // Resolution status
   settled            Boolean @default(false)
@@ -238,38 +235,27 @@ model ConditionGroup {
   categoryId     Int?
   category       Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   similarMarkets String[]    @default([])
-  /// @TypeGraphQL.field(name: "conditions")
   condition      Condition[]
 
   // Denormalized aggregates maintained by trigger on condition table
-  /// @TypeGraphQL.omit(output: true)
   totalOpenInterest    Decimal @default(0) @db.Decimal
-  /// @TypeGraphQL.omit(output: true)
   maxEndTime           Int     @default(0)
-  /// @TypeGraphQL.omit(output: true)
   totalPredictionCount Int     @default(0)
-  /// @TypeGraphQL.omit(output: true)
   maxCreatedAtEpoch    BigInt  @default(0)
-  /// @TypeGraphQL.omit(output: true)
   publicConditionCount Int     @default(0)
 
-  // Denormalized volume aggregates (maintained by trigger)
-  /// @TypeGraphQL.omit(output: true)
-  totalVolume1h          Decimal @default(0) @db.Decimal
-  /// @TypeGraphQL.omit(output: true)
-  totalVolume4h          Decimal @default(0) @db.Decimal
-  /// @TypeGraphQL.omit(output: true)
-  totalVolume24h         Decimal @default(0) @db.Decimal
-  /// @TypeGraphQL.omit(output: true)
-  totalVolume7d          Decimal @default(0) @db.Decimal
-  /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered1h  Decimal @default(0) @db.Decimal
-  /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered4h  Decimal @default(0) @db.Decimal
-  /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered24h Decimal @default(0) @db.Decimal
-  /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered7d  Decimal @default(0) @db.Decimal
+  // Denormalized volume aggregates (maintained by trigger).
+  // DB columns were originally named totalVolume*; keep them mapped to avoid DB migrations.
+  totalSimilarMarketVolume1h  Decimal @default(0) @db.Decimal @map("totalVolume1h")
+  totalSimilarMarketVolume4h  Decimal @default(0) @db.Decimal @map("totalVolume4h")
+  totalSimilarMarketVolume24h Decimal @default(0) @db.Decimal @map("totalVolume24h")
+  totalSimilarMarketVolume7d  Decimal @default(0) @db.Decimal @map("totalVolume7d")
+
+  // Filtered volume aggregates (trades excluding extreme-odds prices outside [0.01, 0.99])
+  totalSimilarMarketVolumeFiltered1h  Decimal @default(0) @db.Decimal @map("totalVolumeFiltered1h")
+  totalSimilarMarketVolumeFiltered4h  Decimal @default(0) @db.Decimal @map("totalVolumeFiltered4h")
+  totalSimilarMarketVolumeFiltered24h Decimal @default(0) @db.Decimal @map("totalVolumeFiltered24h")
+  totalSimilarMarketVolumeFiltered7d  Decimal @default(0) @db.Decimal @map("totalVolumeFiltered7d")
 
   @@index([categoryId])
   // Raw SQL indexes (not representable in Prisma, managed via migration):
@@ -476,14 +462,20 @@ model ProtocolStatsSnapshot {
   escrowBalance String @db.VarChar
 
   /// Vault PnL metrics
-  vaultRealizedPnL    String @default("0") @db.VarChar // Total realized PnL from predictions
-  vaultAirdropGains   String @default("0") @db.VarChar // Unexpected balance increases
-  vaultDeposits       String @default("0") @db.VarChar // Total user deposits
-  vaultWithdrawals    String @default("0") @db.VarChar // Total user withdrawals
-  vaultPositionsWon   Int    @default(0)
-  vaultPositionsLost  Int    @default(0)
-  vaultCollateralWon  String @default("0") @db.VarChar
-  vaultCollateralLost String @default("0") @db.VarChar
+  vaultRealizedPnL     String @default("0") @db.VarChar // Settlement PnL: gross payouts to vault holder − vault primary-creation collateral
+  vaultAirdropGains    String @default("0") @db.VarChar // wUSDe transfers in not explained by deposits, settlement payouts, or secondary sales
+  vaultSecondaryBought String @default("0") @db.VarChar // Total wUSDe paid by vault in secondary buys
+  vaultSecondarySold   String @default("0") @db.VarChar // Total wUSDe received by vault in secondary sells
+  vaultDeposits        String @default("0") @db.VarChar // Total user deposits
+  vaultWithdrawals     String @default("0") @db.VarChar // Total user withdrawals
+  vaultPositionsWon    Int    @default(0)
+  vaultPositionsLost   Int    @default(0)
+  vaultCollateralWon   String @default("0") @db.VarChar
+  vaultCollateralLost  String @default("0") @db.VarChar
+  /// wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins
+  /// (sum of claimable side − sum of Claim.collateralPaid). Lets the airdrop
+  /// formula keep `actual` and `expected` on the same accounting basis.
+  vaultUnredeemedClaim String @default("0") @db.VarChar
 
   @@unique([chainId, vaultAddress, timestamp], map: "UQ_protocol_stats_snapshot_chain_vault_timestamp")
   @@index([timestamp], map: "IDX_protocol_stats_snapshot_timestamp")
@@ -496,6 +488,7 @@ model VaultFlowEvent {
   id              Int      @id @default(autoincrement())
   createdAt       DateTime @default(now()) @db.Timestamp(6)
   chainId         Int
+  vaultAddress    String   @db.VarChar  // lowercased vault contract address
   blockNumber     Int
   transactionHash String   @db.VarChar
   timestamp       Int
@@ -506,7 +499,7 @@ model VaultFlowEvent {
   shares          String   @db.VarChar // Shares minted/burned
 
   @@unique([chainId, transactionHash, logIndex])
-  @@index([chainId, timestamp])
+  @@index([chainId, vaultAddress, timestamp])
   @@index([eventType])
   @@map("vault_flow_event")
 }
@@ -663,8 +656,16 @@ model Claim {
   collateralPaid String  @db.VarChar
   redeemedAt     Int
   txHash         String  @db.VarChar
+  /// On-chain log index. The (chainId, txHash, logIndex) tuple is the natural
+  /// key for a TokensRedeemed event; the unique constraint below makes the
+  /// indexer's claim.upsert structurally idempotent under reconciler replays.
+  /// Pre-fix-migration rows were assigned negative-sentinel placeholders
+  /// (-1, -2, ...) inside their (chainId, txHash) group; the cleanup script
+  /// at scripts/backfillClaimLogIndex.ts swaps them for real values from chain.
+  logIndex       Int
   refCode        String? @db.VarChar
 
+  @@unique([chainId, txHash, logIndex], map: "UQ_claim_chain_tx_log")
   @@index([chainId, marketAddress], map: "IDX_claim_chain_market")
   @@index([holder], map: "IDX_claim_holder")
   @@index([predictionId], map: "IDX_claim_prediction")
@@ -689,6 +690,7 @@ model Close {
   txHash                   String  @db.VarChar
   refCode                  String? @db.VarChar
 
+  @@unique([chainId, txHash, pickConfigId], map: "UQ_close_chain_tx_pickconfig")
   @@index([chainId, marketAddress], map: "IDX_close_chain_market")
   @@index([pickConfigId], map: "IDX_close_pick_config")
   @@index([predictorHolder], map: "IDX_close_predictor")

@@ -60,6 +60,7 @@ import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
+import { isBidExpired } from '~/lib/auction/bidExpiry';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import {
   CollateralBalanceProvider,
@@ -651,10 +652,9 @@ const CreatePositionFormInner = ({
       return;
     }
 
-    // Validate the bid hasn't expired
-    const nowSec = Math.floor(Date.now() / 1000);
-
-    if (bid.counterpartyDeadline <= nowSec) {
+    // Validate the bid hasn't expired (with a small buffer so the inclusion
+    // latency doesn't push us past the on-chain deadline)
+    if (isBidExpired(bid.counterpartyDeadline, Date.now())) {
       toast({
         title: 'Bid expired',
         description: 'The bid has expired. Please wait for new bids.',
@@ -699,14 +699,25 @@ const CreatePositionFormInner = ({
           // from the auction params (threaded when user clicked "Use" on the sponsor indicator).
           // No manual override needed — it must match what the counterparty signed over.
 
+          // Open the progress dialog immediately so the user sees feedback the moment
+          // they click submit, instead of staring at a frozen button while the mint
+          // signs, simulates, and submits. The dialog tracks `progressState` and
+          // advances through SUBMITTING → INDEXING → COMPLETE on its own.
+          setShareDialogData(dialogData);
+          setShowShareDialog(true);
+          startSubmission();
+
           // Submit the mint request (includes Tier 3 simulation before sending tx).
-          // Only show share dialog and close form if submission succeeds.
           const success = await submitPosition(mintReq);
 
           if (success) {
-            setShareDialogData(dialogData);
-            setShowShareDialog(true);
             setIsPopoverOpen(false);
+          } else {
+            // Submission failed — close the progress dialog and reset state so
+            // the user can retry. The error toast is surfaced by submitPosition.
+            setShowShareDialog(false);
+            setShareDialogData(null);
+            resetProgress();
           }
           return;
         }
@@ -720,6 +731,9 @@ const CreatePositionFormInner = ({
         duration: 5000,
       });
     } catch {
+      setShowShareDialog(false);
+      setShareDialogData(null);
+      resetProgress();
       toast({
         title: 'Submission error',
         description: 'An error occurred while submitting your prediction.',

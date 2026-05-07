@@ -1,8 +1,7 @@
-import 'reflect-metadata';
-import { initializeDataSource } from '../db';
+import { initializeDataSource } from '../core/db';
 import { initializeFixtures, INDEXERS } from '../fixtures';
 import { handleJobCommand } from './jobs';
-import { createResilientProcess } from '../utils/utils';
+import { createResilientProcess } from '../lib/utils';
 
 async function main() {
   await initializeDataSource();

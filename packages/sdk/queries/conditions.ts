@@ -5,6 +5,7 @@ export interface ConditionType {
   createdAt: string;
   question: string;
   shortName?: string | null;
+  optionName?: string | null;
   endTime: number;
   public: boolean;
   description: string;
@@ -24,14 +25,14 @@ export interface ConditionType {
   conditionGroupId?: number | null;
   conditionGroup?: { id: number; name: string } | null;
   estimatedPrice?: number | null;
-  volume1h?: number;
-  volume4h?: number;
-  volume24h?: number;
-  volume7d?: number;
-  volumeFiltered1h?: number;
-  volumeFiltered4h?: number;
-  volumeFiltered24h?: number;
-  volumeFiltered7d?: number;
+  similarMarketVolume1h?: number;
+  similarMarketVolume4h?: number;
+  similarMarketVolume24h?: number;
+  similarMarketVolume7d?: number;
+  similarMarketVolumeFiltered1h?: number;
+  similarMarketVolumeFiltered4h?: number;
+  similarMarketVolumeFiltered24h?: number;
+  similarMarketVolumeFiltered7d?: number;
 }
 
 export interface ConditionFilters {
@@ -56,6 +57,7 @@ export const GET_CONDITIONS = /* GraphQL */ `
       createdAt
       question
       shortName
+      optionName
       endTime
       public
       description
@@ -218,6 +220,7 @@ export async function fetchConditionsByIds<T>(
 type ConditionById = {
   id: string;
   shortName?: string | null;
+  optionName?: string | null;
   question?: string | null;
   description?: string | null;
   endTime?: number | null;
@@ -230,11 +233,12 @@ type ConditionById = {
   estimatedPrice?: number | null;
 };
 
-const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
+export const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
   query ConditionsByIds($where: ConditionWhereInput!) {
     conditions(where: $where, take: 100) {
       id
       shortName
+      optionName
       question
       description
       endTime

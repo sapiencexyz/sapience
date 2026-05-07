@@ -3,6 +3,11 @@ import {
   pythConditionResolver,
   type ChainAddressMap,
 } from '@sapience/sdk/contracts';
+import {
+  collectAddresses,
+  FORECAST_SCHEMA_UID,
+  POLYMARKET_RESOLVER_ADDRESSES,
+} from '@sapience/sdk/constants';
 
 // address of anonymous quoter bot
 export const PREFERRED_ESTIMATE_QUOTER =
@@ -14,7 +19,6 @@ export const ADMIN_AUTHENTICATE_MSG =
 export const STARGATE_DEPOSIT_URL =
   'https://stargate.finance/?dstChain=ethereal&dstToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
-// Collect all addresses (current + legacy) from one or more ChainAddressMaps
 type ResolverDisplay = {
   name: string;
   icon?: string;
@@ -22,21 +26,6 @@ type ResolverDisplay = {
   iconAlt?: string;
   url?: string;
 };
-
-function collectAddresses(...maps: ChainAddressMap[]): string[] {
-  const addrs: string[] = [];
-  for (const map of maps) {
-    for (const entry of Object.values(map)) {
-      if (entry?.address) addrs.push(entry.address);
-      if (entry?.legacy) {
-        for (const leg of entry.legacy) {
-          addrs.push(typeof leg === 'string' ? leg : leg.address);
-        }
-      }
-    }
-  }
-  return addrs;
-}
 
 function buildDisplayMap(
   display: ResolverDisplay,
@@ -49,12 +38,8 @@ function buildDisplayMap(
   return result;
 }
 
-// Known Polymarket resolver addresses — CT condition resolver (all chains + legacy)
-export const POLYMARKET_RESOLVER_ADDRESSES = new Set(
-  collectAddresses(conditionalTokensConditionResolver).map((a) =>
-    a.toLowerCase()
-  )
-);
+// Re-exported from SDK so existing imports keep working.
+export { POLYMARKET_RESOLVER_ADDRESSES };
 
 const polymarketDisplay: ResolverDisplay = {
   name: 'Polymarket',
@@ -76,6 +61,4 @@ const pythDisplay: ResolverDisplay = {
 export const PYTH_RESOLVER_DISPLAY: Record<string, ResolverDisplay> =
   buildDisplayMap(pythDisplay, pythConditionResolver);
 
-// Forecast schema: address resolver, bytes condition, uint256 forecast, string comment
-export const SCHEMA_UID =
-  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
+export const SCHEMA_UID = FORECAST_SCHEMA_UID;

@@ -16,6 +16,8 @@ import {
   handleAuctionSubscribe,
   handleAuctionUnsubscribe,
   handleBidSubmit,
+  handleIdentify,
+  handleAuctionReceived,
 } from './handlers/escrow';
 import {
   handleVaultObserve,
@@ -209,6 +211,9 @@ export function createAuctionWebSocketServer() {
     });
     connectionMap.set(ws, client);
     allClients.add(client);
+    console.log(
+      `[Relayer] client.connected clientId=${client.id.slice(0, 8)} ip=${ip}`
+    );
 
     // Idle timeout
     let idleTimeout: NodeJS.Timeout | null = null;
@@ -406,6 +411,18 @@ export function createAuctionWebSocketServer() {
                 client,
                 msg.payload as BidPayload,
                 subs
+              );
+              break;
+            case 'identify':
+              handleIdentify(
+                client,
+                msg.payload as Parameters<typeof handleIdentify>[1]
+              );
+              break;
+            case 'auction.received':
+              handleAuctionReceived(
+                client,
+                msg.payload as Parameters<typeof handleAuctionReceived>[1]
               );
               break;
           }
@@ -705,7 +722,9 @@ export function createAuctionWebSocketServer() {
       const reasonStr = reason?.toString() ?? '';
       connectionsClosed.inc({ reason: reasonStr || `code_${code}` });
       console.log(
-        `[Relayer] Socket closed from ${ip} code=${code} reason=${reasonStr}`
+        `[Relayer] client.closed clientId=${client.id.slice(0, 8)} service=${client.service} instance=${
+          client.instanceId ? client.instanceId.slice(0, 8) : 'unknown'
+        } ip=${ip} code=${code} reason=${reasonStr}`
       );
 
       // Clean up subscriptions by type so metrics are properly decremented

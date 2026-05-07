@@ -14,9 +14,9 @@ const mockSentry = vi.hoisted(() => ({
   captureMessage: vi.fn(),
 }));
 
-vi.mock('../../../../db', () => ({ default: mockPrisma }));
-vi.mock('../../../../instrument', () => ({ default: mockSentry }));
-vi.mock('../../../../helpers/scoringService', () => ({
+vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
+vi.mock('../../../../core/instrument', () => ({ default: mockSentry }));
+vi.mock('../../../../services/scoringService', () => ({
   scoreSelectedForecastsForSettledMarket: vi.fn(),
   computeAndStoreMarketTwErrors: vi.fn(),
 }));
@@ -28,7 +28,7 @@ import { settleCondition, type SettlementInput } from '../settleCondition';
 import {
   scoreSelectedForecastsForSettledMarket,
   computeAndStoreMarketTwErrors,
-} from '../../../../helpers/scoringService';
+} from '../../../../services/scoringService';
 import { resolvePickConfigsForCondition } from '../resolvePickConfigs';
 
 // --- Helpers ---
@@ -117,17 +117,23 @@ describe('settleCondition', () => {
   describe('condition not found', () => {
     it('creates event and warns when no condition matches', async () => {
       mockPrisma.condition.findUnique.mockResolvedValue(null);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const writes: string[] = [];
+      const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((
+        chunk: unknown
+      ) => {
+        if (typeof chunk === 'string') writes.push(chunk);
+        return true;
+      }) as never);
 
       await settleCondition(TAG, makeLog(), MOCK_BLOCK, makeInput());
 
       expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
       expect(mockPrisma.event.create).toHaveBeenCalledOnce();
       expect(mockPrisma.condition.update).not.toHaveBeenCalled();
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('no matching Condition found')
-      );
-      warnSpy.mockRestore();
+      expect(
+        writes.some((w) => w.includes('no matching Condition found'))
+      ).toBe(true);
+      stdoutSpy.mockRestore();
     });
   });
 
@@ -234,7 +240,13 @@ describe('settleCondition', () => {
       vi.mocked(scoreSelectedForecastsForSettledMarket).mockRejectedValue(
         new Error('scoring down')
       );
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const writes: string[] = [];
+      const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((
+        chunk: unknown
+      ) => {
+        if (typeof chunk === 'string') writes.push(chunk);
+        return true;
+      }) as never);
 
       await expect(
         settleCondition(TAG, makeLog(), MOCK_BLOCK, makeInput())
@@ -244,10 +256,9 @@ describe('settleCondition', () => {
       expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
       expect(mockPrisma.condition.update).toHaveBeenCalled();
 
-      // Error should be logged and captured in Sentry
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Error scoring forecasts'),
-        expect.any(Error)
+      // Error should be logged (via pino → stdout) and captured in Sentry
+      expect(writes.some((w) => w.includes('Error scoring forecasts'))).toBe(
+        true
       );
       expect(mockSentry.captureException).toHaveBeenCalledWith(
         expect.any(Error),
@@ -259,7 +270,7 @@ describe('settleCondition', () => {
         })
       );
 
-      errorSpy.mockRestore();
+      stdoutSpy.mockRestore();
     });
 
     it('skips scoring when condition has no resolver address', async () => {

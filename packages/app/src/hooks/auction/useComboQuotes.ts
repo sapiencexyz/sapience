@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { parseUnits } from 'viem';
+import { parseUnits, zeroAddress as ZERO_ADDRESS } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
@@ -9,14 +9,13 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import type { OutcomeSide } from '@sapience/sdk/types';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
 import { useSettings } from '~/lib/context/SettingsContext';
-import { toAuctionWsUrl } from '~/lib/ws';
+import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import hub from '~/lib/auction/useAuctionBidsHub';
 import type { RecentCombo } from '~/hooks/graphql/useRecentCombos';
 
-const ZERO_ADDRESS =
-  '0x0000000000000000000000000000000000000000' as `0x${string}`;
 const PREDICTOR_POSITION_SIZE_WEI = parseUnits('1', 18).toString();
 
 /**
@@ -165,7 +164,7 @@ export function useComboQuotes(combos: RecentCombo[], chainId: number) {
       const nowMs = Date.now();
       const valid = bids.filter((b) => {
         const dl = Number(b?.counterpartyDeadline || 0);
-        return Number.isFinite(dl) ? dl * 1000 > nowMs : true;
+        return Number.isFinite(dl) ? effectiveDeadlineMs(dl) > nowMs : true;
       });
       const list = valid.length > 0 ? valid : bids;
       const best = list.reduce((acc, cur) =>

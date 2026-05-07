@@ -1,4 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { erc20Abi, type PublicClient } from 'viem';
 
 import {
@@ -251,6 +252,31 @@ export function useSubmitPosition({
               : await signTypedDataAsync(signParams);
 
           filled.predictorSignature = predictorSignature;
+        }
+
+        // Telemetry for the legacy on-chain session-key path. After Phase 1
+        // the app no longer produces non-empty sessionKeyData blobs for mint;
+        // any breadcrumb here means a regression or an external integrator
+        // route still flowing through the soon-to-be-removed contract path.
+        const predictorSkLen = filled.predictorSessionKeyData
+          ? (filled.predictorSessionKeyData.length - 2) / 2
+          : 0;
+        const counterpartySkLen = filled.counterpartySessionKeyData
+          ? (filled.counterpartySessionKeyData.length - 2) / 2
+          : 0;
+        if (predictorSkLen > 0 || counterpartySkLen > 0) {
+          Sentry.addBreadcrumb({
+            category: 'mint.legacy_session_key',
+            level: 'warning',
+            message: 'mint_carries_legacy_session_key_data',
+            data: {
+              predictor: filled.predictor,
+              counterparty: filled.counterparty,
+              predictorByteLength: predictorSkLen,
+              counterpartyByteLength: counterpartySkLen,
+              chainId,
+            },
+          });
         }
 
         const calls = prepareCalls(filled, freshAllowance);

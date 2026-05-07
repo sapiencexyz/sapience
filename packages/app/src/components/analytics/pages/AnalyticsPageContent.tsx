@@ -20,13 +20,17 @@ import {
   ComposedChart,
   Bar,
 } from 'recharts';
-import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
+import {
+  getProtocolTvlWei,
+  useProtocolStats,
+} from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
+import OpenInterestByCategoryChart from '~/components/analytics/OpenInterestByCategoryChart';
+import OpenInterestByTimeToResolutionChart from '~/components/analytics/OpenInterestByTimeToResolutionChart';
 import PeriodFilter, {
   type Period,
   PERIOD_DAYS,
 } from '~/components/shared/PeriodFilter';
-import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 
 function formatLargeNumber(
   value: number,
@@ -108,7 +112,6 @@ function ChartTooltip({
     maximumFractionDigits: 2,
   });
 
-  // Format timestamp (Unix seconds) to date string
   let dateLabel = '';
   if (label != null) {
     const date = new Date(Number(label) * 1000);
@@ -142,7 +145,6 @@ function ChartTooltip({
 }
 
 function formatTimestampTick(value: number): string {
-  // Parse Unix timestamp (seconds) to date
   const date = new Date(value * 1000);
   return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
@@ -153,47 +155,41 @@ const CHART_AXIS_STYLE = {
   tickLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
 };
 
-const CHART_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
+// Match OpenInterestByTimeToResolutionChart's left:-4 so the y-axis labels
+// hug the card edge consistently across all charts on the analytics page.
+const CHART_MARGIN = { top: 10, right: 4, left: -4, bottom: 0 };
 
 function filterDataByPeriod<T extends { timestamp: number }>(
   data: T[],
-  period: Period,
-  zeroEntry: Omit<T, 'timestamp'>
+  period: Period
 ): T[] {
   const days = PERIOD_DAYS[period];
   if (days === Infinity) return data;
 
   const now = Math.floor(Date.now() / 1000);
-  // Align cutoff to UTC midnight so we don't exclude snapshots that
-  // fall on the boundary day (snapshots use UTC midnight timestamps)
-  const DAY_SECONDS = 86400;
-  const cutoff =
-    Math.floor((now - days * DAY_SECONDS) / DAY_SECONDS) * DAY_SECONDS;
-  const filtered = data.filter((item) => item.timestamp >= cutoff);
+  const cutoff = now - days * 86400;
+  return data.filter((item) => item.timestamp >= cutoff);
+}
 
-  // Fill missing days with zero entries
-  const existingTimestamps = new Set(
-    filtered.map((d) => Math.floor(d.timestamp / DAY_SECONDS))
-  );
-  const filled = [...filtered];
-  for (let ts = cutoff; ts <= now; ts += DAY_SECONDS) {
-    const dayKey = Math.floor(ts / DAY_SECONDS);
-    if (!existingTimestamps.has(dayKey)) {
-      filled.push({ ...zeroEntry, timestamp: ts } as T);
-    }
+// Collapse sub-daily snapshots to one point per UTC day, keeping the last
+// observation in the day. Used for stock-like metrics (OI, TVL) where summing
+// would be wrong; the input is assumed to be in chronological order.
+function bucketStatsByDay<T extends { timestamp: number }>(data: T[]): T[] {
+  const byDay = new Map<number, T>();
+  for (const point of data) {
+    const dayStart = Math.floor(point.timestamp / 86400) * 86400;
+    byDay.set(dayStart, { ...point, timestamp: dayStart });
   }
-  filled.sort((a, b) => a.timestamp - b.timestamp);
-  return filled;
+  return [...byDay.values()].sort((a, b) => a.timestamp - b.timestamp);
 }
 
 function AnalyticsPageContent(): React.ReactElement {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
 
   // Period states for each chart
-  const [volumePeriod, setVolumePeriod] = useState<Period>('1W');
-  const [oiPeriod, setOiPeriod] = useState<Period>('1W');
-  const [tvlPeriod, setTvlPeriod] = useState<Period>('1W');
-  const [pnlPeriod, setPnlPeriod] = useState<Period>('1W');
+  const [volumePeriod, setVolumePeriod] = useState<Period>('1M');
+  const [oiPeriod, setOiPeriod] = useState<Period>('1M');
+  const [tvlPeriod, setTvlPeriod] = useState<Period>('1M');
 
   // Fetch protocol stats and daily volumes
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
@@ -209,16 +205,15 @@ function AnalyticsPageContent(): React.ReactElement {
     if (!protocolStats) return [];
 
     return protocolStats.map((point) => {
-      const vaultBalance = parseFloat(point.vaultBalance) / 1e18;
-      const vaultDeployed = parseFloat(point.vaultDeployed) / 1e18;
+      const openInterest = parseFloat(point.openInterest) / 1e18;
       const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
+      const vaultAvailableAssets =
+        parseFloat(point.vaultAvailableAssets) / 1e18;
       return {
         timestamp: point.timestamp,
-        openInterest: parseFloat(point.openInterest) / 1e18,
-        totalBalance: vaultBalance + escrowBalance,
-        vaultBalance,
-        vaultDeployed,
-        escrowBalance,
+        openInterest,
+        protocolTvl: escrowBalance + vaultAvailableAssets,
+        vaultAvailableAssets,
       };
     });
   }, [protocolStats]);
@@ -227,37 +222,36 @@ function AnalyticsPageContent(): React.ReactElement {
     if (!protocolStats) return [];
     return protocolStats.map((point) => ({
       timestamp: point.timestamp,
-      volume: parseFloat(point.dailyVolume) / 1e18,
+      volume: parseFloat(point.periodVolume) / 1e18,
     }));
   }, [protocolStats]);
 
-  // Filter chart data based on selected periods, filling missing days with zeros
-  const filteredVolumeData = useMemo(
-    () => filterDataByPeriod(volumeChartData, volumePeriod, { volume: 0 }),
-    [volumeChartData, volumePeriod]
-  );
+  // Aggregate sub-daily snapshots into UTC-day buckets. The cron interval is
+  // configurable and often runs multiple times per day, so without this the
+  // "Daily Volume" bar chart shows N bars per day instead of one.
+  const filteredVolumeData = useMemo(() => {
+    const filtered = filterDataByPeriod(volumeChartData, volumePeriod);
+    const byDay = new Map<number, number>();
+    for (const point of filtered) {
+      const dayStart = Math.floor(point.timestamp / 86400) * 86400;
+      byDay.set(dayStart, (byDay.get(dayStart) ?? 0) + point.volume);
+    }
+    return [...byDay.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([timestamp, volume]) => ({ timestamp, volume }));
+  }, [volumeChartData, volumePeriod]);
 
+  // Bucket sub-daily snapshots into UTC days, keeping the last snapshot of
+  // each day (closing value) so OI/TVL line charts render one point per day
+  // instead of N. OI and TVL are stocks, not flows — picking the last sample
+  // matches how end-of-day balances are conventionally reported.
   const filteredOiData = useMemo(
-    () =>
-      filterDataByPeriod(statsChartData, oiPeriod, {
-        openInterest: 0,
-        totalBalance: 0,
-        vaultBalance: 0,
-        vaultDeployed: 0,
-        escrowBalance: 0,
-      }),
+    () => bucketStatsByDay(filterDataByPeriod(statsChartData, oiPeriod)),
     [statsChartData, oiPeriod]
   );
 
   const filteredTvlData = useMemo(
-    () =>
-      filterDataByPeriod(statsChartData, tvlPeriod, {
-        openInterest: 0,
-        totalBalance: 0,
-        vaultBalance: 0,
-        vaultDeployed: 0,
-        escrowBalance: 0,
-      }),
+    () => bucketStatsByDay(filterDataByPeriod(statsChartData, tvlPeriod)),
     [statsChartData, tvlPeriod]
   );
 
@@ -274,7 +268,7 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-4 md:mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 mb-4 lg:mb-8">
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="sc-heading text-foreground mb-2 flex items-center gap-1.5">
@@ -292,7 +286,7 @@ function AnalyticsPageContent(): React.ReactElement {
                     <div className="space-y-3">
                       <div className="flex flex-col gap-1">
                         <span className="uppercase font-mono tracking-wide text-muted-foreground text-xs whitespace-nowrap">
-                          Prediction Market Escrow
+                          Escrow Balance
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
                           {formatNumber(summary?.escrowBalance || '0')}{' '}
@@ -302,10 +296,10 @@ function AnalyticsPageContent(): React.ReactElement {
                       <div className="h-px bg-[hsl(var(--accent-gold)/0.25)]" />
                       <div className="flex flex-col gap-1">
                         <span className="uppercase font-mono tracking-wide text-muted-foreground text-xs whitespace-nowrap">
-                          Protocol Vault Reserve
+                          Undeployed Vault Funds
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
-                          {formatNumber(summary?.vaultBalance || '0')}{' '}
+                          {formatNumber(summary?.vaultAvailableAssets || '0')}{' '}
                           {collateralSymbol}
                         </span>
                       </div>
@@ -320,12 +314,7 @@ function AnalyticsPageContent(): React.ReactElement {
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
-                    {formatNumber(
-                      String(
-                        BigInt(summary?.vaultBalance || '0') +
-                          BigInt(summary?.escrowBalance || '0')
-                      )
-                    )}{' '}
+                    {formatNumber(String(getProtocolTvlWei(summary)))}{' '}
                     {collateralSymbol}
                   </span>
                 )}
@@ -376,28 +365,17 @@ function AnalyticsPageContent(): React.ReactElement {
 
         {/* Charts */}
         <div className="space-y-4 md:space-y-8">
-          {/* Volume Chart - Daily Bar */}
+          {/* Open Interest distribution: by category + by time-to-resolution */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
+            <OpenInterestByCategoryChart />
+            <OpenInterestByTimeToResolutionChart />
+          </div>
+
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="sc-heading text-foreground flex items-center gap-1.5">
                   Daily Volume
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="text-muted-foreground hover:text-foreground transition-colors">
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto bg-background border border-border p-3"
-                      align="start"
-                    >
-                      <p className="text-sm text-muted-foreground">
-                        Includes volume from both V1 (legacy) and V2 (escrow)
-                        prediction markets.
-                      </p>
-                    </PopoverContent>
-                  </Popover>
                 </h3>
                 <PeriodFilter value={volumePeriod} onChange={setVolumePeriod} />
               </div>
@@ -429,6 +407,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <YAxis
                           {...CHART_AXIS_STYLE}
                           tickFormatter={formatChartValue}
+                          width={44}
                         />
                         <Tooltip
                           cursor={<AnimatedCursor />}
@@ -459,22 +438,6 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="sc-heading text-foreground flex items-center gap-1.5">
                   Open Interest
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="text-muted-foreground hover:text-foreground transition-colors">
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto bg-background border border-border p-3"
-                      align="start"
-                    >
-                      <p className="text-sm text-muted-foreground">
-                        Includes open interest from both V1 (legacy) and V2
-                        (escrow) prediction markets.
-                      </p>
-                    </PopoverContent>
-                  </Popover>
                 </h3>
                 <PeriodFilter value={oiPeriod} onChange={setOiPeriod} />
               </div>
@@ -523,6 +486,7 @@ function AnalyticsPageContent(): React.ReactElement {
                         <YAxis
                           {...CHART_AXIS_STYLE}
                           tickFormatter={formatChartValue}
+                          width={44}
                         />
                         <Tooltip
                           cursor={<AnimatedCursor />}
@@ -602,20 +566,21 @@ function AnalyticsPageContent(): React.ReactElement {
                         <YAxis
                           {...CHART_AXIS_STYLE}
                           tickFormatter={formatChartValue}
+                          width={44}
                         />
                         <Tooltip
                           cursor={<AnimatedCursor />}
                           content={(props) => (
                             <ChartTooltip
                               {...props}
-                              dataKey="totalBalance"
+                              dataKey="protocolTvl"
                               collateralSymbol={collateralSymbol}
                             />
                           )}
                         />
                         <Area
                           type="monotone"
-                          dataKey="totalBalance"
+                          dataKey="protocolTvl"
                           stroke="hsl(var(--accent-gold))"
                           strokeWidth={2}
                           fill="url(#protocolTVLGradient)"
@@ -625,27 +590,6 @@ function AnalyticsPageContent(): React.ReactElement {
                     </ResponsiveContainer>
                   </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Vault PnL Chart */}
-          <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="sc-heading text-foreground">
-                  Vault Profit/Loss
-                </h3>
-                <PeriodFilter value={pnlPeriod} onChange={setPnlPeriod} />
-              </div>
-              <div className="h-[300px]">
-                <VaultPnlChart
-                  protocolStats={protocolStats}
-                  isLoading={statsLoading}
-                  externalPeriod={pnlPeriod}
-                  showHeader={false}
-                  height={300}
-                />
               </div>
             </CardContent>
           </Card>

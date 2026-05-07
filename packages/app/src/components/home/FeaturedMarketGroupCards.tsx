@@ -10,14 +10,11 @@ import {
   type CarouselApi,
 } from '@sapience/ui/components/ui/carousel';
 import { useSidebar } from '@sapience/ui/components/ui/sidebar';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import TickerMarketCard from './ticker/TickerMarketCard';
+import { getActivePublicConditions } from './featuredConditions';
 import { useConditions } from '~/hooks/graphql/useConditions';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
-import { getActivePublicConditions } from './featuredConditions';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
-
-// Removed Loader in favor of simple fade-in cards and fixed-height placeholder
 
 // Interface for featured conditions in the homepage carousel
 interface FeaturedCondition {
@@ -30,32 +27,19 @@ interface FeaturedCondition {
   color: string;
   categoryId: string;
   categorySlug: string;
+  estimatedPrice?: number | null;
 }
 
 export default function FeaturedMarketGroupCards() {
   // Fetch recent conditions for the currently selected chain
   const chainId = DEFAULT_CHAIN_ID;
   const { data: conditions, isLoading: isLoadingConditions } = useConditions({
-    take: 100,
+    take: 24,
     chainId,
   });
 
   // Per-mount random seed to vary picks between mounts but keep them stable within a session
   const [randomSeed] = React.useState<number>(() => Math.random());
-  const [predictionMap, setPredictionMap] = React.useState<
-    Record<string, number>
-  >({});
-
-  const handlePredictionReady = React.useCallback(
-    (conditionId: string, probability: number) => {
-      setPredictionMap((prev) => {
-        if (!conditionId) return prev;
-        if (prev[conditionId] != null) return prev;
-        return { ...prev, [conditionId]: probability };
-      });
-    },
-    []
-  );
 
   // Simple seeded RNG (Mulberry32)
   const createRng = React.useCallback((seed: number) => {
@@ -94,6 +78,7 @@ export default function FeaturedMarketGroupCards() {
         color,
         categoryId: String(c.category?.id ?? ''),
         categorySlug: slug,
+        estimatedPrice: c.estimatedPrice,
       };
     });
 
@@ -162,63 +147,30 @@ export default function FeaturedMarketGroupCards() {
         {featuredConditions.length === 0 ? (
           <div className="relative" />
         ) : (
-          <MobileAndDesktopLists
-            items={featuredConditions}
-            predictionMap={predictionMap}
-            onPredictionReady={handlePredictionReady}
-          />
+          <MobileAndDesktopLists items={featuredConditions} />
         )}
       </div>
     </section>
   );
 }
 
-function MobileAndDesktopLists({
-  items,
-  predictionMap,
-  onPredictionReady,
-}: {
-  items: FeaturedCondition[];
-  predictionMap: Record<string, number>;
-  onPredictionReady: (conditionId: string, probability: number) => void;
-}) {
+function MobileAndDesktopLists({ items }: { items: FeaturedCondition[] }) {
   const { state, openMobile } = useSidebar();
   const [mobileApi, setMobileApi] = React.useState<CarouselApi | null>(null);
   const [desktopApi, setDesktopApi] = React.useState<CarouselApi | null>(null);
   const hasRandomizedMobileStart = React.useRef(false);
   const hasRandomizedDesktopStart = React.useRef(false);
-  const [hasShown, setHasShown] = React.useState(false);
   const minSlidesForScroll = 6;
-  const readyItems = React.useMemo(
-    () =>
-      items.filter(
-        (item) => item.conditionId && predictionMap[item.conditionId] != null
-      ),
-    [items, predictionMap]
-  );
   const loopItems = React.useMemo(() => {
-    if (readyItems.length === 0) return [];
+    if (items.length === 0) return [];
     // Ensure enough slides to overflow on ultra-wide screens so auto-scroll runs.
-    if (readyItems.length >= minSlidesForScroll) return readyItems;
-    const repeated: typeof readyItems = [];
+    if (items.length >= minSlidesForScroll) return items;
+    const repeated: typeof items = [];
     for (let i = 0; i < minSlidesForScroll; i++) {
-      repeated.push(readyItems[i % readyItems.length]);
+      repeated.push(items[i % items.length]);
     }
     return repeated;
-  }, [readyItems, minSlidesForScroll]);
-  const canAutoScroll = loopItems.length >= minSlidesForScroll;
-  React.useEffect(() => {
-    if (canAutoScroll && !hasShown) {
-      setHasShown(true);
-    }
-  }, [canAutoScroll, hasShown]);
-  const pendingItems = React.useMemo(
-    () =>
-      items.filter(
-        (item) => item.conditionId && predictionMap[item.conditionId] == null
-      ),
-    [items, predictionMap]
-  );
+  }, [items, minSlidesForScroll]);
 
   const autoScrollPluginMobile = React.useMemo(
     () =>
@@ -252,57 +204,40 @@ function MobileAndDesktopLists({
   // Randomize starting slide (mobile) once on init
   React.useEffect(() => {
     if (!mobileApi || hasRandomizedMobileStart.current) return;
-    if (readyItems.length === 0) return;
-    const startIndex = Math.floor(Math.random() * readyItems.length);
+    if (items.length === 0) return;
+    const startIndex = Math.floor(Math.random() * items.length);
     try {
       mobileApi.scrollTo(startIndex, true);
     } catch {
       console.error('Error scrolling to random index', startIndex);
     }
     hasRandomizedMobileStart.current = true;
-  }, [mobileApi, readyItems.length]);
+  }, [mobileApi, items.length]);
 
   // Randomize starting slide (desktop) once on init
   React.useEffect(() => {
     if (!desktopApi || hasRandomizedDesktopStart.current) return;
-    if (readyItems.length === 0) return;
-    const startIndex = Math.floor(Math.random() * readyItems.length);
+    if (items.length === 0) return;
+    const startIndex = Math.floor(Math.random() * items.length);
     try {
       desktopApi.scrollTo(startIndex, true);
     } catch {
       console.error('Error scrolling to random index', startIndex);
     }
     hasRandomizedDesktopStart.current = true;
-  }, [desktopApi, readyItems.length]);
+  }, [desktopApi, items.length]);
 
   const desktopItemClass = 'pl-0 w-auto flex-none';
 
   return (
     <div className="relative">
-      {/* Prefetch prediction requests offscreen so cards only render once ready */}
-      <div
-        aria-hidden
-        className="fixed top-0 left-0 w-px h-px overflow-hidden opacity-0 pointer-events-none"
-      >
-        {pendingItems.map((c) => (
-          <MarketPredictionRequest
-            key={`prefetch-${c.conditionId}-${c.categorySlug}`}
-            conditionId={c.conditionId}
-            suppressLoadingPlaceholder
-            skipViewportCheck
-            onPrediction={(prob) => onPredictionReady(c.conditionId, prob)}
-          />
-        ))}
-      </div>
-
-      {readyItems.length === 0 ? (
+      {loopItems.length === 0 ? (
         <div className="relative" />
       ) : (
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: hasShown ? 1 : 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
-          style={{ pointerEvents: hasShown ? 'auto' : 'none' }}
         >
           {/* Mobile: Embla carousel with auto-scroll */}
           <div className="xl:hidden w-full px-0">
@@ -327,11 +262,7 @@ function MobileAndDesktopLists({
                           resolver: c.resolver,
                         }}
                         color={c.color}
-                        predictionProbability={
-                          c.conditionId
-                            ? (predictionMap[c.conditionId] ?? null)
-                            : null
-                        }
+                        estimatedPrice={c.estimatedPrice ?? null}
                       />
                     </CarouselItem>
                     <CarouselItem className="w-px flex-none">
@@ -366,11 +297,7 @@ function MobileAndDesktopLists({
                           resolver: c.resolver,
                         }}
                         color={c.color}
-                        predictionProbability={
-                          c.conditionId
-                            ? (predictionMap[c.conditionId] ?? null)
-                            : null
-                        }
+                        estimatedPrice={c.estimatedPrice ?? null}
                       />
                     </CarouselItem>
                     <CarouselItem className="w-px flex-none">

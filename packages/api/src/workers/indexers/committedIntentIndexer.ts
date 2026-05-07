@@ -1,7 +1,7 @@
-import prisma from '../../db';
-import { getProviderForChain } from '../../utils/utils';
+import prisma from '../../core/db';
+import { getProviderForChain } from '../../lib/utils';
 import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
-import Sentry from '../../instrument';
+import Sentry from '../../core/instrument';
 import { IIndexer } from '../../interfaces';
 import {
   committedIntentExecutorAbi,

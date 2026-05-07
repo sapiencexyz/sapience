@@ -26,6 +26,8 @@
     "prices-and-1d-7d-volume:dry-run": "tsx scripts/prices-and-1d-7d-volume.ts --dry-run",
     "refresh-volume": "tsx scripts/refresh-volume.ts",
     "refresh-volume:dry-run": "tsx scripts/refresh-volume.ts --dry-run",
+    "refresh-metadata": "tsx scripts/refresh-metadata.ts",
+    "refresh-metadata:dry-run": "tsx scripts/refresh-metadata.ts --dry-run",
     "cleanup-polymarket": "tsx scripts/cleanup-polymarket.ts",
     "cleanup-polymarket:dry-run": "tsx scripts/cleanup-polymarket.ts --dry-run",
     "cleanup-polymarket:execute": "tsx scripts/cleanup-polymarket.ts --execute",
@@ -55,7 +57,7 @@
     "typescript-eslint": "8.21.0"
   },
   "engines": {
-    "node": ">=22.x",
+    "node": ">=22.12",
     "pnpm": "9.x"
   }
 }

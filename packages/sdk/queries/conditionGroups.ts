@@ -5,6 +5,7 @@ export interface ConditionGroupConditionType {
   createdAt: string;
   question: string;
   shortName?: string | null;
+  optionName?: string | null;
   endTime: number;
   public: boolean;
   description: string;
@@ -23,14 +24,14 @@ export interface ConditionGroupConditionType {
   conditionGroupId?: number | null;
   displayOrder?: number | null;
   estimatedPrice?: number | null;
-  volume1h?: number;
-  volume4h?: number;
-  volume24h?: number;
-  volume7d?: number;
-  volumeFiltered1h?: number;
-  volumeFiltered4h?: number;
-  volumeFiltered24h?: number;
-  volumeFiltered7d?: number;
+  similarMarketVolume1h?: number;
+  similarMarketVolume4h?: number;
+  similarMarketVolume24h?: number;
+  similarMarketVolume7d?: number;
+  similarMarketVolumeFiltered1h?: number;
+  similarMarketVolumeFiltered4h?: number;
+  similarMarketVolumeFiltered24h?: number;
+  similarMarketVolumeFiltered7d?: number;
 }
 
 export interface ConditionGroupType {
@@ -47,7 +48,7 @@ export interface ConditionGroupFilters {
   publicOnly?: boolean;
 }
 
-const GET_CONDITION_GROUPS = /* GraphQL */ `
+export const GET_CONDITION_GROUPS = /* GraphQL */ `
   query ConditionGroups(
     $take: Int
     $skip: Int
@@ -76,6 +77,7 @@ const GET_CONDITION_GROUPS = /* GraphQL */ `
         createdAt
         question
         shortName
+        optionName
         endTime
         public
         description

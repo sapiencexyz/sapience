@@ -1,9 +1,11 @@
-import prisma from '../../db';
-import { getProviderForChain } from '../../utils/utils';
+import prisma from '../../core/db';
+import { getProviderForChain } from '../../lib/utils';
 import { type PublicClient, parseAbiItem } from 'viem';
-import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { collateralToken } from '@sapience/sdk/contracts';
+import { createLogger } from '../../core/logger';
+
+const logger = createLogger('collateralTransferIndexer');
 
 const BLOCK_BATCH_SIZE = 500;
 const POLLING_INTERVAL_MS = 10_000;
@@ -39,8 +41,9 @@ class CollateralTransferIndexer implements IIndexer {
     }
     this.tokenAddress = entry.address;
 
-    console.log(
-      `[CollateralTransferIndexer] Initialized for chain ${chainId}, token ${this.tokenAddress}`
+    logger.info(
+      { chainId, tokenAddress: this.tokenAddress },
+      '[CollateralTransferIndexer] Initialized'
     );
   }
 
@@ -69,8 +72,10 @@ class CollateralTransferIndexer implements IIndexer {
       try {
         await this.pollCycle();
       } catch (error) {
-        console.error('[CollateralTransferIndexer] Poll cycle error:', error);
-        Sentry.captureException(error);
+        logger.error(
+          { err: error },
+          '[CollateralTransferIndexer] Poll cycle error'
+        );
       }
     };
 
@@ -88,7 +93,7 @@ class CollateralTransferIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log('[CollateralTransferIndexer] Stopped');
+    logger.info('[CollateralTransferIndexer] Stopped');
   }
 
   // --- Core polling logic ---
@@ -132,9 +137,9 @@ class CollateralTransferIndexer implements IIndexer {
         });
       } catch (error) {
         if (attempt === MAX_RETRIES) throw error;
-        console.warn(
-          `[CollateralTransferIndexer] getLogs failed (attempt ${attempt}/${MAX_RETRIES}), retrying in ${RETRY_DELAY_MS * attempt}ms...`,
-          error instanceof Error ? error.message : error
+        logger.warn(
+          { err: error, attempt, maxRetries: MAX_RETRIES },
+          `[CollateralTransferIndexer] getLogs failed, retrying in ${RETRY_DELAY_MS * attempt}ms`
         );
         await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
       }
@@ -148,9 +153,9 @@ class CollateralTransferIndexer implements IIndexer {
         return await this.client.getBlock({ blockNumber });
       } catch (error) {
         if (attempt === MAX_RETRIES) throw error;
-        console.warn(
-          `[CollateralTransferIndexer] getBlock(${blockNumber}) failed (attempt ${attempt}/${MAX_RETRIES}), retrying...`,
-          error instanceof Error ? error.message : error
+        logger.warn(
+          { err: error, blockNumber, attempt, maxRetries: MAX_RETRIES },
+          '[CollateralTransferIndexer] getBlock failed, retrying'
         );
         await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
       }
@@ -199,8 +204,12 @@ class CollateralTransferIndexer implements IIndexer {
             ? blockTimestamps.get(log.blockNumber)
             : undefined;
         if (!timestamp) {
-          console.warn(
-            `[CollateralTransferIndexer] Missing block timestamp for block ${log.blockNumber}, tx ${log.transactionHash}`
+          logger.warn(
+            {
+              blockNumber: log.blockNumber,
+              transactionHash: log.transactionHash,
+            },
+            '[CollateralTransferIndexer] Missing block timestamp'
           );
         }
         return {
@@ -222,8 +231,13 @@ class CollateralTransferIndexer implements IIndexer {
       skipDuplicates: true,
     });
 
-    console.log(
-      `[CollateralTransferIndexer] Indexed ${records.length} transfers at blocks ${logs[0]?.blockNumber}-${logs[logs.length - 1]?.blockNumber}`
+    logger.info(
+      {
+        recordCount: records.length,
+        fromBlock: logs[0]?.blockNumber,
+        toBlock: logs[logs.length - 1]?.blockNumber,
+      },
+      '[CollateralTransferIndexer] Indexed transfers'
     );
   }
 
@@ -237,15 +251,16 @@ class CollateralTransferIndexer implements IIndexer {
     const entry = collateralToken[this.chainId];
     if (entry?.blockCreated) {
       const deployBlock = BigInt(entry.blockCreated);
-      console.log(
-        `[CollateralTransferIndexer] No cursor found, starting from block ${deployBlock}`
+      logger.info(
+        { startBlock: deployBlock },
+        '[CollateralTransferIndexer] No cursor found, starting from deploy block'
       );
       return deployBlock;
     }
 
     // wUSDe existed before the escrow contract — start from block 0 to capture full history
-    console.log(
-      `[CollateralTransferIndexer] No cursor found, starting from block 0`
+    logger.info(
+      '[CollateralTransferIndexer] No cursor found, starting from block 0'
     );
     return 0n;
   }

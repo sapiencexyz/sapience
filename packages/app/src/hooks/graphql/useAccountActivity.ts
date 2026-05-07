@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { Address } from 'viem';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import type { Prediction, PickConfigData } from '~/hooks/graphql/usePositions';
 import type { SecondaryTrade } from '~/hooks/graphql/useSecondaryTrades';
@@ -31,8 +31,17 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
     $take: Int
     $skip: Int
     $type: String
+    $pickConfigId: String
+    $conditionId: String
   ) {
-    accountActivity(address: $address, take: $take, skip: $skip, type: $type) {
+    accountActivity(
+      address: $address
+      take: $take
+      skip: $skip
+      type: $type
+      pickConfigId: $pickConfigId
+      conditionId: $conditionId
+    ) {
       type
       timestamp
       prediction {
@@ -80,6 +89,22 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
             conditionResolver
             conditionId
             predictedOutcome
+            condition {
+              id
+              shortName
+              optionName
+              question
+              description
+              endTime
+              resolver
+              settled
+              resolvedToYes
+              nonDecisive
+              estimatedPrice
+              category {
+                slug
+              }
+            }
           }
         }
       }
@@ -117,6 +142,22 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
             conditionResolver
             conditionId
             predictedOutcome
+            condition {
+              id
+              shortName
+              optionName
+              question
+              description
+              endTime
+              resolver
+              settled
+              resolvedToYes
+              nonDecisive
+              estimatedPrice
+              category {
+                slug
+              }
+            }
           }
         }
       }
@@ -137,16 +178,30 @@ export function useAccountActivity({
   account,
   pageSize = DEFAULT_PAGE_SIZE,
   activityType,
+  pickConfigId,
+  conditionId,
   enabled: enabledOverride,
 }: {
   account?: Address;
   pageSize?: number;
   activityType?: string;
-  /** Override enabled state. Defaults to true when account is provided. */
+  /**
+   * Scope the feed to a single pick configuration. Filters predictions by
+   * pickConfigId and trades by the pickConfig's predictor/counterparty tokens.
+   */
+  pickConfigId?: string;
+  /**
+   * Scope the feed to a condition. Matches every pick configuration whose
+   * picks reference this conditionId.
+   */
+  conditionId?: string;
+  /**
+   * Override enabled state. Defaults to true — the unscoped feed returns
+   * recent global activity. Pass false to skip the query entirely.
+   */
   enabled?: boolean;
 }) {
-  const [take, setTake] = useState(pageSize);
-  const enabled = enabledOverride ?? Boolean(account);
+  const enabled = enabledOverride ?? true;
 
   const typeFilter =
     activityType && activityType !== 'all' ? activityType : undefined;
@@ -154,34 +209,45 @@ export function useAccountActivity({
   const {
     data,
     isLoading: initialLoading,
-    isFetching,
-  } = useQuery({
-    queryKey: ['accountActivity', account ?? 'global', take, typeFilter],
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: [
+      'accountActivity',
+      account ?? 'global',
+      typeFilter,
+      pickConfigId ?? null,
+      conditionId ?? null,
+      pageSize,
+    ],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    placeholderData: (
-      prev: { accountActivity: RawActivityItem[] } | undefined
-    ) => prev,
-    queryFn: async () => {
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: RawActivityItem[], allPages) =>
+      lastPage.length < pageSize ? undefined : allPages.length * pageSize,
+    queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
         accountActivity: RawActivityItem[];
       }>(ACCOUNT_ACTIVITY_QUERY, {
         address: account ?? null,
-        take,
-        skip: 0,
+        take: pageSize,
+        skip: pageParam,
         type: typeFilter ?? null,
+        pickConfigId: pickConfigId ?? null,
+        conditionId: conditionId ?? null,
       });
-      return resp ?? { accountActivity: [] };
+      return resp?.accountActivity ?? [];
     },
   });
 
-  const rawItems = useMemo(() => data?.accountActivity ?? [], [data]);
+  const rawItems = useMemo(() => data?.pages.flat() ?? [], [data]);
 
   // Only show loading spinner on true initial load (no data yet)
   const isLoading = initialLoading && !data;
-  const isFetchingMore = isFetching && !!data;
+  const isFetchingMore = isFetchingNextPage;
 
   // Map raw items to typed ActivityItems, skipping malformed entries
   const items: ActivityItem[] = useMemo(() => {
@@ -212,8 +278,10 @@ export function useAccountActivity({
     return mapped;
   }, [rawItems, account]);
 
-  const hasMore = rawItems.length >= take;
-  const fetchMore = () => setTake((t) => t + pageSize);
+  const hasMore = Boolean(hasNextPage);
+  const fetchMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   return {
     items,

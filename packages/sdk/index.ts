@@ -1,6 +1,7 @@
 export * from './types';
 export * from './constants';
 export * from './contracts';
+export * from './utils';
 export * from './onchain/tx';
 export * from './onchain/eas';
 export * from './onchain/attest';
@@ -16,6 +17,8 @@ export * from './auction/encoding';
 export * from './auction/escrowEncoding';
 export * from './auction/escrowSigning';
 export * from './auction/secondarySigning';
+export * from './auction/buildAuctionPayload';
+export * from './auction/decodePredictedOutcomes';
 
 // Committed-Intent surface (PRD-001)
 export * from './types/committedIntent';

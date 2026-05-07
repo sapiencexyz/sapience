@@ -1,5 +1,8 @@
 import type { PrismaClient } from '../../../../generated/prisma';
 import { isPredictedYes } from '@sapience/sdk/types';
+import { createLogger } from '../../../core/logger';
+
+const log = createLogger('resolvePickConfigs');
 
 type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -78,7 +81,7 @@ export async function resolvePickConfigsForCondition(
       },
     });
 
-    console.log(
+    log.info(
       `[resolvePickConfigs] Resolved pickConfig ${config.id} → ${result}`
     );
   }
@@ -107,7 +110,7 @@ export function computeSettlementResult(
     const cond = conditionMap.get(pick.conditionId);
 
     if (!cond) {
-      console.error(
+      log.error(
         `[resolvePickConfigs] Condition ${pick.conditionId} not found in DB`
       );
       return null;

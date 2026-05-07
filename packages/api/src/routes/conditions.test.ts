@@ -14,7 +14,7 @@ const mockPrisma = {
   $transaction: vi.fn(),
 };
 
-vi.mock('../db', () => ({ default: mockPrisma, __esModule: true }));
+vi.mock('../core/db', () => ({ default: mockPrisma, __esModule: true }));
 
 const app = express();
 app.use(express.json());
@@ -133,16 +133,16 @@ describe('conditions routes', () => {
       expect(res.body.message).toMatch(/already exists/i);
     });
 
-    it('stores tags array when provided', async () => {
+    it('stores tags array when provided (first-letter capitalized)', async () => {
       mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
 
       const res = await request(app)
         .post('/admin/conditions')
-        .send(baseBody({ tags: ['bitcoin', 'crypto'] }));
+        .send(baseBody({ tags: ['bitcoin', 'crypto', 'UFC'] }));
 
       expect(res.status).toBe(201);
       const createCall = mockPrisma.condition.create.mock.calls[0][0];
-      expect(createCall.data.tags).toEqual(['bitcoin', 'crypto']);
+      expect(createCall.data.tags).toEqual(['Bitcoin', 'Crypto', 'UFC']);
     });
 
     it('defaults tags to empty array when not provided', async () => {
@@ -236,6 +236,82 @@ describe('conditions routes', () => {
       expect(res.status).toBe(201);
       const createCall = mockPrisma.condition.create.mock.calls[0][0];
       expect(createCall.data.similarMarketImage).toBeUndefined();
+    });
+
+    it('persists trimmed optionName on create', async () => {
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ optionName: '  April 7  ' }));
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.condition.create.mock.calls[0][0];
+      expect(createCall.data.optionName).toBe('April 7');
+    });
+
+    it('leaves optionName undefined when omitted', async () => {
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app).post('/admin/conditions').send(baseBody());
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.condition.create.mock.calls[0][0];
+      expect(createCall.data.optionName).toBeUndefined();
+    });
+
+    it('leaves optionName undefined when only whitespace', async () => {
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ optionName: '   ' }));
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.condition.create.mock.calls[0][0];
+      expect(createCall.data.optionName).toBeUndefined();
+    });
+  });
+
+  // ---------- POST /admin/conditions/batch-create ----------
+
+  describe('POST /admin/conditions/batch-create', () => {
+    it('persists optionName for every item in the batch', async () => {
+      mockPrisma.condition.create.mockResolvedValue({});
+      mockPrisma.category.findFirst.mockResolvedValue(null);
+      mockPrisma.conditionGroup.findFirst.mockResolvedValue(null);
+
+      const items = [
+        {
+          conditionHash: '0x' + '11'.repeat(32),
+          question: 'Will BTC reach $150k in April?',
+          shortName: 'BTC ≥$150k Apr',
+          optionName: '↑ 150,000',
+          endTime: FUTURE_END_TIME,
+          description: 'test',
+          resolver: VALID_RESOLVER,
+        },
+        {
+          conditionHash: '0x' + '22'.repeat(32),
+          question: 'Will BTC dip to $60k in April?',
+          shortName: 'BTC ≤$60k Apr',
+          optionName: '↓ 60,000',
+          endTime: FUTURE_END_TIME,
+          description: 'test',
+          resolver: VALID_RESOLVER,
+        },
+      ];
+
+      const res = await request(app)
+        .post('/admin/conditions/batch-create')
+        .send({ conditions: items });
+
+      expect(res.status).toBe(201);
+      expect(mockPrisma.condition.create).toHaveBeenCalledTimes(2);
+      const first = mockPrisma.condition.create.mock.calls[0][0].data;
+      const second = mockPrisma.condition.create.mock.calls[1][0].data;
+      expect(first.optionName).toBe('↑ 150,000');
+      expect(second.optionName).toBe('↓ 60,000');
     });
   });
 
@@ -477,11 +553,11 @@ describe('conditions routes', () => {
       expect(updateCall.data.endTime).toBe(FUTURE_END_TIME + 10000);
     });
 
-    it('updates tags when provided', async () => {
+    it('updates tags when provided (first-letter capitalized)', async () => {
       mockPrisma.condition.findUnique.mockResolvedValue(existingCondition());
       mockPrisma.condition.update.mockResolvedValue({
         ...existingCondition(),
-        tags: ['updated-tag'],
+        tags: ['Updated-tag'],
       });
 
       const res = await request(app)
@@ -490,7 +566,7 @@ describe('conditions routes', () => {
 
       expect(res.status).toBe(200);
       const updateCall = mockPrisma.condition.update.mock.calls[0][0];
-      expect(updateCall.data.tags).toEqual(['updated-tag']);
+      expect(updateCall.data.tags).toEqual(['Updated-tag']);
     });
 
     it('does not overwrite tags when not provided', async () => {
@@ -562,6 +638,88 @@ describe('conditions routes', () => {
       const updateCall = mockPrisma.condition.update.mock.calls[0][0];
       expect(updateCall.data.question).toBe('New question');
       expect(updateCall.data.description).toBe('New description');
+    });
+
+    it('updates optionName when provided', async () => {
+      const existing = existingCondition({ optionName: null });
+      mockPrisma.condition.findUnique.mockResolvedValue(existing);
+      mockPrisma.condition.update.mockResolvedValue({
+        ...existing,
+        optionName: 'April 7',
+      });
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        .send({ optionName: 'April 7' });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.optionName).toBe('April 7');
+    });
+
+    it('clears optionName when empty string is provided', async () => {
+      const existing = existingCondition({ optionName: 'April 7' });
+      mockPrisma.condition.findUnique.mockResolvedValue(existing);
+      mockPrisma.condition.update.mockResolvedValue({
+        ...existing,
+        optionName: null,
+      });
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        .send({ optionName: '' });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.optionName).toBeNull();
+    });
+
+    it('leaves optionName untouched when not in body', async () => {
+      const existing = existingCondition({ optionName: 'April 7' });
+      mockPrisma.condition.findUnique.mockResolvedValue(existing);
+      mockPrisma.condition.update.mockResolvedValue(existing);
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        .send({ question: 'new question' });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.optionName).toBeUndefined();
+    });
+  });
+
+  // ---------- PUT /admin/conditions/batch-metadata ----------
+
+  describe('PUT /admin/conditions/batch-metadata', () => {
+    const VALID_ID = '0x' + 'cd'.repeat(32);
+
+    it('updates optionName when present in fields', async () => {
+      mockPrisma.condition.update.mockResolvedValue({});
+
+      const res = await request(app)
+        .put('/admin/conditions/batch-metadata')
+        .send({
+          updates: [{ id: VALID_ID, fields: { optionName: 'Viktor Orban' } }],
+        });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.optionName).toBe('Viktor Orban');
+    });
+
+    it('clears optionName with empty string', async () => {
+      mockPrisma.condition.update.mockResolvedValue({});
+
+      const res = await request(app)
+        .put('/admin/conditions/batch-metadata')
+        .send({
+          updates: [{ id: VALID_ID, fields: { optionName: '' } }],
+        });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.optionName).toBeNull();
     });
   });
 });

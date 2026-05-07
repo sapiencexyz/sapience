@@ -26,7 +26,7 @@ export interface UserProfitRankResult {
   totalParticipants: number;
 }
 
-const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
+export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
   query ProfitLeaderboard($limit: Int, $skip: Int) {
     profitLeaderboard(limit: $limit, skip: $skip) {
       address
@@ -35,7 +35,7 @@ const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
   }
 `;
 
-const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
+export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
   query AccuracyLeaderboard($limit: Int!) {
     accuracyLeaderboard(limit: $limit) {
       address
@@ -48,7 +48,7 @@ const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
   }
 `;
 
-const GET_ACCOUNT_ACCURACY_RANK = /* GraphQL */ `
+export const GET_ACCOUNT_ACCURACY_RANK = /* GraphQL */ `
   query AccountAccuracyRank($address: String!) {
     accountAccuracyRank(address: $address) {
       address

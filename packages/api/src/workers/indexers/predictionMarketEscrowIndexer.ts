@@ -1,8 +1,7 @@
-import prisma from '../../db';
-import type { PrismaClient } from '../../../generated/prisma';
-import { getProviderForChain, getBlockByTimestamp } from '../../utils/utils';
+import prisma from '../../core/db';
+import { Prisma, type PrismaClient } from '../../../generated/prisma';
+import { getProviderForChain, getBlockByTimestamp } from '../../lib/utils';
 import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
-import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import {
@@ -16,7 +15,11 @@ import {
 } from '@sapience/sdk/auction/encoding';
 import { PYTH_FEED_NAMES, PYTH_FEEDS } from '@sapience/sdk/constants';
 import { isPredictedYes, normalizeOutcomeSide } from '@sapience/sdk/types';
-import { sendPositionAlert } from '../../helpers/discordAlert';
+import { sendPositionAlert } from '../../services/discordAlert';
+
+import { createLogger } from '../../core/logger';
+
+const logger = createLogger('predictionMarketEscrowIndexer');
 
 type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -196,7 +199,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       this.blockCreated = BigInt(contractEntry.blockCreated || 0);
     }
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated}, legacy: ${this.isLegacy})`
     );
   }
@@ -207,24 +210,24 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     endTimestamp?: number
   ): Promise<boolean> {
     try {
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Indexing blocks from timestamp ${startTimestamp} to ${endTimestamp || 'latest'} on contract ${this.contractAddress}`
       );
 
       const startBlock = await getBlockByTimestamp(this.client, startTimestamp);
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Found start block: ${startBlock.number} at timestamp ${startBlock.timestamp}`
       );
 
       let endBlock: Block;
       if (endTimestamp) {
         endBlock = await getBlockByTimestamp(this.client, endTimestamp);
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Found end block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
         );
       } else {
         endBlock = await this.client.getBlock({ blockTag: 'latest' });
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Using latest block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
         );
       }
@@ -238,7 +241,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         i += BLOCK_BATCH_SIZE
       ) {
         const batchEnd = Math.min(i + BLOCK_BATCH_SIZE - 1, endBlockNumber);
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Processing blocks ${i} to ${batchEnd}`
         );
 
@@ -251,7 +254,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       }
 
       // Update indexer state
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Persisting watermark block=${endBlockNumber}`
       );
       await prisma.indexerState.upsert({
@@ -275,11 +278,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error indexing blocks:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[PredictionMarketEscrowIndexer] Error indexing blocks'
       );
-      Sentry.captureException(error);
       throw error;
     }
   }
@@ -296,7 +298,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         toBlock: BigInt(toBlock),
       });
 
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Found ${logs.length} logs in blocks ${fromBlock}-${toBlock}`
       );
 
@@ -320,24 +322,23 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error processing blocks ${fromBlock}-${toBlock}:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId, fromBlock, toBlock },
+        '[PredictionMarketEscrowIndexer] Error processing block range'
       );
-      Sentry.captureException(error);
       throw error;
     }
   }
 
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Already watching ${resourceSlug}`
       );
       return;
     }
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Starting to poll contract ${this.contractAddress} for ${resourceSlug}`
     );
 
@@ -345,7 +346,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
     // Set up SIGINT handler
     this.sigintHandler = () => {
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Received SIGINT, stopping...`
       );
       this.stop();
@@ -364,25 +365,25 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       });
       if (state) {
         this.lastProcessedBlock = BigInt(state.lastIndexedBlock);
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Resuming from watermark block ${this.lastProcessedBlock}`
         );
       } else if (this.blockCreated > 0n) {
         // Start from contract creation block to index historical events
         this.lastProcessedBlock = this.blockCreated - 1n;
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Starting from blockCreated ${this.blockCreated} for historical indexing`
         );
       } else {
         try {
           this.lastProcessedBlock = await this.client.getBlockNumber();
-          console.log(
+          logger.info(
             `[PredictionMarketEscrowIndexer:${this.chainId}] No watermark found, starting from current block ${this.lastProcessedBlock}`
           );
         } catch (error) {
-          console.error(
-            `[PredictionMarketEscrowIndexer:${this.chainId}] Error getting initial block:`,
-            error
+          logger.error(
+            { err: error },
+            `[PredictionMarketEscrowIndexer:${this.chainId}] Error getting initial block:`
           );
           this.lastProcessedBlock = 0n;
         }
@@ -408,7 +409,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           });
 
           if (logs.length > 0) {
-            console.log(
+            logger.info(
               `[PredictionMarketEscrowIndexer:${this.chainId}] Found ${logs.length} events in blocks ${fromBlock}-${toBlock}`
             );
 
@@ -419,11 +420,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
                 });
                 await this.processLog(log, block);
               } catch (error) {
-                console.error(
-                  `[PredictionMarketEscrowIndexer:${this.chainId}] Error processing log:`,
-                  error
+                logger.error(
+                  { err: error, chainId: this.chainId },
+                  '[PredictionMarketEscrowIndexer] Error processing log'
                 );
-                Sentry.captureException(error);
               }
             }
           }
@@ -431,7 +431,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           this.lastProcessedBlock = currentBlock;
 
           // Persist indexer state for resume on restart
-          console.log(
+          logger.info(
             `[PredictionMarketEscrowIndexer:${this.chainId}] Persisting watermark block=${currentBlock}`
           );
           await prisma.indexerState.upsert({
@@ -454,11 +454,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           });
         }
       } catch (error) {
-        console.error(
-          `[PredictionMarketEscrowIndexer:${this.chainId}] Polling error:`,
-          error
+        logger.error(
+          { err: error, chainId: this.chainId },
+          '[PredictionMarketEscrowIndexer] Polling error'
         );
-        Sentry.captureException(error);
       }
     };
 
@@ -479,7 +478,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log(`[PredictionMarketEscrowIndexer:${this.chainId}] Stopped`);
+    logger.info(`[PredictionMarketEscrowIndexer:${this.chainId}] Stopped`);
   }
 
   private async processLog(log: Log, block: Block): Promise<void> {
@@ -498,27 +497,31 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       }
 
       const eventName = decoded.eventName as unknown as string;
+      const txHash = log.transactionHash || '';
+      const logIdx = log.logIndex || 0;
 
-      // Record raw event
-      await prisma.event.create({
-        data: {
-          blockNumber: Number(log.blockNumber || 0),
-          transactionHash: log.transactionHash || '',
-          timestamp: BigInt(block.timestamp),
-          logIndex: log.logIndex || 0,
-          logData: {
-            source: 'PredictionMarketEscrow',
-            chainId: this.chainId,
-            eventName,
-            args: JSON.parse(
-              JSON.stringify(decoded.args, (_key, value) =>
-                typeof value === 'bigint' ? value.toString() : value
-              )
-            ),
+      // Fast-path replay short-circuit: if this event was already fully
+      // processed (Event row exists), skip the handler entirely. The Event
+      // row is now written AFTER successful handler completion (see below),
+      // so its presence is a strong signal the handler ran to completion at
+      // least once. Handlers are idempotent — per the per-handler audit —
+      // but re-running them on every reconciler pass is wasted work.
+      const alreadyProcessed = await prisma.event.findUnique({
+        where: {
+          transactionHash_logIndex: {
+            transactionHash: txHash,
+            logIndex: logIdx,
           },
         },
+        select: { id: true },
       });
+      if (alreadyProcessed) return;
 
+      // Run the handler FIRST. If it crashes, no Event row gets written, so
+      // the next reconciler pass re-runs the handler and converges to
+      // correct state via per-handler idempotency. Compare to the previous
+      // ordering (Event first), which left orphaned Event rows on
+      // crash-in-the-middle and the reconciler couldn't recover them.
       switch (eventName) {
         case 'PredictionCreated':
           await this.processPredictionCreated(
@@ -564,14 +567,47 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           break;
         default:
           // Silently skip other events (e.g., OwnershipTransferred)
-          break;
+          return;
+      }
+
+      // Mark the event as processed AFTER the handler succeeds. Concurrent
+      // workers (Background + Reconciler) may both reach here for the same
+      // event; whichever wins inserts the Event row, the loser hits P2002
+      // and short-circuits — both runs of the handler were independently
+      // idempotent so no double-application.
+      try {
+        await prisma.event.create({
+          data: {
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: txHash,
+            timestamp: BigInt(block.timestamp),
+            logIndex: logIdx,
+            logData: {
+              source: 'PredictionMarketEscrow',
+              chainId: this.chainId,
+              eventName,
+              args: JSON.parse(
+                JSON.stringify(decoded.args, (_key, value) =>
+                  typeof value === 'bigint' ? value.toString() : value
+                )
+              ),
+            },
+          },
+        });
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === 'P2002'
+        ) {
+          return;
+        }
+        throw e;
       }
     } catch (error) {
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error processing log:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[PredictionMarketEscrowIndexer] Error processing log (outer)'
       );
-      Sentry.captureException(error);
     }
   }
 
@@ -580,7 +616,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing PredictionCreated event: predictionId=${event.predictionId}`
     );
 
@@ -596,7 +632,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       // SAP-767: If prediction exists but pickConfigId is null, a previous RPC
       // call failed after the prediction row was created. Attempt repair.
       if (!existingPrediction.pickConfigId) {
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} missing pickConfigId, attempting repair...`
         );
         const repairData = await this.readPickConfigData(event, log);
@@ -608,22 +644,23 @@ class PredictionMarketEscrowIndexer implements IIndexer {
               data: { pickConfigId: repairData.pickConfigId },
             });
           });
-          console.log(
+          logger.info(
             `[PredictionMarketEscrowIndexer:${this.chainId}] Repaired prediction ${predictionIdLower} with pickConfigId=${repairData.pickConfigId}`
           );
         } else {
-          console.error(
-            `[PredictionMarketEscrowIndexer:${this.chainId}] CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing, will retry next cycle`,
-            { predictionId: predictionIdLower, chainId: this.chainId }
-          );
-          Sentry.captureException(
-            new Error(
-              `CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing`
-            )
+          logger.error(
+            {
+              err: new Error(
+                `CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing`
+              ),
+              predictionId: predictionIdLower,
+              chainId: this.chainId,
+            },
+            '[PredictionMarketEscrowIndexer] CRITICAL: Repair RPC failed; positions still missing, will retry next cycle'
           );
         }
       } else {
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
         );
       }
@@ -634,20 +671,27 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const onChainData = await this.readPickConfigData(event, log);
 
     if (!onChainData) {
-      console.warn(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] RPC failed for prediction ${predictionIdLower} — creating prediction without positions, will repair on next encounter`,
-        { predictionId: predictionIdLower, chainId: this.chainId }
-      );
-      Sentry.captureException(
-        new Error(
-          `RPC failed reading pick config for prediction ${predictionIdLower} — positions deferred`
-        )
+      logger.error(
+        {
+          err: new Error(
+            `RPC failed reading pick config for prediction ${predictionIdLower} — positions deferred`
+          ),
+          sentryLevel: 'warning',
+          predictionId: predictionIdLower,
+          chainId: this.chainId,
+        },
+        '[PredictionMarketEscrowIndexer] RPC failed for prediction — creating without positions, will repair on next encounter'
       );
     }
 
     // Wrap all DB writes in a transaction so partial state can't persist
     await prisma.$transaction(async (tx) => {
-      // Write pick config first (ensures Picks record exists for FK)
+      // Write pick config first (ensures Picks record exists for FK).
+      // NOTE: `Prediction.predictionId @unique` is load-bearing for race
+      // safety here. If two workers get past the outside-tx findUnique above
+      // both seeing null, one prediction.create below wins and the other's
+      // whole transaction rolls back — undoing the OI increment inside
+      // writePickConfigAndBalances. Do not loosen that constraint.
       if (onChainData) {
         await this.writePickConfigAndBalances(tx, event, onChainData);
       }
@@ -711,14 +755,14 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           predictionId: predictionIdLower,
         });
       } catch (err) {
-        console.error(
-          `[PredictionMarketEscrowIndexer:${this.chainId}] Discord alert failed:`,
-          err
+        logger.error(
+          { err: err },
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Discord alert failed:`
         );
       }
     })();
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processed PredictionCreated ${predictionIdLower}`
     );
   }
@@ -782,11 +826,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         picksOnChain,
       };
     } catch (error) {
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error reading on-chain pick config data:`,
-        error
+      logger.error(
+        { err: error, chainId: this.chainId },
+        '[PredictionMarketEscrowIndexer] Error reading on-chain pick config data'
       );
-      Sentry.captureException(error);
       return null;
     }
   }
@@ -850,7 +893,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
             ...(categoryId != null ? { categoryId } : {}),
           },
         });
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Upserted Pyth condition ${conditionId} — ${pythData.shortName}`
         );
       }
@@ -902,7 +945,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         `;
       }
 
-      console.log(
+      logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Created Picks config ${pickConfigId}`
       );
     } else {
@@ -944,7 +987,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       DO UPDATE SET balance = ("Position".balance::NUMERIC + ${counterpartyMinted}::NUMERIC)::TEXT, "updatedAt" = NOW()
     `;
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Upserted position balances for pickConfig ${pickConfigId}`
     );
   }
@@ -954,7 +997,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing PredictionSettled event: predictionId=${event.predictionId}, result=${event.result}`
     );
 
@@ -962,9 +1005,13 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const predictionIdLower = event.predictionId.toLowerCase();
 
     await prisma.$transaction(async (tx) => {
-      // Update prediction as settled
-      await tx.prediction.updateMany({
-        where: { predictionId: predictionIdLower },
+      // Transition-gated update: flip settled false→true atomically. Under
+      // READ COMMITTED, concurrent callers either win the row lock and update
+      // count=1, or lose and re-evaluate WHERE against the now-true row and
+      // update count=0. Sequential replays short-circuit the same way. This
+      // makes the OI decrement below run at most once per prediction.
+      const { count } = await tx.prediction.updateMany({
+        where: { predictionId: predictionIdLower, settled: false },
         data: {
           settled: true,
           settledAt: timestamp,
@@ -974,35 +1021,32 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           counterpartyClaimable: event.counterpartyClaimable.toString(),
         },
       });
+      if (count === 0) return;
 
-      // Decrement open interest for conditions linked to this prediction
       const pred = await tx.prediction.findUnique({
         where: { predictionId: predictionIdLower },
       });
-      if (pred) {
-        const totalCollateral = (
-          BigInt(pred.predictorCollateral) + BigInt(pred.counterpartyCollateral)
-        ).toString();
+      if (!pred?.pickConfigId) return;
 
-        if (pred.pickConfigId) {
-          const picks = await tx.pick.findMany({
-            where: { pickConfigId: pred.pickConfigId },
-            select: { conditionId: true },
-          });
-          for (const pick of picks) {
-            await tx.$executeRaw`
-              UPDATE condition
-              SET "openInterest" = GREATEST(
-                (COALESCE("openInterest"::NUMERIC, 0) - ${totalCollateral}::NUMERIC), 0
-              )::TEXT
-              WHERE id = ${pick.conditionId}
-            `;
-          }
-        }
+      const totalCollateral = (
+        BigInt(pred.predictorCollateral) + BigInt(pred.counterpartyCollateral)
+      ).toString();
+      const picks = await tx.pick.findMany({
+        where: { pickConfigId: pred.pickConfigId },
+        select: { conditionId: true },
+      });
+      for (const pick of picks) {
+        await tx.$executeRaw`
+          UPDATE condition
+          SET "openInterest" = GREATEST(
+            (COALESCE("openInterest"::NUMERIC, 0) - ${totalCollateral}::NUMERIC), 0
+          )::TEXT
+          WHERE id = ${pick.conditionId}
+        `;
       }
     });
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Marked prediction ${predictionIdLower} as settled with result ${mapSettlementResult(event.result)}`
     );
   }
@@ -1012,7 +1056,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing TokensRedeemed event: pickConfigId=${event.pickConfigId}, holder=${event.holder}`
     );
 
@@ -1021,31 +1065,52 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     // This is a known misnomer — Claim.predictionId actually stores a pickConfigId.
     // P&L code uses tokensBurned as cost basis to avoid depending on this field for joins.
     const predictionIdLower = event.pickConfigId.toLowerCase();
+    const positionTokenLower = event.positionToken.toLowerCase();
+    const txHash = log.transactionHash || '';
+    const logIdx = log.logIndex ?? 0;
 
-    // Create claim record
-    await prisma.claim.create({
-      data: {
-        chainId: this.chainId,
-        marketAddress: this.contractAddress.toLowerCase(),
-        predictionId: predictionIdLower,
-        holder: event.holder.toLowerCase(),
-        positionToken: event.positionToken.toLowerCase(),
-        tokensBurned: event.tokensBurned.toString(),
-        collateralPaid: event.collateralPaid.toString(),
-        redeemedAt: timestamp,
-        txHash: log.transactionHash || '',
-        refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
-      },
+    // Idempotent upsert keyed on (chainId, txHash, logIndex). The unique
+    // constraint on the Claim table makes the duplicate-row regression
+    // (reconciler/background-worker race) structurally impossible: replays
+    // hit the conflict and run the empty `update: {}` no-op.
+    await prisma.$transaction(async (tx) => {
+      await tx.claim.upsert({
+        where: {
+          chainId_txHash_logIndex: {
+            chainId: this.chainId,
+            txHash,
+            logIndex: logIdx,
+          },
+        },
+        create: {
+          chainId: this.chainId,
+          marketAddress: this.contractAddress.toLowerCase(),
+          predictionId: predictionIdLower,
+          holder: event.holder.toLowerCase(),
+          positionToken: positionTokenLower,
+          tokensBurned: event.tokensBurned.toString(),
+          collateralPaid: event.collateralPaid.toString(),
+          redeemedAt: timestamp,
+          txHash,
+          logIndex: logIdx,
+          refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
+        },
+        update: {}, // events are immutable; replay is no-op
+      });
     });
 
     // Position balance decrement is handled by the PositionTokenTransferIndexer
     // via the ERC20 Transfer(holder, 0x0, amount) burn event.
 
-    // Check if fully redeemed — look up pick config from the redeemed token
-    await this.checkFullyRedeemed(event.positionToken.toLowerCase());
+    // checkFullyRedeemed is independently idempotent (Picks.fullyRedeemed
+    // boolean flip is convergent — last write wins, value is always TRUE
+    // once both sides hit zero supply). Calling it after the transaction
+    // keeps the tx short and avoids holding a connection during two on-chain
+    // RPC reads.
+    await this.checkFullyRedeemed(positionTokenLower);
 
-    console.log(
-      `[PredictionMarketEscrowIndexer:${this.chainId}] Created claim record for prediction ${predictionIdLower}`
+    logger.info(
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Created/replayed claim record for prediction ${predictionIdLower}`
     );
   }
 
@@ -1054,7 +1119,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing CollateralDeposited event: predictionId=${event.predictionId}, totalAmount=${event.totalAmount}`
     );
 
@@ -1070,7 +1135,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       },
     });
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Updated collateral deposited for prediction ${predictionIdLower}`
     );
   }
@@ -1082,12 +1147,12 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     _log: Log, // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing DustSwept event: pickConfigId=${event.pickConfigId}, amount=${event.amount}`
     );
 
     // DustSwept is informational - log it but no DB action needed
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Dust swept: ${event.amount} to ${event.recipient} for pickConfigId ${event.pickConfigId}`
     );
   }
@@ -1097,31 +1162,43 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     log: Log,
     block: Block
   ): Promise<void> {
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processing PositionsBurned event: pickConfigId=${event.pickConfigId}`
     );
 
     const timestamp = Number(block.timestamp);
     const pickConfigIdLower = event.pickConfigId.toLowerCase();
 
-    await prisma.$transaction(async (tx) => {
-      // Create close record
-      await tx.close.create({
-        data: {
-          chainId: this.chainId,
-          marketAddress: this.contractAddress.toLowerCase(),
-          pickConfigId: pickConfigIdLower,
-          predictorHolder: event.predictorHolder.toLowerCase(),
-          counterpartyHolder: event.counterpartyHolder.toLowerCase(),
-          predictorTokensBurned: event.predictorTokensBurned.toString(),
-          counterpartyTokensBurned: event.counterpartyTokensBurned.toString(),
-          predictorPayout: event.predictorPayout.toString(),
-          counterpartyPayout: event.counterpartyPayout.toString(),
-          burnedAt: timestamp,
-          txHash: log.transactionHash || '',
-          refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
-        },
-      });
+    // `Close` has a unique constraint on (chainId, txHash, pickConfigId), so a
+    // replay from the reconciler hits P2002 here. We catch it and return early
+    // — the transaction rolls back and the OI decrement doesn't run twice.
+    const processed = await prisma.$transaction(async (tx) => {
+      try {
+        await tx.close.create({
+          data: {
+            chainId: this.chainId,
+            marketAddress: this.contractAddress.toLowerCase(),
+            pickConfigId: pickConfigIdLower,
+            predictorHolder: event.predictorHolder.toLowerCase(),
+            counterpartyHolder: event.counterpartyHolder.toLowerCase(),
+            predictorTokensBurned: event.predictorTokensBurned.toString(),
+            counterpartyTokensBurned: event.counterpartyTokensBurned.toString(),
+            predictorPayout: event.predictorPayout.toString(),
+            counterpartyPayout: event.counterpartyPayout.toString(),
+            burnedAt: timestamp,
+            txHash: log.transactionHash || '',
+            refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
+          },
+        });
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === 'P2002'
+        ) {
+          return false;
+        }
+        throw e;
+      }
 
       // Position balance decrements are handled by the PositionTokenTransferIndexer
       // via the ERC20 Transfer(holder, 0x0, amount) burn events.
@@ -1145,12 +1222,15 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           WHERE id = ${pick.conditionId}
         `;
       }
+      return true;
     });
+
+    if (!processed) return;
 
     // Check if fully redeemed (involves RPC calls, so outside the transaction)
     await this.checkFullyRedeemedByPickConfig(pickConfigIdLower);
 
-    console.log(
+    logger.info(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Created close record for pickConfig ${pickConfigIdLower}`
     );
   }
@@ -1199,14 +1279,14 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           where: { id: pickConfigId },
           data: { fullyRedeemed: true },
         });
-        console.log(
+        logger.info(
           `[PredictionMarketEscrowIndexer:${this.chainId}] Marked pickConfig ${pickConfigId} as fullyRedeemed`
         );
       }
     } catch (error) {
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error checking fullyRedeemed for pickConfig ${pickConfigId}:`,
-        error
+      logger.error(
+        { err: error },
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Error checking fullyRedeemed for pickConfig ${pickConfigId}:`
       );
     }
   }

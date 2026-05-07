@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Address } from 'viem';
+import { zeroAddress as ZERO_ADDRESS, type Address } from 'viem';
 import type { Pick, PickJson } from '@sapience/sdk/types';
 import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
+import { effectiveDeadlineMs } from '~/lib/auction/bidExpiry';
+import { useSecondTick } from '~/hooks/useSecondTick';
 import { logBidValidation, formatBidForLog } from '~/lib/auction/bidLogger';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { getPublicClientForChainId } from '~/lib/utils/util';
@@ -31,8 +33,6 @@ export interface UseValidatedBidsResult {
   invalidBidCount: number;
   isValidating: boolean;
 }
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 /**
  * Hook that wraps raw QuoteBid[] with on-chain bid validation.
@@ -105,7 +105,7 @@ export function useValidatedBids(
     [picks]
   );
 
-  // Invalidate cached results when picks or predictorCollateral changes
+  // Invalidate cached results when prediction inputs change
   // (predictionHash changes, so all previous validations are stale)
   const picksKey = useMemo(
     () =>
@@ -121,11 +121,11 @@ export function useValidatedBids(
   );
 
   useEffect(() => {
-    // Clear all cached validation when picks or collateral changes
+    // Clear all cached validation when prediction inputs change
     validatedSignaturesRef.current.clear();
     validatingRef.current.clear();
     setValidationResults(new Map());
-  }, [picksKey, predictorCollateral]);
+  }, [picksKey, predictorCollateral, predictorNonce]);
 
   // Validate new bids when they arrive
   useEffect(() => {
@@ -260,6 +260,7 @@ export function useValidatedBids(
     collateralTokenAddress,
     predictorAddress,
     predictorCollateral,
+    predictorNonce,
     picksJson,
     isSponsored,
     sponsorAddress,
@@ -339,15 +340,18 @@ export function useValidatedBids(
   }, [rawBids, validationResults, canValidate]);
 
   // Filter to valid + non-expired bids
+  // Tick once per second so a bid drops out when its (buffered) deadline
+  // elapses even if no new bids arrive.
+  const tickedNowMs = useSecondTick();
   const validBids = useMemo((): QuoteBid[] => {
-    const nowMs = Date.now();
+    const nowMs = tickedNowMs ?? Date.now();
     return validatedBids.filter((bid) => {
       if (bid.validationStatus !== 'valid') return false;
       const deadlineSec = Number(bid.counterpartyDeadline || 0);
       if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return false;
-      return deadlineSec * 1000 > nowMs;
+      return effectiveDeadlineMs(deadlineSec) > nowMs;
     });
-  }, [validatedBids]);
+  }, [validatedBids, tickedNowMs]);
 
   const invalidBidCount = useMemo(() => {
     return validatedBids.filter((bid) => bid.validationStatus === 'invalid')
