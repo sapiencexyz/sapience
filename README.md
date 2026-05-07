@@ -42,22 +42,22 @@ All trading happens on [Ethereal](https://ethereal.trade) using [USDe](https://e
 
 ### Monorepo Structure
 
-| Package                         | Description                                                          |
-| ------------------------------- | -------------------------------------------------------------------- |
-| [`protocol`](packages/protocol) | Solidity smart contracts — PredictionMarket, Vaults, Resolvers       |
-| [`sdk`](packages/sdk)           | TypeScript SDK — auction helpers, ABI exports, signing utilities     |
-| [`api`](packages/api)           | Backend — GraphQL API, auction relayer, blockchain indexers          |
-| [`app`](packages/app)           | Next.js frontend at [sapience.xyz](https://sapience.xyz)             |
-| [`ui`](packages/ui)             | Shared React component library                                       |
-| [`docs`](packages/docs)         | Documentation site at [docs.sapience.xyz](https://docs.sapience.xyz) |
+| Package                                   | Description                                                           |
+| ----------------------------------------- | --------------------------------------------------------------------- |
+| [`protocol`](packages/protocol)           | Solidity smart contracts — PredictionMarket, Vaults, Resolvers        |
+| [`sdk`](packages/sdk)                     | TypeScript SDK — auction helpers, ABI exports, signing utilities      |
+| [`api`](packages/api)                     | Backend — GraphQL API and blockchain indexers                         |
+| [`relayer`](packages/relayer)             | WebSocket relayer brokering auctions between predictors and vaults    |
+| [`app`](packages/app)                     | Next.js frontend at [sapience.xyz](https://sapience.xyz)              |
+| [`ui`](packages/ui)                       | Shared React component library                                        |
+| [`docs`](packages/docs)                   | Documentation site at [docs.sapience.xyz](https://docs.sapience.xyz)  |
+| [`market-keeper`](packages/market-keeper) | Cron pipeline for ingesting Polymarket markets and running settlement |
+| [`edge-cache`](packages/edge-cache)       | Cloudflare Worker that proxies and caches the GraphQL endpoint        |
 
 ### Quick Start
 
 ```bash
 pnpm install
-
-# Local blockchain + contracts
-pnpm run dev:protocol    # press 'i' to interact
 
 # Frontend
 pnpm run dev:app         # http://localhost:3000
@@ -65,11 +65,14 @@ pnpm run dev:app         # http://localhost:3000
 # API
 pnpm run dev:api         # http://localhost:3001
 
+# Relayer
+pnpm run dev:relayer     # ws://localhost:3002
+
 # Docs
 pnpm run dev:docs        # http://localhost:3003
 ```
 
-Connect your wallet to `http://localhost:8545` (Chain ID 13370). Reset wallet nonce after restarting the node.
+For contract development see [`packages/protocol/CLAUDE.md`](packages/protocol/CLAUDE.md). Most app/API work runs against the deployed Ethereal contracts rather than a local chain — see [`packages/sdk/contracts/addresses.ts`](packages/sdk/contracts/addresses.ts).
 
 ### Building Agents
 
