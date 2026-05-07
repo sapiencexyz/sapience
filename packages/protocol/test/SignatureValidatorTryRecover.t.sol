@@ -7,29 +7,9 @@ import "../src/PredictionMarketTokenFactory.sol";
 import "../src/resolvers/mocks/ManualConditionResolver.sol";
 import "../src/interfaces/IV2Types.sol";
 import "../src/interfaces/IPredictionMarketEscrow.sol";
-import "../src/utils/IAccountFactory.sol";
 import "../src/utils/SignatureValidator.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./mocks/MockERC20.sol";
-
-/// @notice Mock account factory
-contract MockAccountFactoryTV is IAccountFactory {
-    mapping(address => mapping(uint256 => address)) private _accounts;
-
-    function setAccount(address owner_, uint256 index, address account)
-        external
-    {
-        _accounts[owner_][index] = account;
-    }
-
-    function getAccountAddress(address owner_, uint256 index)
-        external
-        view
-        returns (address)
-    {
-        return _accounts[owner_][index];
-    }
-}
 
 /// @notice Smart account that accepts both 65-byte and 64-byte (EIP-2098 compact) sigs
 contract CompactSigSmartAccount is IERC1271 {
@@ -137,7 +117,6 @@ contract SignatureValidatorTryRecoverTest is Test {
     PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
     MockERC20 public collateralToken;
-    MockAccountFactoryTV public factory;
 
     address public admin;
     address public settler;
@@ -201,11 +180,6 @@ contract SignatureValidatorTryRecoverTest is Test {
         signer2 = vm.addr(signer2Pk);
         signer3 = vm.addr(signer3Pk);
 
-        // Deploy factory and map smart accounts
-        factory = new MockAccountFactoryTV();
-        factory.setAccount(owner, 0, smartAccount);
-        factory.setAccount(owner2, 0, smartAccount2);
-
         // Deploy collateral
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
 
@@ -217,7 +191,6 @@ contract SignatureValidatorTryRecoverTest is Test {
         );
         vm.startPrank(admin);
         tokenFactory.setDeployer(address(market));
-        market.setAccountFactory(address(factory));
         vm.stopPrank();
 
         // Deploy resolver
@@ -301,36 +274,12 @@ contract SignatureValidatorTryRecoverTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function _createSessionKeyData(
-        address _sessionKey,
-        address _owner,
-        uint256 _ownerPk,
-        address _smartAccount,
-        bytes32 permissionsHash
-    ) internal view returns (bytes memory) {
-        uint256 validUntil =
-            block.timestamp + SESSION_DURATION;
-
-        bytes32 sessionApprovalHash = market.getSessionKeyApprovalHash(
-            _sessionKey,
-            _smartAccount,
-            validUntil,
-            permissionsHash,
-            block.chainid
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_ownerPk, sessionApprovalHash);
-        bytes memory ownerSig = abi.encodePacked(r, s, v);
-
-        IV2Types.SessionKeyData memory skData = IV2Types.SessionKeyData({
-            sessionKey: _sessionKey,
-            owner: _owner,
-            validUntil: validUntil,
-            permissionsHash: permissionsHash,
-            chainId: block.chainid,
-            ownerSignature: ownerSig
-        });
-
-        return abi.encode(skData);
+    /// @notice Any non-empty bytes blob — the legacy on-chain session-key
+    /// path is now refused before decode, so the precise contents do not
+    /// matter. The escrow reverts with `LegacySessionKeyDataDisabled` purely
+    /// based on `sessionKeyData.length != 0`.
+    function _legacySessionKeyDataBlob() internal pure returns (bytes memory) {
+        return hex"deadbeef";
     }
 
     function _buildMintRequest(
@@ -799,176 +748,54 @@ contract SignatureValidatorTryRecoverTest is Test {
     }
 
     // ================================================================
-    // 2. SESSION KEY PATH: mint + burn with legacy session key data
+    // 2. LEGACY SESSION KEY PATH: now disabled at the contract layer
+    //
+    // Previously this section exercised the legacy `sessionKeyData` blob
+    // path (own ECDSA + factory CREATE2 derivation as proof of authority).
+    // That path was unsafe: it could not see Kernel validator rotations and
+    // let rotated-out owners keep authorizing transfers on a smart account
+    // that had since revoked them via the validator. The contract now
+    // refuses any non-empty `sessionKeyData`. Smart accounts using session
+    // keys must do so through the account itself (Kernel permission
+    // validator + ERC-1271).
     // ================================================================
 
-    /// @notice Session key mint — happy path (both sides)
-    function test_mint_sessionKey_bothSides() public {
-        bytes memory predictorSKData = _createSessionKeyData(
-            sessionKey, owner, ownerPk, smartAccount, keccak256("MINT")
-        );
-        bytes memory counterpartySKData = _createSessionKeyData(
-            sessionKey2, owner2, owner2Pk, smartAccount2, keccak256("MINT")
-        );
-
-        IV2Types.MintRequest memory request = _buildMintRequest(
-            smartAccount,
-            smartAccount2,
-            sessionKeyPk,
-            sessionKey2Pk,
-            predictorSKData,
-            counterpartySKData
-        );
-
-        (bytes32 predictionId,,) = market.mint(request);
-        assertNotEq(predictionId, bytes32(0));
-    }
-
-    /// @notice Session key mint — wrong session key should revert
-    function test_mint_sessionKey_wrongKey_reverts() public {
-        bytes memory predictorSKData = _createSessionKeyData(
-            sessionKey, owner, ownerPk, smartAccount, keccak256("MINT")
-        );
-
-        // Sign with wrong key (sessionKey2Pk instead of sessionKeyPk)
+    function test_mint_legacySessionKeyData_reverts() public {
         IV2Types.MintRequest memory request = _buildMintRequest(
             smartAccount,
             eoaCounterparty,
-            sessionKey2Pk, // WRONG KEY
+            sessionKeyPk,
             eoaCounterpartyPk,
-            predictorSKData,
+            _legacySessionKeyDataBlob(),
             ""
         );
 
         vm.expectRevert(
-            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
         );
         market.mint(request);
     }
 
-    /// @notice Session key mint — expired session should revert
-    function test_mint_sessionKey_expired_reverts() public {
-        bytes memory predictorSKData = _createSessionKeyData(
-            sessionKey, owner, ownerPk, smartAccount, keccak256("MINT")
-        );
-
+    function test_mint_legacySessionKeyData_counterparty_reverts() public {
         IV2Types.MintRequest memory request = _buildMintRequest(
+            eoaPredictor,
             smartAccount,
-            eoaCounterparty,
+            eoaPredictorPk,
             sessionKeyPk,
-            eoaCounterpartyPk,
-            predictorSKData,
-            ""
+            "",
+            _legacySessionKeyDataBlob()
         );
-
-        // Warp past session expiry
-        vm.warp(block.timestamp + SESSION_DURATION + 1);
 
         vm.expectRevert(
-            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
         );
         market.mint(request);
     }
 
-    /// @notice Session key mint — wrong permissions hash should revert
-    function test_mint_sessionKey_wrongPermission_reverts() public {
-        // Create session key data with BURN permission for a MINT operation
-        bytes memory predictorSKData = _createSessionKeyData(
-            sessionKey, owner, ownerPk, smartAccount, keccak256("BURN")
-        );
-
-        IV2Types.MintRequest memory request = _buildMintRequest(
-            smartAccount,
-            eoaCounterparty,
-            sessionKeyPk,
-            eoaCounterpartyPk,
-            predictorSKData,
-            ""
-        );
-
-        vm.expectRevert(
-            IPredictionMarketEscrow.InvalidPredictorSignature.selector
-        );
-        market.mint(request);
-    }
-
-    /// @notice Session key burn — happy path
-    function test_burn_sessionKey_bothSides() public {
-        bytes memory mintPSKData = _createSessionKeyData(
-            sessionKey, owner, ownerPk, smartAccount, keccak256("MINT")
-        );
-        bytes memory mintCSKData = _createSessionKeyData(
-            sessionKey2, owner2, owner2Pk, smartAccount2, keccak256("MINT")
-        );
-
-        bytes32 pickConfigId = _mintAndGetPickConfigId(
-            smartAccount,
-            smartAccount2,
-            sessionKeyPk,
-            sessionKey2Pk,
-            mintPSKData,
-            mintCSKData
-        );
-
-        bytes memory burnPSKData = _createSessionKeyData(
-            sessionKey, owner, ownerPk, smartAccount, keccak256("BURN")
-        );
-        bytes memory burnCSKData = _createSessionKeyData(
-            sessionKey2, owner2, owner2Pk, smartAccount2, keccak256("BURN")
-        );
-
-        IV2Types.BurnRequest memory request = _buildBurnRequest(
-            BurnParams({
-                pickConfigId: pickConfigId,
-                predictorHolder: smartAccount,
-                counterpartyHolder: smartAccount2,
-                predictorPk: sessionKeyPk,
-                counterpartyPk: sessionKey2Pk,
-                predictorSessionKeyData: burnPSKData,
-                counterpartySessionKeyData: burnCSKData
-            })
-        );
-
-        market.burn(request);
-    }
-
-    /// @notice Session key burn — wrong permission should revert
-    function test_burn_sessionKey_wrongPermission_reverts() public {
-        bytes memory mintPSKData = _createSessionKeyData(
-            sessionKey, owner, ownerPk, smartAccount, keccak256("MINT")
-        );
-
-        bytes32 pickConfigId = _mintAndGetPickConfigId(
-            smartAccount,
-            eoaCounterparty,
-            sessionKeyPk,
-            eoaCounterpartyPk,
-            mintPSKData,
-            ""
-        );
-
-        // Use MINT permission for burn — should fail
-        bytes memory burnPSKData = _createSessionKeyData(
-            sessionKey, owner, ownerPk, smartAccount, keccak256("MINT")
-        );
-
-        IV2Types.BurnRequest memory request = _buildBurnRequest(
-            BurnParams({
-                pickConfigId: pickConfigId,
-                predictorHolder: smartAccount,
-                counterpartyHolder: eoaCounterparty,
-                predictorPk: sessionKeyPk,
-                counterpartyPk: eoaCounterpartyPk,
-                predictorSessionKeyData: burnPSKData,
-                counterpartySessionKeyData: ""
-            })
-        );
-
-        vm.expectRevert(
-            IPredictionMarketEscrow.InvalidPredictorSignature.selector
-        );
-        market.burn(request);
-    }
+    // Burn-side legacy reject is exercised in SessionKeyERC1271 where the
+    // mock smart accounts can take a successful ERC-1271 mint first and then
+    // attempt a burn with a legacy blob. See
+    // `test_burn_legacySessionKeyData_*_reverts` there.
 
     // ================================================================
     // 3. EOA PATH: basic coverage for completeness

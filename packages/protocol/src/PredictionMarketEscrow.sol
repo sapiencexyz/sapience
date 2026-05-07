@@ -103,13 +103,6 @@ contract PredictionMarketEscrow is
 
     // ============ Admin Functions ============
 
-    /// @notice Set the account factory for session key smart account verification
-    /// @param factory_ The account factory address (e.g., ZeroDev Kernel factory)
-    /// @dev Only callable by owner. Set to address(0) to disable strict verification
-    function setAccountFactory(address factory_) external onlyOwner {
-        _setAccountFactory(factory_);
-    }
-
     /// @notice Set the trusted mint router (CommittedIntentExecutor) that may
     ///         call `mint()` without per-party MintApproval signatures.
     /// @dev See `prd-001-decisions.md` A-2. Only the owner may update this.
@@ -1339,7 +1332,14 @@ contract PredictionMarketEscrow is
 
     // ============ Internal: Signature Validation ============
 
-    /// @notice Validate a party's signature (supports EOA, ERC-1271, and legacy session key)
+    /// @notice Validate a party's mint signature.
+    /// @dev Accepts an EOA ECDSA signature or a smart-account ERC-1271
+    /// signature against `signer`. The legacy `sessionKeyData` blob path is
+    /// no longer supported — supplying a non-empty blob reverts with
+    /// `LegacySessionKeyDataDisabled`. Smart accounts using session keys must
+    /// have the session key authorized via the smart account's own validator
+    /// (e.g. Kernel permission validator) so `isValidSignature` returns the
+    /// magic value.
     function _validatePartySignature(
         bytes32 predictionHash,
         address signer,
@@ -1349,39 +1349,16 @@ contract PredictionMarketEscrow is
         bytes calldata signature,
         bytes calldata sessionKeyData
     ) internal view returns (bool isValid) {
-        if (sessionKeyData.length == 0) {
-            // EOA or EIP-1271 (smart account) signature
-            return _isApprovalValidWithEIP1271Fallback(
-                predictionHash, signer, collateral, nonce, deadline, signature
-            );
-        } else {
-            // Legacy: full SessionKeyApproval in calldata
-            IV2Types.SessionKeyData memory skData =
-                abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
-
-            SessionKeyApproval memory approval = SessionKeyApproval({
-                sessionKey: skData.sessionKey,
-                owner: skData.owner,
-                smartAccount: signer,
-                validUntil: skData.validUntil,
-                permissionsHash: skData.permissionsHash,
-                chainId: skData.chainId,
-                ownerSignature: skData.ownerSignature
-            });
-
-            return _isSessionKeyApprovalValid(
-                predictionHash,
-                signer,
-                collateral,
-                nonce,
-                deadline,
-                signature,
-                approval
-            );
+        if (sessionKeyData.length != 0) {
+            revert LegacySessionKeyDataDisabled();
         }
+        return _isApprovalValidWithEIP1271Fallback(
+            predictionHash, signer, collateral, nonce, deadline, signature
+        );
     }
 
-    /// @notice Validate a burn party's signature (supports EOA, ERC-1271, and legacy session key)
+    /// @notice Validate a burn party's signature. Same legacy-path rules as
+    /// `_validatePartySignature` — non-empty `sessionKeyData` reverts.
     function _validateBurnPartySignature(
         bytes32 burnHash,
         address signer,
@@ -1392,42 +1369,11 @@ contract PredictionMarketEscrow is
         bytes calldata signature,
         bytes calldata sessionKeyData
     ) internal view returns (bool isValid) {
-        if (sessionKeyData.length == 0) {
-            // EOA or EIP-1271 (smart account) signature
-            return _isBurnApprovalValidWithEIP1271Fallback(
-                burnHash,
-                signer,
-                tokenAmount,
-                payout,
-                nonce,
-                deadline,
-                signature
-            );
-        } else {
-            // Legacy: full SessionKeyApproval in calldata
-            IV2Types.SessionKeyData memory skData =
-                abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
-
-            SessionKeyApproval memory approval = SessionKeyApproval({
-                sessionKey: skData.sessionKey,
-                owner: skData.owner,
-                smartAccount: signer,
-                validUntil: skData.validUntil,
-                permissionsHash: skData.permissionsHash,
-                chainId: skData.chainId,
-                ownerSignature: skData.ownerSignature
-            });
-
-            return _isSessionKeyBurnApprovalValid(
-                burnHash,
-                signer,
-                tokenAmount,
-                payout,
-                nonce,
-                deadline,
-                signature,
-                approval
-            );
+        if (sessionKeyData.length != 0) {
+            revert LegacySessionKeyDataDisabled();
         }
+        return _isBurnApprovalValidWithEIP1271Fallback(
+            burnHash, signer, tokenAmount, payout, nonce, deadline, signature
+        );
     }
 }

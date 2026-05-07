@@ -1,13 +1,8 @@
 'use client';
 
-import React, {
-  useMemo,
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-} from 'react';
-import { useReadContract, useBalance, useSendCalls } from 'wagmi';
+import type React from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useReadContract, useBalance, useSendTransaction } from 'wagmi';
 import {
   formatUnits,
   parseUnits,
@@ -22,9 +17,7 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
-import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import erc20AbiLocal from '@sapience/sdk/queries/abis/erc20abi.json';
-import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import {
   Dialog,
   DialogContent,
@@ -34,9 +27,11 @@ import {
 import { Input } from '@sapience/ui/components/ui/input';
 import { Button } from '@sapience/ui/components/ui/button';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import { useApprovalDialog } from './ApprovalDialogContext';
 import { useTokenApproval } from '~/hooks/contract/useTokenApproval';
 import { formatFiveSigFigs } from '~/lib/utils/util';
-import { useApprovalDialog } from './ApprovalDialogContext';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
+import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 
 const GAS_RESERVE = 0.5;
@@ -72,6 +67,9 @@ const ApprovalDialog: React.FC = () => {
     return isEtherealChain
       ? collateralToken[chainId]?.address
       : COLLATERAL_ADDRESS;
+    // chainId is a module-level constant (DEFAULT_CHAIN_ID); intentionally
+    // omitted to avoid noisy hook deps. eslint-disable-next-line below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEtherealChain, COLLATERAL_ADDRESS]);
 
   const { data: decimals } = useReadContract({
@@ -122,6 +120,9 @@ const ApprovalDialog: React.FC = () => {
     ) {
       setApproveAmount(requiredAmount);
     }
+    // approveAmount intentionally omitted: this effect should only fire when
+    // requiredAmount changes, the value is read inside the guard.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requiredAmount]);
 
   const tokenDecimals = useMemo(() => {
@@ -246,8 +247,10 @@ const ApprovalDialog: React.FC = () => {
     };
   }, [isEtherealChain, approveAmountWei, wusdeWei, nativeWei, gasReserveWei]);
 
-  // useSendCalls for batching wrap + approve
-  const { sendCallsAsync, isPending: isSendingCalls } = useSendCalls();
+  // Wrap (USDe → wUSDe) is sent as a plain value tx because Ethereal does
+  // not support EIP-7702, which MetaMask's wallet_sendCalls requires for
+  // EOA mode batching.
+  const { sendTransactionAsync, isPending: isSendingTx } = useSendTransaction();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Cancel any outstanding allowance wait when dialog closes
@@ -291,35 +294,24 @@ const ApprovalDialog: React.FC = () => {
       }
 
       if (isEtherealChain && needsWrapping && wrapAmount > 0n) {
-        // Batch: wrap USDe to wUSDe, then approve
+        // Ethereal does not support EIP-7702. MetaMask's wallet_sendCalls in
+        // EOA mode routes through 7702 and fails with code 5710. wagmi's
+        // experimental_fallback does not catch that case (it returns success
+        // without executing), so we skip sendCallsAsync on Ethereal and run
+        // wrap + approve sequentially.
         const wrapCalldata = encodeFunctionData({
           abi: WUSDE_ABI,
           functionName: 'deposit',
         });
 
-        const approveCalldata = encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [SPENDER_ADDRESS, approveAmountWei],
+        await sendTransactionAsync({
+          chainId,
+          to: collateralToken[chainId].address,
+          data: wrapCalldata,
+          value: wrapAmount,
         });
 
-        await sendCallsAsync({
-          chainId,
-          calls: [
-            {
-              to: collateralToken[chainId].address,
-              data: wrapCalldata,
-              value: wrapAmount,
-            },
-            {
-              to: collateralAddress,
-              data: approveCalldata,
-              value: 0n,
-            },
-          ],
-          // Enable fallback for wallets that don't support EIP-5792
-          experimental_fallback: true,
-        } as Parameters<typeof sendCallsAsync>[0]);
+        await approve();
       } else {
         // Just approve
         await approve();
@@ -364,8 +356,7 @@ const ApprovalDialog: React.FC = () => {
           setIsWaitingForAllowance(false);
           toast({
             title: 'Approval submitted',
-            description:
-              'Allowance confirmation is taking longer than usual.',
+            description: 'Allowance confirmation is taking longer than usual.',
             duration: 5000,
           });
         } catch (e) {
@@ -373,8 +364,7 @@ const ApprovalDialog: React.FC = () => {
           setIsWaitingForAllowance(false);
           toast({
             title: 'Approval submitted',
-            description:
-              'Could not confirm the updated allowance.',
+            description: 'Could not confirm the updated allowance.',
             duration: 5000,
           });
           console.error('Failed while waiting for allowance update:', e);
@@ -397,13 +387,12 @@ const ApprovalDialog: React.FC = () => {
     collateralAddress,
     SPENDER_ADDRESS,
     approveAmount,
-    tokenDecimals,
     isEtherealChain,
     needsWrapping,
     wrapAmount,
     canFullyWrap,
     chainId,
-    sendCallsAsync,
+    sendTransactionAsync,
     approve,
     setOpen,
     refetchAllowance,
@@ -416,10 +405,12 @@ const ApprovalDialog: React.FC = () => {
   ]);
 
   const isProcessing =
-    isApproving || isSendingCalls || isSubmitting || isWaitingForAllowance;
+    isApproving || isSendingTx || isSubmitting || isWaitingForAllowance;
 
   useEffect(() => {
     if (!approveAmount && allowance != null) setApproveAmount(allowanceDisplay);
+    // approveAmount intentionally omitted: only seed when allowance settles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowance, allowanceDisplay]);
 
   // Check if user has enough balance for the requested amount
