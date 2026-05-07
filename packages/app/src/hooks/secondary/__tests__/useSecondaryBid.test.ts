@@ -113,20 +113,6 @@ describe('useSecondaryBid', () => {
     expect(mockSignTypedDataAsync).not.toHaveBeenCalled();
   });
 
-  it('omits buyerSessionKeyData from the WS payload (legacy on-chain path retired)', async () => {
-    const { result } = renderHook(() => useSecondaryBid());
-
-    await act(async () => {
-      await result.current.submitBid(VALID_PARAMS);
-    });
-
-    expect(wsSent).toHaveLength(1);
-    const msg = wsSent[0] as { type: string; payload: Record<string, unknown> };
-    expect(msg.type).toBe('secondary.bid.submit');
-    expect('buyerSessionKeyData' in msg.payload).toBe(false);
-    expect(msg.payload.buyerSignature).toBe('0xKernelWrappedSig');
-  });
-
   it('falls back to wagmi signTypedDataAsync for EOA users', async () => {
     isUsingSession = false;
     const { result } = renderHook(() => useSecondaryBid());

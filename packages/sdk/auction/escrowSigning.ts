@@ -1,9 +1,7 @@
 import {
-  decodeAbiParameters,
   encodeAbiParameters,
   hashTypedData,
   keccak256,
-  recoverTypedDataAddress,
   zeroAddress,
   type Address,
   type Hex,
@@ -12,10 +10,6 @@ import {
 } from 'viem';
 import type { Pick, MintRequest, BurnRequest } from '../types/escrow';
 import { computePickConfigId } from './escrowEncoding';
-import {
-  verifySessionApproval,
-  type SessionApprovalPayload,
-} from '../session/verification';
 import { verifyEip712Signature } from '../session/eip712Verify';
 
 const ERC1271_MAGIC_VALUE = '0x1626ba7e' as const;
@@ -516,127 +510,14 @@ export function buildAuctionIntentTypedData(params: {
 // ============================================================================
 
 /**
- * Decoded escrow SessionKeyData from ABI-encoded bytes.
- * This is the on-chain format where the owner signs a SessionKeyApproval
- * authorizing a session key to act on behalf of the smart account.
- */
-interface DecodedEscrowSessionKeyData {
-  sessionKey: Address;
-  owner: Address;
-  validUntil: bigint;
-  permissionsHash: Hex;
-  chainId: bigint;
-  ownerSignature: Hex;
-}
-
-/**
- * Decode escrow SessionKeyData from ABI-encoded hex bytes.
- * Format: 32-byte offset pointer + struct fields.
- */
-function decodeEscrowSessionKeyData(
-  data: string
-): DecodedEscrowSessionKeyData | null {
-  try {
-    if (!data.startsWith('0x') || data.length < 66) return null;
-
-    // Skip the 32-byte offset pointer (0x + 64 hex chars)
-    const structData = ('0x' + data.slice(66)) as Hex;
-
-    const decoded = decodeAbiParameters(
-      [
-        { name: 'sessionKey', type: 'address' },
-        { name: 'owner', type: 'address' },
-        { name: 'validUntil', type: 'uint256' },
-        { name: 'permissionsHash', type: 'bytes32' },
-        { name: 'chainId', type: 'uint256' },
-        { name: 'ownerSignature', type: 'bytes' },
-      ],
-      structData
-    );
-
-    return {
-      sessionKey: decoded[0] as Address,
-      owner: decoded[1] as Address,
-      validUntil: decoded[2] as bigint,
-      permissionsHash: decoded[3] as Hex,
-      chainId: decoded[4] as bigint,
-      ownerSignature: decoded[5] as Hex,
-    };
-  } catch (e) {
-    console.debug(
-      '[escrowSigning] Failed to decode escrow session key data:',
-      e
-    );
-    return null;
-  }
-}
-
-/**
- * Verify escrow SessionKeyData by recovering the owner signature
- * from the SessionKeyApproval typed data.
- */
-async function verifyEscrowSessionKey(
-  sessionKeyData: DecodedEscrowSessionKeyData,
-  smartAccount: Address,
-  verifyingContract: Address
-): Promise<{ valid: boolean; sessionKeyAddress?: Address }> {
-  try {
-    // Check expiry
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    if (Number(sessionKeyData.validUntil) < nowSeconds) {
-      return { valid: false };
-    }
-
-    // Recover owner from SessionKeyApproval typed data
-    const recoveredOwner = await recoverTypedDataAddress({
-      domain: {
-        name: 'PredictionMarketEscrow',
-        version: '1',
-        chainId: Number(sessionKeyData.chainId),
-        verifyingContract,
-      },
-      types: {
-        SessionKeyApproval: [
-          { name: 'sessionKey', type: 'address' },
-          { name: 'smartAccount', type: 'address' },
-          { name: 'validUntil', type: 'uint256' },
-          { name: 'permissionsHash', type: 'bytes32' },
-          { name: 'chainId', type: 'uint256' },
-        ],
-      },
-      primaryType: 'SessionKeyApproval' as const,
-      message: {
-        sessionKey: sessionKeyData.sessionKey,
-        smartAccount,
-        validUntil: sessionKeyData.validUntil,
-        permissionsHash: sessionKeyData.permissionsHash,
-        chainId: sessionKeyData.chainId,
-      },
-      signature: sessionKeyData.ownerSignature,
-    });
-
-    if (recoveredOwner.toLowerCase() !== sessionKeyData.owner.toLowerCase()) {
-      return { valid: false };
-    }
-
-    return { valid: true, sessionKeyAddress: sessionKeyData.sessionKey };
-  } catch (e) {
-    console.debug('[escrowSigning] Escrow session key verification error:', e);
-    return { valid: false };
-  }
-}
-
-/**
  * Verify the predictor's AuctionIntent EIP-712 signature.
  *
- * Supports four verification paths:
- * 1. **Escrow session key** — if `predictorSessionKeyData` is ABI-encoded hex,
- *    verifies the owner approved the session key, then checks the intent signature
- *    was produced by that session key.
- * 2. **EOA** — recovers the signer and checks it matches the predictor address.
- * 3. **Smart account owner** — checks whether the recovered signer's derived
+ * Supports three verification paths:
+ * 1. **EOA** — recovers the signer and checks it matches the predictor address.
+ * 2. **Smart account owner** — checks whether the recovered signer's derived
  *    smart account matches the predictor (pure CREATE2, no RPC).
- * 4. **ZeroDev session key** — JSON with approval + typedData.
+ * 3. **ERC-1271** — when a `publicClient` is supplied, falls back to the
+ *    smart account's `isValidSignature` for kernel-wrapped signatures.
  *
  * @returns `{ valid, recoveredAddress }` — `recoveredAddress` is the EOA that
  *   produced the signature, useful for callers that want to handle the smart account
@@ -649,7 +530,6 @@ export async function verifyAuctionIntentSignature(params: {
   predictorNonce: bigint;
   predictorDeadline: bigint;
   intentSignature: Hex;
-  predictorSessionKeyData?: string;
   verifyingContract: Address;
   chainId: number;
   /**
@@ -691,38 +571,7 @@ export async function verifyAuctionIntentSignature(params: {
       },
     };
 
-    const predictorAddress = params.predictor.toLowerCase();
-
-    // Path 1: Escrow session key (ABI-encoded hex)
-    if (params.predictorSessionKeyData?.startsWith('0x')) {
-      const escrowSessionData = decodeEscrowSessionKeyData(
-        params.predictorSessionKeyData
-      );
-      if (escrowSessionData) {
-        const escrowResult = await verifyEscrowSessionKey(
-          escrowSessionData,
-          predictorAddress as Address,
-          params.verifyingContract
-        );
-
-        if (escrowResult.valid && escrowResult.sessionKeyAddress) {
-          const recoveredSigner = await recoverTypedDataAddress({
-            ...typedData,
-            signature: params.intentSignature,
-          });
-
-          if (
-            recoveredSigner.toLowerCase() ===
-            escrowResult.sessionKeyAddress.toLowerCase()
-          ) {
-            return { valid: true, recoveredAddress: recoveredSigner };
-          }
-        }
-        // Fall through to EOA/smart account paths
-      }
-    }
-
-    // Path 2+3: shared ECDSA + smart-account-derivation verifier (D-1).
+    // Path 1+2: shared ECDSA + smart-account-derivation verifier.
     // `verifyEip712Signature` handles both the direct EOA match and the
     // off-chain CREATE2 smart-account derivation in one call.
     const sharedResult = await verifyEip712Signature(
@@ -736,50 +585,7 @@ export async function verifyAuctionIntentSignature(params: {
       return { valid: true, recoveredAddress: recovered };
     }
 
-    // Path 4: ZeroDev session key (JSON with approval + typedData)
-    // The session key signs with raw ECDSA; the approval proves the owner
-    // authorized this session key for the predictor's smart account.
-    if (
-      recovered &&
-      params.predictorSessionKeyData &&
-      !params.predictorSessionKeyData.startsWith('0x')
-    ) {
-      try {
-        let approvalStr = params.predictorSessionKeyData;
-        let sessionTypedData: SessionApprovalPayload['typedData'] = undefined;
-        try {
-          const parsed = JSON.parse(params.predictorSessionKeyData);
-          if (parsed && typeof parsed === 'object' && parsed.approval) {
-            approvalStr = parsed.approval;
-            sessionTypedData = parsed.typedData ?? undefined;
-          }
-        } catch {
-          // Not JSON — treat as raw base64 approval string
-        }
-
-        const sessionResult = await verifySessionApproval(
-          {
-            approval: approvalStr,
-            chainId: params.chainId,
-            typedData: sessionTypedData,
-          },
-          predictorAddress as Address
-        );
-
-        if (sessionResult.valid && sessionResult.sessionKeyAddress) {
-          if (
-            recovered.toLowerCase() ===
-            sessionResult.sessionKeyAddress.toLowerCase()
-          ) {
-            return { valid: true, recoveredAddress: recovered };
-          }
-        }
-      } catch {
-        // Session verification failed — fall through
-      }
-    }
-
-    // Path 5: ERC-1271 — predictor is a smart account that validates the
+    // Path 3: ERC-1271 — predictor is a smart account that validates the
     // signature itself. Only reachable when a publicClient is supplied.
     // The migrated app produces kernel-wrapped session-key signatures that
     // recover to the wrong address via standard ECDSA but pass through the
@@ -829,12 +635,9 @@ export async function verifyAuctionIntentSignature(params: {
 /**
  * Verify the counterparty's MintApproval EIP-712 signature.
  *
- * Supports three verification paths (mirrors `verifyAuctionIntentSignature`):
- * 1. **Escrow session key** — if `counterpartySessionKeyData` is ABI-encoded hex,
- *    verifies the owner approved the session key, then checks the mint signature
- *    was produced by that session key.
- * 2. **EOA** — recovers the signer and checks it matches the counterparty address.
- * 3. **Smart account owner** — checks whether the recovered signer's derived
+ * Supports two verification paths (mirrors `verifyAuctionIntentSignature`):
+ * 1. **EOA** — recovers the signer and checks it matches the counterparty address.
+ * 2. **Smart account owner** — checks whether the recovered signer's derived
  *    smart account matches the counterparty (pure CREATE2, no RPC).
  *
  * @returns `{ valid, recoveredAddress }` — `recoveredAddress` is the EOA that
@@ -849,7 +652,6 @@ export async function verifyCounterpartyMintSignature(params: {
   counterpartyNonce: bigint;
   counterpartyDeadline: bigint;
   counterpartySignature: Hex;
-  counterpartySessionKeyData?: string;
   predictorSponsor?: Address;
   predictorSponsorData?: Hex;
   verifyingContract: Address;
@@ -879,38 +681,7 @@ export async function verifyCounterpartyMintSignature(params: {
       },
     };
 
-    const counterpartyAddress = params.counterparty.toLowerCase();
-
-    // Path 1: Escrow session key (ABI-encoded hex)
-    if (params.counterpartySessionKeyData?.startsWith('0x')) {
-      const escrowSessionData = decodeEscrowSessionKeyData(
-        params.counterpartySessionKeyData
-      );
-      if (escrowSessionData) {
-        const escrowResult = await verifyEscrowSessionKey(
-          escrowSessionData,
-          counterpartyAddress as Address,
-          params.verifyingContract
-        );
-
-        if (escrowResult.valid && escrowResult.sessionKeyAddress) {
-          const recoveredSigner = await recoverTypedDataAddress({
-            ...typedData,
-            signature: params.counterpartySignature,
-          });
-
-          if (
-            recoveredSigner.toLowerCase() ===
-            escrowResult.sessionKeyAddress.toLowerCase()
-          ) {
-            return { valid: true, recoveredAddress: recoveredSigner };
-          }
-        }
-        // Fall through to EOA/smart account paths
-      }
-    }
-
-    // Path 2+3: shared ECDSA + smart-account-derivation verifier (D-1).
+    // Path 1+2: shared ECDSA + smart-account-derivation verifier.
     const sharedResult = await verifyEip712Signature(
       typedData,
       params.counterpartySignature,

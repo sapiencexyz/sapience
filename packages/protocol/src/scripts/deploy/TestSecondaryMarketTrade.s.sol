@@ -151,9 +151,7 @@ contract TestSecondaryMarketTrade is Script {
             buyerDeadline: p.deadline,
             sellerSignature: sellerSig,
             buyerSignature: buyerSig,
-            refCode: bytes32(0),
-            sellerSessionKeyData: "",
-            buyerSessionKeyData: ""
+            refCode: bytes32(0)
         });
     }
 

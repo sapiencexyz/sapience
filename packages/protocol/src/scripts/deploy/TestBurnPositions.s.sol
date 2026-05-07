@@ -120,9 +120,7 @@ contract TestBurnPositions is Script {
                 counterpartyDeadline: deadline,
                 predictorSignature: pSig,
                 counterpartySignature: cSig,
-                refCode: bytes32(0),
-                predictorSessionKeyData: "",
-                counterpartySessionKeyData: ""
+                refCode: bytes32(0)
             });
     }
 

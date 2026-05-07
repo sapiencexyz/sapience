@@ -299,7 +299,6 @@ export function buildAuctionRequest(params: {
   chainId: number;
   escrowContract: string;
   refCode?: string;
-  predictorSessionKeyData?: string;
 }): AuctionRFQPayload {
   return {
     picks: params.picks,
@@ -311,7 +310,6 @@ export function buildAuctionRequest(params: {
     chainId: params.chainId,
     escrowContract: params.escrowContract,
     refCode: params.refCode,
-    predictorSessionKeyData: params.predictorSessionKeyData,
   };
 }
 
@@ -325,7 +323,6 @@ export function buildBidPayload(params: {
   counterpartyNonce: number;
   counterpartyDeadline: number;
   counterpartySignature: string;
-  counterpartySessionKeyData?: string;
 }): BidPayload {
   return {
     auctionId: params.auctionId,
@@ -334,6 +331,5 @@ export function buildBidPayload(params: {
     counterpartyNonce: params.counterpartyNonce,
     counterpartyDeadline: params.counterpartyDeadline,
     counterpartySignature: params.counterpartySignature,
-    counterpartySessionKeyData: params.counterpartySessionKeyData,
   };
 }

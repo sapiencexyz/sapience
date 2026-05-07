@@ -2,9 +2,8 @@
  * Secondary Market Signature Verification
  *
  * Validates secondary market trade approvals with real EIP-712 signature
- * recovery for EOA signatures. Session key signatures (identified by the
- * presence of sessionKeyData) are passed through — on-chain executeTrade()
- * does the definitive verification for those.
+ * recovery for EOA signatures. Smart-account signatures are validated
+ * on-chain by `executeTrade` via ERC-1271.
  */
 
 import {
@@ -23,12 +22,6 @@ import type {
   SecondaryAuctionRequestPayload,
   SecondaryBidPayload,
 } from '@sapience/sdk/types/secondary';
-import { legacySessionKeyDataSeen } from './metrics';
-
-/** True when the hex blob carries actual session-key data (not "0x"). */
-function isNonEmptyHex(blob: string | undefined): boolean {
-  return typeof blob === 'string' && blob.length > 2;
-}
 
 /**
  * Get the verifying contract address for a chain
@@ -45,9 +38,9 @@ function getVerifyingContract(chainId: number): Address | null {
  * Verify the seller's listing request.
  *
  * At listing time the buyer is unknown, so the seller signs a trade hash with
- * buyer = address(0). For EOA signatures (no sessionKeyData), we recover the
- * signer via EIP-712 and compare to payload.seller. Session key signatures
- * are passed through — on-chain executeTrade() does the definitive check.
+ * buyer = address(0). For EOA signatures we recover the signer via EIP-712
+ * and compare to payload.seller. Smart-account signatures (ERC-1271) are
+ * passed through — on-chain executeTrade() does the definitive check.
  */
 export async function verifySellerSignature(
   payload: SecondaryAuctionRequestPayload
@@ -67,27 +60,6 @@ export async function verifySellerSignature(
   if (payload.sellerDeadline <= nowSeconds) {
     console.warn('[Secondary-Sig] Seller deadline expired');
     return false;
-  }
-
-  // Session key signatures can't be verified off-chain (ECDSA recovery
-  // would recover the session key, not the smart account address).
-  // On-chain executeTrade() handles full session key verification.
-  // Validate hex format as defense-in-depth (SDK tier-1 also checks this).
-  if (payload.sellerSessionKeyData) {
-    if (!/^0x[a-fA-F0-9]+$/.test(payload.sellerSessionKeyData)) {
-      console.warn('[Secondary-Sig] Invalid sellerSessionKeyData hex format');
-      return false;
-    }
-    if (isNonEmptyHex(payload.sellerSessionKeyData)) {
-      legacySessionKeyDataSeen.inc({
-        surface: 'secondary.listing.seller',
-        chain_id: String(payload.chainId),
-      });
-      console.warn(
-        `[Secondary-Sig] Legacy sellerSessionKeyData seen seller=${payload.seller.slice(0, 10)} chain=${payload.chainId}`
-      );
-    }
-    return true;
   }
 
   // EOA signature: verify via EIP-712 typed data recovery
@@ -132,8 +104,8 @@ export async function verifySellerSignature(
 /**
  * Verify the buyer's bid.
  *
- * For EOA signatures (no sessionKeyData), we recover the signer via EIP-712
- * and compare to bid.buyer. Session key signatures are passed through.
+ * For EOA signatures, we recover the signer via EIP-712 and compare to
+ * bid.buyer. Smart-account signatures (ERC-1271) are validated on-chain.
  */
 export async function verifyBuyerSignature(
   bid: SecondaryBidPayload,
@@ -154,25 +126,6 @@ export async function verifyBuyerSignature(
   if (bid.buyerDeadline <= nowSeconds) {
     console.warn('[Secondary-Sig] Buyer deadline expired');
     return false;
-  }
-
-  // Session key signatures: pass through to on-chain verification
-  // Validate hex format as defense-in-depth (SDK tier-1 also checks this).
-  if (bid.buyerSessionKeyData) {
-    if (!/^0x[a-fA-F0-9]+$/.test(bid.buyerSessionKeyData)) {
-      console.warn('[Secondary-Sig] Invalid buyerSessionKeyData hex format');
-      return false;
-    }
-    if (isNonEmptyHex(bid.buyerSessionKeyData)) {
-      legacySessionKeyDataSeen.inc({
-        surface: 'secondary.bid.buyer',
-        chain_id: String(listing.chainId),
-      });
-      console.warn(
-        `[Secondary-Sig] Legacy buyerSessionKeyData seen buyer=${bid.buyer.slice(0, 10)} chain=${listing.chainId}`
-      );
-    }
-    return true;
   }
 
   // EOA signature: verify via EIP-712 typed data recovery

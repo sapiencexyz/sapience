@@ -66,10 +66,7 @@ interface IV2Types {
 
     /// @notice Mint request data for creating a new prediction.
     /// @dev Signatures may be ECDSA (EOA) or ERC-1271 payloads validated by
-    ///      the signer's smart account. The legacy `*SessionKeyData` blob
-    ///      path was removed; both fields must be empty (`"0x"`) — any
-    ///      non-empty value causes `mint` to revert with
-    ///      `LegacySessionKeyDataDisabled`.
+    ///      the signer's smart account.
     struct MintRequest {
         Pick[] picks; // Canonical ordered picks
         uint256 predictorCollateral; // Amount from predictor
@@ -83,13 +80,6 @@ interface IV2Types {
         bytes predictorSignature; // ECDSA (EOA) or ERC-1271 (smart account)
         bytes counterpartySignature; // ECDSA (EOA) or ERC-1271 (smart account)
         bytes32 refCode; // Referral code
-        /// @custom:deprecated Must be `"0x"`. The legacy session-key path was
-        /// removed; supplying any non-empty value reverts with
-        /// `LegacySessionKeyDataDisabled`. Field will be dropped in a future
-        /// ABI break once telemetry confirms no producer remains. See PR #1673.
-        bytes predictorSessionKeyData;
-        /// @custom:deprecated Must be `"0x"`. See `predictorSessionKeyData`.
-        bytes counterpartySessionKeyData;
         // Sponsorship support (optional - address(0) = self-funded)
         address predictorSponsor; // Sponsor contract that funds predictor's collateral
         bytes predictorSponsorData; // Opaque data passed through to sponsor's fundMint
@@ -100,8 +90,7 @@ interface IV2Types {
     ///      must not exceed the pro-rata collateral backing. Any shortfall
     ///      (payout < backing) remains in the pool for remaining holders; if
     ///      no holders remain it is locked permanently. Set payouts equal to
-    ///      backing for a full-value exit. Same `*SessionKeyData` rules as
-    ///      `MintRequest` — both fields must be `"0x"`.
+    ///      backing for a full-value exit.
     struct BurnRequest {
         bytes32 pickConfigId; // Pick configuration to burn from
         uint256 predictorTokenAmount; // Predictor tokens to burn
@@ -117,10 +106,6 @@ interface IV2Types {
         bytes predictorSignature; // ECDSA (EOA) or ERC-1271 (smart account)
         bytes counterpartySignature; // ECDSA (EOA) or ERC-1271 (smart account)
         bytes32 refCode; // Referral code
-        /// @custom:deprecated Must be `"0x"`. See `MintRequest.predictorSessionKeyData`.
-        bytes predictorSessionKeyData;
-        /// @custom:deprecated Must be `"0x"`. See `MintRequest.predictorSessionKeyData`.
-        bytes counterpartySessionKeyData;
     }
 
     /// @notice Token pair for a prediction

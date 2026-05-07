@@ -180,8 +180,6 @@ export interface MintRequest {
   predictorSignature: Hex;
   counterpartySignature: Hex;
   refCode: Hex;
-  predictorSessionKeyData: Hex;
-  counterpartySessionKeyData: Hex;
   // Sponsorship support (optional - zeroAddress = self-funded)
   predictorSponsor: Address;
   predictorSponsorData: Hex;
@@ -206,8 +204,6 @@ export interface BurnRequest {
   predictorSignature: Hex;
   counterpartySignature: Hex;
   refCode: Hex;
-  predictorSessionKeyData: Hex;
-  counterpartySessionKeyData: Hex;
 }
 
 // ----- Relay/Transport types -----
@@ -233,8 +229,6 @@ export interface MintRequestJson {
   predictorSignature: string;
   counterpartySignature: string;
   refCode: string;
-  predictorSessionKeyData?: string;
-  counterpartySessionKeyData?: string;
 }
 
 /** Burn request for JSON transport */
@@ -253,8 +247,6 @@ export interface BurnRequestJson {
   predictorSignature: string;
   counterpartySignature: string;
   refCode: string;
-  predictorSessionKeyData?: string;
-  counterpartySessionKeyData?: string;
 }
 
 // ============================================================================
@@ -280,7 +272,6 @@ export interface AuctionRFQPayload {
   chainId: number;
   escrowContract: string; // Escrow contract address
   refCode?: string;
-  predictorSessionKeyData?: string; // ZeroDev session approval (base64)
   predictorSponsor?: string; // Sponsor contract address (address(0) = self-funded)
   predictorSponsorData?: string; // Opaque data passed to sponsor's fundMint
 }
@@ -301,7 +292,6 @@ export interface AuctionRequestPayload {
   predictorSignature: string; // EIP-712 MintApproval signature
   chainId: number;
   refCode?: string;
-  predictorSessionKeyData?: string;
 }
 
 /**
@@ -314,7 +304,6 @@ export interface BidPayload {
   counterpartyNonce: number;
   counterpartyDeadline: number; // unix timestamp
   counterpartySignature: string; // EIP-712 MintApproval signature
-  counterpartySessionKeyData?: string; // ZeroDev session approval (base64)
 }
 
 // ----- Client to Server Messages -----
@@ -380,7 +369,6 @@ export interface AuctionDetails {
   predictorNonce: number;
   predictorDeadline: number;
   intentSignature?: string; // EIP-712 AuctionIntent — proves identity + intent
-  predictorSessionKeyData?: string; // ZeroDev/escrow session approval
   chainId: number;
   escrowContract: string; // Escrow contract address used for this auction
   createdAt: string; // ISO timestamp
@@ -396,7 +384,6 @@ export interface ValidatedBid {
   counterpartyNonce: number;
   counterpartyDeadline: number;
   counterpartySignature: string;
-  counterpartySessionKeyData?: string;
   receivedAt: string; // ISO timestamp
 }
 

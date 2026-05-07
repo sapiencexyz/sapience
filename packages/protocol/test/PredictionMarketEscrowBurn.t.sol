@@ -160,8 +160,6 @@ contract PredictionMarketEscrowBurnTest is Test {
             counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
     }
@@ -274,8 +272,6 @@ contract PredictionMarketEscrowBurnTest is Test {
             _counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
     }
 
     // ============ Happy Path Tests ============
@@ -1151,8 +1147,6 @@ contract PredictionMarketEscrowBurnTest is Test {
             predictorPk
         );
         req.refCode = REF_CODE;
-        req.predictorSessionKeyData = "";
-        req.counterpartySessionKeyData = "";
 
         uint256 balBefore = collateralToken.balanceOf(predictor);
         market.burn(req);

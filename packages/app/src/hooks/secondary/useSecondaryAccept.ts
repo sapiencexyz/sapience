@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import * as Sentry from '@sentry/nextjs';
 import { useAccount, useChainId, useSignTypedData } from 'wagmi';
 import { erc20Abi, type Address, type Hex } from 'viem';
 import { buildSellerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
@@ -50,8 +49,7 @@ interface UseSecondaryAcceptOptions {
  *    or EOA wallet
  * 2. Position token approve via owner signing (forceOwnerPath)
  * 3. executeTrade — contract validates the seller signature via the smart
- *    account's isValidSignature() (ERC-1271). sellerSessionKeyData is always
- *    sent as '0x' so the on-chain legacy session-key path is no longer used.
+ *    account's isValidSignature() (ERC-1271).
  */
 export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
   const {
@@ -195,27 +193,9 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           // Continue — will include approve in batch
         }
 
-        // 3. Seller path no longer uses on-chain session-key data: the
-        // signature above (kernel-wrapped when session is active) is verified
-        // via ERC-1271. Buyer side is forwarded as received from the bid; if
-        // a legacy client sent a non-empty blob we record telemetry so the
-        // contract-side legacy path can be retired safely.
-        const buyerSessionKeyData: Hex =
-          (bid.buyerSessionKeyData as Hex | undefined) ?? '0x';
-        if (buyerSessionKeyData !== '0x') {
-          Sentry.addBreadcrumb({
-            category: 'secondary.legacy_session_key',
-            level: 'warning',
-            message: 'accept_received_legacy_buyer_session_key_data',
-            data: {
-              auctionId: bid.auctionId,
-              buyer: bid.buyer,
-              byteLength: (buyerSessionKeyData.length - 2) / 2,
-            },
-          });
-        }
-
-        // 4. Build trade params
+        // 3. Build trade params. Both seller and buyer signatures are
+        // verified on-chain via ERC-1271 (when smart accounts) or ECDSA
+        // (when EOAs); there is no separate session-key blob.
         const tradeParams: ExecuteTradeParams = {
           token,
           collateral: collateralAddress,
@@ -230,11 +210,9 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           sellerSignature,
           buyerSignature: bid.buyerSignature as Hex,
           refCode: refCode ?? (('0x' + '00'.repeat(32)) as Hex),
-          sellerSessionKeyData: '0x',
-          buyerSessionKeyData,
         };
 
-        // 5. Build approve (if needed) + executeTrade as a single batch
+        // 4. Build approve (if needed) + executeTrade as a single batch
         const calls = prepareExecuteTradeCalls({
           trade: tradeParams,
           escrowAddress,
@@ -242,7 +220,7 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           approveFor: 'seller',
         });
 
-        // 6. Submit batch via owner signing (one wallet prompt)
+        // 5. Submit batch via owner signing (one wallet prompt)
         await sendCalls({ calls, chainId });
 
         return { success: true };

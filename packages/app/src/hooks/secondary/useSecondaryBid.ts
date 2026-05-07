@@ -51,8 +51,7 @@ interface UseSecondaryBidOptions {
  *
  * Signs a TradeApproval with the buyer's address and submits via WS. When a
  * session is active the signature is kernel-wrapped so the escrow can validate
- * it on-chain via ERC-1271 (`isValidSignature`). buyerSessionKeyData is no
- * longer populated — the legacy on-chain session-key path is being retired.
+ * it on-chain via ERC-1271 (`isValidSignature`).
  */
 export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
   const {
@@ -214,8 +213,8 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         };
       }
 
-      // Submit bid via WS — buyerSessionKeyData is no longer populated;
-      // ERC-1271 is the only remaining session validation path.
+      // Submit bid via WS — ERC-1271 / ECDSA is the only remaining
+      // session validation path.
       const payload: SecondaryBidPayload = {
         auctionId,
         buyer: buyerAddress,

@@ -110,10 +110,6 @@ export interface MintPredictionRequestDataLike {
   }>;
   /** Counterparty nonce (bidder's nonce from their signature) */
   counterpartyClaimedNonce?: number | bigint;
-  /** Predictor session key data (base64 encoded, empty if EOA) */
-  predictorSessionKeyData?: string;
-  /** Counterparty session key data (base64 encoded, empty if EOA) */
-  counterpartySessionKeyData?: string;
   /** Predictor's EIP-712 MintApproval signature (required for escrow mints) */
   predictorSignature?: `0x${string}`;
   // Sponsorship fields
@@ -234,12 +230,6 @@ export function prepareMintCalls(
     predictorSignature: (mintData.predictorSignature || '0x') as Hex,
     counterpartySignature: mintData.counterpartySignature,
     refCode: mintData.refCode,
-    predictorSessionKeyData: (mintData.predictorSessionKeyData
-      ? mintData.predictorSessionKeyData
-      : '0x') as Hex,
-    counterpartySessionKeyData: (mintData.counterpartySessionKeyData
-      ? mintData.counterpartySessionKeyData
-      : '0x') as Hex,
     predictorSponsor: (mintData.predictorSponsor ?? zeroAddress) as Address,
     predictorSponsorData: (mintData.predictorSponsorData ?? '0x') as Hex,
   };

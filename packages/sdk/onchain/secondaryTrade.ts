@@ -46,10 +46,6 @@ export interface ExecuteTradeParams {
   buyerSignature: Hex;
   /** Referral code (bytes32, 0x0 if none) */
   refCode: Hex;
-  /** Seller session key data (empty '0x' if EOA) */
-  sellerSessionKeyData?: Hex;
-  /** Buyer session key data (empty '0x' if EOA) */
-  buyerSessionKeyData?: Hex;
 }
 
 export interface PrepareExecuteTradeCallsParams {
@@ -137,8 +133,6 @@ export function prepareExecuteTradeCalls(
     sellerSignature: trade.sellerSignature,
     buyerSignature: trade.buyerSignature,
     refCode: trade.refCode,
-    sellerSessionKeyData: (trade.sellerSessionKeyData ?? '0x') as Hex,
-    buyerSessionKeyData: (trade.buyerSessionKeyData ?? '0x') as Hex,
   };
 
   calls.push({

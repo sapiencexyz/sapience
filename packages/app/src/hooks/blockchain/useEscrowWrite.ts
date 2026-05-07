@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useMemo, useRef } from 'react';
-import * as Sentry from '@sentry/nextjs';
 import { type Address, type Hex, encodeFunctionData } from 'viem';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
@@ -31,8 +30,6 @@ interface BurnRequest {
   predictorSignature: Hex;
   counterpartySignature: Hex;
   refCode: Hex;
-  predictorSessionKeyData: Hex;
-  counterpartySessionKeyData: Hex;
 }
 
 export function useEscrowWrite(
@@ -105,28 +102,6 @@ export function useEscrowWrite(
   const burn = useCallback(
     (args: { burnRequest: BurnRequest }): Promise<EscrowWriteResult> => {
       const { burnRequest: r } = args;
-      // Telemetry: track any burn that still carries legacy session-key data
-      // so we can confirm the on-chain path is unused before retiring it.
-      const predictorSkLen = r.predictorSessionKeyData
-        ? (r.predictorSessionKeyData.length - 2) / 2
-        : 0;
-      const counterpartySkLen = r.counterpartySessionKeyData
-        ? (r.counterpartySessionKeyData.length - 2) / 2
-        : 0;
-      if (predictorSkLen > 0 || counterpartySkLen > 0) {
-        Sentry.addBreadcrumb({
-          category: 'burn.legacy_session_key',
-          level: 'warning',
-          message: 'burn_carries_legacy_session_key_data',
-          data: {
-            predictorHolder: r.predictorHolder,
-            counterpartyHolder: r.counterpartyHolder,
-            predictorByteLength: predictorSkLen,
-            counterpartyByteLength: counterpartySkLen,
-            chainId,
-          },
-        });
-      }
       const burnRequestTuple = [
         r.pickConfigId,
         r.predictorTokenAmount,
@@ -142,12 +117,10 @@ export function useEscrowWrite(
         r.predictorSignature,
         r.counterpartySignature,
         r.refCode,
-        r.predictorSessionKeyData,
-        r.counterpartySessionKeyData,
       ] as const;
       return writeEscrow('burn', [burnRequestTuple]);
     },
-    [writeEscrow, chainId]
+    [writeEscrow]
   );
 
   const settleAndRedeem = useCallback(

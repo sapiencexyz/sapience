@@ -43,8 +43,6 @@ export interface QuoteBid {
   validationStatus?: 'pending' | 'valid' | 'invalid';
   /** Optional reason when validationStatus === 'invalid' */
   validationError?: string;
-  /** Escrow: Session key data for counterparty (base64 encoded) */
-  counterpartySessionKeyData?: string;
 }
 
 // Escrow bid fields (counterparty = bidder in escrow terminology)
@@ -55,7 +53,6 @@ export interface EscrowQuoteBid {
   counterpartyDeadline: number; // unix seconds
   counterpartySignature: string; // Counterparty's bid signature
   counterpartyNonce: number; // nonce for the counterparty
-  counterpartySessionKeyData?: string;
 }
 
 // Struct shape expected by PredictionMarketEscrow.mint()
@@ -79,10 +76,6 @@ export interface MintPredictionRequestData {
     conditionId: `0x${string}`;
     predictedOutcome: number;
   }>;
-  // Session key data for counterparty (base64 encoded)
-  counterpartySessionKeyData?: string;
-  // Session key data for predictor (ABI-encoded)
-  predictorSessionKeyData?: string;
   // Predictor's EIP-712 MintApproval signature (populated at submit time for escrow mints)
   predictorSignature?: `0x${string}`;
   // Sponsorship: OnboardingSponsor contract address (address(0) = self-funded)
@@ -301,7 +294,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
                   counterpartyDeadline: b.counterpartyDeadline || 0,
                   counterpartySignature: b.counterpartySignature || '0x',
                   counterpartyNonce: b.counterpartyNonce || 0,
-                  counterpartySessionKeyData: b.counterpartySessionKeyData,
                 } as QuoteBid;
               } catch {
                 return null;
@@ -625,7 +617,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           conditionId: p.conditionId,
           predictedOutcome: p.predictedOutcome,
         })),
-        counterpartySessionKeyData: bid.counterpartySessionKeyData,
         predictorSponsor: auction.predictorSponsor,
         predictorSponsorData: auction.predictorSponsorData,
       };

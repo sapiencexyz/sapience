@@ -40,8 +40,7 @@ Starts a new auction. The predictor submits their picks, collateral, and EIP-712
     predictorDeadline: number,            // Unix timestamp when approval expires
     predictorSignature: string,           // EIP-712 MintApproval signature
     chainId: number,                      // Chain ID (e.g. 5064014 for Ethereal)
-    refCode?: string,                     // Optional referral code
-    predictorSessionKeyData?: string      // Optional ZeroDev session key data
+    refCode?: string                      // Optional referral code
   }
 }
 ```
@@ -81,8 +80,7 @@ Submit a bid as counterparty for an open auction.
     counterpartyCollateral: string,       // Counterparty's collateral (wei string)
     counterpartyNonce: number,            // Nonce for deduplication
     counterpartyDeadline: number,         // Unix timestamp when approval expires
-    counterpartySignature: string,        // EIP-712 MintApproval signature
-    counterpartySessionKeyData?: string   // Optional ZeroDev session key data
+    counterpartySignature: string         // EIP-712 MintApproval signature
   }
 }
 ```

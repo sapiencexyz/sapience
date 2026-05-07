@@ -376,59 +376,12 @@ describe('validateSecondaryListing', () => {
     expect(result.status).toBe('unverified');
   });
 
-  // ── Session key passthrough ─────────────────────────────────────────────────
-
-  test('returns unverified for session key listings (not blindly valid)', async () => {
-    const listing = await makeSignedListing({
-      sellerSessionKeyData: '0x' + 'aa'.repeat(100),
-    });
-    const result = await validateSecondaryListing(
-      listing,
-      DEFAULT_LISTING_OPTS
-    );
-    expect(result.status).toBe('unverified');
-    if (result.status === 'unverified') {
-      expect(result.code).toBe('SIGNATURE_UNVERIFIABLE');
-      expect(result.reason).toContain('session key');
-    }
-  });
-
-  test('rejects session key data that is not valid hex', async () => {
-    const listing = await makeSignedListing({
-      sellerSessionKeyData: 'not-hex-data',
-    });
-    const result = await validateSecondaryListing(
-      listing,
-      DEFAULT_LISTING_OPTS
-    );
-    expect(result.status).toBe('invalid');
-    if (result.status === 'invalid') {
-      expect(result.code).toBe('INVALID_SIGNATURE');
-    }
-  });
-
   // ── Signature length validation ──────────────────────────────────────────────
 
   test('rejects signature shorter than compact ECDSA minimum (130 chars)', async () => {
     // 20 hex chars (10 bytes) — passes old >=10 check but far too short for ECDSA
     const listing = await makeSignedListing({
       sellerSignature: '0x' + 'aa'.repeat(20),
-    });
-    const result = await validateSecondaryListing(
-      listing,
-      DEFAULT_LISTING_OPTS
-    );
-    expect(result.status).toBe('invalid');
-    if (result.status === 'invalid') {
-      expect(result.code).toBe('INVALID_SIGNATURE');
-    }
-  });
-
-  // ── Empty hex session key bypass ──────────────────────────────────────────────
-
-  test('rejects empty hex session key data (0x only) — prevents sig bypass', async () => {
-    const listing = await makeSignedListing({
-      sellerSessionKeyData: '0x',
     });
     const result = await validateSecondaryListing(
       listing,
@@ -605,53 +558,12 @@ describe('validateSecondaryBid', () => {
     expect(result.status).toBe('unverified');
   });
 
-  // ── Session key passthrough ─────────────────────────────────────────────────
-
-  test('returns unverified for session key bids (not blindly valid)', async () => {
-    const listing = await makeSignedListing();
-    const bid = await makeSignedBid(listing, {
-      buyerSessionKeyData: '0x' + 'bb'.repeat(100),
-    });
-    const result = await validateSecondaryBid(bid, listing, DEFAULT_BID_OPTS);
-    expect(result.status).toBe('unverified');
-    if (result.status === 'unverified') {
-      expect(result.code).toBe('SIGNATURE_UNVERIFIABLE');
-      expect(result.reason).toContain('session key');
-    }
-  });
-
-  test('rejects session key data that is not valid hex', async () => {
-    const listing = await makeSignedListing();
-    const bid = await makeSignedBid(listing, {
-      buyerSessionKeyData: 'not-hex',
-    });
-    const result = await validateSecondaryBid(bid, listing, DEFAULT_BID_OPTS);
-    expect(result.status).toBe('invalid');
-    if (result.status === 'invalid') {
-      expect(result.code).toBe('INVALID_SIGNATURE');
-    }
-  });
-
   // ── Signature length validation ──────────────────────────────────────────────
 
   test('rejects buyer signature shorter than compact ECDSA minimum (130 chars)', async () => {
     const listing = await makeSignedListing();
     const bid = await makeSignedBid(listing, {
       buyerSignature: '0x' + 'aa'.repeat(20),
-    });
-    const result = await validateSecondaryBid(bid, listing, DEFAULT_BID_OPTS);
-    expect(result.status).toBe('invalid');
-    if (result.status === 'invalid') {
-      expect(result.code).toBe('INVALID_SIGNATURE');
-    }
-  });
-
-  // ── Empty hex session key bypass ──────────────────────────────────────────────
-
-  test('rejects empty hex buyer session key data (0x only) — prevents sig bypass', async () => {
-    const listing = await makeSignedListing();
-    const bid = await makeSignedBid(listing, {
-      buyerSessionKeyData: '0x',
     });
     const result = await validateSecondaryBid(bid, listing, DEFAULT_BID_OPTS);
     expect(result.status).toBe('invalid');

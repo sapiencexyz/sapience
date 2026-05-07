@@ -389,8 +389,6 @@ describe('simulateMint', () => {
     const minimalParams: SimulateMintParams = {
       ...defaultParams,
       refCode: undefined,
-      predictorSessionKeyData: undefined,
-      counterpartySessionKeyData: undefined,
       predictorSponsor: undefined,
       predictorSponsorData: undefined,
     };

@@ -230,7 +230,6 @@ export function useValidatedBids(
                   counterpartyNonce: bid.counterpartyNonce,
                   counterpartyDeadline: bid.counterpartyDeadline,
                   counterpartySignature: bid.counterpartySignature,
-                  counterpartySessionKeyData: bid.counterpartySessionKeyData,
                 },
                 {
                   predictor: predictorAddress!,

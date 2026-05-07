@@ -7,7 +7,6 @@ import "../src/PredictionMarketTokenFactory.sol";
 import "../src/resolvers/mocks/ManualConditionResolver.sol";
 import "../src/interfaces/IV2Types.sol";
 import "../src/interfaces/IPredictionMarketEscrow.sol";
-import "../src/utils/SignatureValidator.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./mocks/MockERC20.sol";
 
@@ -244,9 +243,7 @@ contract SessionKeyERC1271Test is Test {
         address predictor,
         address counterparty_,
         uint256 predictorPk,
-        uint256 counterpartyPk_,
-        bytes memory predictorSessionKeyData,
-        bytes memory counterpartySessionKeyData
+        uint256 counterpartyPk_
     ) internal returns (IV2Types.MintRequest memory request) {
         IV2Types.Pick[] memory picks = _createPicks();
         bytes32 predictionHash =
@@ -282,8 +279,6 @@ contract SessionKeyERC1271Test is Test {
             counterpartyPk_
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = predictorSessionKeyData;
-        request.counterpartySessionKeyData = counterpartySessionKeyData;
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
     }
@@ -293,18 +288,12 @@ contract SessionKeyERC1271Test is Test {
         address predictor,
         address counterparty_,
         uint256 predictorPk,
-        uint256 counterpartyPk_,
-        bytes memory predictorSessionKeyData,
-        bytes memory counterpartySessionKeyData
+        uint256 counterpartyPk_
     ) internal returns (bytes32 pickConfigId) {
-        IV2Types.MintRequest memory request = _buildMintRequest(
-            predictor,
-            counterparty_,
-            predictorPk,
-            counterpartyPk_,
-            predictorSessionKeyData,
-            counterpartySessionKeyData
-        );
+        IV2Types.MintRequest memory request =
+            _buildMintRequest(
+                predictor, counterparty_, predictorPk, counterpartyPk_
+            );
 
         (,, address counterpartyToken) = market.mint(request);
         pickConfigId = keccak256(abi.encode(request.picks));
@@ -317,8 +306,6 @@ contract SessionKeyERC1271Test is Test {
         address counterpartyHolder;
         uint256 predictorPk;
         uint256 counterpartyPk;
-        bytes predictorSessionKeyData;
-        bytes counterpartySessionKeyData;
     }
 
     function _buildBurnRequest(BurnParams memory p)
@@ -374,28 +361,13 @@ contract SessionKeyERC1271Test is Test {
             p.counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = p.predictorSessionKeyData;
-        request.counterpartySessionKeyData = p.counterpartySessionKeyData;
-    }
-
-    /// @notice Any non-empty bytes blob — the legacy on-chain session-key
-    /// path is now refused before decode, so the precise contents do not
-    /// matter. The escrow reverts with `LegacySessionKeyDataDisabled` purely
-    /// based on `sessionKeyData.length != 0`.
-    function _legacySessionKeyDataBlob() internal pure returns (bytes memory) {
-        return hex"deadbeef";
     }
 
     // ============ Mint Matrix Tests (ERC-1271) ============
 
     function test_mint_EOA_EOA() public {
         IV2Types.MintRequest memory request = _buildMintRequest(
-            eoaPredictor,
-            eoaCounterparty,
-            eoaPredictorPk,
-            eoaCounterpartyPk,
-            "", // no session key data
-            "" // no session key data
+            eoaPredictor, eoaCounterparty, eoaPredictorPk, eoaCounterpartyPk
         );
 
         (bytes32 predictionId,,) = market.mint(request);
@@ -404,14 +376,12 @@ contract SessionKeyERC1271Test is Test {
 
     function test_mint_SmartAccount_EOA() public {
         // Session key signs for the predictor smart account
-        // Contract verifies via ERC-1271 on the smart account (no session key data needed)
+        // Contract verifies via ERC-1271 on the smart account
         IV2Types.MintRequest memory request = _buildMintRequest(
             address(predictorSmartAccount),
             eoaCounterparty,
             predictorSessionKeyPk, // session key signs
-            eoaCounterpartyPk,
-            "", // empty = ERC-1271 path
-            "" // EOA counterparty
+            eoaCounterpartyPk
         );
 
         (bytes32 predictionId,,) = market.mint(request);
@@ -424,9 +394,7 @@ contract SessionKeyERC1271Test is Test {
             eoaPredictor,
             address(counterpartySmartAccount),
             eoaPredictorPk,
-            counterpartySessionKeyPk, // session key signs
-            "", // EOA predictor
-            "" // empty = ERC-1271 path
+            counterpartySessionKeyPk // session key signs
         );
 
         (bytes32 predictionId,,) = market.mint(request);
@@ -439,9 +407,7 @@ contract SessionKeyERC1271Test is Test {
             address(predictorSmartAccount),
             address(counterpartySmartAccount),
             predictorSessionKeyPk,
-            counterpartySessionKeyPk,
-            "", // ERC-1271
-            "" // ERC-1271
+            counterpartySessionKeyPk
         );
 
         (bytes32 predictionId,,) = market.mint(request);
@@ -458,9 +424,7 @@ contract SessionKeyERC1271Test is Test {
             address(predictorSmartAccount),
             eoaCounterparty,
             predictorSessionKeyPk,
-            eoaCounterpartyPk,
-            "",
-            ""
+            eoaCounterpartyPk
         );
 
         vm.expectRevert(
@@ -476,9 +440,7 @@ contract SessionKeyERC1271Test is Test {
             address(predictorSmartAccount),
             eoaCounterparty,
             counterpartySessionKeyPk, // WRONG key signs for predictor
-            eoaCounterpartyPk,
-            "",
-            ""
+            eoaCounterpartyPk
         );
 
         vm.expectRevert(
@@ -524,8 +486,6 @@ contract SessionKeyERC1271Test is Test {
             eoaCounterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 
@@ -538,112 +498,11 @@ contract SessionKeyERC1271Test is Test {
         market.mint(request);
     }
 
-    // ============ Legacy Path Disabled ============
-    //
-    // The legacy `sessionKeyData` blob path used factory CREATE2 derivation
-    // as proof of authority, which could not see Kernel validator rotations.
-    // It is now refused on chain. Smart accounts using session keys must do
-    // so through their own validator (Kernel permission validator + ERC-1271).
-
-    function test_mint_legacySessionKeyData_reverts() public {
-        IV2Types.MintRequest memory request = _buildMintRequest(
-            address(predictorSmartAccount),
-            eoaCounterparty,
-            predictorSessionKeyPk,
-            eoaCounterpartyPk,
-            _legacySessionKeyDataBlob(),
-            ""
-        );
-
-        vm.expectRevert(
-            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
-        );
-        market.mint(request);
-    }
-
-    function test_mint_legacySessionKeyData_counterpartySide_reverts() public {
-        IV2Types.MintRequest memory request = _buildMintRequest(
-            address(predictorSmartAccount),
-            address(counterpartySmartAccount),
-            predictorSessionKeyPk,
-            counterpartySessionKeyPk,
-            "", // ERC-1271
-            _legacySessionKeyDataBlob() // legacy on counterparty
-        );
-
-        vm.expectRevert(
-            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
-        );
-        market.mint(request);
-    }
-
-    function test_burn_legacySessionKeyData_predictor_reverts() public {
-        // Successful ERC-1271 mint to set up a real token pair to burn from.
-        bytes32 pickConfigId = _mintAndGetPickConfigId(
-            address(predictorSmartAccount),
-            address(counterpartySmartAccount),
-            predictorSessionKeyPk,
-            counterpartySessionKeyPk,
-            "",
-            ""
-        );
-
-        IV2Types.BurnRequest memory request = _buildBurnRequest(
-            BurnParams({
-                pickConfigId: pickConfigId,
-                predictorHolder: address(predictorSmartAccount),
-                counterpartyHolder: address(counterpartySmartAccount),
-                predictorPk: predictorSessionKeyPk,
-                counterpartyPk: counterpartySessionKeyPk,
-                predictorSessionKeyData: _legacySessionKeyDataBlob(),
-                counterpartySessionKeyData: ""
-            })
-        );
-
-        vm.expectRevert(
-            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
-        );
-        market.burn(request);
-    }
-
-    function test_burn_legacySessionKeyData_counterparty_reverts() public {
-        bytes32 pickConfigId = _mintAndGetPickConfigId(
-            address(predictorSmartAccount),
-            address(counterpartySmartAccount),
-            predictorSessionKeyPk,
-            counterpartySessionKeyPk,
-            "",
-            ""
-        );
-
-        IV2Types.BurnRequest memory request = _buildBurnRequest(
-            BurnParams({
-                pickConfigId: pickConfigId,
-                predictorHolder: address(predictorSmartAccount),
-                counterpartyHolder: address(counterpartySmartAccount),
-                predictorPk: predictorSessionKeyPk,
-                counterpartyPk: counterpartySessionKeyPk,
-                predictorSessionKeyData: "",
-                counterpartySessionKeyData: _legacySessionKeyDataBlob()
-            })
-        );
-
-        vm.expectRevert(
-            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
-        );
-        market.burn(request);
-    }
-
     // ============ Burn Matrix Tests (ERC-1271) ============
 
     function test_burn_EOA_EOA() public {
         bytes32 pickConfigId = _mintAndGetPickConfigId(
-            eoaPredictor,
-            eoaCounterparty,
-            eoaPredictorPk,
-            eoaCounterpartyPk,
-            "",
-            ""
+            eoaPredictor, eoaCounterparty, eoaPredictorPk, eoaCounterpartyPk
         );
 
         IV2Types.BurnRequest memory request = _buildBurnRequest(
@@ -652,9 +511,7 @@ contract SessionKeyERC1271Test is Test {
                 predictorHolder: eoaPredictor,
                 counterpartyHolder: eoaCounterparty,
                 predictorPk: eoaPredictorPk,
-                counterpartyPk: eoaCounterpartyPk,
-                predictorSessionKeyData: "",
-                counterpartySessionKeyData: ""
+                counterpartyPk: eoaCounterpartyPk
             })
         );
 
@@ -667,9 +524,7 @@ contract SessionKeyERC1271Test is Test {
             address(predictorSmartAccount),
             eoaCounterparty,
             predictorSessionKeyPk,
-            eoaCounterpartyPk,
-            "",
-            ""
+            eoaCounterpartyPk
         );
 
         IV2Types.BurnRequest memory request = _buildBurnRequest(
@@ -678,9 +533,7 @@ contract SessionKeyERC1271Test is Test {
                 predictorHolder: address(predictorSmartAccount),
                 counterpartyHolder: eoaCounterparty,
                 predictorPk: predictorSessionKeyPk,
-                counterpartyPk: eoaCounterpartyPk,
-                predictorSessionKeyData: "",
-                counterpartySessionKeyData: ""
+                counterpartyPk: eoaCounterpartyPk
             })
         );
 
@@ -692,9 +545,7 @@ contract SessionKeyERC1271Test is Test {
             eoaPredictor,
             address(counterpartySmartAccount),
             eoaPredictorPk,
-            counterpartySessionKeyPk,
-            "",
-            ""
+            counterpartySessionKeyPk
         );
 
         IV2Types.BurnRequest memory request = _buildBurnRequest(
@@ -703,9 +554,7 @@ contract SessionKeyERC1271Test is Test {
                 predictorHolder: eoaPredictor,
                 counterpartyHolder: address(counterpartySmartAccount),
                 predictorPk: eoaPredictorPk,
-                counterpartyPk: counterpartySessionKeyPk,
-                predictorSessionKeyData: "",
-                counterpartySessionKeyData: ""
+                counterpartyPk: counterpartySessionKeyPk
             })
         );
 
@@ -717,9 +566,7 @@ contract SessionKeyERC1271Test is Test {
             address(predictorSmartAccount),
             address(counterpartySmartAccount),
             predictorSessionKeyPk,
-            counterpartySessionKeyPk,
-            "",
-            ""
+            counterpartySessionKeyPk
         );
 
         IV2Types.BurnRequest memory request = _buildBurnRequest(
@@ -728,9 +575,7 @@ contract SessionKeyERC1271Test is Test {
                 predictorHolder: address(predictorSmartAccount),
                 counterpartyHolder: address(counterpartySmartAccount),
                 predictorPk: predictorSessionKeyPk,
-                counterpartyPk: counterpartySessionKeyPk,
-                predictorSessionKeyData: "",
-                counterpartySessionKeyData: ""
+                counterpartyPk: counterpartySessionKeyPk
             })
         );
 
@@ -745,9 +590,7 @@ contract SessionKeyERC1271Test is Test {
             address(predictorSmartAccount),
             eoaCounterparty,
             predictorSessionKeyPk,
-            eoaCounterpartyPk,
-            "",
-            ""
+            eoaCounterpartyPk
         );
 
         // Now reject for burn
@@ -759,9 +602,7 @@ contract SessionKeyERC1271Test is Test {
                 predictorHolder: address(predictorSmartAccount),
                 counterpartyHolder: eoaCounterparty,
                 predictorPk: predictorSessionKeyPk,
-                counterpartyPk: eoaCounterpartyPk,
-                predictorSessionKeyData: "",
-                counterpartySessionKeyData: ""
+                counterpartyPk: eoaCounterpartyPk
             })
         );
 
@@ -769,27 +610,5 @@ contract SessionKeyERC1271Test is Test {
             IPredictionMarketEscrow.InvalidPredictorSignature.selector
         );
         market.burn(request);
-    }
-
-    // ============ Revocation Tests ============
-
-    function test_revocation_worksWithEOA() public {
-        // Revoke a session key (generic mechanism, works for any signing approach)
-        vm.prank(eoaPredictor);
-        market.revokeSessionKey(address(0x1234));
-
-        assertTrue(market.isSessionKeyRevoked(eoaPredictor, address(0x1234)));
-    }
-
-    function test_revocation_worksWithSmartAccount() public {
-        // Smart account can also revoke session keys
-        vm.prank(address(predictorSmartAccount));
-        market.revokeSessionKey(predictorSessionKey);
-
-        assertTrue(
-            market.isSessionKeyRevoked(
-                address(predictorSmartAccount), predictorSessionKey
-            )
-        );
     }
 }

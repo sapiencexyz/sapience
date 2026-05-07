@@ -493,8 +493,6 @@ await walletClient.writeContract({
       predictorSignature: '0x...',
       counterpartySignature: '0x...',
       refCode: '0x' + '0'.repeat(64),
-      predictorSessionKeyData: '0x',
-      counterpartySessionKeyData: '0x',
       predictorSponsor: '0x0000000000000000000000000000000000000000',
       predictorSponsorData: '0x',
     },

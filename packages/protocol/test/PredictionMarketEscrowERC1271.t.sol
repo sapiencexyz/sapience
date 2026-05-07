@@ -227,8 +227,6 @@ contract PredictionMarketEscrowERC1271Test is Test {
             counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
     }
@@ -283,8 +281,6 @@ contract PredictionMarketEscrowERC1271Test is Test {
             counterpartyPk // Owner's private key
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
     }
@@ -336,8 +332,6 @@ contract PredictionMarketEscrowERC1271Test is Test {
             counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
     }
@@ -389,8 +383,6 @@ contract PredictionMarketEscrowERC1271Test is Test {
             counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
     }
@@ -602,8 +594,6 @@ contract PredictionMarketEscrowERC1271Test is Test {
             counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 
@@ -671,8 +661,6 @@ contract PredictionMarketEscrowERC1271Test is Test {
             counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 

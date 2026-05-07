@@ -197,8 +197,6 @@ contract PredictionMarketEscrowSponsorTest is Test {
             counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = sponsor;
         request.predictorSponsorData = sponsorData;
     }

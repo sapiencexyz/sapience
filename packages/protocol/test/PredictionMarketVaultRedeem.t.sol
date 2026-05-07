@@ -147,8 +147,6 @@ contract PredictionMarketVaultRedeemTest is Test {
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 
@@ -357,8 +355,6 @@ contract PredictionMarketVaultRedeemTest is Test {
         burnRequest.predictorSignature = predictorBurnSig;
         burnRequest.counterpartySignature = vaultBurnSig;
         burnRequest.refCode = REF_CODE;
-        burnRequest.predictorSessionKeyData = "";
-        burnRequest.counterpartySessionKeyData = "";
 
         // Record balances before
         uint256 predictorBefore = collateralToken.balanceOf(predictor);

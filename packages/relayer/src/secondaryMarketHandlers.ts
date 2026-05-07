@@ -258,7 +258,6 @@ export async function handleSecondaryBidSubmit(
     buyerNonce: payload.buyerNonce,
     buyerDeadline: payload.buyerDeadline,
     buyerSignature: payload.buyerSignature,
-    buyerSessionKeyData: payload.buyerSessionKeyData,
     receivedAt: new Date().toISOString(),
   };
 

@@ -141,16 +141,6 @@
             "name": "refCode",
             "type": "bytes32",
             "internalType": "bytes32"
-          },
-          {
-            "name": "sellerSessionKeyData",
-            "type": "bytes",
-            "internalType": "bytes"
-          },
-          {
-            "name": "buyerSessionKeyData",
-            "type": "bytes",
-            "internalType": "bytes"
           }
         ]
       }
@@ -262,30 +252,6 @@
   },
   {
     "type": "function",
-    "name": "isSessionKeyRevoked",
-    "inputs": [
-      {
-        "name": "caller",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "sessionKey",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "revoked",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "nonceBitmap",
     "inputs": [
       {
@@ -309,47 +275,9 @@
     "stateMutability": "view"
   },
   {
-    "type": "function",
-    "name": "revokeSessionKey",
-    "inputs": [
-      {
-        "name": "sessionKey",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
     "type": "event",
     "name": "EIP712DomainChanged",
     "inputs": [],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "SessionKeyRevoked",
-    "inputs": [
-      {
-        "name": "caller",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "sessionKey",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "revokedAt",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
     "anonymous": false
   },
   {
@@ -442,11 +370,6 @@
   {
     "type": "error",
     "name": "InvalidSignature",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "LegacySessionKeyDataDisabled",
     "inputs": []
   },
   {

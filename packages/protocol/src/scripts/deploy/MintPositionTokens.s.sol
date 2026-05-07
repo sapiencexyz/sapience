@@ -214,8 +214,6 @@ contract MintPredictionMarketTokens is Script {
             predictorSignature: predictorSig,
             counterpartySignature: counterpartySig,
             refCode: bytes32(0),
-            predictorSessionKeyData: "",
-            counterpartySessionKeyData: "",
             predictorSponsor: address(0),
             predictorSponsorData: ""
         });

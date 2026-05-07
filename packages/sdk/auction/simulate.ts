@@ -337,8 +337,6 @@ export interface SimulateMintParams {
   predictorSignature: Hex;
   counterpartySignature: Hex;
   refCode?: Hex;
-  predictorSessionKeyData?: Hex;
-  counterpartySessionKeyData?: Hex;
   predictorSponsor?: Address;
   predictorSponsorData?: Hex;
 }
@@ -450,8 +448,6 @@ export async function simulateMint(
         predictorSignature: params.predictorSignature,
         counterpartySignature: params.counterpartySignature,
         refCode: params.refCode ?? ZERO_REF_CODE,
-        predictorSessionKeyData: params.predictorSessionKeyData ?? '0x',
-        counterpartySessionKeyData: params.counterpartySessionKeyData ?? '0x',
         predictorSponsor: params.predictorSponsor ?? zeroAddress,
         predictorSponsorData: params.predictorSponsorData ?? '0x',
       },

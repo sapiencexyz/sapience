@@ -265,16 +265,6 @@
             "name": "refCode",
             "type": "bytes32",
             "internalType": "bytes32"
-          },
-          {
-            "name": "predictorSessionKeyData",
-            "type": "bytes",
-            "internalType": "bytes"
-          },
-          {
-            "name": "counterpartySessionKeyData",
-            "type": "bytes",
-            "internalType": "bytes"
           }
         ]
       }

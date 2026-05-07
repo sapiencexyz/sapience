@@ -13,11 +13,7 @@ interface ISecondaryMarketEscrow {
     /// @notice Trade request data for an atomic OTC swap
     /// @dev Both seller and buyer sign off-chain; anyone can submit the trade.
     ///      Signatures may be ECDSA (EOA) or ERC-1271 payloads validated by
-    ///      the signer's smart account. The legacy `sessionKeyData` blob path
-    ///      (factory CREATE2 derivation as proof of authority) was removed —
-    ///      both `*SessionKeyData` fields must be empty (`"0x"`); any
-    ///      non-empty value causes `executeTrade` to revert with
-    ///      `LegacySessionKeyDataDisabled`.
+    ///      the signer's smart account.
     struct TradeRequest {
         address token; // Position token being sold
         address collateral; // Collateral token (payment)
@@ -32,13 +28,6 @@ interface ISecondaryMarketEscrow {
         bytes sellerSignature; // ECDSA (EOA) or ERC-1271 (smart account) sig
         bytes buyerSignature; // ECDSA (EOA) or ERC-1271 (smart account) sig
         bytes32 refCode; // Referral code
-        /// @custom:deprecated Must be `"0x"`. The legacy session-key path was
-        /// removed; supplying any non-empty value reverts with
-        /// `LegacySessionKeyDataDisabled`. Field will be dropped in a future
-        /// ABI break once telemetry confirms no producer remains. See PR #1673.
-        bytes sellerSessionKeyData;
-        /// @custom:deprecated Must be `"0x"`. See `sellerSessionKeyData`.
-        bytes buyerSessionKeyData;
     }
 
     // ============ Events ============
@@ -63,45 +52,14 @@ interface ISecondaryMarketEscrow {
         bytes32 refCode
     );
 
-    /// @notice Emitted when a session key is recorded as revoked in the
-    ///         on-chain advisory registry. The contract no longer enforces
-    ///         this mapping during signature validation.
-    event SessionKeyRevoked(
-        address indexed caller, address indexed sessionKey, uint256 revokedAt
-    );
-
     // ============ Errors ============
 
     error InvalidSignature();
     error NonceAlreadyUsed();
     error ZeroAmount();
     error SellerBuyerSame();
-    /// @notice Reverts when an `executeTrade` request supplies the legacy
-    /// session-key data blob. The path validated authority via factory CREATE2
-    /// derivation, which cannot reflect a smart account's current Kernel
-    /// validator/owner. Smart-account session keys must now sign through the
-    /// account itself so ERC-1271 (`isValidSignature`) returns the magic value.
-    error LegacySessionKeyDataDisabled();
 
     // ============ Functions ============
-
-    /// @notice Record a session-key revocation in the advisory on-chain
-    ///         registry. The contract no longer enforces this mapping during
-    ///         signature validation; this call exists for off-chain
-    ///         observability only.
-    /// @param sessionKey The session key address being recorded as revoked
-    function revokeSessionKey(address sessionKey) external;
-
-    /// @notice Read from the advisory revocation registry, indexed by the
-    ///         caller of `revokeSessionKey`.
-    /// @dev Not consulted by on-chain signature validation.
-    /// @param caller The address that may have called `revokeSessionKey`
-    /// @param sessionKey The session key to check
-    /// @return revoked True if a non-zero revocation timestamp is recorded
-    function isSessionKeyRevoked(address caller, address sessionKey)
-        external
-        view
-        returns (bool revoked);
 
     /// @notice Execute an atomic OTC trade
     /// @param request The trade request containing token/collateral addresses, amounts, and signatures

@@ -234,40 +234,6 @@ describe('prepareAuctionRFQ', () => {
     expect(result.payload.refCode).toBe(refCode);
   });
 
-  test('includes sessionKeyData when signing with session key', async () => {
-    const sessionKeyData = JSON.stringify({
-      approval: 'test-approval',
-      typedData: 'test-typed-data',
-    });
-
-    const params = makeDefaultParams({
-      options: {
-        verifyingContract: VERIFYING_CONTRACT,
-        sessionKeyData,
-      },
-    });
-
-    const result = await prepareAuctionRFQ(params);
-
-    expect(result.payload.predictorSessionKeyData).toBe(sessionKeyData);
-    expect(result.payload.intentSignature).toBeDefined();
-  });
-
-  test('omits sessionKeyData when skipIntentSigning is true', async () => {
-    const params = makeDefaultParams({
-      options: {
-        verifyingContract: VERIFYING_CONTRACT,
-        skipIntentSigning: true,
-        sessionKeyData: 'should-not-appear',
-      },
-    });
-
-    const result = await prepareAuctionRFQ(params);
-
-    expect(result.payload.intentSignature).toBeUndefined();
-    expect(result.payload.predictorSessionKeyData).toBeUndefined();
-  });
-
   test('skipIntentSigning produces payload without signature', async () => {
     const params = makeDefaultParams({
       options: {

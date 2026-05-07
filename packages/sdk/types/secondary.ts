@@ -24,8 +24,6 @@ export interface TradeRequest {
   sellerSignature: Hex;
   buyerSignature: Hex;
   refCode: Hex;
-  sellerSessionKeyData: Hex;
-  buyerSessionKeyData: Hex;
 }
 
 // ============================================================================
@@ -47,8 +45,6 @@ export interface TradeRequestJson {
   sellerSignature: string;
   buyerSignature: string;
   refCode: string;
-  sellerSessionKeyData?: string;
-  buyerSessionKeyData?: string;
 }
 
 // ============================================================================
@@ -70,7 +66,6 @@ export interface SecondaryAuctionRequestPayload {
   chainId: number;
   escrowContract: string; // Secondary escrow contract address
   refCode?: string;
-  sellerSessionKeyData?: string;
   /** When true, this is a price discovery request — not a real listing.
    *  Relayer will exclude it from the listings snapshot and include quoteOnly
    *  on feed broadcasts so observers can identify it as quote traffic.
@@ -88,7 +83,6 @@ export interface SecondaryBidPayload {
   buyerNonce: number;
   buyerDeadline: number; // unix timestamp
   buyerSignature: string; // EIP-712 TradeApproval signature
-  buyerSessionKeyData?: string;
 }
 
 // ----- Client to Server Messages -----
@@ -128,7 +122,6 @@ export interface SecondaryValidatedBid {
   buyerNonce: number;
   buyerDeadline: number;
   buyerSignature: string;
-  buyerSessionKeyData?: string;
   receivedAt: string; // ISO timestamp
 }
 

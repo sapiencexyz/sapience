@@ -34,34 +34,8 @@ interface IPredictionMarketEscrow {
     error InvalidBurnAmounts();
     error AsymmetricBurn();
     error SponsorUnderfunded();
-    /// @notice Reverts when a `mint` or `burn` request supplies the legacy
-    /// session-key data blob. The path validated authority via factory CREATE2
-    /// derivation, which cannot reflect a smart account's current Kernel
-    /// validator/owner. Smart-account session keys must now sign through the
-    /// account itself so ERC-1271 (`isValidSignature`) returns the magic value.
-    error LegacySessionKeyDataDisabled();
 
     // ============ External Functions ============
-
-    /// @notice Record a session-key revocation in the on-chain advisory
-    ///         registry. The contract no longer enforces this mapping during
-    ///         signature validation — smart-account authority is determined
-    ///         by the account's own ERC-1271 policy. This call exists for
-    ///         off-chain observability (events + indexers).
-    /// @param sessionKey The session key address being recorded as revoked
-    function revokeSessionKey(address sessionKey) external;
-
-    /// @notice Read from the advisory revocation registry, indexed by the
-    ///         caller of `revokeSessionKey`.
-    /// @dev Not consulted by on-chain signature validation; treat as
-    ///      informational only.
-    /// @param caller The address that may have called `revokeSessionKey`
-    /// @param sessionKey The session key to check
-    /// @return revoked True if a non-zero revocation timestamp is recorded
-    function isSessionKeyRevoked(address caller, address sessionKey)
-        external
-        view
-        returns (bool revoked);
 
     /// @notice Create a new prediction with both parties' signatures
     /// @param request The mint request containing picks, collateral amounts, and signatures
@@ -188,9 +162,6 @@ interface IPredictionMarketEscrow {
     /// @param deadline Signature expiration timestamp
     /// @param signature The EIP-712 signature (ECDSA for EOAs; ERC-1271
     ///        signer-validated payload for smart accounts)
-    /// @param sessionKeyData Reserved field — must be empty (`"0x"`). Any
-    ///        non-empty blob causes the on-chain `mint` to revert with
-    ///        `LegacySessionKeyDataDisabled`.
     /// @return isValid True if the signature is valid
     function verifyMintPartySignature(
         bytes32 predictionHash,
@@ -198,8 +169,7 @@ interface IPredictionMarketEscrow {
         uint256 collateral,
         uint256 nonce,
         uint256 deadline,
-        bytes calldata signature,
-        bytes calldata sessionKeyData
+        bytes calldata signature
     ) external view returns (bool isValid);
 
     /// @notice Validate a party's burn signature off-chain (same logic as on-chain validation)
@@ -211,9 +181,6 @@ interface IPredictionMarketEscrow {
     /// @param deadline Signature expiration timestamp
     /// @param signature The EIP-712 signature (ECDSA for EOAs; ERC-1271
     ///        signer-validated payload for smart accounts)
-    /// @param sessionKeyData Reserved field — must be empty (`"0x"`). Any
-    ///        non-empty blob causes the on-chain `burn` to revert with
-    ///        `LegacySessionKeyDataDisabled`.
     /// @return isValid True if the signature is valid
     function verifyBurnPartySignature(
         bytes32 burnHash,
@@ -222,7 +189,6 @@ interface IPredictionMarketEscrow {
         uint256 payout,
         uint256 nonce,
         uint256 deadline,
-        bytes calldata signature,
-        bytes calldata sessionKeyData
+        bytes calldata signature
     ) external view returns (bool isValid);
 }

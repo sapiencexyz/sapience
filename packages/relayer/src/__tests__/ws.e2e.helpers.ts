@@ -236,9 +236,6 @@ export async function startAuction(
     chainId: overrides?.chainId ?? TEST_CHAIN_ID,
     escrowContract: overrides?.escrowContract ?? TEST_ESCROW_ADDRESS,
     ...(overrides?.refCode !== undefined && { refCode: overrides.refCode }),
-    ...(overrides?.predictorSessionKeyData !== undefined && {
-      predictorSessionKeyData: overrides.predictorSessionKeyData,
-    }),
     ...(overrides?.predictorSponsor !== undefined && {
       predictorSponsor: overrides.predictorSponsor,
     }),
@@ -337,8 +334,5 @@ export async function createSignedBid(
     counterpartyNonce,
     counterpartyDeadline,
     counterpartySignature,
-    ...(overrides?.counterpartySessionKeyData !== undefined && {
-      counterpartySessionKeyData: overrides.counterpartySessionKeyData,
-    }),
   };
 }

@@ -42,11 +42,6 @@ vi.mock('@sapience/sdk/onchain/secondaryTrade', () => ({
   },
 }));
 
-const mockAddBreadcrumb = vi.fn();
-vi.mock('@sentry/nextjs', () => ({
-  addBreadcrumb: (...args: unknown[]) => mockAddBreadcrumb(...args),
-}));
-
 const mockSessionSignTypedData = vi
   .fn()
   .mockResolvedValue('0xKernelWrappedSig');
@@ -88,13 +83,12 @@ const baseBid = {
 describe('useSecondaryAccept', () => {
   beforeEach(() => {
     mockPrepareCalls.mockClear();
-    mockAddBreadcrumb.mockClear();
     mockSessionSignTypedData.mockClear();
     mockSignTypedDataAsync.mockClear();
     isUsingSession = true;
   });
 
-  it('builds trade params with sellerSessionKeyData=0x when session active', async () => {
+  it('builds trade params and signs with session when session active', async () => {
     const { result } = renderHook(() => useSecondaryAccept());
 
     await act(async () => {
@@ -108,39 +102,8 @@ describe('useSecondaryAccept', () => {
     expect(mockSessionSignTypedData).toHaveBeenCalledTimes(1);
     expect(mockPrepareCalls).toHaveBeenCalledTimes(1);
     const callArgs = mockPrepareCalls.mock.calls[0][0] as {
-      trade: {
-        sellerSessionKeyData: string;
-        buyerSessionKeyData: string;
-        sellerSignature: string;
-      };
+      trade: { sellerSignature: string };
     };
-    expect(callArgs.trade.sellerSessionKeyData).toBe('0x');
-    expect(callArgs.trade.buyerSessionKeyData).toBe('0x');
     expect(callArgs.trade.sellerSignature).toBe('0xKernelWrappedSig');
-    expect(mockAddBreadcrumb).not.toHaveBeenCalled();
-  });
-
-  it('emits a Sentry breadcrumb when the bid carries legacy buyerSessionKeyData', async () => {
-    const { result } = renderHook(() => useSecondaryAccept());
-
-    await act(async () => {
-      await result.current.acceptBid({
-        token: '0xToken',
-        tokenAmount: 50n,
-        bid: { ...baseBid, buyerSessionKeyData: '0xdeadbeef' },
-      });
-    });
-
-    expect(mockAddBreadcrumb).toHaveBeenCalledTimes(1);
-    const arg = mockAddBreadcrumb.mock.calls[0][0] as {
-      category: string;
-      message: string;
-    };
-    expect(arg.category).toBe('secondary.legacy_session_key');
-    expect(arg.message).toBe('accept_received_legacy_buyer_session_key_data');
-    const callArgs = mockPrepareCalls.mock.calls[0][0] as {
-      trade: { buyerSessionKeyData: string };
-    };
-    expect(callArgs.trade.buyerSessionKeyData).toBe('0xdeadbeef');
   });
 });

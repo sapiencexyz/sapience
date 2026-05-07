@@ -174,8 +174,6 @@ contract OnboardingSponsorTest is Test {
             counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = sponsorAddr;
         request.predictorSponsorData = "";
     }

@@ -7,7 +7,6 @@ import "../src/PredictionMarketTokenFactory.sol";
 import "../src/resolvers/mocks/ManualConditionResolver.sol";
 import "../src/interfaces/IV2Types.sol";
 import "../src/interfaces/IPredictionMarketEscrow.sol";
-import "../src/utils/SignatureValidator.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./mocks/MockERC20.sol";
 
@@ -274,21 +273,11 @@ contract SignatureValidatorTryRecoverTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    /// @notice Any non-empty bytes blob — the legacy on-chain session-key
-    /// path is now refused before decode, so the precise contents do not
-    /// matter. The escrow reverts with `LegacySessionKeyDataDisabled` purely
-    /// based on `sessionKeyData.length != 0`.
-    function _legacySessionKeyDataBlob() internal pure returns (bytes memory) {
-        return hex"deadbeef";
-    }
-
     function _buildMintRequest(
         address predictor,
         address counterparty_,
         uint256 predictorPk,
-        uint256 counterpartyPk_,
-        bytes memory predictorSessionKeyData,
-        bytes memory counterpartySessionKeyData
+        uint256 counterpartyPk_
     ) internal returns (IV2Types.MintRequest memory request) {
         IV2Types.Pick[] memory picks = _createPicks();
         bytes32 predictionHash =
@@ -324,8 +313,6 @@ contract SignatureValidatorTryRecoverTest is Test {
             counterpartyPk_
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = predictorSessionKeyData;
-        request.counterpartySessionKeyData = counterpartySessionKeyData;
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
     }
@@ -334,18 +321,12 @@ contract SignatureValidatorTryRecoverTest is Test {
         address predictor,
         address counterparty_,
         uint256 predictorPk,
-        uint256 counterpartyPk_,
-        bytes memory predictorSessionKeyData,
-        bytes memory counterpartySessionKeyData
+        uint256 counterpartyPk_
     ) internal returns (bytes32 pickConfigId) {
-        IV2Types.MintRequest memory request = _buildMintRequest(
-            predictor,
-            counterparty_,
-            predictorPk,
-            counterpartyPk_,
-            predictorSessionKeyData,
-            counterpartySessionKeyData
-        );
+        IV2Types.MintRequest memory request =
+            _buildMintRequest(
+                predictor, counterparty_, predictorPk, counterpartyPk_
+            );
         market.mint(request);
         pickConfigId = keccak256(abi.encode(request.picks));
     }
@@ -356,8 +337,6 @@ contract SignatureValidatorTryRecoverTest is Test {
         address counterpartyHolder;
         uint256 predictorPk;
         uint256 counterpartyPk;
-        bytes predictorSessionKeyData;
-        bytes counterpartySessionKeyData;
     }
 
     function _buildBurnRequest(BurnParams memory p)
@@ -415,8 +394,6 @@ contract SignatureValidatorTryRecoverTest is Test {
             p.counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = p.predictorSessionKeyData;
-        request.counterpartySessionKeyData = p.counterpartySessionKeyData;
     }
 
     // ================================================================
@@ -475,8 +452,6 @@ contract SignatureValidatorTryRecoverTest is Test {
             eoaCounterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 
@@ -553,8 +528,6 @@ contract SignatureValidatorTryRecoverTest is Test {
             eoaCounterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 
@@ -617,8 +590,6 @@ contract SignatureValidatorTryRecoverTest is Test {
             eoaCounterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 
@@ -748,57 +719,7 @@ contract SignatureValidatorTryRecoverTest is Test {
     }
 
     // ================================================================
-    // 2. LEGACY SESSION KEY PATH: now disabled at the contract layer
-    //
-    // Previously this section exercised the legacy `sessionKeyData` blob
-    // path (own ECDSA + factory CREATE2 derivation as proof of authority).
-    // That path was unsafe: it could not see Kernel validator rotations and
-    // let rotated-out owners keep authorizing transfers on a smart account
-    // that had since revoked them via the validator. The contract now
-    // refuses any non-empty `sessionKeyData`. Smart accounts using session
-    // keys must do so through the account itself (Kernel permission
-    // validator + ERC-1271).
-    // ================================================================
-
-    function test_mint_legacySessionKeyData_reverts() public {
-        IV2Types.MintRequest memory request = _buildMintRequest(
-            smartAccount,
-            eoaCounterparty,
-            sessionKeyPk,
-            eoaCounterpartyPk,
-            _legacySessionKeyDataBlob(),
-            ""
-        );
-
-        vm.expectRevert(
-            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
-        );
-        market.mint(request);
-    }
-
-    function test_mint_legacySessionKeyData_counterparty_reverts() public {
-        IV2Types.MintRequest memory request = _buildMintRequest(
-            eoaPredictor,
-            smartAccount,
-            eoaPredictorPk,
-            sessionKeyPk,
-            "",
-            _legacySessionKeyDataBlob()
-        );
-
-        vm.expectRevert(
-            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
-        );
-        market.mint(request);
-    }
-
-    // Burn-side legacy reject is exercised in SessionKeyERC1271 where the
-    // mock smart accounts can take a successful ERC-1271 mint first and then
-    // attempt a burn with a legacy blob. See
-    // `test_burn_legacySessionKeyData_*_reverts` there.
-
-    // ================================================================
-    // 3. EOA PATH: basic coverage for completeness
+    // 2. EOA PATH: basic coverage for completeness
     // ================================================================
 
     /// @notice EOA mint — wrong signer should revert
@@ -839,8 +760,6 @@ contract SignatureValidatorTryRecoverTest is Test {
             eoaCounterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 
@@ -871,8 +790,6 @@ contract SignatureValidatorTryRecoverTest is Test {
         request.predictorSignature = hex"deadbeef"; // 4 bytes — way too short
         request.counterpartySignature = hex"deadbeef";
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 
@@ -903,8 +820,6 @@ contract SignatureValidatorTryRecoverTest is Test {
         request.predictorSignature = ""; // empty
         request.counterpartySignature = "";
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 

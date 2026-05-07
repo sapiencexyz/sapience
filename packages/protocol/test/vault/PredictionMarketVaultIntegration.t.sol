@@ -195,8 +195,6 @@ contract PredictionMarketVaultIntegrationTest is Test {
         request.counterpartySignature =
             _signVaultApproval(predictionHash, cCollateral, cNonce, deadline);
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
     }
@@ -707,8 +705,6 @@ contract PredictionMarketVaultIntegrationTest is Test {
             vm.sign(predictorPk, vaultApprovalHash); // Wrong key!
         request.counterpartySignature = abi.encodePacked(r, s, v);
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 

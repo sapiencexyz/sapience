@@ -845,7 +845,6 @@ describe('validateBidOnChain', () => {
       counterpartyNonce: number;
       counterpartyDeadline: number;
       counterpartySignature: string;
-      counterpartySessionKeyData: string;
     }> = {}
   ) {
     const account = privateKeyToAccount(generatePrivateKey());

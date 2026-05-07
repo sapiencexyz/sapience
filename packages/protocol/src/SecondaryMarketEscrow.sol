@@ -14,16 +14,9 @@ import "./utils/ECDSAHelper.sol";
  * @notice Permissionless atomic OTC swap for V2 position tokens.
  * @dev No ownership, no funds at rest. Both parties sign off-chain via EIP-712
  *      and anyone can submit the trade. Signatures are accepted from EOAs
- *      (ECDSA) and from smart accounts via ERC-1271 (`isValidSignature`). The
- *      legacy `sessionKeyData` blob path was removed because its factory
- *      CREATE2 derivation could not see Kernel validator rotations; smart
- *      accounts using session keys must now sign through the account itself.
- *      Supplying any non-empty `sessionKeyData` reverts with
- *      `LegacySessionKeyDataDisabled`.
- *
- *      The session-key revocation registry below is preserved as an advisory,
- *      caller-scoped on-chain log for off-chain tooling. The contract no
- *      longer reads it during signature validation.
+ *      (ECDSA) and from smart accounts via ERC-1271 (`isValidSignature`).
+ *      Smart accounts using session keys must sign through the account itself
+ *      (e.g. Kernel permission validator).
  */
 contract SecondaryMarketEscrow is
     ISecondaryMarketEscrow,
@@ -46,27 +39,6 @@ contract SecondaryMarketEscrow is
 
     /// @notice Bitmap nonces for replay protection (Permit2-style)
     mapping(address => mapping(uint256 => uint256)) private _nonceBitmap;
-
-    /// @notice Advisory revocation registry: caller => sessionKey =>
-    ///         revokedAt timestamp. Not consulted by signature validation.
-    mapping(address => mapping(address => uint256)) private _revokedSessionKeys;
-
-    // ============ Session Key Management ============
-
-    /// @inheritdoc ISecondaryMarketEscrow
-    function revokeSessionKey(address sessionKey) external {
-        _revokedSessionKeys[msg.sender][sessionKey] = block.timestamp;
-        emit SessionKeyRevoked(msg.sender, sessionKey, block.timestamp);
-    }
-
-    /// @inheritdoc ISecondaryMarketEscrow
-    function isSessionKeyRevoked(address caller, address sessionKey)
-        external
-        view
-        returns (bool revoked)
-    {
-        return _revokedSessionKeys[caller][sessionKey] > 0;
-    }
 
     // ============ External Functions ============
 
@@ -93,24 +65,22 @@ contract SecondaryMarketEscrow is
         );
 
         // Validate seller signature
-        if (!_validatePartySignature(
+        if (!_isTradeApprovalValidWithEIP1271Fallback(
                 tradeHash,
                 request.seller,
                 request.sellerNonce,
                 request.sellerDeadline,
-                request.sellerSignature,
-                request.sellerSessionKeyData
+                request.sellerSignature
             )) {
             revert InvalidSignature();
         }
         // Validate buyer signature
-        if (!_validatePartySignature(
+        if (!_isTradeApprovalValidWithEIP1271Fallback(
                 tradeHash,
                 request.buyer,
                 request.buyerNonce,
                 request.buyerDeadline,
-                request.buyerSignature,
-                request.buyerSessionKeyData
+                request.buyerSignature
             )) {
             revert InvalidSignature();
         }
@@ -213,29 +183,6 @@ contract SecondaryMarketEscrow is
     }
 
     // ============ Internal: Signature Validation ============
-
-    /// @notice Validate a party's signature.
-    /// @dev Accepts an EOA ECDSA signature or a smart-account ERC-1271
-    /// signature. The legacy `sessionKeyData` blob path is no longer supported
-    /// — supplying a non-empty blob reverts with `LegacySessionKeyDataDisabled`.
-    /// Smart accounts using session keys must have the session key authorized
-    /// via the smart account's own validator (e.g. Kernel permission validator)
-    /// so `isValidSignature` returns the magic value.
-    function _validatePartySignature(
-        bytes32 tradeHash,
-        address signer,
-        uint256 nonce,
-        uint256 deadline,
-        bytes calldata signature,
-        bytes calldata sessionKeyData
-    ) internal view returns (bool isValid) {
-        if (sessionKeyData.length != 0) {
-            revert LegacySessionKeyDataDisabled();
-        }
-        return _isTradeApprovalValidWithEIP1271Fallback(
-            tradeHash, signer, nonce, deadline, signature
-        );
-    }
 
     /// @notice Validate trade approval via ECDSA
     function _isTradeApprovalValid(

@@ -16,7 +16,6 @@ export type AuctionBid = {
   counterpartyDeadline: number;
   counterpartySignature: string;
   counterpartyNonce: number;
-  counterpartySessionKeyData?: string;
   receivedAtMs: number;
 };
 

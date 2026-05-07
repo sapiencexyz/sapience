@@ -330,7 +330,6 @@ export async function validateAuctionRFQ(
       predictorNonce: BigInt(payload.predictorNonce),
       predictorDeadline: BigInt(payload.predictorDeadline),
       intentSignature: payload.intentSignature as Hex,
-      predictorSessionKeyData: payload.predictorSessionKeyData,
       verifyingContract: opts.verifyingContract,
       chainId: payload.chainId,
       publicClient: opts.publicClient,
@@ -496,7 +495,6 @@ export async function validateBid(
       counterpartyNonce: BigInt(bid.counterpartyNonce),
       counterpartyDeadline: BigInt(bid.counterpartyDeadline),
       counterpartySignature: bid.counterpartySignature as Hex,
-      counterpartySessionKeyData: bid.counterpartySessionKeyData,
       predictorSponsor: (auction.predictorSponsor ?? undefined) as
         | Address
         | undefined,
@@ -630,7 +628,6 @@ export async function validateBidOnChain(
     counterpartyNonce: number;
     counterpartyDeadline: number;
     counterpartySignature: string;
-    counterpartySessionKeyData?: string;
   },
   auction: {
     predictor: string;
@@ -682,7 +679,6 @@ export async function validateBidOnChain(
           BigInt(bid.counterpartyNonce),
           BigInt(bid.counterpartyDeadline),
           bid.counterpartySignature as Hex,
-          (bid.counterpartySessionKeyData || '0x') as Hex,
         ],
       });
 
@@ -859,7 +855,6 @@ export async function validateBidFull(
       counterpartyNonce: bid.counterpartyNonce,
       counterpartyDeadline: bid.counterpartyDeadline,
       counterpartySignature: bid.counterpartySignature,
-      counterpartySessionKeyData: bid.counterpartySessionKeyData,
     },
     auction,
     {

@@ -63,8 +63,6 @@ export interface PrepareAuctionRFQParams {
 export interface PrepareAuctionRFQOptions {
   /** Seconds from now until deadline (default 30). */
   deadlineSeconds?: number;
-  /** Session key data (base64 JSON) for ZeroDev session key path. */
-  sessionKeyData?: string;
   /** Sponsor contract address (address(0) = self-funded). */
   predictorSponsor?: Address;
   /** Opaque data passed to sponsor's fundMint. */
@@ -132,7 +130,6 @@ export async function prepareAuctionRFQ(
 
   const {
     deadlineSeconds = 30,
-    sessionKeyData,
     predictorSponsor,
     predictorSponsorData,
     skipIntentSigning = false,
@@ -211,10 +208,6 @@ export async function prepareAuctionRFQ(
 
     const intentSignature = await signIntent(signableTypedData);
     payload.intentSignature = intentSignature;
-
-    if (sessionKeyData) {
-      payload.predictorSessionKeyData = sessionKeyData;
-    }
   }
 
   // 7. Self-validate assembled payload

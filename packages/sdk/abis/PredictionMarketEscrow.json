@@ -124,16 +124,6 @@
             "name": "refCode",
             "type": "bytes32",
             "internalType": "bytes32"
-          },
-          {
-            "name": "predictorSessionKeyData",
-            "type": "bytes",
-            "internalType": "bytes"
-          },
-          {
-            "name": "counterpartySessionKeyData",
-            "type": "bytes",
-            "internalType": "bytes"
           }
         ]
       }
@@ -744,30 +734,6 @@
   },
   {
     "type": "function",
-    "name": "isSessionKeyRevoked",
-    "inputs": [
-      {
-        "name": "owner",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "sessionKey",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "revoked",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "mint",
     "inputs": [
       {
@@ -851,16 +817,6 @@
             "name": "refCode",
             "type": "bytes32",
             "internalType": "bytes32"
-          },
-          {
-            "name": "predictorSessionKeyData",
-            "type": "bytes",
-            "internalType": "bytes"
-          },
-          {
-            "name": "counterpartySessionKeyData",
-            "type": "bytes",
-            "internalType": "bytes"
           },
           {
             "name": "predictorSponsor",
@@ -969,10 +925,10 @@
   },
   {
     "type": "function",
-    "name": "revokeSessionKey",
+    "name": "setTrustedMintRouter",
     "inputs": [
       {
-        "name": "sessionKey",
+        "name": "router",
         "type": "address",
         "internalType": "address"
       }
@@ -1044,6 +1000,19 @@
   },
   {
     "type": "function",
+    "name": "trustedMintRouter",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "verifyBurnPartySignature",
     "inputs": [
       {
@@ -1078,11 +1047,6 @@
       },
       {
         "name": "signature",
-        "type": "bytes",
-        "internalType": "bytes"
-      },
-      {
-        "name": "sessionKeyData",
         "type": "bytes",
         "internalType": "bytes"
       }
@@ -1127,11 +1091,6 @@
       },
       {
         "name": "signature",
-        "type": "bytes",
-        "internalType": "bytes"
-      },
-      {
-        "name": "sessionKeyData",
         "type": "bytes",
         "internalType": "bytes"
       }
@@ -1417,31 +1376,6 @@
   },
   {
     "type": "event",
-    "name": "SessionKeyRevoked",
-    "inputs": [
-      {
-        "name": "owner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "sessionKey",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "revokedAt",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "TokensRedeemed",
     "inputs": [
       {
@@ -1479,6 +1413,19 @@
         "type": "bytes32",
         "indexed": false,
         "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TrustedMintRouterSet",
+    "inputs": [
+      {
+        "name": "router",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -1553,11 +1500,6 @@
   {
     "type": "error",
     "name": "InvalidToken",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "LegacySessionKeyDataDisabled",
     "inputs": []
   },
   {

@@ -141,8 +141,6 @@ await walletClient.writeContract({
       sellerSignature,
       buyerSignature: bestBid.buyerSignature,
       refCode: '0x' + '0'.repeat(64),
-      sellerSessionKeyData: '0x',
-      buyerSessionKeyData: '0x',
     },
   ],
 });

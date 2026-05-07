@@ -313,8 +313,6 @@ contract TestVaultAsCounterparty is Script {
             predictorSignature: predictorSig,
             counterpartySignature: vaultSig,
             refCode: bytes32(0),
-            predictorSessionKeyData: "",
-            counterpartySessionKeyData: "",
             predictorSponsor: address(0),
             predictorSponsorData: ""
         });

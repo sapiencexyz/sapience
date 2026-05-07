@@ -26,10 +26,6 @@ import { isValidAddress, isValidSignatureFormat } from './validationUtils';
 export type { ValidationResult, ValidationErrorCode };
 export { isActionable } from './validation';
 
-function isValidHex(value: unknown): value is string {
-  return typeof value === 'string' && /^0x[a-fA-F0-9]+$/.test(value);
-}
-
 function isPositiveWei(value: unknown): boolean {
   if (!value || typeof value !== 'string') return false;
   try {
@@ -145,33 +141,8 @@ export async function validateSecondaryListing(
     return invalid('INVALID_SIGNATURE', 'Invalid sellerSignature format');
   }
 
-  // 11. Session key data format validation (if present)
-  if (
-    payload.sellerSessionKeyData !== undefined &&
-    payload.sellerSessionKeyData !== '' &&
-    !isValidHex(payload.sellerSessionKeyData)
-  ) {
-    return invalid(
-      'INVALID_SIGNATURE',
-      'sellerSessionKeyData must be valid hex'
-    );
-  }
-
-  // 12. Signature verification
+  // 11. Signature verification
   if (verifySignature) {
-    // Session key signatures cannot be verified offline — ECDSA recovery
-    // would recover the session key address, not the smart account address.
-    // Return 'unverified' so the relayer passes them through (matching escrow
-    // pattern) and on-chain executeTrade() does definitive verification.
-    if (payload.sellerSessionKeyData) {
-      return {
-        status: 'unverified',
-        code: 'SIGNATURE_UNVERIFIABLE',
-        reason:
-          'Seller has session key data — cannot verify offline, on-chain verification required',
-      };
-    }
-
     // EOA signature: verify via EIP-712 typed data recovery
     try {
       const tradeHash = computeTradeHash(
@@ -293,30 +264,8 @@ export async function validateSecondaryBid(
     return invalid('INVALID_SIGNATURE', 'Invalid buyerSignature format');
   }
 
-  // 7. Session key data format validation (if present)
-  if (
-    bid.buyerSessionKeyData !== undefined &&
-    bid.buyerSessionKeyData !== '' &&
-    !isValidHex(bid.buyerSessionKeyData)
-  ) {
-    return invalid(
-      'INVALID_SIGNATURE',
-      'buyerSessionKeyData must be valid hex'
-    );
-  }
-
-  // 8. Signature verification
+  // 7. Signature verification
   if (verifySignature) {
-    // Session key signatures: return unverified, let on-chain handle it
-    if (bid.buyerSessionKeyData) {
-      return {
-        status: 'unverified',
-        code: 'SIGNATURE_UNVERIFIABLE',
-        reason:
-          'Buyer has session key data — cannot verify offline, on-chain verification required',
-      };
-    }
-
     // EOA signature: verify via EIP-712 typed data recovery
     try {
       const tradeHash = computeTradeHash(

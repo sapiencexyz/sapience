@@ -152,8 +152,6 @@ contract PredictionMarketEscrowDustAudit is Test {
             BOB_PK
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
     }

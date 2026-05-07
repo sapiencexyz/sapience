@@ -125,8 +125,6 @@ contract PredictionMarketEscrowAudit is Test {
         request.predictorDeadline = block.timestamp + 1 hours;
         request.counterpartyDeadline = block.timestamp + 1 hours;
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 

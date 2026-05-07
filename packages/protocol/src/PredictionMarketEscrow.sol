@@ -242,27 +242,25 @@ contract PredictionMarketEscrow is
         // skip the signature checks here. Nonces are still consumed below to
         // preserve replay protection.
         if (msg.sender != trustedMintRouter) {
-            // Validate predictor signature (EOA or session key)
+            // Validate predictor signature (EOA or smart account via ERC-1271)
             if (!_validatePartySignature(
                     predictionHash,
                     request.predictor,
                     request.predictorCollateral,
                     request.predictorNonce,
                     request.predictorDeadline,
-                    request.predictorSignature,
-                    request.predictorSessionKeyData
+                    request.predictorSignature
                 )) {
                 revert InvalidPredictorSignature();
             }
-            // Validate counterparty signature (EOA or session key)
+            // Validate counterparty signature (EOA or smart account via ERC-1271)
             if (!_validatePartySignature(
                     predictionHash,
                     request.counterparty,
                     request.counterpartyCollateral,
                     request.counterpartyNonce,
                     request.counterpartyDeadline,
-                    request.counterpartySignature,
-                    request.counterpartySessionKeyData
+                    request.counterpartySignature
                 )) {
                 revert InvalidCounterpartySignature();
             }
@@ -508,8 +506,7 @@ contract PredictionMarketEscrow is
                 request.predictorPayout,
                 request.predictorNonce,
                 request.predictorDeadline,
-                request.predictorSignature,
-                request.predictorSessionKeyData
+                request.predictorSignature
             )) {
             revert InvalidPredictorSignature();
         }
@@ -521,8 +518,7 @@ contract PredictionMarketEscrow is
                 request.counterpartyPayout,
                 request.counterpartyNonce,
                 request.counterpartyDeadline,
-                request.counterpartySignature,
-                request.counterpartySessionKeyData
+                request.counterpartySignature
             )) {
             revert InvalidCounterpartySignature();
         }
@@ -722,27 +718,6 @@ contract PredictionMarketEscrow is
         );
     }
 
-    // ============ Session Key Management ============
-
-    /// @inheritdoc IPredictionMarketEscrow
-    function revokeSessionKey(address sessionKey)
-        external
-        override(IPredictionMarketEscrow, SignatureValidator)
-    {
-        _revokedSessionKeys[msg.sender][sessionKey] = block.timestamp;
-        emit SessionKeyRevoked(msg.sender, sessionKey, block.timestamp);
-    }
-
-    /// @inheritdoc IPredictionMarketEscrow
-    function isSessionKeyRevoked(address owner, address sessionKey)
-        external
-        view
-        override(IPredictionMarketEscrow, SignatureValidator)
-        returns (bool revoked)
-    {
-        return _revokedSessionKeys[owner][sessionKey] > 0;
-    }
-
     // ============ View Functions ============
 
     /// @inheritdoc IPredictionMarketEscrow
@@ -921,17 +896,10 @@ contract PredictionMarketEscrow is
         uint256 collateral,
         uint256 nonce,
         uint256 deadline,
-        bytes calldata signature,
-        bytes calldata sessionKeyData
+        bytes calldata signature
     ) external view returns (bool isValid) {
         return _validatePartySignature(
-            predictionHash,
-            signer,
-            collateral,
-            nonce,
-            deadline,
-            signature,
-            sessionKeyData
+            predictionHash, signer, collateral, nonce, deadline, signature
         );
     }
 
@@ -943,18 +911,10 @@ contract PredictionMarketEscrow is
         uint256 payout,
         uint256 nonce,
         uint256 deadline,
-        bytes calldata signature,
-        bytes calldata sessionKeyData
+        bytes calldata signature
     ) external view returns (bool isValid) {
         return _validateBurnPartySignature(
-            burnHash,
-            signer,
-            tokenAmount,
-            payout,
-            nonce,
-            deadline,
-            signature,
-            sessionKeyData
+            burnHash, signer, tokenAmount, payout, nonce, deadline, signature
         );
     }
 
@@ -1334,9 +1294,7 @@ contract PredictionMarketEscrow is
 
     /// @notice Validate a party's mint signature.
     /// @dev Accepts an EOA ECDSA signature or a smart-account ERC-1271
-    /// signature against `signer`. The legacy `sessionKeyData` blob path is
-    /// no longer supported — supplying a non-empty blob reverts with
-    /// `LegacySessionKeyDataDisabled`. Smart accounts using session keys must
+    /// signature against `signer`. Smart accounts using session keys must
     /// have the session key authorized via the smart account's own validator
     /// (e.g. Kernel permission validator) so `isValidSignature` returns the
     /// magic value.
@@ -1346,19 +1304,14 @@ contract PredictionMarketEscrow is
         uint256 collateral,
         uint256 nonce,
         uint256 deadline,
-        bytes calldata signature,
-        bytes calldata sessionKeyData
+        bytes calldata signature
     ) internal view returns (bool isValid) {
-        if (sessionKeyData.length != 0) {
-            revert LegacySessionKeyDataDisabled();
-        }
         return _isApprovalValidWithEIP1271Fallback(
             predictionHash, signer, collateral, nonce, deadline, signature
         );
     }
 
-    /// @notice Validate a burn party's signature. Same legacy-path rules as
-    /// `_validatePartySignature` — non-empty `sessionKeyData` reverts.
+    /// @notice Validate a burn party's signature.
     function _validateBurnPartySignature(
         bytes32 burnHash,
         address signer,
@@ -1366,12 +1319,8 @@ contract PredictionMarketEscrow is
         uint256 payout,
         uint256 nonce,
         uint256 deadline,
-        bytes calldata signature,
-        bytes calldata sessionKeyData
+        bytes calldata signature
     ) internal view returns (bool isValid) {
-        if (sessionKeyData.length != 0) {
-            revert LegacySessionKeyDataDisabled();
-        }
         return _isBurnApprovalValidWithEIP1271Fallback(
             burnHash, signer, tokenAmount, payout, nonce, deadline, signature
         );

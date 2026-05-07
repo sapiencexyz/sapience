@@ -10,15 +10,11 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import { useAccount, useSwitchChain, useWriteContract } from 'wagmi';
+import { useAccount, useSwitchChain } from 'wagmi';
 import type { Address, EIP1193Provider, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
-import {
-  predictionMarketEscrow,
-  secondaryMarketEscrow,
-} from '@sapience/sdk/contracts/addresses';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   createSession,
   createArbitrumSession,
@@ -226,19 +222,6 @@ interface SessionContextValue {
   signTypedDataRaw: ((params: SignTypedDataParams) => Promise<Hex>) | null;
 }
 
-/**
- * ABI fragment for revokeSessionKey(address) — shared by both escrow contracts.
- */
-const revokeSessionKeyAbi = [
-  {
-    type: 'function',
-    name: 'revokeSessionKey',
-    inputs: [{ name: 'sessionKey', type: 'address', internalType: 'address' }],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-] as const;
-
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 interface SessionProviderProps {
@@ -267,7 +250,6 @@ function createChainSwitcher(
 export function SessionProvider({ children }: SessionProviderProps) {
   const { address: walletAddress, connector } = useAccount();
   const { switchChainAsync } = useSwitchChain();
-  const { writeContractAsync } = useWriteContract();
 
   // Session state
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -672,65 +654,12 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [walletAddress, connector, switchChainAsync, extractSessionApprovalData]
   );
 
-  // Attempt on-chain session key revocation on both escrow contracts for a given chain.
-  // Fire-and-forget: failures are logged but never block local cleanup.
-  const revokeSessionKeyOnChain = useCallback(
-    (sessionKey: Address, chainId: number) => {
-      const pmEscrow = predictionMarketEscrow[chainId];
-      const smEscrow = secondaryMarketEscrow[chainId];
-
-      const revoke = (contractAddress: Address, label: string) =>
-        writeContractAsync({
-          address: contractAddress,
-          abi: revokeSessionKeyAbi,
-          functionName: 'revokeSessionKey',
-          args: [sessionKey],
-          chainId,
-        }).catch((err) => {
-          console.warn(
-            `[SessionContext] Failed to revoke session key on ${label}:`,
-            err
-          );
-        });
-
-      const calls: Promise<unknown>[] = [];
-      if (pmEscrow?.address)
-        calls.push(revoke(pmEscrow.address, 'PredictionMarketEscrow'));
-      if (smEscrow?.address)
-        calls.push(revoke(smEscrow.address, 'SecondaryMarketEscrow'));
-
-      if (calls.length > 0) {
-        void Promise.allSettled(calls);
-      }
-    },
-    [writeContractAsync]
-  );
-
-  // End the current session — attempts on-chain revocation then clears local state.
+  // End the current session — clears local state.
+  // Smart-account session keys are now authorized via the account's own
+  // validator (Kernel) — there is no on-chain escrow-side revocation.
   const endSession = useCallback(() => {
-    if (isSessionActive && sessionKeyAddress) {
-      // Revoke on Ethereal chain
-      if (serializedSession?.etherealChainId) {
-        revokeSessionKeyOnChain(
-          sessionKeyAddress,
-          serializedSession.etherealChainId
-        );
-      }
-      // Revoke on Arbitrum if an Arbitrum session was created
-      if (arbitrumSessionApproval) {
-        revokeSessionKeyOnChain(sessionKeyAddress, CHAIN_ID_ARBITRUM);
-      }
-    }
-    // Always clear local state regardless of revocation outcome
     endSessionInternal();
-  }, [
-    endSessionInternal,
-    isSessionActive,
-    sessionKeyAddress,
-    serializedSession,
-    arbitrumSessionApproval,
-    revokeSessionKeyOnChain,
-  ]);
+  }, [endSessionInternal]);
 
   // Create Arbitrum session lazily (on first EAS attestation)
   // Returns the client directly to avoid race conditions with state updates

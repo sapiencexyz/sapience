@@ -118,8 +118,6 @@ contract SplitSignatureErrorsTest is Test {
             predictionHash, counterparty, 100e18, 2, deadline, counterpartyPk
         );
         request.refCode = REF_CODE;
-        request.predictorSessionKeyData = "";
-        request.counterpartySessionKeyData = "";
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
     }
@@ -196,8 +194,7 @@ contract SplitSignatureErrorsTest is Test {
             100e18,
             1,
             request.predictorDeadline,
-            request.predictorSignature,
-            ""
+            request.predictorSignature
         );
         assertTrue(isValid);
     }
@@ -232,8 +229,7 @@ contract SplitSignatureErrorsTest is Test {
             100e18,
             1,
             block.timestamp + 1 hours,
-            badSig,
-            ""
+            badSig
         );
         assertFalse(isValid);
     }
