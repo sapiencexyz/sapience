@@ -90,4 +90,4 @@ Vitest. Test files live next to the source (`*.test.ts`). The most consequential
 
 - `auction/validation.test.ts` and `auction/escrowSigning.test.ts` — protocol correctness
 - `contracts/__tests__/addresses.test.ts` — address-map invariants (every chain has a current entry, legacy is consistent)
-- `types/__tests__/escrow.test.ts` — V1↔V2 outcome-side normalization (load-bearing for the indexer)
+- `types/__tests__/escrow.test.ts` — `OutcomeSide` enum (NO=0, YES=1) and the `isPredictedYes` helper, including the Pyth Over/Under and Polymarket Yes/No conventions

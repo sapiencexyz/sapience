@@ -193,7 +193,7 @@ The relayer runs Tier 1 `validateBid()`: it rejects malformed or expired bids an
 
 ### Step 3 — Predictor: select a bid and mint
 
-Bids arrive on the predictor's connection as `auction.bids` messages. Pick one (the SDK ranks by `counterpartyCollateral` — higher is better for the predictor), then assemble an `AuctionRequestPayload` client-side and call `mint()` on the escrow contract. The on-chain mint never goes through the relayer.
+Bids arrive on the predictor's connection as `auction.bids` messages. Pick the best bid by `counterpartyCollateral` (higher is better — the counterparty is putting up more against the predictor's stake), then assemble an `AuctionRequestPayload` client-side using `@sapience/sdk/auction/buildAuctionPayload` and call `mint()` on the escrow contract. The on-chain mint never goes through the relayer.
 
 A reference end-to-end example lives in [`starters/market-maker/`](https://github.com/sapiencexyz/sapience/tree/main/starters/market-maker).
 
