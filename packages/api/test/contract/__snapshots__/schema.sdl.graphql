@@ -387,6 +387,85 @@ type CollateralTransferType {
   value: String!
 }
 
+"""
+An on-chain committed intent signed by a predictor (PRD-001 §1). Tracks signed parameters, lifecycle status, and all slices and slashes observed during execute().
+"""
+type Commitment {
+  amountIn: String!
+  chainId: Int!
+  createdAt: DateTimeISO!
+  createdBlock: Int!
+  createdTxHash: String!
+  deadline: Int!
+  executorTip: String!
+  filledIn: String
+  filledOut: String
+
+  """EIP-712 commitment hash (0x-prefixed)"""
+  id: String!
+  minAmountOut: String!
+  minFillIn: String!
+  nonce: String!
+  pickConfigId: String!
+  predictor: String!
+  predictorWindowEnd: Int!
+  refundedIn: String
+  settledAt: Int
+  settledTxHash: String
+  slashes: [CommitmentSlash!]!
+  slices: [CommitmentSlice!]!
+  sponsorReleased: String
+  sponsorUse: String!
+  status: CommitmentStatus!
+  tipPaid: String
+  walletRefunded: String
+  walletUse: String!
+}
+
+"""
+A counterparty slash recorded during execute() — vault drained, make-whole credit, insurance pool flows
+"""
+type CommitmentSlash {
+  blockNumber: Int!
+  chainId: Int!
+  commitmentHash: String!
+  counterparty: String!
+  id: String!
+  makeWhole: String!
+  poolContribution: String!
+  poolReceived: String!
+  txHash: String!
+  vaultDrained: String!
+}
+
+"""
+A single slice fill within a committed intent — the on-chain result of one counterparty quote
+"""
+type CommitmentSlice {
+  blockNumber: Int!
+  chainId: Int!
+  commitmentHash: String!
+  counterparty: String!
+  id: String!
+  predictionId: String!
+  quoteHash: String!
+  sliceBonus: String!
+  sliceIn: String!
+  sliceIndex: Int!
+  sliceOut: String!
+  txHash: String!
+}
+
+"""
+Lifecycle state of a committed intent: OPEN (awaiting execute), EXECUTED (settled with mint), EXPIRED (refunded after deadline), SLASH_ONLY_STAY_ALIVE (T2 silent-no-mint observation, may still settle).
+"""
+enum CommitmentStatus {
+  EXECUTED
+  EXPIRED
+  OPEN
+  SLASH_ONLY_STAY_ALIVE
+}
+
 type Condition {
   _count: ConditionCount
   assertionId: String
@@ -754,6 +833,22 @@ input ConditionWhereUniqueInput {
   tags: StringNullableListFilter
 }
 
+"""
+Vault-level deposit, withdrawal, or slash event on the CounterpartyVault
+"""
+type CounterpartyVaultEvent {
+  amount: String!
+  blockNumber: Int!
+  chainId: Int!
+  counterparty: String!
+
+  """One of "deposit", "withdraw", "slash" """
+  eventType: String!
+  id: String!
+  indexedAt: DateTimeISO!
+  txHash: String!
+}
+
 input DateTimeFilter {
   equals: DateTimeISO
   gt: DateTimeISO
@@ -841,6 +936,23 @@ type ForecasterScore {
   numTimeWeighted: Int!
   sumErrorSquared: Float!
   sumTimeWeightedError: Float!
+}
+
+"""
+Insurance pool funding or draw event emitted from CommittedIntentExecutor during slash handling
+"""
+type InsurancePoolEvent {
+  amount: String!
+  blockNumber: Int!
+  chainId: Int!
+  commitmentHash: String
+
+  """One of "funded", "drawn" """
+  eventType: String!
+  fromCounterparty: String
+  id: String!
+  indexedAt: DateTimeISO!
+  txHash: String!
 }
 
 input IntFilter {
@@ -1523,10 +1635,35 @@ type Query {
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
   collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
   collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
+
+  """
+  Look up a single committed intent by its EIP-712 commitmentHash, including all slices and slashes indexed against it
+  """
+  commitment(commitmentHash: String!): Commitment
+
+  """
+  Paginated list of committed intents, filterable by predictor and status
+  """
+  commitments(limit: Int! = 50, offset: Int! = 0, predictor: String, status: CommitmentStatus): [Commitment!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+
+  """
+  Derived CounterpartyVault balance for an address, computed as sum(deposit) - sum(withdraw) - sum(slash) over indexed events. Returns stringified wei.
+  """
+  counterpartyVaultBalance(address: String!): String!
+
+  """
+  Vault event history for a counterparty (deposits, withdrawals, slashes), ordered by block descending
+  """
+  counterpartyVaultHistory(address: String!, limit: Int! = 100): [CounterpartyVaultEvent!]!
+
+  """
+  Paginated list of insurance-pool funding / draw events, most recent first
+  """
+  insurancePoolEvents(limit: Int! = 100): [InsurancePoolEvent!]!
 
   """
   Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
