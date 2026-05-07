@@ -24,11 +24,20 @@ const mockPrisma = {
   $transaction: vi.fn(),
 };
 
-vi.mock('../../../db', () => ({ default: mockPrisma }));
-vi.mock('../../../instrument', () => ({
+vi.mock('../../../core/db', () => ({ default: mockPrisma }));
+vi.mock('../../../core/instrument', () => ({
   default: { captureException: vi.fn() },
 }));
-vi.mock('../../../utils/utils', () => ({
+vi.mock('../../../core/logger', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
+vi.mock('../../../lib/utils', () => ({
   getProviderForChain: () => ({
     getBlockNumber: vi.fn().mockResolvedValue(100n),
     getLogs: vi.fn().mockResolvedValue([]),
