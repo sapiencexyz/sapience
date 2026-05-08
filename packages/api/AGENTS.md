@@ -53,6 +53,30 @@ Reindex/backfill helpers (`start:reindex-*`, `start:backfill-accuracy`) are CLIs
 - `DATABASE_URL` is provided via Railway environment variables.
 - Two environments: **testing** (deploys from a WIP branch) and **production** (deploys from `main`).
 
+## Public-by-address policy
+
+The GraphQL surface is fully public by design. Per-address fields —
+`collateralBalance(address)`, `collateralBalanceHistory(address)`,
+`collateralTransfersPage(address)`, `accountActivityPage(address)`,
+`positionsPage(holder)`, `predictionsPage(address)`,
+`accountAccuracyRank(address)`, `accountTotalVolume(address)`, etc. —
+return data for **any** EVM address without authentication. This is
+intentional, not an oversight:
+
+- Wallet addresses on a public blockchain are already public; the API
+  surfaces a more useful view of on-chain data, not new information.
+- The frontend's wallet/profile pages, the leaderboard, the referrals
+  dashboard, and external integrators (vault-bot, etc.) all rely on
+  this — gating per-address reads would break the existing product.
+- Mutations remain wallet-signature-gated via REST. Only the read
+  surface is public. Referral analytics resolvers spell this out
+  explicitly in `src/graphql/sdl/resolvers/queries/referrals.ts`.
+
+When adding a new per-address GraphQL field, no auth check is needed.
+When adding any field that reads a non-on-chain identifier (email,
+session token, internal user metadata), it must be auth-gated — that
+falls outside this policy.
+
 ## Agent Tips
 
 - Run `prisma:setup` before tests or local servers to avoid missing migrations or generated clients.
