@@ -16,6 +16,7 @@ import type {
   QueryPositionCountArgs,
 } from '../../__generated__/resolvers';
 import {
+  __clearPositionSynthesisCache,
   pickConfigurationsPage,
   positionCount,
   positionsPage,
@@ -173,6 +174,11 @@ const callPositions = async (
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Clear the synthesis cache between tests so per-test fixtures don't
+  // accidentally hit a previous test's synthesized rows (the cache key
+  // is `(chainId, token, holder, updatedAt)` and fixtures reuse those
+  // values).
+  __clearPositionSynthesisCache();
   mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
   // totalCount is now lazy — runPositions returns `_countWhere` and the
   // PositionsPage.totalCount field resolver issues the count query only
@@ -616,6 +622,51 @@ describe('positionsPage resolver — page envelope', () => {
     expect(mockPrisma.position.count).not.toHaveBeenCalled();
     const findManyWhere = mockPrisma.position.findMany.mock.calls[0][0].where;
     expect(result._countWhere).toEqual(findManyWhere);
+  });
+
+  it('synthesis cache: second request with same Position.updatedAt skips the trades fetch', async () => {
+    const positionRow = makePosition({
+      balance: '200',
+      pickConfiguration: makePickConfig({
+        predictions: [makePrediction()],
+      }),
+    });
+    mockPrisma.position.findMany.mockResolvedValue([positionRow]);
+
+    // First call: cache miss → trades fetch fires.
+    const first = await callPositionsPage({ take: 10, holder: ALICE });
+    expect(first.items.length).toBeGreaterThan(0);
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
+
+    // Second call (same Position.updatedAt): cache hit → no trades fetch.
+    const second = await callPositionsPage({ take: 10, holder: ALICE });
+    expect(second.items.length).toBe(first.items.length);
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('synthesis cache: bumping Position.updatedAt invalidates the entry', async () => {
+    const v1 = makePosition({
+      balance: '200',
+      updatedAt: new Date(1_000_000_000_000),
+      pickConfiguration: makePickConfig({
+        predictions: [makePrediction()],
+      }),
+    });
+    mockPrisma.position.findMany.mockResolvedValue([v1]);
+    await callPositionsPage({ take: 10, holder: ALICE });
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
+
+    const v2 = makePosition({
+      balance: '200',
+      updatedAt: new Date(1_000_000_001_000),
+      pickConfiguration: makePickConfig({
+        predictions: [makePrediction()],
+      }),
+    });
+    mockPrisma.position.findMany.mockResolvedValue([v2]);
+    await callPositionsPage({ take: 10, holder: ALICE });
+    // Different updatedAt → cache miss → another trades fetch.
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(2);
   });
 });
 

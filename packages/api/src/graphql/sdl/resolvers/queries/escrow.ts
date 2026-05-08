@@ -30,6 +30,7 @@ import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 import { preloadPickConditions } from '../preloadPickConditions';
+import { TtlCache } from '../../../../lib/ttlCache';
 import { clampSkip, clampTake } from './pagination';
 
 type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
@@ -267,6 +268,36 @@ type PositionShape = ResolversParentTypes['Position'] & {
   pickConfig: ReturnType<typeof mapPickConfig> | null;
 };
 
+/**
+ * Per-position synthesis cache. The synthesized event-stream rows for
+ * a Position depend on its trade history + the pickConfiguration's
+ * predictions; both are append-only and overlap heavily across page
+ * requests. Keying on `Position.updatedAt.getTime()` invalidates
+ * automatically when the indexer touches the row (mint, burn, balance
+ * change). The 30s TTL bounds staleness for the indirect path where a
+ * fresh secondaryTrade lands without bumping Position.updatedAt — the
+ * trade itself surfaces on accountActivityPage immediately; only the
+ * derived cost-basis view here lags briefly.
+ *
+ * maxSize bounds memory: each entry is 1-2 small objects per held
+ * position. 10_000 covers ~all active holders across both chains.
+ */
+const positionSynthesisCache = new TtlCache<string, PositionShape[]>({
+  ttlMs: 30_000,
+  maxSize: 10_000,
+});
+
+const positionSynthesisCacheKey = (r: {
+  chainId: number;
+  tokenAddress: string;
+  holder: string;
+  updatedAt: Date;
+}) => `${r.chainId}:${r.tokenAddress}:${r.holder}:${r.updatedAt.getTime()}`;
+
+/** Test-only: clear synthesis cache between test cases. */
+export const __clearPositionSynthesisCache = () =>
+  positionSynthesisCache.clear();
+
 export type PositionsPageEnvelope = {
   items: PositionShape[];
   hasMore: boolean;
@@ -475,10 +506,7 @@ export const runPositions = async (
   // — the contract reverts redeem() unless the pickConfig is resolved, so
   // any Claim is post-settlement and the existing settlement-PnL flow on a
   // resolved Position already covers it.
-  const chainIds = Array.from(new Set(rows.map((r) => r.chainId)));
-  const tokenAddresses = Array.from(new Set(rows.map((r) => r.tokenAddress)));
-  const holders = Array.from(new Set(rows.map((r) => r.holder)));
-
+  type RowT = (typeof rows)[number];
   type TradeRow = {
     chainId: number;
     token: string;
@@ -490,20 +518,37 @@ export const runPositions = async (
     tradeHash: string;
   };
 
-  // preloadPickConditions and the trades fetch are independent — both only
-  // need `rows`. Run them in parallel to overlap their network round trips.
+  // Split rows into cache hits and misses. Hits skip both the trades
+  // fetch and the WAC walk; misses go through the full pipeline below.
+  const cachedByRow = new Map<RowT, PositionShape[]>();
+  const missedRows: RowT[] = [];
+  for (const r of rows) {
+    const cached = positionSynthesisCache.get(positionSynthesisCacheKey(r));
+    if (cached) cachedByRow.set(r, cached);
+    else missedRows.push(r);
+  }
+
+  // preloadPickConditions still runs against the full page so per-Pick
+  // condition resolvers stay warm regardless of cache state. The trades
+  // fetch is scoped to misses only — hits are reused as-is.
+  const missChainIds = Array.from(new Set(missedRows.map((r) => r.chainId)));
+  const missTokens = Array.from(new Set(missedRows.map((r) => r.tokenAddress)));
+  const missHolders = Array.from(new Set(missedRows.map((r) => r.holder)));
   const [, trades] = await Promise.all([
     preloadPickConditions(
       ctx,
       rows.map((r) => r.pickConfiguration)
     ),
-    rows.length === 0
+    missedRows.length === 0
       ? Promise.resolve([] as TradeRow[])
       : prisma.secondaryTrade.findMany({
           where: {
-            chainId: { in: chainIds },
-            token: { in: tokenAddresses },
-            OR: [{ seller: { in: holders } }, { buyer: { in: holders } }],
+            chainId: { in: missChainIds },
+            token: { in: missTokens },
+            OR: [
+              { seller: { in: missHolders } },
+              { buyer: { in: missHolders } },
+            ],
           },
           select: {
             chainId: true,
@@ -532,6 +577,12 @@ export const runPositions = async (
 
   const synthesized: PositionShape[] = [];
   for (const r of rows) {
+    const cached = cachedByRow.get(r);
+    if (cached) {
+      synthesized.push(...cached);
+      continue;
+    }
+
     const pc = r.pickConfiguration;
     let totalPayout = 0n;
     let predictionId: string | null = null;
@@ -632,11 +683,15 @@ export const runPositions = async (
     const balanceBn = BigInt(r.balance);
     const isResolved = pc?.resolved ?? false;
 
+    // Collect this row's synthesized output so the cache can store the
+    // exact same set we push into the page result.
+    const rowSynthesized: PositionShape[] = [];
+
     // Emit one synthetic row per sell (only meaningful for unresolved
     // pickConfigs — once settled, the existing PnL flow takes over).
     if (!isResolved) {
       for (const d of disposalRows) {
-        synthesized.push({
+        rowSynthesized.push({
           id: `${r.id}-sell-${d.tradeHash}`,
           chainId: r.chainId,
           tokenAddress: r.tokenAddress,
@@ -661,7 +716,7 @@ export const runPositions = async (
     if (balanceBn > 0n || isResolved) {
       const remainingCost =
         !isResolved && disposalRows.length > 0 ? costPool : totalUserCollateral;
-      synthesized.push({
+      rowSynthesized.push({
         id: String(r.id),
         chainId: r.chainId,
         tokenAddress: r.tokenAddress,
@@ -677,6 +732,9 @@ export const runPositions = async (
         pickConfig: mappedPickConfig,
       });
     }
+
+    positionSynthesisCache.set(positionSynthesisCacheKey(r), rowSynthesized);
+    synthesized.push(...rowSynthesized);
   }
 
   // Re-sort by the requested field. Synthetic sell rows carry the trade's
