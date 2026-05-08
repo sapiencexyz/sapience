@@ -48,6 +48,7 @@ import type {
   QuoteCancelJson,
 } from './committedIntentTypes';
 import { isSecondaryClientMessage } from './secondaryMarketTypes';
+import { getProviderForChain } from './utils/getProviderForChain';
 import {
   handleSecondaryAuctionStart,
   handleSecondaryBidSubmit,
@@ -141,6 +142,53 @@ export function createAuctionWebSocketServer() {
         pruneExpired();
       }, clamped);
       t.unref?.();
+    },
+    // Resolve a chain-bound viem public client for signature verification +
+    // quality-gate reads (e.g. token-pair lookup on the executor).
+    resolvePublicClient: (chainId: number) => {
+      try {
+        return getProviderForChain(chainId);
+      } catch {
+        return undefined;
+      }
+    },
+    // Resolve the on-chain CounterpartyVault balance for a given counterparty
+    // address. Without this, the exposure gate treats balance as 0 and rejects
+    // every quote with `exposure_exceeds_leverage`.
+    resolveVaultBalance: async (counterparty: string): Promise<bigint> => {
+      const vaultAddr = process.env.COUNTERPARTY_VAULT_ADDRESS as
+        | `0x${string}`
+        | undefined;
+      if (
+        !vaultAddr ||
+        vaultAddr === '0x0000000000000000000000000000000000000000'
+      ) {
+        return 0n;
+      }
+      const chainId = Number(
+        process.env.DEFAULT_CHAIN_ID ?? process.env.CHAIN_ID ?? 0
+      );
+      if (!chainId) return 0n;
+      try {
+        const pc = getProviderForChain(chainId);
+        const balance = (await pc.readContract({
+          address: vaultAddr,
+          abi: [
+            {
+              type: 'function',
+              name: 'balanceOf',
+              stateMutability: 'view',
+              inputs: [{ name: 'account', type: 'address' }],
+              outputs: [{ name: '', type: 'uint256' }],
+            },
+          ] as const,
+          functionName: 'balanceOf',
+          args: [counterparty as `0x${string}`],
+        })) as bigint;
+        return balance;
+      } catch {
+        return 0n;
+      }
     },
   };
 
