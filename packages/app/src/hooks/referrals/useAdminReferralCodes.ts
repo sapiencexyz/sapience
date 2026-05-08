@@ -97,7 +97,7 @@ function useReferralAdminMutate() {
 // admin REST requests.
 const REFERRAL_CODES_QUERY = `
   query AdminReferralCodes($take: Int!, $skip: Int!) {
-    referralCodes(take: $take, skip: $skip) {
+    referralCodesPage(take: $take, skip: $skip) {
       items {
         id
         maxClaims
@@ -122,7 +122,7 @@ const PAGE_SIZE = 500;
 const MAX_PAGES = 50;
 
 type ReferralCodesPageResponse = {
-  referralCodes: {
+  referralCodesPage: {
     items: AdminReferralCodeRow[];
     hasMore: boolean;
   };
@@ -130,7 +130,7 @@ type ReferralCodesPageResponse = {
 
 const REFERRAL_CODE_ANALYTICS_QUERY = `
   query AdminReferralCodeAnalytics($id: Int!, $claimantsTake: Int!) {
-    referralCodes(id: $id, take: 1) {
+    referralCodesPage(id: $id, take: 1) {
       items {
         id
         claimCount
@@ -162,8 +162,8 @@ export function useAdminReferralCodes(): UseQueryResult<
             REFERRAL_CODES_QUERY,
             { take: PAGE_SIZE, skip: page * PAGE_SIZE }
           );
-        all.push(...data.referralCodes.items);
-        if (!data.referralCodes.hasMore) return all;
+        all.push(...data.referralCodesPage.items);
+        if (!data.referralCodesPage.hasMore) return all;
       }
       console.warn(
         `useAdminReferralCodes: stopped at MAX_PAGES (${MAX_PAGES}); results may be truncated`
@@ -180,7 +180,7 @@ export function useAdminReferralCodeAnalytics(
     queryKey: ['admin', 'referralCodeAnalytics', id],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        referralCodes: {
+        referralCodesPage: {
           items: Array<{
             id: number;
             claimCount: number;
@@ -196,7 +196,7 @@ export function useAdminReferralCodeAnalytics(
           }>;
         };
       }>(REFERRAL_CODE_ANALYTICS_QUERY, { id, claimantsTake: 500 });
-      const code = data.referralCodes.items[0];
+      const code = data.referralCodesPage.items[0];
       if (!code) {
         throw new Error('Referral code not found');
       }

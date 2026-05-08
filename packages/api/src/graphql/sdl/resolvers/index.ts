@@ -63,7 +63,7 @@ import {
 import { profitLeaderboardPage } from './queries/pnl';
 import { questionsPage } from './queries/questions';
 import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
-import { referralCodes } from './queries/referrals';
+import { referralCodesPage } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import {
   accountBalance,
@@ -141,7 +141,7 @@ export const resolvers: Resolvers = {
     trade,
     tradesPage,
     // Referrals
-    referralCodes,
+    referralCodesPage,
     // Tags
     popularTags,
     // CRUD

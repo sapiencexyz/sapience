@@ -1,5 +1,5 @@
 /**
- * Query.referralCodes — public referral analytics.
+ * Query.referralCodesPage — public referral analytics.
  *
  * Security model: referral codes are attribution hints, not authorization
  * credentials. Public reads can expose creator/claimant/volume analytics because
@@ -82,8 +82,8 @@ export async function fetchCodeStats(
   return result;
 }
 
-export const referralCodes: NonNullable<
-  QueryResolvers['referralCodes']
+export const referralCodesPage: NonNullable<
+  QueryResolvers['referralCodesPage']
 > = async (_parent, args) => {
   const take = clampTake(args.take, { defaultTake: 100, maxTake: 500 });
   const skip = clampSkip(args.skip);

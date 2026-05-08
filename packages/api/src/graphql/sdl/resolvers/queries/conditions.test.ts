@@ -192,18 +192,18 @@ describe('conditionsPage — filter construction', () => {
     });
   });
 
-  it('endTimeGte and endTimeLte combine into a single range filter', async () => {
+  it('minEndTime and maxEndTime combine into a single range filter', async () => {
     await callPage({
       filters: {
-        endTimeGte: 1000,
-        endTimeLte: 2000,
+        minEndTime: 1000,
+        maxEndTime: 2000,
       } as ConditionFilters,
     });
     expect(whereOf().AND).toContainEqual({ endTime: { gte: 1000, lte: 2000 } });
   });
 
-  it('only endTimeGte → one-sided range', async () => {
-    await callPage({ filters: { endTimeGte: 1000 } as ConditionFilters });
+  it('only minEndTime → one-sided range', async () => {
+    await callPage({ filters: { minEndTime: 1000 } as ConditionFilters });
     expect(whereOf().AND).toContainEqual({ endTime: { gte: 1000 } });
   });
 

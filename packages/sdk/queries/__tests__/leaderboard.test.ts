@@ -58,23 +58,23 @@ describe('fetchLeaderboard', () => {
 // ============================================================================
 
 describe('fetchAccuracyLeaderboard', () => {
-  test('uses default limit of 10', async () => {
+  test('uses default take of 10', async () => {
     mockGraphqlRequest.mockResolvedValue({
       accuracyLeaderboardPage: { items: [], hasMore: false },
     });
     await fetchAccuracyLeaderboard();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(expect.any(String), {
-      limit: 10,
+      take: 10,
     });
   });
 
-  test('passes custom limit', async () => {
+  test('passes custom take', async () => {
     mockGraphqlRequest.mockResolvedValue({
       accuracyLeaderboardPage: { items: [], hasMore: false },
     });
     await fetchAccuracyLeaderboard(25);
     expect(mockGraphqlRequest).toHaveBeenCalledWith(expect.any(String), {
-      limit: 25,
+      take: 25,
     });
   });
 
@@ -295,12 +295,12 @@ describe('fetchUserProfitRank', () => {
     expect(result.totalPnL).toBe('-50');
   });
 
-  test('requests limit of 100', async () => {
+  test('requests take of 100', async () => {
     mockGraphqlRequest.mockResolvedValue({
       profitLeaderboardPage: { items: [], hasMore: false },
     });
     await fetchUserProfitRank('0xAny');
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1]).toEqual({ limit: 100 });
+    expect(call[1]).toEqual({ take: 100 });
   });
 });

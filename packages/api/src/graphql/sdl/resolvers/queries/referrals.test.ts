@@ -11,7 +11,7 @@ const mockPrisma = {
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
-const { referralCodes } = await import('./referrals');
+const { referralCodesPage } = await import('./referrals');
 
 type ReferralCodesResolver = (
   parent: unknown,
@@ -29,9 +29,9 @@ type ReferralCodesResolver = (
   hasMore: boolean;
 }>;
 
-const call = referralCodes as unknown as ReferralCodesResolver;
+const call = referralCodesPage as unknown as ReferralCodesResolver;
 
-describe('Query.referralCodes', () => {
+describe('Query.referralCodesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

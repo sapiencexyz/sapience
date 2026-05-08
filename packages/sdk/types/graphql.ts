@@ -45,8 +45,13 @@ export type ActivityItem = {
   /** Unix seconds timestamp for sorting */
   timestamp: Scalars['Int']['output'];
   trade?: Maybe<ActivityTrade>;
-  type: Scalars['String']['output'];
+  type: ActivityItemType;
 };
+
+/** Discriminator on `ActivityItem` and filter for `accountActivityPage(type:)` */
+export type ActivityItemType =
+  | 'prediction'
+  | 'trade';
 
 /** Paginated wrapper around ActivityItem rows with a server-truth hasMore flag */
 export type ActivityItemsPage = {
@@ -595,14 +600,14 @@ export type ConditionFilters = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to a single condition group. */
   conditionGroupId?: InputMaybe<Scalars['Int']['input']>;
-  /** Restrict to conditions with `endTime >= this`. */
-  endTimeGte?: InputMaybe<Scalars['Int']['input']>;
-  /** Restrict to conditions with `endTime <= this`. */
-  endTimeLte?: InputMaybe<Scalars['Int']['input']>;
   /** When true, only return conditions that have a non-empty `similarMarkets` array (used by metadata-refresh keepers). */
   hasSimilarMarkets?: InputMaybe<Scalars['Boolean']['input']>;
   /** Restrict to these condition IDs (case-insensitive). */
   ids?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to conditions with `endTime <= this`. */
+  maxEndTime?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to conditions with `endTime >= this`. */
+  minEndTime?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to conditions resolved YES (true) or NO (false). Implies settled=true. */
   resolvedToYes?: InputMaybe<Scalars['Boolean']['input']>;
   /** Match the resolver address (case-insensitive). */
@@ -1879,7 +1884,7 @@ export type Query = {
    * analytics dialog). Per-claimant breakdown is available via the nested
    * `claimants` field.
    */
-  referralCodes: ReferralCodesPage;
+  referralCodesPage: ReferralCodesPage;
   /** Look up a single secondary market trade by its trade hash */
   trade?: Maybe<Trade>;
   /**
@@ -1917,7 +1922,7 @@ export type QueryAccountActivityArgs = {
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
-  type?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<ActivityItemType>;
 };
 
 
@@ -1927,7 +1932,7 @@ export type QueryAccountActivityPageArgs = {
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
-  type?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<ActivityItemType>;
 };
 
 
@@ -2284,7 +2289,7 @@ export type QueryQuestionsPageArgs = {
 };
 
 
-export type QueryReferralCodesArgs = {
+export type QueryReferralCodesPageArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];

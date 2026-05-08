@@ -63,10 +63,10 @@ const buildConditionsWhereFromFilters = (
       category: { is: { slug: { in: filters.categorySlugs } } },
     });
   }
-  if (filters.endTimeGte != null || filters.endTimeLte != null) {
+  if (filters.minEndTime != null || filters.maxEndTime != null) {
     const range: Record<string, number> = {};
-    if (filters.endTimeGte != null) range.gte = filters.endTimeGte;
-    if (filters.endTimeLte != null) range.lte = filters.endTimeLte;
+    if (filters.minEndTime != null) range.gte = filters.minEndTime;
+    if (filters.maxEndTime != null) range.lte = filters.maxEndTime;
     and.push({ endTime: range });
   }
   if (filters.ungroupedOnly === true) {

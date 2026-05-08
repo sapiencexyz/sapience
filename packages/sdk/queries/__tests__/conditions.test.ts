@@ -147,28 +147,28 @@ describe('buildConditionsWhereClause', () => {
   });
 
   describe('time filters', () => {
-    test('endTimeGte only', () => {
+    test('minEndTime only', () => {
       const result = buildConditionsWhereClause(undefined, {
-        endTimeGte: 1000,
+        minEndTime: 1000,
       });
       expect(result).toEqual({
         AND: [{ endTime: { gte: 1000 } }],
       });
     });
 
-    test('endTimeLte only', () => {
+    test('maxEndTime only', () => {
       const result = buildConditionsWhereClause(undefined, {
-        endTimeLte: 2000,
+        maxEndTime: 2000,
       });
       expect(result).toEqual({
         AND: [{ endTime: { lte: 2000 } }],
       });
     });
 
-    test('both endTimeGte and endTimeLte', () => {
+    test('both minEndTime and maxEndTime', () => {
       const result = buildConditionsWhereClause(undefined, {
-        endTimeGte: 1000,
-        endTimeLte: 2000,
+        minEndTime: 1000,
+        maxEndTime: 2000,
       });
       expect(result).toEqual({
         AND: [{ endTime: { gte: 1000, lte: 2000 } }],
@@ -190,7 +190,7 @@ describe('buildConditionsWhereClause', () => {
       visibility: 'public',
       search: 'bitcoin',
       categorySlugs: ['crypto'],
-      endTimeGte: 1000,
+      minEndTime: 1000,
       ungroupedOnly: true,
     });
     const andClauses = result.AND as Record<string, unknown>[];

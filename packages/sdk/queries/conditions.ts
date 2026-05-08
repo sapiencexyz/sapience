@@ -38,8 +38,8 @@ export interface ConditionType {
 export interface ConditionFilters {
   search?: string;
   categorySlugs?: string[];
-  endTimeGte?: number;
-  endTimeLte?: number;
+  minEndTime?: number;
+  maxEndTime?: number;
   publicOnly?: boolean;
   ungroupedOnly?: boolean;
   visibility?: 'all' | 'public' | 'private';
@@ -115,8 +115,8 @@ export function buildConditionsFiltersInput(
 
   if (filters?.search?.trim()) out.search = filters.search.trim();
   if (filters?.categorySlugs?.length) out.categorySlugs = filters.categorySlugs;
-  if (filters?.endTimeGte !== undefined) out.endTimeGte = filters.endTimeGte;
-  if (filters?.endTimeLte !== undefined) out.endTimeLte = filters.endTimeLte;
+  if (filters?.minEndTime !== undefined) out.minEndTime = filters.minEndTime;
+  if (filters?.maxEndTime !== undefined) out.maxEndTime = filters.maxEndTime;
   if (filters?.ungroupedOnly) out.ungroupedOnly = true;
 
   return Object.keys(out).length > 0 ? out : undefined;
@@ -170,13 +170,13 @@ export function buildConditionsWhereClause(
     });
   }
 
-  if (filters?.endTimeGte !== undefined || filters?.endTimeLte !== undefined) {
+  if (filters?.minEndTime !== undefined || filters?.maxEndTime !== undefined) {
     const endTimeFilter: Record<string, number> = {};
-    if (filters.endTimeGte !== undefined) {
-      endTimeFilter.gte = filters.endTimeGte;
+    if (filters.minEndTime !== undefined) {
+      endTimeFilter.gte = filters.minEndTime;
     }
-    if (filters.endTimeLte !== undefined) {
-      endTimeFilter.lte = filters.endTimeLte;
+    if (filters.maxEndTime !== undefined) {
+      endTimeFilter.lte = filters.maxEndTime;
     }
     andConditions.push({ endTime: endTimeFilter });
   }

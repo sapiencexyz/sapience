@@ -299,8 +299,8 @@
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
+                "kind": "ENUM",
+                "name": "ActivityItemType",
                 "ofType": null
               }
             },
@@ -374,6 +374,29 @@
         "inputFields": null,
         "interfaces": [],
         "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "ActivityItemType",
+        "description": "Discriminator on `ActivityItem` and filter for `accountActivityPage(type:)`",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "prediction",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "trade",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
         "possibleTypes": null
       },
       {
@@ -5237,7 +5260,7 @@
             "defaultValue": null
           },
           {
-            "name": "endTimeGte",
+            "name": "minEndTime",
             "description": "Restrict to conditions with `endTime >= this`.",
             "type": {
               "kind": "SCALAR",
@@ -5247,7 +5270,7 @@
             "defaultValue": null
           },
           {
-            "name": "endTimeLte",
+            "name": "maxEndTime",
             "description": "Restrict to conditions with `endTime <= this`.",
             "type": {
               "kind": "SCALAR",
@@ -15290,8 +15313,8 @@
                 "name": "type",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
+                  "kind": "ENUM",
+                  "name": "ActivityItemType",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -15383,8 +15406,8 @@
                 "name": "type",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
+                  "kind": "ENUM",
+                  "name": "ActivityItemType",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18612,7 +18635,7 @@
             "deprecationReason": null
           },
           {
-            "name": "referralCodes",
+            "name": "referralCodesPage",
             "description": "Public referral analytics. Referral codes are attribution hints, not\nauthorization credentials: using someone else's code credits that referrer's\nvolume/claims, but does not grant access to funds or admin capabilities.\n\nReturns paginated referral codes with claim count and aggregate trading volume /\nposition count baked in. Pass `id` to filter to a single code (e.g. for the\nanalytics dialog). Per-claimant breakdown is available via the nested\n`claimants` field.",
             "args": [
               {
