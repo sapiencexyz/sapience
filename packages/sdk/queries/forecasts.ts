@@ -30,42 +30,68 @@ type AttestationsQueryResponse = {
   attestations: RawAttestation[];
 };
 
+type AttestationsPageResponse = {
+  attestationsPage: { items: RawAttestation[]; hasMore: boolean };
+};
+
 export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
-  query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
-    attestations(where: $where, orderBy: { time: desc }, take: $take) {
-      id
-      uid
-      attester
-      time
-      prediction
-      comment
-      conditionId
+  query FindAttestations(
+    $attester: String
+    $conditionId: String
+    $schemaId: String
+    $take: Int! = 100
+  ) {
+    attestationsPage(
+      attester: $attester
+      conditionId: $conditionId
+      schemaId: $schemaId
+      orderBy: TIME
+      orderDirection: desc
+      take: $take
+    ) {
+      hasMore
+      items {
+        id
+        uid
+        attester
+        time
+        prediction
+        comment
+        conditionId
+      }
     }
   }
 `;
 
 export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
   query FindAttestationsPaginated(
-    $where: AttestationWhereInput!
+    $attester: String
+    $conditionId: String
+    $schemaId: String
     $take: Int!
-    $cursor: AttestationWhereUniqueInput
-    $skip: Int
-    $orderBy: [AttestationOrderByWithRelationInput!]
+    $skip: Int! = 0
+    $orderBy: AttestationSortField
+    $orderDirection: SortOrder
   ) {
-    attestations(
-      where: $where
+    attestationsPage(
+      attester: $attester
+      conditionId: $conditionId
+      schemaId: $schemaId
       orderBy: $orderBy
+      orderDirection: $orderDirection
       take: $take
-      cursor: $cursor
       skip: $skip
     ) {
-      id
-      uid
-      attester
-      time
-      prediction
-      comment
-      conditionId
+      hasMore
+      items {
+        id
+        uid
+        attester
+        time
+        prediction
+        comment
+        conditionId
+      }
     }
   }
 `;
@@ -99,7 +125,7 @@ export interface FetchForecastsParams {
   conditionId?: string;
 }
 
-function buildAttestationFilters(params: FetchForecastsParams) {
+function buildAttestationVariables(params: FetchForecastsParams) {
   const {
     schemaId = DEFAULT_SCHEMA_UID,
     attesterAddress,
@@ -115,56 +141,44 @@ function buildAttestationFilters(params: FetchForecastsParams) {
     }
   }
 
-  const filters: Record<string, { equals: string }>[] = [];
-  if (normalizedAttesterAddress) {
-    filters.push({ attester: { equals: normalizedAttesterAddress } });
-  }
-  if (conditionId) {
-    filters.push({ conditionId: { equals: conditionId } });
-  }
-
   return {
-    where: {
-      schemaId: { equals: schemaId },
-      AND: filters,
-    },
+    schemaId,
+    attester: normalizedAttesterAddress ?? null,
+    conditionId: conditionId ?? null,
   };
 }
 
 export async function fetchForecasts(
   params: FetchForecastsParams
 ): Promise<AttestationsQueryResponse> {
-  const { where } = buildAttestationFilters(params);
+  const baseVars = buildAttestationVariables(params);
 
-  const data = await graphqlRequest<AttestationsQueryResponse>(
+  const data = await graphqlRequest<AttestationsPageResponse>(
     GET_ATTESTATIONS_QUERY,
-    { where, take: 100 }
+    { ...baseVars, take: 100 }
   );
 
-  return data;
+  return { attestations: data.attestationsPage?.items ?? [] };
 }
 
 export async function fetchForecastsPage(
   params: FetchForecastsParams,
-  page: { take: number; cursorId?: number }
+  page: { take: number; skip?: number }
 ): Promise<AttestationsQueryResponse> {
-  const { where } = buildAttestationFilters(params);
+  const baseVars = buildAttestationVariables(params);
 
-  const variables: Record<string, unknown> = {
-    where,
-    take: page.take,
-    orderBy: [{ time: 'desc' }],
-  };
-
-  if (page.cursorId !== undefined) {
-    variables.cursor = { id: page.cursorId };
-    variables.skip = 1;
-  }
-
-  return await graphqlRequest<AttestationsQueryResponse>(
+  const data = await graphqlRequest<AttestationsPageResponse>(
     GET_ATTESTATIONS_PAGINATED_QUERY,
-    variables
+    {
+      ...baseVars,
+      take: page.take,
+      skip: page.skip ?? 0,
+      orderBy: 'TIME',
+      orderDirection: 'desc',
+    }
   );
+
+  return { attestations: data.attestationsPage?.items ?? [] };
 }
 
 export async function fetchUserForecasts(params: {
@@ -195,28 +209,29 @@ export async function fetchUserForecasts(params: {
     }
   }
 
-  const filters: Record<string, { equals: string }>[] = [];
-  if (normalizedAttesterAddress) {
-    filters.push({ attester: { equals: normalizedAttesterAddress } });
-  }
-  if (conditionId) {
-    filters.push({ conditionId: { equals: conditionId } });
-  }
+  // Map old Prisma column names to the new AttestationSortField enum.
+  const sortFieldMap: Record<string, 'TIME' | 'CREATED_AT'> = {
+    time: 'TIME',
+    createdAt: 'CREATED_AT',
+  };
+  const mappedOrderBy = sortFieldMap[orderBy] ?? 'TIME';
 
   const variables = {
-    where: {
-      schemaId: { equals: schemaId },
-      AND: filters,
-    },
+    schemaId,
+    attester: normalizedAttesterAddress ?? null,
+    conditionId: conditionId ?? null,
     take,
     skip,
-    orderBy: [{ [orderBy]: orderDirection }],
+    orderBy: mappedOrderBy,
+    orderDirection,
   };
-  const data = await graphqlRequest<AttestationsQueryResponse>(
+  const data = await graphqlRequest<AttestationsPageResponse>(
     GET_ATTESTATIONS_PAGINATED_QUERY,
     variables
   );
-  return (data.attestations || []).map((att) => formatAttestationData(att));
+  return (data.attestationsPage?.items || []).map((att) =>
+    formatAttestationData(att)
+  );
 }
 
 export function generateForecastsQueryKey(params: {

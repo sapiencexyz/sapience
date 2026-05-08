@@ -38,22 +38,25 @@ export async function checkExistingConditions(
     const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
     const query = `
-      query CheckConditions($where: ConditionWhereInput!) {
-        conditions(where: $where, take: 100) {
-          id
-          endTime
-          question
-          shortName
-          optionName
-          description
-          similarMarkets
-          tags
-          similarMarketVolume
-          similarMarketImage
-          conditionGroup {
+      query CheckConditions($filters: ConditionFilters!, $take: Int! = 100) {
+        conditionsPage(filters: $filters, take: $take) {
+          hasMore
+          items {
             id
-            name
+            endTime
+            question
+            shortName
+            optionName
+            description
             similarMarkets
+            tags
+            similarMarketVolume
+            similarMarketImage
+            conditionGroup {
+              id
+              name
+              similarMarkets
+            }
           }
         }
       }
@@ -71,7 +74,7 @@ export async function checkExistingConditions(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query,
-          variables: { where: { id: { in: chunk } } },
+          variables: { filters: { ids: chunk, visibility: 'ALL' } },
         }),
       });
 
@@ -81,7 +84,7 @@ export async function checkExistingConditions(
       }
 
       const result = await response.json();
-      for (const condition of result.data?.conditions ?? []) {
+      for (const condition of result.data?.conditionsPage?.items ?? []) {
         existing.set(condition.id, {
           endTime: condition.endTime,
           question: condition.question ?? undefined,

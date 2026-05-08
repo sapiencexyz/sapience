@@ -8,24 +8,27 @@ export type CategoryQueryResult = {
 
 export const GET_CATEGORIES = /* GraphQL */ `
   query Categories {
-    categories {
-      id
-      name
-      slug
+    categoriesPage(take: 500) {
+      hasMore
+      items {
+        id
+        name
+        slug
+      }
     }
   }
 `;
 
 export async function fetchCategories(): Promise<CategoryQueryResult[]> {
   type CategoriesResponse = {
-    categories: CategoryQueryResult[];
+    categoriesPage: { items: CategoryQueryResult[]; hasMore: boolean };
   };
 
   const data = await graphqlRequest<CategoriesResponse>(GET_CATEGORIES);
 
-  if (!data || !Array.isArray(data.categories)) {
+  if (!data?.categoriesPage || !Array.isArray(data.categoriesPage.items)) {
     throw new Error('Failed to fetch categories: Invalid response structure');
   }
 
-  return data.categories;
+  return data.categoriesPage.items;
 }

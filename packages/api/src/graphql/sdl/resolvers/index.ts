@@ -44,10 +44,12 @@ import {
   collateralTransfers,
   collateralTransfersPage,
 } from './queries/collateralBalance';
-import { conditions } from './queries/conditions';
+import { conditions, conditionsPage } from './queries/conditions';
 import {
   attestations,
+  attestationsPage,
   categories,
+  categoriesPage,
   condition,
   conditionGroup,
   conditionGroups,
@@ -124,6 +126,7 @@ export const resolvers: Resolvers = {
     collateralTransfersPage,
     // Conditions / questions
     conditions,
+    conditionsPage,
     questions,
     questionsPage,
     // Escrow (predictions / positions / claims / closes / pick configs)
@@ -150,7 +153,9 @@ export const resolvers: Resolvers = {
     popularTags,
     // CRUD passthroughs
     attestations,
+    attestationsPage,
     categories,
+    categoriesPage,
     condition,
     conditionGroup,
     conditionGroups,

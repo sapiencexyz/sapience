@@ -220,6 +220,11 @@ export type AttestationScoreWhereInput = {
   used?: InputMaybe<BoolFilter>;
 };
 
+/** Sort fields for the `attestationsPage` query */
+export type AttestationSortField =
+  | 'CREATED_AT'
+  | 'TIME';
+
 export type AttestationWhereInput = {
   AND?: InputMaybe<Array<AttestationWhereInput>>;
   NOT?: InputMaybe<Array<AttestationWhereInput>>;
@@ -266,6 +271,13 @@ export type AttestationWhereUniqueInput = {
   uid?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** Paginated wrapper around Attestation rows with a server-truth hasMore flag */
+export type AttestationsPage = {
+  __typename?: 'AttestationsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Attestation>;
+};
+
 /** Time-bucketed balance snapshot showing deployed and claimable collateral */
 export type BalanceDataPoint = {
   __typename?: 'BalanceDataPoint';
@@ -296,6 +308,13 @@ export type BoolFilter = {
 export type BoolNullableFilter = {
   equals?: InputMaybe<Scalars['Boolean']['input']>;
   not?: InputMaybe<NestedBoolNullableFilter>;
+};
+
+/** Paginated wrapper around Category rows with a server-truth hasMore flag */
+export type CategoriesPage = {
+  __typename?: 'CategoriesPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Category>;
 };
 
 export type Category = {
@@ -558,6 +577,38 @@ export type ConditionCountPredictionsArgs = {
   where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
+/** Flat filter input for the `conditionsPage` query. Each field is optional; values combine with AND. Replaces the Prisma-derived `ConditionWhereInput` for client-facing access. */
+export type ConditionFilters = {
+  /** Restrict to conditions whose category slug is in this set. */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to a single chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to a single condition group. */
+  conditionGroupId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to conditions with `endTime >= this`. */
+  endTimeGte?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to conditions with `endTime <= this`. */
+  endTimeLte?: InputMaybe<Scalars['Int']['input']>;
+  /** When true, only return conditions that have a non-empty `similarMarkets` array (used by metadata-refresh keepers). */
+  hasSimilarMarkets?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to these condition IDs (case-insensitive). */
+  ids?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to conditions resolved YES (true) or NO (false). Implies settled=true. */
+  resolvedToYes?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Match the resolver address (case-insensitive). */
+  resolver?: InputMaybe<Scalars['String']['input']>;
+  /** Match any of these resolver addresses (case-insensitive). */
+  resolverIn?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Free-text search across question, shortName, and description (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to settled (true) or unsettled (false) conditions. */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to conditions not assigned to any condition group. */
+  ungroupedOnly?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Visibility filter. Defaults to `PUBLIC` when omitted. */
+  visibility?: InputMaybe<ConditionVisibility>;
+};
+
 export type ConditionGroup = {
   __typename?: 'ConditionGroup';
   _count?: Maybe<ConditionGroupCount>;
@@ -802,6 +853,19 @@ export type ConditionScalarFieldEnum =
   | 'similarMarkets'
   | 'tags';
 
+/** Sort fields for the `conditionsPage` query */
+export type ConditionSortField =
+  | 'CREATED_AT'
+  | 'END_TIME'
+  | 'OPEN_INTEREST'
+  | 'PREDICTION_COUNT';
+
+/** Visibility filter for the `conditionsPage` query */
+export type ConditionVisibility =
+  | 'ALL'
+  | 'PRIVATE'
+  | 'PUBLIC';
+
 export type ConditionWhereInput = {
   AND?: InputMaybe<Array<ConditionWhereInput>>;
   NOT?: InputMaybe<Array<ConditionWhereInput>>;
@@ -888,6 +952,13 @@ export type ConditionWhereUniqueInput = {
   similarMarketVolumeFiltered24h?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
+};
+
+/** Paginated wrapper around Condition rows with a server-truth hasMore flag */
+export type ConditionsPage = {
+  __typename?: 'ConditionsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Condition>;
 };
 
 export type DateTimeFilter = {
@@ -1674,8 +1745,14 @@ export type Query = {
   accuracyLeaderboard: Array<ForecasterScore>;
   /** Same as `accuracyLeaderboard`, but wraps the result in an `AccuracyLeaderboardPage` with a server-truth `hasMore` flag. */
   accuracyLeaderboardPage: AccuracyLeaderboardPage;
+  /** @deprecated Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal. */
   attestations: Array<Attestation>;
+  /** Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order. */
+  attestationsPage: AttestationsPage;
+  /** @deprecated Use `categoriesPage` — same data with a server-truth `hasMore` stop signal and no Prisma input types in the wire contract. */
   categories: Array<Category>;
+  /** Paginated list of all categories, ordered by name. Replaces the auto-generated Prisma CRUD `categories` field. */
+  categoriesPage: CategoriesPage;
   /**
    * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
    * @deprecated Field no longer supported
@@ -1695,8 +1772,12 @@ export type Query = {
   condition?: Maybe<Condition>;
   /** @deprecated Field no longer supported */
   conditionGroup?: Maybe<ConditionGroup>;
+  /** @deprecated Unused; will be removed. Exposes raw Prisma query semantics — no live callers in app, SDK, or known external consumers. */
   conditionGroups: Array<ConditionGroup>;
+  /** @deprecated Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal. */
   conditions: Array<Condition>;
+  /** Paginated list of conditions filtered by a flat `ConditionFilters` input. Defaults: visibility=PUBLIC, orderBy=CREATED_AT desc. */
+  conditionsPage: ConditionsPage;
   /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
   openInterestByCategory: Array<CategoryOpenInterest>;
   /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
@@ -1880,6 +1961,21 @@ export type QueryAttestationsArgs = {
 };
 
 
+export type QueryAttestationsPageArgs = {
+  attester?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  maxTime?: InputMaybe<Scalars['Int']['input']>;
+  minTime?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<AttestationSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
+  recipient?: InputMaybe<Scalars['String']['input']>;
+  schemaId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  uid?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryCategoriesArgs = {
   cursor?: InputMaybe<CategoryWhereUniqueInput>;
   distinct?: InputMaybe<Array<CategoryScalarFieldEnum>>;
@@ -1887,6 +1983,12 @@ export type QueryCategoriesArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<CategoryWhereInput>;
+};
+
+
+export type QueryCategoriesPageArgs = {
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 
@@ -1968,6 +2070,15 @@ export type QueryConditionsArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<ConditionWhereInput>;
+};
+
+
+export type QueryConditionsPageArgs = {
+  filters?: InputMaybe<ConditionFilters>;
+  orderBy?: InputMaybe<ConditionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 

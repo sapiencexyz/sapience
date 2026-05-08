@@ -4,25 +4,28 @@
 import { getGraphQLEndpoint } from './graphql';
 
 export const ATTESTATION_BY_UID_QUERY = `
-  query FindAttestationByUid($where: AttestationWhereInput!) {
-    attestations(where: $where, take: 1) {
-      id
-      uid
-      attester
-      time
-      prediction
-      comment
-      conditionId
-      condition {
+  query FindAttestationByUid($uid: String!) {
+    attestationsPage(uid: $uid, take: 1) {
+      hasMore
+      items {
         id
-        question
-        shortName
-        endTime
-        settled
-        resolvedToYes
-        resolver
-        category {
-          slug
+        uid
+        attester
+        time
+        prediction
+        comment
+        conditionId
+        condition {
+          id
+          question
+          shortName
+          endTime
+          settled
+          resolvedToYes
+          resolver
+          category {
+            slug
+          }
         }
       }
     }
@@ -69,13 +72,12 @@ export async function fetchAttestationByUid(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       query: ATTESTATION_BY_UID_QUERY,
-      variables: {
-        where: { uid: { equals: uid } },
-      },
+      variables: { uid },
     }),
   });
   if (!resp.ok) return null;
   const json = await resp.json();
-  const attestations: AttestationData[] = json?.data?.attestations ?? [];
+  const attestations: AttestationData[] =
+    json?.data?.attestationsPage?.items ?? [];
   return attestations[0] ?? null;
 }

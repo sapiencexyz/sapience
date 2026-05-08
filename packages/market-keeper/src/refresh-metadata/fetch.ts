@@ -44,22 +44,25 @@ export async function fetchAllExistingConditions(
   const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
   const query = `
-    query RefreshMetadataConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!, $orderBy: [ConditionOrderByWithRelationInput!]) {
-      conditions(where: $where, take: $take, skip: $skip, orderBy: $orderBy) {
-        id
-        endTime
-        question
-        shortName
-        optionName
-        description
-        similarMarkets
-        tags
-        similarMarketVolume
-        similarMarketImage
-        conditionGroup {
+    query RefreshMetadataConditions($filters: ConditionFilters!, $take: Int!, $skip: Int!) {
+      conditionsPage(filters: $filters, take: $take, skip: $skip, orderBy: CREATED_AT, orderDirection: asc) {
+        hasMore
+        items {
           id
-          name
+          endTime
+          question
+          shortName
+          optionName
+          description
           similarMarkets
+          tags
+          similarMarketVolume
+          similarMarketImage
+          conditionGroup {
+            id
+            name
+            similarMarkets
+          }
         }
       }
     }
@@ -78,14 +81,13 @@ export async function fetchAllExistingConditions(
       body: JSON.stringify({
         query,
         variables: {
-          where: {
-            public: { equals: true },
-            settled: { equals: false },
-            similarMarkets: { isEmpty: false },
+          filters: {
+            visibility: 'PUBLIC',
+            settled: false,
+            hasSimilarMarkets: true,
           },
           take: SAPIENCE_PAGE_SIZE,
           skip,
-          orderBy: [{ id: 'asc' }],
         },
       }),
     });
@@ -98,27 +100,30 @@ export async function fetchAllExistingConditions(
 
     const result = (await response.json()) as {
       data?: {
-        conditions?: Array<{
-          id: string;
-          endTime: number;
-          question?: string | null;
-          shortName?: string | null;
-          optionName?: string | null;
-          description?: string | null;
-          similarMarkets?: string[] | null;
-          tags?: string[] | null;
-          similarMarketVolume?: number | null;
-          similarMarketImage?: string | null;
-          conditionGroup?: {
-            id?: number | null;
-            name?: string | null;
+        conditionsPage?: {
+          items: Array<{
+            id: string;
+            endTime: number;
+            question?: string | null;
+            shortName?: string | null;
+            optionName?: string | null;
+            description?: string | null;
             similarMarkets?: string[] | null;
-          } | null;
-        }>;
+            tags?: string[] | null;
+            similarMarketVolume?: number | null;
+            similarMarketImage?: string | null;
+            conditionGroup?: {
+              id?: number | null;
+              name?: string | null;
+              similarMarkets?: string[] | null;
+            } | null;
+          }>;
+          hasMore: boolean;
+        };
       };
     };
 
-    const conditions = result.data?.conditions ?? [];
+    const conditions = result.data?.conditionsPage?.items ?? [];
 
     for (const c of conditions) {
       existing.set(c.id, {

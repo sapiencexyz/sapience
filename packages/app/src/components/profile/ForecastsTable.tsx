@@ -330,19 +330,22 @@ const ForecastsTable = ({
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
       const query = /* GraphQL */ `
-        query ConditionsByIds($where: ConditionWhereInput!) {
-          conditions(where: $where, take: 100) {
-            id
-            question
-            shortName
-            endTime
-            description
-            settled
-            resolvedToYes
-            nonDecisive
-            resolver
-            category {
-              slug
+        query ConditionsByIds($filters: ConditionFilters, $take: Int! = 100) {
+          conditionsPage(filters: $filters, take: $take) {
+            hasMore
+            items {
+              id
+              question
+              shortName
+              endTime
+              description
+              settled
+              resolvedToYes
+              nonDecisive
+              resolver
+              category {
+                slug
+              }
             }
           }
         }

@@ -14,7 +14,11 @@
  * filter (resolvers/queries/conditions.ts).
  */
 
-import type { QueryResolvers } from '../../__generated__/resolvers';
+import type {
+  QueryResolvers,
+  QueryAttestationsPageArgs,
+  QueryCategoriesPageArgs,
+} from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
@@ -103,6 +107,83 @@ export const categories: NonNullable<QueryResolvers['categories']> = async (
 
   if (isNoArgsCall) categoriesCache.set(CATEGORIES_CACHE_KEY, result);
   return result;
+};
+
+export const categoriesPage: NonNullable<
+  QueryResolvers['categoriesPage']
+> = async (_parent, { take, skip }: QueryCategoriesPageArgs) => {
+  const cappedTake = Math.max(1, Math.min(take ?? 100, 500));
+  const skipVal = skip ?? 0;
+  const isFullPage = skipVal === 0 && cappedTake >= 100;
+
+  if (isFullPage) {
+    const cached = categoriesCache.get(CATEGORIES_CACHE_KEY);
+    if (cached) {
+      return {
+        items: cached.slice(0, cappedTake),
+        hasMore: cached.length > cappedTake,
+      };
+    }
+  }
+
+  const rawRows = await prisma.category.findMany({
+    orderBy: { name: 'asc' },
+    take: cappedTake + 1,
+    skip: skipVal,
+  });
+  const hasMore = rawRows.length > cappedTake;
+  const items = rawRows.slice(0, cappedTake);
+
+  if (isFullPage && !hasMore) categoriesCache.set(CATEGORIES_CACHE_KEY, items);
+  return { items, hasMore };
+};
+
+export const attestationsPage: NonNullable<
+  QueryResolvers['attestationsPage']
+> = async (
+  _parent,
+  {
+    uid,
+    attester,
+    conditionId,
+    schemaId,
+    recipient,
+    minTime,
+    maxTime,
+    orderBy,
+    orderDirection,
+    take,
+    skip,
+  }: QueryAttestationsPageArgs
+) => {
+  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
+  const skipVal = skip ?? 0;
+  const where: Prisma.AttestationWhereInput = {};
+  if (uid) where.uid = uid;
+  if (attester) where.attester = attester;
+  if (conditionId) where.conditionId = conditionId;
+  if (schemaId) where.schemaId = schemaId;
+  if (recipient) where.recipient = recipient;
+  if (minTime !== null && minTime !== undefined) {
+    where.time = { ...(where.time as object | undefined), gte: minTime };
+  }
+  if (maxTime !== null && maxTime !== undefined) {
+    where.time = { ...(where.time as object | undefined), lte: maxTime };
+  }
+  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
+  const orderField =
+    orderBy === 'CREATED_AT'
+      ? ({ createdAt: direction } as const)
+      : ({ time: direction } as const);
+
+  const rawRows = await prisma.attestation.findMany({
+    where,
+    orderBy: orderField,
+    take: cappedTake + 1,
+    skip: skipVal,
+  });
+  const hasMore = rawRows.length > cappedTake;
+  return { items: rawRows.slice(0, cappedTake), hasMore };
 };
 
 export const condition: NonNullable<QueryResolvers['condition']> = async (

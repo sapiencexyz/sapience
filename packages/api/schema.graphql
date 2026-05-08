@@ -189,6 +189,12 @@ input AttestationScoreWhereInput {
   used: BoolFilter
 }
 
+"""Sort fields for the `attestationsPage` query"""
+enum AttestationSortField {
+  CREATED_AT
+  TIME
+}
+
 input AttestationWhereInput {
   AND: [AttestationWhereInput!]
   NOT: [AttestationWhereInput!]
@@ -236,6 +242,14 @@ input AttestationWhereUniqueInput {
 }
 
 """
+Paginated wrapper around Attestation rows with a server-truth hasMore flag
+"""
+type AttestationsPage {
+  hasMore: Boolean!
+  items: [Attestation!]!
+}
+
+"""
 Time-bucketed balance snapshot showing deployed and claimable collateral
 """
 type BalanceDataPoint {
@@ -273,6 +287,14 @@ input BoolFilter {
 input BoolNullableFilter {
   equals: Boolean
   not: NestedBoolNullableFilter
+}
+
+"""
+Paginated wrapper around Category rows with a server-truth hasMore flag
+"""
+type CategoriesPage {
+  hasMore: Boolean!
+  items: [Category!]!
 }
 
 type Category {
@@ -464,6 +486,59 @@ type Condition {
 type ConditionCount {
   attestations(where: AttestationWhereInput): Int!
   predictions(where: LegacyPredictionWhereInput): Int!
+}
+
+"""
+Flat filter input for the `conditionsPage` query. Each field is optional; values combine with AND. Replaces the Prisma-derived `ConditionWhereInput` for client-facing access.
+"""
+input ConditionFilters {
+  """Restrict to conditions whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """Restrict to a single chain."""
+  chainId: Int
+
+  """Restrict to a single condition group."""
+  conditionGroupId: Int
+
+  """Restrict to conditions with `endTime >= this`."""
+  endTimeGte: Int
+
+  """Restrict to conditions with `endTime <= this`."""
+  endTimeLte: Int
+
+  """
+  When true, only return conditions that have a non-empty `similarMarkets` array (used by metadata-refresh keepers).
+  """
+  hasSimilarMarkets: Boolean
+
+  """Restrict to these condition IDs (case-insensitive)."""
+  ids: [String!]
+
+  """
+  Restrict to conditions resolved YES (true) or NO (false). Implies settled=true.
+  """
+  resolvedToYes: Boolean
+
+  """Match the resolver address (case-insensitive)."""
+  resolver: String
+
+  """Match any of these resolver addresses (case-insensitive)."""
+  resolverIn: [String!]
+
+  """
+  Free-text search across question, shortName, and description (case-insensitive).
+  """
+  search: String
+
+  """Restrict to settled (true) or unsettled (false) conditions."""
+  settled: Boolean
+
+  """Restrict to conditions not assigned to any condition group."""
+  ungroupedOnly: Boolean
+
+  """Visibility filter. Defaults to `PUBLIC` when omitted."""
+  visibility: ConditionVisibility
 }
 
 type ConditionGroup {
@@ -690,6 +765,21 @@ enum ConditionScalarFieldEnum {
   tags
 }
 
+"""Sort fields for the `conditionsPage` query"""
+enum ConditionSortField {
+  CREATED_AT
+  END_TIME
+  OPEN_INTEREST
+  PREDICTION_COUNT
+}
+
+"""Visibility filter for the `conditionsPage` query"""
+enum ConditionVisibility {
+  ALL
+  PRIVATE
+  PUBLIC
+}
+
 input ConditionWhereInput {
   AND: [ConditionWhereInput!]
   NOT: [ConditionWhereInput!]
@@ -776,6 +866,14 @@ input ConditionWhereUniqueInput {
   similarMarketVolumeFiltered24h: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
+}
+
+"""
+Paginated wrapper around Condition rows with a server-truth hasMore flag
+"""
+type ConditionsPage {
+  hasMore: Boolean!
+  items: [Condition!]!
 }
 
 input DateTimeFilter {
@@ -1572,8 +1670,18 @@ type Query {
   Same as `accuracyLeaderboard`, but wraps the result in an `AccuracyLeaderboardPage` with a server-truth `hasMore` flag.
   """
   accuracyLeaderboardPage(limit: Int! = 10, skip: Int! = 0): AccuracyLeaderboardPage!
-  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
-  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
+  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]! @deprecated(reason: "Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
+  """
+  attestationsPage(attester: String, conditionId: String, maxTime: Int, minTime: Int, orderBy: AttestationSortField, orderDirection: SortOrder, recipient: String, schemaId: String, skip: Int! = 0, take: Int! = 50, uid: String): AttestationsPage!
+  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesPage` — same data with a server-truth `hasMore` stop signal and no Prisma input types in the wire contract.")
+
+  """
+  Paginated list of all categories, ordered by name. Replaces the auto-generated Prisma CRUD `categories` field.
+  """
+  categoriesPage(skip: Int! = 0, take: Int! = 100): CategoriesPage!
 
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
@@ -1594,8 +1702,13 @@ type Query {
   collateralTransfersPage(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): CollateralTransfersPage!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
-  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
-  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Unused; will be removed. Exposes raw Prisma query semantics — no live callers in app, SDK, or known external consumers.")
+  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal.")
+
+  """
+  Paginated list of conditions filtered by a flat `ConditionFilters` input. Defaults: visibility=PUBLIC, orderBy=CREATED_AT desc.
+  """
+  conditionsPage(filters: ConditionFilters, orderBy: ConditionSortField, orderDirection: SortOrder, skip: Int! = 0, take: Int! = 50): ConditionsPage!
 
   """
   Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.

@@ -38,9 +38,22 @@ const TRADING_VOLUME_QUERY = `
 `;
 
 const ATTESTATIONS_COUNT_QUERY = `
-  query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
-    attestations(where: $where, orderBy: { time: desc }, take: $take) {
-      id
+  query FindAttestations(
+    $attester: String
+    $schemaId: String
+    $take: Int! = 100
+  ) {
+    attestationsPage(
+      attester: $attester
+      schemaId: $schemaId
+      orderBy: TIME
+      orderDirection: desc
+      take: $take
+    ) {
+      hasMore
+      items {
+        id
+      }
     }
   }
 `;
@@ -153,16 +166,14 @@ async function fetchForecastsCount(address: string): Promise<number | null> {
   }
 
   const data = await gqlFetch<{
-    attestations: Array<{ id: string }>;
+    attestationsPage: { items: Array<{ id: string }>; hasMore: boolean };
   }>(ATTESTATIONS_COUNT_QUERY, {
-    where: {
-      schemaId: { equals: SCHEMA_UID },
-      AND: [{ attester: { equals: normalizedAddress } }],
-    },
+    attester: normalizedAddress,
+    schemaId: SCHEMA_UID,
     take: 100,
   });
 
-  const count = data?.attestations?.length;
+  const count = data?.attestationsPage?.items?.length;
   return count != null ? count : null;
 }
 

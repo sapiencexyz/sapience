@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
+import type { FormattedAttestation } from '@sapience/sdk/queries';
 import { AddressDisplay } from './AddressDisplay';
 import Loader from './Loader';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
-import type { FormattedAttestation } from '@sapience/sdk/queries';
 import { SCHEMA_UID } from '~/lib/constants';
 import { d18ToPercentage } from '~/lib/utils/util';
 import { formatRelativeTime } from '~/lib/utils/timeUtils';
@@ -192,15 +192,15 @@ const Comments = ({
   const conditionIds = useMemo(() => {
     const set = new Set<string>();
     for (const att of easAttestations || []) {
-      const conditionId = att.conditionId;
+      const attConditionId = att.conditionId;
       if (
-        conditionId &&
-        typeof conditionId === 'string' &&
-        conditionId.startsWith('0x') &&
-        conditionId !==
+        attConditionId &&
+        typeof attConditionId === 'string' &&
+        attConditionId.startsWith('0x') &&
+        attConditionId !==
           '0x0000000000000000000000000000000000000000000000000000000000000000'
       ) {
-        set.add(conditionId.toLowerCase());
+        set.add(attConditionId.toLowerCase());
       }
     }
     return Array.from(set);
@@ -216,16 +216,19 @@ const Comments = ({
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
       const query = /* GraphQL */ `
-        query ConditionsByIds($where: ConditionWhereInput!) {
-          conditions(where: $where, take: 100) {
-            id
-            question
-            shortName
-            endTime
-            description
-            resolver
-            category {
-              slug
+        query ConditionsByIds($filters: ConditionFilters, $take: Int! = 100) {
+          conditionsPage(filters: $filters, take: $take) {
+            hasMore
+            items {
+              id
+              question
+              shortName
+              endTime
+              description
+              resolver
+              category {
+                slug
+              }
             }
           }
         }
@@ -383,14 +386,14 @@ const Comments = ({
                                 'px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 uppercase font-mono';
 
                               let variant: 'default' | 'outline' = 'default';
-                              let className = baseClasses;
+                              let badgeClassName = baseClasses;
 
                               if (
                                 typeof percent === 'number' &&
                                 percent !== 50
                               ) {
                                 variant = 'outline';
-                                className =
+                                badgeClassName =
                                   baseClasses +
                                   (percent > 50
                                     ? ' border-yes/40 bg-yes/10 text-yes'
@@ -398,7 +401,10 @@ const Comments = ({
                               }
 
                               return (
-                                <Badge variant={variant} className={className}>
+                                <Badge
+                                  variant={variant}
+                                  className={badgeClassName}
+                                >
                                   {comment.prediction}
                                 </Badge>
                               );

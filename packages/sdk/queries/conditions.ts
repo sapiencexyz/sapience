@@ -46,47 +46,88 @@ export interface ConditionFilters {
 }
 
 export const GET_CONDITIONS = /* GraphQL */ `
-  query Conditions($take: Int, $skip: Int, $where: ConditionWhereInput) {
-    conditions(
-      orderBy: { createdAt: desc }
+  query Conditions(
+    $take: Int! = 50
+    $skip: Int! = 0
+    $filters: ConditionFilters
+  ) {
+    conditionsPage(
+      orderBy: CREATED_AT
+      orderDirection: desc
       take: $take
       skip: $skip
-      where: $where
+      filters: $filters
     ) {
-      id
-      createdAt
-      question
-      shortName
-      optionName
-      endTime
-      public
-      description
-      similarMarkets
-      chainId
-      resolver
-      settled
-      resolvedToYes
-      nonDecisive
-      assertionId
-      assertionTimestamp
-      openInterest
-      similarMarketVolume
-      similarMarketImage
-      estimatedPrice
-      conditionGroupId
-      conditionGroup {
+      hasMore
+      items {
         id
-        name
-      }
-      category {
-        id
-        name
-        slug
+        createdAt
+        question
+        shortName
+        optionName
+        endTime
+        public
+        description
+        similarMarkets
+        chainId
+        resolver
+        settled
+        resolvedToYes
+        nonDecisive
+        assertionId
+        assertionTimestamp
+        openInterest
+        similarMarketVolume
+        similarMarketImage
+        estimatedPrice
+        conditionGroupId
+        conditionGroup {
+          id
+          name
+        }
+        category {
+          id
+          name
+          slug
+        }
       }
     }
   }
 `;
 
+/**
+ * Map SDK-side `ConditionFilters` to the GraphQL `ConditionFilters` input
+ * shape on the API. The two diverged historically — this hides that.
+ */
+export function buildConditionsFiltersInput(
+  chainId?: number,
+  filters?: ConditionFilters
+): Record<string, unknown> | undefined {
+  const out: Record<string, unknown> = {};
+
+  if (chainId !== undefined) out.chainId = chainId;
+
+  if (filters?.visibility) {
+    out.visibility = filters.visibility.toUpperCase();
+  } else if (filters?.publicOnly) {
+    out.visibility = 'PUBLIC';
+  }
+
+  if (filters?.search?.trim()) out.search = filters.search.trim();
+  if (filters?.categorySlugs?.length) out.categorySlugs = filters.categorySlugs;
+  if (filters?.endTimeGte !== undefined) out.endTimeGte = filters.endTimeGte;
+  if (filters?.endTimeLte !== undefined) out.endTimeLte = filters.endTimeLte;
+  if (filters?.ungroupedOnly) out.ungroupedOnly = true;
+
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * @deprecated Use `buildConditionsFiltersInput` — the new API takes a flat
+ * `ConditionFilters` input rather than a Prisma-derived `ConditionWhereInput`.
+ * Retained as a thin shim; will be removed alongside the deprecated
+ * `conditions(where: ...)` wire field.
+ */
 export function buildConditionsWhereClause(
   chainId?: number,
   filters?: ConditionFilters
@@ -159,21 +200,18 @@ export async function fetchConditions(opts?: {
 }): Promise<ConditionType[]> {
   const take = opts?.take ?? 50;
   const skip = opts?.skip ?? 0;
-  const where = buildConditionsWhereClause(opts?.chainId, opts?.filters);
+  const filters = buildConditionsFiltersInput(opts?.chainId, opts?.filters);
 
-  type ConditionsQueryResult = { conditions: ConditionType[] };
-  const variables = {
+  type ConditionsQueryResult = {
+    conditionsPage: { items: ConditionType[]; hasMore: boolean };
+  };
+  const data = await graphqlRequest<ConditionsQueryResult>(GET_CONDITIONS, {
     take,
     skip,
-    where: Object.keys(where).length > 0 ? where : undefined,
-  };
+    filters,
+  });
 
-  const data = await graphqlRequest<ConditionsQueryResult>(
-    GET_CONDITIONS,
-    variables
-  );
-
-  return data.conditions ?? [];
+  return data.conditionsPage?.items ?? [];
 }
 
 // --- fetchConditionsByIds ---
@@ -181,17 +219,25 @@ export async function fetchConditions(opts?: {
 const PAGE_SIZE = 100;
 const MAX_CONCURRENT_REQUESTS = 3;
 
+type IdsBatchResponse<T> = {
+  conditionsPage?: { items: T[]; hasMore: boolean };
+};
+
+const fetchIdsChunk = async <T>(query: string, ids: string[]): Promise<T[]> => {
+  const resp = await graphqlRequest<IdsBatchResponse<T>>(query, {
+    filters: { ids, visibility: 'ALL' },
+    take: PAGE_SIZE,
+  });
+  return resp?.conditionsPage?.items ?? [];
+};
+
 export async function fetchConditionsByIds<T>(
   query: string,
-  ids: string[],
-  resultKey = 'conditions'
+  ids: string[]
 ): Promise<T[]> {
   if (ids.length === 0) return [];
   if (ids.length <= PAGE_SIZE) {
-    const resp = await graphqlRequest<Record<string, T[]>>(query, {
-      where: { id: { in: ids } },
-    });
-    return resp?.[resultKey] ?? [];
+    return fetchIdsChunk<T>(query, ids);
   }
 
   const chunks: string[][] = [];
@@ -203,13 +249,9 @@ export async function fetchConditionsByIds<T>(
   for (let i = 0; i < chunks.length; i += MAX_CONCURRENT_REQUESTS) {
     const batch = chunks.slice(i, i + MAX_CONCURRENT_REQUESTS);
     const batchResults = await Promise.all(
-      batch.map((chunk) =>
-        graphqlRequest<Record<string, T[]>>(query, {
-          where: { id: { in: chunk } },
-        })
-      )
+      batch.map((chunk) => fetchIdsChunk<T>(query, chunk))
     );
-    results.push(...batchResults.map((r) => r?.[resultKey] ?? []));
+    results.push(...batchResults);
   }
 
   return results.flat();
@@ -234,22 +276,25 @@ type ConditionById = {
 };
 
 export const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
-  query ConditionsByIds($where: ConditionWhereInput!) {
-    conditions(where: $where, take: 100) {
-      id
-      shortName
-      optionName
-      question
-      description
-      endTime
-      resolver
-      similarMarkets
-      settled
-      resolvedToYes
-      nonDecisive
-      estimatedPrice
-      category {
-        slug
+  query ConditionsByIds($filters: ConditionFilters, $take: Int! = 100) {
+    conditionsPage(filters: $filters, take: $take) {
+      hasMore
+      items {
+        id
+        shortName
+        optionName
+        question
+        description
+        endTime
+        resolver
+        similarMarkets
+        settled
+        resolvedToYes
+        nonDecisive
+        estimatedPrice
+        category {
+          slug
+        }
       }
     }
   }
