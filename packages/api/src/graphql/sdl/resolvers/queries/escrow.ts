@@ -107,6 +107,7 @@ export const runPredictions = async (
 ): Promise<{
   items: ResolversParentTypes['Prediction'][];
   hasMore: boolean;
+  totalCount: number;
 }> => {
   const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
   const skipVal = skip ?? 0;
@@ -124,7 +125,8 @@ export const runPredictions = async (
       distinct: ['pickConfigId'],
     });
     const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
-    if (pickConfigIds.length === 0) return { items: [], hasMore: false };
+    if (pickConfigIds.length === 0)
+      return { items: [], hasMore: false, totalCount: 0 };
     filters.push({ pickConfigId: { in: pickConfigIds } });
   }
   if (chainId !== undefined && chainId !== null) filters.push({ chainId });
@@ -142,20 +144,23 @@ export const runPredictions = async (
     orderByClause = { settledAt: direction };
   }
 
-  const rawRows = await prisma.prediction.findMany({
-    where,
-    orderBy: orderByClause,
-    take: cappedTake + 1,
-    skip: skipVal,
-    include: { pickConfiguration: { include: { picks: true } } },
-  });
+  const [rawRows, totalCount] = await Promise.all([
+    prisma.prediction.findMany({
+      where,
+      orderBy: orderByClause,
+      take: cappedTake + 1,
+      skip: skipVal,
+      include: { pickConfiguration: { include: { picks: true } } },
+    }),
+    prisma.prediction.count({ where }),
+  ]);
   const hasMore = rawRows.length > cappedTake;
   const rows = rawRows.slice(0, cappedTake);
   await preloadPickConditions(
     ctx,
     rows.map((r) => r.pickConfiguration)
   );
-  return { items: rows.map(mapPrediction), hasMore };
+  return { items: rows.map(mapPrediction), hasMore, totalCount };
 };
 
 export const predictionsPage: NonNullable<
@@ -266,6 +271,7 @@ export const runPositions = async (
 ): Promise<{
   items: PositionShape[];
   hasMore: boolean;
+  totalCount: number;
 }> => {
   const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
   const skipVal = skip ?? 0;
@@ -285,13 +291,14 @@ export const runPositions = async (
       distinct: ['pickConfigId'],
     });
     const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
-    if (pickConfigIds.length === 0) return { items: [], hasMore: false };
+    if (pickConfigIds.length === 0)
+      return { items: [], hasMore: false, totalCount: 0 };
     where.pickConfigId = { in: pickConfigIds };
   }
 
   // Require at least one filter — prevents accidentally-unbounded queries.
   if (!holderLower && !conditionId && !pickConfigIdLower)
-    return { items: [], hasMore: false };
+    return { items: [], hasMore: false, totalCount: 0 };
 
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (pickConfigIdLower && !conditionId) where.pickConfigId = pickConfigIdLower;
@@ -372,7 +379,8 @@ export const runPositions = async (
       HAVING SUM(CAST("counterpartyCollateral" AS DECIMAL)) >= ${minVal.toString()}::DECIMAL
         ${maxVal !== null ? Prisma.sql`AND SUM(CAST("counterpartyCollateral" AS DECIMAL)) <= ${maxVal.toString()}::DECIMAL` : Prisma.empty}
     `;
-    if (matchingConfigs.length === 0) return { items: [], hasMore: false };
+    if (matchingConfigs.length === 0)
+      return { items: [], hasMore: false, totalCount: 0 };
     const validPickConfigIds = matchingConfigs.map((r) => r.pickConfigId);
     if (
       where.pickConfigId &&
@@ -385,7 +393,7 @@ export const runPositions = async (
       };
     } else if (where.pickConfigId && typeof where.pickConfigId === 'string') {
       if (!validPickConfigIds.includes(where.pickConfigId))
-        return { items: [], hasMore: false };
+        return { items: [], hasMore: false, totalCount: 0 };
     } else {
       where.pickConfigId = { in: validPickConfigIds };
     }
@@ -414,21 +422,26 @@ export const runPositions = async (
     : true;
 
   // Fetch take+1 to detect a `hasMore`-style next page without a count
-  // query. Synthesized event-stream rows from raw positions can be
-  // empty (zero-balance unresolved with no sells), so client-side
+  // query for pagination. The separate count query backs `totalCount` so
+  // clients can show a total without an extra round trip.
+  // Synthesized event-stream rows from raw positions can be empty
+  // (zero-balance unresolved with no sells), so client-side
   // `lastPage.length === 0` is unreliable as a stop signal — we need
   // server-truth pagination.
-  const rawRows = await prisma.position.findMany({
-    where,
-    orderBy: orderByClause,
-    take: cappedTake + 1,
-    skip: skipVal,
-    include: {
-      pickConfiguration: {
-        include: { picks: true, predictions: predictionsInclude },
+  const [rawRows, totalCount] = await Promise.all([
+    prisma.position.findMany({
+      where,
+      orderBy: orderByClause,
+      take: cappedTake + 1,
+      skip: skipVal,
+      include: {
+        pickConfiguration: {
+          include: { picks: true, predictions: predictionsInclude },
+        },
       },
-    },
-  });
+    }),
+    prisma.position.count({ where }),
+  ]);
   const hasMore = rawRows.length > cappedTake;
   const rows = rawRows.slice(0, cappedTake);
 
@@ -653,7 +666,7 @@ export const runPositions = async (
     const diff = b[sortKey].getTime() - a[sortKey].getTime();
     return posOrderDirection === 'asc' ? -diff : diff;
   });
-  return { items: synthesized, hasMore };
+  return { items: synthesized, hasMore, totalCount };
 };
 
 export const positionsPage: NonNullable<

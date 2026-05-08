@@ -6,7 +6,7 @@ import { stabilize } from '../../helpers/stableSerializer';
 describe('AccuracyLeaderboard query', () => {
   it('matches the recorded contract', async () => {
     const result = await executeOperation(GET_ACCURACY_LEADERBOARD, {
-      limit: 10,
+      take: 10,
     });
     expect(result.errors).toBeUndefined();
     await expect(

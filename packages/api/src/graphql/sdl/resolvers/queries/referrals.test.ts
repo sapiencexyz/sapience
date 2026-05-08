@@ -15,7 +15,7 @@ const { referralCodes } = await import('./referrals');
 
 type ReferralCodesResolver = (
   parent: unknown,
-  args: { id?: number | null; limit?: number | null; cursor?: number | null },
+  args: { id?: number | null; take?: number | null; skip?: number | null },
   ctx: unknown,
   info: unknown
 ) => Promise<{
@@ -26,7 +26,7 @@ type ReferralCodesResolver = (
     totalPositions: number;
     [k: string]: unknown;
   }>;
-  nextCursor: number | null;
+  hasMore: boolean;
 }>;
 
 const call = referralCodes as unknown as ReferralCodesResolver;
@@ -44,7 +44,7 @@ describe('Query.referralCodes', () => {
       { id: 1, claim_count: 0n, total_volume: '0', total_positions: 0n },
     ]);
 
-    const result = await call({}, { limit: 10 }, {}, {});
+    const result = await call({}, { take: 10 }, {}, {});
 
     expect(result.items).toHaveLength(1);
     expect(mockPrisma.referralCode.findMany).toHaveBeenCalled();
@@ -56,31 +56,31 @@ describe('Query.referralCodes', () => {
     const result = await call({}, {}, {}, {});
 
     expect(result.items).toEqual([]);
-    expect(result.nextCursor).toBeNull();
+    expect(result.hasMore).toBe(false);
     expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
   });
 
-  it('uses default limit of 100 when no limit arg given', async () => {
+  it('uses default take of 100 when no take arg given', async () => {
     mockPrisma.referralCode.findMany.mockResolvedValue([]);
 
     await call({}, {}, {}, {});
 
     expect(mockPrisma.referralCode.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 101 })
+      expect.objectContaining({ take: 101, skip: 0 })
     );
   });
 
-  it('caps limit at 500', async () => {
+  it('caps take at 500', async () => {
     mockPrisma.referralCode.findMany.mockResolvedValue([]);
 
-    await call({}, { limit: 99999 }, {}, {});
+    await call({}, { take: 99999 }, {}, {});
 
     expect(mockPrisma.referralCode.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ take: 501 })
     );
   });
 
-  it('returns nextCursor when there are more rows than limit', async () => {
+  it('hasMore=true when there are more rows than take (probe row returned)', async () => {
     const codes = [
       { id: 30, createdBy: '0xa', creatorType: 'admin' },
       { id: 20, createdBy: '0xb', creatorType: 'admin' },
@@ -92,11 +92,11 @@ describe('Query.referralCodes', () => {
       { id: 20, claim_count: 0n, total_volume: '0', total_positions: 0n },
     ]);
 
-    const result = await call({}, { limit: 2 }, {}, {});
+    const result = await call({}, { take: 2 }, {}, {});
 
     expect(result.items).toHaveLength(2);
     expect(result.items.map((c) => c.id)).toEqual([30, 20]);
-    expect(result.nextCursor).toBe(20);
+    expect(result.hasMore).toBe(true);
   });
 
   it('attaches claimCount / totalVolume / totalPositions to each parent row', async () => {
@@ -146,21 +146,21 @@ describe('Query.referralCodes', () => {
     });
   });
 
-  it('honors cursor as a strictly-less-than filter on id (descending order)', async () => {
+  it('skip advances the slice (descending order, skip passes through to Prisma)', async () => {
     mockPrisma.referralCode.findMany.mockResolvedValue([]);
 
-    await call({}, { cursor: 42, limit: 5 }, {}, {});
+    await call({}, { skip: 42, take: 5 }, {}, {});
 
     expect(mockPrisma.referralCode.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: { lt: 42 } },
         orderBy: { id: 'desc' },
+        skip: 42,
         take: 6,
       })
     );
   });
 
-  it('id mode: returns single code with stats and nextCursor null', async () => {
+  it('id mode: returns single code with stats and hasMore=false', async () => {
     mockPrisma.referralCode.findUnique.mockResolvedValue({
       id: 7,
       createdBy: '0xa',
@@ -179,7 +179,7 @@ describe('Query.referralCodes', () => {
       totalVolume: '500',
       totalPositions: 4,
     });
-    expect(result.nextCursor).toBeNull();
+    expect(result.hasMore).toBe(false);
     // Should use findUnique (singleton fetch), not findMany.
     expect(mockPrisma.referralCode.findUnique).toHaveBeenCalledWith({
       where: { id: 7 },
@@ -193,7 +193,7 @@ describe('Query.referralCodes', () => {
     const result = await call({}, { id: 999 }, {}, {});
 
     expect(result.items).toEqual([]);
-    expect(result.nextCursor).toBeNull();
+    expect(result.hasMore).toBe(false);
     expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
   });
 

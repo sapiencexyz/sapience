@@ -5,7 +5,7 @@
  * totalVolume / totalPositions and attaches them to each parent row, so
  * default field resolvers handle the lookup. The resolvers below cover
  * two things the default can't:
- *   - `claimants(limit, cursor)`: paginated per-claimant breakdown
+ *   - `claimants(take, skip)`: paginated per-claimant breakdown
  *   - lazy fallback for the three scalar analytics fields when a code
  *     is reached via a path other than `Query.referralCodes` (e.g.
  *     `User.referredByCode`), where the parent is a bare Prisma row.
@@ -15,8 +15,8 @@ import type { ReferralCodeResolvers } from '../__generated__/resolvers';
 import prisma from '../../../core/db';
 import { fetchCodeStats } from './queries/referrals';
 
-const DEFAULT_LIMIT = 100;
-const MAX_LIMIT = 500;
+const DEFAULT_TAKE = 100;
+const MAX_TAKE = 500;
 
 type EnrichedParent = {
   id: number;
@@ -25,10 +25,16 @@ type EnrichedParent = {
   totalPositions?: number;
 };
 
-function clampLimit(limit: number | null | undefined): number {
-  if (limit == null) return DEFAULT_LIMIT;
-  if (!Number.isFinite(limit) || limit <= 0) return DEFAULT_LIMIT;
-  return Math.min(Math.floor(limit), MAX_LIMIT);
+function clampTake(take: number | null | undefined): number {
+  if (take == null) return DEFAULT_TAKE;
+  if (!Number.isFinite(take) || take <= 0) return DEFAULT_TAKE;
+  return Math.min(Math.floor(take), MAX_TAKE);
+}
+
+function clampSkip(skip: number | null | undefined): number {
+  if (skip == null) return 0;
+  if (!Number.isFinite(skip) || skip < 0) return 0;
+  return Math.floor(skip);
 }
 
 async function lazyStats(parent: EnrichedParent) {
@@ -70,8 +76,8 @@ export const ReferralCode: ReferralCodeResolvers = {
   },
 
   claimants: async (parent, args) => {
-    const limit = clampLimit(args.limit);
-    const cursor = args.cursor ?? null;
+    const take = clampTake(args.take);
+    const skip = clampSkip(args.skip);
     const codeId = (parent as EnrichedParent).id;
 
     const rows = await prisma.$queryRaw<ClaimantBreakdownRow[]>`
@@ -79,9 +85,9 @@ export const ReferralCode: ReferralCodeResolvers = {
         SELECT id, address, "createdAt"
         FROM app_user
         WHERE "referredByCodeId" = ${codeId}
-          AND (${cursor}::int IS NULL OR id > ${cursor}::int)
         ORDER BY id ASC
-        LIMIT ${limit + 1}
+        OFFSET ${skip}
+        LIMIT ${take + 1}
       ),
       sides AS (
         SELECT p2.id AS user_id,
@@ -106,9 +112,8 @@ export const ReferralCode: ReferralCodeResolvers = {
       ORDER BY page.id ASC
     `;
 
-    const hasMore = rows.length > limit;
-    const visible = hasMore ? rows.slice(0, limit) : rows;
-    const nextCursor = hasMore ? visible[visible.length - 1].id : null;
+    const hasMore = rows.length > take;
+    const visible = hasMore ? rows.slice(0, take) : rows;
 
     return {
       items: visible.map((r) => ({
@@ -118,7 +123,7 @@ export const ReferralCode: ReferralCodeResolvers = {
         tradingVolume: r.volume ?? '0',
         positionCount: Number(r.positions ?? 0),
       })),
-      nextCursor,
+      hasMore,
     };
   },
 };

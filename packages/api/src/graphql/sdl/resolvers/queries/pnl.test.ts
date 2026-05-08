@@ -37,7 +37,7 @@ describe('profitLeaderboardPage — slicing & envelope', () => {
   it('orders descending by totalPnL', async () => {
     const result = await profitLeaderboardPageFn(
       undefined,
-      { limit: 10, skip: 0 } as QueryProfitLeaderboardPageArgs,
+      { take: 10, skip: 0 } as QueryProfitLeaderboardPageArgs,
       undefined,
       undefined
     );
@@ -48,20 +48,20 @@ describe('profitLeaderboardPage — slicing & envelope', () => {
     ]);
   });
 
-  it('caps limit at 100 and floors at 1', async () => {
+  it('caps take at 100 and floors at 1', async () => {
     const result = await profitLeaderboardPageFn(
       undefined,
-      { limit: 9999, skip: 0 } as QueryProfitLeaderboardPageArgs,
+      { take: 9999, skip: 0 } as QueryProfitLeaderboardPageArgs,
       undefined,
       undefined
     );
     expect(result.items.length).toBeLessThanOrEqual(100);
   });
 
-  it('hasMore=true when entries exceed skip + limit', async () => {
+  it('hasMore=true when entries exceed skip + take', async () => {
     const result = await profitLeaderboardPageFn(
       undefined,
-      { limit: 2, skip: 0 } as QueryProfitLeaderboardPageArgs,
+      { take: 2, skip: 0 } as QueryProfitLeaderboardPageArgs,
       undefined,
       undefined
     );
@@ -72,7 +72,7 @@ describe('profitLeaderboardPage — slicing & envelope', () => {
   it('hasMore=false on the last page', async () => {
     const result = await profitLeaderboardPageFn(
       undefined,
-      { limit: 10, skip: 0 } as QueryProfitLeaderboardPageArgs,
+      { take: 10, skip: 0 } as QueryProfitLeaderboardPageArgs,
       undefined,
       undefined
     );
@@ -82,7 +82,7 @@ describe('profitLeaderboardPage — slicing & envelope', () => {
   it('skip advances the slice', async () => {
     const result = await profitLeaderboardPageFn(
       undefined,
-      { limit: 1, skip: 1 } as QueryProfitLeaderboardPageArgs,
+      { take: 1, skip: 1 } as QueryProfitLeaderboardPageArgs,
       undefined,
       undefined
     );
@@ -98,7 +98,7 @@ describe('profitLeaderboardPage — slicing & envelope', () => {
     ]);
     const result = await profitLeaderboardPageFn(
       undefined,
-      { limit: 10, skip: 0 } as QueryProfitLeaderboardPageArgs,
+      { take: 10, skip: 0 } as QueryProfitLeaderboardPageArgs,
       undefined,
       undefined
     );
@@ -115,7 +115,7 @@ describe('profitLeaderboardPage — slicing & envelope', () => {
     ]);
     const result = await profitLeaderboardPageFn(
       undefined,
-      { limit: 10, skip: 0 } as QueryProfitLeaderboardPageArgs,
+      { take: 10, skip: 0 } as QueryProfitLeaderboardPageArgs,
       undefined,
       undefined
     );

@@ -4,6 +4,11 @@ Paginated wrapper around ForecasterScore leaderboard rows with a server-truth ha
 type AccuracyLeaderboardPage {
   hasMore: Boolean!
   items: [ForecasterScore!]!
+
+  """
+  Total forecasters on the leaderboard (cheap — derived from in-memory cache).
+  """
+  totalCount: Int
 }
 
 """Accuracy rank for an address on the forecasting leaderboard"""
@@ -32,6 +37,11 @@ Paginated wrapper around ActivityItem rows with a server-truth hasMore flag
 type ActivityItemsPage {
   hasMore: Boolean!
   items: [ActivityItem!]!
+
+  """
+  Total activity rows matching the filters. May be null when the merged-feed count is not computed.
+  """
+  totalCount: Int
 }
 
 """Trade fields embedded in an activity item"""
@@ -247,6 +257,9 @@ Paginated wrapper around Attestation rows with a server-truth hasMore flag
 type AttestationsPage {
   hasMore: Boolean!
   items: [Attestation!]!
+
+  """Total Attestation rows matching the filters. Populated when available."""
+  totalCount: Int
 }
 
 """
@@ -295,6 +308,9 @@ Paginated wrapper around Category rows with a server-truth hasMore flag
 type CategoriesPage {
   hasMore: Boolean!
   items: [Category!]!
+
+  """Total Category rows matching the filters. Populated when available."""
+  totalCount: Int
 }
 
 type Category {
@@ -431,6 +447,11 @@ Paginated wrapper around CollateralTransferType rows with a server-truth hasMore
 type CollateralTransfersPage {
   hasMore: Boolean!
   items: [CollateralTransferType!]!
+
+  """
+  Total CollateralTransfer rows matching the filters. Populated when available.
+  """
+  totalCount: Int
 }
 
 type Condition {
@@ -874,6 +895,9 @@ Paginated wrapper around Condition rows with a server-truth hasMore flag
 type ConditionsPage {
   hasMore: Boolean!
   items: [Condition!]!
+
+  """Total Condition rows matching the filters. Populated when available."""
+  totalCount: Int
 }
 
 input DateTimeFilter {
@@ -1435,6 +1459,11 @@ Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag
 type PickConfigurationsPage {
   hasMore: Boolean!
   items: [PickConfiguration!]!
+
+  """
+  Total PickConfiguration rows matching the filters. Populated when available.
+  """
+  totalCount: Int
 }
 
 """Time-bucketed PnL data point with cumulative tracking"""
@@ -1473,11 +1502,17 @@ enum PositionSortField {
 }
 
 """
-Paginated wrapper around Position rows with a server-truth hasMore flag
+Paginated wrapper around Position rows with a server-truth hasMore flag.
+`totalCount` is the count of underlying Position rows that match the filters
+(not the count of rendered event-stream rows, which can be larger due to
+per-sell synthetic expansion).
 """
 type PositionsPage {
   hasMore: Boolean!
   items: [Position!]!
+
+  """Total Position rows matching the filters. Populated eagerly."""
+  totalCount: Int
 }
 
 """
@@ -1544,6 +1579,9 @@ Paginated wrapper around Prediction rows with a server-truth hasMore flag
 type PredictionsPage {
   hasMore: Boolean!
   items: [Prediction!]!
+
+  """Total Prediction rows matching the filters. Populated eagerly."""
+  totalCount: Int
 }
 
 """Aggregated profit/loss entry for a single address across all positions"""
@@ -1558,6 +1596,11 @@ Paginated wrapper around ProfitEntry rows with a server-truth hasMore flag
 type ProfitLeaderboardPage {
   hasMore: Boolean!
   items: [ProfitEntry!]!
+
+  """
+  Total addresses on the leaderboard (cheap — derived from in-memory cache).
+  """
+  totalCount: Int
 }
 
 """Profit rank and total PnL for an address on the leaderboard"""
@@ -1669,7 +1712,7 @@ type Query {
   """
   Same as `accuracyLeaderboard`, but wraps the result in an `AccuracyLeaderboardPage` with a server-truth `hasMore` flag.
   """
-  accuracyLeaderboardPage(limit: Int! = 10, skip: Int! = 0): AccuracyLeaderboardPage!
+  accuracyLeaderboardPage(skip: Int! = 0, take: Int! = 10): AccuracyLeaderboardPage!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]! @deprecated(reason: "Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal.")
 
   """
@@ -1737,7 +1780,7 @@ type Query {
   popularTags: [String!]!
 
   """Count of token positions for a given holder"""
-  positionCount(chainId: Int, holder: String!, settled: Boolean): Int!
+  positionCount(chainId: Int, holder: String!, settled: Boolean): Int! @deprecated(reason: "Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.")
 
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
@@ -1753,7 +1796,7 @@ type Query {
   prediction(id: String!): Prediction
 
   """Count of escrow predictions involving the given address"""
-  predictionCount(address: String!, chainId: Int): Int!
+  predictionCount(address: String!, chainId: Int): Int! @deprecated(reason: "Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.")
 
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
@@ -1773,7 +1816,7 @@ type Query {
   """
   Same as `profitLeaderboard`, but wraps the result in a `ProfitLeaderboardPage` with a server-truth `hasMore` flag.
   """
-  profitLeaderboardPage(limit: Int! = 10, skip: Int! = 0): ProfitLeaderboardPage!
+  profitLeaderboardPage(skip: Int! = 0, take: Int! = 10): ProfitLeaderboardPage!
 
   """
   Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest
@@ -1803,7 +1846,7 @@ type Query {
   analytics dialog). Per-claimant breakdown is available via the nested
   `claimants` field.
   """
-  referralCodes(cursor: Int, id: Int, limit: Int = 100): ReferralCodesPage!
+  referralCodes(id: Int, skip: Int! = 0, take: Int! = 100): ReferralCodesPage!
 
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade
@@ -1862,6 +1905,11 @@ Paginated wrapper around Question rows with a server-truth hasMore flag
 type QuestionsPage {
   hasMore: Boolean!
   items: [Question!]!
+
+  """
+  Total Question rows matching the filters. May be null for complex unioned queries.
+  """
+  totalCount: Int
 }
 
 """
@@ -1881,7 +1929,7 @@ type ReferralCode {
   claimCount: Int!
 
   """Paginated per-claimant breakdown with trading volume + position count."""
-  claimants(cursor: Int, limit: Int = 100): ReferralCodeClaimantsPage!
+  claimants(skip: Int! = 0, take: Int! = 100): ReferralCodeClaimantsPage!
   createdAt: DateTimeISO!
   createdBy: String!
   creatorType: String!
@@ -1913,9 +1961,15 @@ type ReferralCodeClaimant {
   tradingVolume: String!
 }
 
+"""
+Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore flag
+"""
 type ReferralCodeClaimantsPage {
+  hasMore: Boolean!
   items: [ReferralCodeClaimant!]!
-  nextCursor: Int
+
+  """Total claimant rows for this code. Populated when available."""
+  totalCount: Int
 }
 
 input ReferralCodeNullableRelationFilter {
@@ -1948,9 +2002,15 @@ input ReferralCodeWhereInput {
   updatedAt: DateTimeFilter
 }
 
+"""
+Paginated wrapper around ReferralCode rows with a server-truth hasMore flag
+"""
 type ReferralCodesPage {
+  hasMore: Boolean!
   items: [ReferralCode!]!
-  nextCursor: Int
+
+  """Total ReferralCode rows. Populated when available."""
+  totalCount: Int
 }
 
 """Filter questions by their resolution status"""
@@ -2069,6 +2129,9 @@ type Trade {
 type TradesPage {
   hasMore: Boolean!
   items: [Trade!]!
+
+  """Total Trade rows matching the filters. Populated when available."""
+  totalCount: Int
 }
 
 """

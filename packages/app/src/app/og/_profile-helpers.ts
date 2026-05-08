@@ -9,8 +9,8 @@ import { SCHEMA_UID } from '~/lib/constants';
 // ---------- GraphQL queries ----------
 
 const ALL_TIME_PROFIT_LEADERBOARD_QUERY = `
-  query ProfitLeaderboard($limit: Int) {
-    profitLeaderboardPage(limit: $limit) {
+  query ProfitLeaderboard($take: Int) {
+    profitLeaderboardPage(take: $take) {
       hasMore
       items {
         address
@@ -101,7 +101,7 @@ async function fetchProfitRank(address: string): Promise<{
       items: Array<{ address: string; totalPnL: string }>;
       hasMore: boolean;
     };
-  }>(ALL_TIME_PROFIT_LEADERBOARD_QUERY, { limit: 100 });
+  }>(ALL_TIME_PROFIT_LEADERBOARD_QUERY, { take: 100 });
 
   const entries = data?.profitLeaderboardPage?.items || [];
   const sorted = entries.sort(

@@ -25,6 +25,8 @@ export type AccuracyLeaderboardPage = {
   __typename?: 'AccuracyLeaderboardPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ForecasterScore>;
+  /** Total forecasters on the leaderboard (cheap — derived from in-memory cache). */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Accuracy rank for an address on the forecasting leaderboard */
@@ -51,6 +53,8 @@ export type ActivityItemsPage = {
   __typename?: 'ActivityItemsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ActivityItem>;
+  /** Total activity rows matching the filters. May be null when the merged-feed count is not computed. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Trade fields embedded in an activity item */
@@ -276,6 +280,8 @@ export type AttestationsPage = {
   __typename?: 'AttestationsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Attestation>;
+  /** Total Attestation rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Time-bucketed balance snapshot showing deployed and claimable collateral */
@@ -315,6 +321,8 @@ export type CategoriesPage = {
   __typename?: 'CategoriesPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Category>;
+  /** Total Category rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type Category = {
@@ -482,6 +490,8 @@ export type CollateralTransfersPage = {
   __typename?: 'CollateralTransfersPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<CollateralTransferType>;
+  /** Total CollateralTransfer rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type Condition = {
@@ -959,6 +969,8 @@ export type ConditionsPage = {
   __typename?: 'ConditionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Condition>;
+  /** Total Condition rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type DateTimeFilter = {
@@ -1547,6 +1559,8 @@ export type PickConfigurationsPage = {
   __typename?: 'PickConfigurationsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<PickConfiguration>;
+  /** Total PickConfiguration rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Time-bucketed PnL data point with cumulative tracking */
@@ -1583,11 +1597,18 @@ export type PositionSortField =
   | 'CREATED_AT'
   | 'UPDATED_AT';
 
-/** Paginated wrapper around Position rows with a server-truth hasMore flag */
+/**
+ * Paginated wrapper around Position rows with a server-truth hasMore flag.
+ * `totalCount` is the count of underlying Position rows that match the filters
+ * (not the count of rendered event-stream rows, which can be larger due to
+ * per-sell synthetic expansion).
+ */
 export type PositionsPage = {
   __typename?: 'PositionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Position>;
+  /** Total Position rows matching the filters. Populated eagerly. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
@@ -1645,6 +1666,8 @@ export type PredictionsPage = {
   __typename?: 'PredictionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Prediction>;
+  /** Total Prediction rows matching the filters. Populated eagerly. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Aggregated profit/loss entry for a single address across all positions */
@@ -1659,6 +1682,8 @@ export type ProfitLeaderboardPage = {
   __typename?: 'ProfitLeaderboardPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ProfitEntry>;
+  /** Total addresses on the leaderboard (cheap — derived from in-memory cache). */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Profit rank and total PnL for an address on the leaderboard */
@@ -1711,7 +1736,7 @@ export type Query = {
   __typename?: 'Query';
   /**
    * Accuracy score for a single forecaster address, or null if no scored attestations exist
-   * @deprecated Field no longer supported
+   * @deprecated Unused; will be removed. Use `accountAccuracyRank` for the rank-lookup case (the only live consumer pattern).
    */
   accountAccuracy?: Maybe<ForecasterScore>;
   /** Accuracy rank and score for a single address relative to all forecasters */
@@ -1731,7 +1756,7 @@ export type Query = {
   accountPredictionCount: Array<PredictionCountDataPoint>;
   /**
    * Profit rank and total PnL for a single address relative to all participants
-   * @deprecated Field no longer supported
+   * @deprecated Unused; will be removed. No live consumers in app, SDK, or known external integrators.
    */
   accountProfitRank: ProfitRank;
   /** Total lifetime trading volume in wei for the given address across all prediction types */
@@ -1755,12 +1780,12 @@ export type Query = {
   categoriesPage: CategoriesPage;
   /**
    * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
-   * @deprecated Field no longer supported
+   * @deprecated Unused; will be removed. No live consumers — claim events are reconstructed from settlement-side PnL on Position/Prediction.
    */
   claims: Array<Claim>;
   /**
    * Paginated list of position close (burn) records, filterable by address, pick config, and chain
-   * @deprecated Field no longer supported
+   * @deprecated Unused; will be removed. No live consumers — close events surface through `accountActivityPage`.
    */
   closes: Array<Close>;
   collateralBalance: CollateralBalanceType;
@@ -1770,7 +1795,7 @@ export type Query = {
   /** Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag. */
   collateralTransfersPage: CollateralTransfersPage;
   condition?: Maybe<Condition>;
-  /** @deprecated Field no longer supported */
+  /** @deprecated Unused; will be removed. No live consumers — vault-bot defines a query string but never executes it. */
   conditionGroup?: Maybe<ConditionGroup>;
   /** @deprecated Unused; will be removed. Exposes raw Prisma query semantics — no live callers in app, SDK, or known external consumers. */
   conditionGroups: Array<ConditionGroup>;
@@ -1784,7 +1809,7 @@ export type Query = {
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   /**
    * Look up a single pick configuration by ID
-   * @deprecated Field no longer supported
+   * @deprecated Unused; will be removed. No live consumers — `pickConfigurationsPage` covers list lookups and individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades.
    */
   pickConfiguration?: Maybe<PickConfiguration>;
   /**
@@ -1796,7 +1821,10 @@ export type Query = {
   pickConfigurationsPage: PickConfigurationsPage;
   /** Top 20 most-used tags across public conditions */
   popularTags: Array<Scalars['String']['output']>;
-  /** Count of token positions for a given holder */
+  /**
+   * Count of token positions for a given holder
+   * @deprecated Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   */
   positionCount: Scalars['Int']['output'];
   /**
    * Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
@@ -1807,7 +1835,10 @@ export type Query = {
   positionsPage: PositionsPage;
   /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
-  /** Count of escrow predictions involving the given address */
+  /**
+   * Count of escrow predictions involving the given address
+   * @deprecated Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   */
   predictionCount: Scalars['Int']['output'];
   /**
    * Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
@@ -1827,7 +1858,7 @@ export type Query = {
   protocolStats: Array<ProtocolStat>;
   /**
    * Time-bucketed total protocol trading volume across all users
-   * @deprecated Field no longer supported
+   * @deprecated Unused; will be removed. No live consumers.
    */
   protocolVolume: Array<VolumeDataPoint>;
   /**
@@ -1852,7 +1883,7 @@ export type Query = {
   trade?: Maybe<Trade>;
   /**
    * Count of secondary market trades matching the given filters
-   * @deprecated Field no longer supported
+   * @deprecated Unused; will be removed. No live consumers — `tradesPage` returns `hasMore` for pagination needs.
    */
   tradeCount: Scalars['Int']['output'];
   /**
@@ -1863,7 +1894,7 @@ export type Query = {
   /** Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag for paginated infinite scroll. */
   tradesPage: TradesPage;
   user?: Maybe<User>;
-  /** @deprecated Field no longer supported */
+  /** @deprecated Unused; will be removed. Exposes raw Prisma query semantics — no live consumers. */
   users: Array<User>;
 };
 
@@ -1946,8 +1977,8 @@ export type QueryAccuracyLeaderboardArgs = {
 
 
 export type QueryAccuracyLeaderboardPageArgs = {
-  limit?: Scalars['Int']['input'];
   skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 
@@ -2196,8 +2227,8 @@ export type QueryProfitLeaderboardArgs = {
 
 
 export type QueryProfitLeaderboardPageArgs = {
-  limit?: Scalars['Int']['input'];
   skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 
@@ -2252,9 +2283,9 @@ export type QueryQuestionsPageArgs = {
 
 
 export type QueryReferralCodesArgs = {
-  cursor?: InputMaybe<Scalars['Int']['input']>;
   id?: InputMaybe<Scalars['Int']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 
@@ -2338,6 +2369,8 @@ export type QuestionsPage = {
   __typename?: 'QuestionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Question>;
+  /** Total Question rows matching the filters. May be null for complex unioned queries. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /**
@@ -2393,8 +2426,8 @@ export type ReferralCode = {
  * created or administers the code.
  */
 export type ReferralCodeClaimantsArgs = {
-  cursor?: InputMaybe<Scalars['Int']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 export type ReferralCodeClaimant = {
@@ -2406,10 +2439,13 @@ export type ReferralCodeClaimant = {
   tradingVolume: Scalars['String']['output'];
 };
 
+/** Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore flag */
 export type ReferralCodeClaimantsPage = {
   __typename?: 'ReferralCodeClaimantsPage';
+  hasMore: Scalars['Boolean']['output'];
   items: Array<ReferralCodeClaimant>;
-  nextCursor?: Maybe<Scalars['Int']['output']>;
+  /** Total claimant rows for this code. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type ReferralCodeNullableRelationFilter = {
@@ -2442,10 +2478,13 @@ export type ReferralCodeWhereInput = {
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
 
+/** Paginated wrapper around ReferralCode rows with a server-truth hasMore flag */
 export type ReferralCodesPage = {
   __typename?: 'ReferralCodesPage';
+  hasMore: Scalars['Boolean']['output'];
   items: Array<ReferralCode>;
-  nextCursor?: Maybe<Scalars['Int']['output']>;
+  /** Total ReferralCode rows. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Filter questions by their resolution status */
@@ -2558,6 +2597,8 @@ export type TradesPage = {
   __typename?: 'TradesPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Trade>;
+  /** Total Trade rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /**

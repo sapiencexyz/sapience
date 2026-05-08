@@ -49,19 +49,23 @@ export const getFullLeaderboard = async (): Promise<LeaderboardEntry[]> => {
 };
 
 export const sliceLeaderboard = async (
-  limit: number | null | undefined,
+  take: number | null | undefined,
   skip: number | null | undefined
-): Promise<{ items: LeaderboardEntry[]; hasMore: boolean }> => {
+): Promise<{
+  items: LeaderboardEntry[];
+  hasMore: boolean;
+  totalCount: number;
+}> => {
   const entries = await getFullLeaderboard();
-  const cappedLimit = Math.max(1, Math.min(limit ?? 10, 100));
+  const cappedTake = Math.max(1, Math.min(take ?? 10, 100));
   const skipVal = skip ?? 0;
-  const items = entries.slice(skipVal, skipVal + cappedLimit);
-  const hasMore = entries.length > skipVal + cappedLimit;
-  return { items, hasMore };
+  const items = entries.slice(skipVal, skipVal + cappedTake);
+  const hasMore = entries.length > skipVal + cappedTake;
+  return { items, hasMore, totalCount: entries.length };
 };
 
 export const profitLeaderboardPage: NonNullable<
   QueryResolvers['profitLeaderboardPage']
-> = async (_parent, { limit, skip }) => {
-  return sliceLeaderboard(limit, skip);
+> = async (_parent, { take, skip }) => {
+  return sliceLeaderboard(take, skip);
 };

@@ -27,8 +27,8 @@ export interface UserProfitRankResult {
 }
 
 export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
-  query ProfitLeaderboard($limit: Int, $skip: Int) {
-    profitLeaderboardPage(limit: $limit, skip: $skip) {
+  query ProfitLeaderboard($take: Int, $skip: Int) {
+    profitLeaderboardPage(take: $take, skip: $skip) {
       hasMore
       items {
         address
@@ -39,8 +39,8 @@ export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
 `;
 
 export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
-  query AccuracyLeaderboard($limit: Int!) {
-    accuracyLeaderboardPage(limit: $limit) {
+  query AccuracyLeaderboard($take: Int!) {
+    accuracyLeaderboardPage(take: $take) {
       hasMore
       items {
         address
@@ -82,7 +82,7 @@ export async function fetchAccuracyLeaderboard(
 ): Promise<ForecasterScore[]> {
   const data = await graphqlRequest<{
     accuracyLeaderboardPage: { items: ForecasterScore[]; hasMore: boolean };
-  }>(GET_ACCURACY_LEADERBOARD, { limit });
+  }>(GET_ACCURACY_LEADERBOARD, { take: limit });
   return data.accuracyLeaderboardPage?.items || [];
 }
 
@@ -119,7 +119,7 @@ export async function fetchUserProfitRank(
       }>;
       hasMore: boolean;
     };
-  }>(GET_PROFIT_LEADERBOARD, { limit: 100 });
+  }>(GET_PROFIT_LEADERBOARD, { take: 100 });
 
   const entries = data?.profitLeaderboardPage?.items || [];
   const sortedEntries = entries.sort(

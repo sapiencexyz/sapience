@@ -53,10 +53,14 @@ type ForecasterScoreShape = {
 };
 
 export const sliceAccuracyLeaderboard = async (
-  limit: number | null | undefined,
+  take: number | null | undefined,
   skip: number | null | undefined
-): Promise<{ items: ForecasterScoreShape[]; hasMore: boolean }> => {
-  const capped = Math.max(1, Math.min(limit ?? 10, 100));
+): Promise<{
+  items: ForecasterScoreShape[];
+  hasMore: boolean;
+  totalCount: number;
+}> => {
+  const capped = Math.max(1, Math.min(take ?? 10, 100));
   const skipVal = skip ?? 0;
   const scores = await getLeaderboardScores();
   const items = scores.slice(skipVal, skipVal + capped).map((s) => ({
@@ -68,13 +72,13 @@ export const sliceAccuracyLeaderboard = async (
     accuracyScore: s.accuracyScore,
   }));
   const hasMore = scores.length > skipVal + capped;
-  return { items, hasMore };
+  return { items, hasMore, totalCount: scores.length };
 };
 
 export const accuracyLeaderboardPage: NonNullable<
   QueryResolvers['accuracyLeaderboardPage']
-> = async (_parent, { limit, skip }) => {
-  return sliceAccuracyLeaderboard(limit, skip);
+> = async (_parent, { take, skip }) => {
+  return sliceAccuracyLeaderboard(take, skip);
 };
 
 export const accountAccuracyRank: NonNullable<

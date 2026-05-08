@@ -96,8 +96,8 @@ function useReferralAdminMutate() {
 // codes only affect attribution; create/update/delete mutations remain signed
 // admin REST requests.
 const REFERRAL_CODES_QUERY = `
-  query AdminReferralCodes($limit: Int!, $cursor: Int) {
-    referralCodes(limit: $limit, cursor: $cursor) {
+  query AdminReferralCodes($take: Int!, $skip: Int!) {
+    referralCodes(take: $take, skip: $skip) {
       items {
         id
         maxClaims
@@ -110,39 +110,39 @@ const REFERRAL_CODES_QUERY = `
         totalVolume
         totalPositions
       }
-      nextCursor
+      hasMore
     }
   }
 `;
 
-// Server caps `limit` at 500 per page. We auto-paginate so the admin UI
+// Server caps `take` at 500 per page. We auto-paginate so the admin UI
 // doesn't silently truncate at 500 codes; MAX_PAGES is a safety net against
-// a buggy server returning a non-progressing cursor.
+// a buggy server returning hasMore=true forever.
 const PAGE_SIZE = 500;
 const MAX_PAGES = 50;
 
 type ReferralCodesPageResponse = {
   referralCodes: {
     items: AdminReferralCodeRow[];
-    nextCursor: number | null;
+    hasMore: boolean;
   };
 };
 
 const REFERRAL_CODE_ANALYTICS_QUERY = `
-  query AdminReferralCodeAnalytics($id: Int!, $claimantsLimit: Int!) {
-    referralCodes(id: $id, limit: 1) {
+  query AdminReferralCodeAnalytics($id: Int!, $claimantsTake: Int!) {
+    referralCodes(id: $id, take: 1) {
       items {
         id
         claimCount
         totalVolume
         totalPositions
-        claimants(limit: $claimantsLimit) {
+        claimants(take: $claimantsTake) {
           items {
             address
             tradingVolume
             positionCount
           }
-          nextCursor
+          hasMore
         }
       }
     }
@@ -156,16 +156,14 @@ export function useAdminReferralCodes(): UseQueryResult<
     queryKey: ADMIN_CODES_QUERY_KEY,
     queryFn: async () => {
       const all: AdminReferralCodeRow[] = [];
-      let cursor: number | null = null;
       for (let page = 0; page < MAX_PAGES; page += 1) {
         const data: ReferralCodesPageResponse =
           await graphqlRequest<ReferralCodesPageResponse>(
             REFERRAL_CODES_QUERY,
-            { limit: PAGE_SIZE, cursor }
+            { take: PAGE_SIZE, skip: page * PAGE_SIZE }
           );
         all.push(...data.referralCodes.items);
-        if (data.referralCodes.nextCursor == null) return all;
-        cursor = data.referralCodes.nextCursor;
+        if (!data.referralCodes.hasMore) return all;
       }
       console.warn(
         `useAdminReferralCodes: stopped at MAX_PAGES (${MAX_PAGES}); results may be truncated`
@@ -197,7 +195,7 @@ export function useAdminReferralCodeAnalytics(
             };
           }>;
         };
-      }>(REFERRAL_CODE_ANALYTICS_QUERY, { id, claimantsLimit: 500 });
+      }>(REFERRAL_CODE_ANALYTICS_QUERY, { id, claimantsTake: 500 });
       const code = data.referralCodes.items[0];
       if (!code) {
         throw new Error('Referral code not found');

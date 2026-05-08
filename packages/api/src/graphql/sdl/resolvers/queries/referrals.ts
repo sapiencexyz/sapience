@@ -18,13 +18,19 @@
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 
-const DEFAULT_LIMIT = 100;
-const MAX_LIMIT = 500;
+const DEFAULT_TAKE = 100;
+const MAX_TAKE = 500;
 
-function clampLimit(limit: number | null | undefined): number {
-  if (limit == null) return DEFAULT_LIMIT;
-  if (!Number.isFinite(limit) || limit <= 0) return DEFAULT_LIMIT;
-  return Math.min(Math.floor(limit), MAX_LIMIT);
+function clampTake(take: number | null | undefined): number {
+  if (take == null) return DEFAULT_TAKE;
+  if (!Number.isFinite(take) || take <= 0) return DEFAULT_TAKE;
+  return Math.min(Math.floor(take), MAX_TAKE);
+}
+
+function clampSkip(skip: number | null | undefined): number {
+  if (skip == null) return 0;
+  if (!Number.isFinite(skip) || skip < 0) return 0;
+  return Math.floor(skip);
 }
 
 type StatsRow = {
@@ -93,14 +99,14 @@ export async function fetchCodeStats(
 export const referralCodes: NonNullable<
   QueryResolvers['referralCodes']
 > = async (_parent, args) => {
-  const limit = clampLimit(args.limit);
-  const cursor = args.cursor ?? null;
+  const take = clampTake(args.take);
+  const skip = clampSkip(args.skip);
   const id = args.id ?? null;
 
   // Single-code mode: skip pagination and just return that one row.
   if (id != null) {
     const code = await prisma.referralCode.findUnique({ where: { id } });
-    if (!code) return { items: [], nextCursor: null };
+    if (!code) return { items: [], hasMore: false };
     const statsMap = await fetchCodeStats([id]);
     const stats = statsMap.get(id) ?? {
       claimCount: 0,
@@ -109,19 +115,18 @@ export const referralCodes: NonNullable<
     };
     return {
       items: [{ ...code, ...stats }],
-      nextCursor: null,
+      hasMore: false,
     };
   }
 
   const codes = await prisma.referralCode.findMany({
-    where: cursor !== null ? { id: { lt: cursor } } : undefined,
     orderBy: { id: 'desc' },
-    take: limit + 1,
+    skip,
+    take: take + 1,
   });
 
-  const hasMore = codes.length > limit;
-  const visible = hasMore ? codes.slice(0, limit) : codes;
-  const nextCursor = hasMore ? visible[visible.length - 1].id : null;
+  const hasMore = codes.length > take;
+  const visible = hasMore ? codes.slice(0, take) : codes;
 
   const statsMap = await fetchCodeStats(visible.map((c) => c.id));
 
@@ -134,5 +139,5 @@ export const referralCodes: NonNullable<
     return { ...c, ...stats };
   });
 
-  return { items, nextCursor };
+  return { items, hasMore };
 };

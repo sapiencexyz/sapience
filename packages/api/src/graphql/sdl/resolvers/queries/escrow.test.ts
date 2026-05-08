@@ -32,7 +32,7 @@ type PositionsPageFn = (
   args: QueryPositionsArgs,
   ctx: unknown,
   info: unknown
-) => Promise<{ items: unknown[]; hasMore: boolean }>;
+) => Promise<{ items: unknown[]; hasMore: boolean; totalCount: number }>;
 type PositionCountFn = (
   parent: unknown,
   args: QueryPositionCountArgs,
@@ -169,6 +169,10 @@ const callPositions = async (
 beforeEach(() => {
   vi.clearAllMocks();
   mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+  // The count call runs in parallel with findMany; default to a sensible
+  // sentinel so individual tests don't have to set it up. Tests that care
+  // about totalCount override this explicitly.
+  mockPrisma.position.count.mockResolvedValue(0);
 });
 
 describe('positions resolver — synthetic row emission', () => {
@@ -592,6 +596,19 @@ describe('positionsPage resolver — page envelope', () => {
 
     expect(result.items.length).toBe(0);
     expect(result.hasMore).toBe(true);
+  });
+
+  it('totalCount comes from a parallel prisma.position.count using the same where clause', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([]);
+    mockPrisma.position.count.mockResolvedValue(127);
+
+    const result = await callPositionsPage({ take: 10, holder: ALICE });
+
+    expect(result.totalCount).toBe(127);
+    expect(mockPrisma.position.count).toHaveBeenCalledTimes(1);
+    const countWhere = mockPrisma.position.count.mock.calls[0][0].where;
+    const findManyWhere = mockPrisma.position.findMany.mock.calls[0][0].where;
+    expect(countWhere).toEqual(findManyWhere);
   });
 });
 

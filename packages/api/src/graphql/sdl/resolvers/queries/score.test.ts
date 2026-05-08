@@ -59,7 +59,7 @@ describe('accuracyLeaderboardPage — slicing & envelope', () => {
   it('orders descending by accuracy score (higher = better)', async () => {
     const result = await accuracyLeaderboardPageFn(
       undefined,
-      { limit: 10, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
+      { take: 10, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
       undefined,
       undefined
     );
@@ -70,20 +70,20 @@ describe('accuracyLeaderboardPage — slicing & envelope', () => {
     ]);
   });
 
-  it('caps limit at 100 and floors at 1', async () => {
+  it('caps take at 100 and floors at 1', async () => {
     const big = await accuracyLeaderboardPageFn(
       undefined,
-      { limit: 9999, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
+      { take: 9999, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
       undefined,
       undefined
     );
     expect(big.items.length).toBeLessThanOrEqual(100);
   });
 
-  it('hasMore=true when entries exceed skip + limit', async () => {
+  it('hasMore=true when entries exceed skip + take', async () => {
     const result = await accuracyLeaderboardPageFn(
       undefined,
-      { limit: 2, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
+      { take: 2, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
       undefined,
       undefined
     );
@@ -94,7 +94,7 @@ describe('accuracyLeaderboardPage — slicing & envelope', () => {
   it('hasMore=false on the last page', async () => {
     const result = await accuracyLeaderboardPageFn(
       undefined,
-      { limit: 10, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
+      { take: 10, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
       undefined,
       undefined
     );
@@ -105,7 +105,7 @@ describe('accuracyLeaderboardPage — slicing & envelope', () => {
   it('skip advances the slice (page 2)', async () => {
     const result = await accuracyLeaderboardPageFn(
       undefined,
-      { limit: 2, skip: 2 } as QueryAccuracyLeaderboardPageArgs,
+      { take: 2, skip: 2 } as QueryAccuracyLeaderboardPageArgs,
       undefined,
       undefined
     );
@@ -119,7 +119,7 @@ describe('accuracyLeaderboardPage — slicing & envelope', () => {
     ]);
     const result = await accuracyLeaderboardPageFn(
       undefined,
-      { limit: 10, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
+      { take: 10, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
       undefined,
       undefined
     );
@@ -132,7 +132,7 @@ describe('accuracyLeaderboardPage — slicing & envelope', () => {
     ]);
     const result = await accuracyLeaderboardPageFn(
       undefined,
-      { limit: 10, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
+      { take: 10, skip: 0 } as QueryAccuracyLeaderboardPageArgs,
       undefined,
       undefined
     );
