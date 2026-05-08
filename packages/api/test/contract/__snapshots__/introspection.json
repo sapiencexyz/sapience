@@ -15452,18 +15452,14 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
+                "name": "type",
                 "description": null,
                 "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
+                  "kind": "ENUM",
+                  "name": "ActivityItemType",
+                  "ofType": null
                 },
-                "defaultValue": "0"
+                "defaultValue": null
               },
               {
                 "name": "take",
@@ -15480,14 +15476,18 @@
                 "defaultValue": "20"
               },
               {
-                "name": "type",
+                "name": "skip",
                 "description": null,
                 "type": {
-                  "kind": "ENUM",
-                  "name": "ActivityItemType",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -15545,18 +15545,14 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
+                "name": "type",
                 "description": null,
                 "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
+                  "kind": "ENUM",
+                  "name": "ActivityItemType",
+                  "ofType": null
                 },
-                "defaultValue": "0"
+                "defaultValue": null
               },
               {
                 "name": "take",
@@ -15573,14 +15569,18 @@
                 "defaultValue": "20"
               },
               {
-                "name": "type",
+                "name": "skip",
                 "description": null,
                 "type": {
-                  "kind": "ENUM",
-                  "name": "ActivityItemType",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -16139,16 +16139,6 @@
             "description": "Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.",
             "args": [
               {
-                "name": "uid",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
                 "name": "attester",
                 "description": null,
                 "type": {
@@ -16169,27 +16159,7 @@
                 "defaultValue": null
               },
               {
-                "name": "schemaId",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "recipient",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "minTime",
+                "name": "maxTime",
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
@@ -16199,7 +16169,7 @@
                 "defaultValue": null
               },
               {
-                "name": "maxTime",
+                "name": "minTime",
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
@@ -16224,6 +16194,36 @@
                 "type": {
                   "kind": "ENUM",
                   "name": "SortOrder",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "recipient",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "schemaId",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "uid",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -16450,20 +16450,6 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
                 "name": "take",
                 "description": null,
                 "type": {
@@ -16476,6 +16462,20 @@
                   }
                 },
                 "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -16533,20 +16533,6 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
                 "name": "take",
                 "description": null,
                 "type": {
@@ -16559,6 +16545,20 @@
                   }
                 },
                 "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -17284,34 +17284,6 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "50"
-              },
-              {
                 "name": "tokens",
                 "description": null,
                 "type": {
@@ -17328,6 +17300,34 @@
                   }
                 },
                 "defaultValue": null
+              },
+              {
+                "name": "take",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -17385,34 +17385,6 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "50"
-              },
-              {
                 "name": "tokens",
                 "description": null,
                 "type": {
@@ -17429,6 +17401,34 @@
                   }
                 },
                 "defaultValue": null
+              },
+              {
+                "name": "take",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -17653,20 +17653,6 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
                 "name": "take",
                 "description": null,
                 "type": {
@@ -17679,6 +17665,20 @@
                   }
                 },
                 "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -17836,20 +17836,6 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
                 "name": "take",
                 "description": null,
                 "type": {
@@ -17862,6 +17848,20 @@
                   }
                 },
                 "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -18019,20 +18019,6 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
                 "name": "take",
                 "description": null,
                 "type": {
@@ -18045,6 +18031,20 @@
                   }
                 },
                 "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -18142,20 +18142,6 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
                 "name": "take",
                 "description": null,
                 "type": {
@@ -18168,6 +18154,20 @@
                   }
                 },
                 "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -18535,20 +18535,6 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
                 "name": "sortDirection",
                 "description": null,
                 "type": {
@@ -18595,6 +18581,20 @@
                   }
                 },
                 "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -18730,20 +18730,6 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
                 "name": "sortDirection",
                 "description": null,
                 "type": {
@@ -18790,6 +18776,20 @@
                   }
                 },
                 "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -18988,18 +18988,14 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
+                "name": "token",
                 "description": null,
                 "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
                 },
-                "defaultValue": "0"
+                "defaultValue": null
               },
               {
                 "name": "take",
@@ -19016,14 +19012,18 @@
                 "defaultValue": "50"
               },
               {
-                "name": "token",
+                "name": "skip",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -19091,18 +19091,14 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
+                "name": "token",
                 "description": null,
                 "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
                 },
-                "defaultValue": "0"
+                "defaultValue": null
               },
               {
                 "name": "take",
@@ -19119,14 +19115,18 @@
                 "defaultValue": "50"
               },
               {
-                "name": "token",
+                "name": "skip",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
+                "defaultValue": "0"
               }
             ],
             "type": {

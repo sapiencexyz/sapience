@@ -4,26 +4,21 @@
  *
  * Replaces the type-graphql `buildSchema` call that used to assemble
  * the schema from decorated resolver classes. The wire contract is
- * gated by the contract test suite in `test/contract/` — Phase 5 of
- * the SDL-first migration regenerated only the SDL+introspection
- * snapshots; all 39 data-dependent operation+orphan snapshots stayed
- * byte-identical.
+ * gated by the contract test suite in `test/contract/`.
  *
  * When `emitSchemaFile: true`, emits `schema.graphql` at the package
- * root with lexicographically-sorted types — same behaviour the old
- * type-graphql path provided via its own emitSchemaFile option. The
- * frontend `generate-types` chain reads that file.
+ * root preserving the SDL's authored order. We used to lexicographically
+ * sort here, but the SDL is hand-maintained with intentional ordering
+ * (`*Page` query args end with `take, skip` — see `schema.test.ts`),
+ * and re-sorting at emit time threw that away before clients saw it.
+ * The frontend `generate-types` chain reads the emitted file.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { makeExecutableSchema } from '@graphql-tools/schema';
-import {
-  lexicographicSortSchema,
-  printSchema,
-  type GraphQLSchema,
-} from 'graphql';
+import { printSchema, type GraphQLSchema } from 'graphql';
 import { resolvers } from './sdl/resolvers';
 
 export interface BuildApiSchemaOptions {
@@ -59,7 +54,7 @@ export const buildApiSchema = async (
     });
   }
   if (options.emitSchemaFile) {
-    const sdl = printSchema(lexicographicSortSchema(cachedSchema));
+    const sdl = printSchema(cachedSchema);
     writeFileSync(schemaOutPath, `${sdl}\n`, 'utf8');
   }
   return cachedSchema;
