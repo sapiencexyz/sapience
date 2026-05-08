@@ -171,7 +171,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -372,7 +378,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -2014,7 +2026,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -2795,7 +2813,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -4170,7 +4194,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -7390,7 +7420,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -13368,6 +13404,116 @@
         "possibleTypes": null
       },
       {
+        "kind": "INTERFACE",
+        "name": "Page",
+        "description": "Common shape implemented by every `*Page` type. `items` is intentionally\nnot declared on the interface because each page exposes a different\nconcrete row type; clients can fragment on the interface to read\n`hasMore` / `totalCount` generically and on the concrete type to read\nthe typed `items` list.",
+        "fields": [
+          {
+            "name": "hasMore",
+            "description": "Server-truth signal that another page exists after this one.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total rows matching the filters. May be null when the count is not\ncomputed for this resolver (e.g. complex unioned feeds).",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": [
+          {
+            "kind": "OBJECT",
+            "name": "PositionsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "PredictionsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "TradesPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "ActivityItemsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "PickConfigurationsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "ProfitLeaderboardPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "QuestionsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "CollateralTransfersPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "AccuracyLeaderboardPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "AttestationsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "CategoriesPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "ConditionsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "ReferralCodesPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "ReferralCodeClaimantsPage",
+            "ofType": null
+          }
+        ]
+      },
+      {
         "kind": "OBJECT",
         "name": "Pick",
         "description": "Individual outcome pick within a pick configuration",
@@ -13784,7 +13930,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -14132,7 +14284,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -14672,7 +14830,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -14778,7 +14942,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -19314,7 +19484,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -19696,7 +19872,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -19881,7 +20063,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -20937,7 +21125,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },

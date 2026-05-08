@@ -21,7 +21,7 @@ export type Scalars = {
 };
 
 /** Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag */
-export type AccuracyLeaderboardPage = {
+export type AccuracyLeaderboardPage = Page & {
   __typename?: 'AccuracyLeaderboardPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ForecasterScore>;
@@ -54,7 +54,7 @@ export type ActivityItemType =
   | 'trade';
 
 /** Paginated wrapper around ActivityItem rows with a server-truth hasMore flag */
-export type ActivityItemsPage = {
+export type ActivityItemsPage = Page & {
   __typename?: 'ActivityItemsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ActivityItem>;
@@ -281,7 +281,7 @@ export type AttestationWhereUniqueInput = {
 };
 
 /** Paginated wrapper around Attestation rows with a server-truth hasMore flag */
-export type AttestationsPage = {
+export type AttestationsPage = Page & {
   __typename?: 'AttestationsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Attestation>;
@@ -322,7 +322,7 @@ export type BoolNullableFilter = {
 };
 
 /** Paginated wrapper around Category rows with a server-truth hasMore flag */
-export type CategoriesPage = {
+export type CategoriesPage = Page & {
   __typename?: 'CategoriesPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Category>;
@@ -491,7 +491,7 @@ export type CollateralTransferType = {
 };
 
 /** Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag */
-export type CollateralTransfersPage = {
+export type CollateralTransfersPage = Page & {
   __typename?: 'CollateralTransfersPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<CollateralTransferType>;
@@ -970,7 +970,7 @@ export type ConditionWhereUniqueInput = {
 };
 
 /** Paginated wrapper around Condition rows with a server-truth hasMore flag */
-export type ConditionsPage = {
+export type ConditionsPage = Page & {
   __typename?: 'ConditionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Condition>;
@@ -1526,6 +1526,23 @@ export type NullsOrder =
   | 'first'
   | 'last';
 
+/**
+ * Common shape implemented by every `*Page` type. `items` is intentionally
+ * not declared on the interface because each page exposes a different
+ * concrete row type; clients can fragment on the interface to read
+ * `hasMore` / `totalCount` generically and on the concrete type to read
+ * the typed `items` list.
+ */
+export type Page = {
+  /** Server-truth signal that another page exists after this one. */
+  hasMore: Scalars['Boolean']['output'];
+  /**
+   * Total rows matching the filters. May be null when the count is not
+   * computed for this resolver (e.g. complex unioned feeds).
+   */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
 /** Individual outcome pick within a pick configuration */
 export type Pick = {
   __typename?: 'Pick';
@@ -1560,7 +1577,7 @@ export type PickConfiguration = {
 };
 
 /** Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag */
-export type PickConfigurationsPage = {
+export type PickConfigurationsPage = Page & {
   __typename?: 'PickConfigurationsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<PickConfiguration>;
@@ -1608,7 +1625,7 @@ export type PositionSortField =
  * (not the count of rendered event-stream rows, which can be larger due to
  * per-sell synthetic expansion).
  */
-export type PositionsPage = {
+export type PositionsPage = Page & {
   __typename?: 'PositionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Position>;
@@ -1667,7 +1684,7 @@ export type PredictionSortField =
   | 'SETTLED_AT';
 
 /** Paginated wrapper around Prediction rows with a server-truth hasMore flag */
-export type PredictionsPage = {
+export type PredictionsPage = Page & {
   __typename?: 'PredictionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Prediction>;
@@ -1683,7 +1700,7 @@ export type ProfitEntry = {
 };
 
 /** Paginated wrapper around ProfitEntry rows with a server-truth hasMore flag */
-export type ProfitLeaderboardPage = {
+export type ProfitLeaderboardPage = Page & {
   __typename?: 'ProfitLeaderboardPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ProfitEntry>;
@@ -2372,7 +2389,7 @@ export type QuestionSortField =
   | 'similarMarketVolume';
 
 /** Paginated wrapper around Question rows with a server-truth hasMore flag */
-export type QuestionsPage = {
+export type QuestionsPage = Page & {
   __typename?: 'QuestionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Question>;
@@ -2447,7 +2464,7 @@ export type ReferralCodeClaimant = {
 };
 
 /** Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore flag */
-export type ReferralCodeClaimantsPage = {
+export type ReferralCodeClaimantsPage = Page & {
   __typename?: 'ReferralCodeClaimantsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ReferralCodeClaimant>;
@@ -2486,7 +2503,7 @@ export type ReferralCodeWhereInput = {
 };
 
 /** Paginated wrapper around ReferralCode rows with a server-truth hasMore flag */
-export type ReferralCodesPage = {
+export type ReferralCodesPage = Page & {
   __typename?: 'ReferralCodesPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ReferralCode>;
@@ -2600,7 +2617,7 @@ export type Trade = {
 };
 
 /** Paginated wrapper around Trade rows with a server-truth hasMore flag */
-export type TradesPage = {
+export type TradesPage = Page & {
   __typename?: 'TradesPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Trade>;

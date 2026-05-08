@@ -1321,12 +1321,29 @@ type PnlDataPoint {
 }
 
 """
+Common shape implemented by every `*Page` type. `items` is intentionally
+not declared on the interface because each page exposes a different
+concrete row type; clients can fragment on the interface to read
+`hasMore` / `totalCount` generically and on the concrete type to read
+the typed `items` list.
+"""
+interface Page {
+  """Server-truth signal that another page exists after this one."""
+  hasMore: Boolean!
+  """
+  Total rows matching the filters. May be null when the count is not
+  computed for this resolver (e.g. complex unioned feeds).
+  """
+  totalCount: Int
+}
+
+"""
 Paginated wrapper around Position rows with a server-truth hasMore flag.
 `totalCount` is the count of underlying Position rows that match the filters
 (not the count of rendered event-stream rows, which can be larger due to
 per-sell synthetic expansion).
 """
-type PositionsPage {
+type PositionsPage implements Page {
   items: [Position!]!
   hasMore: Boolean!
   """Total Position rows matching the filters. Populated eagerly."""
@@ -1334,7 +1351,7 @@ type PositionsPage {
 }
 
 """Paginated wrapper around Prediction rows with a server-truth hasMore flag"""
-type PredictionsPage {
+type PredictionsPage implements Page {
   items: [Prediction!]!
   hasMore: Boolean!
   """Total Prediction rows matching the filters. Populated eagerly."""
@@ -1342,7 +1359,7 @@ type PredictionsPage {
 }
 
 """Paginated wrapper around Trade rows with a server-truth hasMore flag"""
-type TradesPage {
+type TradesPage implements Page {
   items: [Trade!]!
   hasMore: Boolean!
   """Total Trade rows matching the filters. Populated when available."""
@@ -1350,7 +1367,7 @@ type TradesPage {
 }
 
 """Paginated wrapper around ActivityItem rows with a server-truth hasMore flag"""
-type ActivityItemsPage {
+type ActivityItemsPage implements Page {
   items: [ActivityItem!]!
   hasMore: Boolean!
   """Total activity rows matching the filters. May be null when the merged-feed count is not computed."""
@@ -1358,7 +1375,7 @@ type ActivityItemsPage {
 }
 
 """Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag"""
-type PickConfigurationsPage {
+type PickConfigurationsPage implements Page {
   items: [PickConfiguration!]!
   hasMore: Boolean!
   """Total PickConfiguration rows matching the filters. Populated when available."""
@@ -1366,7 +1383,7 @@ type PickConfigurationsPage {
 }
 
 """Paginated wrapper around ProfitEntry rows with a server-truth hasMore flag"""
-type ProfitLeaderboardPage {
+type ProfitLeaderboardPage implements Page {
   items: [ProfitEntry!]!
   hasMore: Boolean!
   """Total addresses on the leaderboard (cheap — derived from in-memory cache)."""
@@ -1374,7 +1391,7 @@ type ProfitLeaderboardPage {
 }
 
 """Paginated wrapper around Question rows with a server-truth hasMore flag"""
-type QuestionsPage {
+type QuestionsPage implements Page {
   items: [Question!]!
   hasMore: Boolean!
   """Total Question rows matching the filters. May be null for complex unioned queries."""
@@ -1382,7 +1399,7 @@ type QuestionsPage {
 }
 
 """Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag"""
-type CollateralTransfersPage {
+type CollateralTransfersPage implements Page {
   items: [CollateralTransferType!]!
   hasMore: Boolean!
   """Total CollateralTransfer rows matching the filters. Populated when available."""
@@ -1390,7 +1407,7 @@ type CollateralTransfersPage {
 }
 
 """Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag"""
-type AccuracyLeaderboardPage {
+type AccuracyLeaderboardPage implements Page {
   items: [ForecasterScore!]!
   hasMore: Boolean!
   """Total forecasters on the leaderboard (cheap — derived from in-memory cache)."""
@@ -1398,7 +1415,7 @@ type AccuracyLeaderboardPage {
 }
 
 """Paginated wrapper around Attestation rows with a server-truth hasMore flag"""
-type AttestationsPage {
+type AttestationsPage implements Page {
   items: [Attestation!]!
   hasMore: Boolean!
   """Total Attestation rows matching the filters. Populated when available."""
@@ -1412,7 +1429,7 @@ enum AttestationSortField {
 }
 
 """Paginated wrapper around Category rows with a server-truth hasMore flag"""
-type CategoriesPage {
+type CategoriesPage implements Page {
   items: [Category!]!
   hasMore: Boolean!
   """Total Category rows matching the filters. Populated when available."""
@@ -1420,7 +1437,7 @@ type CategoriesPage {
 }
 
 """Paginated wrapper around Condition rows with a server-truth hasMore flag"""
-type ConditionsPage {
+type ConditionsPage implements Page {
   items: [Condition!]!
   hasMore: Boolean!
   """Total Condition rows matching the filters. Populated when available."""
@@ -1932,7 +1949,7 @@ type ReferralCode {
 }
 
 """Paginated wrapper around ReferralCode rows with a server-truth hasMore flag"""
-type ReferralCodesPage {
+type ReferralCodesPage implements Page {
   items: [ReferralCode!]!
   hasMore: Boolean!
   """Total ReferralCode rows. Populated when available."""
@@ -1940,7 +1957,7 @@ type ReferralCodesPage {
 }
 
 """Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore flag"""
-type ReferralCodeClaimantsPage {
+type ReferralCodeClaimantsPage implements Page {
   items: [ReferralCodeClaimant!]!
   hasMore: Boolean!
   """Total claimant rows for this code. Populated when available."""
