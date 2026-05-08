@@ -200,14 +200,17 @@ export async function preBatchAuctionPayloads(
 }
 
 /**
- * GraphQL query strings for expensive resolvers.
+ * GraphQL query strings for expensive resolvers. Field selections are
+ * taken from packages/api/schema.graphql; only the non-deprecated `*Page`
+ * wrappers are used so this file doesn't need a refresh when deprecated
+ * roots are removed. Names map 1:1 to the k6 scenarios in
+ * packages/benchmarks so cross-harness comparisons are apples-to-apples.
  */
 export const GRAPHQL_QUERIES = {
-  protocolStats: `query { protocolStats { totalVolume totalPredictions activePredictions uniqueUsers } }`,
-  profitLeaderboard: `query { profitLeaderboard(first: 50) { address totalProfit totalVolume predictionCount winRate } }`,
-  conditions: `query { conditions(first: 20) { id resolver conditionId predictions(first: 10) { id predictor counterparty predictorCollateral counterpartyCollateral settled } } }`,
-  markets: `query { markets(first: 20) { id title status volume predictions { id } } }`,
-  userProfile: `query { user(address: "0x0000000000000000000000000000000000000001") { address predictions { id } profit } }`,
+  protocolStats: `query { protocolStats { cumulativeVolume openInterest timestamp escrowBalance } }`,
+  profitLeaderboardPage: `query { profitLeaderboardPage(limit: 50) { hasMore items { address totalPnL } } }`,
+  conditionsPage: `query { conditionsPage(take: 50) { hasMore items { id question endTime openInterest chainId settled predictionCount } } }`,
+  questionsPage: `query { questionsPage(take: 50) { hasMore items { questionType predictionCount condition { id question endTime openInterest } } } }`,
 } as const;
 
 export type QueryName = keyof typeof GRAPHQL_QUERIES;

@@ -28,6 +28,8 @@ const args = parseArgs({
     'ramp-up': { type: 'string', default: '5' },
     'metrics-url': { type: 'string', default: '' },
     'confirm-production': { type: 'boolean', default: false },
+    'report-path': { type: 'string', default: '' },
+    'request-log-path': { type: 'string', default: '' },
     help: { type: 'boolean', default: false },
   },
 });
@@ -50,6 +52,8 @@ Options:
   --ramp-up <seconds>     Connection ramp-up time (default: 5)
   --metrics-url <url>     Relayer /metrics endpoint for Prometheus delta
   --confirm-production    Required when targeting production URLs
+  --report-path <path>    Write structured JSON run report to this path
+  --request-log-path <p>  Write per-request JSONL log (requestId, latency, status, layer)
   --help                  Show this help
 
 Examples:
@@ -84,6 +88,8 @@ const config: LoadTestConfig = {
   rampUp: parseInt(args.values['ramp-up'] || '5', 10),
   metricsUrl: args.values['metrics-url'] || undefined,
   confirmProduction: args.values['confirm-production'] || false,
+  reportPath: args.values['report-path'] || undefined,
+  requestLogPath: args.values['request-log-path'] || undefined,
   preset: getPreset(scale),
 };
 

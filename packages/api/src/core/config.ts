@@ -50,6 +50,10 @@ const validators = {
     default: 25,
     desc: 'Max concurrent GraphQL operations per IP before rejecting with 429',
   }),
+  GRAPHQL_INFLIGHT_DUMP_INTERVAL_MS: num({
+    default: 0,
+    desc: 'Periodic gql_inflight gauge dump interval in ms (0 = disabled). Set to ~60000 in prod or ~5000 during benchmarking.',
+  }),
   LOG_LEVEL: str({
     choices: [
       'trace',

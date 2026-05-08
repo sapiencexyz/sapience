@@ -15,6 +15,7 @@ import prisma from './db';
 import { config } from './config';
 import { createLogger } from './logger';
 import { createConcurrencyLimiter } from '../runtime/concurrencyLimiter';
+import { startInflightDump } from '../runtime/inflightDump';
 import {
   createAuctionProxyMiddleware,
   proxyAuctionWebSocket,
@@ -183,6 +184,12 @@ const startServer = async () => {
     }
   );
 
+  // Periodic gauge dump — disabled by default (interval <= 0). Opt in via
+  // GRAPHQL_INFLIGHT_DUMP_INTERVAL_MS for benchmarks or low-rate prod monitoring.
+  const stopInflightDump = startInflightDump(
+    config.GRAPHQL_INFLIGHT_DUMP_INTERVAL_MS
+  );
+
   httpServer.listen(PORT, () => {
     log.info({ port: PORT, auctionProxyEnabled }, 'Server listening');
   });
@@ -190,6 +197,7 @@ const startServer = async () => {
   // Graceful shutdown — drain in-flight requests before exiting
   const shutdown = async () => {
     log.info('Shutting down gracefully');
+    stopInflightDump();
     httpServer.close(() => {
       log.info('HTTP server closed');
       prisma.$disconnect().then(() => process.exit(0));

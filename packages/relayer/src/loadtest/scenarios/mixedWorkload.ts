@@ -156,7 +156,7 @@ export async function run(config: LoadTestConfig): Promise<void> {
   if (httpDriver) {
     workers.push(
       (async () => {
-        const lightQueries = ['protocolStats', 'markets'] as const;
+        const lightQueries = ['protocolStats', 'questionsPage'] as const;
         while (Date.now() < endTime) {
           const q =
             lightQueries[Math.floor(Math.random() * lightQueries.length)];
@@ -201,7 +201,10 @@ export async function run(config: LoadTestConfig): Promise<void> {
   if (httpDriver) {
     workers.push(
       (async () => {
-        const heavyQueries = ['conditions', 'profitLeaderboard'] as const;
+        const heavyQueries = [
+          'conditionsPage',
+          'profitLeaderboardPage',
+        ] as const;
         while (Date.now() < endTime) {
           const q =
             heavyQueries[Math.floor(Math.random() * heavyQueries.length)];

@@ -40,6 +40,18 @@ export interface LoadTestConfig {
   metricsUrl?: string;
   confirmProduction: boolean;
   preset: ScalePreset;
+  /**
+   * Optional path for the JSON run report. Scenarios write a structured
+   * summary here at the end of the run; absence skips the file write.
+   * Use `jq` to diff two runs.
+   */
+  reportPath?: string;
+  /**
+   * Optional path for per-request JSONL log (one line per HTTP request
+   * with requestId, latency, status, layer). Lets post-run analysis
+   * join client timing to server `gql_request` lines by `requestId`.
+   */
+  requestLogPath?: string;
 }
 
 export function getPreset(scale: number): ScalePreset {

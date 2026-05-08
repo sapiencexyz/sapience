@@ -1,0 +1,17 @@
+{
+  "name": "@sapience/benchmarks",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Load-testing scripts for the Sapience API. Requires the k6 binary on PATH (https://k6.io/docs/get-started/installation/).",
+  "scripts": {
+    "trigger-429": "k6 run scenarios/trigger-429.js",
+    "trigger-429:json": "k6 run --out json=results/trigger-429.json scenarios/trigger-429.js",
+    "trigger-global-shed": "k6 run scenarios/trigger-global-shed.js",
+    "trigger-global-shed:json": "k6 run --out json=results/trigger-global-shed.json scenarios/trigger-global-shed.js"
+  },
+  "engines": {
+    "node": ">=22.12",
+    "pnpm": ">=10.16.0 <11"
+  }
+}
