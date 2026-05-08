@@ -35,10 +35,16 @@ export const pickConfigurations: NonNullable<
 export const pickConfiguration: NonNullable<
   QueryResolvers['pickConfiguration']
 > = async (_parent, { id }, ctx) => {
-  const r = await prisma.picks.findUnique({
-    where: { id: id.toLowerCase() },
-    include: { picks: true },
-  });
+  // Use the per-request DataLoader so multiple references to the same
+  // pickConfig in one operation share a single round trip. Falls back
+  // to a direct findUnique when the loader isn't on context (some
+  // tests don't wire one).
+  const r = ctx?.loaders
+    ? await ctx.loaders.pickConfigById.load(id)
+    : await prisma.picks.findUnique({
+        where: { id: id.toLowerCase() },
+        include: { picks: true },
+      });
   if (r) await preloadPickConditions(ctx, [r]);
   return r ? mapPickConfig(r) : null;
 };

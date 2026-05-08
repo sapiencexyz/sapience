@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import prisma from '../core/db';
+import type { GraphQLLoaders } from './sdl/resolvers/loaders';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
@@ -43,6 +44,13 @@ export interface ApolloContext {
    * need a place to stash the map for the field resolver to read.
    */
   pickConditions?: Map<string, unknown>;
+  /**
+   * Per-request DataLoaders. See `sdl/resolvers/loaders.ts` for the
+   * full set; today this dedupes pickConfiguration-by-id lookups so
+   * resolvers that reference the same id from different paths in one
+   * query share a single round trip.
+   */
+  loaders?: GraphQLLoaders;
 }
 
 export const initializeApolloServer = async () => {

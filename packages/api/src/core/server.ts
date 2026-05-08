@@ -7,6 +7,7 @@ import type { IncomingMessage } from 'http';
 import type { Socket } from 'net';
 import { initSentry } from './instrument';
 import { initializeApolloServer } from '../graphql/startApolloServer';
+import { createLoaders } from '../graphql/sdl/resolvers/loaders';
 import Sentry from './instrument';
 import { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from '../fixtures';
@@ -113,6 +114,7 @@ const startServer = async () => {
       context: async ({ req }) => ({
         prisma,
         pickConditions: new Map<string, unknown>(),
+        loaders: createLoaders(prisma),
         // pino-http attaches `id` and `log` to req; passed through so the
         // operation-timing plugin can include reqId in the structured log.
         req,
