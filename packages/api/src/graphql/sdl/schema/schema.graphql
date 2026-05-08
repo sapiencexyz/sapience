@@ -1677,12 +1677,12 @@ type Query {
   """
   Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
-  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: ActivityItemType): [ActivityItem!]! @deprecated(reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.")
+  accountActivity(address: String, conditionId: String, pickConfigId: String, type: ActivityItemType, take: Int! = 20, skip: Int! = 0): [ActivityItem!]! @deprecated(reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.")
 
   """
   Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag for infinite scroll.
   """
-  accountActivityPage(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: ActivityItemType): ActivityItemsPage!
+  accountActivityPage(address: String, conditionId: String, pickConfigId: String, type: ActivityItemType, take: Int! = 20, skip: Int! = 0): ActivityItemsPage!
 
   """
   Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
@@ -1724,7 +1724,7 @@ type Query {
   """
   Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
   """
-  attestationsPage(uid: String, attester: String, conditionId: String, schemaId: String, recipient: String, minTime: Int, maxTime: Int, orderBy: AttestationSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0): AttestationsPage!
+  attestationsPage(attester: String, conditionId: String, maxTime: Int, minTime: Int, orderBy: AttestationSortField, orderDirection: SortOrder, recipient: String, schemaId: String, uid: String, take: Int! = 50, skip: Int! = 0): AttestationsPage!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesPage` — same data with a server-truth `hasMore` stop signal and no Prisma input types in the wire contract.")
 
   """
@@ -1735,12 +1735,12 @@ type Query {
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
   """
-  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated(reason: "Unused; will be removed. No live consumers — claim events are reconstructed from settlement-side PnL on Position/Prediction.")
+  claims(chainId: Int, holder: String, predictionId: String, take: Int! = 50, skip: Int! = 0): [Claim!]! @deprecated(reason: "Unused; will be removed. No live consumers — claim events are reconstructed from settlement-side PnL on Position/Prediction.")
 
   """
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
-  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated(reason: "Unused; will be removed. No live consumers — close events surface through `accountActivityPage`.")
+  closes(address: String, chainId: Int, pickConfigId: String, take: Int! = 50, skip: Int! = 0): [Close!]! @deprecated(reason: "Unused; will be removed. No live consumers — close events surface through `accountActivityPage`.")
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
   collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
   collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]! @deprecated(reason: "Use `collateralTransfersPage` — same data with a server-truth `hasMore` stop signal.")
@@ -1769,12 +1769,12 @@ type Query {
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
   """
-  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]! @deprecated(reason: "Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal.")
+  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, tokens: [String!], take: Int! = 50, skip: Int! = 0): [PickConfiguration!]! @deprecated(reason: "Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal.")
 
   """
   Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
   """
-  pickConfigurationsPage(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): PickConfigurationsPage!
+  pickConfigurationsPage(chainId: Int, resolved: Boolean, result: SettlementResult, tokens: [String!], take: Int! = 50, skip: Int! = 0): PickConfigurationsPage!
 
   """Top 20 most-used tags across public conditions"""
   popularTags: [String!]!
@@ -1785,12 +1785,12 @@ type Query {
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.")
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, take: Int! = 50, skip: Int! = 0): [Position!]! @deprecated(reason: "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.")
 
   """
   Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
   """
-  positionsPage(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): PositionsPage!
+  positionsPage(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, take: Int! = 50, skip: Int! = 0): PositionsPage!
 
   """Look up a single prediction by its on-chain prediction ID"""
   prediction(id: String!): Prediction
@@ -1801,12 +1801,12 @@ type Query {
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
   """
-  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]! @deprecated(reason: "Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.")
+  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, take: Int! = 50, skip: Int! = 0): [Prediction!]! @deprecated(reason: "Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.")
 
   """
   Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
   """
-  predictionsPage(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): PredictionsPage!
+  predictionsPage(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, take: Int! = 50, skip: Int! = 0): PredictionsPage!
 
   """
   Profit leaderboard — addresses ranked by total PnL across all positions
@@ -1839,12 +1839,12 @@ type Query {
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """
-  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]! @deprecated(reason: "Use `questionsPage` — same data with a server-truth `hasMore` stop signal.")
+  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50, skip: Int! = 0): [Question!]! @deprecated(reason: "Use `questionsPage` — same data with a server-truth `hasMore` stop signal.")
 
   """
   Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
   """
-  questionsPage(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): QuestionsPage!
+  questionsPage(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50, skip: Int! = 0): QuestionsPage!
 
   """
   Public referral analytics. Referral codes are attribution hints, not
@@ -1867,12 +1867,12 @@ type Query {
   """
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
   """
-  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]! @deprecated(reason: "Use `tradesPage` — same data with a server-truth `hasMore` stop signal.")
+  trades(address: String, buyer: String, chainId: Int, seller: String, token: String, take: Int! = 50, skip: Int! = 0): [Trade!]! @deprecated(reason: "Use `tradesPage` — same data with a server-truth `hasMore` stop signal.")
 
   """
   Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag for paginated infinite scroll.
   """
-  tradesPage(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): TradesPage!
+  tradesPage(address: String, buyer: String, chainId: Int, seller: String, token: String, take: Int! = 50, skip: Int! = 0): TradesPage!
 
   """
   Look up a single user by EVM address (case-insensitive). Returns null if no user matches.
