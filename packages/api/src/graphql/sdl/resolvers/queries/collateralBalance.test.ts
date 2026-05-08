@@ -181,7 +181,8 @@ describe('collateralTransfers', () => {
     );
 
     const args = mockPrisma.collateralTransfer.findMany.mock.calls[0][0];
-    expect(args.take).toBe(500);
+    // Fetches one extra row (501) to detect hasMore; result is sliced to 500.
+    expect(args.take).toBe(501);
     expect(args.skip).toBe(7);
   });
 });

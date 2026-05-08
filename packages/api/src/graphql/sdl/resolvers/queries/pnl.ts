@@ -45,12 +45,29 @@ const getFullLeaderboard = async (): Promise<LeaderboardEntry[]> => {
   return entries;
 };
 
+const sliceLeaderboard = async (
+  limit: number | null | undefined,
+  skip: number | null | undefined
+): Promise<{ items: LeaderboardEntry[]; hasMore: boolean }> => {
+  const entries = await getFullLeaderboard();
+  const cappedLimit = Math.max(1, Math.min(limit ?? 10, 100));
+  const skipVal = skip ?? 0;
+  const items = entries.slice(skipVal, skipVal + cappedLimit);
+  const hasMore = entries.length > skipVal + cappedLimit;
+  return { items, hasMore };
+};
+
 export const profitLeaderboard: NonNullable<
   QueryResolvers['profitLeaderboard']
 > = async (_parent, { limit, skip }) => {
-  const entries = await getFullLeaderboard();
-  const cappedLimit = Math.max(1, Math.min(limit, 100));
-  return entries.slice(skip, skip + cappedLimit);
+  const { items } = await sliceLeaderboard(limit, skip);
+  return items;
+};
+
+export const profitLeaderboardPage: NonNullable<
+  QueryResolvers['profitLeaderboardPage']
+> = async (_parent, { limit, skip }) => {
+  return sliceLeaderboard(limit, skip);
 };
 
 export const accountProfitRank: NonNullable<

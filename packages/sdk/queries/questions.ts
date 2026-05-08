@@ -61,7 +61,7 @@ export const GET_QUESTIONS = /* GraphQL */ `
     $tag: String
     $similarMarketVolumeWindow: VolumeWindow
   ) {
-    questions(
+    questionsPage(
       take: $take
       skip: $skip
       chainId: $chainId
@@ -78,22 +78,62 @@ export const GET_QUESTIONS = /* GraphQL */ `
       tag: $tag
       similarMarketVolumeWindow: $similarMarketVolumeWindow
     ) {
-      questionType
-      group {
-        id
-        createdAt
-        name
-        category {
+      hasMore
+      items {
+        questionType
+        group {
           id
+          createdAt
           name
-          slug
+          category {
+            id
+            name
+            slug
+          }
+          conditions {
+            id
+            createdAt
+            question
+            shortName
+            optionName
+            endTime
+            public
+            description
+            similarMarkets
+            tags
+            chainId
+            resolver
+            settled
+            resolvedToYes
+            nonDecisive
+            assertionId
+            assertionTimestamp
+            openInterest
+            similarMarketVolume
+            similarMarketImage
+            estimatedPrice
+            similarMarketVolume1h
+            similarMarketVolume4h
+            similarMarketVolume24h
+            similarMarketVolume7d
+            similarMarketVolumeFiltered1h
+            similarMarketVolumeFiltered4h
+            similarMarketVolumeFiltered24h
+            similarMarketVolumeFiltered7d
+            conditionGroupId
+            category {
+              id
+              name
+              slug
+            }
+            displayOrder
+          }
         }
-        conditions {
+        condition {
           id
           createdAt
           question
           shortName
-          optionName
           endTime
           public
           description
@@ -124,43 +164,6 @@ export const GET_QUESTIONS = /* GraphQL */ `
             name
             slug
           }
-          displayOrder
-        }
-      }
-      condition {
-        id
-        createdAt
-        question
-        shortName
-        endTime
-        public
-        description
-        similarMarkets
-        tags
-        chainId
-        resolver
-        settled
-        resolvedToYes
-        nonDecisive
-        assertionId
-        assertionTimestamp
-        openInterest
-        similarMarketVolume
-        similarMarketImage
-        estimatedPrice
-        similarMarketVolume1h
-        similarMarketVolume4h
-        similarMarketVolume24h
-        similarMarketVolume7d
-        similarMarketVolumeFiltered1h
-        similarMarketVolumeFiltered4h
-        similarMarketVolumeFiltered24h
-        similarMarketVolumeFiltered7d
-        conditionGroupId
-        category {
-          id
-          name
-          slug
         }
       }
     }
@@ -189,7 +192,7 @@ export async function fetchQuestionsSorted(
   params: FetchQuestionsSortedParams
 ): Promise<QuestionType[]> {
   type QuestionsQueryResult = {
-    questions: QuestionType[];
+    questionsPage: { items: QuestionType[]; hasMore: boolean };
   };
   const variables = {
     take: params.take,
@@ -216,5 +219,5 @@ export async function fetchQuestionsSorted(
     variables
   );
 
-  return data.questions ?? [];
+  return data.questionsPage?.items ?? [];
 }

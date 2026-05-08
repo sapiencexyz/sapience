@@ -9,9 +9,16 @@
  */
 
 import { getProtocolAddressesForChain } from '@sapience/sdk/contracts';
-import type { QueryResolvers } from '../../__generated__/resolvers';
+import type {
+  QueryResolvers,
+  QueryCollateralTransfersArgs,
+} from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+
+type CollateralTransferRow = NonNullable<
+  Awaited<ReturnType<typeof prisma.collateralTransfer.findUnique>>
+>;
 
 export const collateralBalance: NonNullable<
   QueryResolvers['collateralBalance']
@@ -92,10 +99,19 @@ export const collateralBalanceHistory: NonNullable<
   }));
 };
 
-export const collateralTransfers: NonNullable<
-  QueryResolvers['collateralTransfers']
-> = async (_parent, { address, chainId, excludeProtocol, limit, offset }) => {
+const runCollateralTransfers = async ({
+  address,
+  chainId,
+  excludeProtocol,
+  limit,
+  offset,
+}: QueryCollateralTransfersArgs): Promise<{
+  items: CollateralTransferRow[];
+  hasMore: boolean;
+}> => {
   const addr = address.toLowerCase();
+  const cappedLimit = Math.min(limit ?? 100, 500);
+  const offsetVal = offset ?? 0;
   const protocolAddresses = excludeProtocol
     ? getProtocolAddressesForChain(chainId)
     : [];
@@ -108,14 +124,29 @@ export const collateralTransfers: NonNullable<
           ],
         }
       : {};
-  return prisma.collateralTransfer.findMany({
+  const rawRows = await prisma.collateralTransfer.findMany({
     where: {
       chainId,
       OR: [{ from: addr }, { to: addr }],
       ...excludeClause,
     },
     orderBy: { blockNumber: 'desc' },
-    take: Math.min(limit, 500),
-    skip: offset,
+    take: cappedLimit + 1,
+    skip: offsetVal,
   });
+  const hasMore = rawRows.length > cappedLimit;
+  return { items: rawRows.slice(0, cappedLimit), hasMore };
+};
+
+export const collateralTransfers: NonNullable<
+  QueryResolvers['collateralTransfers']
+> = async (_parent, args) => {
+  const { items } = await runCollateralTransfers(args);
+  return items;
+};
+
+export const collateralTransfersPage: NonNullable<
+  QueryResolvers['collateralTransfersPage']
+> = async (_parent, args) => {
+  return runCollateralTransfers(args);
 };

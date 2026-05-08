@@ -28,22 +28,28 @@ export interface UserProfitRankResult {
 
 export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
   query ProfitLeaderboard($limit: Int, $skip: Int) {
-    profitLeaderboard(limit: $limit, skip: $skip) {
-      address
-      totalPnL
+    profitLeaderboardPage(limit: $limit, skip: $skip) {
+      hasMore
+      items {
+        address
+        totalPnL
+      }
     }
   }
 `;
 
 export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
   query AccuracyLeaderboard($limit: Int!) {
-    accuracyLeaderboard(limit: $limit) {
-      address
-      numScored
-      sumErrorSquared
-      numTimeWeighted
-      sumTimeWeightedError
-      accuracyScore
+    accuracyLeaderboardPage(limit: $limit) {
+      hasMore
+      items {
+        address
+        numScored
+        sumErrorSquared
+        numTimeWeighted
+        sumTimeWeightedError
+        accuracyScore
+      }
     }
   }
 `;
@@ -63,19 +69,21 @@ export async function fetchLeaderboard(): Promise<
   AggregatedLeaderboardEntry[]
 > {
   const data = await graphqlRequest<{
-    profitLeaderboard: AggregatedLeaderboardEntry[];
+    profitLeaderboardPage: {
+      items: AggregatedLeaderboardEntry[];
+      hasMore: boolean;
+    };
   }>(GET_PROFIT_LEADERBOARD);
-  return (data?.profitLeaderboard || []).slice(0, 100);
+  return (data?.profitLeaderboardPage?.items || []).slice(0, 100);
 }
 
 export async function fetchAccuracyLeaderboard(
   limit = 10
 ): Promise<ForecasterScore[]> {
-  const data = await graphqlRequest<{ accuracyLeaderboard: ForecasterScore[] }>(
-    GET_ACCURACY_LEADERBOARD,
-    { limit }
-  );
-  return data.accuracyLeaderboard || [];
+  const data = await graphqlRequest<{
+    accuracyLeaderboardPage: { items: ForecasterScore[]; hasMore: boolean };
+  }>(GET_ACCURACY_LEADERBOARD, { limit });
+  return data.accuracyLeaderboardPage?.items || [];
 }
 
 export async function fetchForecasterRank(
@@ -104,13 +112,16 @@ export async function fetchUserProfitRank(
   const addressLc = ownerAddress.toLowerCase();
 
   const data = await graphqlRequest<{
-    profitLeaderboard: Array<{
-      address: string;
-      totalPnL: string;
-    }>;
+    profitLeaderboardPage: {
+      items: Array<{
+        address: string;
+        totalPnL: string;
+      }>;
+      hasMore: boolean;
+    };
   }>(GET_PROFIT_LEADERBOARD, { limit: 100 });
 
-  const entries = data?.profitLeaderboard || [];
+  const entries = data?.profitLeaderboardPage?.items || [];
   const sortedEntries = entries.sort(
     (a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL)
   );

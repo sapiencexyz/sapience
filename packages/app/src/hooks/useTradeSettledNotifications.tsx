@@ -3,9 +3,9 @@ import { useAccount } from 'wagmi';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { ToastAction } from '@sapience/ui/components/ui/toast';
-import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 import { useRouter } from 'next/navigation';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 
 const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
   query RecentCounterpartyPredictions(
@@ -15,21 +15,24 @@ const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
     $orderBy: PredictionSortField
     $orderDirection: SortOrder
   ) {
-    predictions(
+    predictionsPage(
       address: $address
       take: $take
       skip: $skip
       orderBy: $orderBy
       orderDirection: $orderDirection
     ) {
-      id
-      predictionId
-      chainId
-      predictor
-      counterparty
-      marketAddress
-      createTxHash
-      createdAt
+      hasMore
+      items {
+        id
+        predictionId
+        chainId
+        predictor
+        counterparty
+        marketAddress
+        createTxHash
+        createdAt
+      }
     }
   }
 `;
@@ -46,7 +49,7 @@ type Prediction = {
 };
 
 type PredictionsQueryResponse = {
-  predictions: Prediction[];
+  predictionsPage: { items: Prediction[]; hasMore: boolean };
 };
 
 export function useTradeSettledNotifications() {
@@ -72,7 +75,7 @@ export function useTradeSettledNotifications() {
           orderDirection: 'desc',
         }
       );
-      return result.predictions;
+      return result.predictionsPage?.items ?? [];
     },
     enabled: !!address,
     refetchInterval: 3000, // Poll every 3 seconds

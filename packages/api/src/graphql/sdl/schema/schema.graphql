@@ -1320,6 +1320,54 @@ type PositionsPage {
   hasMore: Boolean!
 }
 
+"""Paginated wrapper around Prediction rows with a server-truth hasMore flag"""
+type PredictionsPage {
+  items: [Prediction!]!
+  hasMore: Boolean!
+}
+
+"""Paginated wrapper around Trade rows with a server-truth hasMore flag"""
+type TradesPage {
+  items: [Trade!]!
+  hasMore: Boolean!
+}
+
+"""Paginated wrapper around ActivityItem rows with a server-truth hasMore flag"""
+type ActivityItemsPage {
+  items: [ActivityItem!]!
+  hasMore: Boolean!
+}
+
+"""Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag"""
+type PickConfigurationsPage {
+  items: [PickConfiguration!]!
+  hasMore: Boolean!
+}
+
+"""Paginated wrapper around ProfitEntry rows with a server-truth hasMore flag"""
+type ProfitLeaderboardPage {
+  items: [ProfitEntry!]!
+  hasMore: Boolean!
+}
+
+"""Paginated wrapper around Question rows with a server-truth hasMore flag"""
+type QuestionsPage {
+  items: [Question!]!
+  hasMore: Boolean!
+}
+
+"""Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag"""
+type CollateralTransfersPage {
+  items: [CollateralTransferType!]!
+  hasMore: Boolean!
+}
+
+"""Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag"""
+type AccuracyLeaderboardPage {
+  items: [ForecasterScore!]!
+  hasMore: Boolean!
+}
+
 """ERC-20 token balance representing a side of a prediction position"""
 type Position {
   balance: String!
@@ -1497,7 +1545,12 @@ type Query {
   """
   Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
-  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
+  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]! @deprecated(reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag for infinite scroll.
+  """
+  accountActivityPage(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): ActivityItemsPage!
 
   """
   Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
@@ -1528,7 +1581,12 @@ type Query {
   accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
 
   """Top forecasters ranked by accuracy score"""
-  accuracyLeaderboard(limit: Int! = 10): [ForecasterScore!]!
+  accuracyLeaderboard(limit: Int! = 10): [ForecasterScore!]! @deprecated(reason: "Use `accuracyLeaderboardPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `accuracyLeaderboard`, but wraps the result in an `AccuracyLeaderboardPage` with a server-truth `hasMore` flag.
+  """
+  accuracyLeaderboardPage(limit: Int! = 10, skip: Int! = 0): AccuracyLeaderboardPage!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
 
@@ -1543,7 +1601,12 @@ type Query {
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
   collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
-  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
+  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]! @deprecated(reason: "Use `collateralTransfersPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag.
+  """
+  collateralTransfersPage(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): CollateralTransfersPage!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
@@ -1555,7 +1618,12 @@ type Query {
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
   """
-  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]!
+  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]! @deprecated(reason: "Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+  """
+  pickConfigurationsPage(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): PickConfigurationsPage!
 
   """Top 20 most-used tags across public conditions"""
   popularTags: [String!]!
@@ -1566,7 +1634,7 @@ type Query {
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.")
 
   """
   Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
@@ -1582,12 +1650,22 @@ type Query {
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
   """
-  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
+  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]! @deprecated(reason: "Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+  """
+  predictionsPage(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): PredictionsPage!
 
   """
   Profit leaderboard — addresses ranked by total PnL across all positions
   """
-  profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
+  profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]! @deprecated(reason: "Use `profitLeaderboardPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `profitLeaderboard`, but wraps the result in a `ProfitLeaderboardPage` with a server-truth `hasMore` flag.
+  """
+  profitLeaderboardPage(limit: Int! = 10, skip: Int! = 0): ProfitLeaderboardPage!
 
   """
   Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
@@ -1610,7 +1688,12 @@ type Query {
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """
-  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
+  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]! @deprecated(reason: "Use `questionsPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+  """
+  questionsPage(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): QuestionsPage!
 
   """
   Public referral analytics. Referral codes are attribution hints, not
@@ -1633,7 +1716,12 @@ type Query {
   """
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
   """
-  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
+  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]! @deprecated(reason: "Use `tradesPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+  """
+  tradesPage(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): TradesPage!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated
 }

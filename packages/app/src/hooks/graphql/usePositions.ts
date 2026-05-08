@@ -173,34 +173,37 @@ const PREDICTIONS_QUERY = /* GraphQL */ `
     $take: Int
     $skip: Int
   ) {
-    predictions(
+    predictionsPage(
       address: $address
       chainId: $chainId
       take: $take
       skip: $skip
     ) {
-      id
-      predictionId
-      chainId
-      marketAddress
-      predictor
-      counterparty
-      predictorToken
-      counterpartyToken
-      predictorCollateral
-      counterpartyCollateral
-      collateralDeposited
-      collateralDepositedAt
-      settled
-      settledAt
-      settleTxHash
-      result
-      predictorClaimable
-      counterpartyClaimable
-      createTxHash
-      createdAt
-      refCode
-      ${PICK_CONFIG_FRAGMENT}
+      hasMore
+      items {
+        id
+        predictionId
+        chainId
+        marketAddress
+        predictor
+        counterparty
+        predictorToken
+        counterpartyToken
+        predictorCollateral
+        counterpartyCollateral
+        collateralDeposited
+        collateralDepositedAt
+        settled
+        settledAt
+        settleTxHash
+        result
+        predictorClaimable
+        counterpartyClaimable
+        createTxHash
+        createdAt
+        refCode
+        ${PICK_CONFIG_FRAGMENT}
+      }
     }
   }
 `;
@@ -210,22 +213,25 @@ const PREDICTIONS_QUERY = /* GraphQL */ `
 // the full PICK_CONFIG_FRAGMENT (with embedded conditions) blew past it.
 const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
   query PredictionsByCondition($conditionId: String!, $take: Int, $skip: Int) {
-    predictions(conditionId: $conditionId, take: $take, skip: $skip) {
-      id
-      predictionId
-      marketAddress
-      predictor
-      counterparty
-      predictorCollateral
-      counterpartyCollateral
-      collateralDepositedAt
-      createdAt
-      pickConfig {
+    predictionsPage(conditionId: $conditionId, take: $take, skip: $skip) {
+      hasMore
+      items {
         id
-        picks {
-          conditionId
-          conditionResolver
-          predictedOutcome
+        predictionId
+        marketAddress
+        predictor
+        counterparty
+        predictorCollateral
+        counterpartyCollateral
+        collateralDepositedAt
+        createdAt
+        pickConfig {
+          id
+          picks {
+            conditionId
+            conditionResolver
+            predictedOutcome
+          }
         }
       }
     }
@@ -382,16 +388,15 @@ export function usePredictions(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{ predictions: Prediction[] }>(
-        PREDICTIONS_QUERY,
-        {
-          address,
-          chainId: chainId ?? null,
-          take,
-          skip,
-        }
-      );
-      return resp?.predictions ?? [];
+      const resp = await graphqlRequest<{
+        predictionsPage: { items: Prediction[]; hasMore: boolean };
+      }>(PREDICTIONS_QUERY, {
+        address,
+        chainId: chainId ?? null,
+        take,
+        skip,
+      });
+      return resp?.predictionsPage?.items ?? [];
     },
   });
 
@@ -567,11 +572,10 @@ export function usePredictionsByConditionId(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{ predictions: Prediction[] }>(
-        PREDICTIONS_BY_CONDITION_QUERY,
-        { conditionId, take, skip }
-      );
-      return resp?.predictions ?? [];
+      const resp = await graphqlRequest<{
+        predictionsPage: { items: Prediction[]; hasMore: boolean };
+      }>(PREDICTIONS_BY_CONDITION_QUERY, { conditionId, take, skip });
+      return resp?.predictionsPage?.items ?? [];
     },
   });
 

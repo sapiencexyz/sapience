@@ -64,12 +64,23 @@ export const accountAccuracy: NonNullable<
   };
 };
 
-export const accuracyLeaderboard: NonNullable<
-  QueryResolvers['accuracyLeaderboard']
-> = async (_parent, { limit }) => {
-  const capped = Math.max(1, Math.min(limit, 100));
+type ForecasterScoreShape = {
+  address: string;
+  numScored: number;
+  sumErrorSquared: number;
+  numTimeWeighted: number;
+  sumTimeWeightedError: number;
+  accuracyScore: number;
+};
+
+const sliceAccuracyLeaderboard = async (
+  limit: number | null | undefined,
+  skip: number | null | undefined
+): Promise<{ items: ForecasterScoreShape[]; hasMore: boolean }> => {
+  const capped = Math.max(1, Math.min(limit ?? 10, 100));
+  const skipVal = skip ?? 0;
   const scores = await getLeaderboardScores();
-  return scores.slice(0, capped).map((s) => ({
+  const items = scores.slice(skipVal, skipVal + capped).map((s) => ({
     address: s.attester,
     numScored: 0,
     sumErrorSquared: 0,
@@ -77,6 +88,21 @@ export const accuracyLeaderboard: NonNullable<
     sumTimeWeightedError: 0,
     accuracyScore: s.accuracyScore,
   }));
+  const hasMore = scores.length > skipVal + capped;
+  return { items, hasMore };
+};
+
+export const accuracyLeaderboard: NonNullable<
+  QueryResolvers['accuracyLeaderboard']
+> = async (_parent, { limit }) => {
+  const { items } = await sliceAccuracyLeaderboard(limit, 0);
+  return items;
+};
+
+export const accuracyLeaderboardPage: NonNullable<
+  QueryResolvers['accuracyLeaderboardPage']
+> = async (_parent, { limit, skip }) => {
+  return sliceAccuracyLeaderboard(limit, skip);
 };
 
 export const accountAccuracyRank: NonNullable<

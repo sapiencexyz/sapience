@@ -7,35 +7,38 @@ export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
     $chainId: Int
     $resolved: Boolean
   ) {
-    pickConfigurations(
+    pickConfigurationsPage(
       take: $take
       skip: $skip
       chainId: $chainId
       resolved: $resolved
     ) {
-      id
-      chainId
-      totalPredictorCollateral
-      totalCounterpartyCollateral
-      resolved
-      picks {
-        conditionId
-        conditionResolver
-        predictedOutcome
-        condition {
-          id
-          shortName
-          optionName
-          question
-          description
-          endTime
-          resolver
-          settled
-          resolvedToYes
-          nonDecisive
-          estimatedPrice
-          category {
-            slug
+      hasMore
+      items {
+        id
+        chainId
+        totalPredictorCollateral
+        totalCounterpartyCollateral
+        resolved
+        picks {
+          conditionId
+          conditionResolver
+          predictedOutcome
+          condition {
+            id
+            shortName
+            optionName
+            question
+            description
+            endTime
+            resolver
+            settled
+            resolvedToYes
+            nonDecisive
+            estimatedPrice
+            category {
+              slug
+            }
           }
         }
       }
@@ -79,12 +82,15 @@ export async function fetchPickConfigurations(opts?: {
   resolved?: boolean;
 }): Promise<PickConfigurationResult[]> {
   const data = await graphqlRequest<{
-    pickConfigurations: PickConfigurationResult[];
+    pickConfigurationsPage: {
+      items: PickConfigurationResult[];
+      hasMore: boolean;
+    };
   }>(GET_PICK_CONFIGURATIONS, {
     take: opts?.take ?? 10,
     skip: opts?.skip ?? 0,
     chainId: opts?.chainId,
     resolved: opts?.resolved,
   });
-  return data.pickConfigurations ?? [];
+  return data.pickConfigurationsPage?.items ?? [];
 }

@@ -34,7 +34,7 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
     $pickConfigId: String
     $conditionId: String
   ) {
-    accountActivity(
+    accountActivityPage(
       address: $address
       take: $take
       skip: $skip
@@ -42,120 +42,123 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
       pickConfigId: $pickConfigId
       conditionId: $conditionId
     ) {
-      type
-      timestamp
-      prediction {
-        id
-        predictionId
-        chainId
-        marketAddress
-        predictor
-        counterparty
-        predictorToken
-        counterpartyToken
-        predictorCollateral
-        counterpartyCollateral
-        collateralDeposited
-        collateralDepositedAt
-        settled
-        settledAt
-        settleTxHash
-        result
-        predictorClaimable
-        counterpartyClaimable
-        createTxHash
-        createdAt
-        refCode
-        isLegacy
-        pickConfig {
+      hasMore
+      items {
+        type
+        timestamp
+        prediction {
           id
+          predictionId
           chainId
           marketAddress
-          totalPredictorCollateral
-          totalCounterpartyCollateral
-          claimedPredictorCollateral
-          claimedCounterpartyCollateral
-          resolved
-          result
-          resolvedAt
+          predictor
+          counterparty
           predictorToken
           counterpartyToken
-          endsAt
+          predictorCollateral
+          counterpartyCollateral
+          collateralDeposited
+          collateralDepositedAt
+          settled
+          settledAt
+          settleTxHash
+          result
+          predictorClaimable
+          counterpartyClaimable
+          createTxHash
+          createdAt
+          refCode
           isLegacy
-          predictionId
-          picks {
+          pickConfig {
             id
-            pickConfigId
-            conditionResolver
-            conditionId
-            predictedOutcome
-            condition {
+            chainId
+            marketAddress
+            totalPredictorCollateral
+            totalCounterpartyCollateral
+            claimedPredictorCollateral
+            claimedCounterpartyCollateral
+            resolved
+            result
+            resolvedAt
+            predictorToken
+            counterpartyToken
+            endsAt
+            isLegacy
+            predictionId
+            picks {
               id
-              shortName
-              optionName
-              question
-              description
-              endTime
-              resolver
-              settled
-              resolvedToYes
-              nonDecisive
-              estimatedPrice
-              category {
-                slug
+              pickConfigId
+              conditionResolver
+              conditionId
+              predictedOutcome
+              condition {
+                id
+                shortName
+                optionName
+                question
+                description
+                endTime
+                resolver
+                settled
+                resolvedToYes
+                nonDecisive
+                estimatedPrice
+                category {
+                  slug
+                }
               }
             }
           }
         }
-      }
-      trade {
-        id
-        tradeHash
-        chainId
-        token
-        collateral
-        seller
-        buyer
-        tokenAmount
-        price
-        txHash
-        blockNumber
-        executedAt
-        pickConfig {
+        trade {
           id
+          tradeHash
           chainId
-          marketAddress
-          totalPredictorCollateral
-          totalCounterpartyCollateral
-          claimedPredictorCollateral
-          claimedCounterpartyCollateral
-          resolved
-          result
-          resolvedAt
-          predictorToken
-          counterpartyToken
-          endsAt
-          isLegacy
-          picks {
+          token
+          collateral
+          seller
+          buyer
+          tokenAmount
+          price
+          txHash
+          blockNumber
+          executedAt
+          pickConfig {
             id
-            pickConfigId
-            conditionResolver
-            conditionId
-            predictedOutcome
-            condition {
+            chainId
+            marketAddress
+            totalPredictorCollateral
+            totalCounterpartyCollateral
+            claimedPredictorCollateral
+            claimedCounterpartyCollateral
+            resolved
+            result
+            resolvedAt
+            predictorToken
+            counterpartyToken
+            endsAt
+            isLegacy
+            picks {
               id
-              shortName
-              optionName
-              question
-              description
-              endTime
-              resolver
-              settled
-              resolvedToYes
-              nonDecisive
-              estimatedPrice
-              category {
-                slug
+              pickConfigId
+              conditionResolver
+              conditionId
+              predictedOutcome
+              condition {
+                id
+                shortName
+                optionName
+                question
+                description
+                endTime
+                resolver
+                settled
+                resolvedToYes
+                nonDecisive
+                estimatedPrice
+                category {
+                  slug
+                }
               }
             }
           }
@@ -226,11 +229,13 @@ export function useAccountActivity({
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     initialPageParam: 0,
-    getNextPageParam: (lastPage: RawActivityItem[], allPages) =>
-      lastPage.length < pageSize ? undefined : allPages.length * pageSize,
+    getNextPageParam: (
+      lastPage: { items: RawActivityItem[]; hasMore: boolean },
+      allPages
+    ) => (lastPage.hasMore ? allPages.length * pageSize : undefined),
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        accountActivity: RawActivityItem[];
+        accountActivityPage: { items: RawActivityItem[]; hasMore: boolean };
       }>(ACCOUNT_ACTIVITY_QUERY, {
         address: account ?? null,
         take: pageSize,
@@ -239,11 +244,14 @@ export function useAccountActivity({
         pickConfigId: pickConfigId ?? null,
         conditionId: conditionId ?? null,
       });
-      return resp?.accountActivity ?? [];
+      return resp?.accountActivityPage ?? { items: [], hasMore: false };
     },
   });
 
-  const rawItems = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const rawItems = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data]
+  );
 
   // Only show loading spinner on true initial load (no data yet)
   const isLoading = initialLoading && !data;

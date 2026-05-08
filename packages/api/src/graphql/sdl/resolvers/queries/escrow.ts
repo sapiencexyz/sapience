@@ -19,7 +19,9 @@
 
 import type {
   QueryResolvers,
+  QueryPickConfigurationsArgs,
   QueryPositionsArgs,
+  QueryPredictionsArgs,
   Prediction,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
@@ -89,8 +91,7 @@ export const positionCount: NonNullable<
   return prisma.position.count({ where });
 };
 
-export const predictions: NonNullable<QueryResolvers['predictions']> = async (
-  _parent,
+const runPredictions = async (
   {
     take,
     skip,
@@ -101,10 +102,14 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     isLegacy,
     orderBy,
     orderDirection,
-  },
-  ctx
-) => {
-  const cappedTake = Math.max(1, Math.min(take, 100));
+  }: QueryPredictionsArgs,
+  ctx: ApolloContext | undefined
+): Promise<{
+  items: ResolversParentTypes['Prediction'][];
+  hasMore: boolean;
+}> => {
+  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
+  const skipVal = skip ?? 0;
   const addr = address?.toLowerCase();
 
   const where: Prisma.PredictionWhereInput = {};
@@ -119,7 +124,7 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
       distinct: ['pickConfigId'],
     });
     const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
-    if (pickConfigIds.length === 0) return [];
+    if (pickConfigIds.length === 0) return { items: [], hasMore: false };
     filters.push({ pickConfigId: { in: pickConfigIds } });
   }
   if (chainId !== undefined && chainId !== null) filters.push({ chainId });
@@ -137,18 +142,35 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     orderByClause = { settledAt: direction };
   }
 
-  const rows = await prisma.prediction.findMany({
+  const rawRows = await prisma.prediction.findMany({
     where,
     orderBy: orderByClause,
-    take: cappedTake,
-    skip,
+    take: cappedTake + 1,
+    skip: skipVal,
     include: { pickConfiguration: { include: { picks: true } } },
   });
+  const hasMore = rawRows.length > cappedTake;
+  const rows = rawRows.slice(0, cappedTake);
   await preloadPickConditions(
     ctx,
     rows.map((r) => r.pickConfiguration)
   );
-  return rows.map(mapPrediction);
+  return { items: rows.map(mapPrediction), hasMore };
+};
+
+export const predictions: NonNullable<QueryResolvers['predictions']> = async (
+  _parent,
+  args,
+  ctx
+) => {
+  const { items } = await runPredictions(args, ctx);
+  return items;
+};
+
+export const predictionsPage: NonNullable<
+  QueryResolvers['predictionsPage']
+> = async (_parent, args, ctx) => {
+  return runPredictions(args, ctx);
 };
 
 export const prediction: NonNullable<QueryResolvers['prediction']> = async (
@@ -164,10 +186,22 @@ export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   return r ? mapPrediction(r) : null;
 };
 
-export const pickConfigurations: NonNullable<
-  QueryResolvers['pickConfigurations']
-> = async (_parent, { take, skip, chainId, resolved, result, tokens }, ctx) => {
-  const cappedTake = Math.max(1, Math.min(take, 100));
+const runPickConfigurations = async (
+  {
+    take,
+    skip,
+    chainId,
+    resolved,
+    result,
+    tokens,
+  }: QueryPickConfigurationsArgs,
+  ctx: ApolloContext | undefined
+): Promise<{
+  items: ReturnType<typeof mapPickConfig>[];
+  hasMore: boolean;
+}> => {
+  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
+  const skipVal = skip ?? 0;
   const where: Prisma.PicksWhereInput = {};
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (resolved !== undefined && resolved !== null) where.resolved = resolved;
@@ -184,15 +218,30 @@ export const pickConfigurations: NonNullable<
       { counterpartyToken: { in: lowered } },
     ];
   }
-  const rows = await prisma.picks.findMany({
+  const rawRows = await prisma.picks.findMany({
     where,
     orderBy: { createdAt: 'desc' },
-    take: cappedTake,
-    skip,
+    take: cappedTake + 1,
+    skip: skipVal,
     include: { picks: true },
   });
+  const hasMore = rawRows.length > cappedTake;
+  const rows = rawRows.slice(0, cappedTake);
   await preloadPickConditions(ctx, rows);
-  return rows.map((r) => mapPickConfig(r));
+  return { items: rows.map((r) => mapPickConfig(r)), hasMore };
+};
+
+export const pickConfigurations: NonNullable<
+  QueryResolvers['pickConfigurations']
+> = async (_parent, args, ctx) => {
+  const { items } = await runPickConfigurations(args, ctx);
+  return items;
+};
+
+export const pickConfigurationsPage: NonNullable<
+  QueryResolvers['pickConfigurationsPage']
+> = async (_parent, args, ctx) => {
+  return runPickConfigurations(args, ctx);
 };
 
 export const pickConfiguration: NonNullable<

@@ -20,6 +20,13 @@ export type Scalars = {
   Decimal: { input: any; output: any; }
 };
 
+/** Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag */
+export type AccuracyLeaderboardPage = {
+  __typename?: 'AccuracyLeaderboardPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<ForecasterScore>;
+};
+
 /** Accuracy rank for an address on the forecasting leaderboard */
 export type AccuracyRank = {
   __typename?: 'AccuracyRank';
@@ -37,6 +44,13 @@ export type ActivityItem = {
   timestamp: Scalars['Int']['output'];
   trade?: Maybe<ActivityTrade>;
   type: Scalars['String']['output'];
+};
+
+/** Paginated wrapper around ActivityItem rows with a server-truth hasMore flag */
+export type ActivityItemsPage = {
+  __typename?: 'ActivityItemsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<ActivityItem>;
 };
 
 /** Trade fields embedded in an activity item */
@@ -442,6 +456,13 @@ export type CollateralTransferType = {
   to: Scalars['String']['output'];
   transactionHash: Scalars['String']['output'];
   value: Scalars['String']['output'];
+};
+
+/** Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag */
+export type CollateralTransfersPage = {
+  __typename?: 'CollateralTransfersPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<CollateralTransferType>;
 };
 
 export type Condition = {
@@ -1450,6 +1471,13 @@ export type PickConfiguration = {
   totalPredictorCollateral: Scalars['String']['output'];
 };
 
+/** Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag */
+export type PickConfigurationsPage = {
+  __typename?: 'PickConfigurationsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<PickConfiguration>;
+};
+
 /** Time-bucketed PnL data point with cumulative tracking */
 export type PnlDataPoint = {
   __typename?: 'PnlDataPoint';
@@ -1541,11 +1569,25 @@ export type PredictionSortField =
   | 'CREATED_AT'
   | 'SETTLED_AT';
 
+/** Paginated wrapper around Prediction rows with a server-truth hasMore flag */
+export type PredictionsPage = {
+  __typename?: 'PredictionsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Prediction>;
+};
+
 /** Aggregated profit/loss entry for a single address across all positions */
 export type ProfitEntry = {
   __typename?: 'ProfitEntry';
   address: Scalars['String']['output'];
   totalPnL: Scalars['String']['output'];
+};
+
+/** Paginated wrapper around ProfitEntry rows with a server-truth hasMore flag */
+export type ProfitLeaderboardPage = {
+  __typename?: 'ProfitLeaderboardPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<ProfitEntry>;
 };
 
 /** Profit rank and total PnL for an address on the leaderboard */
@@ -1603,8 +1645,13 @@ export type Query = {
   accountAccuracy?: Maybe<ForecasterScore>;
   /** Accuracy rank and score for a single address relative to all forecasters */
   accountAccuracyRank: AccuracyRank;
-  /** Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity. */
+  /**
+   * Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
+   * @deprecated Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.
+   */
   accountActivity: Array<ActivityItem>;
+  /** Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag for infinite scroll. */
+  accountActivityPage: ActivityItemsPage;
   /** Time-bucketed balance snapshots for a single address showing deployed and claimable collateral */
   accountBalance: Array<BalanceDataPoint>;
   /** Time-bucketed profit and loss for a single address with cumulative tracking */
@@ -1620,8 +1667,13 @@ export type Query = {
   accountTotalVolume: Scalars['String']['output'];
   /** Time-bucketed trading volume for a single address */
   accountVolume: Array<VolumeDataPoint>;
-  /** Top forecasters ranked by accuracy score */
+  /**
+   * Top forecasters ranked by accuracy score
+   * @deprecated Use `accuracyLeaderboardPage` — same data with a server-truth `hasMore` stop signal.
+   */
   accuracyLeaderboard: Array<ForecasterScore>;
+  /** Same as `accuracyLeaderboard`, but wraps the result in an `AccuracyLeaderboardPage` with a server-truth `hasMore` flag. */
+  accuracyLeaderboardPage: AccuracyLeaderboardPage;
   attestations: Array<Attestation>;
   categories: Array<Category>;
   /**
@@ -1636,7 +1688,10 @@ export type Query = {
   closes: Array<Close>;
   collateralBalance: CollateralBalanceType;
   collateralBalanceHistory: Array<CollateralBalanceSnapshotType>;
+  /** @deprecated Use `collateralTransfersPage` — same data with a server-truth `hasMore` stop signal. */
   collateralTransfers: Array<CollateralTransferType>;
+  /** Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag. */
+  collateralTransfersPage: CollateralTransfersPage;
   condition?: Maybe<Condition>;
   /** @deprecated Field no longer supported */
   conditionGroup?: Maybe<ConditionGroup>;
@@ -1651,13 +1706,21 @@ export type Query = {
    * @deprecated Field no longer supported
    */
   pickConfiguration?: Maybe<PickConfiguration>;
-  /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
+  /**
+   * Paginated list of pick configurations, filterable by chain, resolution status, and result
+   * @deprecated Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal.
+   */
   pickConfigurations: Array<PickConfiguration>;
+  /** Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll. */
+  pickConfigurationsPage: PickConfigurationsPage;
   /** Top 20 most-used tags across public conditions */
   popularTags: Array<Scalars['String']['output']>;
   /** Count of token positions for a given holder */
   positionCount: Scalars['Int']['output'];
-  /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
+  /**
+   * Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
+   * @deprecated Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.
+   */
   positions: Array<Position>;
   /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. */
   positionsPage: PositionsPage;
@@ -1665,10 +1728,20 @@ export type Query = {
   prediction?: Maybe<Prediction>;
   /** Count of escrow predictions involving the given address */
   predictionCount: Scalars['Int']['output'];
-  /** Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status */
+  /**
+   * Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
+   * @deprecated Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.
+   */
   predictions: Array<Prediction>;
-  /** Profit leaderboard — addresses ranked by total PnL across all positions */
+  /** Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll. */
+  predictionsPage: PredictionsPage;
+  /**
+   * Profit leaderboard — addresses ranked by total PnL across all positions
+   * @deprecated Use `profitLeaderboardPage` — same data with a server-truth `hasMore` stop signal.
+   */
   profitLeaderboard: Array<ProfitEntry>;
+  /** Same as `profitLeaderboard`, but wraps the result in a `ProfitLeaderboardPage` with a server-truth `hasMore` flag. */
+  profitLeaderboardPage: ProfitLeaderboardPage;
   /** Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest */
   protocolStats: Array<ProtocolStat>;
   /**
@@ -1676,8 +1749,13 @@ export type Query = {
    * @deprecated Field no longer supported
    */
   protocolVolume: Array<VolumeDataPoint>;
-  /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
+  /**
+   * Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
+   * @deprecated Use `questionsPage` — same data with a server-truth `hasMore` stop signal.
+   */
   questions: Array<Question>;
+  /** Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag for paginated infinite scroll. */
+  questionsPage: QuestionsPage;
   /**
    * Public referral analytics. Referral codes are attribution hints, not
    * authorization credentials: using someone else's code credits that referrer's
@@ -1696,8 +1774,13 @@ export type Query = {
    * @deprecated Field no longer supported
    */
   tradeCount: Scalars['Int']['output'];
-  /** Paginated list of secondary market trades, filterable by seller, buyer, token, and chain */
+  /**
+   * Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
+   * @deprecated Use `tradesPage` — same data with a server-truth `hasMore` stop signal.
+   */
   trades: Array<Trade>;
+  /** Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag for paginated infinite scroll. */
+  tradesPage: TradesPage;
   user?: Maybe<User>;
   /** @deprecated Field no longer supported */
   users: Array<User>;
@@ -1715,6 +1798,16 @@ export type QueryAccountAccuracyRankArgs = {
 
 
 export type QueryAccountActivityArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  type?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAccountActivityPageArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
@@ -1768,6 +1861,12 @@ export type QueryAccountVolumeArgs = {
 
 export type QueryAccuracyLeaderboardArgs = {
   limit?: Scalars['Int']['input'];
+};
+
+
+export type QueryAccuracyLeaderboardPageArgs = {
+  limit?: Scalars['Int']['input'];
+  skip?: Scalars['Int']['input'];
 };
 
 
@@ -1833,6 +1932,15 @@ export type QueryCollateralTransfersArgs = {
 };
 
 
+export type QueryCollateralTransfersPageArgs = {
+  address: Scalars['String']['input'];
+  chainId: Scalars['Int']['input'];
+  excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: Scalars['Int']['input'];
+  offset?: Scalars['Int']['input'];
+};
+
+
 export type QueryConditionArgs = {
   where: ConditionWhereUniqueInput;
 };
@@ -1869,6 +1977,16 @@ export type QueryPickConfigurationArgs = {
 
 
 export type QueryPickConfigurationsArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  resolved?: InputMaybe<Scalars['Boolean']['input']>;
+  result?: InputMaybe<SettlementResult>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+
+export type QueryPickConfigurationsPageArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   resolved?: InputMaybe<Scalars['Boolean']['input']>;
   result?: InputMaybe<SettlementResult>;
@@ -1947,7 +2065,26 @@ export type QueryPredictionsArgs = {
 };
 
 
+export type QueryPredictionsPageArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
+  orderBy?: InputMaybe<PredictionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
 export type QueryProfitLeaderboardArgs = {
+  limit?: Scalars['Int']['input'];
+  skip?: Scalars['Int']['input'];
+};
+
+
+export type QueryProfitLeaderboardPageArgs = {
   limit?: Scalars['Int']['input'];
   skip?: Scalars['Int']['input'];
 };
@@ -1966,6 +2103,25 @@ export type QueryProtocolVolumeArgs = {
 
 
 export type QueryQuestionsArgs = {
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  maxSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
+  minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  minSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
+  resolutionStatus?: InputMaybe<ResolutionStatus>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
+  skip?: Scalars['Int']['input'];
+  sortDirection?: SortOrder;
+  sortField?: InputMaybe<QuestionSortField>;
+  tag?: InputMaybe<Scalars['String']['input']>;
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryQuestionsPageArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
@@ -2015,6 +2171,17 @@ export type QueryTradesArgs = {
 };
 
 
+export type QueryTradesPageArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  buyer?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  seller?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  token?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryUserArgs = {
   where: UserWhereUniqueInput;
 };
@@ -2054,6 +2221,13 @@ export type QuestionSortField =
   | 'openInterest'
   | 'predictionCount'
   | 'similarMarketVolume';
+
+/** Paginated wrapper around Question rows with a server-truth hasMore flag */
+export type QuestionsPage = {
+  __typename?: 'QuestionsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Question>;
+};
 
 /**
  * Public referral code metadata and analytics. This intentionally includes creator,
@@ -2266,6 +2440,13 @@ export type Trade = {
   tokenAmount: Scalars['String']['output'];
   tradeHash: Scalars['String']['output'];
   txHash: Scalars['String']['output'];
+};
+
+/** Paginated wrapper around Trade rows with a server-truth hasMore flag */
+export type TradesPage = {
+  __typename?: 'TradesPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Trade>;
 };
 
 /**

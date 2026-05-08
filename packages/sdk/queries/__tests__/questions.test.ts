@@ -8,7 +8,9 @@ vi.mock('../client/graphqlClient', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockResolvedValue({ questions: [] });
+  mockGraphqlRequest.mockResolvedValue({
+    questionsPage: { items: [], hasMore: false },
+  });
 });
 
 describe('fetchQuestionsSorted', () => {
@@ -91,14 +93,16 @@ describe('fetchQuestionsSorted', () => {
     const questions = [
       { questionType: 'condition', condition: { id: '1' }, group: null },
     ];
-    mockGraphqlRequest.mockResolvedValue({ questions });
+    mockGraphqlRequest.mockResolvedValue({
+      questionsPage: { items: questions, hasMore: false },
+    });
 
     const result = await fetchQuestionsSorted(baseParams);
     expect(result).toEqual(questions);
   });
 
   test('returns empty array when questions is null', async () => {
-    mockGraphqlRequest.mockResolvedValue({ questions: null });
+    mockGraphqlRequest.mockResolvedValue({ questionsPage: null });
     const result = await fetchQuestionsSorted(baseParams);
     expect(result).toEqual([]);
   });

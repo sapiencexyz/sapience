@@ -11,21 +11,30 @@
 
 import type {
   QueryResolvers,
+  QueryAccountActivityArgs,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
+import type { ApolloContext } from '../../../startApolloServer';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 import { preloadPickConditions } from '../preloadPickConditions';
 
 const MAX_SKIP = 500;
 
-export const accountActivity: NonNullable<
-  QueryResolvers['accountActivity']
-> = async (
-  _parent,
-  { address, take, skip, type, pickConfigId, conditionId },
-  ctx
-) => {
+const runAccountActivity = async (
+  {
+    address,
+    take,
+    skip,
+    type,
+    pickConfigId,
+    conditionId,
+  }: QueryAccountActivityArgs,
+  ctx: ApolloContext | undefined
+): Promise<{
+  items: ResolversParentTypes['ActivityItem'][];
+  hasMore: boolean;
+}> => {
   const cappedTake = Math.max(1, Math.min(take ?? 20, 100));
   const cappedSkip = Math.max(0, Math.min(skip ?? 0, MAX_SKIP));
   const addr = address?.toLowerCase();
@@ -34,7 +43,8 @@ export const accountActivity: NonNullable<
 
   const includePredictions = !type || type === 'prediction';
   const includeTrades = !type || type === 'trade';
-  const fetchSize = cappedSkip + cappedTake;
+  // Fetch one extra row from each side to detect hasMore via the merged set
+  const fetchSize = cappedSkip + cappedTake + 1;
 
   let scopedPickConfigIds: string[] | null = null;
   if (conditionIdLower) {
@@ -54,7 +64,7 @@ export const accountActivity: NonNullable<
   }
 
   if (scopedPickConfigIds !== null && scopedPickConfigIds.length === 0) {
-    return [];
+    return { items: [], hasMore: false };
   }
 
   const scopedTokens: string[] = [];
@@ -232,5 +242,22 @@ export const accountActivity: NonNullable<
   }
 
   items.sort((a, b) => b.timestamp - a.timestamp);
-  return items.slice(cappedSkip, cappedSkip + cappedTake);
+  const hasMore = items.length > cappedSkip + cappedTake;
+  return {
+    items: items.slice(cappedSkip, cappedSkip + cappedTake),
+    hasMore,
+  };
+};
+
+export const accountActivity: NonNullable<
+  QueryResolvers['accountActivity']
+> = async (_parent, args, ctx) => {
+  const { items } = await runAccountActivity(args, ctx);
+  return items;
+};
+
+export const accountActivityPage: NonNullable<
+  QueryResolvers['accountActivityPage']
+> = async (_parent, args, ctx) => {
+  return runAccountActivity(args, ctx);
 };

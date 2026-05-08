@@ -1,18 +1,21 @@
 // Profile-specific helpers for OG image generation
 
 import { isAddress, getAddress } from 'viem';
+import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
 import { mainnetClient } from '~/lib/utils/util';
 import { getEnsAvatarUrlForAddress } from '~/lib/ens/avatar';
-import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
 import { SCHEMA_UID } from '~/lib/constants';
 
 // ---------- GraphQL queries ----------
 
 const ALL_TIME_PROFIT_LEADERBOARD_QUERY = `
   query ProfitLeaderboard($limit: Int) {
-    profitLeaderboard(limit: $limit) {
-      address
-      totalPnL
+    profitLeaderboardPage(limit: $limit) {
+      hasMore
+      items {
+        address
+        totalPnL
+      }
     }
   }
 `;
@@ -81,10 +84,13 @@ async function fetchProfitRank(address: string): Promise<{
   totalParticipants: number;
 }> {
   const data = await gqlFetch<{
-    profitLeaderboard: Array<{ address: string; totalPnL: string }>;
+    profitLeaderboardPage: {
+      items: Array<{ address: string; totalPnL: string }>;
+      hasMore: boolean;
+    };
   }>(ALL_TIME_PROFIT_LEADERBOARD_QUERY, { limit: 100 });
 
-  const entries = data?.profitLeaderboard || [];
+  const entries = data?.profitLeaderboardPage?.items || [];
   const sorted = entries.sort(
     (a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL)
   );

@@ -25,14 +25,16 @@ describe('fetchLeaderboard', () => {
       address: `0x${i.toString(16).padStart(40, '0')}`,
       totalPnL: `${i}`,
     }));
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: entries });
+    mockGraphqlRequest.mockResolvedValue({
+      profitLeaderboardPage: { items: entries, hasMore: false },
+    });
 
     const result = await fetchLeaderboard();
     expect(result).toHaveLength(100);
   });
 
   test('returns empty array when no data', async () => {
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: null });
+    mockGraphqlRequest.mockResolvedValue({ profitLeaderboardPage: null });
     const result = await fetchLeaderboard();
     expect(result).toEqual([]);
   });
@@ -42,7 +44,9 @@ describe('fetchLeaderboard', () => {
       { address: '0xabc', totalPnL: '100' },
       { address: '0xdef', totalPnL: '50' },
     ];
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: entries });
+    mockGraphqlRequest.mockResolvedValue({
+      profitLeaderboardPage: { items: entries, hasMore: false },
+    });
 
     const result = await fetchLeaderboard();
     expect(result).toHaveLength(2);
@@ -55,7 +59,9 @@ describe('fetchLeaderboard', () => {
 
 describe('fetchAccuracyLeaderboard', () => {
   test('uses default limit of 10', async () => {
-    mockGraphqlRequest.mockResolvedValue({ accuracyLeaderboard: [] });
+    mockGraphqlRequest.mockResolvedValue({
+      accuracyLeaderboardPage: { items: [], hasMore: false },
+    });
     await fetchAccuracyLeaderboard();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(expect.any(String), {
       limit: 10,
@@ -63,7 +69,9 @@ describe('fetchAccuracyLeaderboard', () => {
   });
 
   test('passes custom limit', async () => {
-    mockGraphqlRequest.mockResolvedValue({ accuracyLeaderboard: [] });
+    mockGraphqlRequest.mockResolvedValue({
+      accuracyLeaderboardPage: { items: [], hasMore: false },
+    });
     await fetchAccuracyLeaderboard(25);
     expect(mockGraphqlRequest).toHaveBeenCalledWith(expect.any(String), {
       limit: 25,
@@ -71,7 +79,7 @@ describe('fetchAccuracyLeaderboard', () => {
   });
 
   test('returns empty array when no data', async () => {
-    mockGraphqlRequest.mockResolvedValue({ accuracyLeaderboard: null });
+    mockGraphqlRequest.mockResolvedValue({ accuracyLeaderboardPage: null });
     const result = await fetchAccuracyLeaderboard();
     expect(result).toEqual([]);
   });
@@ -164,7 +172,7 @@ describe('fetchUserProfitRank', () => {
 
   test('sorts entries by totalPnL descending and assigns rank', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: leaderboardEntries,
+      profitLeaderboardPage: { items: leaderboardEntries, hasMore: false },
     });
 
     const result = await fetchUserProfitRank('0xBob');
@@ -176,7 +184,7 @@ describe('fetchUserProfitRank', () => {
 
   test('calculates correct rank for middle entry', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: leaderboardEntries,
+      profitLeaderboardPage: { items: leaderboardEntries, hasMore: false },
     });
 
     const result = await fetchUserProfitRank('0xAlice');
@@ -187,7 +195,7 @@ describe('fetchUserProfitRank', () => {
 
   test('calculates correct rank for last entry', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: leaderboardEntries,
+      profitLeaderboardPage: { items: leaderboardEntries, hasMore: false },
     });
 
     const result = await fetchUserProfitRank('0xCharlie');
@@ -196,7 +204,7 @@ describe('fetchUserProfitRank', () => {
 
   test('returns null rank when user not found', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: leaderboardEntries,
+      profitLeaderboardPage: { items: leaderboardEntries, hasMore: false },
     });
 
     const result = await fetchUserProfitRank('0xUnknown');
@@ -207,7 +215,10 @@ describe('fetchUserProfitRank', () => {
 
   test('case-insensitive address matching', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: [{ address: '0xAbCdEf', totalPnL: '100' }],
+      profitLeaderboardPage: {
+        items: [{ address: '0xAbCdEf', totalPnL: '100' }],
+        hasMore: false,
+      },
     });
 
     const result = await fetchUserProfitRank('0xABCDEF');
@@ -216,7 +227,9 @@ describe('fetchUserProfitRank', () => {
   });
 
   test('handles empty leaderboard', async () => {
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: [] });
+    mockGraphqlRequest.mockResolvedValue({
+      profitLeaderboardPage: { items: [], hasMore: false },
+    });
 
     const result = await fetchUserProfitRank('0xAny');
     expect(result.rank).toBeNull();
@@ -225,7 +238,7 @@ describe('fetchUserProfitRank', () => {
   });
 
   test('handles null leaderboard response', async () => {
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: null });
+    mockGraphqlRequest.mockResolvedValue({ profitLeaderboardPage: null });
 
     const result = await fetchUserProfitRank('0xAny');
     expect(result.rank).toBeNull();
@@ -235,11 +248,14 @@ describe('fetchUserProfitRank', () => {
 
   test('sorts string PnL values numerically, not lexicographically', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: [
-        { address: '0xA', totalPnL: '9' },
-        { address: '0xB', totalPnL: '100' },
-        { address: '0xC', totalPnL: '20' },
-      ],
+      profitLeaderboardPage: {
+        items: [
+          { address: '0xA', totalPnL: '9' },
+          { address: '0xB', totalPnL: '100' },
+          { address: '0xC', totalPnL: '20' },
+        ],
+        hasMore: false,
+      },
     });
 
     // Numeric sort: 100, 20, 9
@@ -247,11 +263,14 @@ describe('fetchUserProfitRank', () => {
     expect(resultB.rank).toBe(1);
 
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: [
-        { address: '0xA', totalPnL: '9' },
-        { address: '0xB', totalPnL: '100' },
-        { address: '0xC', totalPnL: '20' },
-      ],
+      profitLeaderboardPage: {
+        items: [
+          { address: '0xA', totalPnL: '9' },
+          { address: '0xB', totalPnL: '100' },
+          { address: '0xC', totalPnL: '20' },
+        ],
+        hasMore: false,
+      },
     });
 
     const resultA = await fetchUserProfitRank('0xA');
@@ -260,11 +279,14 @@ describe('fetchUserProfitRank', () => {
 
   test('handles negative PnL values', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: [
-        { address: '0xA', totalPnL: '-50' },
-        { address: '0xB', totalPnL: '100' },
-        { address: '0xC', totalPnL: '-10' },
-      ],
+      profitLeaderboardPage: {
+        items: [
+          { address: '0xA', totalPnL: '-50' },
+          { address: '0xB', totalPnL: '100' },
+          { address: '0xC', totalPnL: '-10' },
+        ],
+        hasMore: false,
+      },
     });
 
     // Sorted: B(100), C(-10), A(-50)
@@ -274,7 +296,9 @@ describe('fetchUserProfitRank', () => {
   });
 
   test('requests limit of 100', async () => {
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: [] });
+    mockGraphqlRequest.mockResolvedValue({
+      profitLeaderboardPage: { items: [], hasMore: false },
+    });
     await fetchUserProfitRank('0xAny');
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1]).toEqual({ limit: 100 });

@@ -32,7 +32,7 @@ import { Pick } from './Pick';
 import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
-import { accountActivity } from './queries/activity';
+import { accountActivity, accountActivityPage } from './queries/activity';
 import {
   openInterestByCategory,
   openInterestByTimeToResolution,
@@ -42,6 +42,7 @@ import {
   collateralBalance,
   collateralBalanceHistory,
   collateralTransfers,
+  collateralTransfersPage,
 } from './queries/collateralBalance';
 import { conditions } from './queries/conditions';
 import {
@@ -58,19 +59,26 @@ import {
   closes,
   pickConfiguration,
   pickConfigurations,
+  pickConfigurationsPage,
   positionCount,
   positions,
   positionsPage,
   prediction,
   predictionCount,
   predictions,
+  predictionsPage,
 } from './queries/escrow';
-import { accountProfitRank, profitLeaderboard } from './queries/pnl';
-import { questions } from './queries/questions';
+import {
+  accountProfitRank,
+  profitLeaderboard,
+  profitLeaderboardPage,
+} from './queries/pnl';
+import { questions, questionsPage } from './queries/questions';
 import {
   accountAccuracy,
   accountAccuracyRank,
   accuracyLeaderboard,
+  accuracyLeaderboardPage,
 } from './queries/score';
 import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
@@ -81,7 +89,7 @@ import {
   accountVolume,
   protocolVolume,
 } from './queries/timeSeries';
-import { trade, tradeCount, trades } from './queries/trade';
+import { trade, tradeCount, trades, tradesPage } from './queries/trade';
 import { accountTotalVolume } from './queries/volume';
 
 export const resolvers: Resolvers = {
@@ -91,8 +99,10 @@ export const resolvers: Resolvers = {
     accountAccuracy,
     accountAccuracyRank,
     accuracyLeaderboard,
+    accuracyLeaderboardPage,
     accountProfitRank,
     profitLeaderboard,
+    profitLeaderboardPage,
     // Time series
     accountBalance,
     accountPnl,
@@ -101,6 +111,7 @@ export const resolvers: Resolvers = {
     protocolVolume,
     // Activity + unified feeds
     accountActivity,
+    accountActivityPage,
     // Analytics
     openInterestByCategory,
     openInterestByTimeToResolution,
@@ -110,24 +121,29 @@ export const resolvers: Resolvers = {
     collateralBalance,
     collateralBalanceHistory,
     collateralTransfers,
+    collateralTransfersPage,
     // Conditions / questions
     conditions,
     questions,
+    questionsPage,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
     closes,
     pickConfiguration,
     pickConfigurations,
+    pickConfigurationsPage,
     positionCount,
     positions,
     positionsPage,
     prediction,
     predictionCount,
     predictions,
+    predictionsPage,
     // Secondary market trades
     trade,
     tradeCount,
     trades,
+    tradesPage,
     // Referrals
     referralCodes,
     // Tags

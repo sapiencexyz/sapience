@@ -10,41 +10,44 @@ import type { PickConfigData, PickData } from '~/hooks/graphql/usePositions';
 // single round trip — see Pick resolver + pickConfigurations resolver.
 const PICK_CONFIGS_BY_TOKENS_QUERY = `
   query PickConfigsByTokens($tokens: [String!]) {
-    pickConfigurations(tokens: $tokens, take: 100) {
-      id
-      chainId
-      marketAddress
-      totalPredictorCollateral
-      totalCounterpartyCollateral
-      claimedPredictorCollateral
-      claimedCounterpartyCollateral
-      resolved
-      result
-      resolvedAt
-      predictorToken
-      counterpartyToken
-      endsAt
-      isLegacy
-      picks {
+    pickConfigurationsPage(tokens: $tokens, take: 100) {
+      hasMore
+      items {
         id
-        pickConfigId
-        conditionResolver
-        conditionId
-        predictedOutcome
-        condition {
+        chainId
+        marketAddress
+        totalPredictorCollateral
+        totalCounterpartyCollateral
+        claimedPredictorCollateral
+        claimedCounterpartyCollateral
+        resolved
+        result
+        resolvedAt
+        predictorToken
+        counterpartyToken
+        endsAt
+        isLegacy
+        picks {
           id
-          shortName
-          optionName
-          question
-          description
-          endTime
-          resolver
-          settled
-          resolvedToYes
-          nonDecisive
-          estimatedPrice
-          category {
-            slug
+          pickConfigId
+          conditionResolver
+          conditionId
+          predictedOutcome
+          condition {
+            id
+            shortName
+            optionName
+            question
+            description
+            endTime
+            resolver
+            settled
+            resolvedToYes
+            nonDecisive
+            estimatedPrice
+            category {
+              slug
+            }
           }
         }
       }
@@ -73,9 +76,9 @@ export function usePickConfigsByTokens(tokens: string[]) {
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        pickConfigurations: PickConfigData[];
+        pickConfigurationsPage: { items: PickConfigData[]; hasMore: boolean };
       }>(PICK_CONFIGS_BY_TOKENS_QUERY, { tokens: sorted });
-      return resp?.pickConfigurations ?? [];
+      return resp?.pickConfigurationsPage?.items ?? [];
     },
   });
 

@@ -24,6 +24,7 @@
 
 import type {
   QueryResolvers,
+  QueryQuestionsArgs,
   ResolversTypes,
 } from '../../__generated__/resolvers';
 import { QuestionItemType } from '../../__generated__/resolvers';
@@ -123,31 +124,31 @@ const fieldByResolvedVolumeKey: Record<VolumeKey, string> = {
   volumeFiltered7d: 'similarMarketVolumeFiltered7d',
 };
 
-export const questions: NonNullable<QueryResolvers['questions']> = async (
-  _parent,
-  {
-    take,
-    skip,
-    chainId,
-    sortField,
-    sortDirection,
-    search,
-    categorySlugs,
-    minEndTime,
-    resolutionStatus,
-    minEstimatedPrice,
-    maxEstimatedPrice,
-    minSimilarMarketVolume,
-    maxSimilarMarketVolume,
-    tag,
-    similarMarketVolumeWindow,
-  }
-) => {
+const runQuestions = async ({
+  take,
+  skip,
+  chainId,
+  sortField,
+  sortDirection,
+  search,
+  categorySlugs,
+  minEndTime,
+  resolutionStatus,
+  minEstimatedPrice,
+  maxEstimatedPrice,
+  minSimilarMarketVolume,
+  maxSimilarMarketVolume,
+  tag,
+  similarMarketVolumeWindow,
+}: QueryQuestionsArgs): Promise<{
+  items: QuestionReturn[];
+  hasMore: boolean;
+}> => {
   const sanitizedSortField = sortField ?? 'endTime';
   const dir = sortDirection === 'asc' ? 'ASC' : 'DESC';
 
-  const boundedTake = Math.max(1, Math.min(take, 100));
-  const boundedSkip = Math.max(0, skip);
+  const boundedTake = Math.max(1, Math.min(take ?? 50, 100));
+  const boundedSkip = Math.max(0, skip ?? 0);
   const boundedSearch = search?.slice(0, 200) ?? null;
   const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
   const boundedTag = tag?.slice(0, 200) ?? null;
@@ -372,16 +373,19 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
              item_type ASC,
              COALESCE(group_id, 0) ASC,
              COALESCE(condition_id, '') ASC
-    LIMIT ${boundedTake}
+    LIMIT ${boundedTake + 1}
     OFFSET ${boundedSkip}
   `;
 
-  if (sortedItems.length === 0) return [];
+  const hasMore = sortedItems.length > boundedTake;
+  const pageItems = sortedItems.slice(0, boundedTake);
 
-  const groupIds = sortedItems
+  if (pageItems.length === 0) return { items: [], hasMore };
+
+  const groupIds = pageItems
     .filter((r) => r.item_type === 'group' && r.group_id !== null)
     .map((r) => r.group_id as number);
-  const conditionIds = sortedItems
+  const conditionIds = pageItems
     .filter((r) => r.item_type === 'condition' && r.condition_id !== null)
     .map((r) => r.condition_id as string);
 
@@ -467,7 +471,7 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
   for (const c of conditions) conditionMap.set(c.id, c);
 
   const result: QuestionReturn[] = [];
-  for (const item of sortedItems) {
+  for (const item of pageItems) {
     if (item.item_type === 'group' && item.group_id !== null) {
       const group = groupMap.get(item.group_id);
       if (!group) continue;
@@ -503,5 +507,19 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
     }
   }
 
-  return result;
+  return { items: result, hasMore };
+};
+
+export const questions: NonNullable<QueryResolvers['questions']> = async (
+  _parent,
+  args
+) => {
+  const { items } = await runQuestions(args);
+  return items;
+};
+
+export const questionsPage: NonNullable<
+  QueryResolvers['questionsPage']
+> = async (_parent, args) => {
+  return runQuestions(args);
 };
