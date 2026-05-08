@@ -8,23 +8,40 @@
 
 ## Overview
 
-Manages Sapience conditions from Polymarket markets:
+Manages Sapience conditions sourced from external markets, plus the settlement pipeline that resolves them on-chain:
 
-- **Generate**: Fetches markets settling within 21 days, submits to Sapience API
-- **Relist**: Fetches markets with past end dates still traded on Polymarket, creates/extends conditions with endTime = now + 7 days
-- **Settle**: Bridges resolution data from Polymarket via LayerZero
+- **Generate**: Fetches Polymarket markets settling within 21 days, enriches them, submits to the Sapience API.
+- **Relist**: Fetches markets with past end dates still traded on Polymarket, creates/extends conditions with `endTime = now + 7 days`.
+- **Refresh metadata / volume / prices**: Periodic updates to existing conditions.
+- **Cleanup**: Closes conditions that no longer track an active Polymarket market.
+- **Settle**: Three resolution paths run as separate scripts — `settle-polymarket` (bridges resolution data from Polymarket via LayerZero), `settle-pyth` (Pyth oracle settlement), `settle-manual` (admin-resolved).
 
 ## Commands
 
+Most operational scripts have dry-run variants; settlement/cleanup scripts have execute variants. See `package.json` for the exact script list. Examples:
+
 ```bash
-pnpm --filter @sapience/market-keeper generate:dry-run  # Test generation
-pnpm --filter @sapience/market-keeper generate          # Submit to API
-pnpm --filter @sapience/market-keeper relist:dry-run     # Test relisting
-pnpm --filter @sapience/market-keeper relist             # Relist to API
-pnpm --filter @sapience/market-keeper settle:dry-run    # Check settlements
-pnpm --filter @sapience/market-keeper settle:execute:wait  # Execute settlements
-pnpm --filter @sapience/market-keeper start             # Run both
+# Ingestion
+pnpm --filter @sapience/market-keeper generate:dry-run
+pnpm --filter @sapience/market-keeper generate
+pnpm --filter @sapience/market-keeper relist
+
+# Settlement (per resolver type)
+pnpm --filter @sapience/market-keeper settle-polymarket:dry-run
+pnpm --filter @sapience/market-keeper settle-polymarket:execute:wait
+pnpm --filter @sapience/market-keeper settle-pyth:execute:wait
+pnpm --filter @sapience/market-keeper settle-manual:execute:wait
+
+# Maintenance
+pnpm --filter @sapience/market-keeper refresh-metadata
+pnpm --filter @sapience/market-keeper refresh-volume
+pnpm --filter @sapience/market-keeper cleanup-polymarket:execute
+
+# Run the full pipeline (refresh → generate → relist → volume → cleanup → settle)
+pnpm --filter @sapience/market-keeper start
 ```
+
+The `start` script orchestrates `refresh-metadata → generate → relist → prices-and-1d-7d-volume → refresh-volume → cleanup-polymarket → settle-polymarket/manual → settle-pyth`; `scripts/start.js` is the source of truth for ordering. Settlement script selection is chain-dependent — mainnet (`5064014`) runs `settle-polymarket`, testnet runs `settle-manual`.
 
 ## Environment Variables
 

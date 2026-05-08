@@ -37,6 +37,7 @@ import {
   AlwaysIncludeConditionFilter,
   AlwaysIncludeConditionGroupFilter,
 } from './filters/always-include';
+import { NegRiskBasketRescueFilter } from './filters/neg-risk-basket';
 import {
   NonCryptoMarketFilter,
   NonCryptoConditionFilter,
@@ -86,6 +87,10 @@ export const GROUP_FILTERS: Filter<MarketGroup>[] = [
       new LiquidityThresholdFilter(),
     ]),
     new AlwaysIncludeGroupFilter(),
+    // Mutually-exclusive Polymarket baskets must be ingested whole; this
+    // branch rescues low-volume siblings whenever any leg of the same
+    // negRisk event already clears volume+liquidity.
+    new NegRiskBasketRescueFilter(),
   ]),
 ];
 

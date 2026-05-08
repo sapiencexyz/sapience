@@ -7,6 +7,8 @@ import {
   type ExistingCondition,
 } from '../generate/pipeline/filters/exclude-existing';
 import { runPipeline } from '../generate/pipeline';
+import { UnionFilter } from '../generate/pipeline/combinators';
+import type { Filter, FilterResult } from '../generate/pipeline/types';
 
 // ============ Test Helpers ============
 
@@ -132,6 +134,115 @@ describe('ExcludeExistingMarketsFilter', () => {
     const markets = [makeMarket({ conditionId: '0xabc' })];
     const { kept } = filter.apply(markets);
     expect(kept).toHaveLength(1);
+  });
+});
+
+// ============ UnionFilter ============
+
+describe('UnionFilter', () => {
+  // A trivial item-local filter: keeps items whose `tag` is in `tags`.
+  class TagFilter implements Filter<{ id: string; tag: string }> {
+    name: string;
+    description = 'tag filter';
+    constructor(
+      private tags: string[],
+      name = 'tag-filter'
+    ) {
+      this.name = name;
+    }
+    apply(items: { id: string; tag: string }[]): FilterResult<{
+      id: string;
+      tag: string;
+    }> {
+      const kept = items.filter((i) => this.tags.includes(i.tag));
+      const removed = items.filter((i) => !this.tags.includes(i.tag));
+      return { kept, removed };
+    }
+  }
+
+  it('keeps items kept by ANY sub-filter (per-item OR semantics, backward compat)', () => {
+    const items = [
+      { id: '1', tag: 'a' },
+      { id: '2', tag: 'b' },
+      { id: '3', tag: 'c' },
+    ];
+    const filter = new UnionFilter<{ id: string; tag: string }>([
+      new TagFilter(['a'], 'keeps-a'),
+      new TagFilter(['b'], 'keeps-b'),
+    ]);
+
+    const { kept, removed } = filter.apply(items);
+
+    expect(kept.map((i) => i.id).sort()).toEqual(['1', '2']);
+    expect(removed.map((i) => i.id)).toEqual(['3']);
+  });
+
+  it('preserves input order and identity (no duplicates) when sub-filters overlap', () => {
+    const items = [
+      { id: '1', tag: 'a' },
+      { id: '2', tag: 'a' },
+    ];
+    // Two sub-filters that both keep tag=a → an item could be double-counted
+    // if the implementation simply concatenates kept sets.
+    const filter = new UnionFilter<{ id: string; tag: string }>([
+      new TagFilter(['a'], 'first'),
+      new TagFilter(['a'], 'second'),
+    ]);
+
+    const { kept } = filter.apply(items);
+
+    expect(kept).toHaveLength(2);
+    expect(kept[0]).toBe(items[0]);
+    expect(kept[1]).toBe(items[1]);
+  });
+
+  it('lets sibling-aware sub-filters use cross-item state', () => {
+    // A stateful sub-filter that needs to see ALL items: keeps every item
+    // that shares a `groupId` with at least one item whose `volume >= 100`.
+    // This relies on UnionFilter passing the full input list, not [item].
+    class GroupRescueFilter
+      implements Filter<{ id: string; groupId: string; volume: number }>
+    {
+      name = 'group-rescue';
+      description = 'rescue siblings of high-volume members';
+      apply(
+        items: { id: string; groupId: string; volume: number }[]
+      ): FilterResult<{ id: string; groupId: string; volume: number }> {
+        const passingGroups = new Set(
+          items.filter((i) => i.volume >= 100).map((i) => i.groupId)
+        );
+        const kept = items.filter((i) => passingGroups.has(i.groupId));
+        const removed = items.filter((i) => !passingGroups.has(i.groupId));
+        return { kept, removed };
+      }
+    }
+    // A stateless never-keep filter to guarantee the rescue branch is the
+    // only thing keeping low-volume items.
+    class NeverKeepFilter
+      implements Filter<{ id: string; groupId: string; volume: number }>
+    {
+      name = 'never';
+      description = 'never';
+      apply(
+        items: { id: string; groupId: string; volume: number }[]
+      ): FilterResult<{ id: string; groupId: string; volume: number }> {
+        return { kept: [], removed: items };
+      }
+    }
+
+    const items = [
+      { id: 'big-A', groupId: 'A', volume: 500 },
+      { id: 'small-A', groupId: 'A', volume: 1 }, // rescued via sibling
+      { id: 'small-B', groupId: 'B', volume: 1 }, // not rescued, B has nothing big
+    ];
+    const filter = new UnionFilter([
+      new NeverKeepFilter(),
+      new GroupRescueFilter(),
+    ]);
+
+    const { kept } = filter.apply(items);
+
+    expect(kept.map((i) => i.id).sort()).toEqual(['big-A', 'small-A']);
   });
 });
 
