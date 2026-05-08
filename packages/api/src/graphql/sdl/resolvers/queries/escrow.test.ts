@@ -509,10 +509,12 @@ describe('positions resolver — query shape', () => {
     );
   });
 
-  it('runs preloadPickConditions and secondaryTrade.findMany in parallel after position.findMany', async () => {
-    // We can't observe scheduling directly, but we can confirm both
-    // dependent fetches were issued from the resolver. The Promise.all
-    // wrapper means neither blocks the other.
+  it('issues secondaryTrade.findMany once after position.findMany returns rows', async () => {
+    // Pick.condition lookups now batch through the request-scoped
+    // `conditionById` DataLoader at field-resolution time, so the
+    // resolver itself only fires the secondaryTrade fetch — no eager
+    // condition pre-load. We're asserting the trade-fetch shape so
+    // regressions on the position → trade pipeline still surface here.
     mockPrisma.position.findMany.mockResolvedValue([
       makePosition({ balance: '100' }),
     ]);
@@ -520,9 +522,6 @@ describe('positions resolver — query shape', () => {
     await callPositions({ holder: ALICE });
 
     expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
-    // preloadPickConditions issues a condition.findMany when ctx is provided.
-    // We don't pass ctx in this suite, so it's a no-op — but the trades
-    // call is the smoking gun that the parallel branch ran.
     const tradesArgs = mockPrisma.secondaryTrade.findMany.mock.calls[0][0];
     expect(tradesArgs.where).toMatchObject({
       OR: [{ seller: { in: [ALICE] } }, { buyer: { in: [ALICE] } }],

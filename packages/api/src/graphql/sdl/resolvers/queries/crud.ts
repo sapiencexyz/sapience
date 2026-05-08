@@ -129,10 +129,23 @@ export const attestationsPage: NonNullable<
 
 export const condition: NonNullable<QueryResolvers['condition']> = async (
   _parent,
-  { id }
-) => prisma.condition.findUnique({ where: { id: id.toLowerCase() } });
+  { id },
+  ctx
+) => {
+  const lowered = id.toLowerCase();
+  if (ctx?.loaders) return ctx.loaders.conditionById.load(lowered);
+  return prisma.condition.findUnique({
+    where: { id: lowered },
+    include: { category: true },
+  });
+};
 
 export const user: NonNullable<QueryResolvers['user']> = async (
   _parent,
-  { address }
-) => prisma.user.findUnique({ where: { address: address.toLowerCase() } });
+  { address },
+  ctx
+) => {
+  const lowered = address.toLowerCase();
+  if (ctx?.loaders) return ctx.loaders.userByAddress.load(lowered);
+  return prisma.user.findUnique({ where: { address: lowered } });
+};

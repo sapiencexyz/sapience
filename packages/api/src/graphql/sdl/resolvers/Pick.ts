@@ -2,16 +2,12 @@
  * Pick model resolvers.
  *
  * Pick has no Prisma relation to Condition (only a foreign-key column),
- * so the `condition` field can't ride on Prisma's `include` like the
- * other relation resolvers. Two paths:
- *
- *   1. Fast path — resolvers that return Pick rows pre-populate
- *      `ctx.pickConditions` with the conditions referenced by every
- *      pick on the page. The field resolver returns the cached row
- *      without a round trip.
- *   2. Fallback — single `prisma.condition.findUnique` by `conditionId`.
- *      N+1 across many Picks; only fires for paths that haven't
- *      pre-populated.
+ * so the `condition` field can't ride on Prisma's `include`. The
+ * `conditionById` DataLoader on `ctx.loaders` batches every Pick.condition
+ * lookup in a request into a single `findMany`, also pre-warming the
+ * `category` relation so `Condition.category` doesn't N+1 either. The
+ * fallback `findUnique` only fires when the loader isn't on context
+ * (some tests don't wire one).
  */
 
 import type { PickResolvers } from '../__generated__/resolvers';
@@ -23,10 +19,10 @@ export const Pick: PickResolvers = {
   condition: async (parent, _args, ctx) => {
     const conditionId = (parent as PrismaPick).conditionId;
     if (!conditionId) return null;
-    const cached = ctx.pickConditions?.get(conditionId);
-    if (cached !== undefined) {
-      return cached as Awaited<ReturnType<typeof prisma.condition.findUnique>>;
-    }
-    return prisma.condition.findUnique({ where: { id: conditionId } });
+    if (ctx.loaders) return ctx.loaders.conditionById.load(conditionId);
+    return prisma.condition.findUnique({
+      where: { id: conditionId },
+      include: { category: true },
+    });
   },
 };

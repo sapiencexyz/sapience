@@ -13,22 +13,20 @@ import type { QueryResolvers } from '../../../__generated__/resolvers';
 import { Prisma } from '../../../../../../generated/prisma';
 import prisma from '../../../../../core/db';
 import { mapPickConfig } from '../../pickConfigHelpers';
-import { preloadPickConditions } from '../../preloadPickConditions';
 import { runPickConfigurations, runPositions, runPredictions } from '../escrow';
 
 export const predictions: NonNullable<QueryResolvers['predictions']> = async (
   _parent,
-  args,
-  ctx
+  args
 ) => {
-  const { items } = await runPredictions(args, ctx);
+  const { items } = await runPredictions(args);
   return items;
 };
 
 export const pickConfigurations: NonNullable<
   QueryResolvers['pickConfigurations']
-> = async (_parent, args, ctx) => {
-  const { items } = await runPickConfigurations(args, ctx);
+> = async (_parent, args) => {
+  const { items } = await runPickConfigurations(args);
   return items;
 };
 
@@ -45,16 +43,14 @@ export const pickConfiguration: NonNullable<
         where: { id: id.toLowerCase() },
         include: { picks: true },
       });
-  if (r) await preloadPickConditions(ctx, [r]);
   return r ? mapPickConfig(r) : null;
 };
 
 export const positions: NonNullable<QueryResolvers['positions']> = async (
   _parent,
-  args,
-  ctx
+  args
 ) => {
-  const { items } = await runPositions(args, ctx);
+  const { items } = await runPositions(args);
   return items;
 };
 

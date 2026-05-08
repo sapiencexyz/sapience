@@ -9,7 +9,7 @@ import { runAccountActivity } from '../activity';
 
 export const accountActivity: NonNullable<
   QueryResolvers['accountActivity']
-> = async (_parent, args, ctx) => {
-  const { items } = await runAccountActivity(args, ctx);
+> = async (_parent, args) => {
+  const { items } = await runAccountActivity(args);
   return items;
 };

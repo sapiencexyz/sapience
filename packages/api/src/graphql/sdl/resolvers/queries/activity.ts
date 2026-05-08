@@ -14,23 +14,18 @@ import type {
   QueryAccountActivityArgs,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
-import type { ApolloContext } from '../../../startApolloServer';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
-import { preloadPickConditions } from '../preloadPickConditions';
 import { clampSkip, clampTake } from './pagination';
 
-export const runAccountActivity = async (
-  {
-    address,
-    take,
-    skip,
-    type,
-    pickConfigId,
-    conditionId,
-  }: QueryAccountActivityArgs,
-  ctx: ApolloContext | undefined
-): Promise<{
+export const runAccountActivity = async ({
+  address,
+  take,
+  skip,
+  type,
+  pickConfigId,
+  conditionId,
+}: QueryAccountActivityArgs): Promise<{
   items: ResolversParentTypes['ActivityItem'][];
   hasMore: boolean;
 }> => {
@@ -149,13 +144,9 @@ export const runAccountActivity = async (
         })
       : [];
 
-  // Pre-load conditions referenced by every Pick on this page (predictions
-  // and trades) into ctx.pickConditions. The Pick.condition resolver reads
-  // the cache and returns rows without per-pick round trips.
-  await preloadPickConditions(ctx, [
-    ...predictions.map((r) => r.pickConfiguration),
-    ...tradePickConfigs,
-  ]);
+  // Pick.condition lookups for this page batch through the request's
+  // `conditionById` DataLoader at field-resolution time, so no eager
+  // pre-load is needed here.
 
   const pickConfigsByToken = new Map<
     string,
@@ -250,6 +241,6 @@ export const runAccountActivity = async (
 
 export const accountActivityPage: NonNullable<
   QueryResolvers['accountActivityPage']
-> = async (_parent, args, ctx) => {
-  return runAccountActivity(args, ctx);
+> = async (_parent, args) => {
+  return runAccountActivity(args);
 };

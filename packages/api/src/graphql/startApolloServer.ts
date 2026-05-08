@@ -31,24 +31,10 @@ export interface ApolloContext {
   // complexity plugin skips pure-introspection queries.
   queryComplexity?: number;
   /**
-   * Optional per-request cache: conditionId → Prisma Condition row.
-   *
-   * Hot resolvers (positions, accountActivity) batch-load every
-   * referenced Condition up front and populate this map; the
-   * Pick.condition field resolver then returns rows from the cache
-   * without a per-pick round trip. Resolvers that don't pre-populate
-   * fall back to per-pick lookups.
-   *
-   * Stored on context (not as a request-scoped DataLoader) because we
-   * already do the batching ourselves before mapPickConfig and just
-   * need a place to stash the map for the field resolver to read.
-   */
-  pickConditions?: Map<string, unknown>;
-  /**
-   * Per-request DataLoaders. See `sdl/resolvers/loaders.ts` for the
-   * full set; today this dedupes pickConfiguration-by-id lookups so
-   * resolvers that reference the same id from different paths in one
-   * query share a single round trip.
+   * Per-request DataLoaders for keyed lookups (conditions, users,
+   * pickConfigurations). See `sdl/resolvers/loaders.ts` for the full
+   * set. Resolvers call `ctx.loaders.<key>.load(id)` and DataLoader
+   * collapses concurrent loads into one batched `findMany` per request.
    */
   loaders?: GraphQLLoaders;
 }

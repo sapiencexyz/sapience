@@ -39,11 +39,9 @@ import type {
   Prediction,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
-import type { ApolloContext } from '../../../startApolloServer';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
-import { preloadPickConditions } from '../preloadPickConditions';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { clampSkip, clampTake } from './pagination';
 
@@ -126,20 +124,17 @@ export type PredictionsPageEnvelope = {
   _countWhere?: Prisma.PredictionWhereInput;
 };
 
-export const runPredictions = async (
-  {
-    take,
-    skip,
-    address,
-    conditionId,
-    chainId,
-    settled,
-    isLegacy,
-    orderBy,
-    orderDirection,
-  }: QueryPredictionsArgs,
-  ctx: ApolloContext | undefined
-): Promise<PredictionsPageEnvelope> => {
+export const runPredictions = async ({
+  take,
+  skip,
+  address,
+  conditionId,
+  chainId,
+  settled,
+  isLegacy,
+  orderBy,
+  orderDirection,
+}: QueryPredictionsArgs): Promise<PredictionsPageEnvelope> => {
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
   const addr = address?.toLowerCase();
@@ -184,10 +179,6 @@ export const runPredictions = async (
   });
   const hasMore = rawRows.length > cappedTake;
   const rows = rawRows.slice(0, cappedTake);
-  await preloadPickConditions(
-    ctx,
-    rows.map((r) => r.pickConfiguration)
-  );
   return {
     items: rows.map(mapPrediction),
     hasMore,
@@ -198,34 +189,29 @@ export const runPredictions = async (
 
 export const predictionsPage: NonNullable<
   QueryResolvers['predictionsPage']
-> = async (_parent, args, ctx) => {
-  return runPredictions(args, ctx);
+> = async (_parent, args) => {
+  return runPredictions(args);
 };
 
 export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   _parent,
-  { id },
-  ctx
+  { id }
 ) => {
   const r = await prisma.prediction.findUnique({
     where: { predictionId: id.toLowerCase() },
     include: { pickConfiguration: { include: { picks: true } } },
   });
-  if (r) await preloadPickConditions(ctx, [r.pickConfiguration]);
   return r ? mapPrediction(r) : null;
 };
 
-export const runPickConfigurations = async (
-  {
-    take,
-    skip,
-    chainId,
-    resolved,
-    result,
-    tokens,
-  }: QueryPickConfigurationsArgs,
-  ctx: ApolloContext | undefined
-): Promise<{
+export const runPickConfigurations = async ({
+  take,
+  skip,
+  chainId,
+  resolved,
+  result,
+  tokens,
+}: QueryPickConfigurationsArgs): Promise<{
   items: ReturnType<typeof mapPickConfig>[];
   hasMore: boolean;
 }> => {
@@ -256,14 +242,13 @@ export const runPickConfigurations = async (
   });
   const hasMore = rawRows.length > cappedTake;
   const rows = rawRows.slice(0, cappedTake);
-  await preloadPickConditions(ctx, rows);
   return { items: rows.map((r) => mapPickConfig(r)), hasMore };
 };
 
 export const pickConfigurationsPage: NonNullable<
   QueryResolvers['pickConfigurationsPage']
-> = async (_parent, args, ctx) => {
-  return runPickConfigurations(args, ctx);
+> = async (_parent, args) => {
+  return runPickConfigurations(args);
 };
 
 type PositionShape = ResolversParentTypes['Position'] & {
@@ -704,12 +689,12 @@ const synthesizePositionRow = (
  * fetch trades only for the misses, then run the WAC walk per row.
  * Hits skip both the trades fetch and the synthesis loop entirely.
  *
- * `preloadPickConditions` runs against the full page so per-Pick
- * condition resolvers stay warm regardless of cache state.
+ * Pick.condition lookups for this page batch through the request's
+ * `conditionById` DataLoader at field-resolution time, so no eager
+ * pre-load is needed here.
  */
 const synthesizePositionsPage = async (
-  rows: PositionRow[],
-  ctx: ApolloContext | undefined
+  rows: PositionRow[]
 ): Promise<PositionShape[]> => {
   const cachedByRow = new Map<PositionRow, PositionShape[]>();
   const missedRows: PositionRow[] = [];
@@ -722,14 +707,10 @@ const synthesizePositionsPage = async (
   const missChainIds = Array.from(new Set(missedRows.map((r) => r.chainId)));
   const missTokens = Array.from(new Set(missedRows.map((r) => r.tokenAddress)));
   const missHolders = Array.from(new Set(missedRows.map((r) => r.holder)));
-  const [, trades] = await Promise.all([
-    preloadPickConditions(
-      ctx,
-      rows.map((r) => r.pickConfiguration)
-    ),
+  const trades: TradeRow[] =
     missedRows.length === 0
-      ? Promise.resolve([] as TradeRow[])
-      : prisma.secondaryTrade.findMany({
+      ? []
+      : await prisma.secondaryTrade.findMany({
           where: {
             chainId: { in: missChainIds },
             token: { in: missTokens },
@@ -748,8 +729,7 @@ const synthesizePositionsPage = async (
             executedAt: true,
             tradeHash: true,
           },
-        }),
-  ]);
+        });
 
   const tradesByPos = new Map<string, TradeRow[]>();
   for (const t of trades) {
@@ -801,8 +781,7 @@ const EMPTY_POSITIONS_PAGE: PositionsPageEnvelope = {
 };
 
 export const runPositions = async (
-  args: QueryPositionsArgs,
-  ctx: ApolloContext | undefined
+  args: QueryPositionsArgs
 ): Promise<PositionsPageEnvelope> => {
   const norm = normalizePositionsArgs(args);
 
@@ -871,7 +850,7 @@ export const runPositions = async (
   const hasMore = rawRows.length > norm.cappedTake;
   const rows = rawRows.slice(0, norm.cappedTake);
 
-  const synthesized = await synthesizePositionsPage(rows, ctx);
+  const synthesized = await synthesizePositionsPage(rows);
   const sorted = sortSynthesizedRows(
     synthesized,
     norm.orderField,
@@ -882,6 +861,6 @@ export const runPositions = async (
 
 export const positionsPage: NonNullable<
   QueryResolvers['positionsPage']
-> = async (_parent, args, ctx) => {
-  return runPositions(args, ctx);
+> = async (_parent, args) => {
+  return runPositions(args);
 };
