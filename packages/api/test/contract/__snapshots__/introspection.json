@@ -16658,7 +16658,7 @@
                 "defaultValue": "false"
               },
               {
-                "name": "limit",
+                "name": "take",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",
@@ -16672,7 +16672,7 @@
                 "defaultValue": "100"
               },
               {
-                "name": "offset",
+                "name": "skip",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",

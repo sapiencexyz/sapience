@@ -9,10 +9,7 @@
  */
 
 import { getProtocolAddressesForChain } from '@sapience/sdk/contracts';
-import type {
-  QueryResolvers,
-  QueryCollateralTransfersArgs,
-} from '../../__generated__/resolvers';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { clampSkip, clampTake } from './pagination';
@@ -20,6 +17,14 @@ import { clampSkip, clampTake } from './pagination';
 type CollateralTransferRow = NonNullable<
   Awaited<ReturnType<typeof prisma.collateralTransfer.findUnique>>
 >;
+
+interface CollateralTransfersInput {
+  address: string;
+  chainId: number;
+  excludeProtocol?: boolean | null;
+  take?: number | null;
+  skip?: number | null;
+}
 
 export const collateralBalance: NonNullable<
   QueryResolvers['collateralBalance']
@@ -104,15 +109,15 @@ export const runCollateralTransfers = async ({
   address,
   chainId,
   excludeProtocol,
-  limit,
-  offset,
-}: QueryCollateralTransfersArgs): Promise<{
+  take,
+  skip,
+}: CollateralTransfersInput): Promise<{
   items: CollateralTransferRow[];
   hasMore: boolean;
 }> => {
   const addr = address.toLowerCase();
-  const cappedLimit = clampTake(limit, { defaultTake: 100, maxTake: 500 });
-  const offsetVal = clampSkip(offset);
+  const cappedTake = clampTake(take, { defaultTake: 100, maxTake: 500 });
+  const skipVal = clampSkip(skip);
   const protocolAddresses = excludeProtocol
     ? getProtocolAddressesForChain(chainId)
     : [];
@@ -132,11 +137,11 @@ export const runCollateralTransfers = async ({
       ...excludeClause,
     },
     orderBy: { blockNumber: 'desc' },
-    take: cappedLimit + 1,
-    skip: offsetVal,
+    take: cappedTake + 1,
+    skip: skipVal,
   });
-  const hasMore = rawRows.length > cappedLimit;
-  return { items: rawRows.slice(0, cappedLimit), hasMore };
+  const hasMore = rawRows.length > cappedTake;
+  return { items: rawRows.slice(0, cappedTake), hasMore };
 };
 
 export const collateralTransfersPage: NonNullable<

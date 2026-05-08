@@ -1742,7 +1742,7 @@ type Query {
   """
   Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag.
   """
-  collateralTransfersPage(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): CollateralTransfersPage!
+  collateralTransfersPage(address: String!, chainId: Int!, excludeProtocol: Boolean = false, skip: Int! = 0, take: Int! = 100): CollateralTransfersPage!
 
   """
   Look up a single condition by id (case-insensitive). Returns null if no condition matches.

@@ -2071,8 +2071,8 @@ export type QueryCollateralTransfersPageArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
   excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: Scalars['Int']['input'];
-  offset?: Scalars['Int']['input'];
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 
