@@ -47,7 +47,7 @@ import {
   collateralBalanceHistory,
   collateralTransfersPage,
 } from './queries/collateralBalance';
-import { conditionGroupsPage } from './queries/conditionGroups';
+import { conditionGroup, conditionGroupsPage } from './queries/conditionGroups';
 import { conditionsPage } from './queries/conditions';
 import {
   attestationsPage,
@@ -86,7 +86,6 @@ import { conditions } from './queries/deprecated/conditions';
 import {
   attestations,
   categories,
-  conditionGroup,
   conditionGroups,
   users,
 } from './queries/deprecated/crud';
@@ -131,6 +130,7 @@ export const resolvers: Resolvers = {
     collateralBalanceHistory,
     collateralTransfersPage,
     // Conditions / questions
+    conditionGroup,
     conditionGroupsPage,
     conditionsPage,
     questionsPage,
@@ -163,7 +163,6 @@ export const resolvers: Resolvers = {
     claims,
     closes,
     collateralTransfers,
-    conditionGroup,
     conditionGroups,
     conditions,
     pickConfiguration,

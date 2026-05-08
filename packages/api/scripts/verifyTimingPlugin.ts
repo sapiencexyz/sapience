@@ -61,7 +61,9 @@ const probes: Probe[] = [
     body: {
       operationName: 'GetPositionCount',
       query: `query GetPositionCount($holder: String!, $chainId: Int) {
-        positionCount(holder: $holder, chainId: $chainId)
+        positionsPage(holder: $holder, chainId: $chainId, take: 1) {
+          totalCount
+        }
       }`,
       variables: {
         holder: '0x1234567890abcdef1234567890abcdef12345678',
@@ -74,7 +76,7 @@ const probes: Probe[] = [
     expects: ['"variables":{}', '"operationName":"GetCategories"'],
     body: {
       operationName: 'GetCategories',
-      query: `query GetCategories { categories { id name slug } }`,
+      query: `query GetCategories { categoriesPage(take: 100) { items { id name slug } } }`,
     },
   },
   {
@@ -83,8 +85,8 @@ const probes: Probe[] = [
     body: {
       operationName: 'GetQuestionsSorted',
       query: `query GetQuestionsSorted($take: Int!, $skip: Int!, $sortDirection: SortOrder!) {
-        questions(take: $take, skip: $skip, sortDirection: $sortDirection) {
-          questionType
+        questionsPage(take: $take, skip: $skip, sortDirection: $sortDirection) {
+          items { questionType }
         }
       }`,
       variables: {

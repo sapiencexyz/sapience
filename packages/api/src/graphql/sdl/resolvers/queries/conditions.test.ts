@@ -240,4 +240,26 @@ describe('conditionsPage — filter construction', () => {
       similarMarkets: { isEmpty: false },
     });
   });
+
+  it('engagement=NONE narrows to openInterest=0 AND no attestations', async () => {
+    await callPage({
+      filters: { engagement: 'NONE' } as ConditionFilters,
+    });
+    const and = whereOf().AND as Record<string, unknown>[];
+    expect(and).toContainEqual({ openInterest: { equals: '0' } });
+    expect(and).toContainEqual({ attestations: { none: {} } });
+  });
+
+  it('engagement=ANY uses OR of openInterest!=0 / attestations.some', async () => {
+    await callPage({
+      filters: { engagement: 'ANY' } as ConditionFilters,
+    });
+    const and = whereOf().AND as Record<string, unknown>[];
+    expect(and).toContainEqual({
+      OR: [
+        { openInterest: { not: { equals: '0' } } },
+        { attestations: { some: {} } },
+      ],
+    });
+  });
 });

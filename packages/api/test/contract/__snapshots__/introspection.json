@@ -4488,18 +4488,7 @@
           {
             "name": "category",
             "description": null,
-            "args": [
-              {
-                "name": "where",
-                "description": null,
-                "type": {
-                  "kind": "INPUT_OBJECT",
-                  "name": "CategoryWhereInput",
-                  "ofType": null
-                },
-                "defaultValue": null
-              }
-            ],
+            "args": [],
             "type": {
               "kind": "OBJECT",
               "name": "Category",
@@ -4539,18 +4528,7 @@
           {
             "name": "conditionGroup",
             "description": null,
-            "args": [
-              {
-                "name": "where",
-                "description": null,
-                "type": {
-                  "kind": "INPUT_OBJECT",
-                  "name": "ConditionGroupWhereInput",
-                  "ofType": null
-                },
-                "defaultValue": null
-              }
-            ],
+            "args": [],
             "type": {
               "kind": "OBJECT",
               "name": "ConditionGroup",
@@ -5200,6 +5178,29 @@
         "possibleTypes": null
       },
       {
+        "kind": "ENUM",
+        "name": "ConditionEngagement",
+        "description": "Engagement status for a Condition. A condition has \"engagement\" if it\nhas non-zero open interest OR at least one attestation. Used by\ncleanup workflows to find dead markets and recheck them.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "NONE",
+            "description": "`openInterest = 0` AND no attestations.",
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "ANY",
+            "description": "`openInterest != 0` OR at least one attestation.",
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
         "kind": "INPUT_OBJECT",
         "name": "ConditionFilters",
         "description": "Flat filter input for the `conditionsPage` query. Each field is optional; values combine with AND. Replaces the Prisma-derived `ConditionWhereInput` for client-facing access.",
@@ -5368,6 +5369,16 @@
               "ofType": null
             },
             "defaultValue": null
+          },
+          {
+            "name": "engagement",
+            "description": "Engagement filter (used by cleanup workflows). See `ConditionEngagement`.",
+            "type": {
+              "kind": "ENUM",
+              "name": "ConditionEngagement",
+              "ofType": null
+            },
+            "defaultValue": null
           }
         ],
         "interfaces": null,
@@ -5394,18 +5405,7 @@
           {
             "name": "category",
             "description": null,
-            "args": [
-              {
-                "name": "where",
-                "description": null,
-                "type": {
-                  "kind": "INPUT_OBJECT",
-                  "name": "CategoryWhereInput",
-                  "ofType": null
-                },
-                "defaultValue": null
-              }
-            ],
+            "args": [],
             "type": {
               "kind": "OBJECT",
               "name": "Category",
@@ -17023,17 +17023,17 @@
           },
           {
             "name": "conditionGroup",
-            "description": null,
+            "description": "Look up a single condition group by integer id. Returns null if not found.",
             "args": [
               {
-                "name": "where",
+                "name": "id",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",
                   "name": null,
                   "ofType": {
-                    "kind": "INPUT_OBJECT",
-                    "name": "ConditionGroupWhereUniqueInput",
+                    "kind": "SCALAR",
+                    "name": "Int",
                     "ofType": null
                   }
                 },
@@ -17045,8 +17045,8 @@
               "name": "ConditionGroup",
               "ofType": null
             },
-            "isDeprecated": true,
-            "deprecationReason": "Unused; will be removed. No live consumers — vault-bot defines a query string but never executes it."
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "conditionGroups",
@@ -21490,18 +21490,7 @@
           {
             "name": "referredBy",
             "description": null,
-            "args": [
-              {
-                "name": "where",
-                "description": null,
-                "type": {
-                  "kind": "INPUT_OBJECT",
-                  "name": "UserWhereInput",
-                  "ofType": null
-                },
-                "defaultValue": null
-              }
-            ],
+            "args": [],
             "type": {
               "kind": "OBJECT",
               "name": "User",
@@ -21513,18 +21502,7 @@
           {
             "name": "referredByCode",
             "description": null,
-            "args": [
-              {
-                "name": "where",
-                "description": null,
-                "type": {
-                  "kind": "INPUT_OBJECT",
-                  "name": "ReferralCodeWhereInput",
-                  "ofType": null
-                },
-                "defaultValue": null
-              }
-            ],
+            "args": [],
             "type": {
               "kind": "OBJECT",
               "name": "ReferralCode",

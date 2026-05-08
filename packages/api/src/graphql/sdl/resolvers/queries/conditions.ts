@@ -84,6 +84,17 @@ const buildConditionsWhereFromFilters = (
   if (filters.hasSimilarMarkets === true) {
     and.push({ similarMarkets: { isEmpty: false } });
   }
+  if (filters.engagement === 'NONE') {
+    and.push({ openInterest: { equals: '0' } });
+    and.push({ attestations: { none: {} } });
+  } else if (filters.engagement === 'ANY') {
+    and.push({
+      OR: [
+        { openInterest: { not: { equals: '0' } } },
+        { attestations: { some: {} } },
+      ],
+    });
+  }
 
   // Visibility — matches the safety-net behaviour of the bare `conditions`
   // resolver: when callers pass a list of IDs they bypass the public filter

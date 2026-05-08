@@ -557,16 +557,6 @@ export type ConditionAttestationsArgs = {
 };
 
 
-export type ConditionCategoryArgs = {
-  where?: InputMaybe<CategoryWhereInput>;
-};
-
-
-export type ConditionConditionGroupArgs = {
-  where?: InputMaybe<ConditionGroupWhereInput>;
-};
-
-
 export type ConditionPredictionsArgs = {
   cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
   distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
@@ -592,6 +582,17 @@ export type ConditionCountPredictionsArgs = {
   where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
+/**
+ * Engagement status for a Condition. A condition has "engagement" if it
+ * has non-zero open interest OR at least one attestation. Used by
+ * cleanup workflows to find dead markets and recheck them.
+ */
+export type ConditionEngagement =
+  /** `openInterest != 0` OR at least one attestation. */
+  | 'ANY'
+  /** `openInterest = 0` AND no attestations. */
+  | 'NONE';
+
 /** Flat filter input for the `conditionsPage` query. Each field is optional; values combine with AND. Replaces the Prisma-derived `ConditionWhereInput` for client-facing access. */
 export type ConditionFilters = {
   /** Restrict to conditions whose category slug is in this set. */
@@ -600,6 +601,8 @@ export type ConditionFilters = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to a single condition group. */
   conditionGroupId?: InputMaybe<Scalars['Int']['input']>;
+  /** Engagement filter (used by cleanup workflows). See `ConditionEngagement`. */
+  engagement?: InputMaybe<ConditionEngagement>;
   /** When true, only return conditions that have a non-empty `similarMarkets` array (used by metadata-refresh keepers). */
   hasSimilarMarkets?: InputMaybe<Scalars['Boolean']['input']>;
   /** Restrict to these condition IDs (case-insensitive). */
@@ -634,11 +637,6 @@ export type ConditionGroup = {
   id: Scalars['Int']['output'];
   name: Scalars['String']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
-};
-
-
-export type ConditionGroupCategoryArgs = {
-  where?: InputMaybe<CategoryWhereInput>;
 };
 
 
@@ -1840,7 +1838,7 @@ export type Query = {
   collateralTransfersPage: CollateralTransfersPage;
   /** Look up a single condition by id (case-insensitive). Returns null if no condition matches. */
   condition?: Maybe<Condition>;
-  /** @deprecated Unused; will be removed. No live consumers — vault-bot defines a query string but never executes it. */
+  /** Look up a single condition group by integer id. Returns null if not found. */
   conditionGroup?: Maybe<ConditionGroup>;
   /** @deprecated Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal. */
   conditionGroups: Array<ConditionGroup>;
@@ -2128,7 +2126,7 @@ export type QueryConditionArgs = {
 
 
 export type QueryConditionGroupArgs = {
-  where: ConditionGroupWhereUniqueInput;
+  id: Scalars['Int']['input'];
 };
 
 
@@ -2694,24 +2692,6 @@ export type UserReferralsArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<UserWhereInput>;
-};
-
-
-/**
- * Application-level user record, keyed by wallet address,
- * used for referrals and other per-wallet metadata.
- */
-export type UserReferredByArgs = {
-  where?: InputMaybe<UserWhereInput>;
-};
-
-
-/**
- * Application-level user record, keyed by wallet address,
- * used for referrals and other per-wallet metadata.
- */
-export type UserReferredByCodeArgs = {
-  where?: InputMaybe<ReferralCodeWhereInput>;
 };
 
 export type UserCount = {

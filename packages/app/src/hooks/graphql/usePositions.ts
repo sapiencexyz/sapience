@@ -240,7 +240,9 @@ const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
 
 const PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
   query PredictionsCount($address: String!, $chainId: Int) {
-    predictionCount(address: $address, chainId: $chainId)
+    predictionsPage(address: $address, chainId: $chainId, take: 1) {
+      totalCount
+    }
   }
 `;
 
@@ -358,11 +360,10 @@ export function usePredictionsCount(address?: string, chainId?: number) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{ predictionCount: number }>(
-        PREDICTIONS_COUNT_QUERY,
-        { address, chainId: chainId ?? null }
-      );
-      return resp?.predictionCount ?? 0;
+      const resp = await graphqlRequest<{
+        predictionsPage: { totalCount: number | null };
+      }>(PREDICTIONS_COUNT_QUERY, { address, chainId: chainId ?? null });
+      return resp?.predictionsPage?.totalCount ?? 0;
     },
   });
   return data ?? 0;

@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { GET_CONDITION_GROUPS } from '@sapience/sdk/queries';
+import { GET_CONDITION_GROUPS_BY_IDS } from '@sapience/sdk/queries';
 import { executeOperation } from '../../helpers/testApollo';
 import { stabilize } from '../../helpers/stableSerializer';
 
-describe('ConditionGroups query', () => {
+describe('ConditionGroupsByIds query', () => {
   it('matches the recorded contract', async () => {
-    const result = await executeOperation(GET_CONDITION_GROUPS, {
+    const result = await executeOperation(GET_CONDITION_GROUPS_BY_IDS, {
+      ids: null,
       take: 10,
-      skip: 0,
     });
     expect(result.errors).toBeUndefined();
     await expect(

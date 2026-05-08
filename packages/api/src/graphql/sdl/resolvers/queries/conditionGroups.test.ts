@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockPrisma = vi.hoisted(() => ({
-  conditionGroup: { findMany: vi.fn() },
+  conditionGroup: { findMany: vi.fn(), findUnique: vi.fn() },
 }));
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
 import type { QueryConditionGroupsPageArgs } from '../../__generated__/resolvers';
-import { conditionGroupsPage } from './conditionGroups';
+import { conditionGroup, conditionGroupsPage } from './conditionGroups';
 
 type ConditionGroupsPageFn = (
   parent: unknown,
@@ -92,5 +92,43 @@ describe('conditionGroupsPage — filter mapping', () => {
   it('treats empty ids array as no-filter (no AND clause)', async () => {
     await callPage({ filters: { ids: [] } });
     expect(whereOf()).toEqual({});
+  });
+});
+
+describe('conditionGroup(id:) — single lookup', () => {
+  type ConditionGroupFn = (
+    parent: unknown,
+    args: { id: number },
+    ctx: unknown,
+    info: unknown
+  ) => Promise<unknown>;
+  const conditionGroupFn = conditionGroup as unknown as ConditionGroupFn;
+
+  it('passes id through to prisma.findUnique', async () => {
+    mockPrisma.conditionGroup.findUnique.mockResolvedValue({
+      id: 42,
+      name: 'foo',
+    });
+    const result = await conditionGroupFn(
+      undefined,
+      { id: 42 },
+      undefined,
+      undefined
+    );
+    expect(mockPrisma.conditionGroup.findUnique).toHaveBeenCalledWith({
+      where: { id: 42 },
+    });
+    expect(result).toEqual({ id: 42, name: 'foo' });
+  });
+
+  it('returns null when not found', async () => {
+    mockPrisma.conditionGroup.findUnique.mockResolvedValue(null);
+    const result = await conditionGroupFn(
+      undefined,
+      { id: 9999 },
+      undefined,
+      undefined
+    );
+    expect(result).toBeNull();
   });
 });

@@ -2,10 +2,10 @@
  * Deprecated CRUD passthroughs that exposed Prisma-style where/orderBy/
  * cursor/take/skip/distinct directly on the wire:
  *
- *   - attestations  → use `attestationsPage` (purpose-built filters)
- *   - categories    → use `categoriesPage`
- *   - conditionGroup, conditionGroups → unused; will be removed
- *   - users         → unused; will be removed
+ *   - attestations    → use `attestationsPage` (purpose-built filters)
+ *   - categories      → use `categoriesPage`
+ *   - conditionGroups → use `conditionGroupsPage`
+ *   - users           → unused; will be removed
  *
  * `categories` shares the TtlCache with the live `categoriesPage`
  * resolver so a hot path through either form warms both.
@@ -74,13 +74,6 @@ export const categories: NonNullable<QueryResolvers['categories']> = async (
   if (isNoArgsCall) categoriesCache.set(CATEGORIES_CACHE_KEY, result);
   return result;
 };
-
-export const conditionGroup: NonNullable<
-  QueryResolvers['conditionGroup']
-> = async (_parent, { where }) =>
-  prisma.conditionGroup.findUnique({
-    where: asPrismaArgs<Prisma.ConditionGroupWhereUniqueInput>(where),
-  });
 
 export const conditionGroups: NonNullable<
   QueryResolvers['conditionGroups']

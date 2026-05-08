@@ -12,10 +12,10 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { cn } from '@sapience/ui/lib/utils';
+import type { ConditionGroupConditionType } from '@sapience/sdk/queries';
 import type { FilterState } from './TableFilters';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import type { ConditionType } from '~/hooks/graphql/useConditions';
-import type { ConditionGroupConditionType } from '~/hooks/graphql/useConditionGroups';
 import type {
   SortField,
   SortDirection,

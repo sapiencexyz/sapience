@@ -35,6 +35,11 @@ const buildConditionGroupsWhereFromFilters = (
   return and.length > 0 ? { AND: and } : {};
 };
 
+export const conditionGroup: NonNullable<
+  QueryResolvers['conditionGroup']
+> = async (_parent, { id }) =>
+  prisma.conditionGroup.findUnique({ where: { id } });
+
 export const conditionGroupsPage: NonNullable<
   QueryResolvers['conditionGroupsPage']
 > = async (_parent, { filters, take, skip }: QueryConditionGroupsPageArgs) => {

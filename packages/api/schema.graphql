@@ -392,10 +392,10 @@ type Condition {
   assertionId: String
   assertionTimestamp: Int
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
-  category(where: CategoryWhereInput): Category
+  category: Category
   categoryId: Int
   chainId: Int!
-  conditionGroup(where: ConditionGroupWhereInput): ConditionGroup
+  conditionGroup: ConditionGroup
   conditionGroupId: Int
   createdAt: DateTimeISO!
   description: String!
@@ -444,7 +444,7 @@ type ConditionCount {
 
 type ConditionGroup {
   _count: ConditionGroupCount
-  category(where: CategoryWhereInput): Category
+  category: Category
   categoryId: Int
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
   createdAt: DateTimeISO!
@@ -1532,6 +1532,19 @@ enum ConditionVisibility {
 }
 
 """
+Engagement status for a Condition. A condition has "engagement" if it
+has non-zero open interest OR at least one attestation. Used by
+cleanup workflows to find dead markets and recheck them.
+"""
+enum ConditionEngagement {
+  """`openInterest = 0` AND no attestations."""
+  NONE
+
+  """`openInterest != 0` OR at least one attestation."""
+  ANY
+}
+
+"""
 Flat filter input for the `conditionsPage` query. Each field is optional; values combine with AND. Replaces the Prisma-derived `ConditionWhereInput` for client-facing access.
 """
 input ConditionFilters {
@@ -1582,6 +1595,11 @@ input ConditionFilters {
   When true, only return conditions that have a non-empty `similarMarkets` array (used by metadata-refresh keepers).
   """
   hasSimilarMarkets: Boolean
+
+  """
+  Engagement filter (used by cleanup workflows). See `ConditionEngagement`.
+  """
+  engagement: ConditionEngagement
 }
 
 """ERC-20 token balance representing a side of a prediction position"""
@@ -1844,7 +1862,11 @@ type Query {
   Look up a single condition by id (case-insensitive). Returns null if no condition matches.
   """
   condition(id: String!): Condition
-  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated(reason: "Unused; will be removed. No live consumers — vault-bot defines a query string but never executes it.")
+
+  """
+  Look up a single condition group by integer id. Returns null if not found.
+  """
+  conditionGroup(id: Int!): ConditionGroup
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal.")
 
   """
@@ -2223,8 +2245,8 @@ type User {
   """keccak256(utf8(trimmed_lowercase_code)) stored as 0x-prefixed hex."""
   refCodeHash: String
   referrals(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
-  referredBy(where: UserWhereInput): User
-  referredByCode(where: ReferralCodeWhereInput): ReferralCode
+  referredBy: User
+  referredByCode: ReferralCode
   referredByCodeId: Int
   referredById: Int
   updatedAt: DateTimeISO!
