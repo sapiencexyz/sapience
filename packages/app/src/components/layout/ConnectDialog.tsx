@@ -28,7 +28,7 @@ const IS_STAGING = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
 
 const USER_REFERRAL_STATUS_QUERY = `
   query UserReferralStatus($wallet: String!) {
-    user(where: { address: $wallet }) {
+    user(address: $wallet) {
       address
       refCodeHash
       referredBy {

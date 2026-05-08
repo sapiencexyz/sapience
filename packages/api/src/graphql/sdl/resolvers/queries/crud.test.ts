@@ -315,22 +315,22 @@ describe('categoriesPage — TtlCache (full-first-page only)', () => {
 });
 
 describe('condition (single) resolver', () => {
-  it('forwards the where input to findUnique', async () => {
+  it('lower-cases id and forwards as findUnique where', async () => {
     await conditionFn(
       undefined,
-      { where: { id: '0xabc' } } as unknown as QueryConditionArgs,
+      { id: '0xABCdef' } as QueryConditionArgs,
       undefined,
       undefined
     );
     const args = mockPrisma.condition.findUnique.mock.calls[0][0];
-    expect(args.where).toEqual({ id: '0xabc' });
+    expect(args.where).toEqual({ id: '0xabcdef' });
   });
 
   it('returns the row Prisma returns (or null)', async () => {
     mockPrisma.condition.findUnique.mockResolvedValue({ id: '0xabc' });
     const result = await conditionFn(
       undefined,
-      { where: { id: '0xabc' } } as unknown as QueryConditionArgs,
+      { id: '0xabc' } as QueryConditionArgs,
       undefined,
       undefined
     );
@@ -339,21 +339,21 @@ describe('condition (single) resolver', () => {
 });
 
 describe('user (single) resolver', () => {
-  it('forwards the where input to findUnique', async () => {
+  it('lower-cases address and forwards as findUnique where', async () => {
     await userFn(
       undefined,
-      { where: { address: '0xalice' } } as unknown as QueryUserArgs,
+      { address: '0xAaAaAaAa' } as QueryUserArgs,
       undefined,
       undefined
     );
     const args = mockPrisma.user.findUnique.mock.calls[0][0];
-    expect(args.where).toEqual({ address: '0xalice' });
+    expect(args.where).toEqual({ address: '0xaaaaaaaa' });
   });
 
   it('returns null when no user is found', async () => {
     const result = await userFn(
       undefined,
-      { where: { address: '0xnobody' } } as unknown as QueryUserArgs,
+      { address: '0xnobody' } as QueryUserArgs,
       undefined,
       undefined
     );

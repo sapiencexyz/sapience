@@ -1719,7 +1719,11 @@ type Query {
   Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag.
   """
   collateralTransfersPage(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): CollateralTransfersPage!
-  condition(where: ConditionWhereUniqueInput!): Condition
+
+  """
+  Look up a single condition by id (case-insensitive). Returns null if no condition matches.
+  """
+  condition(id: String!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated(reason: "Unused; will be removed. No live consumers — vault-bot defines a query string but never executes it.")
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Unused; will be removed. Exposes raw Prisma query semantics — no live callers in app, SDK, or known external consumers.")
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal.")
@@ -1839,7 +1843,11 @@ type Query {
   Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag for paginated infinite scroll.
   """
   tradesPage(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): TradesPage!
-  user(where: UserWhereUniqueInput!): User
+
+  """
+  Look up a single user by EVM address (case-insensitive). Returns null if no user matches.
+  """
+  user(address: String!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. Exposes raw Prisma query semantics — no live consumers.")
 }
 

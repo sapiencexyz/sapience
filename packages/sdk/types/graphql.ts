@@ -1794,6 +1794,7 @@ export type Query = {
   collateralTransfers: Array<CollateralTransferType>;
   /** Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag. */
   collateralTransfersPage: CollateralTransfersPage;
+  /** Look up a single condition by id (case-insensitive). Returns null if no condition matches. */
   condition?: Maybe<Condition>;
   /** @deprecated Unused; will be removed. No live consumers — vault-bot defines a query string but never executes it. */
   conditionGroup?: Maybe<ConditionGroup>;
@@ -1893,6 +1894,7 @@ export type Query = {
   trades: Array<Trade>;
   /** Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag for paginated infinite scroll. */
   tradesPage: TradesPage;
+  /** Look up a single user by EVM address (case-insensitive). Returns null if no user matches. */
   user?: Maybe<User>;
   /** @deprecated Unused; will be removed. Exposes raw Prisma query semantics — no live consumers. */
   users: Array<User>;
@@ -2075,7 +2077,7 @@ export type QueryCollateralTransfersPageArgs = {
 
 
 export type QueryConditionArgs = {
-  where: ConditionWhereUniqueInput;
+  id: Scalars['String']['input'];
 };
 
 
@@ -2325,7 +2327,7 @@ export type QueryTradesPageArgs = {
 
 
 export type QueryUserArgs = {
-  where: UserWhereUniqueInput;
+  address: Scalars['String']['input'];
 };
 
 

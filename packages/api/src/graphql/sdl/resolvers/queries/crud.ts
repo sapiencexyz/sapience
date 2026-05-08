@@ -39,11 +39,14 @@ export const CATEGORIES_CACHE_KEY = 'categories:v1';
 export const __clearCategoriesCache = () => categoriesCache.clear();
 
 /**
- * The SDL input types mirror Prisma's exactly but graphql-codegen and
- * Prisma have slightly different TS shapes (Maybe<T> vs T | null,
- * optional vs required on the arg object, etc.). A structural cast
- * here is safe — the values themselves are correct shapes at runtime;
- * the TS types just don't overlap cleanly.
+ * Structural cast used only by the deprecated bare-array wrappers in
+ * ./deprecated/crud.ts, which still accept the Prisma-derived input
+ * shapes (where/orderBy/cursor/distinct). graphql-codegen emits
+ * Maybe<T>/optional shapes that don't overlap cleanly with Prisma's
+ * required shapes; the runtime values are correct in either form.
+ *
+ * The live `condition` and `user` resolvers no longer need it — they
+ * take flat scalar args (`id: String!`, `address: String!`).
  */
 export const asPrismaArgs = <T>(value: unknown): T => value as T;
 
@@ -126,16 +129,10 @@ export const attestationsPage: NonNullable<
 
 export const condition: NonNullable<QueryResolvers['condition']> = async (
   _parent,
-  { where }
-) =>
-  prisma.condition.findUnique({
-    where: asPrismaArgs<Prisma.ConditionWhereUniqueInput>(where),
-  });
+  { id }
+) => prisma.condition.findUnique({ where: { id: id.toLowerCase() } });
 
 export const user: NonNullable<QueryResolvers['user']> = async (
   _parent,
-  { where }
-) =>
-  prisma.user.findUnique({
-    where: asPrismaArgs<Prisma.UserWhereUniqueInput>(where),
-  });
+  { address }
+) => prisma.user.findUnique({ where: { address: address.toLowerCase() } });

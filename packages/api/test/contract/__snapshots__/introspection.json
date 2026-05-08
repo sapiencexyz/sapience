@@ -156,6 +156,18 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total forecasters on the leaderboard (cheap — derived from in-memory cache).",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -342,6 +354,18 @@
                 "name": "Boolean",
                 "ofType": null
               }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total activity rows matching the filters. May be null when the merged-feed count is not computed.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
             },
             "isDeprecated": false,
             "deprecationReason": null
@@ -1952,6 +1976,18 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total Attestation rows matching the filters. Populated when available.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -2718,6 +2754,18 @@
                 "name": "Boolean",
                 "ofType": null
               }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total Category rows matching the filters. Populated when available.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
             },
             "isDeprecated": false,
             "deprecationReason": null
@@ -4081,6 +4129,18 @@
                 "name": "Boolean",
                 "ofType": null
               }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total CollateralTransfer rows matching the filters. Populated when available.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
             },
             "isDeprecated": false,
             "deprecationReason": null
@@ -7289,6 +7349,18 @@
                 "name": "Boolean",
                 "ofType": null
               }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total Condition rows matching the filters. Populated when available.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
             },
             "isDeprecated": false,
             "deprecationReason": null
@@ -13674,6 +13746,18 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total PickConfiguration rows matching the filters. Populated when available.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -13969,7 +14053,7 @@
       {
         "kind": "OBJECT",
         "name": "PositionsPage",
-        "description": "Paginated wrapper around Position rows with a server-truth hasMore flag",
+        "description": "Paginated wrapper around Position rows with a server-truth hasMore flag.\n`totalCount` is the count of underlying Position rows that match the filters\n(not the count of rendered event-stream rows, which can be larger due to\nper-sell synthetic expansion).",
         "fields": [
           {
             "name": "items",
@@ -14007,6 +14091,18 @@
                 "name": "Boolean",
                 "ofType": null
               }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total Position rows matching the filters. Populated eagerly.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
             },
             "isDeprecated": false,
             "deprecationReason": null
@@ -14538,6 +14634,18 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total Prediction rows matching the filters. Populated eagerly.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -14629,6 +14737,18 @@
                 "name": "Boolean",
                 "ofType": null
               }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total addresses on the leaderboard (cheap — derived from in-memory cache).",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
             },
             "isDeprecated": false,
             "deprecationReason": null
@@ -15680,7 +15800,7 @@
             "description": "Same as `accuracyLeaderboard`, but wraps the result in an `AccuracyLeaderboardPage` with a server-truth `hasMore` flag.",
             "args": [
               {
-                "name": "limit",
+                "name": "take",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",
@@ -16580,17 +16700,17 @@
           },
           {
             "name": "condition",
-            "description": null,
+            "description": "Look up a single condition by id (case-insensitive). Returns null if no condition matches.",
             "args": [
               {
-                "name": "where",
+                "name": "id",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",
                   "name": null,
                   "ofType": {
-                    "kind": "INPUT_OBJECT",
-                    "name": "ConditionWhereUniqueInput",
+                    "kind": "SCALAR",
+                    "name": "String",
                     "ofType": null
                   }
                 },
@@ -17202,8 +17322,8 @@
                 "ofType": null
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed."
           },
           {
             "name": "positions",
@@ -17628,8 +17748,8 @@
                 "ofType": null
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed."
           },
           {
             "name": "predictions",
@@ -17927,7 +18047,7 @@
             "description": "Same as `profitLeaderboard`, but wraps the result in a `ProfitLeaderboardPage` with a server-truth `hasMore` flag.",
             "args": [
               {
-                "name": "limit",
+                "name": "take",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",
@@ -18506,24 +18626,32 @@
                 "defaultValue": null
               },
               {
-                "name": "limit",
+                "name": "take",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
                 "defaultValue": "100"
               },
               {
-                "name": "cursor",
+                "name": "skip",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -18822,17 +18950,17 @@
           },
           {
             "name": "user",
-            "description": null,
+            "description": "Look up a single user by EVM address (case-insensitive). Returns null if no user matches.",
             "args": [
               {
-                "name": "where",
+                "name": "address",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",
                   "name": null,
                   "ofType": {
-                    "kind": "INPUT_OBJECT",
-                    "name": "UserWhereUniqueInput",
+                    "kind": "SCALAR",
+                    "name": "String",
                     "ofType": null
                   }
                 },
@@ -19148,6 +19276,18 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total Question rows matching the filters. May be null for complex unioned queries.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -19337,24 +19477,32 @@
             "description": "Paginated per-claimant breakdown with trading volume + position count.",
             "args": [
               {
-                "name": "limit",
+                "name": "take",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
                 "defaultValue": "100"
               },
               {
-                "name": "cursor",
+                "name": "skip",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -19469,7 +19617,7 @@
       {
         "kind": "OBJECT",
         "name": "ReferralCodeClaimantsPage",
-        "description": null,
+        "description": "Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore flag",
         "fields": [
           {
             "name": "items",
@@ -19496,8 +19644,24 @@
             "deprecationReason": null
           },
           {
-            "name": "nextCursor",
+            "name": "hasMore",
             "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total claimant rows for this code. Populated when available.",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -19638,7 +19802,7 @@
       {
         "kind": "OBJECT",
         "name": "ReferralCodesPage",
-        "description": null,
+        "description": "Paginated wrapper around ReferralCode rows with a server-truth hasMore flag",
         "fields": [
           {
             "name": "items",
@@ -19665,8 +19829,24 @@
             "deprecationReason": null
           },
           {
-            "name": "nextCursor",
+            "name": "hasMore",
             "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total ReferralCode rows. Populated when available.",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -20716,6 +20896,18 @@
                 "name": "Boolean",
                 "ofType": null
               }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total Trade rows matching the filters. Populated when available.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
             },
             "isDeprecated": false,
             "deprecationReason": null

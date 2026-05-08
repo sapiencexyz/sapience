@@ -119,7 +119,7 @@ export type UserReferralsData = {
 
 const USER_REFERRALS_QUERY = `
   query UserReferrals($wallet: String!) {
-    user(where: { address: $wallet }) {
+    user(address: $wallet) {
       address
       refCodeHash
       maxReferrals
