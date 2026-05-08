@@ -30,6 +30,7 @@ import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 import { preloadPickConditions } from '../preloadPickConditions';
+import { clampSkip, clampTake } from './pagination';
 
 type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
@@ -109,8 +110,8 @@ export const runPredictions = async (
   hasMore: boolean;
   totalCount: number;
 }> => {
-  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
-  const skipVal = skip ?? 0;
+  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
+  const skipVal = clampSkip(skip);
   const addr = address?.toLowerCase();
 
   const where: Prisma.PredictionWhereInput = {};
@@ -196,8 +197,8 @@ export const runPickConfigurations = async (
   items: ReturnType<typeof mapPickConfig>[];
   hasMore: boolean;
 }> => {
-  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
-  const skipVal = skip ?? 0;
+  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
+  const skipVal = clampSkip(skip);
   const where: Prisma.PicksWhereInput = {};
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (resolved !== undefined && resolved !== null) where.resolved = resolved;
@@ -273,8 +274,8 @@ export const runPositions = async (
   hasMore: boolean;
   totalCount: number;
 }> => {
-  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
-  const skipVal = skip ?? 0;
+  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
+  const skipVal = clampSkip(skip);
   const holderLower = holder?.toLowerCase();
   const pickConfigIdLower = pickConfigId?.toLowerCase();
 

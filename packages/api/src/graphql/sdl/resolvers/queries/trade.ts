@@ -16,6 +16,7 @@ import type {
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import { clampSkip, clampTake } from './pagination';
 
 type Trade = NonNullable<
   Awaited<ReturnType<typeof prisma.secondaryTrade.findUnique>>
@@ -49,8 +50,8 @@ export const runTrades = async ({
   items: ReturnType<typeof mapTrade>[];
   hasMore: boolean;
 }> => {
-  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
-  const skipVal = skip ?? 0;
+  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
+  const skipVal = clampSkip(skip);
   const where: Prisma.SecondaryTradeWhereInput = {};
   if (address && (seller || buyer)) {
     throw new Error(

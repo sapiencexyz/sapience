@@ -93,7 +93,7 @@ beforeEach(() => {
 });
 
 describe('accountActivityPage — argument validation', () => {
-  it('caps take at 100 and clamps skip at MAX_SKIP=500', async () => {
+  it('caps take at 100 and clamps skip at MAX_SKIP=1000', async () => {
     await accountActivityPageFn(
       undefined,
       {
@@ -105,8 +105,8 @@ describe('accountActivityPage — argument validation', () => {
       undefined
     );
     const predArgs = mockPrisma.prediction.findMany.mock.calls[0][0];
-    // fetchSize = cappedSkip(500) + cappedTake(100) + 1 = 601
-    expect(predArgs.take).toBe(601);
+    // fetchSize = cappedSkip(1000) + cappedTake(100) + 1 = 1101
+    expect(predArgs.take).toBe(1101);
   });
 
   it('lower-cases address before querying both tables', async () => {

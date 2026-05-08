@@ -18,6 +18,7 @@ import type {
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
+import { clampSkip, clampTake } from './pagination';
 
 /**
  * Cache only the no-args call (the dominant public path: integrator's
@@ -49,8 +50,8 @@ export const asPrismaArgs = <T>(value: unknown): T => value as T;
 export const categoriesPage: NonNullable<
   QueryResolvers['categoriesPage']
 > = async (_parent, { take, skip }: QueryCategoriesPageArgs) => {
-  const cappedTake = Math.max(1, Math.min(take ?? 100, 500));
-  const skipVal = skip ?? 0;
+  const cappedTake = clampTake(take, { defaultTake: 100, maxTake: 500 });
+  const skipVal = clampSkip(skip);
   const isFullPage = skipVal === 0 && cappedTake >= 100;
 
   if (isFullPage) {
@@ -93,8 +94,8 @@ export const attestationsPage: NonNullable<
     skip,
   }: QueryAttestationsPageArgs
 ) => {
-  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
-  const skipVal = skip ?? 0;
+  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
+  const skipVal = clampSkip(skip);
   const where: Prisma.AttestationWhereInput = {};
   if (uid) where.uid = uid;
   if (attester) where.attester = attester;

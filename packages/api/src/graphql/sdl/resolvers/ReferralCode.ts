@@ -14,9 +14,7 @@
 import type { ReferralCodeResolvers } from '../__generated__/resolvers';
 import prisma from '../../../core/db';
 import { fetchCodeStats } from './queries/referrals';
-
-const DEFAULT_TAKE = 100;
-const MAX_TAKE = 500;
+import { clampSkip, clampTake } from './queries/pagination';
 
 type EnrichedParent = {
   id: number;
@@ -24,18 +22,6 @@ type EnrichedParent = {
   totalVolume?: string;
   totalPositions?: number;
 };
-
-function clampTake(take: number | null | undefined): number {
-  if (take == null) return DEFAULT_TAKE;
-  if (!Number.isFinite(take) || take <= 0) return DEFAULT_TAKE;
-  return Math.min(Math.floor(take), MAX_TAKE);
-}
-
-function clampSkip(skip: number | null | undefined): number {
-  if (skip == null) return 0;
-  if (!Number.isFinite(skip) || skip < 0) return 0;
-  return Math.floor(skip);
-}
 
 async function lazyStats(parent: EnrichedParent) {
   const map = await fetchCodeStats([parent.id]);
@@ -76,7 +62,7 @@ export const ReferralCode: ReferralCodeResolvers = {
   },
 
   claimants: async (parent, args) => {
-    const take = clampTake(args.take);
+    const take = clampTake(args.take, { defaultTake: 100, maxTake: 500 });
     const skip = clampSkip(args.skip);
     const codeId = (parent as EnrichedParent).id;
 

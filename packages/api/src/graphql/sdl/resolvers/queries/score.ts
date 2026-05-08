@@ -15,6 +15,7 @@
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
+import { clampSkip, clampTake } from './pagination';
 
 const leaderboardCache = new TtlCache<
   string,
@@ -60,8 +61,8 @@ export const sliceAccuracyLeaderboard = async (
   hasMore: boolean;
   totalCount: number;
 }> => {
-  const capped = Math.max(1, Math.min(take ?? 10, 100));
-  const skipVal = skip ?? 0;
+  const capped = clampTake(take, { defaultTake: 10, maxTake: 100 });
+  const skipVal = clampSkip(skip);
   const scores = await getLeaderboardScores();
   const items = scores.slice(skipVal, skipVal + capped).map((s) => ({
     address: s.attester,

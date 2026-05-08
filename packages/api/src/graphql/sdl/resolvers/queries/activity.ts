@@ -18,8 +18,7 @@ import type { ApolloContext } from '../../../startApolloServer';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 import { preloadPickConditions } from '../preloadPickConditions';
-
-const MAX_SKIP = 500;
+import { clampSkip, clampTake } from './pagination';
 
 export const runAccountActivity = async (
   {
@@ -35,8 +34,8 @@ export const runAccountActivity = async (
   items: ResolversParentTypes['ActivityItem'][];
   hasMore: boolean;
 }> => {
-  const cappedTake = Math.max(1, Math.min(take ?? 20, 100));
-  const cappedSkip = Math.max(0, Math.min(skip ?? 0, MAX_SKIP));
+  const cappedTake = clampTake(take, { defaultTake: 20, maxTake: 100 });
+  const cappedSkip = clampSkip(skip);
   const addr = address?.toLowerCase();
   const pickConfigIdLower = pickConfigId?.toLowerCase();
   const conditionIdLower = conditionId?.toLowerCase();

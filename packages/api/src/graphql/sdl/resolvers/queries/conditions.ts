@@ -23,6 +23,7 @@ import type {
   ConditionFilters,
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
+import { clampSkip, clampTake } from './pagination';
 
 type Where = Prisma.ConditionWhereInput;
 
@@ -112,8 +113,8 @@ export const conditionsPage: NonNullable<
   _parent,
   { filters, orderBy, orderDirection, take, skip }: QueryConditionsPageArgs
 ) => {
-  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
-  const skipVal = skip ?? 0;
+  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
+  const skipVal = clampSkip(skip);
   const where = buildConditionsWhereFromFilters(filters);
   const direction = orderDirection === 'asc' ? 'asc' : 'desc';
   const orderField = ORDER_FIELD_MAP[orderBy ?? 'CREATED_AT'] ?? 'createdAt';

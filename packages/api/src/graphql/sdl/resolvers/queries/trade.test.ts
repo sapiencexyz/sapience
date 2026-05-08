@@ -66,10 +66,10 @@ describe('tradesPage — argument validation', () => {
     expect(args.skip).toBe(0);
   });
 
-  it('floors take at 1 (zero/negative is bumped)', async () => {
+  it('falls back to the default take when zero/negative is passed', async () => {
     await tradesPageFn(undefined, { take: 0, skip: 0 }, undefined, undefined);
     const args = mockPrisma.secondaryTrade.findMany.mock.calls[0][0];
-    expect(args.take).toBe(2);
+    expect(args.take).toBe(51);
   });
 
   it('defaults take to 50 when null', async () => {

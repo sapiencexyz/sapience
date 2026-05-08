@@ -17,21 +17,7 @@
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
-
-const DEFAULT_TAKE = 100;
-const MAX_TAKE = 500;
-
-function clampTake(take: number | null | undefined): number {
-  if (take == null) return DEFAULT_TAKE;
-  if (!Number.isFinite(take) || take <= 0) return DEFAULT_TAKE;
-  return Math.min(Math.floor(take), MAX_TAKE);
-}
-
-function clampSkip(skip: number | null | undefined): number {
-  if (skip == null) return 0;
-  if (!Number.isFinite(skip) || skip < 0) return 0;
-  return Math.floor(skip);
-}
+import { clampSkip, clampTake } from './pagination';
 
 type StatsRow = {
   id: number;
@@ -99,7 +85,7 @@ export async function fetchCodeStats(
 export const referralCodes: NonNullable<
   QueryResolvers['referralCodes']
 > = async (_parent, args) => {
-  const take = clampTake(args.take);
+  const take = clampTake(args.take, { defaultTake: 100, maxTake: 500 });
   const skip = clampSkip(args.skip);
   const id = args.id ?? null;
 

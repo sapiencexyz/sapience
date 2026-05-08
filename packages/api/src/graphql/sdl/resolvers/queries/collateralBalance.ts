@@ -15,6 +15,7 @@ import type {
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import { clampSkip, clampTake } from './pagination';
 
 type CollateralTransferRow = NonNullable<
   Awaited<ReturnType<typeof prisma.collateralTransfer.findUnique>>
@@ -110,8 +111,8 @@ export const runCollateralTransfers = async ({
   hasMore: boolean;
 }> => {
   const addr = address.toLowerCase();
-  const cappedLimit = Math.min(limit ?? 100, 500);
-  const offsetVal = offset ?? 0;
+  const cappedLimit = clampTake(limit, { defaultTake: 100, maxTake: 500 });
+  const offsetVal = clampSkip(offset);
   const protocolAddresses = excludeProtocol
     ? getProtocolAddressesForChain(chainId)
     : [];

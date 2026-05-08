@@ -30,6 +30,7 @@ import type {
 import { QuestionItemType } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import { clampSkip, clampTake } from './pagination';
 
 // The resolver returns Prisma rows (via mappers), not the raw SDL
 // Condition/ConditionGroup shapes — the typewrapper around Question in
@@ -147,8 +148,8 @@ export const runQuestions = async ({
   const sanitizedSortField = sortField ?? 'endTime';
   const dir = sortDirection === 'asc' ? 'ASC' : 'DESC';
 
-  const boundedTake = Math.max(1, Math.min(take ?? 50, 100));
-  const boundedSkip = Math.max(0, skip ?? 0);
+  const boundedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
+  const boundedSkip = clampSkip(skip);
   const boundedSearch = search?.slice(0, 200) ?? null;
   const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
   const boundedTag = tag?.slice(0, 200) ?? null;

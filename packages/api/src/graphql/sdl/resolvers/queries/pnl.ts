@@ -11,6 +11,7 @@
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { calculateCombinedPositionPnL } from '../../../../services/positionPnL';
+import { clampSkip, clampTake } from './pagination';
 
 const DEFAULT_DECIMALS = 18;
 
@@ -57,8 +58,8 @@ export const sliceLeaderboard = async (
   totalCount: number;
 }> => {
   const entries = await getFullLeaderboard();
-  const cappedTake = Math.max(1, Math.min(take ?? 10, 100));
-  const skipVal = skip ?? 0;
+  const cappedTake = clampTake(take, { defaultTake: 10, maxTake: 100 });
+  const skipVal = clampSkip(skip);
   const items = entries.slice(skipVal, skipVal + cappedTake);
   const hasMore = entries.length > skipVal + cappedTake;
   return { items, hasMore, totalCount: entries.length };
