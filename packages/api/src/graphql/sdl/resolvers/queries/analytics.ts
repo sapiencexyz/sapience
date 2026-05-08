@@ -6,6 +6,18 @@
  * Mar 5 00:00 UTC = cumulative through end of Mar 4 → rendered under Mar 4).
  * The live candle is anchored to the current interval boundary so the FE sees
  * a continuously-updating in-progress bar that closes when cron fires.
+ *
+ * The resolver is split into focused helpers so each phase is inspectable:
+ *
+ *   resolveTargetVault         → match vaultAddressArg against configured
+ *                                vaults (current primary + legacy entries)
+ *   dedupSnapshotsByTimestamp  → collapse rows that share a timestamp,
+ *                                preferring the current-primary stamping
+ *   fetchVolumeAndOITimeSeries → run the cumulative-volume + trade-count + OI
+ *                                raw SQLs over the snapshot timestamps
+ *   buildClosedBars            → per-snapshot ProtocolStat rows
+ *   appendLiveCandle           → in-progress current-interval bar from
+ *                                live vault helpers; non-fatal on failure
  */
 
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
@@ -53,6 +65,9 @@ interface DailyOIRow {
   open_interest: string | null;
 }
 
+type ConfiguredVault = ReturnType<typeof getConfiguredVaults>[number];
+type Snapshot = Awaited<ReturnType<typeof getProtocolStatsTimeSeries>>[number];
+
 const buildTimestampMap = <T extends { timestamp: bigint }>(
   rows: T[],
   key: keyof T
@@ -66,19 +81,45 @@ const buildTimestampMap = <T extends { timestamp: bigint }>(
   return map;
 };
 
-export const protocolStats: NonNullable<
-  QueryResolvers['protocolStats']
-> = async (_parent, { vaultAddress: vaultAddressArg }) => {
-  const chainId = DEFAULT_CHAIN_ID;
+/**
+ * Cumulative PnL surfaced to the chart rolls up trading activity:
+ * settlement PnL, plus wUSDe already earmarked for the vault from
+ * resolved-but-not-yet-redeemed wins, plus net secondary-market trade flow.
+ *
+ * `vaultRealizedPnL` is `grossPayouts(Claim ∪ Close) − primaryCollateral`:
+ * the cost basis (`primaryCollateral`) is recognized the moment a pickConfig
+ * resolves, but the payout only lands once the holder's `redeem()`/`burn()`
+ * is indexed. Between those two events a winning position contributes
+ * `−stake` instead of `+profit` — a transient phantom loss that crashed the
+ * PnL chart on days when a chunk of the vault's positions resolved before the
+ * keeper's `redeemFromEscrow` tx was indexed. `vaultUnredeemedClaim` (= total
+ * collateral owed on the vault's winning sides, net of what it's already
+ * claimed) exactly cancels that gap, so the line stays stable across the
+ * resolve → redeem → index cycle. Airdrops are tracked separately so they can
+ * be reported alongside without distorting the trading return shown here.
+ */
+const cumulativeSnapshotPnL = (s: Snapshot): bigint =>
+  BigInt(s.vaultRealizedPnL) +
+  BigInt(s.vaultUnredeemedClaim) +
+  BigInt(s.vaultSecondarySold) -
+  BigInt(s.vaultSecondaryBought);
 
-  // Resolve which vault category the caller wants. Without `vaultAddressArg`
-  // we default to the protocol vault (preserves the legacy single-tab default).
-  // With it, match against any configured vault's current primary OR any of
-  // its legacy entries, so an explicit "give me the pyth tab" pin still works
-  // after a future pyth redeploy demotes the address into legacy.
-  const configuredVaults = getConfiguredVaults(chainId);
+/**
+ * Resolve which vault category the caller wants. Without `vaultAddressArg`
+ * we default to the protocol vault (preserves the legacy single-tab default).
+ * With it, match against any configured vault's current primary OR any of
+ * its legacy entries, so an explicit "give me the pyth tab" pin still works
+ * after a future pyth redeploy demotes the address into legacy. Returns
+ * `mismatch` when an explicit address doesn't map to any configured vault —
+ * resolver returns an empty page in that case rather than silently falling
+ * back to the unfiltered all-vault series.
+ */
+const resolveTargetVault = (
+  configuredVaults: ConfiguredVault[],
+  vaultAddressArg: string | null | undefined
+): { vault: ConfiguredVault | undefined; mismatch: boolean } => {
   const targetArgLower = vaultAddressArg?.toLowerCase();
-  const targetVault = targetArgLower
+  const vault = targetArgLower
     ? configuredVaults.find(
         (v) =>
           v.address === targetArgLower ||
@@ -88,23 +129,20 @@ export const protocolStats: NonNullable<
           )
       )
     : configuredVaults.find((v) => v.kind === 'protocol');
-  const vaultConfig = targetVault?.config;
+  return { vault, mismatch: Boolean(vaultAddressArg) && !vault };
+};
 
-  // An explicit vaultAddress that doesn't map to any configured vault family
-  // should yield no rows, not silently fall back to the unfiltered all-vault
-  // series. The empty-array sentinel below means "no matched addresses", while
-  // an omitted argument still uses the default protocol vault family.
-  if (vaultAddressArg && !targetVault) {
-    return [];
-  }
-
-  // Filter the snapshot time series by the full address history of the chosen
-  // vault — current primary plus every demoted-to-legacy address. Without
-  // the legacies, every SDK redeploy would orphan the entire historical chart
-  // until a re-stamping backfill runs. Per-category by construction: the
-  // address set only contains entries for the SELECTED vault family, so
-  // protocol/pyth/single-leg/strategy-b rows never bleed across each other.
-  const vaultAddresses: string[] = vaultConfig
+/**
+ * Filter the snapshot time series by the full address history of the chosen
+ * vault — current primary plus every demoted-to-legacy address. Without
+ * the legacies, every SDK redeploy would orphan the entire historical chart
+ * until a re-stamping backfill runs. Per-category by construction: the
+ * address set only contains entries for the SELECTED vault family.
+ */
+const collectVaultAddressHistory = (
+  vaultConfig: ConfiguredVault['config'] | undefined
+): string[] =>
+  vaultConfig
     ? [
         vaultConfig.address,
         ...(vaultConfig.legacy ?? []).map(
@@ -113,28 +151,24 @@ export const protocolStats: NonNullable<
       ].map((a) => a.toLowerCase())
     : [];
 
-  const rawSnapshots = await getProtocolStatsTimeSeries(
-    undefined,
-    chainId,
-    vaultAddresses
-  );
-  if (rawSnapshots.length === 0) {
-    return [];
-  }
-
-  // Dedupe by timestamp: a single day can have rows under multiple addresses
-  // (current primary + a since-demoted legacy that prod's older cron wrote).
-  // Without dedup, queryTimestamps below would contain duplicates, which
-  // breaks the cumulativeVolume SQL — UNNEST + LEFT JOIN + GROUP BY ends up
-  // multiplying the per-day volume by the number of duplicate rows, producing
-  // step-up cumVols that go *backwards* on days with fewer duplicates →
-  // negative periodVolume.
-  //
-  // Preference order when multiple rows share a timestamp: the row stamped
-  // under the current primary wins (matches what the post-redeploy backfill
-  // writes); otherwise keep whatever was there.
-  const currentPrimary = vaultConfig?.address.toLowerCase();
-  const dedup = new Map<number, (typeof rawSnapshots)[number]>();
+/**
+ * Dedupe by timestamp: a single day can have rows under multiple addresses
+ * (current primary + a since-demoted legacy that prod's older cron wrote).
+ * Without dedup, queryTimestamps below would contain duplicates, which
+ * breaks the cumulativeVolume SQL — UNNEST + LEFT JOIN + GROUP BY ends up
+ * multiplying the per-day volume by the number of duplicate rows, producing
+ * step-up cumVols that go *backwards* on days with fewer duplicates →
+ * negative periodVolume.
+ *
+ * Preference order when multiple rows share a timestamp: the row stamped
+ * under the current primary wins (matches what the post-redeploy backfill
+ * writes); otherwise keep whatever was there.
+ */
+const dedupSnapshotsByTimestamp = (
+  rawSnapshots: Snapshot[],
+  currentPrimary: string | undefined
+): Snapshot[] => {
+  const dedup = new Map<number, Snapshot>();
   for (const s of rawSnapshots) {
     const existing = dedup.get(s.timestamp);
     if (
@@ -144,14 +178,17 @@ export const protocolStats: NonNullable<
       dedup.set(s.timestamp, s);
     }
   }
-  const protocolSnapshots = [...dedup.values()].sort(
-    (a, b) => a.timestamp - b.timestamp
-  );
+  return [...dedup.values()].sort((a, b) => a.timestamp - b.timestamp);
+};
 
-  const snapshotTimestamps = protocolSnapshots.map((s) => s.timestamp);
-  const nowTimestamp = Math.floor(Date.now() / 1000);
-  const queryTimestamps = [...snapshotTimestamps, nowTimestamp];
-
+const fetchVolumeAndOITimeSeries = async (
+  queryTimestamps: number[],
+  chainId: number
+): Promise<{
+  volumeMap: Map<number, string>;
+  tradeCountMap: Map<number, string>;
+  oiMap: Map<number, string>;
+}> => {
   const [cumulativeVolumes, cumulativeTradeCounts, openInterests] =
     await Promise.all([
       prisma.$queryRaw<CumulativeVolumeRow[]>`
@@ -214,58 +251,42 @@ export const protocolStats: NonNullable<
       ORDER BY ts.timestamp
     `,
     ]);
+  return {
+    volumeMap: buildTimestampMap(cumulativeVolumes, 'cumulative_volume'),
+    tradeCountMap: buildTimestampMap(
+      cumulativeTradeCounts,
+      'cumulative_trade_count'
+    ),
+    oiMap: buildTimestampMap(openInterests, 'open_interest'),
+  };
+};
 
-  const volumeMap = buildTimestampMap(cumulativeVolumes, 'cumulative_volume');
-  const tradeCountMap = buildTimestampMap(
-    cumulativeTradeCounts,
-    'cumulative_trade_count'
-  );
-  const oiMap = buildTimestampMap(openInterests, 'open_interest');
-
-  // Display each bar one interval *before* the snapshot's capture timestamp
-  // so the label reflects "the period/state represented" rather than "the
-  // moment of measurement".
-  const interval = resolveSnapshotIntervalSeconds();
-
-  // Cumulative PnL surfaced to the chart rolls up trading activity:
-  // settlement PnL, plus wUSDe already earmarked for the vault from
-  // resolved-but-not-yet-redeemed wins, plus net secondary-market trade flow.
-  //
-  // `vaultRealizedPnL` is `grossPayouts(Claim ∪ Close) − primaryCollateral`:
-  // the cost basis (`primaryCollateral`) is recognized the moment a pickConfig
-  // resolves, but the payout only lands once the holder's `redeem()`/`burn()`
-  // is indexed. Between those two events a winning position contributes
-  // `−stake` instead of `+profit` — a transient phantom loss that crashed the
-  // PnL chart on days when a chunk of the vault's positions resolved before the
-  // keeper's `redeemFromEscrow` tx was indexed. `vaultUnredeemedClaim` (= total
-  // collateral owed on the vault's winning sides, net of what it's already
-  // claimed) exactly cancels that gap, so the line stays stable across the
-  // resolve → redeem → index cycle. Airdrops are tracked separately so they can
-  // be reported alongside without distorting the trading return shown here.
-  const cumulativePnL = (s: (typeof protocolSnapshots)[number]): bigint =>
-    BigInt(s.vaultRealizedPnL) +
-    BigInt(s.vaultUnredeemedClaim) +
-    BigInt(s.vaultSecondarySold) -
-    BigInt(s.vaultSecondaryBought);
-
-  const results: ProtocolStat[] = protocolSnapshots.map((snapshot, i) => {
+const buildClosedBars = (
+  snapshots: Snapshot[],
+  volumeMap: Map<number, string>,
+  tradeCountMap: Map<number, string>,
+  oiMap: Map<number, string>,
+  interval: number
+): ProtocolStat[] =>
+  snapshots.map((snapshot, i) => {
     const cumVol = volumeMap.get(snapshot.timestamp) || '0';
     const prevCumVol =
-      i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
+      i > 0 ? volumeMap.get(snapshots[i - 1].timestamp) || '0' : '0';
     const periodVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
 
     const cumTradeCount = Number(tradeCountMap.get(snapshot.timestamp) || '0');
     const prevCumTradeCount =
-      i > 0
-        ? Number(tradeCountMap.get(protocolSnapshots[i - 1].timestamp) || '0')
-        : 0;
+      i > 0 ? Number(tradeCountMap.get(snapshots[i - 1].timestamp) || '0') : 0;
     const periodTradeCount = cumTradeCount - prevCumTradeCount;
 
-    const cumPnL = cumulativePnL(snapshot);
-    const prevCumPnL = i > 0 ? cumulativePnL(protocolSnapshots[i - 1]) : 0n;
+    const cumPnL = cumulativeSnapshotPnL(snapshot);
+    const prevCumPnL = i > 0 ? cumulativeSnapshotPnL(snapshots[i - 1]) : 0n;
     const periodPnL = (cumPnL - prevCumPnL).toString();
 
     return {
+      // Display each bar one interval *before* the snapshot's capture
+      // timestamp so the label reflects "the period/state represented"
+      // rather than "the moment of measurement".
       timestamp: snapshot.timestamp - interval,
       cumulativeVolume: cumVol,
       totalTradeCount: cumTradeCount,
@@ -289,84 +310,151 @@ export const protocolStats: NonNullable<
     };
   });
 
+/**
+ * Compute the in-progress current-interval bar from the live vault helpers.
+ * Scoped to the SELECTED vault category — without this the live candle on
+ * the Pyth/SingleLeg/StrategyB tabs would silently render protocol-vault
+ * numbers, since the helpers default to the protocol primary when no
+ * vaultAddress arg is passed. Escrow stays chain-scoped — shared across
+ * all vault families on the chain. Returns null on failure (caller logs
+ * and falls back to snapshots only).
+ */
+const buildLiveCandle = async (
+  chainId: number,
+  vaultAddress: string | undefined,
+  lastSnapshot: Snapshot,
+  volumeMap: Map<number, string>,
+  tradeCountMap: Map<number, string>,
+  oiMap: Map<number, string>,
+  nowTimestamp: number,
+  interval: number
+): Promise<ProtocolStat> => {
+  const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
+  const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
+  const livePeriodVolume = (BigInt(liveCumVol) - BigInt(lastCumVol)).toString();
+
+  const lastTradeCount = Number(tradeCountMap.get(lastSnapshot.timestamp) || '0');
+  const liveTradeCount = Number(
+    tradeCountMap.get(nowTimestamp) || lastTradeCount
+  );
+  const livePeriodTradeCount = liveTradeCount - lastTradeCount;
+
+  const [
+    liveVaultBalance,
+    liveVaultAvailableAssets,
+    liveVaultDeployed,
+    liveEscrowBalance,
+    livePnlResult,
+    liveFlowsResult,
+    liveSecondaryFlows,
+    liveAirdropGains,
+    liveUnredeemedClaim,
+  ] = await Promise.all([
+    fetchVaultTVL(chainId, vaultAddress),
+    fetchVaultAvailableAssets(chainId, vaultAddress),
+    fetchVaultDeployed(chainId, undefined, vaultAddress),
+    sumEscrowBalancesAtBlock(getProviderForChain(chainId), chainId),
+    calculateVaultPnL(chainId, undefined, vaultAddress),
+    calculateVaultFlows(chainId, undefined, vaultAddress),
+    calculateVaultSecondaryFlows(chainId, undefined, vaultAddress),
+    calculateVaultAirdrops(chainId, undefined, vaultAddress),
+    calculateVaultUnredeemedClaim(chainId, undefined, vaultAddress),
+  ]);
+
+  const liveCumulativePnL =
+    livePnlResult.realizedPnL +
+    liveUnredeemedClaim +
+    liveSecondaryFlows.sold -
+    liveSecondaryFlows.bought;
+  const livePeriodPnL = (
+    liveCumulativePnL - cumulativeSnapshotPnL(lastSnapshot)
+  ).toString();
+
+  // Live candle = current in-progress period; label at start of current
+  // interval (matches the display shift for closed bars).
+  const currentBoundary = Math.floor(Date.now() / 1000 / interval) * interval;
+
+  return {
+    timestamp: currentBoundary,
+    cumulativeVolume: liveCumVol,
+    totalTradeCount: liveTradeCount,
+    periodTradeCount: livePeriodTradeCount,
+    openInterest: oiMap.get(nowTimestamp) || '0',
+    vaultBalance: liveVaultBalance.toString(),
+    vaultAvailableAssets: liveVaultAvailableAssets.toString(),
+    vaultDeployed: liveVaultDeployed.toString(),
+    escrowBalance: liveEscrowBalance.toString(),
+    vaultCumulativePnL: liveCumulativePnL.toString(),
+    vaultPositionsWon: livePnlResult.positionsWon,
+    vaultPositionsLost: livePnlResult.positionsLost,
+    vaultDeposits: liveFlowsResult.totalDeposits.toString(),
+    vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
+    vaultAirdropGains: liveAirdropGains.toString(),
+    vaultSecondaryBought: liveSecondaryFlows.bought.toString(),
+    vaultSecondarySold: liveSecondaryFlows.sold.toString(),
+    vaultUnredeemedClaim: liveUnredeemedClaim.toString(),
+    periodPnL: livePeriodPnL,
+    periodVolume: livePeriodVolume,
+  };
+};
+
+export const protocolStats: NonNullable<
+  QueryResolvers['protocolStats']
+> = async (_parent, { vaultAddress: vaultAddressArg }) => {
+  const chainId = DEFAULT_CHAIN_ID;
+  const configuredVaults = getConfiguredVaults(chainId);
+  const { vault: targetVault, mismatch } = resolveTargetVault(
+    configuredVaults,
+    vaultAddressArg
+  );
+  if (mismatch) return [];
+
+  const vaultConfig = targetVault?.config;
+  const vaultAddresses = collectVaultAddressHistory(vaultConfig);
+
+  const rawSnapshots = await getProtocolStatsTimeSeries(
+    undefined,
+    chainId,
+    vaultAddresses
+  );
+  if (rawSnapshots.length === 0) return [];
+
+  const protocolSnapshots = dedupSnapshotsByTimestamp(
+    rawSnapshots,
+    vaultConfig?.address.toLowerCase()
+  );
+
+  const nowTimestamp = Math.floor(Date.now() / 1000);
+  const queryTimestamps = [
+    ...protocolSnapshots.map((s) => s.timestamp),
+    nowTimestamp,
+  ];
+
+  const { volumeMap, tradeCountMap, oiMap } = await fetchVolumeAndOITimeSeries(
+    queryTimestamps,
+    chainId
+  );
+  const interval = resolveSnapshotIntervalSeconds();
+  const results = buildClosedBars(
+    protocolSnapshots,
+    volumeMap,
+    tradeCountMap,
+    oiMap,
+    interval
+  );
+
   try {
-    const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
-    const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
-    const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
-    const livePeriodVolume = (
-      BigInt(liveCumVol) - BigInt(lastCumVol)
-    ).toString();
-    const lastTradeCount = Number(
-      tradeCountMap.get(lastSnapshot.timestamp) || '0'
+    const liveCandle = await buildLiveCandle(
+      chainId,
+      vaultConfig?.address.toLowerCase(),
+      protocolSnapshots[protocolSnapshots.length - 1],
+      volumeMap,
+      tradeCountMap,
+      oiMap,
+      nowTimestamp,
+      interval
     );
-    const liveTradeCount = Number(
-      tradeCountMap.get(nowTimestamp) || lastTradeCount
-    );
-    const livePeriodTradeCount = liveTradeCount - lastTradeCount;
-
-    // Scope all per-vault helpers to the SELECTED vault category. Without this
-    // the live candle on the Pyth/SingleLeg/StrategyB tabs would silently render
-    // protocol-vault numbers, since these helpers default to the protocol
-    // primary when no vaultAddress arg is passed. Escrow stays chain-scoped —
-    // it's shared across all vault families on the chain.
-    const liveVaultAddress = vaultConfig?.address.toLowerCase();
-    const [
-      liveVaultBalance,
-      liveVaultAvailableAssets,
-      liveVaultDeployed,
-      liveEscrowBalance,
-      livePnlResult,
-      liveFlowsResult,
-      liveSecondaryFlows,
-      liveAirdropGains,
-      liveUnredeemedClaim,
-    ] = await Promise.all([
-      fetchVaultTVL(chainId, liveVaultAddress),
-      fetchVaultAvailableAssets(chainId, liveVaultAddress),
-      fetchVaultDeployed(chainId, undefined, liveVaultAddress),
-      sumEscrowBalancesAtBlock(getProviderForChain(chainId), chainId),
-      calculateVaultPnL(chainId, undefined, liveVaultAddress),
-      calculateVaultFlows(chainId, undefined, liveVaultAddress),
-      calculateVaultSecondaryFlows(chainId, undefined, liveVaultAddress),
-      calculateVaultAirdrops(chainId, undefined, liveVaultAddress),
-      calculateVaultUnredeemedClaim(chainId, undefined, liveVaultAddress),
-    ]);
-
-    const liveCumulativePnL =
-      livePnlResult.realizedPnL +
-      liveUnredeemedClaim +
-      liveSecondaryFlows.sold -
-      liveSecondaryFlows.bought;
-    const livePeriodPnL = (
-      liveCumulativePnL - cumulativePnL(lastSnapshot)
-    ).toString();
-
-    // Live candle = current in-progress period; label at start of current
-    // interval (matches the display shift for closed bars).
-    const currentBoundary = Math.floor(Date.now() / 1000 / interval) * interval;
-
-    results.push({
-      timestamp: currentBoundary,
-      cumulativeVolume: liveCumVol,
-      totalTradeCount: liveTradeCount,
-      periodTradeCount: livePeriodTradeCount,
-      openInterest: oiMap.get(nowTimestamp) || '0',
-      vaultBalance: liveVaultBalance.toString(),
-      vaultAvailableAssets: liveVaultAvailableAssets.toString(),
-      vaultDeployed: liveVaultDeployed.toString(),
-      escrowBalance: liveEscrowBalance.toString(),
-      vaultCumulativePnL: liveCumulativePnL.toString(),
-      vaultPositionsWon: livePnlResult.positionsWon,
-      vaultPositionsLost: livePnlResult.positionsLost,
-      vaultDeposits: liveFlowsResult.totalDeposits.toString(),
-      vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
-      vaultAirdropGains: liveAirdropGains.toString(),
-      vaultSecondaryBought: liveSecondaryFlows.bought.toString(),
-      vaultSecondarySold: liveSecondaryFlows.sold.toString(),
-      vaultUnredeemedClaim: liveUnredeemedClaim.toString(),
-      periodPnL: livePeriodPnL,
-      periodVolume: livePeriodVolume,
-    });
+    results.push(liveCandle);
   } catch (err) {
     log.error(
       { err: err },
