@@ -107,7 +107,7 @@ class SecondaryMarketIndexer implements IIndexer {
       }
 
       logger.info(
-        `[SecondaryMarketIndexer:${this.chainId}] Persisting watermark block=${endBlockNumber}`
+        `[SecondaryMarketIndexer:${this.chainId}] Persisting watermark block=${endBlockNumber} contract=${this.contractAddress} legacy=${this.isLegacy}`
       );
       await prisma.secondaryIndexerState.upsert({
         where: { chainId: this.chainId },
@@ -267,7 +267,7 @@ class SecondaryMarketIndexer implements IIndexer {
           this.lastProcessedBlock = currentBlock;
 
           logger.info(
-            `[SecondaryMarketIndexer:${this.chainId}] Persisting watermark block=${currentBlock}`
+            `[SecondaryMarketIndexer:${this.chainId}] Persisting watermark block=${currentBlock} contract=${this.contractAddress} legacy=${this.isLegacy}`
           );
           await prisma.secondaryIndexerState.upsert({
             where: { chainId: this.chainId },

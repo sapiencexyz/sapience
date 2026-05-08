@@ -406,7 +406,7 @@ class PositionTokenTransferIndexer implements IIndexer {
 
   private async setLastIndexedBlock(block: number): Promise<void> {
     logger.info(
-      `[TransferIndexer:${this.chainId}${this.indexerStateKeySuffix}] Persisting watermark block=${block}`
+      `[TransferIndexer:${this.chainId}${this.indexerStateKeySuffix}] Persisting watermark block=${block} escrow=${this.escrowAddress ?? 'current'} legacy=${this.isLegacy}`
     );
     const key = `${INDEXER_STATE_KEY}:${this.chainId}${this.indexerStateKeySuffix}`;
     await prisma.keyValueStore.upsert({
