@@ -1451,6 +1451,22 @@ type ConditionsPage implements Page {
   totalCount: Int
 }
 
+"""Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag"""
+type ConditionGroupsPage implements Page {
+  items: [ConditionGroup!]!
+  hasMore: Boolean!
+  """Total ConditionGroup rows matching the filters. Populated when available."""
+  totalCount: Int
+}
+
+"""
+Flat filter input for the `conditionGroupsPage` query. Each field is optional; values combine with AND. Replaces the Prisma-derived `ConditionGroupWhereInput` for client-facing access.
+"""
+input ConditionGroupFilters {
+  """Restrict to these condition group IDs."""
+  ids: [Int!]
+}
+
 """Sort fields for the `conditionsPage` query"""
 enum ConditionSortField {
   CREATED_AT
@@ -1755,7 +1771,12 @@ type Query {
   """
   condition(id: String!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated(reason: "Unused; will be removed. No live consumers — vault-bot defines a query string but never executes it.")
-  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Unused; will be removed. Exposes raw Prisma query semantics — no live callers in app, SDK, or known external consumers.")
+  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal.")
+
+  """
+  Paginated list of condition groups filtered by a flat `ConditionGroupFilters` input. Default order: createdAt desc.
+  """
+  conditionGroupsPage(filters: ConditionGroupFilters, take: Int! = 50, skip: Int! = 0): ConditionGroupsPage!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal.")
 
   """

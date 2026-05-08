@@ -661,6 +661,12 @@ export type ConditionGroupCountConditionArgs = {
   where?: InputMaybe<ConditionWhereInput>;
 };
 
+/** Flat filter input for the `conditionGroupsPage` query. Each field is optional; values combine with AND. Replaces the Prisma-derived `ConditionGroupWhereInput` for client-facing access. */
+export type ConditionGroupFilters = {
+  /** Restrict to these condition group IDs. */
+  ids?: InputMaybe<Array<Scalars['Int']['input']>>;
+};
+
 export type ConditionGroupListRelationFilter = {
   every?: InputMaybe<ConditionGroupWhereInput>;
   none?: InputMaybe<ConditionGroupWhereInput>;
@@ -769,6 +775,15 @@ export type ConditionGroupWhereUniqueInput = {
   totalSimilarMarketVolumeFiltered4h?: InputMaybe<DecimalFilter>;
   totalSimilarMarketVolumeFiltered7d?: InputMaybe<DecimalFilter>;
   totalSimilarMarketVolumeFiltered24h?: InputMaybe<DecimalFilter>;
+};
+
+/** Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag */
+export type ConditionGroupsPage = Page & {
+  __typename?: 'ConditionGroupsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<ConditionGroup>;
+  /** Total ConditionGroup rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type ConditionListRelationFilter = {
@@ -1827,8 +1842,10 @@ export type Query = {
   condition?: Maybe<Condition>;
   /** @deprecated Unused; will be removed. No live consumers — vault-bot defines a query string but never executes it. */
   conditionGroup?: Maybe<ConditionGroup>;
-  /** @deprecated Unused; will be removed. Exposes raw Prisma query semantics — no live callers in app, SDK, or known external consumers. */
+  /** @deprecated Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal. */
   conditionGroups: Array<ConditionGroup>;
+  /** Paginated list of condition groups filtered by a flat `ConditionGroupFilters` input. Default order: createdAt desc. */
+  conditionGroupsPage: ConditionGroupsPage;
   /** @deprecated Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal. */
   conditions: Array<Condition>;
   /** Paginated list of conditions filtered by a flat `ConditionFilters` input. Defaults: visibility=PUBLIC, orderBy=CREATED_AT desc. */
@@ -2122,6 +2139,13 @@ export type QueryConditionGroupsArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<ConditionGroupWhereInput>;
+};
+
+
+export type QueryConditionGroupsPageArgs = {
+  filters?: InputMaybe<ConditionGroupFilters>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 

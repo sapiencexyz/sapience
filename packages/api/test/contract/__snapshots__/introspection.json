@@ -5645,6 +5645,35 @@
       },
       {
         "kind": "INPUT_OBJECT",
+        "name": "ConditionGroupFilters",
+        "description": "Flat filter input for the `conditionGroupsPage` query. Each field is optional; values combine with AND. Replaces the Prisma-derived `ConditionGroupWhereInput` for client-facing access.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "ids",
+            "description": "Restrict to these condition group IDs.",
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
         "name": "ConditionGroupListRelationFilter",
         "description": null,
         "fields": null,
@@ -6064,6 +6093,75 @@
             "deprecationReason": null
           }
         ],
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "ConditionGroupsPage",
+        "description": "Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag",
+        "fields": [
+          {
+            "name": "items",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "ConditionGroup",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total ConditionGroup rows matching the filters. Populated when available.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
+        "enumValues": null,
         "possibleTypes": null
       },
       {
@@ -13503,6 +13601,11 @@
           },
           {
             "kind": "OBJECT",
+            "name": "ConditionGroupsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
             "name": "ReferralCodesPage",
             "ofType": null
           },
@@ -17044,7 +17147,62 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Unused; will be removed. Exposes raw Prisma query semantics — no live callers in app, SDK, or known external consumers."
+            "deprecationReason": "Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal."
+          },
+          {
+            "name": "conditionGroupsPage",
+            "description": "Paginated list of condition groups filtered by a flat `ConditionGroupFilters` input. Default order: createdAt desc.",
+            "args": [
+              {
+                "name": "filters",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "ConditionGroupFilters",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "take",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "ConditionGroupsPage",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "conditions",

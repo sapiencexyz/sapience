@@ -47,6 +47,7 @@ import {
   collateralBalanceHistory,
   collateralTransfersPage,
 } from './queries/collateralBalance';
+import { conditionGroupsPage } from './queries/conditionGroups';
 import { conditionsPage } from './queries/conditions';
 import {
   attestationsPage,
@@ -130,6 +131,7 @@ export const resolvers: Resolvers = {
     collateralBalanceHistory,
     collateralTransfersPage,
     // Conditions / questions
+    conditionGroupsPage,
     conditionsPage,
     questionsPage,
     // Escrow (predictions / positions / pick configs)
