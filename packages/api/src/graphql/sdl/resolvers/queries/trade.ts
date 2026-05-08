@@ -37,7 +37,7 @@ const mapTrade = (r: Trade) => ({
   blockNumber: r.blockNumber,
 });
 
-const runTrades = async ({
+export const runTrades = async ({
   take,
   skip,
   address,
@@ -77,14 +77,6 @@ const runTrades = async ({
   return { items: rows.map(mapTrade), hasMore };
 };
 
-export const trades: NonNullable<QueryResolvers['trades']> = async (
-  _parent,
-  args
-) => {
-  const { items } = await runTrades(args);
-  return items;
-};
-
 export const tradesPage: NonNullable<QueryResolvers['tradesPage']> = async (
   _parent,
   args
@@ -100,16 +92,4 @@ export const trade: NonNullable<QueryResolvers['trade']> = async (
     where: { tradeHash: id.toLowerCase() },
   });
   return r ? mapTrade(r) : null;
-};
-
-export const tradeCount: NonNullable<QueryResolvers['tradeCount']> = async (
-  _parent,
-  { seller, buyer, token, chainId }
-) => {
-  const where: Prisma.SecondaryTradeWhereInput = {};
-  if (seller) where.seller = seller.toLowerCase();
-  if (buyer) where.buyer = buyer.toLowerCase();
-  if (token) where.token = token.toLowerCase();
-  if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-  return prisma.secondaryTrade.count({ where });
 };

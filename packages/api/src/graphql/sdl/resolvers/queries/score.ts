@@ -40,30 +40,6 @@ const getLeaderboardScores = async (): Promise<
   return scores;
 };
 
-export const accountAccuracy: NonNullable<
-  QueryResolvers['accountAccuracy']
-> = async (_parent, { address }) => {
-  const a = address.toLowerCase();
-  const rows = await prisma.attesterMarketTwError.findMany({
-    where: { attester: a },
-    select: { twError: true },
-  });
-  if (rows.length === 0) return null;
-  const numTimeWeighted = rows.length;
-  const sumTimeWeightedError = rows.reduce(
-    (acc, r) => acc + (r.twError || 0),
-    0
-  );
-  return {
-    address: a,
-    numScored: 0,
-    sumErrorSquared: 0,
-    numTimeWeighted,
-    sumTimeWeightedError,
-    accuracyScore: sumTimeWeightedError / numTimeWeighted,
-  };
-};
-
 type ForecasterScoreShape = {
   address: string;
   numScored: number;
@@ -73,7 +49,7 @@ type ForecasterScoreShape = {
   accuracyScore: number;
 };
 
-const sliceAccuracyLeaderboard = async (
+export const sliceAccuracyLeaderboard = async (
   limit: number | null | undefined,
   skip: number | null | undefined
 ): Promise<{ items: ForecasterScoreShape[]; hasMore: boolean }> => {
@@ -90,13 +66,6 @@ const sliceAccuracyLeaderboard = async (
   }));
   const hasMore = scores.length > skipVal + capped;
   return { items, hasMore };
-};
-
-export const accuracyLeaderboard: NonNullable<
-  QueryResolvers['accuracyLeaderboard']
-> = async (_parent, { limit }) => {
-  const { items } = await sliceAccuracyLeaderboard(limit, 0);
-  return items;
 };
 
 export const accuracyLeaderboardPage: NonNullable<

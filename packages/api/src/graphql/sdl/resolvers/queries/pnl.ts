@@ -26,7 +26,7 @@ const leaderboardCache = new TtlCache<string, LeaderboardEntry[]>({
 /** Key includes version suffix so old caches invalidate across deploys. */
 const CACHE_KEY = 'profitLeaderboard:v5';
 
-const getFullLeaderboard = async (): Promise<LeaderboardEntry[]> => {
+export const getFullLeaderboard = async (): Promise<LeaderboardEntry[]> => {
   const existing = leaderboardCache.get(CACHE_KEY);
   if (existing) return existing;
   const positionPnL = await calculateCombinedPositionPnL();
@@ -45,7 +45,7 @@ const getFullLeaderboard = async (): Promise<LeaderboardEntry[]> => {
   return entries;
 };
 
-const sliceLeaderboard = async (
+export const sliceLeaderboard = async (
   limit: number | null | undefined,
   skip: number | null | undefined
 ): Promise<{ items: LeaderboardEntry[]; hasMore: boolean }> => {
@@ -57,30 +57,8 @@ const sliceLeaderboard = async (
   return { items, hasMore };
 };
 
-export const profitLeaderboard: NonNullable<
-  QueryResolvers['profitLeaderboard']
-> = async (_parent, { limit, skip }) => {
-  const { items } = await sliceLeaderboard(limit, skip);
-  return items;
-};
-
 export const profitLeaderboardPage: NonNullable<
   QueryResolvers['profitLeaderboardPage']
 > = async (_parent, { limit, skip }) => {
   return sliceLeaderboard(limit, skip);
-};
-
-export const accountProfitRank: NonNullable<
-  QueryResolvers['accountProfitRank']
-> = async (_parent, { address }) => {
-  const leaderboard = await getFullLeaderboard();
-  const lc = address.toLowerCase();
-  const totalParticipants = leaderboard.length;
-  const idx = leaderboard.findIndex((e) => e.address === lc);
-  return {
-    address: lc,
-    totalPnL: idx >= 0 ? leaderboard[idx].totalPnL : '0',
-    rank: idx >= 0 ? idx + 1 : null,
-    totalParticipants,
-  };
 };

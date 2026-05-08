@@ -99,7 +99,7 @@ export const collateralBalanceHistory: NonNullable<
   }));
 };
 
-const runCollateralTransfers = async ({
+export const runCollateralTransfers = async ({
   address,
   chainId,
   excludeProtocol,
@@ -136,13 +136,6 @@ const runCollateralTransfers = async ({
   });
   const hasMore = rawRows.length > cappedLimit;
   return { items: rawRows.slice(0, cappedLimit), hasMore };
-};
-
-export const collateralTransfers: NonNullable<
-  QueryResolvers['collateralTransfers']
-> = async (_parent, args) => {
-  const { items } = await runCollateralTransfers(args);
-  return items;
 };
 
 export const collateralTransfersPage: NonNullable<

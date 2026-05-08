@@ -1,54 +1,57 @@
 {
-  "categories": [
-    {
-      "id": 1,
-      "name": "Crypto",
-      "slug": "crypto"
-    },
-    {
-      "id": 2,
-      "name": "Weather",
-      "slug": "weather"
-    },
-    {
-      "id": 3,
-      "name": "Tech & Science",
-      "slug": "tech-science"
-    },
-    {
-      "id": 4,
-      "name": "Geopolitics",
-      "slug": "geopolitics"
-    },
-    {
-      "id": 5,
-      "name": "Economy & Finance",
-      "slug": "economy-finance"
-    },
-    {
-      "id": 6,
-      "name": "Sports",
-      "slug": "sports"
-    },
-    {
-      "id": 7,
-      "name": "Culture",
-      "slug": "culture"
-    },
-    {
-      "id": 162,
-      "name": "Crypto",
-      "slug": "prices-crypto"
-    },
-    {
-      "id": 163,
-      "name": "Commodities",
-      "slug": "prices-commodities"
-    },
-    {
-      "id": 164,
-      "name": "Equity",
-      "slug": "prices-equity"
-    }
-  ]
+  "categoriesPage": {
+    "hasMore": false,
+    "items": [
+      {
+        "id": 163,
+        "name": "Commodities",
+        "slug": "prices-commodities"
+      },
+      {
+        "id": 1,
+        "name": "Crypto",
+        "slug": "crypto"
+      },
+      {
+        "id": 162,
+        "name": "Crypto",
+        "slug": "prices-crypto"
+      },
+      {
+        "id": 7,
+        "name": "Culture",
+        "slug": "culture"
+      },
+      {
+        "id": 5,
+        "name": "Economy & Finance",
+        "slug": "economy-finance"
+      },
+      {
+        "id": 164,
+        "name": "Equity",
+        "slug": "prices-equity"
+      },
+      {
+        "id": 4,
+        "name": "Geopolitics",
+        "slug": "geopolitics"
+      },
+      {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      },
+      {
+        "id": 3,
+        "name": "Tech & Science",
+        "slug": "tech-science"
+      },
+      {
+        "id": 2,
+        "name": "Weather",
+        "slug": "weather"
+      }
+    ]
+  }
 }

@@ -124,7 +124,7 @@ const fieldByResolvedVolumeKey: Record<VolumeKey, string> = {
   volumeFiltered7d: 'similarMarketVolumeFiltered7d',
 };
 
-const runQuestions = async ({
+export const runQuestions = async ({
   take,
   skip,
   chainId,
@@ -508,14 +508,6 @@ const runQuestions = async ({
   }
 
   return { items: result, hasMore };
-};
-
-export const questions: NonNullable<QueryResolvers['questions']> = async (
-  _parent,
-  args
-) => {
-  const { items } = await runQuestions(args);
-  return items;
 };
 
 export const questionsPage: NonNullable<

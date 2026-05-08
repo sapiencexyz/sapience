@@ -12,7 +12,7 @@ const mockPrisma = vi.hoisted(() => ({
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
 import type { QueryCollateralTransfersArgs } from '../../__generated__/resolvers';
-import { collateralTransfers } from './collateralBalance';
+import { collateralTransfers } from './deprecated/collateralBalance';
 
 type CollateralTransfersFn = (
   parent: unknown,

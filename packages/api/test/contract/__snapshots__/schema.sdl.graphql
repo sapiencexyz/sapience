@@ -1,3 +1,11 @@
+"""
+Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag
+"""
+type AccuracyLeaderboardPage {
+  hasMore: Boolean!
+  items: [ForecasterScore!]!
+}
+
 """Accuracy rank for an address on the forecasting leaderboard"""
 type AccuracyRank {
   accuracyScore: Float!
@@ -16,6 +24,14 @@ type ActivityItem {
   timestamp: Int!
   trade: ActivityTrade
   type: String!
+}
+
+"""
+Paginated wrapper around ActivityItem rows with a server-truth hasMore flag
+"""
+type ActivityItemsPage {
+  hasMore: Boolean!
+  items: [ActivityItem!]!
 }
 
 """Trade fields embedded in an activity item"""
@@ -173,6 +189,12 @@ input AttestationScoreWhereInput {
   used: BoolFilter
 }
 
+"""Sort fields for the `attestationsPage` query"""
+enum AttestationSortField {
+  CREATED_AT
+  TIME
+}
+
 input AttestationWhereInput {
   AND: [AttestationWhereInput!]
   NOT: [AttestationWhereInput!]
@@ -220,6 +242,14 @@ input AttestationWhereUniqueInput {
 }
 
 """
+Paginated wrapper around Attestation rows with a server-truth hasMore flag
+"""
+type AttestationsPage {
+  hasMore: Boolean!
+  items: [Attestation!]!
+}
+
+"""
 Time-bucketed balance snapshot showing deployed and claimable collateral
 """
 type BalanceDataPoint {
@@ -257,6 +287,14 @@ input BoolFilter {
 input BoolNullableFilter {
   equals: Boolean
   not: NestedBoolNullableFilter
+}
+
+"""
+Paginated wrapper around Category rows with a server-truth hasMore flag
+"""
+type CategoriesPage {
+  hasMore: Boolean!
+  items: [Category!]!
 }
 
 type Category {
@@ -387,6 +425,14 @@ type CollateralTransferType {
   value: String!
 }
 
+"""
+Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag
+"""
+type CollateralTransfersPage {
+  hasMore: Boolean!
+  items: [CollateralTransferType!]!
+}
+
 type Condition {
   _count: ConditionCount
   assertionId: String
@@ -440,6 +486,59 @@ type Condition {
 type ConditionCount {
   attestations(where: AttestationWhereInput): Int!
   predictions(where: LegacyPredictionWhereInput): Int!
+}
+
+"""
+Flat filter input for the `conditionsPage` query. Each field is optional; values combine with AND. Replaces the Prisma-derived `ConditionWhereInput` for client-facing access.
+"""
+input ConditionFilters {
+  """Restrict to conditions whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """Restrict to a single chain."""
+  chainId: Int
+
+  """Restrict to a single condition group."""
+  conditionGroupId: Int
+
+  """Restrict to conditions with `endTime >= this`."""
+  endTimeGte: Int
+
+  """Restrict to conditions with `endTime <= this`."""
+  endTimeLte: Int
+
+  """
+  When true, only return conditions that have a non-empty `similarMarkets` array (used by metadata-refresh keepers).
+  """
+  hasSimilarMarkets: Boolean
+
+  """Restrict to these condition IDs (case-insensitive)."""
+  ids: [String!]
+
+  """
+  Restrict to conditions resolved YES (true) or NO (false). Implies settled=true.
+  """
+  resolvedToYes: Boolean
+
+  """Match the resolver address (case-insensitive)."""
+  resolver: String
+
+  """Match any of these resolver addresses (case-insensitive)."""
+  resolverIn: [String!]
+
+  """
+  Free-text search across question, shortName, and description (case-insensitive).
+  """
+  search: String
+
+  """Restrict to settled (true) or unsettled (false) conditions."""
+  settled: Boolean
+
+  """Restrict to conditions not assigned to any condition group."""
+  ungroupedOnly: Boolean
+
+  """Visibility filter. Defaults to `PUBLIC` when omitted."""
+  visibility: ConditionVisibility
 }
 
 type ConditionGroup {
@@ -666,6 +765,21 @@ enum ConditionScalarFieldEnum {
   tags
 }
 
+"""Sort fields for the `conditionsPage` query"""
+enum ConditionSortField {
+  CREATED_AT
+  END_TIME
+  OPEN_INTEREST
+  PREDICTION_COUNT
+}
+
+"""Visibility filter for the `conditionsPage` query"""
+enum ConditionVisibility {
+  ALL
+  PRIVATE
+  PUBLIC
+}
+
 input ConditionWhereInput {
   AND: [ConditionWhereInput!]
   NOT: [ConditionWhereInput!]
@@ -752,6 +866,14 @@ input ConditionWhereUniqueInput {
   similarMarketVolumeFiltered24h: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
+}
+
+"""
+Paginated wrapper around Condition rows with a server-truth hasMore flag
+"""
+type ConditionsPage {
+  hasMore: Boolean!
+  items: [Condition!]!
 }
 
 input DateTimeFilter {
@@ -1307,6 +1429,14 @@ type PickConfiguration {
   totalPredictorCollateral: String!
 }
 
+"""
+Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag
+"""
+type PickConfigurationsPage {
+  hasMore: Boolean!
+  items: [PickConfiguration!]!
+}
+
 """Time-bucketed PnL data point with cumulative tracking"""
 type PnlDataPoint {
   """Running cumulative PnL in wei"""
@@ -1408,10 +1538,26 @@ enum PredictionSortField {
   SETTLED_AT
 }
 
+"""
+Paginated wrapper around Prediction rows with a server-truth hasMore flag
+"""
+type PredictionsPage {
+  hasMore: Boolean!
+  items: [Prediction!]!
+}
+
 """Aggregated profit/loss entry for a single address across all positions"""
 type ProfitEntry {
   address: String!
   totalPnL: String!
+}
+
+"""
+Paginated wrapper around ProfitEntry rows with a server-truth hasMore flag
+"""
+type ProfitLeaderboardPage {
+  hasMore: Boolean!
+  items: [ProfitEntry!]!
 }
 
 """Profit rank and total PnL for an address on the leaderboard"""
@@ -1472,7 +1618,7 @@ type Query {
   """
   Accuracy score for a single forecaster address, or null if no scored attestations exist
   """
-  accountAccuracy(address: String!): ForecasterScore @deprecated
+  accountAccuracy(address: String!): ForecasterScore @deprecated(reason: "Unused; will be removed. Use `accountAccuracyRank` for the rank-lookup case (the only live consumer pattern).")
 
   """
   Accuracy rank and score for a single address relative to all forecasters
@@ -1482,7 +1628,12 @@ type Query {
   """
   Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
-  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
+  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]! @deprecated(reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag for infinite scroll.
+  """
+  accountActivityPage(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): ActivityItemsPage!
 
   """
   Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
@@ -1502,7 +1653,7 @@ type Query {
   """
   Profit rank and total PnL for a single address relative to all participants
   """
-  accountProfitRank(address: String!): ProfitRank! @deprecated
+  accountProfitRank(address: String!): ProfitRank! @deprecated(reason: "Unused; will be removed. No live consumers in app, SDK, or known external integrators.")
 
   """
   Total lifetime trading volume in wei for the given address across all prediction types
@@ -1513,26 +1664,51 @@ type Query {
   accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
 
   """Top forecasters ranked by accuracy score"""
-  accuracyLeaderboard(limit: Int! = 10): [ForecasterScore!]!
-  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
-  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
+  accuracyLeaderboard(limit: Int! = 10): [ForecasterScore!]! @deprecated(reason: "Use `accuracyLeaderboardPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `accuracyLeaderboard`, but wraps the result in an `AccuracyLeaderboardPage` with a server-truth `hasMore` flag.
+  """
+  accuracyLeaderboardPage(limit: Int! = 10, skip: Int! = 0): AccuracyLeaderboardPage!
+  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]! @deprecated(reason: "Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
+  """
+  attestationsPage(attester: String, conditionId: String, maxTime: Int, minTime: Int, orderBy: AttestationSortField, orderDirection: SortOrder, recipient: String, schemaId: String, skip: Int! = 0, take: Int! = 50, uid: String): AttestationsPage!
+  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesPage` — same data with a server-truth `hasMore` stop signal and no Prisma input types in the wire contract.")
+
+  """
+  Paginated list of all categories, ordered by name. Replaces the auto-generated Prisma CRUD `categories` field.
+  """
+  categoriesPage(skip: Int! = 0, take: Int! = 100): CategoriesPage!
 
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
   """
-  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated
+  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated(reason: "Unused; will be removed. No live consumers — claim events are reconstructed from settlement-side PnL on Position/Prediction.")
 
   """
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
-  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated
+  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated(reason: "Unused; will be removed. No live consumers — close events surface through `accountActivityPage`.")
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
   collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
-  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
+  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]! @deprecated(reason: "Use `collateralTransfersPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag.
+  """
+  collateralTransfersPage(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): CollateralTransfersPage!
   condition(where: ConditionWhereUniqueInput!): Condition
-  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
-  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
-  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated(reason: "Unused; will be removed. No live consumers — vault-bot defines a query string but never executes it.")
+  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Unused; will be removed. Exposes raw Prisma query semantics — no live callers in app, SDK, or known external consumers.")
+  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal.")
+
+  """
+  Paginated list of conditions filtered by a flat `ConditionFilters` input. Defaults: visibility=PUBLIC, orderBy=CREATED_AT desc.
+  """
+  conditionsPage(filters: ConditionFilters, orderBy: ConditionSortField, orderDirection: SortOrder, skip: Int! = 0, take: Int! = 50): ConditionsPage!
 
   """
   Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
@@ -1545,12 +1721,17 @@ type Query {
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 
   """Look up a single pick configuration by ID"""
-  pickConfiguration(id: String!): PickConfiguration @deprecated
+  pickConfiguration(id: String!): PickConfiguration @deprecated(reason: "Unused; will be removed. No live consumers — `pickConfigurationsPage` covers list lookups and individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades.")
 
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
   """
-  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]!
+  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]! @deprecated(reason: "Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+  """
+  pickConfigurationsPage(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): PickConfigurationsPage!
 
   """Top 20 most-used tags across public conditions"""
   popularTags: [String!]!
@@ -1561,7 +1742,7 @@ type Query {
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.")
 
   """
   Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
@@ -1577,12 +1758,22 @@ type Query {
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
   """
-  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
+  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]! @deprecated(reason: "Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+  """
+  predictionsPage(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): PredictionsPage!
 
   """
   Profit leaderboard — addresses ranked by total PnL across all positions
   """
-  profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
+  profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]! @deprecated(reason: "Use `profitLeaderboardPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `profitLeaderboard`, but wraps the result in a `ProfitLeaderboardPage` with a server-truth `hasMore` flag.
+  """
+  profitLeaderboardPage(limit: Int! = 10, skip: Int! = 0): ProfitLeaderboardPage!
 
   """
   Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest
@@ -1590,12 +1781,17 @@ type Query {
   protocolStats(vaultAddress: String): [ProtocolStat!]!
 
   """Time-bucketed total protocol trading volume across all users"""
-  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated
+  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated(reason: "Unused; will be removed. No live consumers.")
 
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """
-  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
+  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]! @deprecated(reason: "Use `questionsPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+  """
+  questionsPage(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): QuestionsPage!
 
   """
   Public referral analytics. Referral codes are attribution hints, not
@@ -1613,14 +1809,19 @@ type Query {
   trade(id: String!): Trade
 
   """Count of secondary market trades matching the given filters"""
-  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated
+  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated(reason: "Unused; will be removed. No live consumers — `tradesPage` returns `hasMore` for pagination needs.")
 
   """
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
   """
-  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
+  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]! @deprecated(reason: "Use `tradesPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+  """
+  tradesPage(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): TradesPage!
   user(where: UserWhereUniqueInput!): User
-  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated
+  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. Exposes raw Prisma query semantics — no live consumers.")
 }
 
 enum QueryMode {
@@ -1653,6 +1854,14 @@ enum QuestionSortField {
   openInterest
   predictionCount
   similarMarketVolume
+}
+
+"""
+Paginated wrapper around Question rows with a server-truth hasMore flag
+"""
+type QuestionsPage {
+  hasMore: Boolean!
+  items: [Question!]!
 }
 
 """
@@ -1854,6 +2063,12 @@ type Trade {
   tokenAmount: String!
   tradeHash: String!
   txHash: String!
+}
+
+"""Paginated wrapper around Trade rows with a server-truth hasMore flag"""
+type TradesPage {
+  hasMore: Boolean!
+  items: [Trade!]!
 }
 
 """

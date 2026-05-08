@@ -9,7 +9,6 @@ import { stabilize } from '../../helpers/stableSerializer';
 describe('Attestations queries', () => {
   it('FindAttestations matches the recorded contract', async () => {
     const result = await executeOperation(GET_ATTESTATIONS_QUERY, {
-      where: {},
       take: 10,
     });
     expect(result.errors).toBeUndefined();
@@ -20,10 +19,10 @@ describe('Attestations queries', () => {
 
   it('FindAttestationsPaginated matches the recorded contract', async () => {
     const result = await executeOperation(GET_ATTESTATIONS_PAGINATED_QUERY, {
-      where: {},
       take: 10,
       skip: 0,
-      orderBy: [{ time: 'desc' }],
+      orderBy: 'TIME',
+      orderDirection: 'desc',
     });
     expect(result.errors).toBeUndefined();
     await expect(

@@ -10,7 +10,8 @@ const mockPrisma = {
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
 const { popularTags, __clearPopularTagsCache } = await import('./tags');
-const { categories, __clearCategoriesCache } = await import('./crud');
+const { __clearCategoriesCache } = await import('./crud');
+const { categories } = await import('./deprecated/crud');
 
 const callResolver = async <Args>(
   fn: (...args: unknown[]) => unknown,

@@ -1618,7 +1618,7 @@ type Query {
   """
   Accuracy score for a single forecaster address, or null if no scored attestations exist
   """
-  accountAccuracy(address: String!): ForecasterScore @deprecated
+  accountAccuracy(address: String!): ForecasterScore @deprecated(reason: "Unused; will be removed. Use `accountAccuracyRank` for the rank-lookup case (the only live consumer pattern).")
 
   """
   Accuracy rank and score for a single address relative to all forecasters
@@ -1653,7 +1653,7 @@ type Query {
   """
   Profit rank and total PnL for a single address relative to all participants
   """
-  accountProfitRank(address: String!): ProfitRank! @deprecated
+  accountProfitRank(address: String!): ProfitRank! @deprecated(reason: "Unused; will be removed. No live consumers in app, SDK, or known external integrators.")
 
   """
   Total lifetime trading volume in wei for the given address across all prediction types
@@ -1686,12 +1686,12 @@ type Query {
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
   """
-  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated
+  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated(reason: "Unused; will be removed. No live consumers — claim events are reconstructed from settlement-side PnL on Position/Prediction.")
 
   """
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
-  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated
+  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated(reason: "Unused; will be removed. No live consumers — close events surface through `accountActivityPage`.")
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
   collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
   collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]! @deprecated(reason: "Use `collateralTransfersPage` — same data with a server-truth `hasMore` stop signal.")
@@ -1701,7 +1701,7 @@ type Query {
   """
   collateralTransfersPage(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): CollateralTransfersPage!
   condition(where: ConditionWhereUniqueInput!): Condition
-  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
+  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated(reason: "Unused; will be removed. No live consumers — vault-bot defines a query string but never executes it.")
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Unused; will be removed. Exposes raw Prisma query semantics — no live callers in app, SDK, or known external consumers.")
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal.")
 
@@ -1721,7 +1721,7 @@ type Query {
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 
   """Look up a single pick configuration by ID"""
-  pickConfiguration(id: String!): PickConfiguration @deprecated
+  pickConfiguration(id: String!): PickConfiguration @deprecated(reason: "Unused; will be removed. No live consumers — `pickConfigurationsPage` covers list lookups and individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades.")
 
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
@@ -1781,7 +1781,7 @@ type Query {
   protocolStats(vaultAddress: String): [ProtocolStat!]!
 
   """Time-bucketed total protocol trading volume across all users"""
-  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated
+  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated(reason: "Unused; will be removed. No live consumers.")
 
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
@@ -1809,7 +1809,7 @@ type Query {
   trade(id: String!): Trade
 
   """Count of secondary market trades matching the given filters"""
-  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated
+  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated(reason: "Unused; will be removed. No live consumers — `tradesPage` returns `hasMore` for pagination needs.")
 
   """
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
@@ -1821,7 +1821,7 @@ type Query {
   """
   tradesPage(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): TradesPage!
   user(where: UserWhereUniqueInput!): User
-  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated
+  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. Exposes raw Prisma query semantics — no live consumers.")
 }
 
 enum QueryMode {

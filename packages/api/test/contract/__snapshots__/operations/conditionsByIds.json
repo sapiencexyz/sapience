@@ -1,55 +1,1907 @@
 {
-  "conditions": [
-    {
-      "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069cbd66a0000000000000000000000000000000000000000000000000000061d2552c681fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
-      "shortName": "BTC OVER $67,222.50000001",
-      "optionName": null,
-      "question": "Crypto.BTC/USD OVER $67,222.50000001",
-      "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $67,222.50000001 at settlement (Tue, 31 Mar 2026 14:12:58 GMT), YES wins. If the price is exactly $67,222.50000001 at settlement, OVER wins.",
-      "endTime": 1774966378,
-      "resolver": "0x27a95ab8982eacf4ec3d4bccabb3630c72fd7e1b",
-      "similarMarkets": [],
-      "settled": false,
-      "resolvedToYes": false,
-      "nonDecisive": false,
-      "estimatedPrice": null,
-      "category": {
-        "slug": "prices-crypto"
+  "conditionsPage": {
+    "hasMore": true,
+    "items": [
+      {
+        "id": "0xa93a85108d1bda42a235b0b85c71b2e4636165ca87a2df89fd8fb0d879a3d8cf",
+        "shortName": "Jamal Murray: Points O/U 25.5",
+        "optionName": "Jamal Murray: Points O/U 25.5",
+        "question": "Jamal Murray: Points O/U 25.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Jamal Murray scores more than 25.5 points during the game.\nThis market will resolve to \"No\" if Jamal Murray scores 25.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777019400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-points-jamal-murray-25pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.585,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xa553a62dad12df974b39406710949b4d88d8f7b7155eb7ebd3da36169823ab63",
+        "shortName": "Nikola Jokić: Points O/U 27.5",
+        "optionName": "Nikola Jokić: Points O/U 27.5",
+        "question": "Nikola Jokić: Points O/U 27.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Nikola Jokić scores more than 27.5 points during the game.\nThis market will resolve to \"No\" if Nikola Jokić scores 27.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777019400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-points-nikola-jokic-27pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.615,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x4ba3528009f2a085bb4c20a69851554c29a312ff45a1148e31791c57377d17ba",
+        "shortName": "DEN/MIN O232.5",
+        "optionName": "O/U 232.5",
+        "question": "Will Nuggets vs Timberwolves total be over 232.5?",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Over\" if the Nuggets and Timberwolves combine to score 233 or more points in this game.\nIf the combined total is less than 233, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+        "endTime": 1777019400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-total-232pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.505,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xe44aecae44754e928dd1c921de9f3d9cd9e7bd39195d771a81ea17915094fd97",
+        "shortName": "CLE/TOR 1H O107.5",
+        "optionName": "1H O/U 107.5",
+        "question": "Will Cavaliers vs Raptors 1H total be over 107.5?",
+        "description": "In the first half of the NBA game between Cavaliers and Raptors, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Over\" if the Cavaliers and Raptors combine to score 108 or more points in the first half.\nIf the combined first half total is less than 108, this market will resolve to \"Under\".\nThe result will be determined based on the score at halftime only.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+        "endTime": 1777014000,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-1h-total-107pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.51,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xb2e8d63bde6eb76480e47cea598676b9080d9f91cf80ceca44577b62f6a00453",
+        "shortName": "Will Trump say \"Somali\" or \"Somalia\" or \"Somalian\" during healthcare event?",
+        "optionName": "Somali / Somalia / Somalian",
+        "question": "Will Trump say \"Somali\" or \"Somalia\" or \"Somalian\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-somali-or-somalia-or-somalian-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xe453ae2b9edb41214942837c4426798a9df30917ad05443e7ae944d4c08b69ef",
+        "shortName": "James Harden: Points O/U 20.5",
+        "optionName": "James Harden: Points O/U 20.5",
+        "question": "James Harden: Points O/U 20.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Yes\" if James Harden scores more than 20.5 points during the game.\nThis market will resolve to \"No\" if James Harden scores 20.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777014000,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-points-james-harden-20pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.435,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xf0292000aca67839ae84da385974355665e8cd4abae1ff134bd0a9573cd1a199",
+        "shortName": "Will Trump say \"Veteran\" during healthcare event?",
+        "optionName": "Veteran",
+        "question": "Will Trump say \"Veteran\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-veteran-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x2bca2dab0bc5307dfb2c4b41345b2baee093e4e9c2545d59cb3ac5a66338f0b6",
+        "shortName": "Will Trump say \"Go ahead\" 3+ times during healthcare event?",
+        "optionName": "Go ahead 3+ times",
+        "question": "Will Trump say \"Go ahead\" 3+ times during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-go-ahead-3-times-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.2,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x658259910478a9bac37a279e2c4ef22f565af085e7e6ee1f87431101e047c653",
+        "shortName": "Will Trump say \"Unaffordable Care Act\" during healthcare event?",
+        "optionName": "Unaffordable Care Act",
+        "question": "Will Trump say \"Unaffordable Care Act\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-unaffordable-care-act-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.004,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xfbef512228f1f16444b8ed5afe892965cf5c8fef6ff5135688bb8aaf279a5c94",
+        "shortName": "Will Trump say \"MAHA\" during healthcare event?",
+        "optionName": "MAHA",
+        "question": "Will Trump say \"MAHA\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-maha-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0095,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xa2b4e8969a04be98863ef08e883a773f1b9cf1f58b759df793b167cc17070506",
+        "shortName": "Will Trump say \"Blockade\" during healthcare event?",
+        "optionName": "Blockade",
+        "question": "Will Trump say \"Blockade\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-blockade-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9995,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xa621fc66e10ea6bad70ac6a12d46d43745b9411830b826ea999327142967cf55",
+        "shortName": "Will Trump say \"Autism\" during healthcare event?",
+        "optionName": "Autism",
+        "question": "Will Trump say \"Autism\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-autism-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xa6476cfd70e5cb8abb66fcc1504e05ba42506174434d4b0b126ac3867bcf3df3",
+        "shortName": "Will Trump say \"Iran\" during healthcare event?",
+        "optionName": "Iran",
+        "question": "Will Trump say \"Iran\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-iran-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9985,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x0bb199d87b9fa041a15fc02d93037457dd5177bbeec75aa5cdccbdeca8a3b87d",
+        "shortName": "Will Trump say \"Ozempic\" or \"Fat shot\" during healthcare event?",
+        "optionName": "Ozempic / Fat shot",
+        "question": "Will Trump say \"Ozempic\" or \"Fat shot\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-ozempic-or-fat-shot-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x6658ca82eff9b0ac7287ee3816cf886cbc0a25045c211c1dbe997fee381a57c5",
+        "shortName": "Will Trump say \"Cat\" during healthcare event?",
+        "optionName": "Cat",
+        "question": "Will Trump say \"Cat\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-cat-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.999,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x26377d888453796a4e9ed22c7fc1912fe07baee47fe935f9b7005117e3d0bc6a",
+        "shortName": "Will Google (GOOGL) close above $230 end of April?",
+        "optionName": "$230",
+        "question": "Will Google (GOOGL) close above $230 end of April?",
+        "description": "This market will resolve to \"Yes\" if the official closing price for Alphabet Inc. (GOOGL) on the final trading day of April 2026 is higher than the listed price. Otherwise, this market will resolve to \"No\".\nIf the final trading day of the month is shortened (for example, due to a market-holiday schedule), the official closing price published for that shortened session will still be used for resolution.\nIf no official closing price is published for that session (for example, due to a trading halt into the close, system issue, or other disruption), the market will use the last valid on-exchange trade price of the regular session as the effective closing price.\nThe resolution source for this market is Yahoo Finance — specifically, the Alphabet Inc. (GOOGL) \"Close\" prices available at https://finance.yahoo.com/quote/GOOGL/history, published under \"Historical Prices.\"\nIn the event of a stock split, reverse stock split, or similar corporate action affecting the listed company during the listed time frame, this market will resolve based on split-adjusted prices as displayed on Yahoo Finance.",
+        "endTime": 1777593600,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/googl-above-in-april-2026#googl-above-230-on-april-30-2026"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.996,
+        "category": {
+          "slug": "tech-science"
+        }
+      },
+      {
+        "id": "0x89c1f703a2b01f7e64ce1bef1af9586dca41a8c9635e610ef6ccef838c41039e",
+        "shortName": "NYK win vs ATL 1H",
+        "optionName": "1H Moneyline",
+        "question": "Knicks beats Hawks? (1H Moneyline)",
+        "description": "In the first half of the NBA game between Knicks and Hawks, scheduled for April 23 at 7:00 PM ET:\nThis market will resolve to \"Knicks\" if the Knicks are winning at halftime.\nThis market will resolve to \"Hawks\" if the Hawks are winning at halftime.\nIf the score is tied at halftime, this market will resolve 50-50.\nThe result will be determined based on the score at halftime only.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+        "endTime": 1777010400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-nyk-atl-2026-04-23#nba-nyk-atl-2026-04-23-1h-moneyline"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.505,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x788c042ce0ea0d11e9885d154aed1e2a634da96881e81534562d7936483a9239",
+        "shortName": "Will Trump say \"Research and development\" or \"R&D\" during healthcare event?",
+        "optionName": "Research and development / R&D",
+        "question": "Will Trump say \"Research and development\" or \"R&D\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-research-and-development-or-rd-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9995,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xd436627c4cda25a583e8a89342c7c30013816e433c68194b3bc50a288da09d0c",
+        "shortName": "Will Trump say \"Trump\" 3+ times during healthcare event?",
+        "optionName": "Trump 3+ times",
+        "question": "Will Trump say \"Trump\" 3+ times during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-trump-3-times-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9675,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x09e960750bc91a5cbdf81b44445d6a3d3bf11d3b0862d589592624349fb61d68",
+        "shortName": "Will xAI have the best Math AI model at the end of April 2026?",
+        "optionName": "xAI",
+        "question": "Will xAI have the best Math AI model at the end of April 2026?",
+        "description": "This market will resolve according to the company that owns the model that has the highest arena score based on the Chatbot Arena LLM Leaderboard (https://lmarena.ai/) when the table under the \"Leaderboard\" tab for \"Math\" is checked on April 30, 2026, 12:00 PM ET.\nResults from the \"Score\" column under the \"Text Arena | Math\" Leaderboard tab at https://arena.ai/leaderboard/text/math-no-style-control with style control off will be used to resolve this market.\nModels will be ranked primarily by their arena score at this market’s check time, with alphabetical order of company names as listed in this market group used as a tiebreaker (e.g., if the two models are tied by arena score, “Google” would be ranked ahead of “xAI”). This market will resolve based on the company that occupies first place under this ranking.\nThe resolution source for this market is the Chatbot Arena LLM Leaderboard found at https://lmarena.ai/. If this resolution source is unavailable at check time, this market will remain open until the leaderboard comes back online and will resolve based on the first check after it becomes available. If it becomes permanently unavailable, this market will resolve based on another resolution source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/which-company-has-the-best-math-ai-model-end-of-april#will-xai-have-the-best-math-ai-model-at-the-end-of-april-2026"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "tech-science"
+        }
+      },
+      {
+        "id": "0xdf56f28bb25a2681cda25d061df852343b04e7f5e400a7622c0b2d9a9db247a9",
+        "shortName": "Anthony Edwards: Points O/U 28.5",
+        "optionName": "Anthony Edwards: Points O/U 28.5",
+        "question": "Anthony Edwards: Points O/U 28.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Anthony Edwards scores more than 28.5 points during the game.\nThis market will resolve to \"No\" if Anthony Edwards scores 28.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777019400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-points-anthony-edwards-28pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.505,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x441e3b62edf1cfdb93c0e4e3356a69b69eeeb046b39710ea5a47ff2f8608bf08",
+        "shortName": "Rudy Gobert: Rebounds O/U 2.5",
+        "optionName": "Rudy Gobert: Rebounds O/U 2.5",
+        "question": "Rudy Gobert: Rebounds O/U 2.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Rudy Gobert records more than 2.5 total rebounds during the game.\nThis market will resolve to \"No\" if Rudy Gobert records 2.5 rebounds or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777019400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-rebounds-rudy-gobert-2pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.97,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xbcd427ba5fca25c271cba7e041bc99257716cc494e4f29a68ccb073a09a65790",
+        "shortName": "Aaron Gordon: Assists O/U 2.5",
+        "optionName": "Aaron Gordon: Assists O/U 2.5",
+        "question": "Aaron Gordon: Assists O/U 2.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Aaron Gordon records more than 2.5 assists during the game.\nThis market will resolve to \"No\" if Aaron Gordon records 2.5 assists or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777019400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-assists-aaron-gordon-2pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.006,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xca1a19089b3dfe0dc0e0fb58a544d8eecef8c1afc9bcf398defe6d60e009d0ff",
+        "shortName": "Karl-Anthony Towns: Points O/U 20.5",
+        "optionName": "Karl-Anthony Towns: Points O/U 20.5",
+        "question": "Karl-Anthony Towns: Points O/U 20.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 7:00 PM ET:\nThis market will resolve to \"Yes\" if Karl-Anthony Towns scores more than 20.5 points during the game.\nThis market will resolve to \"No\" if Karl-Anthony Towns scores 20.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777010400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-nyk-atl-2026-04-23#nba-nyk-atl-2026-04-23-points-karl-anthony-towns-20pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.41,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xaabaa4f1a705e8c103890702ca135a65f9387bd370c30e596b1aa6142686364e",
+        "shortName": "Will Powell say \"Successor\" during April press conference?",
+        "optionName": "Successor",
+        "question": "Will Powell say \"Successor\" during April press conference?",
+        "description": "Jerome Powell is currently scheduled to give an FOMC Introductory Statement and press conference on April 29, 2026, at 2:30 PM ET. This market pertains to his Introductory Statement as well as the following Q&A session.\nThis market will resolve to \"Yes\" if Powell says the listed term during the FOMC Press Conference. Otherwise, this market will resolve to \"No\".\nAny usage of the word regardless of context will count toward the resolution of this market.\nPluralization/possessive of the word will count toward the resolution of this market, however other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g. joyful is not a compound word for \"joy,\" however \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf no such statement happens by April 29, 2026, 11:59 PM ET, this market will resolve to \"No\".\nThe resolution source will be video and transcripts of the FOMC Press conference.",
+        "endTime": 1777435200,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-powell-say-during-april-press-conference#will-powell-say-successor-during-april-press-conference"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.555,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xfb6a5ec5860650e5193a54b33f0e3e6b52b6aa6a949621d40cfbf9b47973c421",
+        "shortName": "Immanuel Quickley: Rebounds O/U 0.5",
+        "optionName": "Immanuel Quickley: Rebounds O/U 0.5",
+        "question": "Immanuel Quickley: Rebounds O/U 0.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Yes\" if Immanuel Quickley records more than 0.5 total rebounds during the game.\nThis market will resolve to \"No\" if Immanuel Quickley records 0.5 rebounds or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777014000,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-rebounds-immanuel-quickley-0pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.42,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xc5ceb5c26e1709d484e1785bbf4c3541ad94a9f9cd17cec910ceee38ab9c4f23",
+        "shortName": "Immanuel Quickley: Points O/U 2.5",
+        "optionName": "Immanuel Quickley: Points O/U 2.5",
+        "question": "Immanuel Quickley: Points O/U 2.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Yes\" if Immanuel Quickley scores more than 2.5 points during the game.\nThis market will resolve to \"No\" if Immanuel Quickley scores 2.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777014000,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-points-immanuel-quickley-2pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.46,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xc2e0a2a799b022213096fb2214fb0531cc8a881e4cf8f1d8820bbf132b6fbced",
+        "shortName": "NYK/ATL O214.5",
+        "optionName": "O/U 214.5",
+        "question": "Will Knicks vs Hawks total be over 214.5?",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 7:00 PM ET:\nThis market will resolve to \"Over\" if the Knicks and Hawks combine to score 215 or more points in this game.\nIf the combined total is less than 215, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+        "endTime": 1777010400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-nyk-atl-2026-04-23#nba-nyk-atl-2026-04-23-total-214pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.505,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x93f33206c2dea19838b9b65623e1e52aa3cdd5b888a888551b2873195bf47e02",
+        "shortName": "Will Trump say \"Obamacare\" during healthcare event?",
+        "optionName": "Obamacare",
+        "question": "Will Trump say \"Obamacare\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-obamacare-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xadf5e7a30edf02f9373a5677b31bfb2ffba76ac11b59d68b23499b9b2b4744c4",
+        "shortName": "Will Trump say \"Insurance\" during healthcare event?",
+        "optionName": "Insurance",
+        "question": "Will Trump say \"Insurance\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-insurance-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0065,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xd8bb237c3a99693106d357f1db47a1b8538a20aeb77c8aa30de9d9e10fc2a7d0",
+        "shortName": "CLE/TOR 1H O106.5",
+        "optionName": "1H O/U 106.5",
+        "question": "Will Cavaliers vs Raptors 1H total be over 106.5?",
+        "description": "In the first half of the NBA game between Cavaliers and Raptors, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Over\" if the Cavaliers and Raptors combine to score 107 or more points in the first half.\nIf the combined first half total is less than 107, this market will resolve to \"Under\".\nThe result will be determined based on the score at halftime only.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+        "endTime": 1777014000,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-1h-total-106pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.535,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x67e62c983bd44a6da9c771c783119ee9745f41d2d663b2d83f7b4e1c3e35a004",
+        "shortName": "Mikal Bridges: Points O/U 12.5",
+        "optionName": "Mikal Bridges: Points O/U 12.5",
+        "question": "Mikal Bridges: Points O/U 12.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 7:00 PM ET:\nThis market will resolve to \"Yes\" if Mikal Bridges scores more than 12.5 points during the game.\nThis market will resolve to \"No\" if Mikal Bridges scores 12.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777010400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-nyk-atl-2026-04-23#nba-nyk-atl-2026-04-23-points-mikal-bridges-12pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.485,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xb6de38c4362679dd95f5c850e09a5471f66285078e921ebadfa4d8d0ef616b0d",
+        "shortName": "Josh Hart: Rebounds O/U 7.5",
+        "optionName": "Josh Hart: Rebounds O/U 7.5",
+        "question": "Josh Hart: Rebounds O/U 7.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 7:00 PM ET:\nThis market will resolve to \"Yes\" if Josh Hart records more than 7.5 total rebounds during the game.\nThis market will resolve to \"No\" if Josh Hart records 7.5 rebounds or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777010400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-nyk-atl-2026-04-23#nba-nyk-atl-2026-04-23-rebounds-josh-hart-7pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.63,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x7bcfa61e915cc09889e037aff0c3db04fad0e7df86e8695297dd0a444b31c0e2",
+        "shortName": "Will Trump say \"Nuclear\" during healthcare event?",
+        "optionName": "Nuclear",
+        "question": "Will Trump say \"Nuclear\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-nuclear-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9995,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x74d39b036fd2623e86a44128acf1fdc2eeeac8a923014ccdbb79d0bd403324c4",
+        "shortName": "Will WTI Crude Oil (WTI) hit (LOW) $90 in April?",
+        "optionName": "↓ $90",
+        "question": "Will WTI Crude Oil (WTI) hit (LOW) $90 in April?",
+        "description": "This market will resolve to \"Yes\" if, at any point between market creation and the final trading day during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"Low\" price equal to or below the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"Low\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily low price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-price-will-wti-hit-in-april-2026#will-wti-crude-oil-wti-hit-low-90-in-april"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.6,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x2a8f5b97eff301e80cee53819258a474718f9024ff16446fe859f0f9695bd026",
+        "shortName": "ETH $2,500-2,600 Apr 30",
+        "optionName": "2,500-2,600",
+        "question": "Will the price of Ethereum be between $2,500 and $2,600 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-between-2500-2600-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.095,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x2edecc67271870a3fe09026d2373912169993635d457174aa4140823c5cd9ed4",
+        "shortName": "ETH >$2,100 Apr 30",
+        "optionName": "2,100",
+        "question": "Will the price of Ethereum be above $2,100 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-2100-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.905,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x382fd7e358c9145b8d3d8b2651dbc4119d0f909b084d655c0b67ad8a621c916f",
+        "shortName": "BTC >$68,000 Apr 30",
+        "optionName": "68,000",
+        "question": "Will the price of Bitcoin be above $68,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-68k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9835,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x6e8659c4df91d5825e056775c42eb5225be26fb1389d339a9a6514f81dcfd39f",
+        "shortName": "BTC >$88,000 Apr 30",
+        "optionName": ">88,000",
+        "question": "Will the price of Bitcoin be greater than $88,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-greater-than-88000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.021,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xb3e5a8d91ca5afb29d005766dee96b474dec141523c1730300956f1d8d2b3c4c",
+        "shortName": "BTC $86,000-88,000 Apr 30",
+        "optionName": "86,000-88,000",
+        "question": "Will the price of Bitcoin be between $86,000 and $88,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-between-86000-88000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0285,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xdfebebf7e5258d3325733d0f36d4af9589dee5cb9d0985f98934b054211cd4b6",
+        "shortName": "BTC $84,000-86,000 Apr 30",
+        "optionName": "84,000-86,000",
+        "question": "Will the price of Bitcoin be between $84,000 and $86,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-between-84000-86000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0455,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x6848b1b971270b5d0bd430f531eaa3f4ef4e91a2ccbcf389006308a9c34a0755",
+        "shortName": "BTC $82,000-84,000 Apr 30",
+        "optionName": "82,000-84,000",
+        "question": "Will the price of Bitcoin be between $82,000 and $84,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-between-82000-84000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.09,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x2221b40fb68bc9365e681f487dea8482fb712df2d8f5e0c76e0b2afe2748b3e8",
+        "shortName": "BTC $80,000-82,000 Apr 30",
+        "optionName": "80,000-82,000",
+        "question": "Will the price of Bitcoin be between $80,000 and $82,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-between-80000-82000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.145,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x4b2a5128ec8fee95fc09ea00612dc4b51771683ea98bae8d28ad2a709ce55b04",
+        "shortName": "BTC >$80,000 Apr 30",
+        "optionName": "80,000",
+        "question": "Will the price of Bitcoin be above $80,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-80k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.28,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xddfcd961bb9b1918feab7c67852e7d9b03f967d774e7546dbb55264844def57a",
+        "shortName": "ETH >$2,800 Apr 30",
+        "optionName": ">2,800",
+        "question": "Will the price of Ethereum be greater than $2,800 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-greater-than-2800-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.019,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x28dbf62aa9958c7a222c2b8b0155ee7cad5eb11a2bcac0bb87cadbd2b3d4ac0d",
+        "shortName": "BTC $72,000-74,000 Apr 30",
+        "optionName": "72,000-74,000",
+        "question": "Will the price of Bitcoin be between $72,000 and $74,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-between-72000-74000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.095,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x0f10520111f4ecf4f3b06de07cd30c01034c853f56a21f363411269f655b1343",
+        "shortName": "ETH $2,600-2,700 Apr 30",
+        "optionName": "2,600-2,700",
+        "question": "Will the price of Ethereum be between $2,600 and $2,700 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-between-2600-2700-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.045,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xa112f96ccf182c1dcb07613b90ec1059ff7073e79582a363686a891d1e09ee8b",
+        "shortName": "BTC >$86,000 Apr 30",
+        "optionName": "86,000",
+        "question": "Will the price of Bitcoin be above $86,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-86k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.035,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xc8a06c1858206c628ec5a66ef2baa779c82867acd92eb5d9400e88d916953071",
+        "shortName": "BTC $74,000-76,000 Apr 30",
+        "optionName": "74,000-76,000",
+        "question": "Will the price of Bitcoin be between $74,000 and $76,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-between-74000-76000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.16,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x6ff332ace18f3f984b6c861d16afaf694472a7d0443e7e0b79018b965357249f",
+        "shortName": "BTC $76,000-78,000 Apr 30",
+        "optionName": "76,000-78,000",
+        "question": "Will the price of Bitcoin be between $76,000 and $78,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-between-76000-78000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.19,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xb4c9330c2f7840279d0ed0483c947e6485e65a7031090624fdfd93bdc9e9cecb",
+        "shortName": "BTC >$76,000 Apr 30",
+        "optionName": "76,000",
+        "question": "Will the price of Bitcoin be above $76,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-76k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.7,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xdf495bcb2f8d44552fd70063ba46d02e5cb32eb469f9df9ee47e7cb94de43414",
+        "shortName": "ETH $2,200-2,300 Apr 30",
+        "optionName": "2,200-2,300",
+        "question": "Will the price of Ethereum be between $2,200 and $2,300 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-between-2200-2300-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.215,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xa1042b66d80c2b4d3a1a76a4b18a353ef3df126aa654598d3a3935f8a2135347",
+        "shortName": "ETH $2,000-2,100 Apr 30",
+        "optionName": "2,000-2,100",
+        "question": "Will the price of Ethereum be between $2,000 and $2,100 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-between-2000-2100-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.065,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x22664e598b4a072fa5e7c159a511d8e8f14ae28fe780184afdcf8028e118ee8b",
+        "shortName": "ETH $2,100-2,200 Apr 30",
+        "optionName": "2,100-2,200",
+        "question": "Will the price of Ethereum be between $2,100 and $2,200 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-between-2100-2200-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.145,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xa461506cadefaadf62014a75d8660de867b177f9d2de8afa70a273a3f5859c76",
+        "shortName": "ETH >$2,300 Apr 30",
+        "optionName": "2,300",
+        "question": "Will the price of Ethereum be above $2,300 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-2300-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.555,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x9470a3c089b689faeeb43ac301435a9baa842dcf626caa3850978f168aca7fbf",
+        "shortName": "ETH >$2,500 Apr 30",
+        "optionName": "2,500",
+        "question": "Will the price of Ethereum be above $2,500 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-2500-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.16,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x601ed9aa2d6e1e5b406a1485934995fc5c4373d91f3e7fc219fb23e96a81e5fa",
+        "shortName": "BTC >$84,000 Apr 30",
+        "optionName": "84,000",
+        "question": "Will the price of Bitcoin be above $84,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-84k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.075,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x43db5320af73d13066e58f443624d54dc5eef5878290b2effaac19e857aeef04",
+        "shortName": "BTC <$70,000 Apr 30",
+        "optionName": "<70,000",
+        "question": "Will the price of Bitcoin be less than $70,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-less-than-70000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.028,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x1ffefad721849755b598ae023fee63b7e659a81254921441a7c7ba5755938982",
+        "shortName": "ETH $2,300-2,400 Apr 30",
+        "optionName": "2,300-2,400",
+        "question": "Will the price of Ethereum be between $2,300 and $2,400 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-between-2300-2400-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.225,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xecdc671a9533fcd7d0fc44e39531c31830e043c4b55b36a89dabafdb0ae81451",
+        "shortName": "BTC >$82,000 Apr 30",
+        "optionName": "82,000",
+        "question": "Will the price of Bitcoin be above $82,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-82k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.145,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x04317586ff1621f5e90863444ba5c6c384205493ec95696b03eb47da7bd84575",
+        "shortName": "BTC $78,000-80,000 Apr 30",
+        "optionName": "78,000-80,000",
+        "question": "Will the price of Bitcoin be between $78,000 and $80,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-between-78000-80000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.19,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x8e1653605fa2b5d4559a9d4473b0de1ddac95e37c6b366264a2a5ec33b5d9aa8",
+        "shortName": "ETH >$1,800 Apr 30",
+        "optionName": "1,800",
+        "question": "Will the price of Ethereum be above $1,800 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-1800-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.985,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xf6bf92ee1b2d25cc56e01c88a135b0632c321273a35391efc949181a19f71d06",
+        "shortName": "BTC >$88,000 Apr 30",
+        "optionName": "88,000",
+        "question": "Will the price of Bitcoin be above $88,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-88k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0205,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xef477f138292631fa9c376a7881c730820665415d99983eee354ef96abf609f0",
+        "shortName": "ETH >$2,200 Apr 30",
+        "optionName": "2,200",
+        "question": "Will the price of Ethereum be above $2,200 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-2200-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.765,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x9393df6db1ee2e3f3cee30810be19bf9820b107a4db5ebf25e9161b946f3b038",
+        "shortName": "ETH >$1,900 Apr 30",
+        "optionName": "1,900",
+        "question": "Will the price of Ethereum be above $1,900 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-1900-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.983,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x35ee0ff21fa8a03204d9aa5ac25f84b16725c7031f5283a9680ad7afa92c5734",
+        "shortName": "BTC $70,000-72,000 Apr 30",
+        "optionName": "70,000-72,000",
+        "question": "Will the price of Bitcoin be between $70,000 and $72,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-price-on-april-30#will-the-price-of-bitcoin-be-between-70000-72000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.045,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xdb7fb40d45f6b39147721a1bfb03989930f082cd46d8c64f6eb7669a15488b94",
+        "shortName": "ETH $2,400-2,500 Apr 30",
+        "optionName": "2,400-2,500",
+        "question": "Will the price of Ethereum be between $2,400 and $2,500 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-between-2400-2500-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.17,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xdbb0e051f1040dfe9e7f4b5e34729c8e2dfe1ac6e92f78b23ca9fd37607ae3de",
+        "shortName": "ETH >$2,400 Apr 30",
+        "optionName": "2,400",
+        "question": "Will the price of Ethereum be above $2,400 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-2400-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.33,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x213e11f68a55196138075e916d97c63a88e52de4137e30b0b1467e914631c583",
+        "shortName": "ETH >$2,600 Apr 30",
+        "optionName": "2,600",
+        "question": "Will the price of Ethereum be above $2,600 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-2600-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.065,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x59f48f9101f6a573d0e1193c74d4c28d0315667fbb3c89c4317682870d21aaed",
+        "shortName": "ETH >$2,700 Apr 30",
+        "optionName": "2,700",
+        "question": "Will the price of Ethereum be above $2,700 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-2700-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0305,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xceed2394868f0bde0b4eac171c421f192a5a333f8b8413c541230858684ffa56",
+        "shortName": "BTC >$78,000 Apr 30",
+        "optionName": "78,000",
+        "question": "Will the price of Bitcoin be above $78,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-78k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.485,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x258c65f7dfc8d1a1d93844e2328518fa2b51fbfd4cd6d7830ae5d20b6849ce4d",
+        "shortName": "BTC >$72,000 Apr 30",
+        "optionName": "72,000",
+        "question": "Will the price of Bitcoin be above $72,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-72k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.92,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x0eed7f923a8c465202af9eb26540c5a7379ba0613b6e837494c371e2fae31410",
+        "shortName": "BTC >$70,000 Apr 30",
+        "optionName": "70,000",
+        "question": "Will the price of Bitcoin be above $70,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-70k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9685,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xbdf0cacb57577376307ff005cefc571e258d0498d4d6cf380d84262a3740e1ef",
+        "shortName": "BTC >$74,000 Apr 30",
+        "optionName": "74,000",
+        "question": "Will the price of Bitcoin be above $74,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/bitcoin-above-on-april-30#bitcoin-above-74k-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.84,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xd89063ea62057033863e132d8d6815016c82e5a1d0d14fbf103e4cb8cf94fb6b",
+        "shortName": "ETH $2,700-2,800 Apr 30",
+        "optionName": "2,700-2,800",
+        "question": "Will the price of Ethereum be between $2,700 and $2,800 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-between-2700-2800-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.026,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x07f44ca7ab81a310c2f60765e7120359c9d32f0aba008847efb4e3cdf83aed2d",
+        "shortName": "ETH $1,900-2,000 Apr 30",
+        "optionName": "1,900-2,000",
+        "question": "Will the price of Ethereum be between $1,900 and $2,000 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-between-1900-2000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.028,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xb7695cec47b450474655040ebf60b06fb7580d54d8558c9979edb0536db5c9fa",
+        "shortName": "ETH <$1,900 Apr 30",
+        "optionName": "<1,900",
+        "question": "Will the price of Ethereum be less than $1,900 on April 30?",
+        "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-price-on-april-30#will-the-price-of-ethereum-be-less-than-1900-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0175,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xf33a645c4928ce123da2322bec12f685f89b779ae8bf04d450a00dc5b4cb0a81",
+        "shortName": "Jalen Brunson: Points O/U 25.5",
+        "optionName": "Jalen Brunson: Points O/U 25.5",
+        "question": "Jalen Brunson: Points O/U 25.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 7:00 PM ET:\nThis market will resolve to \"Yes\" if Jalen Brunson scores more than 25.5 points during the game.\nThis market will resolve to \"No\" if Jalen Brunson scores 25.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777010400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-nyk-atl-2026-04-23#nba-nyk-atl-2026-04-23-points-jalen-brunson-25pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.565,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x10789f54d8d20d694cd7c48fafeed82580c9b35807f8e58231d09bb0019b0a4b",
+        "shortName": "ETH >$2,000 Apr 30",
+        "optionName": "2,000",
+        "question": "Will the price of Ethereum be above $2,000 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-2000-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9695,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0x4163a84aab21a74150ddaad5bdff6de52d67d04817777e8b843f964913fb178a",
+        "shortName": "ETH >$2,800 Apr 30",
+        "optionName": "2,800",
+        "question": "Will the price of Ethereum be above $2,800 on April 30?",
+        "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/ethereum-above-on-april-30#ethereum-above-2800-on-april-30"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0185,
+        "category": {
+          "slug": "crypto"
+        }
+      },
+      {
+        "id": "0xbf2b48765570dbe463adc65ea9fb6865288add83ebc1358452ca93f3df7864e3",
+        "shortName": "CLE/TOR O221.5",
+        "optionName": "O/U 221.5",
+        "question": "Will Cavaliers vs Raptors total be over 221.5?",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Over\" if the Cavaliers and Raptors combine to score 222 or more points in this game.\nIf the combined total is less than 222, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+        "endTime": 1777014000,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-total-221pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.495,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x071226d1aec66bc7ab1f5d12b5e7d80ee7c0bdeca02585c5e33c56583a72d017",
+        "shortName": "Will Denmark advance through the second Eurovision Semi-Final?",
+        "optionName": "Denmark",
+        "question": "Will Denmark advance through the second Eurovision Semi-Final?",
+        "description": "This market will resolve to the countries whose candidates for Eurovision 2026 advance according to the results of the Eurovision Second Semi-Final, scheduled for May 14, 2026.\nIf at any point it is impossible for the listed candidate to advance from the Eurovision 2026 Second Semi-Final based on the rules of the competition (i.e. they are eliminated), this market may immediately resolve to \"No\".\nIf this competition is not held or no contestants advance by June 30, 2026, 11:59PM ET, this market will resolve to \"No.\"\nThe primary resolution source for this market will be official information from Eurovision (https://eurovision.tv/), including live footage of the Second Semi-Final for Eurovision 2026, however a consensus of credible reporting will suffice.",
+        "endTime": 1778831940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/eurovision-2026-second-semi-final#will-denmark-advance-through-the-second-eurovision-semi-final"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9375,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xb341b0690970aab8c8cd7dbcdb88ced6a81f03f35c1e406b5043840957c1271d",
+        "shortName": "Jalen Johnson: Assists O/U 6.5",
+        "optionName": "Jalen Johnson: Assists O/U 6.5",
+        "question": "Jalen Johnson: Assists O/U 6.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 7:00 PM ET:\nThis market will resolve to \"Yes\" if Jalen Johnson records more than 6.5 assists during the game.\nThis market will resolve to \"No\" if Jalen Johnson records 6.5 assists or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777010400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-nyk-atl-2026-04-23#nba-nyk-atl-2026-04-23-assists-jalen-johnson-6pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.45,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x9d43085452a1480f079f8063c21506041e4093f3111b2bfa431420d1f30abce5",
+        "shortName": "Will Trump say \"New York\" during healthcare event?",
+        "optionName": "New York",
+        "question": "Will Trump say \"New York\" during healthcare event?",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "endTime": 1777017540,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-new-york-during-healthcare-event"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9995,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0xd4866bfa3c6ca59aa0bc0134eb0a67f17a92f7bb2f9459fdbcd7417e1213386a",
+        "shortName": "CLE/TOR O220.5",
+        "optionName": "O/U 220.5",
+        "question": "Will Cavaliers vs Raptors total be over 220.5?",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Over\" if the Cavaliers and Raptors combine to score 221 or more points in this game.\nIf the combined total is less than 221, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+        "endTime": 1777014000,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-total-220pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.525,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xc4d1ce1071de9415bb287455d238f39d63652347011f44369feb90db96d9854a",
+        "shortName": "Will Google (GOOGL) close above $260 end of April?",
+        "optionName": "$260",
+        "question": "Will Google (GOOGL) close above $260 end of April?",
+        "description": "This market will resolve to \"Yes\" if the official closing price for Alphabet Inc. (GOOGL) on the final trading day of April 2026 is higher than the listed price. Otherwise, this market will resolve to \"No\".\nIf the final trading day of the month is shortened (for example, due to a market-holiday schedule), the official closing price published for that shortened session will still be used for resolution.\nIf no official closing price is published for that session (for example, due to a trading halt into the close, system issue, or other disruption), the market will use the last valid on-exchange trade price of the regular session as the effective closing price.\nThe resolution source for this market is Yahoo Finance — specifically, the Alphabet Inc. (GOOGL) \"Close\" prices available at https://finance.yahoo.com/quote/GOOGL/history, published under \"Historical Prices.\"\nIn the event of a stock split, reverse stock split, or similar corporate action affecting the listed company during the listed time frame, this market will resolve based on split-adjusted prices as displayed on Yahoo Finance.",
+        "endTime": 1777593600,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/googl-above-in-april-2026#googl-above-260-on-april-30-2026"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.959,
+        "category": {
+          "slug": "tech-science"
+        }
+      },
+      {
+        "id": "0xba6bf17c88241e9f0c07bda16145ca3edae8b9c1572518c804a8a526b9168c28",
+        "shortName": "Anthony Edwards: Assists O/U 4.5",
+        "optionName": "Anthony Edwards: Assists O/U 4.5",
+        "question": "Anthony Edwards: Assists O/U 4.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Anthony Edwards records more than 4.5 assists during the game.\nThis market will resolve to \"No\" if Anthony Edwards records 4.5 assists or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777019400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-assists-anthony-edwards-4pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.49,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x917b4f1310e1e3f61dff1a6cf80e5a074e0aaa950c5c5addd5fb50f0fdf0fd49",
+        "shortName": "Donte DiVincenzo: Assists O/U 0.5",
+        "optionName": "Donte DiVincenzo: Assists O/U 0.5",
+        "question": "Donte DiVincenzo: Assists O/U 0.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Donte DiVincenzo records more than 0.5 assists during the game.\nThis market will resolve to \"No\" if Donte DiVincenzo records 0.5 assists or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777019400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-assists-donte-divincenzo-0pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9845,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xd00bb2c78080e92035f4e846fbb2319af057b851f0c4d811b1feebbedea4b313",
+        "shortName": "Will Vladimir Cerrón finish in fourth place in the first round of the 2026 Peruvian presidential election?",
+        "optionName": "Vladimir Cerrón",
+        "question": "Will Vladimir Cerrón finish in fourth place in the first round of the 2026 Peruvian presidential election?",
+        "description": "First-round presidential elections are scheduled to be held in Peru on April 12, 2026, with a potential second round on June 7, 2026, if no candidate receives more than 50% of the valid votes outright.\nThis market will resolve according to the listed candidate who receives the fourth-most valid votes in the first round of this election.\nThe named candidates will be primarily ranked by the number of valid votes received in the specified election. If two or more candidates are tied on valid votes, ties will be broken by alphabetical order of the candidates' last names. This market will resolve to the candidate that occupies the fourth-highest finishing position after applying this ranking.\nIf the results are not known definitively by October 31, 2026, 11:59 PM ET, this market will resolve to \"Other\".\nThis market will resolve based on the results of this election, as indicated by a consensus of credible reporting. If there is ambiguity, this market will resolve solely on the official results as reported by the Peruvian government, specifically the National Office of Electoral Processes (Oficina Nacional de Procesos Electorales, ONPE) (https://www.onpe.gob.pe/elecciones/) and the National Jury of Elections (Jurado Nacional de Elecciones, JNE) (https://portal.jne.gob.pe/portal/)",
+        "endTime": 1777219389,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/peru-presidential-election-first-round-4th-place#will-vladimir-cerrn-finish-in-fourth-place-in-the-first-round-of-the-2026-peruvian-presidential-election"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x5951bc8b879e742cd41bdfc1f7a5536811bf7a9c58de021395c796798340285b",
+        "shortName": "Will César Acuña finish in fourth place in the first round of the 2026 Peruvian presidential election?",
+        "optionName": "César Acuña",
+        "question": "Will César Acuña finish in fourth place in the first round of the 2026 Peruvian presidential election?",
+        "description": "First-round presidential elections are scheduled to be held in Peru on April 12, 2026, with a potential second round on June 7, 2026, if no candidate receives more than 50% of the valid votes outright.\nThis market will resolve according to the listed candidate who receives the fourth-most valid votes in the first round of this election.\nThe named candidates will be primarily ranked by the number of valid votes received in the specified election. If two or more candidates are tied on valid votes, ties will be broken by alphabetical order of the candidates' last names. This market will resolve to the candidate that occupies the fourth-highest finishing position after applying this ranking.\nIf the results are not known definitively by October 31, 2026, 11:59 PM ET, this market will resolve to \"Other\".\nThis market will resolve based on the results of this election, as indicated by a consensus of credible reporting. If there is ambiguity, this market will resolve solely on the official results as reported by the Peruvian government, specifically the National Office of Electoral Processes (Oficina Nacional de Procesos Electorales, ONPE) (https://www.onpe.gob.pe/elecciones/) and the National Jury of Elections (Jurado Nacional de Elecciones, JNE) (https://portal.jne.gob.pe/portal/)",
+        "endTime": 1777219389,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/peru-presidential-election-first-round-4th-place#will-csar-acua-finish-in-fourth-place-in-the-first-round-of-the-2026-peruvian-presidential-election"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x34513d1737443a4487536227bb36aedcc5ac32fd8226c55537169a4a28e167f9",
+        "shortName": "Will Fernando Olivera finish in fourth place in the first round of the 2026 Peruvian presidential election?",
+        "optionName": "Fernando Olivera",
+        "question": "Will Fernando Olivera finish in fourth place in the first round of the 2026 Peruvian presidential election?",
+        "description": "First-round presidential elections are scheduled to be held in Peru on April 12, 2026, with a potential second round on June 7, 2026, if no candidate receives more than 50% of the valid votes outright.\nThis market will resolve according to the listed candidate who receives the fourth-most valid votes in the first round of this election.\nThe named candidates will be primarily ranked by the number of valid votes received in the specified election. If two or more candidates are tied on valid votes, ties will be broken by alphabetical order of the candidates' last names. This market will resolve to the candidate that occupies the fourth-highest finishing position after applying this ranking.\nIf the results are not known definitively by October 31, 2026, 11:59 PM ET, this market will resolve to \"Other\".\nThis market will resolve based on the results of this election, as indicated by a consensus of credible reporting. If there is ambiguity, this market will resolve solely on the official results as reported by the Peruvian government, specifically the National Office of Electoral Processes (Oficina Nacional de Procesos Electorales, ONPE) (https://www.onpe.gob.pe/elecciones/) and the National Jury of Elections (Jurado Nacional de Elecciones, JNE) (https://portal.jne.gob.pe/portal/)",
+        "endTime": 1777219389,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/peru-presidential-election-first-round-4th-place#will-fernando-olivera-finish-in-fourth-place-in-the-first-round-of-the-2026-peruvian-presidential-election"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x8d0e1877a90ae8a8a82d58802eed21bc5b74554fde0e4ef240a8409b6f143262",
+        "shortName": "Will Rafael Belaúnde Llosa finish in fourth place in the first round of the 2026 Peruvian presidential election?",
+        "optionName": "Rafael Belaúnde Llosa",
+        "question": "Will Rafael Belaúnde Llosa finish in fourth place in the first round of the 2026 Peruvian presidential election?",
+        "description": "First-round presidential elections are scheduled to be held in Peru on April 12, 2026, with a potential second round on June 7, 2026, if no candidate receives more than 50% of the valid votes outright.\nThis market will resolve according to the listed candidate who receives the fourth-most valid votes in the first round of this election.\nThe named candidates will be primarily ranked by the number of valid votes received in the specified election. If two or more candidates are tied on valid votes, ties will be broken by alphabetical order of the candidates' last names. This market will resolve to the candidate that occupies the fourth-highest finishing position after applying this ranking.\nIf the results are not known definitively by October 31, 2026, 11:59 PM ET, this market will resolve to \"Other\".\nThis market will resolve based on the results of this election, as indicated by a consensus of credible reporting. If there is ambiguity, this market will resolve solely on the official results as reported by the Peruvian government, specifically the National Office of Electoral Processes (Oficina Nacional de Procesos Electorales, ONPE) (https://www.onpe.gob.pe/elecciones/) and the National Jury of Elections (Jurado Nacional de Elecciones, JNE) (https://portal.jne.gob.pe/portal/)",
+        "endTime": 1777219389,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/peru-presidential-election-first-round-4th-place#will-rafael-belande-llosa-finish-in-fourth-place-in-the-first-round-of-the-2026-peruvian-presidential-election"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "geopolitics"
+        }
+      },
+      {
+        "id": "0x19ca4ddc70fa3dcf19975353712cab42f7000b5e8ac7ab408d53d0000cbf60e7",
+        "shortName": "Will Mistral have the best Math AI model at the end of April 2026?",
+        "optionName": "Mistral",
+        "question": "Will Mistral have the best Math AI model at the end of April 2026?",
+        "description": "This market will resolve according to the company that owns the model that has the highest arena score based on the Chatbot Arena LLM Leaderboard (https://lmarena.ai/) when the table under the \"Leaderboard\" tab for \"Math\" is checked on April 30, 2026, 12:00 PM ET.\nResults from the \"Score\" column under the \"Text Arena | Math\" Leaderboard tab at https://arena.ai/leaderboard/text/math-no-style-control with style control off will be used to resolve this market.\nModels will be ranked primarily by their arena score at this market’s check time, with alphabetical order of company names as listed in this market group used as a tiebreaker (e.g., if the two models are tied by arena score, “Google” would be ranked ahead of “xAI”). This market will resolve based on the company that occupies first place under this ranking.\nThe resolution source for this market is the Chatbot Arena LLM Leaderboard found at https://lmarena.ai/. If this resolution source is unavailable at check time, this market will remain open until the leaderboard comes back online and will resolve based on the first check after it becomes available. If it becomes permanently unavailable, this market will resolve based on another resolution source.",
+        "endTime": 1777607940,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/which-company-has-the-best-math-ai-model-end-of-april#will-mistral-have-the-best-math-ai-model-at-the-end-of-april-2026"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0005,
+        "category": {
+          "slug": "tech-science"
+        }
+      },
+      {
+        "id": "0xd0ac98919f46d8b4074d8667316c17b03cfe77bdb2d5c182b782242267d23fb4",
+        "shortName": "Anthony Edwards: Rebounds O/U 5.5",
+        "optionName": "Anthony Edwards: Rebounds O/U 5.5",
+        "question": "Anthony Edwards: Rebounds O/U 5.5",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Anthony Edwards records more than 5.5 total rebounds during the game.\nThis market will resolve to \"No\" if Anthony Edwards records 5.5 rebounds or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "endTime": 1777019400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-rebounds-anthony-edwards-5pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.51,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x0f17bd063cb25a31d532e36f8b5e2810f9f820150ff91f22aa21640f0a172536",
+        "shortName": "NYK/ATL O215.5",
+        "optionName": "O/U 215.5",
+        "question": "Will Knicks vs Hawks total be over 215.5?",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 7:00 PM ET:\nThis market will resolve to \"Over\" if the Knicks and Hawks combine to score 216 or more points in this game.\nIf the combined total is less than 216, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+        "endTime": 1777010400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-nyk-atl-2026-04-23#nba-nyk-atl-2026-04-23-total-215pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.475,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x22e68b0962783ada2f29abb6f7c15edcbc464d3fd103c322b8d2d2eaa803565a",
+        "shortName": "Will Google (GOOGL) close above $220 end of April?",
+        "optionName": "$220",
+        "question": "Will Google (GOOGL) close above $220 end of April?",
+        "description": "This market will resolve to \"Yes\" if the official closing price for Alphabet Inc. (GOOGL) on the final trading day of April 2026 is higher than the listed price. Otherwise, this market will resolve to \"No\".\nIf the final trading day of the month is shortened (for example, due to a market-holiday schedule), the official closing price published for that shortened session will still be used for resolution.\nIf no official closing price is published for that session (for example, due to a trading halt into the close, system issue, or other disruption), the market will use the last valid on-exchange trade price of the regular session as the effective closing price.\nThe resolution source for this market is Yahoo Finance — specifically, the Alphabet Inc. (GOOGL) \"Close\" prices available at https://finance.yahoo.com/quote/GOOGL/history, published under \"Historical Prices.\"\nIn the event of a stock split, reverse stock split, or similar corporate action affecting the listed company during the listed time frame, this market will resolve based on split-adjusted prices as displayed on Yahoo Finance.",
+        "endTime": 1777593600,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/googl-above-in-april-2026#googl-above-220-on-april-30-2026"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.9955,
+        "category": {
+          "slug": "tech-science"
+        }
+      },
+      {
+        "id": "0xe5ed51f8e51624c4f2ecaec6ae8916ff32015d5c4ffdd6570e7820c19cd6a4cd",
+        "shortName": "CLE -2.5",
+        "optionName": "Spread -2.5",
+        "question": "Cavaliers covers -2.5 spread vs Raptors?",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Cavaliers\" if the Cavaliers win the game by 3 or more points.\nOtherwise, this market will resolve to \"Raptors\". If the game ends in a tie, this market will resolve to \"Raptors\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+        "endTime": 1777014000,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-spread-away-2pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.505,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xfb5aee4addf1d0704f793bb84a8ff3404a28fd3f89487720193d3d31720f7bea",
+        "shortName": "DEN/MIN O233.5",
+        "optionName": "O/U 233.5",
+        "question": "Will Nuggets vs Timberwolves total be over 233.5?",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Over\" if the Nuggets and Timberwolves combine to score 234 or more points in this game.\nIf the combined total is less than 234, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+        "endTime": 1777019400,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-total-233pt5"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.465,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0x990ca0d31c1bdbef2473c507af4f2856bd5187313a07ebd58f1f828ae2b1bd5f",
+        "shortName": "Will Caleb Downs be the third pick in the 2026 NFL draft?",
+        "optionName": "Caleb Downs",
+        "question": "Will Caleb Downs be the third pick in the 2026 NFL draft?",
+        "description": "This market will resolve according to the listed player who is drafted third overall in the 2026 NFL Draft.\nIf the 2026 NFL Draft is canceled or the third overall pick is not definitively known by July 30, 2026, 11:59 PM ET, this market will resolve to \"Other\".\nThe resolution source for this market will be official information from the NFL; however, a consensus of credible reporting may also be used.",
+        "endTime": 1777186962,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/2026-pro-football-draft-3rd-overall-pick#will-caleb-downs-be-the-third-pick-in-the-2026-nfl-draft"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.0065,
+        "category": {
+          "slug": "sports"
+        }
+      },
+      {
+        "id": "0xe9cde4bf7fa69dd5832fef13a2e6a0c6ebd322e4a1658b8a5f8c41c05494528a",
+        "shortName": "CLE win vs TOR",
+        "optionName": null,
+        "question": "Cavaliers beats Raptors?",
+        "description": "In the upcoming NBA game, scheduled for April 26 at 1:00PM ET:\nIf the Cavaliers win, the market will resolve to \"Cavaliers\".\nIf the Raptors win, the market will resolve to \"Raptors\".\nIf the game is postponed, this market will remain open until the game has been completed.\nIf the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nThe result will be determined based on the final score including any overtime periods.",
+        "endTime": 1777248000,
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "similarMarkets": [
+          "https://polymarket.com/event/nba-cle-tor-2026-04-26#nba-cle-tor-2026-04-26"
+        ],
+        "settled": false,
+        "resolvedToYes": false,
+        "nonDecisive": false,
+        "estimatedPrice": 0.61,
+        "category": {
+          "slug": "sports"
+        }
       }
-    },
-    {
-      "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069cbdb7300000000000000000000000000000000000000000000000000000623967b20e0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
-      "shortName": "BTC OVER $67,499.1827376",
-      "optionName": null,
-      "question": "Crypto.BTC/USD OVER $67,499.1827376",
-      "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $67,499.1827376 at settlement (Tue, 31 Mar 2026 14:34:27 GMT), YES wins. If the price is exactly $67,499.1827376 at settlement, OVER wins.",
-      "endTime": 1774967667,
-      "resolver": "0x27a95ab8982eacf4ec3d4bccabb3630c72fd7e1b",
-      "similarMarkets": [],
-      "settled": false,
-      "resolvedToYes": false,
-      "nonDecisive": false,
-      "estimatedPrice": null,
-      "category": {
-        "slug": "prices-crypto"
-      }
-    },
-    {
-      "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069cbde140000000000000000000000000000000000000000000000000000061a0e4d80abfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
-      "shortName": "BTC OVER $67,089.78876587",
-      "optionName": null,
-      "question": "Crypto.BTC/USD OVER $67,089.78876587",
-      "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $67,089.78876587 at settlement (Tue, 31 Mar 2026 14:45:40 GMT), YES wins. If the price is exactly $67,089.78876587 at settlement, OVER wins.",
-      "endTime": 1774968340,
-      "resolver": "0x27a95ab8982eacf4ec3d4bccabb3630c72fd7e1b",
-      "similarMarkets": [],
-      "settled": false,
-      "resolvedToYes": false,
-      "nonDecisive": false,
-      "estimatedPrice": null,
-      "category": {
-        "slug": "prices-crypto"
-      }
-    }
-  ]
+    ]
+  }
 }

@@ -5,7 +5,9 @@
  * `makeExecutableSchema` expects:
  *
  *  - Query root — every root field from queries/*.ts flattened into
- *    one map.
+ *    one map. Deprecated query fields live in `queries/deprecated/`
+ *    and are imported separately so they're easy to remove once
+ *    consumers migrate off them.
  *  - Per-type field resolvers — one entry per Prisma-backed GraphQL
  *    type that has relation fields requiring a custom resolver
  *    (Category, Condition, ConditionGroup, etc.).
@@ -32,7 +34,7 @@ import { Pick } from './Pick';
 import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
-import { accountActivity, accountActivityPage } from './queries/activity';
+import { accountActivityPage } from './queries/activity';
 import {
   openInterestByCategory,
   openInterestByTimeToResolution,
@@ -41,47 +43,26 @@ import {
 import {
   collateralBalance,
   collateralBalanceHistory,
-  collateralTransfers,
   collateralTransfersPage,
 } from './queries/collateralBalance';
-import { conditions, conditionsPage } from './queries/conditions';
+import { conditionsPage } from './queries/conditions';
 import {
-  attestations,
   attestationsPage,
-  categories,
   categoriesPage,
   condition,
-  conditionGroup,
-  conditionGroups,
   user,
-  users,
 } from './queries/crud';
 import {
-  claims,
-  closes,
-  pickConfiguration,
-  pickConfigurations,
   pickConfigurationsPage,
   positionCount,
-  positions,
   positionsPage,
   prediction,
   predictionCount,
-  predictions,
   predictionsPage,
 } from './queries/escrow';
-import {
-  accountProfitRank,
-  profitLeaderboard,
-  profitLeaderboardPage,
-} from './queries/pnl';
-import { questions, questionsPage } from './queries/questions';
-import {
-  accountAccuracy,
-  accountAccuracyRank,
-  accuracyLeaderboard,
-  accuracyLeaderboardPage,
-} from './queries/score';
+import { profitLeaderboardPage } from './queries/pnl';
+import { questionsPage } from './queries/questions';
+import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
 import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import {
@@ -89,30 +70,53 @@ import {
   accountPnl,
   accountPredictionCount,
   accountVolume,
-  protocolVolume,
 } from './queries/timeSeries';
-import { trade, tradeCount, trades, tradesPage } from './queries/trade';
+import { trade, tradesPage } from './queries/trade';
 import { accountTotalVolume } from './queries/volume';
+
+// Deprecated query resolvers — see `queries/deprecated/` for context.
+// Grouped here so the call sites are obvious when it's time to delete
+// them.
+import { accountActivity } from './queries/deprecated/activity';
+import { collateralTransfers } from './queries/deprecated/collateralBalance';
+import { conditions } from './queries/deprecated/conditions';
+import {
+  attestations,
+  categories,
+  conditionGroup,
+  conditionGroups,
+  users,
+} from './queries/deprecated/crud';
+import {
+  claims,
+  closes,
+  pickConfiguration,
+  pickConfigurations,
+  positions,
+  predictions,
+} from './queries/deprecated/escrow';
+import { accountProfitRank, profitLeaderboard } from './queries/deprecated/pnl';
+import { questions } from './queries/deprecated/questions';
+import {
+  accountAccuracy,
+  accuracyLeaderboard,
+} from './queries/deprecated/score';
+import { protocolVolume } from './queries/deprecated/timeSeries';
+import { tradeCount, trades } from './queries/deprecated/trade';
 
 export const resolvers: Resolvers = {
   ...scalarResolvers,
   Query: {
     // Leaderboards / account scores
-    accountAccuracy,
     accountAccuracyRank,
-    accuracyLeaderboard,
     accuracyLeaderboardPage,
-    accountProfitRank,
-    profitLeaderboard,
     profitLeaderboardPage,
     // Time series
     accountBalance,
     accountPnl,
     accountPredictionCount,
     accountVolume,
-    protocolVolume,
     // Activity + unified feeds
-    accountActivity,
     accountActivityPage,
     // Analytics
     openInterestByCategory,
@@ -122,44 +126,51 @@ export const resolvers: Resolvers = {
     accountTotalVolume,
     collateralBalance,
     collateralBalanceHistory,
-    collateralTransfers,
     collateralTransfersPage,
     // Conditions / questions
-    conditions,
     conditionsPage,
-    questions,
     questionsPage,
-    // Escrow (predictions / positions / claims / closes / pick configs)
-    claims,
-    closes,
-    pickConfiguration,
-    pickConfigurations,
+    // Escrow (predictions / positions / pick configs)
     pickConfigurationsPage,
     positionCount,
-    positions,
     positionsPage,
     prediction,
     predictionCount,
-    predictions,
     predictionsPage,
     // Secondary market trades
     trade,
-    tradeCount,
-    trades,
     tradesPage,
     // Referrals
     referralCodes,
     // Tags
     popularTags,
-    // CRUD passthroughs
-    attestations,
+    // CRUD
     attestationsPage,
-    categories,
     categoriesPage,
     condition,
+    user,
+    // Deprecated — migrate consumers, then delete
+    accountAccuracy,
+    accountActivity,
+    accountProfitRank,
+    accuracyLeaderboard,
+    attestations,
+    categories,
+    claims,
+    closes,
+    collateralTransfers,
     conditionGroup,
     conditionGroups,
-    user,
+    conditions,
+    pickConfiguration,
+    pickConfigurations,
+    positions,
+    predictions,
+    profitLeaderboard,
+    protocolVolume,
+    questions,
+    tradeCount,
+    trades,
     users,
   },
   Attestation,

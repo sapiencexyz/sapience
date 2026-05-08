@@ -21,7 +21,7 @@ import { preloadPickConditions } from '../preloadPickConditions';
 
 const MAX_SKIP = 500;
 
-const runAccountActivity = async (
+export const runAccountActivity = async (
   {
     address,
     take,
@@ -247,13 +247,6 @@ const runAccountActivity = async (
     items: items.slice(cappedSkip, cappedSkip + cappedTake),
     hasMore,
   };
-};
-
-export const accountActivity: NonNullable<
-  QueryResolvers['accountActivity']
-> = async (_parent, args, ctx) => {
-  const { items } = await runAccountActivity(args, ctx);
-  return items;
 };
 
 export const accountActivityPage: NonNullable<

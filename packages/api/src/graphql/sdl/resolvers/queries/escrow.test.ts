@@ -13,7 +13,8 @@ import type {
   QueryPositionsArgs,
   QueryPositionCountArgs,
 } from '../../__generated__/resolvers';
-import { positions, positionCount, positionsPage } from './escrow';
+import { positionCount, positionsPage } from './escrow';
+import { positions } from './deprecated/escrow';
 
 // Resolvers in the generated module are typed as the
 // `ResolverFn | ResolverWithResolve` union, which TypeScript can't narrow
