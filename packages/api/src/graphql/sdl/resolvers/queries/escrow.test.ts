@@ -4,6 +4,8 @@ const mockPrisma = vi.hoisted(() => ({
   position: { findMany: vi.fn(), count: vi.fn() },
   secondaryTrade: { findMany: vi.fn() },
   pick: { findMany: vi.fn() },
+  picks: { findMany: vi.fn() },
+  prediction: { findUnique: vi.fn() },
   $queryRaw: vi.fn(),
 }));
 
@@ -13,27 +15,31 @@ import type {
   QueryPositionsArgs,
   QueryPositionCountArgs,
 } from '../../__generated__/resolvers';
-import { positionCount, positionsPage } from './escrow';
-import { positions } from './deprecated/escrow';
+import {
+  pickConfigurationsPage,
+  positionCount,
+  positionsPage,
+  prediction,
+} from './escrow';
 
 // Resolvers in the generated module are typed as the
 // `ResolverFn | ResolverWithResolve` union, which TypeScript can't narrow
 // to a callable from outside Apollo. The implementations are plain async
 // functions, so we cast to the function shape for direct invocation in
 // tests.
-type PositionsFn = (
+type PositionsPageFn = (
   parent: unknown,
   args: QueryPositionsArgs,
   ctx: unknown,
   info: unknown
-) => Promise<unknown[]>;
+) => Promise<{ items: unknown[]; hasMore: boolean }>;
 type PositionCountFn = (
   parent: unknown,
   args: QueryPositionCountArgs,
   ctx: unknown,
   info: unknown
 ) => Promise<number>;
-const positionsFn = positions as unknown as PositionsFn;
+const positionsPageFn = positionsPage as unknown as PositionsPageFn;
 const positionCountFn = positionCount as unknown as PositionCountFn;
 
 const ALICE = '0xalice';
@@ -145,15 +151,19 @@ type PositionRowShape = {
   totalPayout: string | null;
 };
 
-const callPositions = (
+// Wrap positionsPage so the existing assertions (which check the row
+// array directly) keep working — the synthetic-row + WAC logic is the
+// same regardless of which Page/non-Page entry point is used.
+const callPositions = async (
   args: Partial<QueryPositionsArgs> = {}
 ): Promise<PositionRowShape[]> => {
-  return positionsFn(
+  const result = await positionsPageFn(
     undefined,
     { take: 50, skip: 0, holder: ALICE, ...args },
     undefined,
     undefined
-  ) as Promise<PositionRowShape[]>;
+  );
+  return result.items as PositionRowShape[];
 };
 
 beforeEach(() => {
@@ -521,15 +531,7 @@ describe('positions resolver — query shape', () => {
   });
 });
 
-describe('positionsPage resolver', () => {
-  type PositionsPageFn = (
-    parent: unknown,
-    args: QueryPositionsArgs,
-    ctx: unknown,
-    info: unknown
-  ) => Promise<{ items: unknown[]; hasMore: boolean }>;
-  const positionsPageFn = positionsPage as unknown as PositionsPageFn;
-
+describe('positionsPage resolver — page envelope', () => {
   const callPositionsPage = (args: Partial<QueryPositionsArgs> = {}) =>
     positionsPageFn(
       undefined,
@@ -610,5 +612,154 @@ describe('positionCount resolver', () => {
       holder: ALICE.toLowerCase(),
       NOT: { balance: '0', pickConfiguration: { resolved: false } },
     });
+  });
+});
+
+describe('prediction (single) resolver', () => {
+  type PredictionFn = (
+    parent: unknown,
+    args: { id: string },
+    ctx: unknown,
+    info: unknown
+  ) => Promise<unknown>;
+  const predictionFn = prediction as unknown as PredictionFn;
+
+  it('lower-cases the predictionId before lookup', async () => {
+    mockPrisma.prediction.findUnique.mockResolvedValue(null);
+    await predictionFn(undefined, { id: '0xABC' }, undefined, undefined);
+    const args = mockPrisma.prediction.findUnique.mock.calls[0][0];
+    expect(args.where).toEqual({ predictionId: '0xabc' });
+  });
+
+  it('returns null when not found', async () => {
+    mockPrisma.prediction.findUnique.mockResolvedValue(null);
+    const result = await predictionFn(
+      undefined,
+      { id: '0xmissing' },
+      undefined,
+      undefined
+    );
+    expect(result).toBeNull();
+  });
+
+  it('includes the pickConfiguration with picks for relation field resolvers', async () => {
+    mockPrisma.prediction.findUnique.mockResolvedValue(null);
+    await predictionFn(undefined, { id: 'p-1' }, undefined, undefined);
+    const args = mockPrisma.prediction.findUnique.mock.calls[0][0];
+    expect(args.include).toEqual({
+      pickConfiguration: { include: { picks: true } },
+    });
+  });
+});
+
+describe('pickConfigurationsPage resolver', () => {
+  type PickConfigurationsPageFn = (
+    parent: unknown,
+    args: Record<string, unknown>,
+    ctx: unknown,
+    info: unknown
+  ) => Promise<{ items: unknown[]; hasMore: boolean }>;
+  const pickConfigurationsPageFn =
+    pickConfigurationsPage as unknown as PickConfigurationsPageFn;
+
+  beforeEach(() => {
+    mockPrisma.picks.findMany.mockResolvedValue([]);
+  });
+
+  it('caps take at 100 and fetches take + 1 to detect hasMore', async () => {
+    await pickConfigurationsPageFn(
+      undefined,
+      { take: 9999, skip: 0 },
+      undefined,
+      undefined
+    );
+    const args = mockPrisma.picks.findMany.mock.calls[0][0];
+    expect(args.take).toBe(101);
+    expect(args.skip).toBe(0);
+  });
+
+  it('passes chainId, resolved, and result filters through to where', async () => {
+    await pickConfigurationsPageFn(
+      undefined,
+      {
+        take: 10,
+        skip: 0,
+        chainId: 8453,
+        resolved: true,
+        result: 'PREDICTOR_WINS',
+      },
+      undefined,
+      undefined
+    );
+    const where = mockPrisma.picks.findMany.mock.calls[0][0].where;
+    expect(where).toMatchObject({
+      chainId: 8453,
+      resolved: true,
+      result: 'PREDICTOR_WINS',
+    });
+  });
+
+  it('lower-cases tokens and matches either predictorToken or counterpartyToken', async () => {
+    await pickConfigurationsPageFn(
+      undefined,
+      { take: 10, skip: 0, tokens: ['0xAAA', '0xBBB'] },
+      undefined,
+      undefined
+    );
+    const where = mockPrisma.picks.findMany.mock.calls[0][0].where;
+    expect(where.OR).toEqual([
+      { predictorToken: { in: ['0xaaa', '0xbbb'] } },
+      { counterpartyToken: { in: ['0xaaa', '0xbbb'] } },
+    ]);
+  });
+
+  it('rejects oversized tokens filter (>100) to prevent runaway IN lists', async () => {
+    const tooMany = Array.from({ length: 101 }, (_, i) => `0x${i}`);
+    await expect(
+      pickConfigurationsPageFn(
+        undefined,
+        { take: 10, skip: 0, tokens: tooMany },
+        undefined,
+        undefined
+      )
+    ).rejects.toThrow(/limited to 100/);
+  });
+
+  it('hasMore=true when probe row is returned', async () => {
+    const eleven = Array.from({ length: 11 }, (_, i) =>
+      makePickConfig({ id: `pc-${i}` })
+    );
+    mockPrisma.picks.findMany.mockResolvedValue(eleven);
+    const result = await pickConfigurationsPageFn(
+      undefined,
+      { take: 10, skip: 0 },
+      undefined,
+      undefined
+    );
+    expect(result.hasMore).toBe(true);
+    expect(result.items).toHaveLength(10);
+  });
+
+  it('hasMore=false when fewer than take + 1 rows', async () => {
+    mockPrisma.picks.findMany.mockResolvedValue([makePickConfig()]);
+    const result = await pickConfigurationsPageFn(
+      undefined,
+      { take: 10, skip: 0 },
+      undefined,
+      undefined
+    );
+    expect(result.hasMore).toBe(false);
+    expect(result.items).toHaveLength(1);
+  });
+
+  it('orders by createdAt desc (newest first)', async () => {
+    await pickConfigurationsPageFn(
+      undefined,
+      { take: 10, skip: 0 },
+      undefined,
+      undefined
+    );
+    const args = mockPrisma.picks.findMany.mock.calls[0][0];
+    expect(args.orderBy).toEqual({ createdAt: 'desc' });
   });
 });

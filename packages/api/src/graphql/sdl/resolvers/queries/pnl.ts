@@ -26,6 +26,9 @@ const leaderboardCache = new TtlCache<string, LeaderboardEntry[]>({
 /** Key includes version suffix so old caches invalidate across deploys. */
 const CACHE_KEY = 'profitLeaderboard:v5';
 
+/** Test-only: clear the leaderboard cache between cases. */
+export const __clearProfitLeaderboardCache = () => leaderboardCache.clear();
+
 export const getFullLeaderboard = async (): Promise<LeaderboardEntry[]> => {
   const existing = leaderboardCache.get(CACHE_KEY);
   if (existing) return existing;

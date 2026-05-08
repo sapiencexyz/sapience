@@ -21,6 +21,9 @@ const leaderboardCache = new TtlCache<
   { attester: string; accuracyScore: number }[]
 >({ ttlMs: 60_000, maxSize: 1 });
 
+/** Test-only: clear the leaderboard cache between cases. */
+export const __clearAccuracyLeaderboardCache = () => leaderboardCache.clear();
+
 const getLeaderboardScores = async (): Promise<
   { attester: string; accuracyScore: number }[]
 > => {
