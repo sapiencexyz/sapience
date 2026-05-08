@@ -14272,7 +14272,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total Position rows matching the filters. Populated eagerly.",
+            "description": "Total Position rows matching the filters. Computed lazily — the count\nquery only fires when this field is selected in the operation, so\npagination requests that don't need a total don't pay for one.",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -14818,7 +14818,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total Prediction rows matching the filters. Populated eagerly.",
+            "description": "Total Prediction rows matching the filters. Computed lazily — the\ncount query only fires when this field is selected in the operation.",
             "args": [],
             "type": {
               "kind": "SCALAR",

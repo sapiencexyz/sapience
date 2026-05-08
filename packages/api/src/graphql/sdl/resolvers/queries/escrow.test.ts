@@ -32,7 +32,12 @@ type PositionsPageFn = (
   args: QueryPositionsArgs,
   ctx: unknown,
   info: unknown
-) => Promise<{ items: unknown[]; hasMore: boolean; totalCount: number }>;
+) => Promise<{
+  items: unknown[];
+  hasMore: boolean;
+  totalCount: number | null;
+  _countWhere?: unknown;
+}>;
 type PositionCountFn = (
   parent: unknown,
   args: QueryPositionCountArgs,
@@ -169,9 +174,10 @@ const callPositions = async (
 beforeEach(() => {
   vi.clearAllMocks();
   mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
-  // The count call runs in parallel with findMany; default to a sensible
-  // sentinel so individual tests don't have to set it up. Tests that care
-  // about totalCount override this explicitly.
+  // totalCount is now lazy — runPositions returns `_countWhere` and the
+  // PositionsPage.totalCount field resolver issues the count query only
+  // when the field is actually selected. The default mock here just
+  // covers tests that do exercise the totalCount path.
   mockPrisma.position.count.mockResolvedValue(0);
 });
 
@@ -598,17 +604,18 @@ describe('positionsPage resolver — page envelope', () => {
     expect(result.hasMore).toBe(true);
   });
 
-  it('totalCount comes from a parallel prisma.position.count using the same where clause', async () => {
+  it('runPositions does not issue a count query — totalCount is lazy', async () => {
     mockPrisma.position.findMany.mockResolvedValue([]);
-    mockPrisma.position.count.mockResolvedValue(127);
 
     const result = await callPositionsPage({ take: 10, holder: ALICE });
 
-    expect(result.totalCount).toBe(127);
-    expect(mockPrisma.position.count).toHaveBeenCalledTimes(1);
-    const countWhere = mockPrisma.position.count.mock.calls[0][0].where;
+    // The envelope carries `_countWhere` matching the findMany where, but
+    // the count query itself is deferred to the PositionsPage.totalCount
+    // field resolver (which only runs when the client selects totalCount).
+    expect(result.totalCount).toBeNull();
+    expect(mockPrisma.position.count).not.toHaveBeenCalled();
     const findManyWhere = mockPrisma.position.findMany.mock.calls[0][0].where;
-    expect(countWhere).toEqual(findManyWhere);
+    expect(result._countWhere).toEqual(findManyWhere);
   });
 });
 

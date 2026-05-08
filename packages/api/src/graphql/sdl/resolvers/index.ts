@@ -31,6 +31,8 @@ import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
+import { PositionsPage } from './PositionsPage';
+import { PredictionsPage } from './PredictionsPage';
 import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
@@ -182,6 +184,8 @@ export const resolvers: Resolvers = {
   LegacyPrediction,
   LimitOrder,
   Pick,
+  PositionsPage,
+  PredictionsPage,
   ReferralCode,
   User,
 };

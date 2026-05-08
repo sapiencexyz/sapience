@@ -1629,7 +1629,11 @@ export type PositionsPage = Page & {
   __typename?: 'PositionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Position>;
-  /** Total Position rows matching the filters. Populated eagerly. */
+  /**
+   * Total Position rows matching the filters. Computed lazily — the count
+   * query only fires when this field is selected in the operation, so
+   * pagination requests that don't need a total don't pay for one.
+   */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1688,7 +1692,10 @@ export type PredictionsPage = Page & {
   __typename?: 'PredictionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Prediction>;
-  /** Total Prediction rows matching the filters. Populated eagerly. */
+  /**
+   * Total Prediction rows matching the filters. Computed lazily — the
+   * count query only fires when this field is selected in the operation.
+   */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 

@@ -92,6 +92,25 @@ export const positionCount: NonNullable<
   return prisma.position.count({ where });
 };
 
+export type PredictionsPageEnvelope = {
+  items: ResolversParentTypes['Prediction'][];
+  hasMore: boolean;
+  /**
+   * Eagerly populated only on early-return paths where the count is
+   * already known (empty pickConfigIds → 0). On the normal path, this
+   * is null and `_countWhere` carries the filter for the lazy
+   * PredictionsPage.totalCount field resolver.
+   */
+  totalCount: number | null;
+  /**
+   * Lazy count input — used by the PredictionsPage.totalCount field
+   * resolver to issue `prisma.prediction.count({ where })` only when
+   * the client actually selects totalCount. Avoids paying for a count
+   * query on every page request.
+   */
+  _countWhere?: Prisma.PredictionWhereInput;
+};
+
 export const runPredictions = async (
   {
     take,
@@ -105,11 +124,7 @@ export const runPredictions = async (
     orderDirection,
   }: QueryPredictionsArgs,
   ctx: ApolloContext | undefined
-): Promise<{
-  items: ResolversParentTypes['Prediction'][];
-  hasMore: boolean;
-  totalCount: number;
-}> => {
+): Promise<PredictionsPageEnvelope> => {
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
   const addr = address?.toLowerCase();
@@ -145,23 +160,25 @@ export const runPredictions = async (
     orderByClause = { settledAt: direction };
   }
 
-  const [rawRows, totalCount] = await Promise.all([
-    prisma.prediction.findMany({
-      where,
-      orderBy: orderByClause,
-      take: cappedTake + 1,
-      skip: skipVal,
-      include: { pickConfiguration: { include: { picks: true } } },
-    }),
-    prisma.prediction.count({ where }),
-  ]);
+  const rawRows = await prisma.prediction.findMany({
+    where,
+    orderBy: orderByClause,
+    take: cappedTake + 1,
+    skip: skipVal,
+    include: { pickConfiguration: { include: { picks: true } } },
+  });
   const hasMore = rawRows.length > cappedTake;
   const rows = rawRows.slice(0, cappedTake);
   await preloadPickConditions(
     ctx,
     rows.map((r) => r.pickConfiguration)
   );
-  return { items: rows.map(mapPrediction), hasMore, totalCount };
+  return {
+    items: rows.map(mapPrediction),
+    hasMore,
+    totalCount: null,
+    _countWhere: where,
+  };
 };
 
 export const predictionsPage: NonNullable<
@@ -250,6 +267,13 @@ type PositionShape = ResolversParentTypes['Position'] & {
   pickConfig: ReturnType<typeof mapPickConfig> | null;
 };
 
+export type PositionsPageEnvelope = {
+  items: PositionShape[];
+  hasMore: boolean;
+  totalCount: number | null;
+  _countWhere?: Prisma.PositionWhereInput;
+};
+
 export const runPositions = async (
   {
     holder,
@@ -269,11 +293,7 @@ export const runPositions = async (
     orderDirection,
   }: QueryPositionsArgs,
   ctx: ApolloContext | undefined
-): Promise<{
-  items: PositionShape[];
-  hasMore: boolean;
-  totalCount: number;
-}> => {
+): Promise<PositionsPageEnvelope> => {
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
   const holderLower = holder?.toLowerCase();
@@ -423,26 +443,27 @@ export const runPositions = async (
     : true;
 
   // Fetch take+1 to detect a `hasMore`-style next page without a count
-  // query for pagination. The separate count query backs `totalCount` so
-  // clients can show a total without an extra round trip.
-  // Synthesized event-stream rows from raw positions can be empty
-  // (zero-balance unresolved with no sells), so client-side
-  // `lastPage.length === 0` is unreliable as a stop signal — we need
-  // server-truth pagination.
-  const [rawRows, totalCount] = await Promise.all([
-    prisma.position.findMany({
-      where,
-      orderBy: orderByClause,
-      take: cappedTake + 1,
-      skip: skipVal,
-      include: {
-        pickConfiguration: {
-          include: { picks: true, predictions: predictionsInclude },
-        },
+  // query for pagination. Synthesized event-stream rows from raw
+  // positions can be empty (zero-balance unresolved with no sells), so
+  // client-side `lastPage.length === 0` is unreliable as a stop signal
+  // — we need server-truth pagination.
+  //
+  // `totalCount` is left null here; the PositionsPage.totalCount field
+  // resolver lazily issues `prisma.position.count({ where })` only when
+  // the client actually selects the field. The deprecated `positions`
+  // wrapper discards totalCount entirely, so it now skips the count
+  // query for free.
+  const rawRows = await prisma.position.findMany({
+    where,
+    orderBy: orderByClause,
+    take: cappedTake + 1,
+    skip: skipVal,
+    include: {
+      pickConfiguration: {
+        include: { picks: true, predictions: predictionsInclude },
       },
-    }),
-    prisma.position.count({ where }),
-  ]);
+    },
+  });
   const hasMore = rawRows.length > cappedTake;
   const rows = rawRows.slice(0, cappedTake);
 
@@ -667,7 +688,7 @@ export const runPositions = async (
     const diff = b[sortKey].getTime() - a[sortKey].getTime();
     return posOrderDirection === 'asc' ? -diff : diff;
   });
-  return { items: synthesized, hasMore, totalCount };
+  return { items: synthesized, hasMore, totalCount: null, _countWhere: where };
 };
 
 export const positionsPage: NonNullable<

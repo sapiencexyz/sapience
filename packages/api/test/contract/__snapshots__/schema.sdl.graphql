@@ -1537,7 +1537,11 @@ type PositionsPage implements Page {
   hasMore: Boolean!
   items: [Position!]!
 
-  """Total Position rows matching the filters. Populated eagerly."""
+  """
+  Total Position rows matching the filters. Computed lazily — the count
+  query only fires when this field is selected in the operation, so
+  pagination requests that don't need a total don't pay for one.
+  """
   totalCount: Int
 }
 
@@ -1606,7 +1610,10 @@ type PredictionsPage implements Page {
   hasMore: Boolean!
   items: [Prediction!]!
 
-  """Total Prediction rows matching the filters. Populated eagerly."""
+  """
+  Total Prediction rows matching the filters. Computed lazily — the
+  count query only fires when this field is selected in the operation.
+  """
   totalCount: Int
 }
 
