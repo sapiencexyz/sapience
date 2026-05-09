@@ -4,21 +4,51 @@ import { createLoaders } from './loaders';
 const makePrisma = (overrides: {
   picks?: { id: string }[];
   conditions?: { id: string; category?: { slug: string } | null }[];
-  users?: { address: string }[];
+  users?: { address?: string; id?: number }[];
+  categories?: { id: number; name?: string }[];
+  conditionGroups?: { id: number; name?: string }[];
+  referralCodes?: { id: number }[];
+  attestations?: { id: number; conditionId: string | null }[];
+  predictions?: { id: number; conditionId: string }[];
 }) => {
   const picksFindMany = vi.fn().mockResolvedValue(overrides.picks ?? []);
   const conditionFindMany = vi
     .fn()
     .mockResolvedValue(overrides.conditions ?? []);
   const userFindMany = vi.fn().mockResolvedValue(overrides.users ?? []);
+  const categoryFindMany = vi
+    .fn()
+    .mockResolvedValue(overrides.categories ?? []);
+  const conditionGroupFindMany = vi
+    .fn()
+    .mockResolvedValue(overrides.conditionGroups ?? []);
+  const referralCodeFindMany = vi
+    .fn()
+    .mockResolvedValue(overrides.referralCodes ?? []);
+  const attestationFindMany = vi
+    .fn()
+    .mockResolvedValue(overrides.attestations ?? []);
+  const legacyPredictionFindMany = vi
+    .fn()
+    .mockResolvedValue(overrides.predictions ?? []);
   return {
     picksFindMany,
     conditionFindMany,
     userFindMany,
+    categoryFindMany,
+    conditionGroupFindMany,
+    referralCodeFindMany,
+    attestationFindMany,
+    legacyPredictionFindMany,
     client: {
       picks: { findMany: picksFindMany },
       condition: { findMany: conditionFindMany },
       user: { findMany: userFindMany },
+      category: { findMany: categoryFindMany },
+      conditionGroup: { findMany: conditionGroupFindMany },
+      referralCode: { findMany: referralCodeFindMany },
+      attestation: { findMany: attestationFindMany },
+      legacyPrediction: { findMany: legacyPredictionFindMany },
     } as unknown as Parameters<typeof createLoaders>[0],
   };
 };
@@ -138,5 +168,189 @@ describe('createLoaders.userByAddress', () => {
     expect((alice as { address: string }).address).toBe('0xalice');
     expect((bob as { address: string }).address).toBe('0xbob');
     expect(missing).toBeNull();
+  });
+});
+
+describe('createLoaders.categoryById', () => {
+  it('batches concurrent loads into one findMany', async () => {
+    const { categoryFindMany, client } = makePrisma({
+      categories: [
+        { id: 1, name: 'Crypto' },
+        { id: 2, name: 'Sports' },
+        { id: 3, name: 'Politics' },
+      ],
+    });
+    const loaders = createLoaders(client);
+
+    const [a, b, c] = await Promise.all([
+      loaders.categoryById.load(1),
+      loaders.categoryById.load(2),
+      loaders.categoryById.load(3),
+    ]);
+
+    expect(categoryFindMany).toHaveBeenCalledTimes(1);
+    expect(categoryFindMany.mock.calls[0][0].where.id.in.sort()).toEqual([
+      1, 2, 3,
+    ]);
+    expect((a as { id: number }).id).toBe(1);
+    expect((b as { id: number }).id).toBe(2);
+    expect((c as { id: number }).id).toBe(3);
+  });
+
+  it('returns null for unmatched ids', async () => {
+    const { client } = makePrisma({ categories: [{ id: 1 }] });
+    const loaders = createLoaders(client);
+
+    const [present, missing] = await Promise.all([
+      loaders.categoryById.load(1),
+      loaders.categoryById.load(999),
+    ]);
+
+    expect((present as { id: number }).id).toBe(1);
+    expect(missing).toBeNull();
+  });
+
+  it('dedupes repeated loads of the same id', async () => {
+    const { categoryFindMany, client } = makePrisma({
+      categories: [{ id: 1 }],
+    });
+    const loaders = createLoaders(client);
+
+    await Promise.all([
+      loaders.categoryById.load(1),
+      loaders.categoryById.load(1),
+      loaders.categoryById.load(1),
+    ]);
+
+    expect(categoryFindMany).toHaveBeenCalledTimes(1);
+    expect(categoryFindMany.mock.calls[0][0].where.id.in).toEqual([1]);
+  });
+});
+
+describe('createLoaders.conditionGroupById', () => {
+  it('batches concurrent loads into one findMany', async () => {
+    const { conditionGroupFindMany, client } = makePrisma({
+      conditionGroups: [
+        { id: 10, name: 'Group A' },
+        { id: 20, name: 'Group B' },
+      ],
+    });
+    const loaders = createLoaders(client);
+
+    const [a, b, missing] = await Promise.all([
+      loaders.conditionGroupById.load(10),
+      loaders.conditionGroupById.load(20),
+      loaders.conditionGroupById.load(99),
+    ]);
+
+    expect(conditionGroupFindMany).toHaveBeenCalledTimes(1);
+    expect((a as { id: number }).id).toBe(10);
+    expect((b as { id: number }).id).toBe(20);
+    expect(missing).toBeNull();
+  });
+});
+
+describe('createLoaders.userById', () => {
+  it('batches by integer pk (distinct from userByAddress)', async () => {
+    const { userFindMany, client } = makePrisma({
+      users: [
+        { id: 1, address: '0xalice' },
+        { id: 2, address: '0xbob' },
+      ],
+    });
+    const loaders = createLoaders(client);
+
+    const [a, b] = await Promise.all([
+      loaders.userById.load(1),
+      loaders.userById.load(2),
+    ]);
+
+    expect(userFindMany).toHaveBeenCalledTimes(1);
+    expect(userFindMany.mock.calls[0][0].where.id.in.sort()).toEqual([1, 2]);
+    expect((a as { id: number }).id).toBe(1);
+    expect((b as { id: number }).id).toBe(2);
+  });
+});
+
+describe('createLoaders.referralCodeById', () => {
+  it('batches concurrent loads into one findMany', async () => {
+    const { referralCodeFindMany, client } = makePrisma({
+      referralCodes: [{ id: 5 }, { id: 7 }],
+    });
+    const loaders = createLoaders(client);
+
+    const [a, b, missing] = await Promise.all([
+      loaders.referralCodeById.load(5),
+      loaders.referralCodeById.load(7),
+      loaders.referralCodeById.load(999),
+    ]);
+
+    expect(referralCodeFindMany).toHaveBeenCalledTimes(1);
+    expect((a as { id: number }).id).toBe(5);
+    expect((b as { id: number }).id).toBe(7);
+    expect(missing).toBeNull();
+  });
+});
+
+describe('createLoaders.attestationsByConditionId', () => {
+  it('groups one batched findMany result by conditionId', async () => {
+    const { attestationFindMany, client } = makePrisma({
+      attestations: [
+        { id: 1, conditionId: '0xcond1' },
+        { id: 2, conditionId: '0xcond1' },
+        { id: 3, conditionId: '0xcond2' },
+      ],
+    });
+    const loaders = createLoaders(client);
+
+    const [forCond1, forCond2, forCond3] = await Promise.all([
+      loaders.attestationsByConditionId.load('0xcond1'),
+      loaders.attestationsByConditionId.load('0xcond2'),
+      loaders.attestationsByConditionId.load('0xcond3'),
+    ]);
+
+    expect(attestationFindMany).toHaveBeenCalledTimes(1);
+    expect(
+      attestationFindMany.mock.calls[0][0].where.conditionId.in.sort()
+    ).toEqual(['0xcond1', '0xcond2', '0xcond3']);
+    expect(forCond1.map((a) => a.id)).toEqual([1, 2]);
+    expect(forCond2.map((a) => a.id)).toEqual([3]);
+    expect(forCond3).toEqual([]);
+  });
+
+  it('lowercases conditionIds for the lookup map', async () => {
+    const { attestationFindMany, client } = makePrisma({
+      attestations: [{ id: 1, conditionId: '0xcond1' }],
+    });
+    const loaders = createLoaders(client);
+
+    const [mixed] = await Promise.all([
+      loaders.attestationsByConditionId.load('0xCOND1'),
+    ]);
+
+    expect(attestationFindMany).toHaveBeenCalledTimes(1);
+    expect(mixed.map((a) => a.id)).toEqual([1]);
+  });
+});
+
+describe('createLoaders.predictionsByConditionId', () => {
+  it('groups predictions by conditionId in a single findMany', async () => {
+    const { legacyPredictionFindMany, client } = makePrisma({
+      predictions: [
+        { id: 100, conditionId: '0xcond1' },
+        { id: 101, conditionId: '0xcond2' },
+        { id: 102, conditionId: '0xcond1' },
+      ],
+    });
+    const loaders = createLoaders(client);
+
+    const [forCond1, forCond2] = await Promise.all([
+      loaders.predictionsByConditionId.load('0xcond1'),
+      loaders.predictionsByConditionId.load('0xcond2'),
+    ]);
+
+    expect(legacyPredictionFindMany).toHaveBeenCalledTimes(1);
+    expect(forCond1.map((p) => p.id).sort()).toEqual([100, 102]);
+    expect(forCond2.map((p) => p.id)).toEqual([101]);
   });
 });

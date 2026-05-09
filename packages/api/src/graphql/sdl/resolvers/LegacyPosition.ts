@@ -1,6 +1,11 @@
 /**
  * LegacyPosition model resolvers. One relation: `predictions`
  * (list, to LegacyPrediction).
+ *
+ * Legacy V1 model — slated for rollup into the active `Position` /
+ * `positionsPage` resolvers. No DataLoader is wired here intentionally:
+ * we don't want to invest optimization in a code path that's on its way
+ * out.
  */
 
 import type { LegacyPositionResolvers } from '../__generated__/resolvers';

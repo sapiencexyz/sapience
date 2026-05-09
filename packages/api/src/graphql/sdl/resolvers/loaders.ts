@@ -7,24 +7,29 @@
  * across requests, which conflicts with read-after-write expectations
  * in mutation flows.
  *
- * Three keyed lookups, each backed by a single batched `findMany`:
+ * Two loader families:
  *
- *   1. `conditionById`  — drives `Pick.condition` and `Query.condition`.
- *      Picks have no Prisma relation to Condition (only an FK column),
- *      so the field resolver can't ride on `include`. Multiple Picks on
- *      a page that reference the same Condition share one round trip;
- *      different Picks across the same request also batch into the same
- *      `findMany` because all the field resolutions happen in one tick.
- *      The category relation is included so `Condition.category` is
- *      pre-warmed too — no second N+1.
- *   2. `userByAddress`  — drives `Query.user` and any future per-address
- *      lookup. Address-keyed (lowercased on enqueue).
- *   3. `pickConfigById` — drives the deprecated `pickConfiguration(id)`
- *      single lookup; same shape as the list query (`include: picks`).
+ *   1. **Single-key** (`<thing>ById` / `userByAddress`): one batched
+ *      `findMany` per request, deduped by key. Drives both top-level
+ *      single-entity queries (`Query.condition(id:)`, `Query.user(address:)`)
+ *      and field resolvers that hold the FK on the parent
+ *      (`Condition.category`, `Condition.conditionGroup`,
+ *      `User.referredBy`, etc.). The fast `parent[relation]` check still
+ *      runs first, so anything threaded through Prisma `include` skips
+ *      the loader entirely.
  *
- * Other lookups (e.g. `escrow.ts:runPickConfigurations` list query,
- * `activity.ts` token-set lookup) intentionally bypass these loaders —
- * they have non-id filters that DataLoader's keyed model doesn't fit.
+ *   2. **To-many batch** (`<thing>By<ParentFk>`): one batched `findMany`
+ *      that fans out the parent FK and groups the result. Drives
+ *      `Condition.attestations` and `Condition.predictions` when the
+ *      caller doesn't pass per-row pagination/filter args. With args
+ *      (take/skip/where/orderBy/cursor/distinct) the loader can't honor
+ *      per-parent slicing, so the field resolver falls through to the
+ *      legacy per-row path.
+ *
+ * Loaders that aren't keyed by a single id (list queries with non-id
+ * filters — `escrow.ts:runPickConfigurations`, `activity.ts` token-set
+ * lookup) intentionally bypass this module — DataLoader's keyed model
+ * doesn't fit them.
  */
 
 import DataLoader from 'dataloader';
@@ -36,14 +41,35 @@ type ConditionRow = Prisma.ConditionGetPayload<{
   include: { category: true };
 }>;
 type UserRow = Prisma.UserGetPayload<true>;
+type CategoryRow = Prisma.CategoryGetPayload<true>;
+type ConditionGroupRow = Prisma.ConditionGroupGetPayload<true>;
+type ReferralCodeRow = Prisma.ReferralCodeGetPayload<true>;
+type AttestationRow = Prisma.AttestationGetPayload<true>;
+type LegacyPredictionRow = Prisma.LegacyPredictionGetPayload<true>;
 
 export interface GraphQLLoaders {
+  // Single-key loaders
   /** id → Condition row (with `category`), or null when missing. */
   conditionById: DataLoader<string, ConditionRow | null>;
   /** address → User row, or null when missing. */
   userByAddress: DataLoader<string, UserRow | null>;
   /** id → Picks row (with nested `picks: Pick[]`), or null when missing. */
   pickConfigById: DataLoader<string, PicksRow | null>;
+  /** id → Category row, or null when missing. */
+  categoryById: DataLoader<number, CategoryRow | null>;
+  /** id → ConditionGroup row, or null when missing. */
+  conditionGroupById: DataLoader<number, ConditionGroupRow | null>;
+  /** id → User row by integer pk (distinct from `userByAddress`). */
+  userById: DataLoader<number, UserRow | null>;
+  /** id → ReferralCode row, or null when missing. */
+  referralCodeById: DataLoader<number, ReferralCodeRow | null>;
+
+  // To-many batch loaders (FK → child rows). Always returns an array;
+  // empty array for parents with no matching children.
+  /** conditionId → Attestation rows for that condition. */
+  attestationsByConditionId: DataLoader<string, AttestationRow[]>;
+  /** conditionId → LegacyPrediction rows for that condition. */
+  predictionsByConditionId: DataLoader<string, LegacyPredictionRow[]>;
 }
 
 export const createLoaders = (prisma: typeof prismaClient): GraphQLLoaders => ({
@@ -78,4 +104,75 @@ export const createLoaders = (prisma: typeof prismaClient): GraphQLLoaders => ({
     const byId = new Map(rows.map((r) => [r.id, r]));
     return ids.map((id) => byId.get(id.toLowerCase()) ?? null);
   }),
+
+  categoryById: new DataLoader<number, CategoryRow | null>(async (ids) => {
+    const rows = await prisma.category.findMany({
+      where: { id: { in: Array.from(new Set(ids)) } },
+    });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    return ids.map((id) => byId.get(id) ?? null);
+  }),
+
+  conditionGroupById: new DataLoader<number, ConditionGroupRow | null>(
+    async (ids) => {
+      const rows = await prisma.conditionGroup.findMany({
+        where: { id: { in: Array.from(new Set(ids)) } },
+      });
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      return ids.map((id) => byId.get(id) ?? null);
+    }
+  ),
+
+  userById: new DataLoader<number, UserRow | null>(async (ids) => {
+    const rows = await prisma.user.findMany({
+      where: { id: { in: Array.from(new Set(ids)) } },
+    });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    return ids.map((id) => byId.get(id) ?? null);
+  }),
+
+  referralCodeById: new DataLoader<number, ReferralCodeRow | null>(
+    async (ids) => {
+      const rows = await prisma.referralCode.findMany({
+        where: { id: { in: Array.from(new Set(ids)) } },
+      });
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      return ids.map((id) => byId.get(id) ?? null);
+    }
+  ),
+
+  attestationsByConditionId: new DataLoader<string, AttestationRow[]>(
+    async (conditionIds) => {
+      const lowered = conditionIds.map((id) => id.toLowerCase());
+      const rows = await prisma.attestation.findMany({
+        where: { conditionId: { in: Array.from(new Set(lowered)) } },
+      });
+      const byCondId = new Map<string, AttestationRow[]>();
+      for (const row of rows) {
+        if (!row.conditionId) continue;
+        const k = row.conditionId.toLowerCase();
+        const arr = byCondId.get(k);
+        if (arr) arr.push(row);
+        else byCondId.set(k, [row]);
+      }
+      return conditionIds.map((id) => byCondId.get(id.toLowerCase()) ?? []);
+    }
+  ),
+
+  predictionsByConditionId: new DataLoader<string, LegacyPredictionRow[]>(
+    async (conditionIds) => {
+      const lowered = conditionIds.map((id) => id.toLowerCase());
+      const rows = await prisma.legacyPrediction.findMany({
+        where: { conditionId: { in: Array.from(new Set(lowered)) } },
+      });
+      const byCondId = new Map<string, LegacyPredictionRow[]>();
+      for (const row of rows) {
+        const k = row.conditionId.toLowerCase();
+        const arr = byCondId.get(k);
+        if (arr) arr.push(row);
+        else byCondId.set(k, [row]);
+      }
+      return conditionIds.map((id) => byCondId.get(id.toLowerCase()) ?? []);
+    }
+  ),
 });
