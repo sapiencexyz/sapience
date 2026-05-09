@@ -521,6 +521,7 @@ export type Condition = {
   openInterest: Scalars['String']['output'];
   optionName?: Maybe<Scalars['String']['output']>;
   predictionCount: Scalars['Int']['output'];
+  /** @deprecated LegacyPrediction is the V1 (NFT-based) prediction model and is being phased out. Use the V2 escrow surface (`Query.predictionsPage`) instead. */
   predictions: Array<LegacyPrediction>;
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
@@ -1106,6 +1107,7 @@ export type LegacyPosition = {
   id: Scalars['Int']['output'];
   marketAddress: Scalars['String']['output'];
   mintedAt: Scalars['Int']['output'];
+  /** @deprecated LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead. */
   predictions: Array<LegacyPrediction>;
   predictor: Scalars['String']['output'];
   predictorCollateral?: Maybe<Scalars['String']['output']>;
@@ -1201,9 +1203,11 @@ export type LegacyPrediction = {
   conditionId: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
+  /** @deprecated LimitOrder is deprecated and being phased out. */
   limitOrder?: Maybe<LimitOrder>;
   limitOrderId?: Maybe<Scalars['Int']['output']>;
   outcomeYes: Scalars['Boolean']['output'];
+  /** @deprecated LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead. */
   position?: Maybe<LegacyPosition>;
   positionId?: Maybe<Scalars['Int']['output']>;
 };
@@ -1310,6 +1314,7 @@ export type LimitOrder = {
   orderId: Scalars['String']['output'];
   placedAt: Scalars['Int']['output'];
   placedTxHash: Scalars['String']['output'];
+  /** @deprecated LimitOrder is deprecated and being phased out. */
   predictions: Array<LegacyPrediction>;
   predictor: Scalars['String']['output'];
   predictorCollateral: Scalars['String']['output'];

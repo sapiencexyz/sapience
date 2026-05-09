@@ -409,7 +409,7 @@ type Condition {
   openInterest: String!
   optionName: String
   predictionCount: Int!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]! @deprecated(reason: "LegacyPrediction is the V1 (NFT-based) prediction model and is being phased out. Use the V2 escrow surface (`Query.predictionsPage`) instead.")
   public: Boolean!
   question: String!
   resolvedToYes: Boolean!
@@ -877,7 +877,7 @@ type LegacyPosition {
   id: Int!
   marketAddress: String!
   mintedAt: Int!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]! @deprecated(reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead.")
   predictor: String!
   predictorCollateral: String
   predictorNftTokenId: String!
@@ -958,10 +958,10 @@ type LegacyPrediction {
   conditionId: String!
   createdAt: DateTimeISO!
   id: Int!
-  limitOrder(where: LimitOrderWhereInput): LimitOrder
+  limitOrder(where: LimitOrderWhereInput): LimitOrder @deprecated(reason: "LimitOrder is deprecated and being phased out.")
   limitOrderId: Int
   outcomeYes: Boolean!
-  position(where: LegacyPositionWhereInput): LegacyPosition
+  position(where: LegacyPositionWhereInput): LegacyPosition @deprecated(reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead.")
   positionId: Int
 }
 
@@ -1057,7 +1057,7 @@ type LimitOrder {
   orderId: String!
   placedAt: Int!
   placedTxHash: String!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]! @deprecated(reason: "LimitOrder is deprecated and being phased out.")
   predictor: String!
   predictorCollateral: String!
   refCode: String

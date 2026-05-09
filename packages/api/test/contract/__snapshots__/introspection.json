@@ -4795,8 +4795,8 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LegacyPrediction is the V1 (NFT-based) prediction model and is being phased out. Use the V2 escrow surface (`Query.predictionsPage`) instead."
           },
           {
             "name": "public",
@@ -9728,8 +9728,8 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead."
           },
           {
             "name": "predictor",
@@ -10484,8 +10484,8 @@
               "name": "LimitOrder",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LimitOrder is deprecated and being phased out."
           },
           {
             "name": "limitOrderId",
@@ -10535,8 +10535,8 @@
               "name": "LegacyPosition",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead."
           },
           {
             "name": "positionId",
@@ -11513,8 +11513,8 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LimitOrder is deprecated and being phased out."
           },
           {
             "name": "predictor",
