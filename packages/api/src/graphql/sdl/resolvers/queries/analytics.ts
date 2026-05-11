@@ -25,6 +25,7 @@ import { normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import type {
   QueryResolvers,
   ProtocolStat,
+  VaultStat,
   CategoryOpenInterest,
   Category,
   TimeToResolutionBucket,
@@ -67,6 +68,16 @@ interface DailyOIRow {
 
 type ConfiguredVault = ReturnType<typeof getConfiguredVaults>[number];
 type Snapshot = Awaited<ReturnType<typeof getProtocolStatsTimeSeries>>[number];
+type StatsSnapshot = VaultStat &
+  Pick<
+    ProtocolStat,
+    | 'cumulativeVolume'
+    | 'openInterest'
+    | 'periodVolume'
+    | 'escrowBalance'
+    | 'totalTradeCount'
+    | 'periodTradeCount'
+  >;
 
 const buildTimestampMap = <T extends { timestamp: bigint }>(
   rows: T[],
@@ -267,7 +278,7 @@ const buildClosedBars = (
   tradeCountMap: Map<number, string>,
   oiMap: Map<number, string>,
   interval: number
-): ProtocolStat[] =>
+): StatsSnapshot[] =>
   snapshots.map((snapshot, i) => {
     const cumVol = volumeMap.get(snapshot.timestamp) || '0';
     const prevCumVol =
@@ -328,7 +339,7 @@ const buildLiveCandle = async (
   oiMap: Map<number, string>,
   nowTimestamp: number,
   interval: number
-): Promise<ProtocolStat> => {
+): Promise<StatsSnapshot> => {
   const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
   const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
   const livePeriodVolume = (BigInt(liveCumVol) - BigInt(lastCumVol)).toString();
@@ -398,9 +409,9 @@ const buildLiveCandle = async (
   };
 };
 
-export const protocolStats: NonNullable<
-  QueryResolvers['protocolStats']
-> = async (_parent, { vaultAddress: vaultAddressArg }) => {
+const fetchStatsForVault = async (
+  vaultAddressArg: string | null | undefined
+): Promise<StatsSnapshot[]> => {
   const chainId = DEFAULT_CHAIN_ID;
   const configuredVaults = getConfiguredVaults(chainId);
   const { vault: targetVault, mismatch } = resolveTargetVault(
@@ -464,6 +475,26 @@ export const protocolStats: NonNullable<
 
   return results;
 };
+
+const toProtocolStat = (stat: StatsSnapshot): ProtocolStat => ({
+  timestamp: stat.timestamp,
+  cumulativeVolume: stat.cumulativeVolume,
+  totalTradeCount: stat.totalTradeCount,
+  periodTradeCount: stat.periodTradeCount,
+  openInterest: stat.openInterest,
+  vaultAvailableAssets: stat.vaultAvailableAssets,
+  escrowBalance: stat.escrowBalance,
+  periodVolume: stat.periodVolume,
+});
+
+export const protocolStats: NonNullable<
+  QueryResolvers['protocolStats']
+> = async () => (await fetchStatsForVault(undefined)).map(toProtocolStat);
+
+export const vaultStats: NonNullable<QueryResolvers['vaultStats']> = async (
+  _parent,
+  { vaultAddress }
+) => fetchStatsForVault(vaultAddress);
 
 interface CategoryOpenInterestRow {
   category_id: number;

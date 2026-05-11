@@ -3,17 +3,29 @@ import {
   fetchOpenInterestByCategory,
   fetchOpenInterestByTimeToResolution,
   fetchProtocolStats,
+  fetchVaultStats,
   type CategoryOpenInterest,
   type ProtocolStat,
+  type VaultStat,
   type TimeToResolutionBucket,
 } from '@sapience/sdk/queries';
 
 const CACHE_TIME_MS = 60 * 1000;
 
-export function useProtocolStats(vaultAddress?: string) {
+export function useProtocolStats() {
   return useQuery<ProtocolStat[]>({
-    queryKey: ['protocolStats', vaultAddress?.toLowerCase() ?? null],
-    queryFn: () => fetchProtocolStats(vaultAddress),
+    queryKey: ['protocolStats'],
+    queryFn: fetchProtocolStats,
+    staleTime: CACHE_TIME_MS,
+    refetchInterval: CACHE_TIME_MS,
+  });
+}
+
+export function useVaultStats(vaultAddress: string | undefined) {
+  return useQuery<VaultStat[]>({
+    queryKey: ['vaultStats', vaultAddress?.toLowerCase() ?? null],
+    queryFn: () => fetchVaultStats(vaultAddress as string),
+    enabled: Boolean(vaultAddress),
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
   });
@@ -37,7 +49,12 @@ export function useOpenInterestByTimeToResolution() {
   });
 }
 
-export type { CategoryOpenInterest, ProtocolStat, TimeToResolutionBucket };
+export type {
+  CategoryOpenInterest,
+  ProtocolStat,
+  TimeToResolutionBucket,
+  VaultStat,
+};
 
 /**
  * Protocol TVL = escrow balance + undeployed vault funds (wei).

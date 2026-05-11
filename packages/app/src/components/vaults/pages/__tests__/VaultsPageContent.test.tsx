@@ -39,6 +39,7 @@ vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
 
 vi.mock('~/hooks/graphql/useAnalytics', () => ({
   useProtocolStats: () => mockUseProtocolStats(),
+  useVaultStats: () => mockUseProtocolStats(),
   getProtocolTvlWei: (
     stat: { escrowBalance?: string; vaultAvailableAssets?: string } | null
   ) =>

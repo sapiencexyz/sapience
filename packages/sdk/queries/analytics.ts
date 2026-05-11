@@ -6,10 +6,16 @@ export interface ProtocolStat {
   totalTradeCount: number;
   periodTradeCount: number;
   openInterest: string;
+  vaultAvailableAssets: string;
+  escrowBalance: string;
+  periodVolume: string;
+}
+
+export interface VaultStat {
+  timestamp: number;
   vaultBalance: string;
   vaultAvailableAssets: string;
   vaultDeployed: string;
-  escrowBalance: string;
   vaultCumulativePnL: string;
   vaultPositionsWon: number;
   vaultPositionsLost: number;
@@ -18,22 +24,32 @@ export interface ProtocolStat {
   vaultAirdropGains: string;
   vaultSecondaryBought: string;
   vaultSecondarySold: string;
+  vaultUnredeemedClaim: string;
   periodPnL: string;
-  periodVolume: string;
 }
 
 export const GET_PROTOCOL_STATS = /* GraphQL */ `
-  query ProtocolStats($vaultAddress: String) {
-    protocolStats(vaultAddress: $vaultAddress) {
+  query ProtocolStats {
+    protocolStats {
       timestamp
       cumulativeVolume
       totalTradeCount
       periodTradeCount
       openInterest
+      vaultAvailableAssets
+      escrowBalance
+      periodVolume
+    }
+  }
+`;
+
+export const GET_VAULT_STATS = /* GraphQL */ `
+  query VaultStats($vaultAddress: String!) {
+    vaultStats(vaultAddress: $vaultAddress) {
+      timestamp
       vaultBalance
       vaultAvailableAssets
       vaultDeployed
-      escrowBalance
       vaultCumulativePnL
       vaultPositionsWon
       vaultPositionsLost
@@ -42,19 +58,26 @@ export const GET_PROTOCOL_STATS = /* GraphQL */ `
       vaultAirdropGains
       vaultSecondaryBought
       vaultSecondarySold
+      vaultUnredeemedClaim
       periodPnL
-      periodVolume
     }
   }
 `;
 
-export async function fetchProtocolStats(
-  vaultAddress?: string
-): Promise<ProtocolStat[]> {
+export async function fetchProtocolStats(): Promise<ProtocolStat[]> {
   const data = await graphqlRequest<{
     protocolStats: ProtocolStat[];
-  }>(GET_PROTOCOL_STATS, { vaultAddress });
+  }>(GET_PROTOCOL_STATS);
   return data?.protocolStats ?? [];
+}
+
+export async function fetchVaultStats(
+  vaultAddress: string
+): Promise<VaultStat[]> {
+  const data = await graphqlRequest<{
+    vaultStats: VaultStat[];
+  }>(GET_VAULT_STATS, { vaultAddress });
+  return data?.vaultStats ?? [];
 }
 
 export interface CategoryOpenInterest {

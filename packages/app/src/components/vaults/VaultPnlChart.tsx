@@ -18,10 +18,7 @@ import {
   calculateVaultPnlHeadlineApy,
   computeVaultPnlYDomain,
 } from './vaultPnlChartUtils';
-import {
-  useProtocolStats,
-  type ProtocolStat,
-} from '~/hooks/graphql/useAnalytics';
+import { type VaultStat } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import { type Period } from '~/components/shared/PeriodFilter';
@@ -159,8 +156,8 @@ const CHART_AXIS_STYLE = {
 const CHART_MARGIN = { top: 10, right: 0, left: -15, bottom: 0 };
 
 type VaultPnlChartProps = {
-  /** Optional external protocol stats data. If not provided, will fetch internally. */
-  protocolStats?: ProtocolStat[];
+  /** Vault stats data for the selected vault. */
+  vaultStats?: VaultStat[];
   /** Whether the data is loading */
   isLoading?: boolean;
   /** Chart height in pixels (ignored if className includes flex-1) */
@@ -176,7 +173,7 @@ type VaultPnlChartProps = {
 };
 
 export default function VaultPnlChart({
-  protocolStats: externalStats,
+  vaultStats,
   isLoading: externalLoading,
   height = 200,
   className,
@@ -190,12 +187,7 @@ export default function VaultPnlChart({
   const setPeriod = setInternalPeriod;
   const [displayMode, setDisplayMode] = useState<DisplayMode>('pct');
 
-  // Use internal fetch if no external data provided
-  const { data: internalStats, isLoading: internalLoading } =
-    useProtocolStats();
-
-  const protocolStats = externalStats ?? internalStats;
-  const isLoading = externalLoading ?? internalLoading;
+  const isLoading = externalLoading ?? false;
 
   // Trim pre-activity snapshots for every period so % mode and APY anchor off
   // the first funded point, while keeping a visible zero baseline immediately
@@ -205,12 +197,12 @@ export default function VaultPnlChart({
   const chartData = useMemo(
     () =>
       buildVaultPnlChartData(
-        protocolStats,
+        vaultStats,
         period,
         Math.floor(Date.now() / 1000),
         chartAnchorSec
       ),
-    [protocolStats, period, chartAnchorSec]
+    [vaultStats, period, chartAnchorSec]
   );
 
   // Headline APY uses wall-clock now for elapsed-days so it doesn't snap to

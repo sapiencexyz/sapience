@@ -29,17 +29,17 @@ vi.mock('../../../../lib/utils', () => ({
   getProviderForChain: vi.fn(),
 }));
 
-const { protocolStats } = await import('./analytics');
+const { vaultStats } = await import('./analytics');
 
-type ProtocolStatsFn = (
+type VaultStatsFn = (
   parent: unknown,
-  args: { vaultAddress?: string | null },
+  args: { vaultAddress: string },
   ctx: unknown,
   info: unknown
 ) => Promise<unknown[]>;
-const protocolStatsFn = protocolStats as unknown as ProtocolStatsFn;
+const vaultStatsFn = vaultStats as unknown as VaultStatsFn;
 
-describe('Query.protocolStats', () => {
+describe('Query.vaultStats', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetConfiguredVaults.mockReturnValue([
@@ -55,7 +55,7 @@ describe('Query.protocolStats', () => {
   });
 
   it('returns [] for an unknown vaultAddress instead of falling back to all vaults', async () => {
-    const result = await protocolStatsFn(
+    const result = await vaultStatsFn(
       {} as never,
       { vaultAddress: '0xdeadbeef' },
       {} as never,
@@ -127,9 +127,9 @@ describe('Query.protocolStats', () => {
     vi.mocked(svc.calculateVaultAirdrops).mockResolvedValue(0n);
     vi.mocked(svc.calculateVaultUnredeemedClaim).mockResolvedValue(988n);
 
-    const result = (await protocolStatsFn(
+    const result = (await vaultStatsFn(
       {} as never,
-      { vaultAddress: null },
+      { vaultAddress: '0xprotocol' },
       {} as never,
       {} as never
     )) as Array<{ vaultCumulativePnL: string; periodPnL: string }>;

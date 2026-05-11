@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ProtocolStat } from '~/hooks/graphql/useAnalytics';
+import type { VaultStat } from '~/hooks/graphql/useAnalytics';
 import {
   buildVaultPnlChartData,
   calculateVaultPnlHeadlineApy,
@@ -18,7 +18,7 @@ function makeStat({
   timestamp: number;
   tvl: number;
   pnl: number;
-}): ProtocolStat {
+}): VaultStat {
   const tvlWei = BigInt(tvl) * ONE_WUSDE;
 
   return {
@@ -26,7 +26,7 @@ function makeStat({
     vaultBalance: tvlWei.toString(),
     escrowBalance: '0',
     vaultCumulativePnL: (BigInt(pnl) * ONE_WUSDE).toString(),
-  } as ProtocolStat;
+  } as VaultStat;
 }
 
 describe('vaultPnlChartUtils', () => {
