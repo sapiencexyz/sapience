@@ -43,6 +43,11 @@ interface CumulativeVolumeRow {
   cumulative_volume: string | null;
 }
 
+interface CumulativeTradeCountRow {
+  timestamp: bigint;
+  cumulative_trade_count: bigint | number | string | null;
+}
+
 interface DailyOIRow {
   timestamp: bigint;
   open_interest: string | null;
@@ -147,8 +152,9 @@ export const protocolStats: NonNullable<
   const nowTimestamp = Math.floor(Date.now() / 1000);
   const queryTimestamps = [...snapshotTimestamps, nowTimestamp];
 
-  const [cumulativeVolumes, openInterests] = await Promise.all([
-    prisma.$queryRaw<CumulativeVolumeRow[]>`
+  const [cumulativeVolumes, cumulativeTradeCounts, openInterests] =
+    await Promise.all([
+      prisma.$queryRaw<CumulativeVolumeRow[]>`
       SELECT
         ts.timestamp,
         COALESCE(SUM(vol), 0)::TEXT as cumulative_volume
@@ -172,7 +178,24 @@ export const protocolStats: NonNullable<
       GROUP BY ts.timestamp
       ORDER BY ts.timestamp
     `,
-    prisma.$queryRaw<DailyOIRow[]>`
+      prisma.$queryRaw<CumulativeTradeCountRow[]>`
+      SELECT
+        ts.timestamp,
+        COALESCE(COUNT(combined.created_ts), 0) as cumulative_trade_count
+      FROM UNNEST(${queryTimestamps}::BIGINT[]) AS ts(timestamp)
+      LEFT JOIN (
+        SELECT "onChainCreatedAt" AS created_ts, "chainId"
+        FROM "Prediction"
+        UNION ALL
+        SELECT "executedAt" AS created_ts, "chainId"
+        FROM secondary_trade
+      ) combined ON
+        combined.created_ts <= ts.timestamp
+        AND combined."chainId" = ${chainId}
+      GROUP BY ts.timestamp
+      ORDER BY ts.timestamp
+    `,
+      prisma.$queryRaw<DailyOIRow[]>`
       SELECT
         ts.timestamp,
         COALESCE(SUM(vol), 0)::TEXT as open_interest
@@ -195,9 +218,13 @@ export const protocolStats: NonNullable<
       GROUP BY ts.timestamp
       ORDER BY ts.timestamp
     `,
-  ]);
+    ]);
 
   const volumeMap = buildTimestampMap(cumulativeVolumes, 'cumulative_volume');
+  const tradeCountMap = buildTimestampMap(
+    cumulativeTradeCounts,
+    'cumulative_trade_count'
+  );
   const oiMap = buildTimestampMap(openInterests, 'open_interest');
 
   // Display each bar one interval *before* the snapshot's capture timestamp
@@ -220,6 +247,13 @@ export const protocolStats: NonNullable<
       i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
     const periodVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
 
+    const cumTradeCount = Number(tradeCountMap.get(snapshot.timestamp) || '0');
+    const prevCumTradeCount =
+      i > 0
+        ? Number(tradeCountMap.get(protocolSnapshots[i - 1].timestamp) || '0')
+        : 0;
+    const periodTradeCount = cumTradeCount - prevCumTradeCount;
+
     const cumPnL = cumulativePnL(snapshot);
     const prevCumPnL = i > 0 ? cumulativePnL(protocolSnapshots[i - 1]) : 0n;
     const periodPnL = (cumPnL - prevCumPnL).toString();
@@ -227,6 +261,8 @@ export const protocolStats: NonNullable<
     return {
       timestamp: snapshot.timestamp - interval,
       cumulativeVolume: cumVol,
+      totalTradeCount: cumTradeCount,
+      periodTradeCount,
       openInterest: oiMap.get(snapshot.timestamp) || '0',
       vaultBalance: snapshot.vaultBalance,
       vaultAvailableAssets: snapshot.vaultAvailableAssets,
@@ -253,6 +289,13 @@ export const protocolStats: NonNullable<
     const livePeriodVolume = (
       BigInt(liveCumVol) - BigInt(lastCumVol)
     ).toString();
+    const lastTradeCount = Number(
+      tradeCountMap.get(lastSnapshot.timestamp) || '0'
+    );
+    const liveTradeCount = Number(
+      tradeCountMap.get(nowTimestamp) || lastTradeCount
+    );
+    const livePeriodTradeCount = liveTradeCount - lastTradeCount;
 
     // Scope all per-vault helpers to the SELECTED vault category. Without this
     // the live candle on the Pyth/SingleLeg/StrategyB tabs would silently render
@@ -297,6 +340,8 @@ export const protocolStats: NonNullable<
     results.push({
       timestamp: currentBoundary,
       cumulativeVolume: liveCumVol,
+      totalTradeCount: liveTradeCount,
+      periodTradeCount: livePeriodTradeCount,
       openInterest: oiMap.get(nowTimestamp) || '0',
       vaultBalance: liveVaultBalance.toString(),
       vaultAvailableAssets: liveVaultAvailableAssets.toString(),
