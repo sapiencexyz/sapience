@@ -302,10 +302,10 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 lg:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="sc-heading text-foreground mb-2 flex items-center gap-1.5">
+            <CardContent className="px-6 py-5">
+              <div className="sc-heading text-foreground mb-1 flex items-center gap-1.5">
                 Protocol TVL
                 <Popover>
                   <PopoverTrigger asChild>
@@ -341,9 +341,9 @@ function AnalyticsPageContent(): React.ReactElement {
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
+              <div className="text-xl md:text-2xl font-mono leading-tight flex items-center h-8">
                 {isLoading ? (
-                  <div className="w-full flex justify-center pt-3">
+                  <div className="w-full flex justify-center">
                     <Loader className="w-6 h-6" />
                   </div>
                 ) : (
@@ -357,13 +357,13 @@ function AnalyticsPageContent(): React.ReactElement {
           </Card>
 
           <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="sc-heading text-foreground mb-2">
+            <CardContent className="px-6 py-5">
+              <div className="sc-heading text-foreground mb-1">
                 Open Interest
               </div>
-              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
+              <div className="text-xl md:text-2xl font-mono leading-tight flex items-center h-8">
                 {isLoading ? (
-                  <div className="w-full flex justify-center pt-3">
+                  <div className="w-full flex justify-center">
                     <Loader className="w-6 h-6" />
                   </div>
                 ) : (
@@ -377,13 +377,13 @@ function AnalyticsPageContent(): React.ReactElement {
           </Card>
 
           <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="sc-heading text-foreground mb-2">
+            <CardContent className="px-6 py-5">
+              <div className="sc-heading text-foreground mb-1">
                 Cumulative Volume
               </div>
-              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
+              <div className="text-xl md:text-2xl font-mono leading-tight flex items-center h-8">
                 {isLoading ? (
-                  <div className="w-full flex justify-center pt-3">
+                  <div className="w-full flex justify-center">
                     <Loader className="w-6 h-6" />
                   </div>
                 ) : (
@@ -397,13 +397,13 @@ function AnalyticsPageContent(): React.ReactElement {
           </Card>
 
           <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="sc-heading text-foreground mb-2">
+            <CardContent className="px-6 py-5">
+              <div className="sc-heading text-foreground mb-1">
                 Total Trades
               </div>
-              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
+              <div className="text-xl md:text-2xl font-mono leading-tight flex items-center h-8">
                 {isLoading ? (
-                  <div className="w-full flex justify-center pt-3">
+                  <div className="w-full flex justify-center">
                     <Loader className="w-6 h-6" />
                   </div>
                 ) : (
@@ -417,9 +417,9 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Charts */}
-        <div className="space-y-4 md:space-y-8">
+        <div className="space-y-4">
           {/* Open Interest distribution: by category + by time-to-resolution */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <OpenInterestByCategoryChart />
             <OpenInterestByTimeToResolutionChart />
           </div>
