@@ -367,6 +367,8 @@ importers:
         specifier: 2.1.9
         version: 2.1.9(@types/node@22.15.21)(jsdom@25.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(terser@5.44.0)
 
+  packages/benchmarks: {}
+
   packages/docs:
     dependencies:
       '@vercel/analytics':

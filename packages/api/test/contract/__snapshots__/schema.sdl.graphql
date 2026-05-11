@@ -1745,6 +1745,9 @@ type ProtocolStat {
   Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
   """
   timestamp: Int!
+
+  """Cumulative count of predictions and secondary trades/sales"""
+  totalTradeCount: Int!
   vaultAvailableAssets: String!
 }
 
@@ -1760,9 +1763,6 @@ type VaultStat {
   Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
   """
   timestamp: Int!
-
-  """Cumulative count of predictions and secondary trades/sales"""
-  totalTradeCount: Int!
   vaultAirdropGains: String!
   vaultAvailableAssets: String!
   vaultBalance: String!
