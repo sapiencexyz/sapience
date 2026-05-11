@@ -1,8 +1,10 @@
 # CLAUDE.md
 
-Sapience is a pnpm monorepo (Node >= 22.12.0, pnpm 9.x). Run `pnpm install` to set up.
+Sapience is a pnpm monorepo (Node >= 22.12.0, pnpm >= 10.16 — pinned via `packageManager`, so use Corepack). Run `pnpm install` to set up.
 
 Use `.nvmrc` / `.node-version` instead of a loose `22` alias — Prisma 7's CLI breaks on Node 22.11.x with `ERR_REQUIRE_ESM`, so we need 22.12.0+ in practice.
+
+`pnpm-workspace.yaml` sets `minimumReleaseAge: 1440` (24h) — freshly published package versions aren't resolved for a day, as a supply-chain guard; bypass a specific package via `minimumReleaseAgeExclude`. pnpm 10 also won't run a dependency's install scripts unless it's listed under `onlyBuiltDependencies`.
 
 See [`AGENTS.md`](AGENTS.md) for comprehensive project context, commands, CI requirements, and deployment details. Package-level guides exist at `packages/*/AGENTS.md` and `packages/*/CLAUDE.md`.
 

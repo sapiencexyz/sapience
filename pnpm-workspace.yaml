@@ -1,2 +1,16 @@
 packages:
   - 'packages/*'
+
+# Supply-chain hardening: don't resolve npm package versions until they are at
+# least this many minutes old (24h). Shrinks the window in which a compromised
+# publish (stolen token / hijacked account) can land in a fresh install or CI
+# run before the registry yanks it. Requires pnpm >= 10.16.
+# Bypass for a specific package (e.g. a real hotfix you can't wait on) via
+# minimumReleaseAgeExclude. See https://pnpm.io/settings#minimumreleaseage
+minimumReleaseAge: 1440
+
+# pnpm 10 no longer runs dependency lifecycle scripts unless explicitly allowed.
+# Keep the list minimal — only packages whose install scripts we actually need.
+# (prisma's preinstall is its Node-version / ignore-scripts check.)
+onlyBuiltDependencies:
+  - prisma

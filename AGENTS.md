@@ -4,8 +4,9 @@ This document captures the context agents need when working in the Sapience mono
 
 ## Project Snapshot
 
-- Workspace manager: `pnpm` (Node >= 22.12.0, pnpm 9.x). Install everything with `pnpm install`.
+- Workspace manager: `pnpm` (Node >= 22.12.0, pnpm >= 10.16; the version is pinned in `package.json`'s `packageManager`, so run via Corepack). Install everything with `pnpm install`.
 - Use `.nvmrc` / `.node-version` to pin Node 22.12.0 exactly — Prisma 7's CLI trips over Node 22.11.x (`ERR_REQUIRE_ESM` via `@prisma/dev`), so `22` is too loose.
+- `pnpm-workspace.yaml` enables `minimumReleaseAge: 1440` (24h quarantine on freshly published npm versions — supply-chain guard; per-package bypass via `minimumReleaseAgeExclude`) and `onlyBuiltDependencies` (pnpm 10 only runs a dependency's install scripts if it's listed there — keep that list minimal).
 - Monorepo packages:
   - `packages/protocol` – Solidity smart contracts for the Sapience protocol (see `packages/protocol/CLAUDE.md` for a deeper contract-specific brief).
   - `packages/api` – TypeGraphQL + Prisma application with background workers, candle cache, and auction utilities.
