@@ -6,7 +6,6 @@
   "scripts": {
     "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter docs run build",
     "test": "pnpm run test --recursive",
-    "dev:protocol": "pnpm --filter protocol run dev",
     "dev:app": "pnpm --filter @sapience/app run dev",
     "dev:docs": "pnpm --filter docs run dev",
     "dev:api": "concurrently \"NODE_ENV=development pnpm --filter api run dev:service\" \"NODE_ENV=development pnpm --filter api run dev:worker\"",

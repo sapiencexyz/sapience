@@ -3,6 +3,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -22,6 +24,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -41,6 +45,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -60,6 +66,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -79,6 +87,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -98,6 +108,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -117,6 +129,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -136,6 +150,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -155,6 +171,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -174,6 +192,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -193,6 +213,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -212,6 +234,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -231,6 +255,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -250,6 +276,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -269,6 +297,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -288,6 +318,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -307,6 +339,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -326,6 +360,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -345,6 +381,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -364,6 +402,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -383,6 +423,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -402,6 +444,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -421,6 +465,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -440,6 +486,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -459,6 +507,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -478,6 +528,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -497,6 +549,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -516,6 +570,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -535,6 +591,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -554,6 +612,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -573,6 +633,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -592,6 +654,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -611,6 +675,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -630,6 +696,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -649,6 +717,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -668,6 +738,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -687,6 +759,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -706,6 +780,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -725,6 +801,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -744,6 +822,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -763,6 +843,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -782,6 +864,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -801,6 +885,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -820,6 +906,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -839,6 +927,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -858,6 +948,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -877,6 +969,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -896,6 +990,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -915,6 +1011,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -934,6 +1032,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -953,6 +1053,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -972,6 +1074,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -991,6 +1095,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -1010,6 +1116,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -1029,6 +1137,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -1048,6 +1158,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -1067,6 +1179,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -1086,6 +1200,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -1105,6 +1221,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "0",
+      "totalTradeCount": 0,
+      "periodTradeCount": 0,
       "openInterest": "0",
       "vaultBalance": "10584040340991884028811",
       "vaultAvailableAssets": "10584040340991884028810",
@@ -1124,6 +1242,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "16277543987041452328",
+      "totalTradeCount": 37,
+      "periodTradeCount": 37,
       "openInterest": "10426879105397264360",
       "vaultBalance": "9996083668989764092344",
       "vaultAvailableAssets": "9996083668989764092344",
@@ -1143,6 +1263,8 @@
     {
       "timestamp": "<UNIX_TIMESTAMP>",
       "cumulativeVolume": "<LIVE_VALUE>",
+      "totalTradeCount": "<LIVE_VALUE>",
+      "periodTradeCount": "<LIVE_VALUE>",
       "openInterest": "<LIVE_VALUE>",
       "vaultBalance": "<LIVE_VALUE>",
       "vaultAvailableAssets": "<LIVE_VALUE>",

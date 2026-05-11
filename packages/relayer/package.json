@@ -16,8 +16,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:proxy": "node test-proxy.js",
-    "test:proxy:direct": "node test-proxy.js --direct",
     "load-test": "tsx load-test.ts",
     "load-test:help": "tsx load-test.ts --help",
     "type-check": "tsc --noEmit",

@@ -255,7 +255,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
       // Update indexer state
       logger.info(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Persisting watermark block=${endBlockNumber}`
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Persisting watermark block=${endBlockNumber} contract=${this.contractAddress} legacy=${this.isLegacy}`
       );
       await prisma.indexerState.upsert({
         where: {
@@ -432,7 +432,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
           // Persist indexer state for resume on restart
           logger.info(
-            `[PredictionMarketEscrowIndexer:${this.chainId}] Persisting watermark block=${currentBlock}`
+            `[PredictionMarketEscrowIndexer:${this.chainId}] Persisting watermark block=${currentBlock} contract=${this.contractAddress} legacy=${this.isLegacy}`
           );
           await prisma.indexerState.upsert({
             where: {

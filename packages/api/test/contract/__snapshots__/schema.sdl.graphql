@@ -1435,6 +1435,9 @@ type ProtocolStat {
   """Realized PnL delta over the snapshot interval"""
   periodPnL: String!
 
+  """Trade-count delta over the snapshot interval"""
+  periodTradeCount: Int!
+
   """Cumulative-volume delta over the snapshot interval"""
   periodVolume: String!
 
@@ -1442,6 +1445,9 @@ type ProtocolStat {
   Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
   """
   timestamp: Int!
+
+  """Cumulative count of predictions and secondary trades/sales"""
+  totalTradeCount: Int!
   vaultAirdropGains: String!
   vaultAvailableAssets: String!
   vaultBalance: String!

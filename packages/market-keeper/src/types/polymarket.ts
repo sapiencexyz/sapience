@@ -34,6 +34,11 @@ export interface PolymarketMarket {
     }>;
   }>;
   outcomePrices?: string | number[];
+  // True on every child of a Polymarket "negative risk" basket — a set of
+  // mutually-exclusive binary markets where exactly one resolves YES and the
+  // rest resolve NO. The basket is one logical question, so admission
+  // decisions must apply to every sibling together, not per child.
+  negRisk?: boolean;
   active: boolean;
   closed: boolean;
   archived?: boolean;

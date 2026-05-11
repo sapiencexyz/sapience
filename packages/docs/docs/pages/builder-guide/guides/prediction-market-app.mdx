@@ -1,6 +1,6 @@
 ---
 title: Apps and Interfaces
-description: "Fork the Sapience app or build a custom prediction market interface with the SDK."
+description: 'Fork the Sapience app or build a custom prediction market interface with the SDK.'
 ---
 
 :::::info
@@ -9,7 +9,7 @@ description: "Fork the Sapience app or build a custom prediction market interfac
 
 # Apps and Interfaces
 
-Build your own prediction market products by customizing the open source [Sapience app](https://sapience.xyz) or starting fresh with [the components in the SDK](/builder-guide/storybook).
+Build your own prediction market products by customizing the open source [Sapience app](https://sapience.xyz) or starting fresh with the SDK and your own interface components.
 
 :::code-group
 
@@ -38,7 +38,8 @@ pnpm dev:app
 ```
 
 **Prerequisites**:
-- Node.js >= 20.14
+
+- Node.js >= 22.12.0 (the repo pins this in `.nvmrc` / `.node-version` — Prisma 7's CLI breaks on earlier 22.x patch versions)
 - pnpm 9.x (install with `npm install -g pnpm@9`)
 
 If you need help installing these, use the Cursor agent or see the [Get Started guide](/builder-guide/getting-started/get-started).
@@ -90,28 +91,28 @@ git push -u origin my-customization
 
 ## Build from Scratch with the SDK
 
-Scaffold a Next.js app that uses the `@sapience/sdk` package for forms and components, and wires data via GraphQL and the Auction APIs.
+Scaffold a Next.js app that uses `@sapience/sdk` for protocol, types, and data helpers, then wire your own UI to GraphQL and the Auction APIs.
 
 ### Create a new Next.js app
 
-Prerequisites: Node >= 20.14 and pnpm 9.x.
+Prerequisites: Node >= 22.12.0 and pnpm 9.x.
 
 ```bash
 pnpm create next-app my-sapience-app --ts --tailwind --eslint --app --use-pnpm --src-dir
 cd my-sapience-app
 ```
 
-### Install @sapience/sdk
+### Install Sapience packages
 
 ```bash
-pnpm add @sapience/sdk
+pnpm add @sapience/sdk graphql-request
 ```
 
 ### Install peer dependencies
 
-`@sapience/sdk` expects certain libraries to be provided by your app. Install the core set below, then add optional ones as you use the corresponding components.
+The examples below use the libraries in this section. Install the core set, then add optional ones as you use the corresponding features.
 
-**Core peer deps:**
+**Core app dependencies:**
 
 ```bash
 pnpm add next react react-dom react-hook-form @tanstack/react-query wagmi viem graphql @apollo/client lucide-react lightweight-charts framer-motion next-themes
@@ -131,37 +132,14 @@ Tip: If you run into version conflicts, check `@sapience/sdk`'s `peerDependencie
 pnpm dev
 ```
 
-### Import components and hooks
+### Build the interface
 
-```tsx
-import { TradeForm } from '@sapience/ui';
-```
+The SDK does not ship React components. Use the [Sapience app](https://github.com/sapiencexyz/sapience/tree/main/packages/app) and [Storybook](/builder-guide/storybook) as implementation references, then copy or recreate the pieces your app needs.
 
 ### Connect data
 
-- **GraphQL**: fetch markets, prices, and positions
-- **Auction WS**: submit/receive quotes for Auction Markets
-
-### Example page
-
-```tsx
-import { TradeForm } from '@sapience/ui';
-
-export default function TradePage() {
-  async function onTradeSubmit(values: { size: string; direction: 'Long' | 'Short'; slippage: string; }) {
-    // Integrate with contract write logic or auction relayer
-    console.log('submit trade', values);
-  }
-
-  return (
-    <TradeForm
-      onTradeSubmit={onTradeSubmit}
-      collateralAssetTicker="USDe"
-      walletBalanceDisplay="100.0"
-    />
-  );
-}
-```
+- **GraphQL**: fetch questions, conditions, predictions, and positions — see the [GraphQL guide](/builder-guide/api/graphql).
+- **Auction relayer**: stream live RFQs and submit signed bids — see the [Auction Relayer guide](/builder-guide/api/auction-relayer).
 
 ### GraphQL example
 
@@ -170,42 +148,36 @@ import { GraphQLClient, gql } from 'graphql-request';
 
 const client = new GraphQLClient('https://api.sapience.xyz/graphql');
 
-const MarketsQuery = gql`
-  query Markets {
-    markets { id title status }
+const QuestionsQuery = gql`
+  query Questions {
+    questions(take: 10, sortField: endTime, sortDirection: desc) {
+      questionType
+      predictionCount
+      condition {
+        id
+        endTime
+      }
+      group {
+        id
+      }
+    }
   }
 `;
 
-export async function fetchMarkets() {
-  return client.request(MarketsQuery);
+export async function fetchQuestions() {
+  return client.request(QuestionsQuery);
 }
 ```
 
 ### Theming and UI
 
-`@sapience/ui` ships with shadcn-like primitives and a Tailwind preset. Import the preset and include it in your Tailwind config.
-
-```typescript
-// tailwind.config.ts
-import type { Config } from 'tailwindcss'
-import sapiencePreset from '@sapience/ui/tailwind-preset'
-
-export default {
-  presets: [sapiencePreset],
-  content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './node_modules/@sapience/ui/**/*.{js,mjs,ts,tsx}'
-  ],
-} satisfies Config
-```
+Use your app's own Tailwind setup and component system. The Sapience app and Storybook are useful references for interaction patterns, but the published SDK does not include a reusable UI package.
 
 ### Next Steps
 
 - Add market data via [GraphQL](/builder-guide/api/graphql)
 - Add [Auction Relayer](/builder-guide/api/auction-relayer) for trading via auctions
-- Browse available [UI Components](/builder-guide/storybook) in Storybook
+- Use [Storybook](/builder-guide/storybook) as a reference for Sapience UI patterns
 
 </div>
 
