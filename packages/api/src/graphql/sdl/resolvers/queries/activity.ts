@@ -14,6 +14,7 @@ import type {
   QueryAccountActivityArgs,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
+import { ActivityItemType } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 import { clampSkip, clampTake } from './pagination';
@@ -201,7 +202,7 @@ export const runAccountActivity = async ({
         : null,
     };
     items.push({
-      type: 'prediction',
+      type: ActivityItemType.Prediction,
       timestamp: ts,
       prediction,
       trade: null,
@@ -210,7 +211,7 @@ export const runAccountActivity = async ({
 
   for (const t of trades) {
     items.push({
-      type: 'trade',
+      type: ActivityItemType.Trade,
       timestamp: t.executedAt,
       trade: {
         id: t.id,

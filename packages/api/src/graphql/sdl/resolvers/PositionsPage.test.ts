@@ -20,8 +20,10 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-const callTotal = (resolver: typeof PositionsPage.totalCount, parent: object) =>
-  (resolver as unknown as (p: unknown) => Promise<number | null>)(parent);
+const callTotal = (
+  resolver: typeof PositionsPage.totalCount | typeof PredictionsPage.totalCount,
+  parent: object
+) => (resolver as unknown as (p: unknown) => Promise<number | null>)(parent);
 
 describe('PositionsPage.totalCount', () => {
   it('returns the eager value when present (early-return paths set it)', async () => {

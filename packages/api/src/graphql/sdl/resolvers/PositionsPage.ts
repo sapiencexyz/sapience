@@ -18,7 +18,9 @@ import prisma from '../../../core/db';
 
 type PositionsPageParent = {
   totalCount?: number | null;
-  _countWhere?: Parameters<typeof prisma.position.count>[0]['where'];
+  _countWhere?: NonNullable<
+    Parameters<typeof prisma.position.count>[0]
+  >['where'];
 };
 
 export const PositionsPage: PositionsPageResolvers = {

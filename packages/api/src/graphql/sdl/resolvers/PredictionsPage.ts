@@ -14,7 +14,9 @@ import prisma from '../../../core/db';
 
 type PredictionsPageParent = {
   totalCount?: number | null;
-  _countWhere?: Parameters<typeof prisma.prediction.count>[0]['where'];
+  _countWhere?: NonNullable<
+    Parameters<typeof prisma.prediction.count>[0]
+  >['where'];
 };
 
 export const PredictionsPage: PredictionsPageResolvers = {
