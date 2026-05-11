@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { type Request, type Response } from 'express';
@@ -157,6 +158,65 @@ describe('per-IP concurrency limit on /graphql', () => {
       .set('Content-Type', 'application/json')
       .send(JSON.stringify({ query: '{ __typename }' }));
     expect(res2.status).toBe(200);
+  });
+
+  it('releases global and per-IP slots when a client connection closes before finish', () => {
+    const { concurrencyMiddleware } = createConcurrencyLimiter({
+      maxConcurrent: 1,
+      maxConcurrentPerIp: 1,
+      requestTimeoutMs: 15000,
+    });
+
+    function createMockResponse() {
+      const res = new EventEmitter() as Response & {
+        statusCode?: number;
+        headersSent: boolean;
+        setTimeout: () => void;
+        set: () => Response;
+        status: (statusCode: number) => Response;
+        json: (body: unknown) => Response;
+      };
+      res.headersSent = false;
+      res.setTimeout = vi.fn();
+      res.set = vi.fn(() => res);
+      res.status = vi.fn((statusCode: number) => {
+        res.statusCode = statusCode;
+        return res;
+      });
+      res.json = vi.fn(() => res);
+      return res;
+    }
+
+    const req = {
+      headers: { 'x-forwarded-for': '1.2.3.4' },
+      socket: {},
+      path: '/graphql',
+      method: 'POST',
+      query: {},
+    } as unknown as Request;
+
+    const firstRes = createMockResponse();
+    const firstNext = vi.fn();
+    concurrencyMiddleware(req, firstRes, firstNext);
+    expect(firstNext).toHaveBeenCalledOnce();
+
+    firstRes.emit('close');
+
+    const secondRes = createMockResponse();
+    const secondNext = vi.fn();
+    concurrencyMiddleware(req, secondRes, secondNext);
+
+    expect(secondNext).toHaveBeenCalledOnce();
+    expect(secondRes.status).not.toHaveBeenCalledWith(429);
+
+    firstRes.emit('finish');
+
+    const thirdRes = createMockResponse();
+    const thirdNext = vi.fn();
+    concurrencyMiddleware(req, thirdRes, thirdNext);
+
+    expect(thirdNext).not.toHaveBeenCalled();
+    expect(thirdRes.status).toHaveBeenCalledWith(429);
   });
 
   it('429 response includes per-IP indicator and Retry-After header', async () => {
