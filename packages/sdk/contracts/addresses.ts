@@ -79,10 +79,14 @@ export const predictionMarketEscrow: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-04-03
-    address: '0xD2C147f9294b13FF3Cf1a0b3b52C54969AdBb2Ca',
-    blockCreated: 2857000,
+    // Ethereal testnet — redeployed 2026-05-05 (PR #1673: removed legacy session-key path)
+    address: '0x72bAf4704650CA327d22BFc84ed1E45a0fB4fd14',
+    blockCreated: 3057704,
     legacy: [
+      {
+        address: '0xD2C147f9294b13FF3Cf1a0b3b52C54969AdBb2Ca',
+        blockCreated: 2857000,
+      },
       {
         address: '0x9afaAAda6dc3a5013ef6fbaab203A55102E329eb',
         blockCreated: 2585864,
@@ -400,10 +404,14 @@ export const predictionMarketBridge: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-04-03
-    address: '0x57a56aEE60C5C411517bD5575709cc898DAbf1Fa',
-    blockCreated: 2857000,
+    // Ethereal testnet — redeployed 2026-05-05 (PR #1673)
+    address: '0xa3a266CbC9E7dbf358A70Ffe21d3d6C929913329',
+    blockCreated: 3057706,
     legacy: [
+      {
+        address: '0x57a56aEE60C5C411517bD5575709cc898DAbf1Fa',
+        blockCreated: 2857000,
+      },
       {
         address: '0x8Bd3E6d81A55ba2A658666f470bFb8a40CF8F71F',
         blockCreated: 2585866,
@@ -469,10 +477,14 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
     ] as const,
   },
   421614: {
-    // Arbitrum Sepolia testnet — redeployed 2026-04-03
-    address: '0xC80f317d26151C3093429c178d5f1ED4A64feF71',
-    blockCreated: 253300000,
+    // Arbitrum Sepolia testnet — redeployed 2026-05-05 (PR #1673)
+    address: '0x4EFA05Fc64505587D7F2612aDcb25e5D88619B72',
+    blockCreated: 265736674,
     legacy: [
+      {
+        address: '0xC80f317d26151C3093429c178d5f1ED4A64feF71',
+        blockCreated: 253300000,
+      },
       {
         address: '0xb18b50A19040fC88b02082e869127935CA1df5aA',
         blockCreated: 253273957,
@@ -565,10 +577,14 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-04-03 (CREATE2 deterministic, same address on both chains)
-    address: '0xfbC42AeB29bb2eEeDCD7431Ad5c2F18cB3016772',
-    blockCreated: 2857000,
+    // Ethereal testnet — redeployed 2026-05-05 (CREATE2 deterministic, same address on both chains, PR #1673)
+    address: '0xda16846B0F1A0C5292ed0177B343470E364C27F3',
+    blockCreated: 3057703,
     legacy: [
+      {
+        address: '0xfbC42AeB29bb2eEeDCD7431Ad5c2F18cB3016772',
+        blockCreated: 2857000,
+      },
       {
         address: '0xbD8bB933ae35D15Ef6DC9Bd82daEDA09B139d28C',
         blockCreated: 2585863,
@@ -596,10 +612,14 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
     ] as const,
   },
   421614: {
-    // Arbitrum Sepolia testnet — redeployed 2026-04-03 (CREATE2 deterministic, same address on both chains)
-    address: '0xfbC42AeB29bb2eEeDCD7431Ad5c2F18cB3016772',
-    blockCreated: 253300000,
+    // Arbitrum Sepolia testnet — redeployed 2026-05-05 (CREATE2 deterministic, same address on both chains, PR #1673)
+    address: '0xda16846B0F1A0C5292ed0177B343470E364C27F3',
+    blockCreated: 265736674,
     legacy: [
+      {
+        address: '0xfbC42AeB29bb2eEeDCD7431Ad5c2F18cB3016772',
+        blockCreated: 253300000,
+      },
       {
         address: '0xbD8bB933ae35D15Ef6DC9Bd82daEDA09B139d28C',
         blockCreated: 253273877,
@@ -653,10 +673,14 @@ export const secondaryMarketEscrow: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-04-03
-    address: '0x2877B0b65f0BB7F1e93681B7EE6646f568A23972',
-    blockCreated: 2857000,
+    // Ethereal testnet — redeployed 2026-05-05 (PR #1673: removed legacy session-key path)
+    address: '0x86746772F119f0f0925dd1a715F7A1528CC2482a',
+    blockCreated: 3057707,
     legacy: [
+      {
+        address: '0x2877B0b65f0BB7F1e93681B7EE6646f568A23972',
+        blockCreated: 2857000,
+      },
       {
         address: '0x3c2783afA444c157eE3689E6306cFC0f2FbD231B',
         blockCreated: 2585868,

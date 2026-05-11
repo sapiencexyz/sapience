@@ -206,14 +206,6 @@ contract GenerateHashFixtures is Script {
         view
     {
         console.log(
-            "  \"mintPermission\":\n    \"%s\",",
-            vm.toString(validator.MINT_PERMISSION())
-        );
-        console.log(
-            "  \"burnPermission\":\n    \"%s\",",
-            vm.toString(validator.BURN_PERMISSION())
-        );
-        console.log(
             "  \"approveTypehash\":\n    \"%s\",",
             vm.toString(processor.APPROVE_TYPEHASH())
         );

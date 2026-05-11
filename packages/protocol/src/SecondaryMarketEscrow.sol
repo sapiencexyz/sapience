@@ -4,19 +4,26 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./interfaces/ISecondaryMarketEscrow.sol";
-import "./interfaces/IV2Types.sol";
-import "./utils/IAccountFactory.sol";
 import "./utils/ECDSAHelper.sol";
 
 /**
  * @title SecondaryMarketEscrow
- * @notice Permissionless atomic OTC swap for V2 position tokens
- * @dev No ownership, no funds at rest. Both parties sign off-chain via EIP-712,
- *      anyone can submit the trade. Supports EOA, EIP-1271, and session key signatures.
+ * @notice Permissionless atomic OTC swap for V2 position tokens.
+ * @dev No ownership, no funds at rest. Both parties sign off-chain via EIP-712
+ *      and anyone can submit the trade. Signatures are accepted from EOAs
+ *      (ECDSA) and from smart accounts via ERC-1271 (`isValidSignature`). The
+ *      legacy `sessionKeyData` blob path was removed because its factory
+ *      CREATE2 derivation could not see Kernel validator rotations; smart
+ *      accounts using session keys must now sign through the account itself.
+ *      Supplying any non-empty `sessionKeyData` reverts with
+ *      `LegacySessionKeyDataDisabled`.
+ *
+ *      The session-key revocation registry below is preserved as an advisory,
+ *      caller-scoped on-chain log for off-chain tooling. The contract no
+ *      longer reads it during signature validation.
  */
 contract SecondaryMarketEscrow is
     ISecondaryMarketEscrow,
@@ -32,37 +39,17 @@ contract SecondaryMarketEscrow is
         "TradeApproval(bytes32 tradeHash,address signer,uint256 nonce,uint256 deadline)"
     );
 
-    /// @notice EIP-712 typehash for session key approval
-    bytes32 public constant SESSION_KEY_APPROVAL_TYPEHASH = keccak256(
-        "SessionKeyApproval(address sessionKey,address smartAccount,uint256 validUntil,bytes32 permissionsHash,uint256 chainId)"
-    );
-
-    /// @notice Permission hash for trade operations
-    bytes32 public constant TRADE_PERMISSION = keccak256("TRADE");
-
     /// @notice Gas limit for EIP-1271 signature validation calls
     uint256 internal constant EIP1271_GAS_LIMIT = 500_000;
-
-    // ============ Immutables ============
-
-    /// @notice Trusted account factory for smart account verification
-    IAccountFactory public immutable accountFactory;
 
     // ============ State ============
 
     /// @notice Bitmap nonces for replay protection (Permit2-style)
     mapping(address => mapping(uint256 => uint256)) private _nonceBitmap;
 
-    /// @notice Revoked session keys: owner => sessionKey => revokedAt timestamp
+    /// @notice Advisory revocation registry: caller => sessionKey =>
+    ///         revokedAt timestamp. Not consulted by signature validation.
     mapping(address => mapping(address => uint256)) private _revokedSessionKeys;
-
-    // ============ Constructor ============
-
-    /// @notice Create a new secondary market escrow
-    /// @param accountFactory_ The account factory address (address(0) disables session keys)
-    constructor(address accountFactory_) {
-        accountFactory = IAccountFactory(accountFactory_);
-    }
 
     // ============ Session Key Management ============
 
@@ -73,12 +60,12 @@ contract SecondaryMarketEscrow is
     }
 
     /// @inheritdoc ISecondaryMarketEscrow
-    function isSessionKeyRevoked(address owner, address sessionKey)
+    function isSessionKeyRevoked(address caller, address sessionKey)
         external
         view
         returns (bool revoked)
     {
-        return _revokedSessionKeys[owner][sessionKey] > 0;
+        return _revokedSessionKeys[caller][sessionKey] > 0;
     }
 
     // ============ External Functions ============
@@ -211,27 +198,6 @@ contract SecondaryMarketEscrow is
         return _hashTypedDataV4(structHash);
     }
 
-    /// @inheritdoc ISecondaryMarketEscrow
-    function getSessionKeyApprovalHash(
-        address sessionKey,
-        address smartAccount,
-        uint256 validUntil,
-        bytes32 permissionsHash,
-        uint256 chainId
-    ) public view returns (bytes32 hash) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                SESSION_KEY_APPROVAL_TYPEHASH,
-                sessionKey,
-                smartAccount,
-                validUntil,
-                permissionsHash,
-                chainId
-            )
-        );
-        return _hashTypedDataV4(structHash);
-    }
-
     // ============ Internal: Nonce Management ============
 
     /// @notice Mark a nonce as used (Permit2-style bitmap)
@@ -248,7 +214,13 @@ contract SecondaryMarketEscrow is
 
     // ============ Internal: Signature Validation ============
 
-    /// @notice Validate a party's signature (3-tier: ECDSA → EIP-1271 → Session Key)
+    /// @notice Validate a party's signature.
+    /// @dev Accepts an EOA ECDSA signature or a smart-account ERC-1271
+    /// signature. The legacy `sessionKeyData` blob path is no longer supported
+    /// — supplying a non-empty blob reverts with `LegacySessionKeyDataDisabled`.
+    /// Smart accounts using session keys must have the session key authorized
+    /// via the smart account's own validator (e.g. Kernel permission validator)
+    /// so `isValidSignature` returns the magic value.
     function _validatePartySignature(
         bytes32 tradeHash,
         address signer,
@@ -257,20 +229,12 @@ contract SecondaryMarketEscrow is
         bytes calldata signature,
         bytes calldata sessionKeyData
     ) internal view returns (bool isValid) {
-        if (sessionKeyData.length == 0) {
-            // Tier 1 + 2: EOA or EIP-1271
-            return _isTradeApprovalValidWithEIP1271Fallback(
-                tradeHash, signer, nonce, deadline, signature
-            );
-        } else {
-            // Tier 3: Session key
-            IV2Types.SessionKeyData memory skData =
-                abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
-
-            return _isSessionKeyTradeApprovalValid(
-                tradeHash, signer, nonce, deadline, signature, skData
-            );
+        if (sessionKeyData.length != 0) {
+            revert LegacySessionKeyDataDisabled();
         }
+        return _isTradeApprovalValidWithEIP1271Fallback(
+            tradeHash, signer, nonce, deadline, signature
+        );
     }
 
     /// @notice Validate trade approval via ECDSA
@@ -336,80 +300,5 @@ contract SecondaryMarketEscrow is
         } catch {
             return false;
         }
-    }
-
-    /// @notice Validate a trade approval signed by a session key
-    function _isSessionKeyTradeApprovalValid(
-        bytes32 tradeHash,
-        address smartAccount,
-        uint256 nonce,
-        uint256 deadline,
-        bytes memory sessionKeySignature,
-        IV2Types.SessionKeyData memory skData
-    ) internal view returns (bool isValid) {
-        if (block.timestamp > deadline) {
-            return false;
-        }
-
-        if (block.timestamp > skData.validUntil) {
-            return false;
-        }
-
-        // Check if session key has been revoked
-        if (_revokedSessionKeys[skData.owner][skData.sessionKey] > 0) {
-            return false;
-        }
-
-        // Validate permissionsHash matches TRADE_PERMISSION
-        if (skData.permissionsHash != TRADE_PERMISSION) {
-            return false;
-        }
-
-        // 1. Verify the session key signed the trade message
-        bytes32 tradeDigest =
-            getTradeApprovalHash(tradeHash, smartAccount, nonce, deadline);
-        if (!ECDSAHelper.isValidECDSASignature(
-                tradeDigest, sessionKeySignature, skData.sessionKey
-            )) {
-            return false;
-        }
-
-        // 2. Verify the owner authorized this session key
-        if (skData.chainId != block.chainid) {
-            return false;
-        }
-
-        bytes32 sessionStructHash = keccak256(
-            abi.encode(
-                SESSION_KEY_APPROVAL_TYPEHASH,
-                skData.sessionKey,
-                smartAccount,
-                skData.validUntil,
-                skData.permissionsHash,
-                skData.chainId
-            )
-        );
-        bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
-        if (!ECDSAHelper.isValidECDSASignature(
-                sessionHash, skData.ownerSignature, skData.owner
-            )) {
-            return false;
-        }
-
-        // 3. Verify the smart account is derived from the owner
-        if (address(accountFactory) == address(0)) {
-            revert AccountFactoryNotSet();
-        }
-
-        address expectedAccount =
-            accountFactory.getAccountAddress(skData.owner, 0);
-        if (expectedAccount != smartAccount) {
-            expectedAccount = accountFactory.getAccountAddress(skData.owner, 1);
-            if (expectedAccount != smartAccount) {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

@@ -535,15 +535,8 @@ deploy_ethereal_phase1() {
         update_deployment "pmNetwork" "PredictionMarketBridge" "$addr"
     fi
 
-    # 20. Deploy AccountFactory and configure on Escrow
-    run_script "src/scripts/deploy/DeployAccountFactory.s.sol:DeployAccountFactory" "$PM_NETWORK_RPC_URL" "Deploying ZeroDevKernelAccountFactory and configuring on Escrow"
-    addr=$(extract_address "$LAST_OUTPUT" "ACCOUNT_FACTORY_ADDRESS=")
-    if [ -n "$addr" ]; then
-        update_env "ACCOUNT_FACTORY_ADDRESS" "$addr"
-        update_deployment "pmNetwork" "ZeroDevKernelAccountFactory" "$addr"
-    fi
-
-    # 21. Deploy SecondaryMarketEscrow (requires ACCOUNT_FACTORY_ADDRESS)
+    # 20. Deploy SecondaryMarketEscrow (no constructor args — the legacy
+    #     session-key path is gone, so no AccountFactory is needed)
     run_script "src/scripts/deploy/DeploySecondaryMarketEscrow.s.sol:DeploySecondaryMarketEscrow" "$PM_NETWORK_RPC_URL" "Deploying SecondaryMarketEscrow on PM Network"
     addr=$(extract_address "$LAST_OUTPUT" "SECONDARY_MARKET_ESCROW_ADDRESS=")
     if [ -n "$addr" ]; then
@@ -673,27 +666,8 @@ upgrade_escrow() {
         update_deployment "pmNetwork" "PredictionMarketBridge" "$addr"
     fi
 
-    # Configure existing AccountFactory on new Escrow
-    # AccountFactory doesn't change between deploys — just set it on the new escrow
-    if [ -z "${ACCOUNT_FACTORY_ADDRESS:-}" ]; then
-        log_warn "ACCOUNT_FACTORY_ADDRESS not set — skipping AccountFactory configuration on new Escrow"
-        log_warn "Set ACCOUNT_FACTORY_ADDRESS in .env and run: cast send \$PREDICTION_MARKET_ADDRESS 'setAccountFactory(address)' \$ACCOUNT_FACTORY_ADDRESS"
-    else
-        log_info "Configuring existing AccountFactory ($ACCOUNT_FACTORY_ADDRESS) on new Escrow"
-        cd "$PROTOCOL_DIR"
-        local af_output
-        af_output=$(cast send "$PREDICTION_MARKET_ADDRESS" \
-            "setAccountFactory(address)" "$ACCOUNT_FACTORY_ADDRESS" \
-            --private-key "$PM_NETWORK_DEPLOYER_PRIVATE_KEY" \
-            --rpc-url "$PM_NETWORK_RPC_URL" 2>&1) || {
-            log_error "Failed to set AccountFactory on new Escrow"
-            echo "$af_output"
-            exit 1
-        }
-        log_success "AccountFactory configured on new Escrow"
-    fi
-
-    # Deploy NEW SecondaryMarketEscrow (requires ACCOUNT_FACTORY_ADDRESS)
+    # Deploy NEW SecondaryMarketEscrow (no constructor args — legacy
+    # session-key path was removed, so no AccountFactory wiring is needed)
     run_script "src/scripts/deploy/DeploySecondaryMarketEscrow.s.sol:DeploySecondaryMarketEscrow" "$PM_NETWORK_RPC_URL" "Deploying NEW SecondaryMarketEscrow on PM Network"
     addr=$(extract_address "$LAST_OUTPUT" "SECONDARY_MARKET_ESCROW_ADDRESS=")
     if [ -n "$addr" ]; then
@@ -748,7 +722,7 @@ upgrade_escrow() {
 deploy_secondary_market() {
     log_info "=== Deploy SecondaryMarketEscrow ==="
 
-    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL ACCOUNT_FACTORY_ADDRESS || exit 1
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL || exit 1
     set_deployer_pm
 
     run_script "src/scripts/deploy/DeploySecondaryMarketEscrow.s.sol:DeploySecondaryMarketEscrow" "$PM_NETWORK_RPC_URL" "Deploying SecondaryMarketEscrow on PM Network"
@@ -1260,11 +1234,6 @@ verify_pm() {
     # Verify Factory if deployed
     if [[ -n "${FACTORY_ADDRESS:-}" ]]; then
         verify_contract "$FACTORY_ADDRESS" "src/PredictionMarketTokenFactory.sol:PredictionMarketTokenFactory" "$PM_NETWORK_RPC_URL" "PredictionMarketTokenFactory"
-    fi
-
-    # Verify AccountFactory if deployed
-    if [[ -n "${ACCOUNT_FACTORY_ADDRESS:-}" ]]; then
-        verify_contract "$ACCOUNT_FACTORY_ADDRESS" "src/utils/ZeroDevKernelAccountFactory.sol:ZeroDevKernelAccountFactory" "$PM_NETWORK_RPC_URL" "ZeroDevKernelAccountFactory"
     fi
 
     # Verify PythConditionResolver if deployed

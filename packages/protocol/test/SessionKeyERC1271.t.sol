@@ -7,29 +7,9 @@ import "../src/PredictionMarketTokenFactory.sol";
 import "../src/resolvers/mocks/ManualConditionResolver.sol";
 import "../src/interfaces/IV2Types.sol";
 import "../src/interfaces/IPredictionMarketEscrow.sol";
-import "../src/utils/IAccountFactory.sol";
 import "../src/utils/SignatureValidator.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./mocks/MockERC20.sol";
-
-/// @notice Mock account factory for testing
-contract MockAccountFactory {
-    mapping(address => mapping(uint256 => address)) private _accounts;
-
-    function setAccount(address owner_, uint256 index, address account)
-        external
-    {
-        _accounts[owner_][index] = account;
-    }
-
-    function getAccountAddress(address owner_, uint256 index)
-        external
-        view
-        returns (address)
-    {
-        return _accounts[owner_][index];
-    }
-}
 
 /// @notice Mock smart account that implements ERC-1271 (simulates Kernel's behavior)
 /// The session key signs the typed data hash, and the smart account validates via isValidSignature()
@@ -111,7 +91,6 @@ contract SessionKeyERC1271Test is Test {
     PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
     MockERC20 public collateralToken;
-    MockAccountFactory public factory;
 
     address public admin;
     address public settler;
@@ -132,19 +111,11 @@ contract SessionKeyERC1271Test is Test {
     uint256 public eoaCounterpartyPk;
     address public eoaCounterparty;
 
-    // Legacy session key actors (for backward compat tests)
-    uint256 public legacyOwnerPk;
-    address public legacyOwner;
-    uint256 public legacySessionKeyPk;
-    address public legacySessionKey;
-    address public legacySmartAccount;
-
     uint256 public constant PREDICTOR_COLLATERAL = 100e18;
     uint256 public constant COUNTERPARTY_COLLATERAL = 150e18;
     bytes32 public constant REF_CODE = keccak256("erc1271-session-key");
     bytes32 public constant CONDITION_ID =
         keccak256("ERC1271_SESSION_KEY_CONDITION");
-    uint256 public constant SESSION_DURATION = 1 days;
 
     uint256 private _nextNonce = 1;
 
@@ -172,17 +143,6 @@ contract SessionKeyERC1271Test is Test {
         eoaCounterpartyPk = 31;
         eoaCounterparty = vm.addr(eoaCounterpartyPk);
 
-        // Legacy session key actors
-        legacyOwnerPk = 40;
-        legacyOwner = vm.addr(legacyOwnerPk);
-        legacySessionKeyPk = 41;
-        legacySessionKey = vm.addr(legacySessionKeyPk);
-        legacySmartAccount = address(0xDEAD);
-
-        // Deploy factory and set account mappings
-        factory = new MockAccountFactory();
-        factory.setAccount(legacyOwner, 0, legacySmartAccount);
-
         // Deploy collateral
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
 
@@ -194,7 +154,6 @@ contract SessionKeyERC1271Test is Test {
         );
         vm.startPrank(admin);
         tokenFactory.setDeployer(address(market));
-        market.setAccountFactory(address(factory));
         vm.stopPrank();
 
         // Deploy resolver
@@ -208,7 +167,6 @@ contract SessionKeyERC1271Test is Test {
         collateralToken.mint(address(counterpartySmartAccount), 1_000_000e18);
         collateralToken.mint(eoaPredictor, 1_000_000e18);
         collateralToken.mint(eoaCounterparty, 1_000_000e18);
-        collateralToken.mint(legacySmartAccount, 1_000_000e18);
 
         vm.prank(address(predictorSmartAccount));
         collateralToken.approve(address(market), type(uint256).max);
@@ -217,8 +175,6 @@ contract SessionKeyERC1271Test is Test {
         vm.prank(eoaPredictor);
         collateralToken.approve(address(market), type(uint256).max);
         vm.prank(eoaCounterparty);
-        collateralToken.approve(address(market), type(uint256).max);
-        vm.prank(legacySmartAccount);
         collateralToken.approve(address(market), type(uint256).max);
     }
 
@@ -422,33 +378,12 @@ contract SessionKeyERC1271Test is Test {
         request.counterpartySessionKeyData = p.counterpartySessionKeyData;
     }
 
-    // Helper for legacy SessionKeyData (for backward compat tests)
-    function _createLegacySessionKeyData(
-        address skAddr,
-        address owner,
-        address smartAccount,
-        bytes32 permissionsHash
-    ) internal view returns (bytes memory) {
-        uint256 validUntil =
-            block.timestamp + SESSION_DURATION;
-
-        bytes32 sessionApprovalHash = market.getSessionKeyApprovalHash(
-            skAddr, smartAccount, validUntil, permissionsHash, block.chainid
-        );
-        (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(legacyOwnerPk, sessionApprovalHash);
-        bytes memory ownerSig = abi.encodePacked(r, s, v);
-
-        IV2Types.SessionKeyData memory skData = IV2Types.SessionKeyData({
-            sessionKey: skAddr,
-            owner: owner,
-            validUntil: validUntil,
-            permissionsHash: permissionsHash,
-            chainId: block.chainid,
-            ownerSignature: ownerSig
-        });
-
-        return abi.encode(skData);
+    /// @notice Any non-empty bytes blob — the legacy on-chain session-key
+    /// path is now refused before decode, so the precise contents do not
+    /// matter. The escrow reverts with `LegacySessionKeyDataDisabled` purely
+    /// based on `sessionKeyData.length != 0`.
+    function _legacySessionKeyDataBlob() internal pure returns (bytes memory) {
+        return hex"deadbeef";
     }
 
     // ============ Mint Matrix Tests (ERC-1271) ============
@@ -603,63 +538,100 @@ contract SessionKeyERC1271Test is Test {
         market.mint(request);
     }
 
-    // ============ Backward Compatibility Tests ============
+    // ============ Legacy Path Disabled ============
+    //
+    // The legacy `sessionKeyData` blob path used factory CREATE2 derivation
+    // as proof of authority, which could not see Kernel validator rotations.
+    // It is now refused on chain. Smart accounts using session keys must do
+    // so through their own validator (Kernel permission validator + ERC-1271).
 
-    function test_mint_legacySessionKeyData_stillWorks() public {
-        // Use legacy format (full SessionKeyApproval) — should still work
-        bytes memory legacyData = _createLegacySessionKeyData(
-            legacySessionKey, legacyOwner, legacySmartAccount, keccak256("MINT")
-        );
-
+    function test_mint_legacySessionKeyData_reverts() public {
         IV2Types.MintRequest memory request = _buildMintRequest(
-            legacySmartAccount,
+            address(predictorSmartAccount),
             eoaCounterparty,
-            legacySessionKeyPk,
+            predictorSessionKeyPk,
             eoaCounterpartyPk,
-            legacyData,
+            _legacySessionKeyDataBlob(),
             ""
         );
 
-        (bytes32 predictionId,,) = market.mint(request);
-        assertNotEq(predictionId, bytes32(0));
+        vm.expectRevert(
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
+        );
+        market.mint(request);
     }
 
-    function test_mint_mixedFormats_ERC1271_and_legacy() public {
-        // Predictor uses ERC-1271, counterparty uses legacy session key format
-        bytes memory legacyData = _createLegacySessionKeyData(
-            legacySessionKey, legacyOwner, legacySmartAccount, keccak256("MINT")
-        );
-
+    function test_mint_legacySessionKeyData_counterpartySide_reverts() public {
         IV2Types.MintRequest memory request = _buildMintRequest(
             address(predictorSmartAccount),
-            legacySmartAccount,
+            address(counterpartySmartAccount),
             predictorSessionKeyPk,
-            legacySessionKeyPk,
+            counterpartySessionKeyPk,
             "", // ERC-1271
-            legacyData // legacy
+            _legacySessionKeyDataBlob() // legacy on counterparty
         );
 
-        (bytes32 predictionId,,) = market.mint(request);
-        assertNotEq(predictionId, bytes32(0));
+        vm.expectRevert(
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
+        );
+        market.mint(request);
     }
 
-    function test_mint_mixedFormats_legacy_and_ERC1271() public {
-        // Predictor uses legacy, counterparty uses ERC-1271
-        bytes memory legacyData = _createLegacySessionKeyData(
-            legacySessionKey, legacyOwner, legacySmartAccount, keccak256("MINT")
-        );
-
-        IV2Types.MintRequest memory request = _buildMintRequest(
-            legacySmartAccount,
+    function test_burn_legacySessionKeyData_predictor_reverts() public {
+        // Successful ERC-1271 mint to set up a real token pair to burn from.
+        bytes32 pickConfigId = _mintAndGetPickConfigId(
+            address(predictorSmartAccount),
             address(counterpartySmartAccount),
-            legacySessionKeyPk,
+            predictorSessionKeyPk,
             counterpartySessionKeyPk,
-            legacyData, // legacy
-            "" // ERC-1271
+            "",
+            ""
         );
 
-        (bytes32 predictionId,,) = market.mint(request);
-        assertNotEq(predictionId, bytes32(0));
+        IV2Types.BurnRequest memory request = _buildBurnRequest(
+            BurnParams({
+                pickConfigId: pickConfigId,
+                predictorHolder: address(predictorSmartAccount),
+                counterpartyHolder: address(counterpartySmartAccount),
+                predictorPk: predictorSessionKeyPk,
+                counterpartyPk: counterpartySessionKeyPk,
+                predictorSessionKeyData: _legacySessionKeyDataBlob(),
+                counterpartySessionKeyData: ""
+            })
+        );
+
+        vm.expectRevert(
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
+        );
+        market.burn(request);
+    }
+
+    function test_burn_legacySessionKeyData_counterparty_reverts() public {
+        bytes32 pickConfigId = _mintAndGetPickConfigId(
+            address(predictorSmartAccount),
+            address(counterpartySmartAccount),
+            predictorSessionKeyPk,
+            counterpartySessionKeyPk,
+            "",
+            ""
+        );
+
+        IV2Types.BurnRequest memory request = _buildBurnRequest(
+            BurnParams({
+                pickConfigId: pickConfigId,
+                predictorHolder: address(predictorSmartAccount),
+                counterpartyHolder: address(counterpartySmartAccount),
+                predictorPk: predictorSessionKeyPk,
+                counterpartyPk: counterpartySessionKeyPk,
+                predictorSessionKeyData: "",
+                counterpartySessionKeyData: _legacySessionKeyDataBlob()
+            })
+        );
+
+        vm.expectRevert(
+            IPredictionMarketEscrow.LegacySessionKeyDataDisabled.selector
+        );
+        market.burn(request);
     }
 
     // ============ Burn Matrix Tests (ERC-1271) ============
