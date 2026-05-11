@@ -18,6 +18,8 @@ const VOLATILE_LIVE_FIELDS = new Set([
   'vaultWithdrawals',
   'periodPnL',
   'periodVolume',
+  'totalTradeCount',
+  'periodTradeCount',
   'cumulativeVolume',
   'openInterest',
   'vaultPositionsWon',

@@ -60,6 +60,14 @@ function formatChartValue(value: number): string {
   return formatLargeNumber(value, 1, false);
 }
 
+function formatCount(value: number): string {
+  return Math.round(value).toLocaleString();
+}
+
+function formatCountChartValue(value: number): string {
+  return formatLargeNumber(value, 1, false);
+}
+
 type AnimatedCursorProps = {
   top?: number;
   height?: number;
@@ -91,7 +99,8 @@ type ChartTooltipProps = {
   }>;
   label?: string;
   dataKey: string;
-  collateralSymbol: string;
+  collateralSymbol?: string;
+  valueFormatter?: (value: number) => string;
 };
 
 function ChartTooltip({
@@ -100,6 +109,7 @@ function ChartTooltip({
   label,
   dataKey,
   collateralSymbol,
+  valueFormatter,
 }: ChartTooltipProps): React.ReactNode {
   if (!active || !payload?.length) return null;
 
@@ -107,10 +117,12 @@ function ChartTooltip({
   if (!dataPoint || dataPoint.value == null) return null;
 
   const value = Number(dataPoint.value);
-  const formattedValue = value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const formattedValue = valueFormatter
+    ? valueFormatter(value)
+    : value.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
 
   let dateLabel = '';
   if (label != null) {
@@ -138,7 +150,8 @@ function ChartTooltip({
         {dateLabel}
       </div>
       <div className="text-sm font-mono text-ethena">
-        {formattedValue} {collateralSymbol}
+        {formattedValue}
+        {collateralSymbol ? ` ${collateralSymbol}` : ''}
       </div>
     </div>
   );
@@ -188,6 +201,7 @@ function AnalyticsPageContent(): React.ReactElement {
 
   // Period states for each chart
   const [volumePeriod, setVolumePeriod] = useState<Period>('1M');
+  const [tradeCountPeriod, setTradeCountPeriod] = useState<Period>('1M');
   const [oiPeriod, setOiPeriod] = useState<Period>('1M');
   const [tvlPeriod, setTvlPeriod] = useState<Period>('1M');
 
@@ -226,6 +240,14 @@ function AnalyticsPageContent(): React.ReactElement {
     }));
   }, [protocolStats]);
 
+  const tradeCountChartData = useMemo(() => {
+    if (!protocolStats) return [];
+    return protocolStats.map((point) => ({
+      timestamp: point.timestamp,
+      tradeCount: point.periodTradeCount,
+    }));
+  }, [protocolStats]);
+
   // Aggregate sub-daily snapshots into UTC-day buckets. The cron interval is
   // configurable and often runs multiple times per day, so without this the
   // "Daily Volume" bar chart shows N bars per day instead of one.
@@ -240,6 +262,18 @@ function AnalyticsPageContent(): React.ReactElement {
       .sort(([a], [b]) => a - b)
       .map(([timestamp, volume]) => ({ timestamp, volume }));
   }, [volumeChartData, volumePeriod]);
+
+  const filteredTradeCountData = useMemo(() => {
+    const filtered = filterDataByPeriod(tradeCountChartData, tradeCountPeriod);
+    const byDay = new Map<number, number>();
+    for (const point of filtered) {
+      const dayStart = Math.floor(point.timestamp / 86400) * 86400;
+      byDay.set(dayStart, (byDay.get(dayStart) ?? 0) + point.tradeCount);
+    }
+    return [...byDay.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([timestamp, tradeCount]) => ({ timestamp, tradeCount }));
+  }, [tradeCountChartData, tradeCountPeriod]);
 
   // Bucket sub-daily snapshots into UTC days, keeping the last snapshot of
   // each day (closing value) so OI/TVL line charts render one point per day
@@ -268,10 +302,10 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 mb-4 lg:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="sc-heading text-foreground mb-2 flex items-center gap-1.5">
+            <CardContent className="px-6 py-5">
+              <div className="sc-heading text-foreground mb-1 flex items-center gap-1.5">
                 Protocol TVL
                 <Popover>
                   <PopoverTrigger asChild>
@@ -307,9 +341,9 @@ function AnalyticsPageContent(): React.ReactElement {
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
+              <div className="text-xl md:text-2xl font-mono leading-tight flex items-center h-8">
                 {isLoading ? (
-                  <div className="w-full flex justify-center pt-3">
+                  <div className="w-full flex justify-center">
                     <Loader className="w-6 h-6" />
                   </div>
                 ) : (
@@ -323,13 +357,13 @@ function AnalyticsPageContent(): React.ReactElement {
           </Card>
 
           <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="sc-heading text-foreground mb-2">
+            <CardContent className="px-6 py-5">
+              <div className="sc-heading text-foreground mb-1">
                 Open Interest
               </div>
-              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
+              <div className="text-xl md:text-2xl font-mono leading-tight flex items-center h-8">
                 {isLoading ? (
-                  <div className="w-full flex justify-center pt-3">
+                  <div className="w-full flex justify-center">
                     <Loader className="w-6 h-6" />
                   </div>
                 ) : (
@@ -343,13 +377,13 @@ function AnalyticsPageContent(): React.ReactElement {
           </Card>
 
           <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="sc-heading text-foreground mb-2">
+            <CardContent className="px-6 py-5">
+              <div className="sc-heading text-foreground mb-1">
                 Cumulative Volume
               </div>
-              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
+              <div className="text-xl md:text-2xl font-mono leading-tight flex items-center h-8">
                 {isLoading ? (
-                  <div className="w-full flex justify-center pt-3">
+                  <div className="w-full flex justify-center">
                     <Loader className="w-6 h-6" />
                   </div>
                 ) : (
@@ -361,12 +395,31 @@ function AnalyticsPageContent(): React.ReactElement {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="bg-brand-black border border-brand-white/10">
+            <CardContent className="px-6 py-5">
+              <div className="sc-heading text-foreground mb-1">
+                Total Trades
+              </div>
+              <div className="text-xl md:text-2xl font-mono leading-tight flex items-center h-8">
+                {isLoading ? (
+                  <div className="w-full flex justify-center">
+                    <Loader className="w-6 h-6" />
+                  </div>
+                ) : (
+                  <span className="transition-opacity duration-300">
+                    {formatCount(summary?.totalTradeCount ?? 0)}
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Charts */}
-        <div className="space-y-4 md:space-y-8">
+        <div className="space-y-4">
           {/* Open Interest distribution: by category + by time-to-resolution */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <OpenInterestByCategoryChart />
             <OpenInterestByTimeToResolutionChart />
           </div>
@@ -423,6 +476,71 @@ function AnalyticsPageContent(): React.ReactElement {
                           dataKey="volume"
                           fill="hsl(var(--ethena) / 0.6)"
                           name="volume"
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-brand-black border border-brand-white/10">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="sc-heading text-foreground flex items-center gap-1.5">
+                  Daily Trades
+                </h3>
+                <PeriodFilter
+                  value={tradeCountPeriod}
+                  onChange={setTradeCountPeriod}
+                />
+              </div>
+              <div className="h-[300px]">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader className="w-8 h-8" />
+                  </div>
+                ) : filteredTradeCountData.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    No data available
+                  </div>
+                ) : (
+                  <div className="w-full h-full transition-opacity duration-300">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart
+                        data={filteredTradeCountData}
+                        margin={CHART_MARGIN}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="hsl(var(--brand-white) / 0.1)"
+                        />
+                        <XAxis
+                          dataKey="timestamp"
+                          {...CHART_AXIS_STYLE}
+                          tickFormatter={formatTimestampTick}
+                        />
+                        <YAxis
+                          {...CHART_AXIS_STYLE}
+                          tickFormatter={formatCountChartValue}
+                          width={44}
+                          allowDecimals={false}
+                        />
+                        <Tooltip
+                          cursor={<AnimatedCursor />}
+                          content={(props) => (
+                            <ChartTooltip
+                              {...props}
+                              dataKey="tradeCount"
+                              valueFormatter={formatCount}
+                            />
+                          )}
+                        />
+                        <Bar
+                          dataKey="tradeCount"
+                          fill="hsl(var(--accent-gold) / 0.6)"
+                          name="trades"
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
