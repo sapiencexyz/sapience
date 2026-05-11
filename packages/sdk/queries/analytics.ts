@@ -3,6 +3,8 @@ import { graphqlRequest } from './client/graphqlClient';
 export interface ProtocolStat {
   timestamp: number;
   cumulativeVolume: string;
+  totalTradeCount: number;
+  periodTradeCount: number;
   openInterest: string;
   vaultBalance: string;
   vaultAvailableAssets: string;
@@ -25,6 +27,8 @@ export const GET_PROTOCOL_STATS = /* GraphQL */ `
     protocolStats(vaultAddress: $vaultAddress) {
       timestamp
       cumulativeVolume
+      totalTradeCount
+      periodTradeCount
       openInterest
       vaultBalance
       vaultAvailableAssets

@@ -1447,6 +1447,12 @@ deltas over that interval.
 type ProtocolStat {
   cumulativeVolume: String!
 
+  """Cumulative count of predictions and secondary trades/sales"""
+  totalTradeCount: Int!
+
+  """Trade-count delta over the snapshot interval"""
+  periodTradeCount: Int!
+
   """Realized PnL delta over the snapshot interval"""
   periodPnL: String!
 
