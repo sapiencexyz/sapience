@@ -12,10 +12,13 @@
  * Apollo plugin can attach the parsed operation name post-admission.
  * When a shed fires, the warn log includes a snapshot of the slots
  * currently occupied — answering "what got stuck" with server-derived
- * data that doesn't depend on client-supplied headers.
+ * data that doesn't depend on client-supplied headers — plus the
+ * rejected request's own context (path, claimed operation, query hash,
+ * user-agent/origin/referer) for tracing the caller.
  */
 
 import type { Request, Response, NextFunction } from 'express';
+import { createHash } from 'node:crypto';
 import { createLogger } from '../core/logger';
 import { inflightRegistry } from './inflightRegistry';
 
@@ -56,14 +59,42 @@ function getRequestId(req: Request): string {
 
 // Body isn't parsed yet at admission time — fall back to client-supplied
 // headers for the rejected request's claimed operation name. Trustworthy
-// for our own benchmarks; the occupant snapshot below uses server-parsed
-// names for the requests already holding slots.
+// for our own benchmarks; the occupant snapshot uses server-parsed names
+// for the requests already holding slots.
 function getClaimedOperationName(req: Request): string | undefined {
   const explicit = req.headers['x-operation-name'];
   if (typeof explicit === 'string' && explicit) return explicit;
   const apolloName = req.headers['apollographql-client-name'];
   if (typeof apolloName === 'string' && apolloName) return apolloName;
   return undefined;
+}
+
+// First 12 hex chars of sha256(query). Useful when the query rides in the
+// URL (GET) or has already been parsed onto req.body upstream; at admission
+// time for a POST it's typically undefined, which is fine — it just won't
+// appear on the log line.
+function getQueryHash(req: Request): string | undefined {
+  const query = req.query.query;
+  const body = req.body as { query?: unknown } | undefined;
+  const rawQuery = typeof query === 'string' ? query : body?.query;
+  return typeof rawQuery === 'string' && rawQuery
+    ? createHash('sha256').update(rawQuery).digest('hex').slice(0, 12)
+    : undefined;
+}
+
+function getRequestLogContext(req: Request, ip: string) {
+  return {
+    ip,
+    path: req.path,
+    method: req.method,
+    requestId: getRequestId(req),
+    operationName: getClaimedOperationName(req),
+    queryHash: getQueryHash(req),
+    userAgent: req.headers['user-agent'],
+    origin: req.headers.origin,
+    referer: req.headers.referer,
+    xForwardedFor: req.headers['x-forwarded-for'],
+  };
 }
 
 export function createConcurrencyLimiter(opts: ConcurrencyLimiterOptions) {
@@ -92,23 +123,20 @@ export function createConcurrencyLimiter(opts: ConcurrencyLimiterOptions) {
     next: NextFunction
   ): void {
     const ip = getIp(req);
-    const requestId = getRequestId(req);
-    const operationName = getClaimedOperationName(req);
+    const requestContext = getRequestLogContext(req, ip);
+    const { requestId } = requestContext;
 
     // Global limit — protects total server capacity (CPU, DB pool, memory)
     if (inflightRegistry.active >= maxConcurrent) {
       const snap = inflightRegistry.snapshot();
       log.warn(
         {
+          ...requestContext,
           event: 'gql_shed',
           layer: 'global',
           extensionsCode: 'SERVER_BUSY',
           activeOperations: snap.active,
           maxConcurrent,
-          ip,
-          requestId,
-          operationName,
-          path: req.path,
           byOperation: snap.byOperation,
           occupants: snap.occupants,
         },
@@ -135,15 +163,12 @@ export function createConcurrencyLimiter(opts: ConcurrencyLimiterOptions) {
       const snap = inflightRegistry.snapshot(ip);
       log.warn(
         {
+          ...requestContext,
           event: 'gql_shed',
           layer: 'ip_concurrency',
           extensionsCode: 'IP_CONCURRENCY_EXCEEDED',
           ipOps: snap.perIp,
           maxConcurrentPerIp,
-          ip,
-          requestId,
-          operationName,
-          path: req.path,
           occupants: snap.occupants,
         },
         'gql_shed ip_concurrency'
@@ -164,10 +189,35 @@ export function createConcurrencyLimiter(opts: ConcurrencyLimiterOptions) {
     }
 
     inflightRegistry.add(requestId, ip);
-    // Both events fire `remove`; the registry treats double-removal as a no-op.
+
     // `close` covers the client-aborted case where `finish` never fires.
-    res.on('finish', () => inflightRegistry.remove(requestId));
-    res.on('close', () => inflightRegistry.remove(requestId));
+    // The guard makes the double-fire a no-op; the registry tolerates
+    // double-removal too, so this is belt-and-suspenders.
+    let cleanedUp = false;
+    const cleanup = (reason: 'finish' | 'close') => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      inflightRegistry.remove(requestId);
+
+      const logContext = {
+        ...requestContext,
+        cleanupReason: reason,
+        statusCode: res.statusCode,
+        activeOperations: inflightRegistry.active,
+        ipOperations: inflightRegistry.perIp(ip),
+        completed: res.writableEnded,
+      };
+      if (reason === 'close' && !res.writableEnded) {
+        log.warn(
+          logContext,
+          'GraphQL concurrency slot released on closed connection'
+        );
+      } else {
+        log.debug(logContext, 'GraphQL concurrency slot released');
+      }
+    };
+    res.on('finish', () => cleanup('finish'));
+    res.on('close', () => cleanup('close'));
     next();
   }
 

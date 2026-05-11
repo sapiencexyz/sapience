@@ -112,6 +112,18 @@ export class InflightRegistry {
     this.peakActive = this.slots.size;
     return peak;
   }
+
+  /**
+   * Drop all tracked slots. The registry is a process-wide singleton, so
+   * suites that exercise the limiter directly need this between cases to
+   * avoid one test's leftover in-flight rows shifting the next test's
+   * admission math.
+   */
+  reset(): void {
+    this.slots.clear();
+    this.perIpCount.clear();
+    this.peakActive = 0;
+  }
 }
 
 export const inflightRegistry = new InflightRegistry();
