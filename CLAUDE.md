@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Sapience is a pnpm monorepo (Node >= 22.12.0, pnpm 9.x). Run `pnpm install` to set up.
+Sapience is a pnpm monorepo (Node >= 22.12.0, pnpm 10.x). Run `pnpm install` to set up.
 
 Use `.nvmrc` / `.node-version` instead of a loose `22` alias — Prisma 7's CLI breaks on Node 22.11.x with `ERR_REQUIRE_ESM`, so we need 22.12.0+ in practice.
 
