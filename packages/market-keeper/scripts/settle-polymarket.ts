@@ -216,7 +216,6 @@ query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
     where: {
       AND: [
         { settled: { equals: false } }
-        { public: { equals: true } }
         { resolver: { equals: $resolver, mode: insensitive } }
         {
           OR: [
