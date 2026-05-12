@@ -560,7 +560,6 @@ export default function QuestionPageContent({
     >
       <TechSpecTable
         conditionId={conditionId}
-        chainId={data.chainId ?? 42161}
         endTime={data?.endTime ?? null}
         settled={data?.settled ?? null}
         resolvedToYes={data?.resolvedToYes ?? null}

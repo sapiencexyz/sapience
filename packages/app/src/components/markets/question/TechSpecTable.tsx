@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import { Copy } from 'lucide-react';
 import { PythOracleMark } from '@sapience/ui';
-import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import { ConditionStatusIndicator } from './ConditionStatusIndicator';
 import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
@@ -11,7 +10,6 @@ import { shortenAddress } from '~/lib/utils/util';
 
 interface TechSpecTableProps {
   conditionId: string;
-  chainId: number;
   endTime?: number | null;
   settled?: boolean | null;
   resolvedToYes?: boolean | null;
@@ -21,15 +19,12 @@ interface TechSpecTableProps {
 
 export function TechSpecTable({
   conditionId,
-  chainId,
   endTime,
   settled,
   resolvedToYes,
   nonDecisive,
   resolverAddress,
 }: TechSpecTableProps) {
-  const marketAddress = predictionMarketEscrow[chainId]?.address;
-
   const isPolymarketResolver =
     resolverAddress &&
     POLYMARKET_RESOLVER_ADDRESSES.has(resolverAddress.toLowerCase());
@@ -42,43 +37,6 @@ export function TechSpecTable({
   return (
     <table className="w-full text-xs border-collapse">
       <tbody className="divide-y divide-border/60">
-        <tr>
-          <td className="px-4 py-3 text-xs text-muted-foreground font-mono uppercase tracking-wider whitespace-nowrap w-24 align-middle leading-none">
-            Escrow
-          </td>
-          <td className="px-4 py-3 text-brand-white font-mono text-sm break-all align-middle leading-none">
-            {marketAddress ? (
-              <span className="inline-flex items-center gap-1.5 align-middle leading-none">
-                <a
-                  href="https://ethereal.trade"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center hover:opacity-90 transition-opacity"
-                  aria-label="Visit Ethereal"
-                >
-                  <Image
-                    src="/ethereal-logomark.svg"
-                    alt="Ethereal"
-                    width={24}
-                    height={24}
-                    className="h-[18px] w-[18px]"
-                  />
-                </a>
-                {shortenAddress(marketAddress)}
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(marketAddress)}
-                  className="text-muted-foreground hover:text-brand-white transition-colors"
-                  title="Copy full escrow address"
-                >
-                  <Copy className="h-3 w-3" />
-                </button>
-              </span>
-            ) : (
-              '—'
-            )}
-          </td>
-        </tr>
         <tr>
           <td className="px-4 py-3 text-xs text-muted-foreground font-mono uppercase tracking-wider whitespace-nowrap w-24 align-middle leading-none">
             Resolver
