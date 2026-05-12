@@ -560,7 +560,6 @@ export default function QuestionPageContent({
     >
       <TechSpecTable
         conditionId={conditionId}
-        chainId={data.chainId ?? 42161}
         endTime={data?.endTime ?? null}
         settled={data?.settled ?? null}
         resolvedToYes={data?.resolvedToYes ?? null}
@@ -573,7 +572,7 @@ export default function QuestionPageContent({
   const renderScatterPlotCard = () => (
     <div
       className={`relative w-full min-w-0 bg-brand-black border border-border rounded-lg pt-6 pr-8 pb-2 pl-2 min-h-[320px] h-[320px] sm:h-[360px] ${
-        data?.settled ? 'lg:h-[205px] lg:min-h-0' : 'lg:min-h-[350px] lg:h-full'
+        data?.settled ? 'lg:h-[205px] lg:min-h-0' : 'lg:min-h-[280px] lg:h-full'
       }`}
       // Explicit height on small screens so Recharts can compute dimensions
       // When settled, use fixed height on desktop; otherwise let grid stretch fill the height
