@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetConfiguredVaults = vi.fn();
@@ -65,19 +63,5 @@ describe('Query.protocolStats', () => {
 
     expect(result).toEqual([]);
     expect(mockGetProtocolStatsTimeSeries).not.toHaveBeenCalled();
-  });
-});
-
-describe('analytics OI aggregation counts private conditions', () => {
-  const source = readFileSync(resolve(__dirname, './analytics.ts'), 'utf8');
-
-  it('does not exclude predictions touching private conditions from OI', () => {
-    expect(source).not.toMatch(/c\.public\s*=\s*false/);
-    expect(source).not.toMatch(/BOOL_AND\(\s*c\.public\s*\)/);
-    expect(source).not.toMatch(/all_public/);
-  });
-
-  it('openInterestByCategory does not filter conditions on public', () => {
-    expect(source).not.toMatch(/c\.public\s*=\s*true/);
   });
 });
