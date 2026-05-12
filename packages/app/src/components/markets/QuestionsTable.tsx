@@ -40,6 +40,7 @@ import {
 import { cn } from '@sapience/ui/lib/utils';
 import Loader from '../shared/Loader';
 import { PythMarketBadge } from '../shared/PythMarketBadge';
+import RequestMarketPanel from '../shared/RequestMarketPanel';
 import ConditionTitleLink from './ConditionTitleLink';
 import MarketBadge from './MarketBadge';
 import TableFilters, {
@@ -95,6 +96,10 @@ interface QuestionsTableProps {
   // Filter volume toggle (excludes extreme-odds trades from sorted volume)
   filterVolume: boolean;
   onFilterVolumeChange: (v: boolean) => void;
+
+  // Current text search — used to offer a "request this market" prompt in the
+  // empty state when nothing matches.
+  searchTerm?: string;
 }
 
 // Class name maps for table headers and cells
@@ -777,6 +782,7 @@ export default function QuestionsTable({
   onVolumeWindowChange,
   filterVolume,
   onFilterVolumeChange,
+  searchTerm,
 }: QuestionsTableProps) {
   // Derive volume metric from the persisted sortField so the dropdown and
   // column header stay in sync with the actual sort on reload.
@@ -1053,9 +1059,9 @@ export default function QuestionsTable({
               <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
+                  className="text-center text-muted-foreground"
                 >
-                  No results found.
+                  <RequestMarketPanel ticker={searchTerm ?? ''} />
                 </TableCell>
               </TableRow>
             )}
