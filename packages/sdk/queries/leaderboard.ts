@@ -5,6 +5,17 @@ export interface AggregatedLeaderboardEntry {
   totalPnL: string;
 }
 
+export type AccountStatMetric = 'NET_PNL' | 'GAINS' | 'LOSSES' | 'VOLUME';
+
+/** All amounts are wei strings (18 decimals); `losses` is negative. */
+export interface AccountStatEntry {
+  address: string;
+  netPnL: string;
+  gains: string;
+  losses: string;
+  volume: string;
+}
+
 export type ForecasterScore = {
   address: string;
   numScored: number;
@@ -58,6 +69,52 @@ export const GET_ACCOUNT_ACCURACY_RANK = /* GraphQL */ `
     }
   }
 `;
+
+export const GET_ACCOUNT_STATS_LEADERBOARD = /* GraphQL */ `
+  query AccountStatsLeaderboard(
+    $metric: AccountStatMetric!
+    $from: DateTimeISO
+    $to: DateTimeISO
+    $limit: Int!
+    $skip: Int!
+  ) {
+    accountStatsLeaderboard(
+      metric: $metric
+      from: $from
+      to: $to
+      limit: $limit
+      skip: $skip
+    ) {
+      address
+      netPnL
+      gains
+      losses
+      volume
+    }
+  }
+`;
+
+const toIsoOrNull = (v?: Date | string | null): string | null =>
+  v == null ? null : v instanceof Date ? v.toISOString() : v;
+
+export async function fetchAccountStatsLeaderboard(params: {
+  metric: AccountStatMetric;
+  from?: Date | string | null;
+  to?: Date | string | null;
+  limit?: number;
+  skip?: number;
+}): Promise<AccountStatEntry[]> {
+  const data = await graphqlRequest<{
+    accountStatsLeaderboard: AccountStatEntry[];
+  }>(GET_ACCOUNT_STATS_LEADERBOARD, {
+    metric: params.metric,
+    from: toIsoOrNull(params.from),
+    to: toIsoOrNull(params.to),
+    limit: params.limit ?? 25,
+    skip: params.skip ?? 0,
+  });
+  return data?.accountStatsLeaderboard || [];
+}
 
 export async function fetchLeaderboard(): Promise<
   AggregatedLeaderboardEntry[]

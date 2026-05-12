@@ -25,6 +25,7 @@ import {
   useProtocolStats,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
+import AccountsLeaderboardCard from '~/components/analytics/AccountsLeaderboardCard';
 import OpenInterestByCategoryChart from '~/components/analytics/OpenInterestByCategoryChart';
 import OpenInterestByTimeToResolutionChart from '~/components/analytics/OpenInterestByTimeToResolutionChart';
 import PeriodFilter, {
@@ -423,6 +424,8 @@ function AnalyticsPageContent(): React.ReactElement {
             <OpenInterestByCategoryChart />
             <OpenInterestByTimeToResolutionChart />
           </div>
+
+          <AccountsLeaderboardCard />
 
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">

@@ -33,6 +33,7 @@ import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
 import { accountActivity } from './queries/activity';
+import { accountStatsLeaderboard } from './queries/accountStats';
 import {
   openInterestByCategory,
   openInterestByTimeToResolution,
@@ -92,6 +93,7 @@ export const resolvers: Resolvers = {
     accountAccuracyRank,
     accuracyLeaderboard,
     accountProfitRank,
+    accountStatsLeaderboard,
     profitLeaderboard,
     // Time series
     accountBalance,

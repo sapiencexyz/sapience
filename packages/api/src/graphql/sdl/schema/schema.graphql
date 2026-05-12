@@ -1407,6 +1407,23 @@ type ProfitEntry {
   totalPnL: String!
 }
 
+"""Metric an account-stats leaderboard is ranked by."""
+enum AccountStatMetric {
+  NET_PNL
+  GAINS
+  LOSSES
+  VOLUME
+}
+
+"""Per-address account stats over a date range — all amounts are wei strings (losses negative)."""
+type AccountStatEntry {
+  address: String!
+  netPnL: String!
+  gains: String!
+  losses: String!
+  volume: String!
+}
+
 """Profit rank and total PnL for an address on the leaderboard"""
 type ProfitRank {
   address: String!
@@ -1518,6 +1535,11 @@ type Query {
   Profit rank and total PnL for a single address relative to all participants
   """
   accountProfitRank(address: String!): ProfitRank! @deprecated
+
+  """
+  Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date range. `from` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time.
+  """
+  accountStatsLeaderboard(from: DateTimeISO, limit: Int! = 25, metric: AccountStatMetric! = NET_PNL, skip: Int! = 0, to: DateTimeISO): [AccountStatEntry!]!
 
   """
   Total lifetime trading volume in wei for the given address across all prediction types

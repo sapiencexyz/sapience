@@ -20,6 +20,23 @@ export type Scalars = {
   Decimal: { input: any; output: any; }
 };
 
+/** Per-address account stats over a date range — all amounts are wei strings (losses negative). */
+export type AccountStatEntry = {
+  __typename?: 'AccountStatEntry';
+  address: Scalars['String']['output'];
+  gains: Scalars['String']['output'];
+  losses: Scalars['String']['output'];
+  netPnL: Scalars['String']['output'];
+  volume: Scalars['String']['output'];
+};
+
+/** Metric an account-stats leaderboard is ranked by. */
+export type AccountStatMetric =
+  | 'GAINS'
+  | 'LOSSES'
+  | 'NET_PNL'
+  | 'VOLUME';
+
 /** Accuracy rank for an address on the forecasting leaderboard */
 export type AccuracyRank = {
   __typename?: 'AccuracyRank';
@@ -1616,6 +1633,8 @@ export type Query = {
    * @deprecated Field no longer supported
    */
   accountProfitRank: ProfitRank;
+  /** Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date range. `from` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. */
+  accountStatsLeaderboard: Array<AccountStatEntry>;
   /** Total lifetime trading volume in wei for the given address across all prediction types */
   accountTotalVolume: Scalars['String']['output'];
   /** Time-bucketed trading volume for a single address */
@@ -1750,6 +1769,15 @@ export type QueryAccountPredictionCountArgs = {
 
 export type QueryAccountProfitRankArgs = {
   address: Scalars['String']['input'];
+};
+
+
+export type QueryAccountStatsLeaderboardArgs = {
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  limit?: Scalars['Int']['input'];
+  metric?: AccountStatMetric;
+  skip?: Scalars['Int']['input'];
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
 };
 
 
