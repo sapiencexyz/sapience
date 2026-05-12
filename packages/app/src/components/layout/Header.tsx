@@ -40,6 +40,10 @@ import { SiSubstack } from 'react-icons/si';
 
 import { useEffect, useRef, useState } from 'react';
 import { useDisconnect } from 'wagmi';
+import {
+  CHAIN_ID_ETHEREAL_TESTNET,
+  DEFAULT_CHAIN_ID,
+} from '@sapience/sdk/constants';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import CollateralBalanceButton from './CollateralBalanceButton';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
@@ -70,6 +74,9 @@ const USER_REFERRAL_STATUS_QUERY = `
     }
   }
 `;
+
+// On staging (Ethereal Testnet) we don't gate access behind an invite code.
+const IS_STAGING = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
 
 const isActive = (path: string, pathname: string) => {
   if (path === '/') {
@@ -320,6 +327,12 @@ const Header = () => {
     let cancelled = false;
 
     const run = async () => {
+      // Staging skips the invite-code gate entirely.
+      if (IS_STAGING) {
+        setIsReferralRequiredOpen(false);
+        return;
+      }
+
       if (!ready || !hasConnectedWallet || !connectedWallet?.address) {
         setIsReferralRequiredOpen(false);
         lastWalletAddressRef.current = null;
