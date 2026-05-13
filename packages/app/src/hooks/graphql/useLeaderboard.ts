@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
-  fetchLeaderboard,
+  fetchAccountStatsLeaderboard,
   type AggregatedLeaderboardEntry,
 } from '@sapience/sdk/queries';
 
@@ -10,7 +10,17 @@ const useAllTimeLeaderboard = () => {
     queryKey: ['allTimeLeaderboard'],
     queryFn: async () => {
       try {
-        return await fetchLeaderboard();
+        // Source from the unified `accountStatsLeaderboard` (metric=NET_PNL,
+        // no `from` ⇒ all-time). `netPnL` is wei; ProfitCell expects a
+        // human-readable decimal string so we divide here.
+        const entries = await fetchAccountStatsLeaderboard({
+          metric: 'NET_PNL',
+          limit: 100,
+        });
+        return entries.map((e) => ({
+          address: e.address,
+          totalPnL: (parseFloat(e.netPnL) / 1e18).toString(),
+        }));
       } catch (error) {
         console.error('Error in useAllTimeLeaderboard:', error);
         return [];
