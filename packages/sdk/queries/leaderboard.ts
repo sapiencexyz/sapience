@@ -61,26 +61,21 @@ export const GET_ACCOUNT_ACCURACY_RANK = /* GraphQL */ `
   }
 `;
 
-export const GET_ACCOUNT_STATS_LEADERBOARD = /* GraphQL */ `
-  query AccountStatsLeaderboard(
-    $metric: AccountStatMetric!
-    $from: DateTimeISO
-    $to: DateTimeISO
-    $limit: Int!
+export const GET_ACCOUNT_STATS_LEADERBOARD_PAGE = /* GraphQL */ `
+  query AccountStatsLeaderboardPage(
+    $filters: AccountStatsFilters!
+    $take: Int!
     $skip: Int!
   ) {
-    accountStatsLeaderboard(
-      metric: $metric
-      from: $from
-      to: $to
-      limit: $limit
-      skip: $skip
-    ) {
-      address
-      netPnL
-      gains
-      losses
-      volume
+    accountStatsLeaderboardPage(filters: $filters, take: $take, skip: $skip) {
+      items {
+        address
+        netPnL
+        gains
+        losses
+        volume
+      }
+      hasMore
     }
   }
 `;
@@ -89,10 +84,15 @@ export const GET_ACCOUNT_STATS_RANK = /* GraphQL */ `
   query AccountStatsRank(
     $address: String!
     $metric: AccountStatMetric! = NET_PNL
-    $from: DateTimeISO
-    $to: DateTimeISO
+    $fromEpoch: Int
+    $toEpoch: Int
   ) {
-    accountStatsRank(address: $address, metric: $metric, from: $from, to: $to) {
+    accountStatsRank(
+      address: $address
+      metric: $metric
+      fromEpoch: $fromEpoch
+      toEpoch: $toEpoch
+    ) {
       address
       netPnL
       gains
@@ -104,33 +104,51 @@ export const GET_ACCOUNT_STATS_RANK = /* GraphQL */ `
   }
 `;
 
-const toIsoOrNull = (v?: Date | string | null): string | null =>
-  v == null ? null : v instanceof Date ? v.toISOString() : v;
+/** Convert a Date/string/epoch-seconds input into an epoch-seconds Int for
+ *  the wire `fromEpoch`/`toEpoch` args. Strings are parsed as ISO; numbers
+ *  pass through (assumed already-seconds). */
+const toEpochOrNull = (v?: Date | string | number | null): number | null => {
+  if (v == null) return null;
+  if (typeof v === 'number') return v;
+  const d = v instanceof Date ? v : new Date(v);
+  return Math.floor(d.getTime() / 1000);
+};
 
+/**
+ * Convenience wrapper: same Date/string-friendly inputs as before, fetches
+ * the new `accountStatsLeaderboardPage` Page form, returns just the rows.
+ * For pagination + hasMore + totalCount, call the Page form via the GraphQL
+ * client directly using `GET_ACCOUNT_STATS_LEADERBOARD_PAGE`.
+ */
 export async function fetchAccountStatsLeaderboard(params: {
   metric: AccountStatMetric;
-  from?: Date | string | null;
-  to?: Date | string | null;
+  from?: Date | string | number | null;
+  to?: Date | string | number | null;
   limit?: number;
   skip?: number;
 }): Promise<AccountStatEntry[]> {
   const data = await graphqlRequest<{
-    accountStatsLeaderboard: AccountStatEntry[];
-  }>(GET_ACCOUNT_STATS_LEADERBOARD, {
-    metric: params.metric,
-    from: toIsoOrNull(params.from),
-    to: toIsoOrNull(params.to),
-    limit: params.limit ?? 25,
+    accountStatsLeaderboardPage: {
+      items: AccountStatEntry[];
+      hasMore: boolean;
+    };
+  }>(GET_ACCOUNT_STATS_LEADERBOARD_PAGE, {
+    filters: {
+      metric: params.metric,
+      fromEpoch: toEpochOrNull(params.from),
+      toEpoch: toEpochOrNull(params.to),
+    },
+    take: params.limit ?? 25,
     skip: params.skip ?? 0,
   });
-  return data?.accountStatsLeaderboard || [];
+  return data?.accountStatsLeaderboardPage?.items || [];
 }
 
 export async function fetchAccountStatsRank(params: {
   address: string;
   metric?: AccountStatMetric;
-  from?: Date | string | null;
-  to?: Date | string | null;
+  from?: Date | string | number | null;
+  to?: Date | string | number | null;
 }): Promise<AccountStatsRankResult> {
   const addressLc = params.address.toLowerCase();
   const data = await graphqlRequest<{
@@ -138,8 +156,8 @@ export async function fetchAccountStatsRank(params: {
   }>(GET_ACCOUNT_STATS_RANK, {
     address: addressLc,
     metric: params.metric ?? 'NET_PNL',
-    from: toIsoOrNull(params.from),
-    to: toIsoOrNull(params.to),
+    fromEpoch: toEpochOrNull(params.from),
+    toEpoch: toEpochOrNull(params.to),
   });
   const r = data?.accountStatsRank;
   if (!r) {

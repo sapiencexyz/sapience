@@ -38,6 +38,25 @@ export type AccountStatMetric =
   | 'VOLUME';
 
 /**
+ * Filters for `accountStatsLeaderboardPage`. `fromEpoch` omitted means all-time;
+ * `toEpoch` omitted means now. Both are epoch seconds.
+ */
+export type AccountStatsFilters = {
+  fromEpoch?: InputMaybe<Scalars['Int']['input']>;
+  metric?: AccountStatMetric;
+  toEpoch?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** Paginated wrapper around AccountStatEntry rows with a server-truth hasMore flag. */
+export type AccountStatsLeaderboardPage = {
+  __typename?: 'AccountStatsLeaderboardPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<AccountStatEntry>;
+  /** Total addresses with activity in the window. Populated only when selected. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
+/**
  * Stats + rank for a single address against the leaderboard's ranked set. Stat
  * fields mirror `AccountStatEntry` (always populated; zero when the address has
  * no activity in the requested window). `rank` is 1-indexed against the ranked
@@ -1621,9 +1640,9 @@ export type Query = {
   accountPnl: Array<PnlDataPoint>;
   /** Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time */
   accountPredictionCount: Array<PredictionCountDataPoint>;
-  /** Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date range. `from` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. */
-  accountStatsLeaderboard: Array<AccountStatEntry>;
-  /** Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional date window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set. */
+  /** Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date window. `fromEpoch` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. Page-shaped with server-truth `hasMore` and lazy `totalCount`. */
+  accountStatsLeaderboardPage: AccountStatsLeaderboardPage;
+  /** Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional epoch-second window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set. */
   accountStatsRank: AccountStatsRank;
   /** Total lifetime trading volume in wei for the given address across all prediction types */
   accountTotalVolume: Scalars['String']['output'];
@@ -1745,20 +1764,18 @@ export type QueryAccountPredictionCountArgs = {
 };
 
 
-export type QueryAccountStatsLeaderboardArgs = {
-  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
-  limit?: Scalars['Int']['input'];
-  metric?: AccountStatMetric;
+export type QueryAccountStatsLeaderboardPageArgs = {
+  filters: AccountStatsFilters;
   skip?: Scalars['Int']['input'];
-  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  take?: Scalars['Int']['input'];
 };
 
 
 export type QueryAccountStatsRankArgs = {
   address: Scalars['String']['input'];
-  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  fromEpoch?: InputMaybe<Scalars['Int']['input']>;
   metric?: AccountStatMetric;
-  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  toEpoch?: InputMaybe<Scalars['Int']['input']>;
 };
 
 

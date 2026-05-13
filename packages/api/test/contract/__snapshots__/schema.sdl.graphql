@@ -18,6 +18,29 @@ enum AccountStatMetric {
 }
 
 """
+Filters for `accountStatsLeaderboardPage`. `fromEpoch` omitted means all-time;
+`toEpoch` omitted means now. Both are epoch seconds.
+"""
+input AccountStatsFilters {
+  fromEpoch: Int
+  metric: AccountStatMetric! = NET_PNL
+  toEpoch: Int
+}
+
+"""
+Paginated wrapper around AccountStatEntry rows with a server-truth hasMore flag.
+"""
+type AccountStatsLeaderboardPage {
+  hasMore: Boolean!
+  items: [AccountStatEntry!]!
+
+  """
+  Total addresses with activity in the window. Populated only when selected.
+  """
+  totalCount: Int
+}
+
+"""
 Stats + rank for a single address against the leaderboard's ranked set. Stat
 fields mirror `AccountStatEntry` (always populated; zero when the address has
 no activity in the requested window). `rank` is 1-indexed against the ranked
@@ -1513,14 +1536,14 @@ type Query {
   accountPredictionCount(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PredictionCountDataPoint!]!
 
   """
-  Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date range. `from` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time.
+  Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date window. `fromEpoch` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. Page-shaped with server-truth `hasMore` and lazy `totalCount`.
   """
-  accountStatsLeaderboard(from: DateTimeISO, limit: Int! = 25, metric: AccountStatMetric! = NET_PNL, skip: Int! = 0, to: DateTimeISO): [AccountStatEntry!]!
+  accountStatsLeaderboardPage(filters: AccountStatsFilters!, skip: Int! = 0, take: Int! = 25): AccountStatsLeaderboardPage!
 
   """
-  Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional date window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set.
+  Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional epoch-second window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set.
   """
-  accountStatsRank(address: String!, from: DateTimeISO, metric: AccountStatMetric! = NET_PNL, to: DateTimeISO): AccountStatsRank!
+  accountStatsRank(address: String!, fromEpoch: Int, metric: AccountStatMetric! = NET_PNL, toEpoch: Int): AccountStatsRank!
 
   """
   Total lifetime trading volume in wei for the given address across all prediction types

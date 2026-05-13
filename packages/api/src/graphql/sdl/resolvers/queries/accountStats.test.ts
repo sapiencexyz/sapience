@@ -18,31 +18,56 @@ vi.mock('../../../../lib/ttlCache', () => ({
   },
 }));
 
-const { accountStatsLeaderboard, accountStatsRank } = await import(
+const { accountStatsLeaderboardPage, accountStatsRank } = await import(
   './accountStats'
 );
 const { AccountStatMetric } = await import('../../__generated__/resolvers');
 
-type Args = {
+type Filters = {
   metric: (typeof AccountStatMetric)[keyof typeof AccountStatMetric];
-  from?: Date | null;
-  to?: Date | null;
-  limit: number;
-  skip: number;
+  fromEpoch?: number | null;
+  toEpoch?: number | null;
 };
-const call = (args: Args) =>
+type Args = { filters: Filters; take: number; skip: number };
+
+// Minimal `info` mock matching the field-selection probe the resolver uses to
+// decide whether to populate `totalCount`. Each test names what it wants.
+const infoSelecting = (...fields: string[]) => ({
+  fieldNodes: [
+    {
+      selectionSet: {
+        selections: fields.map((name) => ({
+          kind: 'Field',
+          name: { value: name },
+        })),
+      },
+    },
+  ],
+});
+
+const call = (args: Args, fields: string[] = ['items', 'hasMore']) =>
   (
-    accountStatsLeaderboard as unknown as (
+    accountStatsLeaderboardPage as unknown as (
       p: unknown,
       a: Args,
       c: unknown,
       i: unknown
-    ) => Promise<Array<{ address: string }>>
-  )({}, args, {}, {});
+    ) => Promise<{
+      items: Array<{
+        address: string;
+        netPnL: string;
+        gains: string;
+        losses: string;
+        volume: string;
+      }>;
+      hasMore: boolean;
+      totalCount: number | null;
+    }>
+  )({}, args, {}, infoSelecting(...fields));
 
 const WEI = (n: number) => (BigInt(n) * 10n ** 18n).toString();
 
-describe('Query.accountStatsLeaderboard', () => {
+describe('Query.accountStatsLeaderboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPnLBreakdown.mockResolvedValue([
@@ -58,12 +83,12 @@ describe('Query.accountStatsLeaderboard', () => {
   });
 
   it('ranks by net PnL descending and lowercases addresses', async () => {
-    const rows = await call({
-      metric: AccountStatMetric.NetPnl,
-      limit: 25,
+    const page = await call({
+      filters: { metric: AccountStatMetric.NetPnl },
+      take: 25,
       skip: 0,
     });
-    expect(rows.map((r) => r.address)).toEqual([
+    expect(page.items.map((r) => r.address)).toEqual([
       '0xccc',
       '0xaaa',
       '0xddd', // only volume → netPnL 0
@@ -72,54 +97,58 @@ describe('Query.accountStatsLeaderboard', () => {
   });
 
   it('ranks by gains descending', async () => {
-    const rows = await call({
-      metric: AccountStatMetric.Gains,
-      limit: 25,
+    const page = await call({
+      filters: { metric: AccountStatMetric.Gains },
+      take: 25,
       skip: 0,
     });
-    expect(rows.slice(0, 2).map((r) => r.address)).toEqual(['0xccc', '0xaaa']);
+    expect(page.items.slice(0, 2).map((r) => r.address)).toEqual([
+      '0xccc',
+      '0xaaa',
+    ]);
   });
 
   it('ranks by losses ascending (biggest loss first)', async () => {
-    const rows = await call({
-      metric: AccountStatMetric.Losses,
-      limit: 25,
+    const page = await call({
+      filters: { metric: AccountStatMetric.Losses },
+      take: 25,
       skip: 0,
     });
-    expect(rows[0].address).toBe('0xaaa'); // -70
-    expect(rows[1].address).toBe('0xbbb'); // -40
+    expect(page.items[0].address).toBe('0xaaa'); // -70
+    expect(page.items[1].address).toBe('0xbbb'); // -40
   });
 
   it('ranks by volume descending', async () => {
-    const rows = await call({
-      metric: AccountStatMetric.Volume,
-      limit: 25,
+    const page = await call({
+      filters: { metric: AccountStatMetric.Volume },
+      take: 25,
       skip: 0,
     });
-    expect(rows.slice(0, 2).map((r) => r.address)).toEqual(['0xbbb', '0xaaa']);
+    expect(page.items.slice(0, 2).map((r) => r.address)).toEqual([
+      '0xbbb',
+      '0xaaa',
+    ]);
   });
 
   it('merges PnL and volume per address, defaulting the missing side to "0"', async () => {
-    const rows = (await call({
-      metric: AccountStatMetric.NetPnl,
-      limit: 25,
+    const page = await call({
+      filters: { metric: AccountStatMetric.NetPnl },
+      take: 25,
       skip: 0,
-    })) as Array<{
-      address: string;
-      netPnL: string;
-      gains: string;
-      losses: string;
-      volume: string;
-    }>;
-    const ddd = rows.find((r) => r.address === '0xddd');
+    });
+    const ddd = page.items.find((r) => r.address === '0xddd');
     expect(ddd).toMatchObject({ netPnL: '0', gains: '0', losses: '0' });
     expect(ddd?.volume).toBe(WEI(10));
-    const ccc = rows.find((r) => r.address === '0xccc');
+    const ccc = page.items.find((r) => r.address === '0xccc');
     expect(ccc?.volume).toBe('0');
   });
 
-  it('passes the resolved epoch window through; omitting `from` means all-time', async () => {
-    await call({ metric: AccountStatMetric.NetPnl, limit: 25, skip: 0 });
+  it('passes the resolved epoch window through; omitting `fromEpoch` means all-time', async () => {
+    await call({
+      filters: { metric: AccountStatMetric.NetPnl },
+      take: 25,
+      skip: 0,
+    });
     expect(mockPnLBreakdown).toHaveBeenCalledWith({
       fromEpoch: undefined,
       toEpoch: expect.any(Number),
@@ -132,38 +161,65 @@ describe('Query.accountStatsLeaderboard', () => {
     vi.clearAllMocks();
     mockPnLBreakdown.mockResolvedValue([]);
     mockVolumes.mockResolvedValue([]);
-    const from = new Date('2026-01-01T00:00:00Z');
-    const to = new Date('2026-02-01T00:00:00Z');
+    const from = Math.floor(new Date('2026-01-01T00:00:00Z').getTime() / 1000);
+    const to = Math.floor(new Date('2026-02-01T00:00:00Z').getTime() / 1000);
     await call({
-      metric: AccountStatMetric.NetPnl,
-      from,
-      to,
-      limit: 25,
+      filters: {
+        metric: AccountStatMetric.NetPnl,
+        fromEpoch: from,
+        toEpoch: to,
+      },
+      take: 25,
       skip: 0,
     });
     expect(mockPnLBreakdown).toHaveBeenCalledWith({
-      fromEpoch: Math.floor(from.getTime() / 1000),
-      toEpoch: Math.floor(to.getTime() / 1000),
+      fromEpoch: from,
+      toEpoch: to,
     });
   });
 
-  it('caps limit at 100 and applies skip', async () => {
-    const rows = await call({
-      metric: AccountStatMetric.NetPnl,
-      limit: 1000,
+  it('caps take at 100 and applies skip', async () => {
+    const page = await call({
+      filters: { metric: AccountStatMetric.NetPnl },
+      take: 1000,
       skip: 1,
     });
-    // 4 distinct addresses, skip 1 ⇒ 3 returned.
-    expect(rows).toHaveLength(3);
-    expect(rows[0].address).toBe('0xaaa');
+    // 4 distinct addresses, skip 1 ⇒ 3 returned, hasMore=false.
+    expect(page.items).toHaveLength(3);
+    expect(page.items[0].address).toBe('0xaaa');
+    expect(page.hasMore).toBe(false);
+  });
+
+  it('flags hasMore=true when the window has more rows than requested', async () => {
+    const page = await call({
+      filters: { metric: AccountStatMetric.NetPnl },
+      take: 2,
+      skip: 0,
+    });
+    expect(page.items).toHaveLength(2);
+    expect(page.hasMore).toBe(true);
+  });
+
+  it('omits totalCount unless the client selected the field', async () => {
+    const without = await call(
+      { filters: { metric: AccountStatMetric.NetPnl }, take: 2, skip: 0 },
+      ['items', 'hasMore']
+    );
+    expect(without.totalCount).toBeNull();
+
+    const withTotal = await call(
+      { filters: { metric: AccountStatMetric.NetPnl }, take: 2, skip: 0 },
+      ['items', 'hasMore', 'totalCount']
+    );
+    expect(withTotal.totalCount).toBe(4);
   });
 });
 
 type RankArgs = {
   address: string;
   metric: (typeof AccountStatMetric)[keyof typeof AccountStatMetric];
-  from?: Date | null;
-  to?: Date | null;
+  fromEpoch?: number | null;
+  toEpoch?: number | null;
 };
 type RankResult = {
   address: string;
@@ -264,7 +320,7 @@ describe('Query.accountStatsRank', () => {
     });
   });
 
-  it('passes the resolved epoch window through; omitting `from` means all-time', async () => {
+  it('passes the resolved epoch window through; omitting `fromEpoch` means all-time', async () => {
     await callRank({ address: '0xaaa', metric: AccountStatMetric.NetPnl });
     expect(mockPnLBreakdown).toHaveBeenCalledWith({
       fromEpoch: undefined,
@@ -274,17 +330,17 @@ describe('Query.accountStatsRank', () => {
     vi.clearAllMocks();
     mockPnLBreakdown.mockResolvedValue([]);
     mockVolumes.mockResolvedValue([]);
-    const from = new Date('2026-01-01T00:00:00Z');
-    const to = new Date('2026-02-01T00:00:00Z');
+    const from = Math.floor(new Date('2026-01-01T00:00:00Z').getTime() / 1000);
+    const to = Math.floor(new Date('2026-02-01T00:00:00Z').getTime() / 1000);
     await callRank({
       address: '0xaaa',
       metric: AccountStatMetric.NetPnl,
-      from,
-      to,
+      fromEpoch: from,
+      toEpoch: to,
     });
     expect(mockPnLBreakdown).toHaveBeenCalledWith({
-      fromEpoch: Math.floor(from.getTime() / 1000),
-      toEpoch: Math.floor(to.getTime() / 1000),
+      fromEpoch: from,
+      toEpoch: to,
     });
   });
 });

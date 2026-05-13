@@ -1,10 +1,12 @@
 /**
  * Account-stats queries that share a single aggregation pipeline:
  *
- *   - `accountStatsLeaderboard`: addresses ranked by a chosen account metric
- *     over an optional date range.
+ *   - `accountStatsLeaderboardPage`: addresses ranked by a chosen account
+ *     metric over an optional epoch-seconds window. Page-shaped with
+ *     server-truth `hasMore` and lazy `totalCount`.
  *   - `accountStatsRank`: stats + rank for ONE address, sourced from the same
- *     ranked set the leaderboard slices, so the two surfaces reconcile.
+ *     ranked set the leaderboard slices, so the two surfaces reconcile
+ *     byte-for-byte.
  *
  * Metrics: NET_PNL / GAINS / LOSSES (from `calculateAccountPnLBreakdown`,
  * attributed to settlement time) and VOLUME (from `calculateAccountVolumes`,
@@ -12,8 +14,9 @@
  * merged by address and held in a short TTL cache; ranking and pagination
  * are trivial array ops once cached.
  *
- * `from` omitted ⇒ all-time (no lower bound). `to` omitted ⇒ now.
+ * `fromEpoch` omitted ⇒ all-time (no lower bound). `toEpoch` omitted ⇒ now.
  */
+import type { GraphQLResolveInfo } from 'graphql';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import { AccountStatMetric } from '../../__generated__/resolvers';
 import { TtlCache } from '../../../../lib/ttlCache';
@@ -107,24 +110,50 @@ const floorToMinute = (epochSeconds: number): number =>
   Math.floor(epochSeconds / 60) * 60;
 
 const resolveWindow = (
-  from: Date | null | undefined,
-  to: Date | null | undefined
-): { fromEpoch: number | undefined; toEpoch: number } => {
-  const toDate = to ?? new Date();
-  const toEpoch = floorToMinute(Math.floor(toDate.getTime() / 1000));
-  const fromEpoch =
-    from != null ? floorToMinute(Math.floor(from.getTime() / 1000)) : undefined;
-  return { fromEpoch, toEpoch };
+  fromEpoch: number | null | undefined,
+  toEpoch: number | null | undefined
+): { fromEpoch: number | undefined; toEpochResolved: number } => {
+  const toEpochResolved = floorToMinute(
+    toEpoch ?? Math.floor(Date.now() / 1000)
+  );
+  const fromEpochResolved =
+    fromEpoch != null ? floorToMinute(fromEpoch) : undefined;
+  return { fromEpoch: fromEpochResolved, toEpochResolved };
 };
 
-export const accountStatsLeaderboard: NonNullable<
-  QueryResolvers['accountStatsLeaderboard']
-> = async (_parent, { metric, from, to, limit, skip }) => {
-  const { fromEpoch, toEpoch } = resolveWindow(from, to);
-  const entries = await getMerged(fromEpoch, toEpoch);
-  const ranked = rankedFor(entries, metric);
-  const cappedLimit = Math.max(1, Math.min(limit, 100));
-  return ranked.slice(skip, skip + cappedLimit);
+/** Did the client select `totalCount` on this `*Page` field? */
+const wantsTotalCount = (info: GraphQLResolveInfo): boolean => {
+  const sel = info.fieldNodes[0]?.selectionSet?.selections ?? [];
+  return sel.some(
+    (s) =>
+      s.kind === 'Field' &&
+      (s as { name: { value: string } }).name.value === 'totalCount'
+  );
+};
+
+const MAX_TAKE = 100;
+const MAX_SKIP = 1000;
+const clampTake = (n: number): number => Math.max(1, Math.min(n, MAX_TAKE));
+const clampSkip = (n: number): number => Math.max(0, Math.min(n, MAX_SKIP));
+
+export const accountStatsLeaderboardPage: NonNullable<
+  QueryResolvers['accountStatsLeaderboardPage']
+> = async (_parent, { filters, take, skip }, _ctx, info) => {
+  const { metric, fromEpoch, toEpoch } = filters;
+  const { fromEpoch: fromResolved, toEpochResolved } = resolveWindow(
+    fromEpoch,
+    toEpoch
+  );
+  const entries = await getMerged(fromResolved, toEpochResolved);
+  const ranked = rankedFor(entries, metric ?? AccountStatMetric.NetPnl);
+
+  const cappedTake = clampTake(take);
+  const cappedSkip = clampSkip(skip);
+  const items = ranked.slice(cappedSkip, cappedSkip + cappedTake);
+  const hasMore = cappedSkip + items.length < ranked.length;
+  const totalCount = wantsTotalCount(info) ? ranked.length : null;
+
+  return { items, hasMore, totalCount };
 };
 
 /** Empty-window stub: address echoed back with all stats zeroed and no rank. */
@@ -151,16 +180,19 @@ const emptyStatsRank = (
 /**
  * `accountStatsRank` — single-address lookup against the same ranked set the
  * leaderboard slices. Reuses `getMerged` + `rankedFor`, so rank and stats
- * here always reconcile with `accountStatsLeaderboard` for the same window.
- * Stats are always returned (zero when the address has no activity); `rank`
- * is null when the address is absent from the ranked set.
+ * here always reconcile with `accountStatsLeaderboardPage` for the same
+ * window. Stats are always returned (zero when the address has no activity);
+ * `rank` is null when the address is absent from the ranked set.
  */
 export const accountStatsRank: NonNullable<
   QueryResolvers['accountStatsRank']
-> = async (_parent, { address, metric, from, to }) => {
+> = async (_parent, { address, metric, fromEpoch, toEpoch }) => {
   const addressLc = address.toLowerCase();
-  const { fromEpoch, toEpoch } = resolveWindow(from, to);
-  const entries = await getMerged(fromEpoch, toEpoch);
+  const { fromEpoch: fromResolved, toEpochResolved } = resolveWindow(
+    fromEpoch,
+    toEpoch
+  );
+  const entries = await getMerged(fromResolved, toEpochResolved);
   if (entries.length === 0) return emptyStatsRank(addressLc);
 
   const ranked = rankedFor(entries, metric);

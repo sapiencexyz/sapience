@@ -584,6 +584,9 @@ export function createComplexityEstimators(
       // leaderboard slices. Same backing aggregation + TTL cache, so the
       // worst-case fan-out matches the leaderboard.
       if (fieldName === 'accountStatsRank') return 2000;
+      // Page-shaped leaderboard over the same merged account-stats set —
+      // identical cost class (cache lookup + array slice).
+      if (fieldName === 'accountStatsLeaderboardPage') return 2000;
       // Introspection fields — cost for mixed queries
       if (fieldName === '__schema') return 100;
       if (fieldName === '__type') return 50;

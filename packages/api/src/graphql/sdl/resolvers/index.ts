@@ -34,7 +34,7 @@ import { User } from './User';
 
 import { accountActivity } from './queries/activity';
 import {
-  accountStatsLeaderboard,
+  accountStatsLeaderboardPage,
   accountStatsRank,
 } from './queries/accountStats';
 import {
@@ -88,7 +88,7 @@ export const resolvers: Resolvers = {
     // Leaderboards / account scores
     accountAccuracyRank,
     accuracyLeaderboard,
-    accountStatsLeaderboard,
+    accountStatsLeaderboardPage,
     accountStatsRank,
     // Time series
     accountBalance,

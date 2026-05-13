@@ -239,6 +239,114 @@
         "possibleTypes": null
       },
       {
+        "kind": "INPUT_OBJECT",
+        "name": "AccountStatsFilters",
+        "description": "Filters for `accountStatsLeaderboardPage`. `fromEpoch` omitted means all-time;\n`toEpoch` omitted means now. Both are epoch seconds.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "metric",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "AccountStatMetric",
+                "ofType": null
+              }
+            },
+            "defaultValue": "NET_PNL"
+          },
+          {
+            "name": "fromEpoch",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "toEpoch",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "AccountStatsLeaderboardPage",
+        "description": "Paginated wrapper around AccountStatEntry rows with a server-truth hasMore flag.",
+        "fields": [
+          {
+            "name": "items",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "AccountStatEntry",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total addresses with activity in the window. Populated only when selected.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "OBJECT",
         "name": "AccountStatsRank",
         "description": "Stats + rank for a single address against the leaderboard's ranked set. Stat\nfields mirror `AccountStatEntry` (always populated; zero when the address has\nno activity in the requested window). `rank` is 1-indexed against the ranked\nset for the chosen metric, or null when the address is absent from it.\n`totalParticipants` is the size of the ranked set in the window.",
@@ -14736,46 +14844,22 @@
             "deprecationReason": null
           },
           {
-            "name": "accountStatsLeaderboard",
-            "description": "Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date range. `from` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time.",
+            "name": "accountStatsLeaderboardPage",
+            "description": "Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date window. `fromEpoch` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. Page-shaped with server-truth `hasMore` and lazy `totalCount`.",
             "args": [
               {
-                "name": "from",
+                "name": "filters",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "DateTimeISO",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "INPUT_OBJECT",
+                    "name": "AccountStatsFilters",
+                    "ofType": null
+                  }
                 },
                 "defaultValue": null
-              },
-              {
-                "name": "limit",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "25"
-              },
-              {
-                "name": "metric",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "ENUM",
-                    "name": "AccountStatMetric",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "NET_PNL"
               },
               {
                 "name": "skip",
@@ -14792,31 +14876,27 @@
                 "defaultValue": "0"
               },
               {
-                "name": "to",
+                "name": "take",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "DateTimeISO",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
+                "defaultValue": "25"
               }
             ],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "AccountStatEntry",
-                    "ofType": null
-                  }
-                }
+                "kind": "OBJECT",
+                "name": "AccountStatsLeaderboardPage",
+                "ofType": null
               }
             },
             "isDeprecated": false,
@@ -14824,7 +14904,7 @@
           },
           {
             "name": "accountStatsRank",
-            "description": "Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional date window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set.",
+            "description": "Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional epoch-second window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set.",
             "args": [
               {
                 "name": "address",
@@ -14841,11 +14921,11 @@
                 "defaultValue": null
               },
               {
-                "name": "from",
+                "name": "fromEpoch",
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "DateTimeISO",
+                  "name": "Int",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -14865,11 +14945,11 @@
                 "defaultValue": "NET_PNL"
               },
               {
-                "name": "to",
+                "name": "toEpoch",
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "DateTimeISO",
+                  "name": "Int",
                   "ofType": null
                 },
                 "defaultValue": null

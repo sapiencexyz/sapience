@@ -129,11 +129,11 @@ describe('fetchAccountStatsRank', () => {
     const [, vars] = mockGraphqlRequest.mock.calls[0];
     expect(vars.address).toBe('0xabc');
     expect(vars.metric).toBe('NET_PNL');
-    expect(vars.from).toBeNull();
-    expect(vars.to).toBeNull();
+    expect(vars.fromEpoch).toBeNull();
+    expect(vars.toEpoch).toBeNull();
   });
 
-  test('passes explicit metric + Date window as ISO strings', async () => {
+  test('passes explicit metric + Date window as epoch seconds', async () => {
     mockGraphqlRequest.mockResolvedValue({
       accountStatsRank: {
         address: '0xabc',
@@ -156,8 +156,8 @@ describe('fetchAccountStatsRank', () => {
     });
     const [, vars] = mockGraphqlRequest.mock.calls[0];
     expect(vars.metric).toBe('VOLUME');
-    expect(vars.from).toBe(from.toISOString());
-    expect(vars.to).toBe(to.toISOString());
+    expect(vars.fromEpoch).toBe(Math.floor(from.getTime() / 1000));
+    expect(vars.toEpoch).toBe(Math.floor(to.getTime() / 1000));
   });
 
   test('returns zero-stub when resolver returns null', async () => {
