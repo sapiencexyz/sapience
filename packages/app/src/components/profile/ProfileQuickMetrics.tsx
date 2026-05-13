@@ -3,12 +3,12 @@
 import * as React from 'react';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
-import type { LegacyPosition as Position } from '@sapience/sdk/queries';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useAccountStatsRank } from '~/hooks/graphql/useAccountStatsRank';
 import { useAccountAccuracyRank } from '~/hooks/graphql/useAccountAccuracyRank';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
+import { useProfileVolume } from '~/hooks/useProfileVolume';
 
 function useProfileBalance(
   address?: string,
@@ -40,70 +40,21 @@ function useProfileBalance(
   return memo;
 }
 
-import { useProfileVolume } from '~/hooks/useProfileVolume';
-
-function useFirstActivity(positions: Position[] | undefined) {
-  return React.useMemo(() => {
-    let earliest: Date | undefined;
-    try {
-      for (const position of positions || []) {
-        const sec = Number(position.mintedAt);
-        if (!Number.isFinite(sec)) continue;
-        const d = new Date(sec * 1000);
-        if (!earliest || d < earliest) earliest = d;
-      }
-    } catch {
-      // ignore
-    }
-
-    if (!earliest)
-      return {
-        date: undefined,
-        display: 'Never',
-        tooltip: undefined,
-        isNever: true,
-      };
-
-    const monthYear = new Intl.DateTimeFormat(undefined, {
-      year: 'numeric',
-      month: 'short',
-    }).format(earliest);
-    const full = new Intl.DateTimeFormat(undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZoneName: 'short',
-    }).format(earliest);
-    return {
-      date: earliest,
-      display: monthYear,
-      tooltip: full,
-      isNever: false,
-    };
-  }, [positions]);
-}
-
 type ProfileQuickMetricsProps = {
   address: string;
   forecastsCount: number;
-  positions: Position[];
   className?: string;
 };
 
 export default function ProfileQuickMetrics({
   address,
   forecastsCount,
-  positions,
   className,
 }: ProfileQuickMetricsProps) {
   const chainId = DEFAULT_CHAIN_ID;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const balance = useProfileBalance(address, chainId, collateralSymbol);
   const volume = useProfileVolume(address);
-  const first = useFirstActivity(positions);
   // All-time NET_PNL stats + rank for this address — single per-address resolver,
   // so the PnL cell renders for anyone with realized activity, not just the
   // leaderboard's top 100. Rank cell is gated separately on rank availability.
@@ -183,12 +134,6 @@ export default function ProfileQuickMetrics({
       sublabel: collateralSymbol,
     },
   ];
-  if (!first.isNever) {
-    balanceMetrics.push({
-      label: 'Started',
-      value: first.display,
-    });
-  }
 
   const boxes = [volumeMetrics, forecastMetrics, balanceMetrics].filter(
     (b) => b.length > 0

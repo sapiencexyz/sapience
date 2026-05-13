@@ -9494,8 +9494,8 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead."
           },
           {
             "name": "predictor",
@@ -10250,8 +10250,8 @@
               "name": "LimitOrder",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LimitOrder is deprecated and being phased out."
           },
           {
             "name": "limitOrderId",
@@ -10301,8 +10301,8 @@
               "name": "LegacyPosition",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead."
           },
           {
             "name": "positionId",
@@ -11279,8 +11279,8 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LimitOrder is deprecated and being phased out."
           },
           {
             "name": "predictor",
@@ -13312,6 +13312,11 @@
           },
           {
             "kind": "OBJECT",
+            "name": "PositionsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
             "name": "AccountStatsLeaderboardPage",
             "ofType": null
           }
@@ -13963,7 +13968,7 @@
       {
         "kind": "OBJECT",
         "name": "PositionsPage",
-        "description": "Paginated wrapper around Position rows with a server-truth hasMore flag",
+        "description": "Paginated wrapper around Position rows with a server-truth hasMore flag.\n`totalCount` is the count of underlying Position rows that match the filters\n(not the count of rendered event-stream rows, which can be larger due to\nper-sell synthetic expansion). Implements the shared `Page` interface so\ngeneric clients can read `hasMore` / `totalCount` across page types.",
         "fields": [
           {
             "name": "items",
@@ -14004,10 +14009,28 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total Position rows matching the filters. Computed lazily — the count\nquery only fires when this field is selected in the operation, so\npagination requests that don't need a total don't pay for one.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -16314,8 +16337,8 @@
                 "ofType": null
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed."
           },
           {
             "name": "positions",
@@ -16497,8 +16520,8 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check."
           },
           {
             "name": "positionsPage",
