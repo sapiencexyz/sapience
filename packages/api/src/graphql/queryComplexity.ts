@@ -573,11 +573,6 @@ export function createComplexityEstimators(
       if (fieldName === 'protocolStats') return 2000;
       if (fieldName === 'vaultStats') return 2000;
       if (fieldName === 'accountTotalVolume') return 500;
-      // Time-series analytics — heavy SQL with generate_series + aggregation
-      if (fieldName === 'accountVolume') return 1000;
-      if (fieldName === 'accountPnl') return 1500;
-      if (fieldName === 'accountBalance') return 2000;
-      if (fieldName === 'accountPredictionCount') return 1000;
       // Full-table groupBy aggregates (no cache)
       if (fieldName === 'accuracyLeaderboardPage') return 1500;
       if (fieldName === 'accountAccuracyRank') return 1500;

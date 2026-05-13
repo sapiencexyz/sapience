@@ -315,17 +315,6 @@ export type AttestationWhereUniqueInput = {
   uid?: InputMaybe<Scalars['String']['input']>;
 };
 
-/** Time-bucketed balance snapshot showing deployed and claimable collateral */
-export type BalanceDataPoint = {
-  __typename?: 'BalanceDataPoint';
-  /** Collateral available to claim from settled positions (wei) */
-  claimableCollateral: Scalars['String']['output'];
-  /** Active collateral deployed in open positions (wei) */
-  deployedCollateral: Scalars['String']['output'];
-  /** Unix epoch timestamp (seconds) for the start of this bucket */
-  timestamp: Scalars['Int']['output'];
-};
-
 export type BigIntFilter = {
   equals?: InputMaybe<Scalars['BigInt']['input']>;
   gt?: InputMaybe<Scalars['BigInt']['input']>;
@@ -1520,17 +1509,6 @@ export type PickConfiguration = {
   totalPredictorCollateral: Scalars['String']['output'];
 };
 
-/** Time-bucketed PnL data point with cumulative tracking */
-export type PnlDataPoint = {
-  __typename?: 'PnlDataPoint';
-  /** Running cumulative PnL in wei */
-  cumulativePnl: Scalars['String']['output'];
-  /** PnL for this bucket in wei */
-  pnl: Scalars['String']['output'];
-  /** Unix epoch timestamp (seconds) for the start of this bucket */
-  timestamp: Scalars['Int']['output'];
-};
-
 /** ERC-20 token balance representing a side of a prediction position */
 export type Position = {
   __typename?: 'Position';
@@ -1589,23 +1567,6 @@ export type Prediction = {
   settledAt?: Maybe<Scalars['Int']['output']>;
 };
 
-/** Time-bucketed prediction count with outcome breakdown, bucketed by creation time */
-export type PredictionCountDataPoint = {
-  __typename?: 'PredictionCountDataPoint';
-  /** Predictions lost in this bucket */
-  lost: Scalars['Int']['output'];
-  /** Predictions settled as non-decisive in this bucket */
-  nonDecisive: Scalars['Int']['output'];
-  /** Predictions still pending in this bucket */
-  pending: Scalars['Int']['output'];
-  /** Unix epoch timestamp (seconds) for the start of this bucket */
-  timestamp: Scalars['Int']['output'];
-  /** Total predictions created in this bucket */
-  total: Scalars['Int']['output'];
-  /** Predictions won in this bucket */
-  won: Scalars['Int']['output'];
-};
-
 /** Field to sort predictions by */
 export type PredictionSortField =
   | 'CREATED_AT'
@@ -1633,20 +1594,12 @@ export type Query = {
   accountAccuracyRank: AccuracyRank;
   /** Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity. */
   accountActivity: Array<ActivityItem>;
-  /** Time-bucketed balance snapshots for a single address showing deployed and claimable collateral */
-  accountBalance: Array<BalanceDataPoint>;
-  /** Time-bucketed profit and loss for a single address with cumulative tracking */
-  accountPnl: Array<PnlDataPoint>;
-  /** Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time */
-  accountPredictionCount: Array<PredictionCountDataPoint>;
   /** Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date window. `fromEpoch` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. Page-shaped with server-truth `hasMore` and lazy `totalCount`. */
   accountStatsLeaderboardPage: AccountStatsLeaderboardPage;
   /** Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional epoch-second window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set. */
   accountStatsRank: AccountStatsRank;
   /** Total lifetime trading volume in wei for the given address across all prediction types */
   accountTotalVolume: Scalars['String']['output'];
-  /** Time-bucketed trading volume for a single address */
-  accountVolume: Array<VolumeDataPoint>;
   /**
    * Top forecasters ranked by accuracy score. Page-shaped with server-truth
    * `hasMore` and lazy `totalCount` (populated only when selected).
@@ -1757,30 +1710,6 @@ export type QueryAccountActivityArgs = {
 };
 
 
-export type QueryAccountBalanceArgs = {
-  address: Scalars['String']['input'];
-  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
-  interval: TimeInterval;
-  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
-};
-
-
-export type QueryAccountPnlArgs = {
-  address: Scalars['String']['input'];
-  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
-  interval: TimeInterval;
-  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
-};
-
-
-export type QueryAccountPredictionCountArgs = {
-  address: Scalars['String']['input'];
-  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
-  interval: TimeInterval;
-  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
-};
-
-
 export type QueryAccountStatsLeaderboardPageArgs = {
   filters: AccountStatsFilters;
   skip?: Scalars['Int']['input'];
@@ -1796,14 +1725,6 @@ export type QueryAccountStatsRankArgs = {
 
 export type QueryAccountTotalVolumeArgs = {
   address: Scalars['String']['input'];
-};
-
-
-export type QueryAccountVolumeArgs = {
-  address: Scalars['String']['input'];
-  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
-  interval: TimeInterval;
-  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
 };
 
 
@@ -2262,13 +2183,6 @@ export type StringNullableListFilter = {
   isEmpty?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
-/** Time interval for bucketing time-series data */
-export type TimeInterval =
-  | 'DAY'
-  | 'HOUR'
-  | 'MONTH'
-  | 'WEEK';
-
 /**
  * Open-interest aggregated by time-to-resolution bucket. Each unsettled
  * prediction's collateral is bucketed by the latest endTime among the conditions
@@ -2468,15 +2382,6 @@ export type VaultStat = {
   /** wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins */
   vaultUnredeemedClaim: Scalars['String']['output'];
   vaultWithdrawals: Scalars['String']['output'];
-};
-
-/** Time-bucketed volume data point for charts */
-export type VolumeDataPoint = {
-  __typename?: 'VolumeDataPoint';
-  /** Unix epoch timestamp (seconds) for the start of this bucket */
-  timestamp: Scalars['Int']['output'];
-  /** Total volume in wei for this bucket */
-  volume: Scalars['String']['output'];
 };
 
 /** Time window for volume-based sorting */

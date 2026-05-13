@@ -10,7 +10,7 @@
  *    type that has relation fields requiring a custom resolver
  *    (Category, Condition, ConditionGroup, etc.).
  *
- * Scalar-only GraphQL types (Pick, Trade, ActivityItem, PnlDataPoint,
+ * Scalar-only GraphQL types (Pick, Trade, ActivityItem,
  * …) don't need an entry here; graphql-js's default field resolver
  * reads the property off the parent directly, which is already what
  * every root resolver returns.
@@ -74,12 +74,6 @@ import { questions } from './queries/questions';
 import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
 import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
-import {
-  accountBalance,
-  accountPnl,
-  accountPredictionCount,
-  accountVolume,
-} from './queries/timeSeries';
 import { trade, tradeCount, trades } from './queries/trade';
 import { accountTotalVolume } from './queries/volume';
 
@@ -91,11 +85,6 @@ export const resolvers: Resolvers = {
     accuracyLeaderboardPage,
     accountStatsLeaderboardPage,
     accountStatsRank,
-    // Time series
-    accountBalance,
-    accountPnl,
-    accountPredictionCount,
-    accountVolume,
     // Activity + unified feeds
     accountActivity,
     // Analytics

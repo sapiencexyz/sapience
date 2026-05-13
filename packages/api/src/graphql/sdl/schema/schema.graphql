@@ -225,20 +225,6 @@ input AttestationWhereUniqueInput {
 }
 
 """
-Time-bucketed balance snapshot showing deployed and claimable collateral
-"""
-type BalanceDataPoint {
-  """Collateral available to claim from settled positions (wei)"""
-  claimableCollateral: String!
-
-  """Active collateral deployed in open positions (wei)"""
-  deployedCollateral: String!
-
-  """Unix epoch timestamp (seconds) for the start of this bucket"""
-  timestamp: Int!
-}
-
-"""
 The `BigInt` scalar type represents non-fractional signed whole numeric values.
 """
 scalar BigInt
@@ -1306,18 +1292,6 @@ type PickConfiguration {
   totalPredictorCollateral: String!
 }
 
-"""Time-bucketed PnL data point with cumulative tracking"""
-type PnlDataPoint {
-  """Running cumulative PnL in wei"""
-  cumulativePnl: String!
-
-  """PnL for this bucket in wei"""
-  pnl: String!
-
-  """Unix epoch timestamp (seconds) for the start of this bucket"""
-  timestamp: Int!
-}
-
 """Paginated wrapper around Position rows with a server-truth hasMore flag"""
 type PositionsPage {
   items: [Position!]!
@@ -1374,29 +1348,6 @@ type Prediction {
   settleTxHash: String
   settled: Boolean!
   settledAt: Int
-}
-
-"""
-Time-bucketed prediction count with outcome breakdown, bucketed by creation time
-"""
-type PredictionCountDataPoint {
-  """Predictions lost in this bucket"""
-  lost: Int!
-
-  """Predictions settled as non-decisive in this bucket"""
-  nonDecisive: Int!
-
-  """Predictions still pending in this bucket"""
-  pending: Int!
-
-  """Unix epoch timestamp (seconds) for the start of this bucket"""
-  timestamp: Int!
-
-  """Total predictions created in this bucket"""
-  total: Int!
-
-  """Predictions won in this bucket"""
-  won: Int!
 }
 
 """Field to sort predictions by"""
@@ -1549,21 +1500,6 @@ type Query {
   accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
 
   """
-  Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
-  """
-  accountBalance(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [BalanceDataPoint!]!
-
-  """
-  Time-bucketed profit and loss for a single address with cumulative tracking
-  """
-  accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]!
-
-  """
-  Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time
-  """
-  accountPredictionCount(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PredictionCountDataPoint!]!
-
-  """
   Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date window. `fromEpoch` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. Page-shaped with server-truth `hasMore` and lazy `totalCount`.
   """
   accountStatsLeaderboardPage(filters: AccountStatsFilters!, skip: Int! = 0, take: Int! = 25): AccountStatsLeaderboardPage!
@@ -1577,9 +1513,6 @@ type Query {
   Total lifetime trading volume in wei for the given address across all prediction types
   """
   accountTotalVolume(address: String!): String!
-
-  """Time-bucketed trading volume for a single address"""
-  accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
 
   """
   Top forecasters ranked by accuracy score. Page-shaped with server-truth
@@ -1888,14 +1821,6 @@ input StringNullableListFilter {
   isEmpty: Boolean
 }
 
-"""Time interval for bucketing time-series data"""
-enum TimeInterval {
-  DAY
-  HOUR
-  MONTH
-  WEEK
-}
-
 """
 Secondary market trade record where position tokens are exchanged between users
 """
@@ -2019,15 +1944,6 @@ input UserWhereUniqueInput {
   referredByCodeId: IntNullableFilter
   referredById: IntNullableFilter
   updatedAt: DateTimeFilter
-}
-
-"""Time-bucketed volume data point for charts"""
-type VolumeDataPoint {
-  """Unix epoch timestamp (seconds) for the start of this bucket"""
-  timestamp: Int!
-
-  """Total volume in wei for this bucket"""
-  volume: String!
 }
 
 """Time window for volume-based sorting"""
