@@ -22,6 +22,7 @@ import { scalarResolvers } from './scalars';
 
 import { Attestation } from './Attestation';
 import { AttestationScore } from './AttestationScore';
+import { AttestationsPage } from './AttestationsPage';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
@@ -66,6 +67,7 @@ import { questionsPage } from './queries/questions';
 import { questions } from './queries/deprecated/questions';
 import {
   attestations,
+  attestationsPage,
   categories,
   condition,
   user,
@@ -162,6 +164,7 @@ export const resolvers: Resolvers = {
     popularTags,
     // CRUD passthroughs
     attestations,
+    attestationsPage,
     categories,
     condition,
     conditionGroup,
@@ -173,6 +176,7 @@ export const resolvers: Resolvers = {
   ActivityItemsPage,
   Attestation,
   AttestationScore,
+  AttestationsPage,
   Category,
   CollateralTransfersPage,
   Condition,

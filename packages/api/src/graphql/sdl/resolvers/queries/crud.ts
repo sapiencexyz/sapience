@@ -14,10 +14,14 @@
  * filter (resolvers/queries/conditions.ts).
  */
 
-import type { QueryResolvers } from '../../__generated__/resolvers';
+import type {
+  QueryResolvers,
+  QueryAttestationsPageArgs,
+} from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
+import { clampSkip, clampTake } from './pagination';
 
 /**
  * Cache only the no-args call (the dominant public path: integrator's
@@ -120,6 +124,63 @@ export const user: NonNullable<QueryResolvers['user']> = async (
   prisma.user.findUnique({
     where: asPrismaArgs<Prisma.UserWhereUniqueInput>(where),
   });
+
+export type AttestationsPageEnvelope = {
+  items: Awaited<ReturnType<typeof prisma.attestation.findMany>>;
+  hasMore: boolean;
+  _countWhere?: Prisma.AttestationWhereInput;
+};
+
+export const runAttestations = async ({
+  uid,
+  attester,
+  conditionId,
+  schemaId,
+  recipient,
+  minTime,
+  maxTime,
+  orderBy,
+  orderDirection,
+  take,
+  skip,
+}: QueryAttestationsPageArgs): Promise<AttestationsPageEnvelope> => {
+  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
+  const skipVal = clampSkip(skip);
+  const where: Prisma.AttestationWhereInput = {};
+  if (uid) where.uid = uid;
+  if (attester) where.attester = attester;
+  if (conditionId) where.conditionId = conditionId;
+  if (schemaId) where.schemaId = schemaId;
+  if (recipient) where.recipient = recipient;
+  if (minTime !== null && minTime !== undefined) {
+    where.time = { ...(where.time as object | undefined), gte: minTime };
+  }
+  if (maxTime !== null && maxTime !== undefined) {
+    where.time = { ...(where.time as object | undefined), lte: maxTime };
+  }
+  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
+  const orderField =
+    orderBy === 'CREATED_AT'
+      ? ({ createdAt: direction } as const)
+      : ({ time: direction } as const);
+
+  const rawRows = await prisma.attestation.findMany({
+    where,
+    orderBy: orderField,
+    take: cappedTake + 1,
+    skip: skipVal,
+  });
+  const hasMore = rawRows.length > cappedTake;
+  return {
+    items: rawRows.slice(0, cappedTake),
+    hasMore,
+    _countWhere: where,
+  };
+};
+
+export const attestationsPage: NonNullable<
+  QueryResolvers['attestationsPage']
+> = async (_parent, args) => runAttestations(args);
 
 export const users: NonNullable<QueryResolvers['users']> = async (
   _parent,

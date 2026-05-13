@@ -348,6 +348,11 @@ export type AttestationScoreWhereInput = {
   used?: InputMaybe<BoolFilter>;
 };
 
+/** Sort fields for the `attestationsPage` query */
+export type AttestationSortField =
+  | 'CREATED_AT'
+  | 'TIME';
+
 export type AttestationWhereInput = {
   AND?: InputMaybe<Array<AttestationWhereInput>>;
   NOT?: InputMaybe<Array<AttestationWhereInput>>;
@@ -392,6 +397,15 @@ export type AttestationWhereUniqueInput = {
   time?: InputMaybe<IntFilter>;
   transactionHash?: InputMaybe<StringFilter>;
   uid?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** Paginated wrapper around Attestation rows with a server-truth hasMore flag */
+export type AttestationsPage = Page & {
+  __typename?: 'AttestationsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Attestation>;
+  /** Total Attestation rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Time-bucketed collateral-balance data point (legacy). */
@@ -1926,7 +1940,10 @@ export type Query = {
    * unconditionally (cheap in-memory derivation).
    */
   accuracyLeaderboardPage: AccuracyLeaderboardPage;
+  /** @deprecated Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal. */
   attestations: Array<Attestation>;
+  /** Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order. */
+  attestationsPage: AttestationsPage;
   categories: Array<Category>;
   /**
    * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
@@ -2167,6 +2184,21 @@ export type QueryAttestationsArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<AttestationWhereInput>;
+};
+
+
+export type QueryAttestationsPageArgs = {
+  attester?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  maxTime?: InputMaybe<Scalars['Int']['input']>;
+  minTime?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<AttestationSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
+  recipient?: InputMaybe<Scalars['String']['input']>;
+  schemaId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  uid?: InputMaybe<Scalars['String']['input']>;
 };
 
 

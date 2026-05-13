@@ -1423,6 +1423,23 @@ type CollateralTransfersPage implements Page {
   totalCount: Int
 }
 
+"""
+Paginated wrapper around Attestation rows with a server-truth hasMore flag
+"""
+type AttestationsPage implements Page {
+  items: [Attestation!]!
+  hasMore: Boolean!
+
+  """Total Attestation rows matching the filters. Populated when available."""
+  totalCount: Int
+}
+
+"""Sort fields for the `attestationsPage` query"""
+enum AttestationSortField {
+  TIME
+  CREATED_AT
+}
+
 """Sort fields for the `conditionsPage` query"""
 enum ConditionSortField {
   CREATED_AT
@@ -1885,7 +1902,12 @@ type Query {
   unconditionally (cheap in-memory derivation).
   """
   accuracyLeaderboardPage(take: Int! = 25, skip: Int! = 0): AccuracyLeaderboardPage!
-  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
+  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]! @deprecated(reason: "Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
+  """
+  attestationsPage(attester: String, conditionId: String, maxTime: Int, minTime: Int, orderBy: AttestationSortField, orderDirection: SortOrder, recipient: String, schemaId: String, uid: String, take: Int! = 50, skip: Int! = 0): AttestationsPage!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
 
   """
