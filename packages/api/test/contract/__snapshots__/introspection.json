@@ -342,7 +342,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -12992,6 +12998,51 @@
           }
         ],
         "possibleTypes": null
+      },
+      {
+        "kind": "INTERFACE",
+        "name": "Page",
+        "description": "Shared shape for `*Page` paginated wrappers. Concrete types add their own\nstrongly-typed `items` field; `hasMore` and `totalCount` live here so a\ngeneric `Page` helper can read them. `totalCount` is lazy — populated only\nwhen the client selects the field.",
+        "fields": [
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": [
+          {
+            "kind": "OBJECT",
+            "name": "AccountStatsLeaderboardPage",
+            "ofType": null
+          }
+        ]
       },
       {
         "kind": "OBJECT",

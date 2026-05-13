@@ -48,7 +48,7 @@ export type AccountStatsFilters = {
 };
 
 /** Paginated wrapper around AccountStatEntry rows with a server-truth hasMore flag. */
-export type AccountStatsLeaderboardPage = {
+export type AccountStatsLeaderboardPage = Page & {
   __typename?: 'AccountStatsLeaderboardPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<AccountStatEntry>;
@@ -1466,6 +1466,17 @@ export type NestedStringNullableFilter = {
 export type NullsOrder =
   | 'first'
   | 'last';
+
+/**
+ * Shared shape for `*Page` paginated wrappers. Concrete types add their own
+ * strongly-typed `items` field; `hasMore` and `totalCount` live here so a
+ * generic `Page` helper can read them. `totalCount` is lazy — populated only
+ * when the client selects the field.
+ */
+export type Page = {
+  hasMore: Scalars['Boolean']['output'];
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
 
 /** Individual outcome pick within a pick configuration */
 export type Pick = {

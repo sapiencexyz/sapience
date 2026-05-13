@@ -1424,8 +1424,19 @@ input AccountStatsFilters {
   toEpoch: Int
 }
 
+"""
+Shared shape for `*Page` paginated wrappers. Concrete types add their own
+strongly-typed `items` field; `hasMore` and `totalCount` live here so a
+generic `Page` helper can read them. `totalCount` is lazy — populated only
+when the client selects the field.
+"""
+interface Page {
+  hasMore: Boolean!
+  totalCount: Int
+}
+
 """Paginated wrapper around AccountStatEntry rows with a server-truth hasMore flag."""
-type AccountStatsLeaderboardPage {
+type AccountStatsLeaderboardPage implements Page {
   items: [AccountStatEntry!]!
   hasMore: Boolean!
   """Total addresses with activity in the window. Populated only when selected."""

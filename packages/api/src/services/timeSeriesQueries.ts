@@ -1,7 +1,6 @@
 import { Prisma } from '../../generated/prisma';
 import { GraphQLError } from 'graphql';
 import prisma from '../core/db';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   TimeInterval,
   INTERVAL_TO_PG,
@@ -450,64 +449,5 @@ export async function queryAccountPredictionCount(
     lost: Number(row.lost),
     pending: Number(row.pending),
     nonDecisive: Number(row.non_decisive),
-  }));
-}
-
-// ─── Protocol Volume ─────────────────────────────────────────────────────────
-
-export async function queryProtocolVolume(
-  interval: TimeInterval,
-  from?: Date,
-  to?: Date
-): Promise<VolumeDataPoint[]> {
-  const { fromEpoch, toEpoch, pgTrunc, pgStep } = resolveDefaults(
-    interval,
-    from,
-    to
-  );
-  const chainId = DEFAULT_CHAIN_ID;
-
-  const rows = await prisma.$queryRaw<VolumeRow[]>`
-    WITH buckets AS (
-      SELECT
-        EXTRACT(EPOCH FROM gs)::BIGINT AS bucket_epoch,
-        EXTRACT(EPOCH FROM gs + ${Prisma.raw(`'${pgStep}'::INTERVAL`)})::BIGINT AS next_epoch
-      FROM generate_series(
-        DATE_TRUNC(${Prisma.raw(`'${pgTrunc}'`)}, TO_TIMESTAMP(${fromEpoch})),
-        TO_TIMESTAMP(${toEpoch}),
-        ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
-      ) gs
-    ),
-    all_volumes AS (
-      SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol
-      FROM position
-      WHERE "chainId" = ${chainId}
-        AND "mintedAt" >= ${fromEpoch} AND "mintedAt" <= ${toEpoch}
-      UNION ALL
-      SELECT "onChainCreatedAt" AS created_ts,
-        CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol
-      FROM "Prediction"
-      WHERE "chainId" = ${chainId}
-        AND "onChainCreatedAt" >= ${fromEpoch} AND "onChainCreatedAt" <= ${toEpoch}
-      UNION ALL
-      -- secondary_trade.collateral is the token address; price is the amount paid
-      SELECT "executedAt" AS created_ts,
-        CAST(price AS DECIMAL) AS vol
-      FROM secondary_trade
-      WHERE "chainId" = ${chainId}
-        AND "executedAt" >= ${fromEpoch} AND "executedAt" <= ${toEpoch}
-    )
-    SELECT
-      b.bucket_epoch AS timestamp,
-      COALESCE(SUM(v.vol), 0)::TEXT AS volume
-    FROM buckets b
-    LEFT JOIN all_volumes v ON v.created_ts >= b.bucket_epoch AND v.created_ts < b.next_epoch
-    GROUP BY b.bucket_epoch
-    ORDER BY b.bucket_epoch
-  `;
-
-  return rows.map((row) => ({
-    timestamp: Number(row.timestamp),
-    volume: row.volume || '0',
   }));
 }
