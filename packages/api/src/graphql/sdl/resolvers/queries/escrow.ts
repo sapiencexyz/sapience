@@ -37,11 +37,9 @@ import type {
   Prediction,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
-import type { ApolloContext } from '../../../startApolloServer';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
-import { preloadPickConditions } from '../preloadPickConditions';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { clampSkip, clampTake } from './pagination';
 
@@ -117,8 +115,7 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     isLegacy,
     orderBy,
     orderDirection,
-  },
-  ctx
+  }
 ) => {
   const cappedTake = Math.max(1, Math.min(take, 100));
   const addr = address?.toLowerCase();
@@ -160,29 +157,23 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     skip,
     include: { pickConfiguration: { include: { picks: true } } },
   });
-  await preloadPickConditions(
-    ctx,
-    rows.map((r) => r.pickConfiguration)
-  );
   return rows.map(mapPrediction);
 };
 
 export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   _parent,
-  { id },
-  ctx
+  { id }
 ) => {
   const r = await prisma.prediction.findUnique({
     where: { predictionId: id.toLowerCase() },
     include: { pickConfiguration: { include: { picks: true } } },
   });
-  if (r) await preloadPickConditions(ctx, [r.pickConfiguration]);
   return r ? mapPrediction(r) : null;
 };
 
 export const pickConfigurations: NonNullable<
   QueryResolvers['pickConfigurations']
-> = async (_parent, { take, skip, chainId, resolved, result, tokens }, ctx) => {
+> = async (_parent, { take, skip, chainId, resolved, result, tokens }) => {
   const cappedTake = Math.max(1, Math.min(take, 100));
   const where: Prisma.PicksWhereInput = {};
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
@@ -207,18 +198,16 @@ export const pickConfigurations: NonNullable<
     skip,
     include: { picks: true },
   });
-  await preloadPickConditions(ctx, rows);
   return rows.map((r) => mapPickConfig(r));
 };
 
 export const pickConfiguration: NonNullable<
   QueryResolvers['pickConfiguration']
-> = async (_parent, { id }, ctx) => {
+> = async (_parent, { id }) => {
   const r = await prisma.picks.findUnique({
     where: { id: id.toLowerCase() },
     include: { picks: true },
   });
-  if (r) await preloadPickConditions(ctx, [r]);
   return r ? mapPickConfig(r) : null;
 };
 
@@ -757,8 +746,7 @@ const EMPTY_POSITIONS_PAGE: PositionsPageEnvelope = {
 };
 
 export const runPositions = async (
-  args: QueryPositionsArgs,
-  ctx: ApolloContext | undefined
+  args: QueryPositionsArgs
 ): Promise<PositionsPageEnvelope> => {
   const norm = normalizePositionsArgs(args);
 
@@ -827,15 +815,6 @@ export const runPositions = async (
   const hasMore = rawRows.length > norm.cappedTake;
   const rows = rawRows.slice(0, norm.cappedTake);
 
-  // Warm the per-request condition cache so PickConfig.picks[].condition
-  // field resolutions don't fan out into N+1 queries below. The
-  // synthesis cache only memoizes the trade/WAC computation; condition
-  // metadata is still resolved per-request via this preloader.
-  await preloadPickConditions(
-    ctx,
-    rows.map((r) => r.pickConfiguration)
-  );
-
   const synthesized = await synthesizePositionsPage(rows);
   const sorted = sortSynthesizedRows(
     synthesized,
@@ -847,8 +826,8 @@ export const runPositions = async (
 
 export const positionsPage: NonNullable<
   QueryResolvers['positionsPage']
-> = async (_parent, args, ctx) => {
-  return runPositions(args, ctx);
+> = async (_parent, args) => {
+  return runPositions(args);
 };
 
 export const closes: NonNullable<QueryResolvers['closes']> = async (

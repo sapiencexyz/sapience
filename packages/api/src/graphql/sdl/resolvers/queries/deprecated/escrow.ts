@@ -12,9 +12,8 @@ import { runPositions } from '../escrow';
 
 export const positions: NonNullable<QueryResolvers['positions']> = async (
   _parent,
-  args,
-  ctx
+  args
 ) => {
-  const { items } = await runPositions(args, ctx);
+  const { items } = await runPositions(args);
   return items;
 };

@@ -15,7 +15,6 @@ import type {
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
-import { preloadPickConditions } from '../preloadPickConditions';
 
 const MAX_SKIP = 500;
 
@@ -23,8 +22,7 @@ export const accountActivity: NonNullable<
   QueryResolvers['accountActivity']
 > = async (
   _parent,
-  { address, take, skip, type, pickConfigId, conditionId },
-  ctx
+  { address, take, skip, type, pickConfigId, conditionId }
 ) => {
   const cappedTake = Math.max(1, Math.min(take ?? 20, 100));
   const cappedSkip = Math.max(0, Math.min(skip ?? 0, MAX_SKIP));
@@ -140,13 +138,9 @@ export const accountActivity: NonNullable<
         })
       : [];
 
-  // Pre-load conditions referenced by every Pick on this page (predictions
-  // and trades) into ctx.pickConditions. The Pick.condition resolver reads
-  // the cache and returns rows without per-pick round trips.
-  await preloadPickConditions(ctx, [
-    ...predictions.map((r) => r.pickConfiguration),
-    ...tradePickConfigs,
-  ]);
+  // Pick.condition uses the per-request conditionById DataLoader to batch
+  // every conditionId touched by this page's picks (predictions + trades)
+  // into a single findMany on first access — no eager preload needed here.
 
   const pickConfigsByToken = new Map<
     string,

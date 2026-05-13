@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import prisma from '../core/db';
+import type { GraphQLLoaders } from './sdl/resolvers/loaders';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
@@ -30,19 +31,13 @@ export interface ApolloContext {
   // complexity plugin skips pure-introspection queries.
   queryComplexity?: number;
   /**
-   * Optional per-request cache: conditionId → Prisma Condition row.
-   *
-   * Hot resolvers (positions, accountActivity) batch-load every
-   * referenced Condition up front and populate this map; the
-   * Pick.condition field resolver then returns rows from the cache
-   * without a per-pick round trip. Resolvers that don't pre-populate
-   * fall back to per-pick lookups.
-   *
-   * Stored on context (not as a request-scoped DataLoader) because we
-   * already do the batching ourselves before mapPickConfig and just
-   * need a place to stash the map for the field resolver to read.
+   * Per-request DataLoaders for keyed lookups (conditions, users,
+   * pickConfigurations, etc.). See `sdl/resolvers/loaders.ts` for the
+   * full set. Resolvers call `ctx.loaders.<key>.load(id)` and DataLoader
+   * collapses concurrent loads into one batched `findMany` per request.
+   * Optional because some unit tests construct a context without one.
    */
-  pickConditions?: Map<string, unknown>;
+  loaders?: GraphQLLoaders;
 }
 
 export const initializeApolloServer = async () => {
