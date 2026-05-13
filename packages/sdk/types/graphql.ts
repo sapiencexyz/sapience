@@ -984,6 +984,7 @@ export type LegacyPosition = {
   id: Scalars['Int']['output'];
   marketAddress: Scalars['String']['output'];
   mintedAt: Scalars['Int']['output'];
+  /** @deprecated LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead. */
   predictions: Array<LegacyPrediction>;
   predictor: Scalars['String']['output'];
   predictorCollateral?: Maybe<Scalars['String']['output']>;
@@ -1079,9 +1080,11 @@ export type LegacyPrediction = {
   conditionId: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
+  /** @deprecated LimitOrder is deprecated and being phased out. */
   limitOrder?: Maybe<LimitOrder>;
   limitOrderId?: Maybe<Scalars['Int']['output']>;
   outcomeYes: Scalars['Boolean']['output'];
+  /** @deprecated LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead. */
   position?: Maybe<LegacyPosition>;
   positionId?: Maybe<Scalars['Int']['output']>;
 };
@@ -1188,6 +1191,7 @@ export type LimitOrder = {
   orderId: Scalars['String']['output'];
   placedAt: Scalars['Int']['output'];
   placedTxHash: Scalars['String']['output'];
+  /** @deprecated LimitOrder is deprecated and being phased out. */
   predictions: Array<LegacyPrediction>;
   predictor: Scalars['String']['output'];
   predictorCollateral: Scalars['String']['output'];
@@ -1417,6 +1421,23 @@ export type NullsOrder =
   | 'first'
   | 'last';
 
+/**
+ * Common shape implemented by every `*Page` type. `items` is intentionally
+ * not declared on the interface because each page exposes a different
+ * concrete row type; clients can fragment on the interface to read
+ * `hasMore` / `totalCount` generically and on the concrete type to read
+ * the typed `items` list.
+ */
+export type Page = {
+  /** Server-truth signal that another page exists after this one. */
+  hasMore: Scalars['Boolean']['output'];
+  /**
+   * Total rows matching the filters. May be null when the count is not
+   * computed for this resolver (e.g. complex unioned feeds).
+   */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
 /** Individual outcome pick within a pick configuration */
 export type Pick = {
   __typename?: 'Pick';
@@ -1484,11 +1505,22 @@ export type PositionSortField =
   | 'CREATED_AT'
   | 'UPDATED_AT';
 
-/** Paginated wrapper around Position rows with a server-truth hasMore flag */
-export type PositionsPage = {
+/**
+ * Paginated wrapper around Position rows with a server-truth hasMore flag.
+ * `totalCount` is the count of underlying Position rows that match the filters
+ * (not the count of rendered event-stream rows, which can be larger due to
+ * per-sell synthetic expansion).
+ */
+export type PositionsPage = Page & {
   __typename?: 'PositionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Position>;
+  /**
+   * Total Position rows matching the filters. Computed lazily — the count
+   * query only fires when this field is selected in the operation, so
+   * pagination requests that don't need a total don't pay for one.
+   */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
@@ -1655,9 +1687,15 @@ export type Query = {
   pickConfigurations: Array<PickConfiguration>;
   /** Top 20 most-used tags across public conditions */
   popularTags: Array<Scalars['String']['output']>;
-  /** Count of token positions for a given holder */
+  /**
+   * Count of token positions for a given holder
+   * @deprecated Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   */
   positionCount: Scalars['Int']['output'];
-  /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
+  /**
+   * Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
+   * @deprecated Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.
+   */
   positions: Array<Position>;
   /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. */
   positionsPage: PositionsPage;

@@ -29,6 +29,7 @@ import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
+import { PositionsPage } from './PositionsPage';
 import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
@@ -59,12 +60,12 @@ import {
   pickConfiguration,
   pickConfigurations,
   positionCount,
-  positions,
   positionsPage,
   prediction,
   predictionCount,
   predictions,
 } from './queries/escrow';
+import { positions } from './queries/deprecated/escrow';
 import { accountProfitRank, profitLeaderboard } from './queries/pnl';
 import { questions } from './queries/questions';
 import {
@@ -150,6 +151,7 @@ export const resolvers: Resolvers = {
   LegacyPrediction,
   LimitOrder,
   Pick,
+  PositionsPage,
   ReferralCode,
   User,
 };
