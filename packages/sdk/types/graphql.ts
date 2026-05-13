@@ -1995,8 +1995,13 @@ export type Query = {
    * @deprecated Use `protocolStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.
    */
   protocolVolume: Array<VolumeDataPoint>;
-  /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
+  /**
+   * Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
+   * @deprecated Use `questionsPage` — same data with a server-truth `hasMore` stop signal.
+   */
   questions: Array<Question>;
+  /** Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag. */
+  questionsPage: QuestionsPage;
   /**
    * Public referral analytics. Referral codes are attribution hints, not
    * authorization credentials: using someone else's code credits that referrer's
@@ -2361,6 +2366,25 @@ export type QueryQuestionsArgs = {
 };
 
 
+export type QueryQuestionsPageArgs = {
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  maxSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
+  minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  minSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
+  resolutionStatus?: InputMaybe<ResolutionStatus>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
+  skip?: Scalars['Int']['input'];
+  sortDirection?: SortOrder;
+  sortField?: InputMaybe<QuestionSortField>;
+  tag?: InputMaybe<Scalars['String']['input']>;
+  take?: Scalars['Int']['input'];
+};
+
+
 export type QueryReferralCodesArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
   id?: InputMaybe<Scalars['Int']['input']>;
@@ -2438,6 +2462,15 @@ export type QuestionSortField =
   | 'openInterest'
   | 'predictionCount'
   | 'similarMarketVolume';
+
+/** Paginated wrapper around Question rows with a server-truth hasMore flag */
+export type QuestionsPage = Page & {
+  __typename?: 'QuestionsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Question>;
+  /** Total Question rows matching the filters. May be null for complex unioned queries. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
 
 /**
  * Public referral code metadata and analytics. This intentionally includes creator,

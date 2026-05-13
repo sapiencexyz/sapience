@@ -34,6 +34,7 @@ import { Pick } from './Pick';
 import { PickConfigurationsPage } from './PickConfigurationsPage';
 import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
+import { QuestionsPage } from './QuestionsPage';
 import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
@@ -56,6 +57,8 @@ import {
 } from './queries/collateralBalance';
 import { conditionsPage } from './queries/conditions';
 import { conditionGroup, conditionGroupsPage } from './queries/conditionGroups';
+import { questionsPage } from './queries/questions';
+import { questions } from './queries/deprecated/questions';
 import {
   attestations,
   categories,
@@ -81,7 +84,6 @@ import {
   positions,
   predictions,
 } from './queries/deprecated/escrow';
-import { questions } from './queries/questions';
 import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
 import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
@@ -127,6 +129,7 @@ export const resolvers: Resolvers = {
     conditions,
     conditionsPage,
     questions,
+    questionsPage,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
     closes,
@@ -172,6 +175,7 @@ export const resolvers: Resolvers = {
   PickConfigurationsPage,
   PositionsPage,
   PredictionsPage,
+  QuestionsPage,
   ReferralCode,
   User,
 };

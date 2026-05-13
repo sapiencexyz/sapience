@@ -1434,6 +1434,14 @@ type ConditionGroupsPage implements Page {
   totalCount: Int
 }
 
+"""Paginated wrapper around Question rows with a server-truth hasMore flag"""
+type QuestionsPage implements Page {
+  items: [Question!]!
+  hasMore: Boolean!
+  """Total Question rows matching the filters. May be null for complex unioned queries."""
+  totalCount: Int
+}
+
 """Sort fields for the `conditionsPage` query"""
 enum ConditionSortField {
   CREATED_AT
@@ -2275,6 +2283,30 @@ type Query {
     tag: String
     take: Int! = 50
   ): [Question!]!
+    @deprecated(
+      reason: "Use `questionsPage` — same data with a server-truth `hasMore` stop signal."
+    )
+
+  """
+  Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
+  """
+  questionsPage(
+    categorySlugs: [String!]
+    chainId: Int
+    maxEstimatedPrice: Float
+    maxSimilarMarketVolume: Float
+    minEndTime: Int
+    minEstimatedPrice: Float
+    minSimilarMarketVolume: Float
+    resolutionStatus: ResolutionStatus
+    search: String
+    similarMarketVolumeWindow: VolumeWindow
+    skip: Int! = 0
+    sortDirection: SortOrder! = desc
+    sortField: QuestionSortField
+    tag: String
+    take: Int! = 50
+  ): QuestionsPage!
 
   """
   Public referral analytics. Referral codes are attribution hints, not
