@@ -114,19 +114,19 @@
     "types": [
       {
         "kind": "OBJECT",
-        "name": "AccuracyRank",
-        "description": "Accuracy rank for an address on the forecasting leaderboard",
+        "name": "AccountStat",
+        "description": "One row of the per-account stats time series — wallet collateral\nposition, settlement PnL, trade volume, and prediction outcome counts\nat a single snapshot boundary. Mirrors the fat-row pattern used by\n`ProtocolStat` / `VaultStat`: per-bucket deltas use the `period…`\nprefix, cumulative-through-bucket values use the `cumulative…` prefix.\nWei amounts are 18-decimal decimal strings; counts are integers.\n\nToday this is assembled on-demand from the same SQL helpers that back\nthe deprecated `accountBalance` / `accountPnl` / `accountPredictionCount` /\n`accountVolume` resolvers, projected to a fixed daily cadence. A\nfollow-up will introduce a real per-account snapshot table and swap\nthe resolver to read from it — the wire shape is the destination, so\nclients are forward-compatible across that swap.",
         "fields": [
           {
-            "name": "accuracyScore",
-            "description": null,
+            "name": "timestamp",
+            "description": "Unix epoch timestamp (seconds) at the snapshot boundary",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Float",
+                "name": "Int",
                 "ofType": null
               }
             },
@@ -134,7 +134,494 @@
             "deprecationReason": null
           },
           {
+            "name": "periodPnL",
+            "description": "Realized PnL delta over this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cumulativePnL",
+            "description": "Running cumulative realized PnL through this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "periodVolume",
+            "description": "Trade volume delta over this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cumulativeVolume",
+            "description": "Running cumulative trade volume through this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "deployedCollateral",
+            "description": "Active collateral in open positions at this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "claimableCollateral",
+            "description": "Collateral available to claim from settled positions at this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "predictionsTotal",
+            "description": "Predictions opened in this bucket, total",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "predictionsWon",
+            "description": "Predictions won (settled in caller's favour) in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "predictionsLost",
+            "description": "Predictions lost in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "predictionsPending",
+            "description": "Predictions still pending at the bucket boundary",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "predictionsNonDecisive",
+            "description": "Predictions settled non-decisively in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "AccountStatsFilters",
+        "description": "Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields\nare optional: omit the input entirely to rank by `NET_PNL` over all time.\n`fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.\nBoth bounds are epoch seconds (inclusive).",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "metric",
+            "description": null,
+            "type": {
+              "kind": "ENUM",
+              "name": "AccountStatsMetric",
+              "ofType": null
+            },
+            "defaultValue": "NET_PNL"
+          },
+          {
+            "name": "fromEpoch",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "toEpoch",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "AccountStatsLeaderboardEntry",
+        "description": "One row of the account-stats leaderboard — an address with its net PnL,\ngross gains, gross losses, and trading volume over a window. All amounts\nare wei strings (18 decimals); `losses` is negative.",
+        "fields": [
+          {
             "name": "address",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "netPnL",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "gains",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "losses",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "volume",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "AccountStatsLeaderboardPage",
+        "description": "Paginated wrapper around `AccountStatsLeaderboardEntry` rows with a server-truth hasMore flag.",
+        "fields": [
+          {
+            "name": "items",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "AccountStatsLeaderboardEntry",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total addresses with activity in the window — populated unconditionally (cheap; derived from the in-memory merged-stats array).",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "AccountStatsMetric",
+        "description": "Metric an account-stats leaderboard is ranked by.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "NET_PNL",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "GAINS",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "LOSSES",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "VOLUME",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "AccountStatsRank",
+        "description": "Stats + rank for a single address against the same ranked set the\nleaderboard slices. Stat fields mirror `AccountStatsLeaderboardEntry` and\nare always populated (zero when the address has no activity in the window).\n`rank` is 1-indexed against the ranked set for the chosen metric, or null\nwhen the address is absent from it. `totalParticipants` is the size of the\nranked set in the window (0 when the window has no participants at all,\ndistinguishing an empty-window stub from an unranked address in a\npopulated window).",
+        "fields": [
+          {
+            "name": "address",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "netPnL",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "gains",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "losses",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "volume",
             "description": null,
             "args": [],
             "type": {
@@ -162,7 +649,190 @@
             "deprecationReason": null
           },
           {
-            "name": "totalForecasters",
+            "name": "totalParticipants",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "AccuracyLeaderboardEntry",
+        "description": "One row of the accuracy leaderboard — an address with its lifetime\naccuracy score aggregated across every scored attestation. Parallel\nto `AccountStatsLeaderboardEntry`.",
+        "fields": [
+          {
+            "name": "address",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "accuracyScore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Float",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "AccuracyLeaderboardPage",
+        "description": "Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag.",
+        "fields": [
+          {
+            "name": "items",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "AccuracyLeaderboardEntry",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total forecasters on the leaderboard — populated unconditionally (cheap; derived from the in-memory leaderboard array).",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "AccuracyRank",
+        "description": "Accuracy rank and lifetime score for a single address. Mirrors\n`AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),\n`rank` (1-indexed, null when unranked), and `totalParticipants` (size of\nthe scored-forecaster set). Accuracy is lifetime-aggregated — the\ntime-weighted error already weights by recency, so there's no window\nfilter on this surface.",
+        "fields": [
+          {
+            "name": "address",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "accuracyScore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Float",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "rank",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalParticipants",
             "description": null,
             "args": [],
             "type": {
@@ -2256,7 +2926,7 @@
       {
         "kind": "OBJECT",
         "name": "BalanceDataPoint",
-        "description": "Time-bucketed balance snapshot showing deployed and claimable collateral",
+        "description": "Time-bucketed collateral-balance data point (legacy).",
         "fields": [
           {
             "name": "claimableCollateral",
@@ -8350,113 +9020,6 @@
         "possibleTypes": null
       },
       {
-        "kind": "OBJECT",
-        "name": "ForecasterScore",
-        "description": "Accuracy score for a forecaster, aggregated across all scored markets",
-        "fields": [
-          {
-            "name": "accuracyScore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Float",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "address",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "numScored",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "numTimeWeighted",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "sumErrorSquared",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Float",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "sumTimeWeightedError",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Float",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
         "kind": "SCALAR",
         "name": "Int",
         "description": "The `Int` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1.",
@@ -8931,8 +9494,8 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead."
           },
           {
             "name": "predictor",
@@ -9687,8 +10250,8 @@
               "name": "LimitOrder",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LimitOrder is deprecated and being phased out."
           },
           {
             "name": "limitOrderId",
@@ -9738,8 +10301,8 @@
               "name": "LegacyPosition",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead."
           },
           {
             "name": "positionId",
@@ -10716,8 +11279,8 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "LimitOrder is deprecated and being phased out."
           },
           {
             "name": "predictor",
@@ -12705,6 +13268,61 @@
         "possibleTypes": null
       },
       {
+        "kind": "INTERFACE",
+        "name": "Page",
+        "description": "Shared shape for `*Page` paginated wrappers. Concrete types add their own\nstrongly-typed `items` field; `hasMore` and `totalCount` live here so a\ngeneric `Page` helper can read them. Concrete `*Page` types document\nwhether `totalCount` is populated unconditionally (cheap, in-memory) or\nlazily (only when the client selects the field).",
+        "fields": [
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": [
+          {
+            "kind": "OBJECT",
+            "name": "AccuracyLeaderboardPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "PositionsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "AccountStatsLeaderboardPage",
+            "ofType": null
+          }
+        ]
+      },
+      {
         "kind": "OBJECT",
         "name": "Pick",
         "description": "Individual outcome pick within a pick configuration",
@@ -13065,7 +13683,7 @@
       {
         "kind": "OBJECT",
         "name": "PnlDataPoint",
-        "description": "Time-bucketed PnL data point with cumulative tracking",
+        "description": "Time-bucketed PnL data point with cumulative tracking (legacy).",
         "fields": [
           {
             "name": "cumulativePnl",
@@ -13350,7 +13968,7 @@
       {
         "kind": "OBJECT",
         "name": "PositionsPage",
-        "description": "Paginated wrapper around Position rows with a server-truth hasMore flag",
+        "description": "Paginated wrapper around Position rows with a server-truth hasMore flag.\n`totalCount` is the count of underlying Position rows that match the filters\n(not the count of rendered event-stream rows, which can be larger due to\nper-sell synthetic expansion). Implements the shared `Page` interface so\ngeneric clients can read `hasMore` / `totalCount` across page types.",
         "fields": [
           {
             "name": "items",
@@ -13391,10 +14009,28 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total Position rows matching the filters. Computed lazily — the count\nquery only fires when this field is selected in the operation, so\npagination requests that don't need a total don't pay for one.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -13748,7 +14384,7 @@
       {
         "kind": "OBJECT",
         "name": "PredictionCountDataPoint",
-        "description": "Time-bucketed prediction count with outcome breakdown, bucketed by creation time",
+        "description": "Time-bucketed prediction-count data point with outcome breakdown (legacy).",
         "fields": [
           {
             "name": "lost",
@@ -13816,7 +14452,7 @@
           },
           {
             "name": "total",
-            "description": "Total predictions created in this bucket",
+            "description": "Total predictions opened in this bucket",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -13877,83 +14513,12 @@
       },
       {
         "kind": "OBJECT",
-        "name": "ProfitEntry",
-        "description": "Aggregated profit/loss entry for a single address across all positions",
+        "name": "ProtocolStat",
+        "description": "Protocol-wide stats snapshot — no vault scoping.",
         "fields": [
           {
-            "name": "address",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalPnL",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "ProfitRank",
-        "description": "Profit rank and total PnL for an address on the leaderboard",
-        "fields": [
-          {
-            "name": "address",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "rank",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalParticipants",
-            "description": null,
+            "name": "timestamp",
+            "description": "Unix epoch timestamp (seconds) aligned to the snapshot interval boundary",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -13967,33 +14532,6 @@
             "isDeprecated": false,
             "deprecationReason": null
           },
-          {
-            "name": "totalPnL",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "ProtocolStat",
-        "description": "Protocol-wide statistics snapshot including vault metrics, volume, and PnL.\nCadence is controlled by the snapshot cron; periodPnL and periodVolume are\ndeltas over that interval.",
-        "fields": [
           {
             "name": "cumulativeVolume",
             "description": null,
@@ -14043,40 +14581,8 @@
             "deprecationReason": null
           },
           {
-            "name": "periodPnL",
-            "description": "Realized PnL delta over the snapshot interval",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
             "name": "periodVolume",
             "description": "Cumulative-volume delta over the snapshot interval",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "escrowBalance",
-            "description": null,
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -14107,199 +14613,7 @@
             "deprecationReason": null
           },
           {
-            "name": "timestamp",
-            "description": "Unix epoch timestamp (seconds) aligned to the snapshot interval boundary",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultAirdropGains",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultAvailableAssets",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultBalance",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultCumulativePnL",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultDeployed",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultDeposits",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultPositionsLost",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultPositionsWon",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultSecondaryBought",
-            "description": "Cumulative wUSDe paid by the vault on secondary-market buys",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultSecondarySold",
-            "description": "Cumulative wUSDe received by the vault on secondary-market sells",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultUnredeemedClaim",
-            "description": "wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "vaultWithdrawals",
+            "name": "escrowBalance",
             "description": null,
             "args": [],
             "type": {
@@ -14326,35 +14640,8 @@
         "description": null,
         "fields": [
           {
-            "name": "accountAccuracy",
-            "description": "Accuracy score for a single forecaster address, or null if no scored attestations exist",
-            "args": [
-              {
-                "name": "address",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "String",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": null
-              }
-            ],
-            "type": {
-              "kind": "OBJECT",
-              "name": "ForecasterScore",
-              "ofType": null
-            },
-            "isDeprecated": true,
-            "deprecationReason": "No longer supported"
-          },
-          {
             "name": "accountAccuracyRank",
-            "description": "Accuracy rank and score for a single address relative to all forecasters",
+            "description": "Accuracy rank and lifetime score for a single address. Mirrors\n`accountStatsRank`'s shape: stats fields are always populated (zero for\nunscored addresses), `rank` is null when the address is absent from the\nranked set, and `totalParticipants` is the size of the scored-forecaster\nset.",
             "args": [
               {
                 "name": "address",
@@ -14477,8 +14764,67 @@
             "deprecationReason": null
           },
           {
+            "name": "accountStats",
+            "description": "Per-account stats time series — wallet collateral position, PnL, volume,\nand prediction outcome counts across snapshots in a window. Mirrors the\n`protocolStats` / `vaultStats` fat-row shape: no `interval` arg, server\npicks the cadence; `fromEpoch` / `toEpoch` are optional epoch seconds\n(inclusive). Both omitted ⇒ last 365 days (the DAY-bucket cap in the\nhelper layer until the snapshot table lands).\n\nImplementation today wraps the legacy per-metric SQL helpers and emits\none point per day. A follow-up migrates this to a real per-account\nsnapshot table without changing the wire shape.",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "fromEpoch",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "toEpoch",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "AccountStat",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "accountBalance",
-            "description": "Time-bucketed balance snapshots for a single address showing deployed and claimable collateral",
+            "description": "Time-bucketed collateral balance for a single address — deployed (in open\npositions) and claimable (settled but unredeemed). DEPRECATED: use\n`accountStats`; the fat row carries `deployedCollateral` /\n`claimableCollateral` per snapshot.",
             "args": [
               {
                 "name": "address",
@@ -14546,12 +14892,12 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountStats` — the fat row carries `deployedCollateral` / `claimableCollateral` per snapshot."
           },
           {
             "name": "accountPnl",
-            "description": "Time-bucketed profit and loss for a single address with cumulative tracking",
+            "description": "Time-bucketed profit-and-loss for a single address with cumulative tracking.\nDEPRECATED: use `accountStats`; the fat row carries `periodPnL` /\n`cumulativePnL` per snapshot.",
             "args": [
               {
                 "name": "address",
@@ -14619,12 +14965,12 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountStats` — the fat row carries `periodPnL` / `cumulativePnL` per snapshot."
           },
           {
             "name": "accountPredictionCount",
-            "description": "Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time",
+            "description": "Time-bucketed prediction count with outcome breakdown for a single address,\nbucketed by creation time. DEPRECATED: use `accountStats`; the fat row carries\n`predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending`\n/ `predictionsNonDecisive` per snapshot.",
             "args": [
               {
                 "name": "address",
@@ -14692,74 +15038,12 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "accountProfitRank",
-            "description": "Profit rank and total PnL for a single address relative to all participants",
-            "args": [
-              {
-                "name": "address",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "String",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": null
-              }
-            ],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "OBJECT",
-                "name": "ProfitRank",
-                "ofType": null
-              }
-            },
             "isDeprecated": true,
-            "deprecationReason": "No longer supported"
-          },
-          {
-            "name": "accountTotalVolume",
-            "description": "Total lifetime trading volume in wei for the given address across all prediction types",
-            "args": [
-              {
-                "name": "address",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "String",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": null
-              }
-            ],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "deprecationReason": "Use `accountStats` — the fat row carries `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending` / `predictionsNonDecisive` per snapshot."
           },
           {
             "name": "accountVolume",
-            "description": "Time-bucketed trading volume for a single address",
+            "description": "Time-bucketed trading volume for a single address. DEPRECATED: use\n`accountStats`; the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.",
             "args": [
               {
                 "name": "address",
@@ -14827,15 +15111,56 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot."
           },
           {
-            "name": "accuracyLeaderboard",
-            "description": "Top forecasters ranked by accuracy score",
+            "name": "accountTotalVolume",
+            "description": "Lifetime trading volume for a single address as a wei-decimal string.\nDEPRECATED: use `accountStatsRank(address: $a).volume` (omit `filters` for\nall-time).",
             "args": [
               {
-                "name": "limit",
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountStatsRank(address: $a).volume` (omit `filters` for all-time)."
+          },
+          {
+            "name": "accountStatsLeaderboardPage",
+            "description": "Accounts ranked by an account metric (net PnL, gains, losses, or volume)\nover an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over\nall-time. PnL metrics are attributed to settlement time, volume to trade\ntime. Page-shaped with server-truth `hasMore`; `totalCount` is populated\nunconditionally (cheap in-memory derivation).",
+            "args": [
+              {
+                "name": "filters",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "AccountStatsFilters",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "take",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",
@@ -14846,24 +15171,116 @@
                     "ofType": null
                   }
                 },
-                "defaultValue": "10"
+                "defaultValue": "25"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
+                "kind": "OBJECT",
+                "name": "AccountStatsLeaderboardPage",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "accountStatsRank",
+            "description": "Stats + rank for a single address against the same ranked set the\nleaderboard slices. `filters` omitted ⇒ rank by `NET_PNL` over all-time.\nStats fields are always present (zero when the address has no activity\nin the window). `rank` is null when the address is absent from the\nranked set; `totalParticipants` is the ranked-set size (0 when the\nwindow has no participants at all — that distinguishes \"empty window\"\nfrom \"present window, address unranked\").",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
                   "kind": "NON_NULL",
                   "name": null,
                   "ofType": {
-                    "kind": "OBJECT",
-                    "name": "ForecasterScore",
+                    "kind": "SCALAR",
+                    "name": "String",
                     "ofType": null
                   }
-                }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filters",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "AccountStatsFilters",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "AccountStatsRank",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "accuracyLeaderboardPage",
+            "description": "Top forecasters ranked by lifetime accuracy. The time-weighted error\nalready weights by recency, so there's no window filter on this surface.\nPage-shaped with server-truth `hasMore`; `totalCount` is populated\nunconditionally (cheap in-memory derivation).",
+            "args": [
+              {
+                "name": "take",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "25"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "AccuracyLeaderboardPage",
+                "ofType": null
               }
             },
             "isDeprecated": false,
@@ -15920,8 +16337,8 @@
                 "ofType": null
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed."
           },
           {
             "name": "positions",
@@ -16103,8 +16520,8 @@
                 }
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check."
           },
           {
             "name": "positionsPage",
@@ -16473,59 +16890,6 @@
             "deprecationReason": null
           },
           {
-            "name": "profitLeaderboard",
-            "description": "Profit leaderboard — addresses ranked by total PnL across all positions",
-            "args": [
-              {
-                "name": "limit",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "10"
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              }
-            ],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "ProfitEntry",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
             "name": "openInterestByCategory",
             "description": "Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.",
             "args": [],
@@ -16575,14 +16939,24 @@
           },
           {
             "name": "protocolStats",
-            "description": "Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest",
+            "description": "Protocol-wide statistics time series at the configured snapshot cadence —\ncumulative volume, trade count, open interest, escrow balance. Window\nwith `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted\nreturns full history.\n\nBar timestamps: closed bars are labelled at *the start* of the interval\nthey represent (capture time minus one interval), so a bar at\n`2026-01-01 00:00` summarizes activity ending `2026-01-02 00:00`. When\n`toEpoch` covers now, a trailing live candle is appended; the live\ncandle's `timestamp` is the *current* interval boundary (not shifted\nback), so callers can distinguish it as `points[points.length - 1]\n.timestamp >= floor(now / interval) * interval`.",
             "args": [
               {
-                "name": "vaultAddress",
+                "name": "fromEpoch",
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "String",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "toEpoch",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -16610,7 +16984,7 @@
           },
           {
             "name": "protocolVolume",
-            "description": "Time-bucketed total protocol trading volume across all users",
+            "description": "Time-bucketed total protocol trading volume across all users. DEPRECATED:\nuse `protocolStats`; the fat row carries `periodVolume` / `cumulativeVolume`\nper snapshot.",
             "args": [
               {
                 "name": "from",
@@ -16665,7 +17039,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "No longer supported"
+            "deprecationReason": "Use `protocolStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot."
           },
           {
             "name": "questions",
@@ -17223,6 +17597,65 @@
             },
             "isDeprecated": true,
             "deprecationReason": "No longer supported"
+          },
+          {
+            "name": "vaultStats",
+            "description": "Vault-specific statistics time series for a single vault address — vault\nbalance, deployed/available collateral, cumulative PnL, deposits,\nwithdrawals, airdrop gains, secondary flows, unredeemed claims. Window\nwith `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted\nreturns full history.\n\nBar timestamps follow the same convention as `protocolStats`: closed\nbars are labelled at the *start* of the interval they represent, and a\ntrailing live candle (anchored to the *current* interval boundary) is\nappended when `toEpoch` covers now.",
+            "args": [
+              {
+                "name": "fromEpoch",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "toEpoch",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "vaultAddress",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "VaultStat",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -18578,7 +19011,7 @@
       {
         "kind": "ENUM",
         "name": "TimeInterval",
-        "description": "Time interval for bucketing time-series data",
+        "description": "Time interval for bucketing the legacy per-account time-series resolvers.",
         "fields": null,
         "inputFields": null,
         "interfaces": null,
@@ -19849,8 +20282,243 @@
       },
       {
         "kind": "OBJECT",
+        "name": "VaultStat",
+        "description": "Vault-specific stats snapshot for a single vault address.",
+        "fields": [
+          {
+            "name": "timestamp",
+            "description": "Unix epoch timestamp (seconds) aligned to the snapshot interval boundary",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultBalance",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultAvailableAssets",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultDeployed",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultCumulativePnL",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultPositionsWon",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultPositionsLost",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultDeposits",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultWithdrawals",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultAirdropGains",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultSecondaryBought",
+            "description": "Cumulative wUSDe paid by the vault on secondary-market buys",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultSecondarySold",
+            "description": "Cumulative wUSDe received by the vault on secondary-market sells",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "vaultUnredeemedClaim",
+            "description": "wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "periodPnL",
+            "description": "Realized PnL delta over the snapshot interval",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "VolumeDataPoint",
-        "description": "Time-bucketed volume data point for charts",
+        "description": "Time-bucketed volume data point for charts (legacy).",
         "fields": [
           {
             "name": "timestamp",

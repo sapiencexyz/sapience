@@ -1,9 +1,16 @@
-"""Accuracy rank for an address on the forecasting leaderboard"""
+"""
+Accuracy rank and lifetime score for a single address. Mirrors
+`AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),
+`rank` (1-indexed, null when unranked), and `totalParticipants` (size of
+the scored-forecaster set). Accuracy is lifetime-aggregated — the
+time-weighted error already weights by recency, so there's no window
+filter on this surface.
+"""
 type AccuracyRank {
-  accuracyScore: Float!
   address: String!
+  accuracyScore: Float!
   rank: Int
-  totalForecasters: Int!
+  totalParticipants: Int!
 }
 
 """
@@ -220,20 +227,6 @@ input AttestationWhereUniqueInput {
 }
 
 """
-Time-bucketed balance snapshot showing deployed and claimable collateral
-"""
-type BalanceDataPoint {
-  """Collateral available to claim from settled positions (wei)"""
-  claimableCollateral: String!
-
-  """Active collateral deployed in open positions (wei)"""
-  deployedCollateral: String!
-
-  """Unix epoch timestamp (seconds) for the start of this bucket"""
-  timestamp: Int!
-}
-
-"""
 The `BigInt` scalar type represents non-fractional signed whole numeric values.
 """
 scalar BigInt
@@ -277,14 +270,6 @@ type CategoryCount {
 input CategoryNullableRelationFilter {
   is: CategoryWhereInput
   isNot: CategoryWhereInput
-}
-
-"""Open-interest aggregated for a single category."""
-type CategoryOpenInterest {
-  category: Category!
-
-  """Open interest in wei (decimal string)"""
-  openInterest: String!
 }
 
 input CategoryOrderByWithRelationInput {
@@ -833,14 +818,27 @@ input FloatNullableFilter {
   notIn: [Float!]
 }
 
-"""Accuracy score for a forecaster, aggregated across all scored markets"""
-type ForecasterScore {
-  accuracyScore: Float!
+"""
+One row of the accuracy leaderboard — an address with its lifetime
+accuracy score aggregated across every scored attestation. Parallel
+to `AccountStatsLeaderboardEntry`.
+"""
+type AccuracyLeaderboardEntry {
   address: String!
-  numScored: Int!
-  numTimeWeighted: Int!
-  sumErrorSquared: Float!
-  sumTimeWeightedError: Float!
+  accuracyScore: Float!
+}
+
+"""
+Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag.
+"""
+type AccuracyLeaderboardPage implements Page {
+  items: [AccuracyLeaderboardEntry!]!
+  hasMore: Boolean!
+
+  """
+  Total forecasters on the leaderboard — populated unconditionally (cheap; derived from the in-memory leaderboard array).
+  """
+  totalCount: Int
 }
 
 input IntFilter {
@@ -877,7 +875,7 @@ type LegacyPosition {
   id: Int!
   marketAddress: String!
   mintedAt: Int!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]! @deprecated(reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead.")
   predictor: String!
   predictorCollateral: String
   predictorNftTokenId: String!
@@ -958,10 +956,10 @@ type LegacyPrediction {
   conditionId: String!
   createdAt: DateTimeISO!
   id: Int!
-  limitOrder(where: LimitOrderWhereInput): LimitOrder
+  limitOrder(where: LimitOrderWhereInput): LimitOrder @deprecated(reason: "LimitOrder is deprecated and being phased out.")
   limitOrderId: Int
   outcomeYes: Boolean!
-  position(where: LegacyPositionWhereInput): LegacyPosition
+  position(where: LegacyPositionWhereInput): LegacyPosition @deprecated(reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead.")
   positionId: Int
 }
 
@@ -1057,7 +1055,7 @@ type LimitOrder {
   orderId: String!
   placedAt: Int!
   placedTxHash: String!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]! @deprecated(reason: "LimitOrder is deprecated and being phased out.")
   predictor: String!
   predictorCollateral: String!
   refCode: String
@@ -1307,16 +1305,23 @@ type PickConfiguration {
   totalPredictorCollateral: String!
 }
 
-"""Time-bucketed PnL data point with cumulative tracking"""
-type PnlDataPoint {
-  """Running cumulative PnL in wei"""
-  cumulativePnl: String!
+"""
+Paginated wrapper around Position rows with a server-truth hasMore flag.
+`totalCount` is the count of underlying Position rows that match the filters
+(not the count of rendered event-stream rows, which can be larger due to
+per-sell synthetic expansion). Implements the shared `Page` interface so
+generic clients can read `hasMore` / `totalCount` across page types.
+"""
+type PositionsPage implements Page {
+  items: [Position!]!
+  hasMore: Boolean!
 
-  """PnL for this bucket in wei"""
-  pnl: String!
-
-  """Unix epoch timestamp (seconds) for the start of this bucket"""
-  timestamp: Int!
+  """
+  Total Position rows matching the filters. Computed lazily — the count
+  query only fires when this field is selected in the operation, so
+  pagination requests that don't need a total don't pay for one.
+  """
+  totalCount: Int
 }
 
 """ERC-20 token balance representing a side of a prediction position"""
@@ -1340,14 +1345,6 @@ type Position {
 enum PositionSortField {
   CREATED_AT
   UPDATED_AT
-}
-
-"""
-Paginated wrapper around Position rows with a server-truth hasMore flag
-"""
-type PositionsPage {
-  hasMore: Boolean!
-  items: [Position!]!
 }
 
 """
@@ -1379,83 +1376,208 @@ type Prediction {
   settledAt: Int
 }
 
-"""
-Time-bucketed prediction count with outcome breakdown, bucketed by creation time
-"""
-type PredictionCountDataPoint {
-  """Predictions lost in this bucket"""
-  lost: Int!
-
-  """Predictions settled as non-decisive in this bucket"""
-  nonDecisive: Int!
-
-  """Predictions still pending in this bucket"""
-  pending: Int!
-
-  """Unix epoch timestamp (seconds) for the start of this bucket"""
-  timestamp: Int!
-
-  """Total predictions created in this bucket"""
-  total: Int!
-
-  """Predictions won in this bucket"""
-  won: Int!
-}
-
 """Field to sort predictions by"""
 enum PredictionSortField {
   CREATED_AT
   SETTLED_AT
 }
 
-"""Aggregated profit/loss entry for a single address across all positions"""
-type ProfitEntry {
-  address: String!
-  totalPnL: String!
+"""Metric an account-stats leaderboard is ranked by."""
+enum AccountStatsMetric {
+  NET_PNL
+  GAINS
+  LOSSES
+  VOLUME
 }
 
-"""Profit rank and total PnL for an address on the leaderboard"""
-type ProfitRank {
+"""
+One row of the account-stats leaderboard — an address with its net PnL,
+gross gains, gross losses, and trading volume over a window. All amounts
+are wei strings (18 decimals); `losses` is negative.
+"""
+type AccountStatsLeaderboardEntry {
   address: String!
+  netPnL: String!
+  gains: String!
+  losses: String!
+  volume: String!
+}
+
+"""
+Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields
+are optional: omit the input entirely to rank by `NET_PNL` over all time.
+`fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.
+Both bounds are epoch seconds (inclusive).
+"""
+input AccountStatsFilters {
+  metric: AccountStatsMetric = NET_PNL
+  fromEpoch: Int
+  toEpoch: Int
+}
+
+"""
+Shared shape for `*Page` paginated wrappers. Concrete types add their own
+strongly-typed `items` field; `hasMore` and `totalCount` live here so a
+generic `Page` helper can read them. Concrete `*Page` types document
+whether `totalCount` is populated unconditionally (cheap, in-memory) or
+lazily (only when the client selects the field).
+"""
+interface Page {
+  hasMore: Boolean!
+  totalCount: Int
+}
+
+"""
+Paginated wrapper around `AccountStatsLeaderboardEntry` rows with a server-truth hasMore flag.
+"""
+type AccountStatsLeaderboardPage implements Page {
+  items: [AccountStatsLeaderboardEntry!]!
+  hasMore: Boolean!
+
+  """
+  Total addresses with activity in the window — populated unconditionally (cheap; derived from the in-memory merged-stats array).
+  """
+  totalCount: Int
+}
+
+"""
+Stats + rank for a single address against the same ranked set the
+leaderboard slices. Stat fields mirror `AccountStatsLeaderboardEntry` and
+are always populated (zero when the address has no activity in the window).
+`rank` is 1-indexed against the ranked set for the chosen metric, or null
+when the address is absent from it. `totalParticipants` is the size of the
+ranked set in the window (0 when the window has no participants at all,
+distinguishing an empty-window stub from an unranked address in a
+populated window).
+"""
+type AccountStatsRank {
+  address: String!
+  netPnL: String!
+  gains: String!
+  losses: String!
+  volume: String!
   rank: Int
   totalParticipants: Int!
-  totalPnL: String!
+}
+
+"""Open-interest aggregated for a single category."""
+type CategoryOpenInterest {
+  category: Category!
+
+  """Open interest in wei (decimal string)"""
+  openInterest: String!
 }
 
 """
-Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
-Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
-deltas over that interval.
+Open-interest aggregated by time-to-resolution bucket. Each unsettled
+prediction's collateral is bucketed by the latest endTime among the conditions
+it touches (the moment its OI can finally be claimed). One row per non-empty
+bucket, ordered from soonest (bucket = 1) to furthest out.
 """
-type ProtocolStat {
-  cumulativeVolume: String!
-  escrowBalance: String!
+type TimeToResolutionBucket {
+  """Sort order: 1 = soonest, increasing for further-out buckets"""
+  bucket: Int!
+
+  """Display label, e.g. ≤1d / 2-7d / 1-2mo"""
+  label: String!
+
+  """Open interest in wei (decimal string)"""
   openInterest: String!
 
-  """Realized PnL delta over the snapshot interval"""
-  periodPnL: String!
+  """Number of predictions contributing to this bucket"""
+  predictionCount: Int!
+}
+
+"""Protocol-wide stats snapshot — no vault scoping."""
+type ProtocolStat {
+  """
+  Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
+  """
+  timestamp: Int!
+  cumulativeVolume: String!
+
+  """Cumulative count of predictions and secondary trades/sales"""
+  totalTradeCount: Int!
 
   """Trade-count delta over the snapshot interval"""
   periodTradeCount: Int!
 
   """Cumulative-volume delta over the snapshot interval"""
   periodVolume: String!
+  openInterest: String!
+  escrowBalance: String!
+}
 
+"""
+One row of the per-account stats time series — wallet collateral
+position, settlement PnL, trade volume, and prediction outcome counts
+at a single snapshot boundary. Mirrors the fat-row pattern used by
+`ProtocolStat` / `VaultStat`: per-bucket deltas use the `period…`
+prefix, cumulative-through-bucket values use the `cumulative…` prefix.
+Wei amounts are 18-decimal decimal strings; counts are integers.
+
+Today this is assembled on-demand from the same SQL helpers that back
+the deprecated `accountBalance` / `accountPnl` / `accountPredictionCount` /
+`accountVolume` resolvers, projected to a fixed daily cadence. A
+follow-up will introduce a real per-account snapshot table and swap
+the resolver to read from it — the wire shape is the destination, so
+clients are forward-compatible across that swap.
+"""
+type AccountStat {
+  """Unix epoch timestamp (seconds) at the snapshot boundary"""
+  timestamp: Int!
+
+  """Realized PnL delta over this bucket (wei, 18 dec)"""
+  periodPnL: String!
+
+  """Running cumulative realized PnL through this bucket (wei, 18 dec)"""
+  cumulativePnL: String!
+
+  """Trade volume delta over this bucket (wei, 18 dec)"""
+  periodVolume: String!
+
+  """Running cumulative trade volume through this bucket (wei, 18 dec)"""
+  cumulativeVolume: String!
+
+  """Active collateral in open positions at this bucket (wei, 18 dec)"""
+  deployedCollateral: String!
+
+  """
+  Collateral available to claim from settled positions at this bucket (wei, 18 dec)
+  """
+  claimableCollateral: String!
+
+  """Predictions opened in this bucket, total"""
+  predictionsTotal: Int!
+
+  """Predictions won (settled in caller's favour) in this bucket"""
+  predictionsWon: Int!
+
+  """Predictions lost in this bucket"""
+  predictionsLost: Int!
+
+  """Predictions still pending at the bucket boundary"""
+  predictionsPending: Int!
+
+  """Predictions settled non-decisively in this bucket"""
+  predictionsNonDecisive: Int!
+}
+
+"""Vault-specific stats snapshot for a single vault address."""
+type VaultStat {
   """
   Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
   """
   timestamp: Int!
-
-  """Cumulative count of predictions and secondary trades/sales"""
-  totalTradeCount: Int!
-  vaultAirdropGains: String!
-  vaultAvailableAssets: String!
   vaultBalance: String!
-  vaultCumulativePnL: String!
+  vaultAvailableAssets: String!
   vaultDeployed: String!
-  vaultDeposits: String!
-  vaultPositionsLost: Int!
+  vaultCumulativePnL: String!
   vaultPositionsWon: Int!
+  vaultPositionsLost: Int!
+  vaultDeposits: String!
+  vaultWithdrawals: String!
+  vaultAirdropGains: String!
 
   """Cumulative wUSDe paid by the vault on secondary-market buys"""
   vaultSecondaryBought: String!
@@ -1465,17 +1587,18 @@ type ProtocolStat {
 
   """wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins"""
   vaultUnredeemedClaim: String!
-  vaultWithdrawals: String!
+
+  """Realized PnL delta over the snapshot interval"""
+  periodPnL: String!
 }
 
 type Query {
   """
-  Accuracy score for a single forecaster address, or null if no scored attestations exist
-  """
-  accountAccuracy(address: String!): ForecasterScore @deprecated
-
-  """
-  Accuracy rank and score for a single address relative to all forecasters
+  Accuracy rank and lifetime score for a single address. Mirrors
+  `accountStatsRank`'s shape: stats fields are always populated (zero for
+  unscored addresses), `rank` is null when the address is absent from the
+  ranked set, and `totalParticipants` is the size of the scored-forecaster
+  set.
   """
   accountAccuracyRank(address: String!): AccuracyRank!
 
@@ -1485,35 +1608,82 @@ type Query {
   accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
 
   """
-  Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
+  Per-account stats time series — wallet collateral position, PnL, volume,
+  and prediction outcome counts across snapshots in a window. Mirrors the
+  `protocolStats` / `vaultStats` fat-row shape: no `interval` arg, server
+  picks the cadence; `fromEpoch` / `toEpoch` are optional epoch seconds
+  (inclusive). Both omitted ⇒ last 365 days (the DAY-bucket cap in the
+  helper layer until the snapshot table lands).
+  
+  Implementation today wraps the legacy per-metric SQL helpers and emits
+  one point per day. A follow-up migrates this to a real per-account
+  snapshot table without changing the wire shape.
   """
-  accountBalance(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [BalanceDataPoint!]!
+  accountStats(address: String!, fromEpoch: Int, toEpoch: Int): [AccountStat!]!
 
   """
-  Time-bucketed profit and loss for a single address with cumulative tracking
+  Time-bucketed collateral balance for a single address — deployed (in open
+  positions) and claimable (settled but unredeemed). DEPRECATED: use
+  `accountStats`; the fat row carries `deployedCollateral` /
+  `claimableCollateral` per snapshot.
   """
-  accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]!
+  accountBalance(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [BalanceDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `deployedCollateral` / `claimableCollateral` per snapshot.")
 
   """
-  Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time
+  Time-bucketed profit-and-loss for a single address with cumulative tracking.
+  DEPRECATED: use `accountStats`; the fat row carries `periodPnL` /
+  `cumulativePnL` per snapshot.
   """
-  accountPredictionCount(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PredictionCountDataPoint!]!
+  accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `periodPnL` / `cumulativePnL` per snapshot.")
 
   """
-  Profit rank and total PnL for a single address relative to all participants
+  Time-bucketed prediction count with outcome breakdown for a single address,
+  bucketed by creation time. DEPRECATED: use `accountStats`; the fat row carries
+  `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending`
+  / `predictionsNonDecisive` per snapshot.
   """
-  accountProfitRank(address: String!): ProfitRank! @deprecated
+  accountPredictionCount(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PredictionCountDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending` / `predictionsNonDecisive` per snapshot.")
 
   """
-  Total lifetime trading volume in wei for the given address across all prediction types
+  Time-bucketed trading volume for a single address. DEPRECATED: use
+  `accountStats`; the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.
   """
-  accountTotalVolume(address: String!): String!
+  accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.")
 
-  """Time-bucketed trading volume for a single address"""
-  accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
+  """
+  Lifetime trading volume for a single address as a wei-decimal string.
+  DEPRECATED: use `accountStatsRank(address: $a).volume` (omit `filters` for
+  all-time).
+  """
+  accountTotalVolume(address: String!): String! @deprecated(reason: "Use `accountStatsRank(address: $a).volume` (omit `filters` for all-time).")
 
-  """Top forecasters ranked by accuracy score"""
-  accuracyLeaderboard(limit: Int! = 10): [ForecasterScore!]!
+  """
+  Accounts ranked by an account metric (net PnL, gains, losses, or volume)
+  over an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over
+  all-time. PnL metrics are attributed to settlement time, volume to trade
+  time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
+  unconditionally (cheap in-memory derivation).
+  """
+  accountStatsLeaderboardPage(filters: AccountStatsFilters, take: Int! = 25, skip: Int! = 0): AccountStatsLeaderboardPage!
+
+  """
+  Stats + rank for a single address against the same ranked set the
+  leaderboard slices. `filters` omitted ⇒ rank by `NET_PNL` over all-time.
+  Stats fields are always present (zero when the address has no activity
+  in the window). `rank` is null when the address is absent from the
+  ranked set; `totalParticipants` is the ranked-set size (0 when the
+  window has no participants at all — that distinguishes "empty window"
+  from "present window, address unranked").
+  """
+  accountStatsRank(address: String!, filters: AccountStatsFilters): AccountStatsRank!
+
+  """
+  Top forecasters ranked by lifetime accuracy. The time-weighted error
+  already weights by recency, so there's no window filter on this surface.
+  Page-shaped with server-truth `hasMore`; `totalCount` is populated
+  unconditionally (cheap in-memory derivation).
+  """
+  accuracyLeaderboardPage(take: Int! = 25, skip: Int! = 0): AccuracyLeaderboardPage!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
 
@@ -1534,16 +1704,6 @@ type Query {
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
 
-  """
-  Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
-  """
-  openInterestByCategory: [CategoryOpenInterest!]!
-
-  """
-  Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
-  """
-  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
-
   """Look up a single pick configuration by ID"""
   pickConfiguration(id: String!): PickConfiguration @deprecated
 
@@ -1556,12 +1716,12 @@ type Query {
   popularTags: [String!]!
 
   """Count of token positions for a given holder"""
-  positionCount(chainId: Int, holder: String!, settled: Boolean): Int!
+  positionCount(chainId: Int, holder: String!, settled: Boolean): Int! @deprecated(reason: "Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.")
 
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.")
 
   """
   Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
@@ -1580,17 +1740,37 @@ type Query {
   predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
 
   """
-  Profit leaderboard — addresses ranked by total PnL across all positions
+  Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
   """
-  profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
+  openInterestByCategory: [CategoryOpenInterest!]!
 
   """
-  Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest
+  Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
   """
-  protocolStats(vaultAddress: String): [ProtocolStat!]!
+  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 
-  """Time-bucketed total protocol trading volume across all users"""
-  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated
+  """
+  Protocol-wide statistics time series at the configured snapshot cadence —
+  cumulative volume, trade count, open interest, escrow balance. Window
+  with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
+  returns full history.
+  
+  Bar timestamps: closed bars are labelled at *the start* of the interval
+  they represent (capture time minus one interval), so a bar at
+  `2026-01-01 00:00` summarizes activity ending `2026-01-02 00:00`. When
+  `toEpoch` covers now, a trailing live candle is appended; the live
+  candle's `timestamp` is the *current* interval boundary (not shifted
+  back), so callers can distinguish it as `points[points.length - 1]
+  .timestamp >= floor(now / interval) * interval`.
+  """
+  protocolStats(fromEpoch: Int, toEpoch: Int): [ProtocolStat!]!
+
+  """
+  Time-bucketed total protocol trading volume across all users. DEPRECATED:
+  use `protocolStats`; the fat row carries `periodVolume` / `cumulativeVolume`
+  per snapshot.
+  """
+  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated(reason: "Use `protocolStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.")
 
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
@@ -1607,7 +1787,7 @@ type Query {
   analytics dialog). Per-claimant breakdown is available via the nested
   `claimants` field.
   """
-  referralCodes(cursor: Int, id: Int, limit: Int = 100): ReferralCodesPage!
+  referralCodes(id: Int, limit: Int = 100, cursor: Int): ReferralCodesPage!
 
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade
@@ -1621,6 +1801,86 @@ type Query {
   trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated
+
+  """
+  Vault-specific statistics time series for a single vault address — vault
+  balance, deployed/available collateral, cumulative PnL, deposits,
+  withdrawals, airdrop gains, secondary flows, unredeemed claims. Window
+  with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
+  returns full history.
+  
+  Bar timestamps follow the same convention as `protocolStats`: closed
+  bars are labelled at the *start* of the interval they represent, and a
+  trailing live candle (anchored to the *current* interval boundary) is
+  appended when `toEpoch` covers now.
+  """
+  vaultStats(fromEpoch: Int, toEpoch: Int, vaultAddress: String!): [VaultStat!]!
+}
+
+"""
+Time interval for bucketing the legacy per-account time-series resolvers.
+"""
+enum TimeInterval {
+  DAY
+  HOUR
+  MONTH
+  WEEK
+}
+
+"""Time-bucketed collateral-balance data point (legacy)."""
+type BalanceDataPoint {
+  """Collateral available to claim from settled positions (wei)"""
+  claimableCollateral: String!
+
+  """Active collateral deployed in open positions (wei)"""
+  deployedCollateral: String!
+
+  """Unix epoch timestamp (seconds) for the start of this bucket"""
+  timestamp: Int!
+}
+
+"""Time-bucketed PnL data point with cumulative tracking (legacy)."""
+type PnlDataPoint {
+  """Running cumulative PnL in wei"""
+  cumulativePnl: String!
+
+  """PnL for this bucket in wei"""
+  pnl: String!
+
+  """Unix epoch timestamp (seconds) for the start of this bucket"""
+  timestamp: Int!
+}
+
+"""
+Time-bucketed prediction-count data point with outcome breakdown (legacy).
+"""
+type PredictionCountDataPoint {
+  """Predictions lost in this bucket"""
+  lost: Int!
+
+  """Predictions settled as non-decisive in this bucket"""
+  nonDecisive: Int!
+
+  """Predictions still pending in this bucket"""
+  pending: Int!
+
+  """Unix epoch timestamp (seconds) for the start of this bucket"""
+  timestamp: Int!
+
+  """Total predictions opened in this bucket"""
+  total: Int!
+
+  """Predictions won in this bucket"""
+  won: Int!
+}
+
+"""Time-bucketed volume data point for charts (legacy)."""
+type VolumeDataPoint {
+  """Unix epoch timestamp (seconds) for the start of this bucket"""
+  timestamp: Int!
+
+  """Total volume in wei for this bucket"""
+  volume: String!
 }
 
 enum QueryMode {
@@ -1668,18 +1928,23 @@ Credentialed create/update REST paths may still return hashes to the caller that
 created or administers the code.
 """
 type ReferralCode {
+  id: Int!
+  createdAt: DateTimeISO!
+  updatedAt: DateTimeISO!
+  createdBy: String!
+  creatorType: String!
+  maxClaims: Int!
+  isActive: Boolean!
+  expiresAt: Int
+
   """Total number of users who have claimed this code, across all pages."""
   claimCount: Int!
 
-  """Paginated per-claimant breakdown with trading volume + position count."""
-  claimants(cursor: Int, limit: Int = 100): ReferralCodeClaimantsPage!
-  createdAt: DateTimeISO!
-  createdBy: String!
-  creatorType: String!
-  expiresAt: Int
-  id: Int!
-  isActive: Boolean!
-  maxClaims: Int!
+  """
+  Sum of trading volume across every claimant's positions (predictor +
+  counterparty sides), as a stringified bigint. Aggregated server-side.
+  """
+  totalVolume: String!
 
   """
   Total position count across every claimant. A position with both predictor
@@ -1688,25 +1953,26 @@ type ReferralCode {
   """
   totalPositions: Int!
 
-  """
-  Sum of trading volume across every claimant's positions (predictor +
-  counterparty sides), as a stringified bigint. Aggregated server-side.
-  """
-  totalVolume: String!
-  updatedAt: DateTimeISO!
+  """Paginated per-claimant breakdown with trading volume + position count."""
+  claimants(limit: Int = 100, cursor: Int): ReferralCodeClaimantsPage!
 }
 
-type ReferralCodeClaimant {
-  address: String!
-  claimedAt: DateTimeISO!
-  id: Int!
-  positionCount: Int!
-  tradingVolume: String!
+type ReferralCodesPage {
+  items: [ReferralCode!]!
+  nextCursor: Int
 }
 
 type ReferralCodeClaimantsPage {
   items: [ReferralCodeClaimant!]!
   nextCursor: Int
+}
+
+type ReferralCodeClaimant {
+  id: Int!
+  address: String!
+  claimedAt: DateTimeISO!
+  tradingVolume: String!
+  positionCount: Int!
 }
 
 input ReferralCodeNullableRelationFilter {
@@ -1737,11 +2003,6 @@ input ReferralCodeWhereInput {
   isActive: BoolFilter
   maxClaims: IntFilter
   updatedAt: DateTimeFilter
-}
-
-type ReferralCodesPage {
-  items: [ReferralCode!]!
-  nextCursor: Int
 }
 
 """Filter questions by their resolution status"""
@@ -1807,34 +2068,6 @@ input StringNullableListFilter {
   hasEvery: [String!]
   hasSome: [String!]
   isEmpty: Boolean
-}
-
-"""Time interval for bucketing time-series data"""
-enum TimeInterval {
-  DAY
-  HOUR
-  MONTH
-  WEEK
-}
-
-"""
-Open-interest aggregated by time-to-resolution bucket. Each unsettled
-prediction's collateral is bucketed by the latest endTime among the conditions
-it touches (the moment its OI can finally be claimed). One row per non-empty
-bucket, ordered from soonest (bucket = 1) to furthest out.
-"""
-type TimeToResolutionBucket {
-  """Sort order: 1 = soonest, increasing for further-out buckets"""
-  bucket: Int!
-
-  """Display label, e.g. ≤1d / 2-7d / 1-2mo"""
-  label: String!
-
-  """Open interest in wei (decimal string)"""
-  openInterest: String!
-
-  """Number of predictions contributing to this bucket"""
-  predictionCount: Int!
 }
 
 """
@@ -1960,15 +2193,6 @@ input UserWhereUniqueInput {
   referredByCodeId: IntNullableFilter
   referredById: IntNullableFilter
   updatedAt: DateTimeFilter
-}
-
-"""Time-bucketed volume data point for charts"""
-type VolumeDataPoint {
-  """Unix epoch timestamp (seconds) for the start of this bucket"""
-  timestamp: Int!
-
-  """Total volume in wei for this bucket"""
-  volume: String!
 }
 
 """Time window for volume-based sorting"""

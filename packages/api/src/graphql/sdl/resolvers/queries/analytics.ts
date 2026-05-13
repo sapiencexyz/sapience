@@ -13,6 +13,7 @@ import { normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import type {
   QueryResolvers,
   ProtocolStat,
+  VaultStat,
   CategoryOpenInterest,
   Category,
   TimeToResolutionBucket,
@@ -28,6 +29,7 @@ import {
   fetchVaultDeployed,
   fetchVaultTVL,
   getConfiguredVaults,
+  getPriorSnapshot,
   getProtocolStatsTimeSeries,
   resolveSnapshotIntervalSeconds,
   sumEscrowBalancesAtBlock,
@@ -66,9 +68,32 @@ const buildTimestampMap = <T extends { timestamp: bigint }>(
   return map;
 };
 
-export const protocolStats: NonNullable<
-  QueryResolvers['protocolStats']
-> = async (_parent, { vaultAddress: vaultAddressArg }) => {
+/**
+ * Fat stats row carrying both protocol-wide and vault-specific fields.
+ * The two public resolvers each project to a subset of these. Declared
+ * as an intersection (rather than `extends ProtocolStat, VaultStat`) so
+ * the shared `timestamp` + `__typename` discriminator don't collide.
+ */
+type FatStat = Omit<ProtocolStat, '__typename'> &
+  Omit<VaultStat, '__typename' | 'timestamp'>;
+
+/**
+ * Shared inner pipeline for `protocolStats` and `vaultStats`. Returns the
+ * "fat" rows (every field both resolvers can read) so each caller can
+ * project to its narrower wire type.
+ *
+ * Windowing: `fromEpoch` / `toEpoch` are inclusive epoch seconds. When
+ * `fromEpoch` is set, a single leading baseline snapshot (timestamp <
+ * fromEpoch) is prepended so the first windowed bar's `periodVolume` /
+ * `periodPnL` deltas anchor correctly; the baseline row is trimmed from
+ * the result. The live candle is only emitted when the window covers now
+ * (`toEpoch` null or >= now). Without a window the behaviour is unchanged.
+ */
+const runFatStats = async (
+  vaultAddressArg: string | null | undefined,
+  fromEpoch: number | null | undefined,
+  toEpoch: number | null | undefined
+): Promise<FatStat[]> => {
   const chainId = DEFAULT_CHAIN_ID;
 
   // Resolve which vault category the caller wants. Without `vaultAddressArg`
@@ -113,14 +138,31 @@ export const protocolStats: NonNullable<
       ].map((a) => a.toLowerCase())
     : [];
 
-  const rawSnapshots = await getProtocolStatsTimeSeries(
-    undefined,
+  const windowedSnapshots = await getProtocolStatsTimeSeries({
     chainId,
-    vaultAddresses
-  );
-  if (rawSnapshots.length === 0) {
+    vaultAddress: vaultAddresses,
+    fromEpoch: fromEpoch ?? undefined,
+    toEpoch: toEpoch ?? undefined,
+  });
+  if (windowedSnapshots.length === 0) {
     return [];
   }
+
+  // Leading baseline: when a window is set, fetch the single latest
+  // snapshot strictly before `fromEpoch` so `periodVolume` / `periodPnL`
+  // for the first windowed bar anchors to the real prior cumulative
+  // values. Trimmed from the final result.
+  const baselineSnapshot =
+    fromEpoch != null && vaultAddresses.length > 0
+      ? await getPriorSnapshot({
+          vaultAddress: vaultAddresses,
+          fromEpoch,
+          chainId,
+        })
+      : null;
+  const rawSnapshots = baselineSnapshot
+    ? [baselineSnapshot, ...windowedSnapshots]
+    : windowedSnapshots;
 
   // Dedupe by timestamp: a single day can have rows under multiple addresses
   // (current primary + a since-demoted legacy that prod's older cron wrote).
@@ -148,9 +190,22 @@ export const protocolStats: NonNullable<
     (a, b) => a.timestamp - b.timestamp
   );
 
+  // Index of the first snapshot that's actually inside the requested window
+  // — the baseline (when present) is at index 0 and must be dropped before
+  // returning. Without a baseline this is just 0.
+  const baselineTrimIndex = baselineSnapshot
+    ? protocolSnapshots.findIndex((s) => s.timestamp >= (fromEpoch as number))
+    : 0;
+
   const snapshotTimestamps = protocolSnapshots.map((s) => s.timestamp);
   const nowTimestamp = Math.floor(Date.now() / 1000);
-  const queryTimestamps = [...snapshotTimestamps, nowTimestamp];
+  // Live candle is only meaningful when the window actually covers "now".
+  // Without a window (both null), it always covers now. With `toEpoch` < now,
+  // historical-only — closed bars only.
+  const windowCoversNow = toEpoch == null || toEpoch >= nowTimestamp;
+  const queryTimestamps = windowCoversNow
+    ? [...snapshotTimestamps, nowTimestamp]
+    : [...snapshotTimestamps];
 
   const [cumulativeVolumes, cumulativeTradeCounts, openInterests] =
     await Promise.all([
@@ -248,7 +303,7 @@ export const protocolStats: NonNullable<
     BigInt(s.vaultSecondarySold) -
     BigInt(s.vaultSecondaryBought);
 
-  const results: ProtocolStat[] = protocolSnapshots.map((snapshot, i) => {
+  const results: FatStat[] = protocolSnapshots.map((snapshot, i) => {
     const cumVol = volumeMap.get(snapshot.timestamp) || '0';
     const prevCumVol =
       i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
@@ -289,92 +344,144 @@ export const protocolStats: NonNullable<
     };
   });
 
-  try {
-    const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
-    const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
-    const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
-    const livePeriodVolume = (
-      BigInt(liveCumVol) - BigInt(lastCumVol)
-    ).toString();
-    const lastTradeCount = Number(
-      tradeCountMap.get(lastSnapshot.timestamp) || '0'
-    );
-    const liveTradeCount = Number(
-      tradeCountMap.get(nowTimestamp) || lastTradeCount
-    );
-    const livePeriodTradeCount = liveTradeCount - lastTradeCount;
+  if (windowCoversNow)
+    try {
+      const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
+      const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
+      const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
+      const livePeriodVolume = (
+        BigInt(liveCumVol) - BigInt(lastCumVol)
+      ).toString();
+      const lastTradeCount = Number(
+        tradeCountMap.get(lastSnapshot.timestamp) || '0'
+      );
+      const liveTradeCount = Number(
+        tradeCountMap.get(nowTimestamp) || lastTradeCount
+      );
+      const livePeriodTradeCount = liveTradeCount - lastTradeCount;
 
-    // Scope all per-vault helpers to the SELECTED vault category. Without this
-    // the live candle on the Pyth/SingleLeg/StrategyB tabs would silently render
-    // protocol-vault numbers, since these helpers default to the protocol
-    // primary when no vaultAddress arg is passed. Escrow stays chain-scoped —
-    // it's shared across all vault families on the chain.
-    const liveVaultAddress = vaultConfig?.address.toLowerCase();
-    const [
-      liveVaultBalance,
-      liveVaultAvailableAssets,
-      liveVaultDeployed,
-      liveEscrowBalance,
-      livePnlResult,
-      liveFlowsResult,
-      liveSecondaryFlows,
-      liveAirdropGains,
-      liveUnredeemedClaim,
-    ] = await Promise.all([
-      fetchVaultTVL(chainId, liveVaultAddress),
-      fetchVaultAvailableAssets(chainId, liveVaultAddress),
-      fetchVaultDeployed(chainId, undefined, liveVaultAddress),
-      sumEscrowBalancesAtBlock(getProviderForChain(chainId), chainId),
-      calculateVaultPnL(chainId, undefined, liveVaultAddress),
-      calculateVaultFlows(chainId, undefined, liveVaultAddress),
-      calculateVaultSecondaryFlows(chainId, undefined, liveVaultAddress),
-      calculateVaultAirdrops(chainId, undefined, liveVaultAddress),
-      calculateVaultUnredeemedClaim(chainId, undefined, liveVaultAddress),
-    ]);
+      // Scope all per-vault helpers to the SELECTED vault category. Without this
+      // the live candle on the Pyth/SingleLeg/StrategyB tabs would silently render
+      // protocol-vault numbers, since these helpers default to the protocol
+      // primary when no vaultAddress arg is passed. Escrow stays chain-scoped —
+      // it's shared across all vault families on the chain.
+      const liveVaultAddress = vaultConfig?.address.toLowerCase();
+      const [
+        liveVaultBalance,
+        liveVaultAvailableAssets,
+        liveVaultDeployed,
+        liveEscrowBalance,
+        livePnlResult,
+        liveFlowsResult,
+        liveSecondaryFlows,
+        liveAirdropGains,
+        liveUnredeemedClaim,
+      ] = await Promise.all([
+        fetchVaultTVL(chainId, liveVaultAddress),
+        fetchVaultAvailableAssets(chainId, liveVaultAddress),
+        fetchVaultDeployed(chainId, undefined, liveVaultAddress),
+        sumEscrowBalancesAtBlock(getProviderForChain(chainId), chainId),
+        calculateVaultPnL(chainId, undefined, liveVaultAddress),
+        calculateVaultFlows(chainId, undefined, liveVaultAddress),
+        calculateVaultSecondaryFlows(chainId, undefined, liveVaultAddress),
+        calculateVaultAirdrops(chainId, undefined, liveVaultAddress),
+        calculateVaultUnredeemedClaim(chainId, undefined, liveVaultAddress),
+      ]);
 
-    const liveCumulativePnL =
-      livePnlResult.realizedPnL +
-      liveUnredeemedClaim +
-      liveSecondaryFlows.sold -
-      liveSecondaryFlows.bought;
-    const livePeriodPnL = (
-      liveCumulativePnL - cumulativePnL(lastSnapshot)
-    ).toString();
+      const liveCumulativePnL =
+        livePnlResult.realizedPnL +
+        liveUnredeemedClaim +
+        liveSecondaryFlows.sold -
+        liveSecondaryFlows.bought;
+      const livePeriodPnL = (
+        liveCumulativePnL - cumulativePnL(lastSnapshot)
+      ).toString();
 
-    // Live candle = current in-progress period; label at start of current
-    // interval (matches the display shift for closed bars).
-    const currentBoundary = Math.floor(Date.now() / 1000 / interval) * interval;
+      // Live candle = current in-progress period; label at start of current
+      // interval (matches the display shift for closed bars).
+      const currentBoundary =
+        Math.floor(Date.now() / 1000 / interval) * interval;
 
-    results.push({
-      timestamp: currentBoundary,
-      cumulativeVolume: liveCumVol,
-      totalTradeCount: liveTradeCount,
-      periodTradeCount: livePeriodTradeCount,
-      openInterest: oiMap.get(nowTimestamp) || '0',
-      vaultBalance: liveVaultBalance.toString(),
-      vaultAvailableAssets: liveVaultAvailableAssets.toString(),
-      vaultDeployed: liveVaultDeployed.toString(),
-      escrowBalance: liveEscrowBalance.toString(),
-      vaultCumulativePnL: liveCumulativePnL.toString(),
-      vaultPositionsWon: livePnlResult.positionsWon,
-      vaultPositionsLost: livePnlResult.positionsLost,
-      vaultDeposits: liveFlowsResult.totalDeposits.toString(),
-      vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
-      vaultAirdropGains: liveAirdropGains.toString(),
-      vaultSecondaryBought: liveSecondaryFlows.bought.toString(),
-      vaultSecondarySold: liveSecondaryFlows.sold.toString(),
-      vaultUnredeemedClaim: liveUnredeemedClaim.toString(),
-      periodPnL: livePeriodPnL,
-      periodVolume: livePeriodVolume,
-    });
-  } catch (err) {
-    log.error(
-      { err: err },
-      '[protocolStats] live candle failed, falling back to snapshots only:'
-    );
-  }
+      results.push({
+        timestamp: currentBoundary,
+        cumulativeVolume: liveCumVol,
+        totalTradeCount: liveTradeCount,
+        periodTradeCount: livePeriodTradeCount,
+        openInterest: oiMap.get(nowTimestamp) || '0',
+        vaultBalance: liveVaultBalance.toString(),
+        vaultAvailableAssets: liveVaultAvailableAssets.toString(),
+        vaultDeployed: liveVaultDeployed.toString(),
+        escrowBalance: liveEscrowBalance.toString(),
+        vaultCumulativePnL: liveCumulativePnL.toString(),
+        vaultPositionsWon: livePnlResult.positionsWon,
+        vaultPositionsLost: livePnlResult.positionsLost,
+        vaultDeposits: liveFlowsResult.totalDeposits.toString(),
+        vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
+        vaultAirdropGains: liveAirdropGains.toString(),
+        vaultSecondaryBought: liveSecondaryFlows.bought.toString(),
+        vaultSecondarySold: liveSecondaryFlows.sold.toString(),
+        vaultUnredeemedClaim: liveUnredeemedClaim.toString(),
+        periodPnL: livePeriodPnL,
+        periodVolume: livePeriodVolume,
+      });
+    } catch (err) {
+      log.error(
+        { err: err },
+        '[protocolStats] live candle failed, falling back to snapshots only:'
+      );
+    }
 
-  return results;
+  // Trim the leading baseline row (it only existed to anchor the first
+  // windowed bar's `period*` deltas).
+  return baselineTrimIndex > 0 ? results.slice(baselineTrimIndex) : results;
+};
+
+/**
+ * Project protocol-wide fields from the fat shared pipeline.
+ */
+export const protocolStats: NonNullable<
+  QueryResolvers['protocolStats']
+> = async (_parent, { fromEpoch, toEpoch }) => {
+  const fat = await runFatStats(undefined, fromEpoch, toEpoch);
+  return fat.map(
+    (s): ProtocolStat => ({
+      timestamp: s.timestamp,
+      cumulativeVolume: s.cumulativeVolume,
+      totalTradeCount: s.totalTradeCount,
+      periodTradeCount: s.periodTradeCount,
+      periodVolume: s.periodVolume,
+      openInterest: s.openInterest,
+      escrowBalance: s.escrowBalance,
+    })
+  );
+};
+
+/**
+ * Project vault-specific fields from the fat shared pipeline.
+ */
+export const vaultStats: NonNullable<QueryResolvers['vaultStats']> = async (
+  _parent,
+  { vaultAddress, fromEpoch, toEpoch }
+) => {
+  const fat = await runFatStats(vaultAddress, fromEpoch, toEpoch);
+  return fat.map(
+    (s): VaultStat => ({
+      timestamp: s.timestamp,
+      vaultBalance: s.vaultBalance,
+      vaultAvailableAssets: s.vaultAvailableAssets,
+      vaultDeployed: s.vaultDeployed,
+      vaultCumulativePnL: s.vaultCumulativePnL,
+      vaultPositionsWon: s.vaultPositionsWon,
+      vaultPositionsLost: s.vaultPositionsLost,
+      vaultDeposits: s.vaultDeposits,
+      vaultWithdrawals: s.vaultWithdrawals,
+      vaultAirdropGains: s.vaultAirdropGains,
+      vaultSecondaryBought: s.vaultSecondaryBought,
+      vaultSecondarySold: s.vaultSecondarySold,
+      vaultUnredeemedClaim: s.vaultUnredeemedClaim,
+      periodPnL: s.periodPnL,
+    })
+  );
 };
 
 interface CategoryOpenInterestRow {

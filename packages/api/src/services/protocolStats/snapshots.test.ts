@@ -448,46 +448,54 @@ describe('getProtocolStatsTimeSeries', () => {
     vi.clearAllMocks();
   });
 
-  it('queries with correct time range and ordering', async () => {
+  it('returns all-history with sorted ordering when no window is given', async () => {
     const mockSnapshots = [
       { timestamp: 1700000000 },
       { timestamp: 1700086400 },
     ];
     mockPrisma.protocolStatsSnapshot.findMany.mockResolvedValue(mockSnapshots);
 
-    const result = await getProtocolStatsTimeSeries(30, 42161);
+    const result = await getProtocolStatsTimeSeries({ chainId: 42161 });
 
     expect(result).toBe(mockSnapshots);
     expect(mockPrisma.protocolStatsSnapshot.findMany).toHaveBeenCalledTimes(1);
 
     const call = mockPrisma.protocolStatsSnapshot.findMany.mock.calls[0][0];
     expect(call.where.chainId).toBe(42161);
-    expect(call.where.timestamp.gte).toBeTypeOf('number');
+    expect(call.where.timestamp).toBeUndefined();
     expect(call.orderBy).toEqual({ timestamp: 'asc' });
   });
 
-  it('computes start timestamp as UTC midnight minus days*86400', async () => {
+  it('applies fromEpoch / toEpoch as an inclusive window', async () => {
     mockPrisma.protocolStatsSnapshot.findMany.mockResolvedValue([]);
 
-    const days = 7;
-    await getProtocolStatsTimeSeries(days, 42161);
+    const fromEpoch = 1_700_000_000;
+    const toEpoch = 1_705_000_000;
+    await getProtocolStatsTimeSeries({ chainId: 42161, fromEpoch, toEpoch });
 
     const call = mockPrisma.protocolStatsSnapshot.findMany.mock.calls[0][0];
-    const startTimestamp = call.where.timestamp.gte;
+    expect(call.where.timestamp).toEqual({ gte: fromEpoch, lte: toEpoch });
+  });
 
-    const now = new Date();
-    const todayMidnightUtc = Math.floor(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 1000
-    );
-    const expectedStart = todayMidnightUtc - days * 86400;
+  it('applies only fromEpoch when toEpoch is omitted', async () => {
+    mockPrisma.protocolStatsSnapshot.findMany.mockResolvedValue([]);
 
-    expect(startTimestamp).toBe(expectedStart);
+    await getProtocolStatsTimeSeries({
+      chainId: 42161,
+      fromEpoch: 1_700_000_000,
+    });
+
+    const call = mockPrisma.protocolStatsSnapshot.findMany.mock.calls[0][0];
+    expect(call.where.timestamp).toEqual({ gte: 1_700_000_000 });
   });
 
   it('includes vaultAddress filter when provided', async () => {
     mockPrisma.protocolStatsSnapshot.findMany.mockResolvedValue([]);
 
-    await getProtocolStatsTimeSeries(90, 42161, '0xMyVault');
+    await getProtocolStatsTimeSeries({
+      chainId: 42161,
+      vaultAddress: '0xMyVault',
+    });
 
     const call = mockPrisma.protocolStatsSnapshot.findMany.mock.calls[0][0];
     expect(call.where.vaultAddress).toBe('0xMyVault');

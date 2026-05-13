@@ -67,4 +67,4 @@ console.log(data.questions);
 - The API is currently public; please be considerate and cache when possible.
 - Use `slug` (not `id`) when you need a stable, human-friendly identifier — most ID fields on Sapience entities are `Int!` and shift between environments.
 - Pagination args vary by query. The Prisma-backed list queries (`categories`, `conditions`, `conditionGroups`, etc.) accept `cursor`, `distinct`, `orderBy`, `skip`, `take`, `where`. Curated queries (`questions`, leaderboard queries) take a smaller fixed set — check the sandbox before assuming.
-- Some queries are marked `@deprecated` in the schema (`accountAccuracy`, `accountProfitRank`, `claims`, `closes`, `conditionGroup`, `pickConfiguration`, `protocolVolume`, `tradeCount`, `users`). They still respond, but rely on them at your own risk — read the schema before depending on one.
+- Some queries are marked `@deprecated` in the schema (`claims`, `closes`, `conditionGroup`, `pickConfiguration`, `tradeCount`, `users`). They still respond, but rely on them at your own risk — read the schema before depending on one.

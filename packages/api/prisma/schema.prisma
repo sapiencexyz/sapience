@@ -224,6 +224,9 @@ model Condition {
   // - IDX_condition_oi_numeric: ("openInterest"::numeric) DESC WHERE public = true
   // - IDX_condition_public_endtime: "endTime" DESC WHERE public = true
   // - IDX_condition_prediction_count: "predictionCount" DESC WHERE public = true
+  // - IDX_condition_public_createdat: "createdAt" DESC WHERE public = true
+  // - IDX_condition_public_volume24h: "volume24h" DESC WHERE public = true
+  // - IDX_condition_public_volume7d: "volume7d" DESC WHERE public = true
   // Trigger: trg_prediction_count maintains predictionCount on prediction INSERT/DELETE
   @@map("condition")
 }

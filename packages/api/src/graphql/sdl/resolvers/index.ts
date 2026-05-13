@@ -10,7 +10,7 @@
  *    type that has relation fields requiring a custom resolver
  *    (Category, Condition, ConditionGroup, etc.).
  *
- * Scalar-only GraphQL types (Pick, Trade, ActivityItem, PnlDataPoint,
+ * Scalar-only GraphQL types (Pick, Trade, ActivityItem,
  * …) don't need an entry here; graphql-js's default field resolver
  * reads the property off the parent directly, which is already what
  * every root resolver returns.
@@ -29,14 +29,21 @@ import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
+import { PositionsPage } from './PositionsPage';
 import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
 import { accountActivity } from './queries/activity';
 import {
+  accountStats,
+  accountStatsLeaderboardPage,
+  accountStatsRank,
+} from './queries/accountStats';
+import {
   openInterestByCategory,
   openInterestByTimeToResolution,
   protocolStats,
+  vaultStats,
 } from './queries/analytics';
 import {
   collateralBalance,
@@ -59,19 +66,14 @@ import {
   pickConfiguration,
   pickConfigurations,
   positionCount,
-  positions,
   positionsPage,
   prediction,
   predictionCount,
   predictions,
 } from './queries/escrow';
-import { accountProfitRank, profitLeaderboard } from './queries/pnl';
+import { positions } from './queries/deprecated/escrow';
 import { questions } from './queries/questions';
-import {
-  accountAccuracy,
-  accountAccuracyRank,
-  accuracyLeaderboard,
-} from './queries/score';
+import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
 import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import {
@@ -88,25 +90,27 @@ export const resolvers: Resolvers = {
   ...scalarResolvers,
   Query: {
     // Leaderboards / account scores
-    accountAccuracy,
     accountAccuracyRank,
-    accuracyLeaderboard,
-    accountProfitRank,
-    profitLeaderboard,
-    // Time series
-    accountBalance,
-    accountPnl,
-    accountPredictionCount,
-    accountVolume,
-    protocolVolume,
+    accuracyLeaderboardPage,
+    accountStatsLeaderboardPage,
+    accountStatsRank,
+    // Per-account stats time series (fat row)
+    accountStats,
     // Activity + unified feeds
     accountActivity,
     // Analytics
     openInterestByCategory,
     openInterestByTimeToResolution,
     protocolStats,
-    // Collateral
+    vaultStats,
+    // Legacy per-metric time series (DEPRECATED — superseded by accountStats / accountStatsRank.volume / protocolStats).
+    accountBalance,
+    accountPnl,
+    accountPredictionCount,
+    accountVolume,
     accountTotalVolume,
+    protocolVolume,
+    // Collateral
     collateralBalance,
     collateralBalanceHistory,
     collateralTransfers,
@@ -150,6 +154,7 @@ export const resolvers: Resolvers = {
   LegacyPrediction,
   LimitOrder,
   Pick,
+  PositionsPage,
   ReferralCode,
   User,
 };

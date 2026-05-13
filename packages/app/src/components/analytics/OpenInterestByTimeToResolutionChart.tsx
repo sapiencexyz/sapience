@@ -95,23 +95,23 @@ export default function OpenInterestByTimeToResolutionChart() {
   const hasData = bars.some((b) => b.value > 0);
 
   return (
-    <Card className="bg-brand-black border border-brand-white/10">
-      <CardContent className="p-6">
-        <div className="flex flex-col gap-4">
+    <Card className="bg-brand-black border border-brand-white/10 h-full">
+      <CardContent className="p-6 h-full flex flex-col">
+        <div className="flex flex-col gap-4 flex-1 min-h-0">
           <h3 className="sc-heading text-foreground">
             Open Interest by Time to Resolution
           </h3>
 
           {isLoading ? (
-            <div className="h-[260px] flex items-center justify-center">
+            <div className="flex-1 min-h-[180px] flex items-center justify-center">
               <Loader className="w-8 h-8" />
             </div>
           ) : !hasData ? (
-            <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">
+            <div className="flex-1 min-h-[180px] flex items-center justify-center text-sm text-muted-foreground">
               No active open interest.
             </div>
           ) : (
-            <div className="h-[260px]">
+            <div className="flex-1 min-h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={bars}
