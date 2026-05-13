@@ -1492,12 +1492,10 @@ type TimeToResolutionBucket {
   predictionCount: Int!
 }
 
-"""
-Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
-Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
-deltas over that interval.
-"""
+"""Protocol-wide stats snapshot — no vault scoping."""
 type ProtocolStat {
+  """Unix epoch timestamp (seconds) aligned to the snapshot interval boundary"""
+  timestamp: Int!
   cumulativeVolume: String!
 
   """Cumulative count of predictions and secondary trades/sales"""
@@ -1506,24 +1504,25 @@ type ProtocolStat {
   """Trade-count delta over the snapshot interval"""
   periodTradeCount: Int!
 
-  """Realized PnL delta over the snapshot interval"""
-  periodPnL: String!
-
   """Cumulative-volume delta over the snapshot interval"""
   periodVolume: String!
-  escrowBalance: String!
   openInterest: String!
+  escrowBalance: String!
+}
 
+"""Vault-specific stats snapshot for a single vault address."""
+type VaultStat {
   """Unix epoch timestamp (seconds) aligned to the snapshot interval boundary"""
   timestamp: Int!
-  vaultAirdropGains: String!
-  vaultAvailableAssets: String!
   vaultBalance: String!
-  vaultCumulativePnL: String!
+  vaultAvailableAssets: String!
   vaultDeployed: String!
-  vaultDeposits: String!
-  vaultPositionsLost: Int!
+  vaultCumulativePnL: String!
   vaultPositionsWon: Int!
+  vaultPositionsLost: Int!
+  vaultDeposits: String!
+  vaultWithdrawals: String!
+  vaultAirdropGains: String!
 
   """Cumulative wUSDe paid by the vault on secondary-market buys"""
   vaultSecondaryBought: String!
@@ -1533,7 +1532,9 @@ type ProtocolStat {
 
   """wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins"""
   vaultUnredeemedClaim: String!
-  vaultWithdrawals: String!
+
+  """Realized PnL delta over the snapshot interval"""
+  periodPnL: String!
 }
 
 type Query {
@@ -1651,9 +1652,13 @@ type Query {
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 
   """
-  Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest
+  Protocol-wide statistics time series at the configured snapshot cadence —
+  cumulative volume, trade count, open interest, escrow balance. Window with
+  `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted returns
+  full history. When `toEpoch` covers now, the trailing in-progress bar is
+  appended as a live candle.
   """
-  protocolStats(vaultAddress: String): [ProtocolStat!]!
+  protocolStats(fromEpoch: Int, toEpoch: Int): [ProtocolStat!]!
 
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
@@ -1684,6 +1689,16 @@ type Query {
   trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated
+
+  """
+  Vault-specific statistics time series for a single vault address — vault
+  balance, deployed/available collateral, cumulative PnL, deposits,
+  withdrawals, airdrop gains, secondary flows, unredeemed claims. Window
+  with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
+  returns full history. When `toEpoch` covers now, the trailing
+  in-progress bar is appended as a live candle.
+  """
+  vaultStats(fromEpoch: Int, toEpoch: Int, vaultAddress: String!): [VaultStat!]!
 }
 
 enum QueryMode {

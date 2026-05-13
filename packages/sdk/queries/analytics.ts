@@ -1,15 +1,22 @@
 import { graphqlRequest } from './client/graphqlClient';
 
+/** Protocol-wide stats snapshot — no vault scoping. */
 export interface ProtocolStat {
   timestamp: number;
   cumulativeVolume: string;
   totalTradeCount: number;
   periodTradeCount: number;
+  periodVolume: string;
   openInterest: string;
+  escrowBalance: string;
+}
+
+/** Vault-specific stats snapshot for a single vault address. */
+export interface VaultStat {
+  timestamp: number;
   vaultBalance: string;
   vaultAvailableAssets: string;
   vaultDeployed: string;
-  escrowBalance: string;
   vaultCumulativePnL: string;
   vaultPositionsWon: number;
   vaultPositionsLost: number;
@@ -18,22 +25,43 @@ export interface ProtocolStat {
   vaultAirdropGains: string;
   vaultSecondaryBought: string;
   vaultSecondarySold: string;
+  vaultUnredeemedClaim: string;
   periodPnL: string;
-  periodVolume: string;
 }
 
+/** Convert a Date/string/epoch-seconds input into an epoch-seconds Int. */
+const toEpochOrNull = (v?: Date | string | number | null): number | null => {
+  if (v == null) return null;
+  if (typeof v === 'number') return v;
+  const d = v instanceof Date ? v : new Date(v);
+  return Math.floor(d.getTime() / 1000);
+};
+
 export const GET_PROTOCOL_STATS = /* GraphQL */ `
-  query ProtocolStats($vaultAddress: String) {
-    protocolStats(vaultAddress: $vaultAddress) {
+  query ProtocolStats($fromEpoch: Int, $toEpoch: Int) {
+    protocolStats(fromEpoch: $fromEpoch, toEpoch: $toEpoch) {
       timestamp
       cumulativeVolume
       totalTradeCount
       periodTradeCount
+      periodVolume
       openInterest
+      escrowBalance
+    }
+  }
+`;
+
+export const GET_VAULT_STATS = /* GraphQL */ `
+  query VaultStats($vaultAddress: String!, $fromEpoch: Int, $toEpoch: Int) {
+    vaultStats(
+      vaultAddress: $vaultAddress
+      fromEpoch: $fromEpoch
+      toEpoch: $toEpoch
+    ) {
+      timestamp
       vaultBalance
       vaultAvailableAssets
       vaultDeployed
-      escrowBalance
       vaultCumulativePnL
       vaultPositionsWon
       vaultPositionsLost
@@ -42,19 +70,38 @@ export const GET_PROTOCOL_STATS = /* GraphQL */ `
       vaultAirdropGains
       vaultSecondaryBought
       vaultSecondarySold
+      vaultUnredeemedClaim
       periodPnL
-      periodVolume
     }
   }
 `;
 
-export async function fetchProtocolStats(
-  vaultAddress?: string
-): Promise<ProtocolStat[]> {
+export async function fetchProtocolStats(params?: {
+  from?: Date | string | number | null;
+  to?: Date | string | number | null;
+}): Promise<ProtocolStat[]> {
   const data = await graphqlRequest<{
     protocolStats: ProtocolStat[];
-  }>(GET_PROTOCOL_STATS, { vaultAddress });
+  }>(GET_PROTOCOL_STATS, {
+    fromEpoch: toEpochOrNull(params?.from),
+    toEpoch: toEpochOrNull(params?.to),
+  });
   return data?.protocolStats ?? [];
+}
+
+export async function fetchVaultStats(params: {
+  vaultAddress: string;
+  from?: Date | string | number | null;
+  to?: Date | string | number | null;
+}): Promise<VaultStat[]> {
+  const data = await graphqlRequest<{
+    vaultStats: VaultStat[];
+  }>(GET_VAULT_STATS, {
+    vaultAddress: params.vaultAddress,
+    fromEpoch: toEpochOrNull(params.from),
+    toEpoch: toEpochOrNull(params.to),
+  });
+  return data?.vaultStats ?? [];
 }
 
 export interface CategoryOpenInterest {

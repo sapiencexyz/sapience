@@ -41,6 +41,7 @@ import {
   openInterestByCategory,
   openInterestByTimeToResolution,
   protocolStats,
+  vaultStats,
 } from './queries/analytics';
 import {
   collateralBalance,
@@ -101,6 +102,7 @@ export const resolvers: Resolvers = {
     openInterestByCategory,
     openInterestByTimeToResolution,
     protocolStats,
+    vaultStats,
     // Collateral
     accountTotalVolume,
     collateralBalance,

@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetConfiguredVaults = vi.fn();
 const mockGetProtocolStatsTimeSeries = vi.fn();
+const mockGetPriorSnapshot = vi.fn();
 
 vi.mock('../../../../services/protocolStats', () => ({
   getConfiguredVaults: mockGetConfiguredVaults,
   getProtocolStatsTimeSeries: mockGetProtocolStatsTimeSeries,
+  getPriorSnapshot: mockGetPriorSnapshot,
   resolveSnapshotIntervalSeconds: vi.fn(() => 86400),
   calculateVaultAirdrops: vi.fn(),
   calculateVaultFlows: vi.fn(),
@@ -28,17 +30,21 @@ vi.mock('../../../../lib/utils', () => ({
   getProviderForChain: vi.fn(),
 }));
 
-const { protocolStats } = await import('./analytics');
+const { vaultStats } = await import('./analytics');
 
-type ProtocolStatsFn = (
+type VaultStatsFn = (
   parent: unknown,
-  args: { vaultAddress?: string | null },
+  args: {
+    vaultAddress: string;
+    fromEpoch?: number | null;
+    toEpoch?: number | null;
+  },
   ctx: unknown,
   info: unknown
 ) => Promise<unknown[]>;
-const protocolStatsFn = protocolStats as unknown as ProtocolStatsFn;
+const vaultStatsFn = vaultStats as unknown as VaultStatsFn;
 
-describe('Query.protocolStats', () => {
+describe('Query.vaultStats', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetConfiguredVaults.mockReturnValue([
@@ -54,7 +60,7 @@ describe('Query.protocolStats', () => {
   });
 
   it('returns [] for an unknown vaultAddress instead of falling back to all vaults', async () => {
-    const result = await protocolStatsFn(
+    const result = await vaultStatsFn(
       {} as never,
       { vaultAddress: '0xdeadbeef' },
       {} as never,

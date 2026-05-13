@@ -571,6 +571,7 @@ export function createComplexityEstimators(
       if (fieldName === 'questions') return 500;
       if (fieldName === 'accountActivity') return 500;
       if (fieldName === 'protocolStats') return 2000;
+      if (fieldName === 'vaultStats') return 2000;
       if (fieldName === 'accountTotalVolume') return 500;
       // Time-series analytics — heavy SQL with generate_series + aggregation
       if (fieldName === 'accountVolume') return 1000;

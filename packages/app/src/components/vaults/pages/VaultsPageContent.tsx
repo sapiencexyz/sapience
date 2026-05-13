@@ -30,7 +30,7 @@ import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVa
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
-import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
+import { useProtocolStats, useVaultStats } from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
@@ -142,9 +142,12 @@ const VaultsPageContent = () => {
     chainId: VAULT_CHAIN_ID,
   });
 
-  const { data: coreStats } = useProtocolStats(coreAddr);
-  const { data: optionsStats } = useProtocolStats(optionsAddr);
-  const { data: edgeStats } = useProtocolStats(edgeAddr);
+  const { data: coreStats } = useVaultStats(coreAddr);
+  const { data: optionsStats } = useVaultStats(optionsAddr);
+  const { data: edgeStats } = useVaultStats(edgeAddr);
+  // Protocol-wide escrow balance (shared denominator for TVL — same value
+  // regardless of vault selection, lives on the new `protocolStats` query).
+  const { data: protocolStatsSeries } = useProtocolStats();
 
   const {
     vaultData,
@@ -172,8 +175,8 @@ const VaultsPageContent = () => {
   });
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { data: protocolStats, isLoading: isAnalyticsLoading } =
-    useProtocolStats(VAULT_ADDRESS);
+  const { data: vaultStats, isLoading: isAnalyticsLoading } =
+    useVaultStats(VAULT_ADDRESS);
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -550,9 +553,9 @@ const VaultsPageContent = () => {
   const liquidWei = vaultData?.totalLiquidValue ?? 0n;
 
   const deployedWei = useMemo(() => {
-    const lastStat = protocolStats?.[protocolStats.length - 1];
+    const lastStat = vaultStats?.[vaultStats.length - 1];
     return lastStat?.vaultDeployed ? BigInt(lastStat.vaultDeployed) : 0n;
-  }, [protocolStats]);
+  }, [vaultStats]);
 
   // Vault AUM = liquid USDe in the vault + collateral deployed in open positions.
   // getTotalLiquidValue() on the contract intentionally excludes position tokens,
@@ -640,16 +643,12 @@ const VaultsPageContent = () => {
       return sum + liquid + deployed;
     }, 0n);
 
-    // Protocol TVL = escrow (protocol-wide, same across all vault queries) +
-    // undeployed assets summed across every vault. Sourcing from the selected
-    // vault's stats zeros out when we switch to a vault with no stats yet.
-    const escrowWei = (() => {
-      for (const [, stats] of vaultEntries) {
-        const last = stats?.[stats.length - 1];
-        if (last?.escrowBalance) return BigInt(last.escrowBalance);
-      }
-      return 0n;
-    })();
+    // Protocol TVL = escrow (protocol-wide, sourced from `protocolStats`) +
+    // undeployed assets summed across every vault.
+    const lastProtocol = protocolStatsSeries?.[protocolStatsSeries.length - 1];
+    const escrowWei = lastProtocol?.escrowBalance
+      ? BigInt(lastProtocol.escrowBalance)
+      : 0n;
     const vaultAvailableWei = vaultEntries.reduce((sum, [, stats]) => {
       const last = stats?.[stats.length - 1];
       return (
@@ -689,6 +688,7 @@ const VaultsPageContent = () => {
     coreStats,
     optionsStats,
     edgeStats,
+    protocolStatsSeries,
     formatAssetAmount,
   ]);
 
@@ -814,7 +814,7 @@ const VaultsPageContent = () => {
 
                       <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-0 lg:overflow-hidden">
                         <VaultPnlChart
-                          protocolStats={protocolStats ?? undefined}
+                          vaultStats={vaultStats ?? undefined}
                           isLoading={isAnalyticsLoading}
                           chartAnchorSec={getVaultPnlAnchorSec(VAULT_ADDRESS)}
                           className="flex-1"

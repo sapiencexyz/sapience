@@ -12,15 +12,13 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Button } from '@sapience/ui/components/ui/button';
+import { predictionMarketVault } from '@sapience/sdk/contracts';
 import {
   buildVaultPnlChartData,
   calculateVaultPnlHeadlineApy,
   computeVaultPnlYDomain,
 } from './vaultPnlChartUtils';
-import {
-  useProtocolStats,
-  type ProtocolStat,
-} from '~/hooks/graphql/useAnalytics';
+import { useVaultStats, type VaultStat } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import TimeRangeFilter, {
   ALL_RANGE,
@@ -161,7 +159,7 @@ const CHART_MARGIN = { top: 10, right: 0, left: -15, bottom: 0 };
 
 type VaultPnlChartProps = {
   /** Optional external protocol stats data. If not provided, will fetch internally. */
-  protocolStats?: ProtocolStat[];
+  vaultStats?: VaultStat[];
   /** Whether the data is loading */
   isLoading?: boolean;
   /** Chart height in pixels (ignored if className includes flex-1) */
@@ -177,7 +175,7 @@ type VaultPnlChartProps = {
 };
 
 export default function VaultPnlChart({
-  protocolStats: externalStats,
+  vaultStats: externalStats,
   isLoading: externalLoading,
   height = 200,
   className,
@@ -191,11 +189,14 @@ export default function VaultPnlChart({
   const setRange = setInternalRange;
   const [displayMode, setDisplayMode] = useState<DisplayMode>('pct');
 
-  // Use internal fetch if no external data provided
-  const { data: internalStats, isLoading: internalLoading } =
-    useProtocolStats();
+  // Internal fetch fallback when the caller doesn't pass `vaultStats`:
+  // default to the protocol vault, matching the prior single-tab default.
+  const protocolVaultAddress = predictionMarketVault[DEFAULT_CHAIN_ID]?.address;
+  const { data: internalStats, isLoading: internalLoading } = useVaultStats(
+    externalStats ? undefined : protocolVaultAddress
+  );
 
-  const protocolStats = externalStats ?? internalStats;
+  const vaultStats = externalStats ?? internalStats;
   const isLoading = externalLoading ?? internalLoading;
 
   // Trim pre-activity snapshots for every period so % mode and APY anchor off
@@ -206,12 +207,12 @@ export default function VaultPnlChart({
   const chartData = useMemo(
     () =>
       buildVaultPnlChartData(
-        protocolStats,
+        vaultStats,
         range,
         Math.floor(Date.now() / 1000),
         chartAnchorSec
       ),
-    [protocolStats, range, chartAnchorSec]
+    [vaultStats, range, chartAnchorSec]
   );
 
   // Headline APY uses wall-clock now for elapsed-days so it doesn't snap to

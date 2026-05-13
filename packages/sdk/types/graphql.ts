@@ -1611,18 +1611,12 @@ export type PredictionSortField =
   | 'CREATED_AT'
   | 'SETTLED_AT';
 
-/**
- * Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
- * Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
- * deltas over that interval.
- */
+/** Protocol-wide stats snapshot — no vault scoping. */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
   cumulativeVolume: Scalars['String']['output'];
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
-  /** Realized PnL delta over the snapshot interval */
-  periodPnL: Scalars['String']['output'];
   /** Trade-count delta over the snapshot interval */
   periodTradeCount: Scalars['Int']['output'];
   /** Cumulative-volume delta over the snapshot interval */
@@ -1631,21 +1625,6 @@ export type ProtocolStat = {
   timestamp: Scalars['Int']['output'];
   /** Cumulative count of predictions and secondary trades/sales */
   totalTradeCount: Scalars['Int']['output'];
-  vaultAirdropGains: Scalars['String']['output'];
-  vaultAvailableAssets: Scalars['String']['output'];
-  vaultBalance: Scalars['String']['output'];
-  vaultCumulativePnL: Scalars['String']['output'];
-  vaultDeployed: Scalars['String']['output'];
-  vaultDeposits: Scalars['String']['output'];
-  vaultPositionsLost: Scalars['Int']['output'];
-  vaultPositionsWon: Scalars['Int']['output'];
-  /** Cumulative wUSDe paid by the vault on secondary-market buys */
-  vaultSecondaryBought: Scalars['String']['output'];
-  /** Cumulative wUSDe received by the vault on secondary-market sells */
-  vaultSecondarySold: Scalars['String']['output'];
-  /** wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins */
-  vaultUnredeemedClaim: Scalars['String']['output'];
-  vaultWithdrawals: Scalars['String']['output'];
 };
 
 export type Query = {
@@ -1718,7 +1697,13 @@ export type Query = {
   predictionCount: Scalars['Int']['output'];
   /** Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status */
   predictions: Array<Prediction>;
-  /** Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest */
+  /**
+   * Protocol-wide statistics time series at the configured snapshot cadence —
+   * cumulative volume, trade count, open interest, escrow balance. Window with
+   * `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted returns
+   * full history. When `toEpoch` covers now, the trailing in-progress bar is
+   * appended as a live candle.
+   */
   protocolStats: Array<ProtocolStat>;
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
@@ -1745,6 +1730,15 @@ export type Query = {
   user?: Maybe<User>;
   /** @deprecated Field no longer supported */
   users: Array<User>;
+  /**
+   * Vault-specific statistics time series for a single vault address — vault
+   * balance, deployed/available collateral, cumulative PnL, deposits,
+   * withdrawals, airdrop gains, secondary flows, unredeemed claims. Window
+   * with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
+   * returns full history. When `toEpoch` covers now, the trailing
+   * in-progress bar is appended as a live candle.
+   */
+  vaultStats: Array<VaultStat>;
 };
 
 
@@ -1998,7 +1992,8 @@ export type QueryPredictionsArgs = {
 
 
 export type QueryProtocolStatsArgs = {
-  vaultAddress?: InputMaybe<Scalars['String']['input']>;
+  fromEpoch?: InputMaybe<Scalars['Int']['input']>;
+  toEpoch?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2064,6 +2059,13 @@ export type QueryUsersArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<UserWhereInput>;
+};
+
+
+export type QueryVaultStatsArgs = {
+  fromEpoch?: InputMaybe<Scalars['Int']['input']>;
+  toEpoch?: InputMaybe<Scalars['Int']['input']>;
+  vaultAddress: Scalars['String']['input'];
 };
 
 export type QueryMode =
@@ -2444,6 +2446,30 @@ export type UserWhereUniqueInput = {
   referredByCodeId?: InputMaybe<IntNullableFilter>;
   referredById?: InputMaybe<IntNullableFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
+};
+
+/** Vault-specific stats snapshot for a single vault address. */
+export type VaultStat = {
+  __typename?: 'VaultStat';
+  /** Realized PnL delta over the snapshot interval */
+  periodPnL: Scalars['String']['output'];
+  /** Unix epoch timestamp (seconds) aligned to the snapshot interval boundary */
+  timestamp: Scalars['Int']['output'];
+  vaultAirdropGains: Scalars['String']['output'];
+  vaultAvailableAssets: Scalars['String']['output'];
+  vaultBalance: Scalars['String']['output'];
+  vaultCumulativePnL: Scalars['String']['output'];
+  vaultDeployed: Scalars['String']['output'];
+  vaultDeposits: Scalars['String']['output'];
+  vaultPositionsLost: Scalars['Int']['output'];
+  vaultPositionsWon: Scalars['Int']['output'];
+  /** Cumulative wUSDe paid by the vault on secondary-market buys */
+  vaultSecondaryBought: Scalars['String']['output'];
+  /** Cumulative wUSDe received by the vault on secondary-market sells */
+  vaultSecondarySold: Scalars['String']['output'];
+  /** wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins */
+  vaultUnredeemedClaim: Scalars['String']['output'];
+  vaultWithdrawals: Scalars['String']['output'];
 };
 
 /** Time-bucketed volume data point for charts */

@@ -3,9 +3,11 @@ import {
   fetchOpenInterestByCategory,
   fetchOpenInterestByTimeToResolution,
   fetchProtocolStats,
+  fetchVaultStats,
   type CategoryOpenInterest,
   type ProtocolStat,
   type TimeToResolutionBucket,
+  type VaultStat,
 } from '@sapience/sdk/queries';
 
 // Protocol-wide analytics move slowly (snapshots are at-best hourly) and the
@@ -20,10 +22,34 @@ const ANALYTICS_QUERY_OPTS = {
   refetchOnWindowFocus: false,
 } as const;
 
-export function useProtocolStats(vaultAddress?: string) {
+interface StatsWindow {
+  from?: Date | string | number | null;
+  to?: Date | string | number | null;
+}
+
+const windowKey = (w?: StatsWindow): string =>
+  `${w?.from == null ? '' : String(w.from)}|${w?.to == null ? '' : String(w.to)}`;
+
+export function useProtocolStats(window?: StatsWindow) {
   return useQuery<ProtocolStat[]>({
-    queryKey: ['protocolStats', vaultAddress?.toLowerCase() ?? null],
-    queryFn: () => fetchProtocolStats(vaultAddress),
+    queryKey: ['protocolStats', windowKey(window)],
+    queryFn: () => fetchProtocolStats(window),
+    ...ANALYTICS_QUERY_OPTS,
+  });
+}
+
+export function useVaultStats(vaultAddress?: string, window?: StatsWindow) {
+  const enabled = Boolean(vaultAddress && vaultAddress.trim() !== '');
+  const addr = (vaultAddress || '').toLowerCase();
+  return useQuery<VaultStat[]>({
+    queryKey: ['vaultStats', addr, windowKey(window)],
+    enabled,
+    queryFn: () =>
+      fetchVaultStats({
+        vaultAddress: addr,
+        from: window?.from,
+        to: window?.to,
+      }),
     ...ANALYTICS_QUERY_OPTS,
   });
 }
@@ -44,7 +70,12 @@ export function useOpenInterestByTimeToResolution() {
   });
 }
 
-export type { CategoryOpenInterest, ProtocolStat, TimeToResolutionBucket };
+export type {
+  CategoryOpenInterest,
+  ProtocolStat,
+  TimeToResolutionBucket,
+  VaultStat,
+};
 
 /**
  * Protocol TVL = escrow balance + undeployed vault funds (wei).
@@ -54,15 +85,16 @@ export type { CategoryOpenInterest, ProtocolStat, TimeToResolutionBucket };
  * Open interest drops the moment a condition settles, which is not what we
  * want TVL to reflect — funds haven't actually left the protocol until the
  * user redeems.
+ *
+ * Splits across the two row types: `escrowBalance` is protocol-wide,
+ * `vaultAvailableAssets` is vault-specific, so the caller passes both.
  */
 export function getProtocolTvlWei(
-  stat:
-    | Pick<ProtocolStat, 'escrowBalance' | 'vaultAvailableAssets'>
-    | null
-    | undefined
+  protocolStat: Pick<ProtocolStat, 'escrowBalance'> | null | undefined,
+  vaultStat: Pick<VaultStat, 'vaultAvailableAssets'> | null | undefined
 ): bigint {
-  if (!stat) return 0n;
   return (
-    BigInt(stat.escrowBalance || '0') + BigInt(stat.vaultAvailableAssets || '0')
+    BigInt(protocolStat?.escrowBalance || '0') +
+    BigInt(vaultStat?.vaultAvailableAssets || '0')
   );
 }
