@@ -46,109 +46,102 @@ export interface ConditionFilters {
 }
 
 export const GET_CONDITIONS = /* GraphQL */ `
-  query Conditions($take: Int, $skip: Int, $where: ConditionWhereInput) {
-    conditions(
-      orderBy: { createdAt: desc }
+  query Conditions($take: Int, $skip: Int, $filters: ConditionFilters) {
+    conditionsPage(
+      orderBy: CREATED_AT
+      orderDirection: desc
       take: $take
       skip: $skip
-      where: $where
+      filters: $filters
     ) {
-      id
-      createdAt
-      question
-      shortName
-      optionName
-      endTime
-      public
-      description
-      similarMarkets
-      chainId
-      resolver
-      settled
-      resolvedToYes
-      nonDecisive
-      assertionId
-      assertionTimestamp
-      openInterest
-      similarMarketVolume
-      similarMarketImage
-      estimatedPrice
-      conditionGroupId
-      conditionGroup {
+      items {
         id
-        name
-      }
-      category {
-        id
-        name
-        slug
+        createdAt
+        question
+        shortName
+        optionName
+        endTime
+        public
+        description
+        similarMarkets
+        chainId
+        resolver
+        settled
+        resolvedToYes
+        nonDecisive
+        assertionId
+        assertionTimestamp
+        openInterest
+        similarMarketVolume
+        similarMarketImage
+        estimatedPrice
+        conditionGroupId
+        conditionGroup {
+          id
+          name
+        }
+        category {
+          id
+          name
+          slug
+        }
       }
     }
   }
 `;
 
+/**
+ * Build a flat `ConditionFilters` input for the `conditionsPage` query.
+ * Replaces the old Prisma-style WhereInput builder.
+ */
+export function buildConditionsFilters(
+  chainId?: number,
+  filters?: ConditionFilters
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+
+  if (chainId !== undefined) {
+    out.chainId = chainId;
+  }
+
+  if (filters?.visibility === 'all') {
+    out.visibility = 'ALL';
+  } else if (filters?.visibility === 'private') {
+    out.visibility = 'PRIVATE';
+  } else if (filters?.visibility === 'public' || filters?.publicOnly) {
+    out.visibility = 'PUBLIC';
+  }
+
+  if (filters?.search?.trim()) {
+    out.search = filters.search.trim();
+  }
+
+  if (filters?.categorySlugs && filters.categorySlugs.length > 0) {
+    out.categorySlugs = filters.categorySlugs;
+  }
+
+  if (filters?.endTimeGte !== undefined) {
+    out.minEndTime = filters.endTimeGte;
+  }
+  if (filters?.endTimeLte !== undefined) {
+    out.maxEndTime = filters.endTimeLte;
+  }
+
+  if (filters?.ungroupedOnly) {
+    out.ungroupedOnly = true;
+  }
+
+  return out;
+}
+
+/**
+ * @deprecated Kept as a back-compat alias. Use `buildConditionsFilters`.
+ */
 export function buildConditionsWhereClause(
   chainId?: number,
   filters?: ConditionFilters
 ): Record<string, unknown> {
-  const where: Record<string, unknown> = {};
-  const andConditions: Record<string, unknown>[] = [];
-
-  if (chainId !== undefined) {
-    andConditions.push({ chainId: { equals: chainId } });
-  }
-
-  if (filters?.visibility === 'all') {
-    andConditions.push({
-      OR: [{ public: { equals: true } }, { public: { equals: false } }],
-    });
-  } else if (filters?.visibility === 'private') {
-    andConditions.push({ public: { equals: false } });
-  } else if (filters?.visibility === 'public' || filters?.publicOnly) {
-    andConditions.push({ public: { equals: true } });
-  }
-
-  if (filters?.search?.trim()) {
-    const searchTerm = filters.search.trim();
-    andConditions.push({
-      OR: [
-        { question: { contains: searchTerm, mode: 'insensitive' } },
-        { shortName: { contains: searchTerm, mode: 'insensitive' } },
-        { description: { contains: searchTerm, mode: 'insensitive' } },
-      ],
-    });
-  }
-
-  if (filters?.categorySlugs && filters.categorySlugs.length > 0) {
-    andConditions.push({
-      category: {
-        is: {
-          slug: { in: filters.categorySlugs },
-        },
-      },
-    });
-  }
-
-  if (filters?.endTimeGte !== undefined || filters?.endTimeLte !== undefined) {
-    const endTimeFilter: Record<string, number> = {};
-    if (filters.endTimeGte !== undefined) {
-      endTimeFilter.gte = filters.endTimeGte;
-    }
-    if (filters.endTimeLte !== undefined) {
-      endTimeFilter.lte = filters.endTimeLte;
-    }
-    andConditions.push({ endTime: endTimeFilter });
-  }
-
-  if (filters?.ungroupedOnly) {
-    andConditions.push({ conditionGroupId: { equals: null } });
-  }
-
-  if (andConditions.length > 0) {
-    where.AND = andConditions;
-  }
-
-  return where;
+  return buildConditionsFilters(chainId, filters);
 }
 
 export async function fetchConditions(opts?: {
@@ -159,13 +152,15 @@ export async function fetchConditions(opts?: {
 }): Promise<ConditionType[]> {
   const take = opts?.take ?? 50;
   const skip = opts?.skip ?? 0;
-  const where = buildConditionsWhereClause(opts?.chainId, opts?.filters);
+  const filters = buildConditionsFilters(opts?.chainId, opts?.filters);
 
-  type ConditionsQueryResult = { conditions: ConditionType[] };
+  type ConditionsQueryResult = {
+    conditionsPage: { items: ConditionType[] };
+  };
   const variables = {
     take,
     skip,
-    where: Object.keys(where).length > 0 ? where : undefined,
+    filters: Object.keys(filters).length > 0 ? filters : undefined,
   };
 
   const data = await graphqlRequest<ConditionsQueryResult>(
@@ -173,7 +168,7 @@ export async function fetchConditions(opts?: {
     variables
   );
 
-  return data.conditions ?? [];
+  return data.conditionsPage?.items ?? [];
 }
 
 // --- fetchConditionsByIds ---
@@ -181,17 +176,37 @@ export async function fetchConditions(opts?: {
 const PAGE_SIZE = 100;
 const MAX_CONCURRENT_REQUESTS = 3;
 
+/**
+ * Fetch conditions by ID set, using a query that selects from
+ * `conditionsPage { items { ... } }` and accepts a `$filters: ConditionFilters`.
+ *
+ * Note: the resultKey parameter is kept for backward compatibility but
+ * the caller's query must select via `conditionsPage`; results are unwrapped
+ * from `items` automatically.
+ */
 export async function fetchConditionsByIds<T>(
   query: string,
   ids: string[],
-  resultKey = 'conditions'
+  resultKey = 'conditionsPage'
 ): Promise<T[]> {
   if (ids.length === 0) return [];
+
+  const unwrap = (resp: unknown): T[] => {
+    if (!resp || typeof resp !== 'object') return [];
+    const r = resp as Record<string, unknown>;
+    const page = r[resultKey];
+    if (page && typeof page === 'object' && 'items' in page) {
+      return ((page as { items: T[] }).items ?? []) as T[];
+    }
+    // Back-compat: caller passed a bare-array query key
+    return (r[resultKey] as T[]) ?? [];
+  };
+
   if (ids.length <= PAGE_SIZE) {
-    const resp = await graphqlRequest<Record<string, T[]>>(query, {
-      where: { id: { in: ids } },
+    const resp = await graphqlRequest<Record<string, unknown>>(query, {
+      filters: { ids },
     });
-    return resp?.[resultKey] ?? [];
+    return unwrap(resp);
   }
 
   const chunks: string[][] = [];
@@ -204,12 +219,12 @@ export async function fetchConditionsByIds<T>(
     const batch = chunks.slice(i, i + MAX_CONCURRENT_REQUESTS);
     const batchResults = await Promise.all(
       batch.map((chunk) =>
-        graphqlRequest<Record<string, T[]>>(query, {
-          where: { id: { in: chunk } },
+        graphqlRequest<Record<string, unknown>>(query, {
+          filters: { ids: chunk },
         })
       )
     );
-    results.push(...batchResults.map((r) => r?.[resultKey] ?? []));
+    results.push(...batchResults.map((r) => unwrap(r)));
   }
 
   return results.flat();
@@ -234,22 +249,24 @@ type ConditionById = {
 };
 
 export const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
-  query ConditionsByIds($where: ConditionWhereInput!) {
-    conditions(where: $where, take: 100) {
-      id
-      shortName
-      optionName
-      question
-      description
-      endTime
-      resolver
-      similarMarkets
-      settled
-      resolvedToYes
-      nonDecisive
-      estimatedPrice
-      category {
-        slug
+  query ConditionsByIds($filters: ConditionFilters!) {
+    conditionsPage(filters: $filters, take: 100) {
+      items {
+        id
+        shortName
+        optionName
+        question
+        description
+        endTime
+        resolver
+        similarMarkets
+        settled
+        resolvedToYes
+        nonDecisive
+        estimatedPrice
+        category {
+          slug
+        }
       }
     }
   }

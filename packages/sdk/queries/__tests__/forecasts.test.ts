@@ -132,47 +132,44 @@ describe('generateForecastsQueryKey', () => {
 
 describe('fetchForecasts', () => {
   test('uses default schema UID', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchForecasts({});
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].where.schemaId.equals).toBe(
+    expect(call[1].schemaId).toBe(
       '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49'
     );
   });
 
   test('requests max 100 attestations', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchForecasts({});
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].take).toBe(100);
   });
 
   test('normalizes attester address with EIP-55 checksum', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    const attesterFilter = call[1].where.AND[0];
     // viem getAddress returns EIP-55 checksummed version
-    expect(attesterFilter.attester.equals).toBe(
-      '0x1234567890AbcdEF1234567890aBcdef12345678'
-    );
+    expect(call[1].attester).toBe('0x1234567890AbcdEF1234567890aBcdef12345678');
   });
 
   test('includes conditionId filter when provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchForecasts({ conditionId: 'cond-1' });
     const call = mockGraphqlRequest.mock.calls[0];
-    const condFilter = call[1].where.AND[0];
-    expect(condFilter.conditionId.equals).toBe('cond-1');
+    expect(call[1].conditionId).toBe('cond-1');
   });
 
-  test('returns raw response', async () => {
-    const response = { attestations: [{ id: '1' }] };
-    mockGraphqlRequest.mockResolvedValue(response);
+  test('returns response in legacy `{ attestations }` shape', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      attestationsPage: { items: [{ id: '1' }] },
+    });
     const result = await fetchForecasts({});
-    expect(result).toEqual(response);
+    expect(result).toEqual({ attestations: [{ id: '1' }] });
   });
 });
 
@@ -213,16 +210,18 @@ describe('fetchForecastsPage', () => {
 describe('fetchUserForecasts', () => {
   test('formats attestations through formatAttestationData', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      attestations: [
-        {
-          id: '1',
-          uid: '0xabc',
-          attester: '0x1234567890abcdef1234567890abcdef12345678',
-          time: 1700000000,
-          prediction: '80',
-          comment: 'test',
-        },
-      ],
+      attestationsPage: {
+        items: [
+          {
+            id: '1',
+            uid: '0xabc',
+            attester: '0x1234567890abcdef1234567890abcdef12345678',
+            time: 1700000000,
+            prediction: '80',
+            comment: 'test',
+          },
+        ],
+      },
     });
 
     const result = await fetchUserForecasts({
@@ -239,7 +238,7 @@ describe('fetchUserForecasts', () => {
   });
 
   test('passes orderBy and orderDirection', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchUserForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
       take: 10,
@@ -249,13 +248,14 @@ describe('fetchUserForecasts', () => {
     });
 
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].orderBy).toEqual([{ time: 'asc' }]);
+    expect(call[1].orderBy).toBe('TIME');
+    expect(call[1].orderDirection).toBe('asc');
     expect(call[1].take).toBe(10);
     expect(call[1].skip).toBe(5);
   });
 
   test('returns empty array when no attestations', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     const result = await fetchUserForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
       take: 10,
@@ -267,7 +267,9 @@ describe('fetchUserForecasts', () => {
   });
 
   test('handles null attestations response', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: null });
+    mockGraphqlRequest.mockResolvedValue({
+      attestationsPage: { items: null },
+    });
     const result = await fetchUserForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
       take: 10,

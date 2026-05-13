@@ -91,14 +91,16 @@ describe('fetchQuestionsSorted', () => {
     const questions = [
       { questionType: 'condition', condition: { id: '1' }, group: null },
     ];
-    mockGraphqlRequest.mockResolvedValue({ questions });
+    mockGraphqlRequest.mockResolvedValue({
+      questionsPage: { items: questions },
+    });
 
     const result = await fetchQuestionsSorted(baseParams);
     expect(result).toEqual(questions);
   });
 
-  test('returns empty array when questions is null', async () => {
-    mockGraphqlRequest.mockResolvedValue({ questions: null });
+  test('returns empty array when questionsPage is null', async () => {
+    mockGraphqlRequest.mockResolvedValue({ questionsPage: null });
     const result = await fetchQuestionsSorted(baseParams);
     expect(result).toEqual([]);
   });

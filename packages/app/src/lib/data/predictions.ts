@@ -40,17 +40,19 @@ export const PREDICTION_BY_ID_QUERY = `
 `;
 
 export const CONDITIONS_BY_IDS_QUERY = `
-  query ConditionsByIds($where: ConditionWhereInput!) {
-    conditions(where: $where, take: 100) {
-      id
-      question
-      shortName
-      endTime
-      settled
-      resolvedToYes
-      nonDecisive
-      resolver
-      category { slug }
+  query ConditionsByIds($filters: ConditionFilters!) {
+    conditionsPage(filters: $filters, take: 100) {
+      items {
+        id
+        question
+        shortName
+        endTime
+        settled
+        resolvedToYes
+        nonDecisive
+        resolver
+        category { slug }
+      }
     }
   }
 `;
@@ -136,12 +138,12 @@ export async function fetchPredictionWithConditions(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: CONDITIONS_BY_IDS_QUERY,
-        variables: { where: { id: { in: conditionIds } } },
+        variables: { filters: { ids: conditionIds } },
       }),
     });
     if (condResp.ok) {
       const condJson = await condResp.json();
-      conditions = condJson?.data?.conditions ?? [];
+      conditions = condJson?.data?.conditionsPage?.items ?? [];
     }
   } catch {
     // Condition fetch is non-critical

@@ -97,54 +97,53 @@ export default function QuestionPageContent({
     queryFn: async () => {
       if (!conditionId) return null;
       const QUERY = /* GraphQL */ `
-        query ConditionsByIds($where: ConditionWhereInput!) {
-          conditions(where: $where, take: 1) {
-            id
-            question
-            shortName
-            endTime
-            settled
-            resolvedToYes
-            nonDecisive
-            description
-            chainId
-            resolver
-            openInterest
-            estimatedPrice
-            similarMarkets
-            category {
-              slug
+        query ConditionsByIds($filters: ConditionFilters!) {
+          conditionsPage(filters: $filters, take: 1) {
+            items {
+              id
+              question
+              shortName
+              endTime
+              settled
+              resolvedToYes
+              nonDecisive
+              description
+              chainId
+              resolver
+              openInterest
+              estimatedPrice
+              similarMarkets
+              category {
+                slug
+              }
             }
           }
         }
       `;
-      // Build where clause with conditionId and optional resolver filter
-      const whereClause: { AND: Array<Record<string, unknown>> } = {
-        AND: [{ id: { in: [conditionId] } }],
-      };
+      const filters: Record<string, unknown> = { ids: [conditionId] };
       if (resolverAddressFromUrl) {
-        whereClause.AND.push({
-          resolver: { equals: resolverAddressFromUrl, mode: 'insensitive' },
-        });
+        filters.resolver = resolverAddressFromUrl;
       }
       const resp = await graphqlRequest<{
-        conditions: Array<{
-          id: string;
-          question: string;
-          shortName?: string | null;
-          endTime?: number | null;
-          settled?: boolean | null;
-          resolvedToYes?: boolean | null;
-          nonDecisive?: boolean | null;
-          description?: string | null;
-          category?: { slug: string } | null;
-          chainId?: number | null;
-          resolver?: string | null;
-          openInterest?: string | null;
-          estimatedPrice?: number | null;
-        }>;
-      }>(QUERY, { where: whereClause });
-      return resp?.conditions?.[0] || null;
+        conditionsPage: {
+          items: Array<{
+            id: string;
+            question: string;
+            shortName?: string | null;
+            endTime?: number | null;
+            settled?: boolean | null;
+            resolvedToYes?: boolean | null;
+            nonDecisive?: boolean | null;
+            description?: string | null;
+            category?: { slug: string } | null;
+            chainId?: number | null;
+            resolver?: string | null;
+            openInterest?: string | null;
+            estimatedPrice?: number | null;
+          }>;
+        };
+      }>(QUERY, { filters });
+      return resp?.conditionsPage?.items?.[0] || null;
     },
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,

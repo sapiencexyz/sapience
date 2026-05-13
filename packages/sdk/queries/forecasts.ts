@@ -30,20 +30,46 @@ type AttestationsQueryResponse = {
   attestations: RawAttestation[];
 };
 
+/**
+ * Top-level fetch — uses the new offset-based `attestationsPage` and
+ * unwraps its `items` into the legacy `{ attestations }` shape callers
+ * already consume.
+ */
 export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
-  query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
-    attestations(where: $where, orderBy: { time: desc }, take: $take) {
-      id
-      uid
-      attester
-      time
-      prediction
-      comment
-      conditionId
+  query FindAttestations(
+    $schemaId: String
+    $attester: String
+    $conditionId: String
+    $take: Int!
+  ) {
+    attestationsPage(
+      schemaId: $schemaId
+      attester: $attester
+      conditionId: $conditionId
+      orderBy: TIME
+      orderDirection: desc
+      take: $take
+    ) {
+      items {
+        id
+        uid
+        attester
+        time
+        prediction
+        comment
+        conditionId
+      }
     }
   }
 `;
 
+/**
+ * Cursor-based pagination uses the deprecated `attestations(cursor:)` form.
+ * `attestationsPage` is offset-only and doesn't yet expose a cursor arg,
+ * so migrating this path requires a UI refactor (translate `cursorId` to
+ * a running `skip` in the caller) — deferred to a follow-up slice. Until
+ * then, this still works against the deprecated bare-array query.
+ */
 export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
   query FindAttestationsPaginated(
     $where: AttestationWhereInput!
@@ -99,6 +125,19 @@ export interface FetchForecastsParams {
   conditionId?: string;
 }
 
+function normalizeAttester(attester?: string): string | undefined {
+  if (!attester) return undefined;
+  try {
+    return getAddress(attester);
+  } catch {
+    return attester;
+  }
+}
+
+/**
+ * @internal Kept for back-compat with `fetchForecastsPage` which still
+ * uses the deprecated cursor-based query.
+ */
 function buildAttestationFilters(params: FetchForecastsParams) {
   const {
     schemaId = DEFAULT_SCHEMA_UID,
@@ -106,14 +145,7 @@ function buildAttestationFilters(params: FetchForecastsParams) {
     conditionId,
   } = params;
 
-  let normalizedAttesterAddress = attesterAddress;
-  if (attesterAddress) {
-    try {
-      normalizedAttesterAddress = getAddress(attesterAddress);
-    } catch (_e) {
-      // swallow normalization error
-    }
-  }
+  const normalizedAttesterAddress = normalizeAttester(attesterAddress);
 
   const filters: Record<string, { equals: string }>[] = [];
   if (normalizedAttesterAddress) {
@@ -134,16 +166,29 @@ function buildAttestationFilters(params: FetchForecastsParams) {
 export async function fetchForecasts(
   params: FetchForecastsParams
 ): Promise<AttestationsQueryResponse> {
-  const { where } = buildAttestationFilters(params);
+  const {
+    schemaId = DEFAULT_SCHEMA_UID,
+    attesterAddress,
+    conditionId,
+  } = params;
 
-  const data = await graphqlRequest<AttestationsQueryResponse>(
-    GET_ATTESTATIONS_QUERY,
-    { where, take: 100 }
-  );
+  const data = await graphqlRequest<{
+    attestationsPage: { items: RawAttestation[] };
+  }>(GET_ATTESTATIONS_QUERY, {
+    schemaId,
+    attester: normalizeAttester(attesterAddress) ?? null,
+    conditionId: conditionId ?? null,
+    take: 100,
+  });
 
-  return data;
+  return { attestations: data.attestationsPage?.items ?? [] };
 }
 
+/**
+ * Cursor-based infinite-scroll page fetch. Still backed by the
+ * deprecated `attestations(cursor:)` query — see the comment on
+ * `GET_ATTESTATIONS_PAGINATED_QUERY` above.
+ */
 export async function fetchForecastsPage(
   params: FetchForecastsParams,
   page: { take: number; cursorId?: number }
@@ -167,6 +212,43 @@ export async function fetchForecastsPage(
   );
 }
 
+const USER_FORECASTS_QUERY = /* GraphQL */ `
+  query UserForecasts(
+    $schemaId: String
+    $attester: String
+    $conditionId: String
+    $take: Int!
+    $skip: Int!
+    $orderBy: AttestationSortField
+    $orderDirection: SortOrder
+  ) {
+    attestationsPage(
+      schemaId: $schemaId
+      attester: $attester
+      conditionId: $conditionId
+      take: $take
+      skip: $skip
+      orderBy: $orderBy
+      orderDirection: $orderDirection
+    ) {
+      items {
+        id
+        uid
+        attester
+        time
+        prediction
+        comment
+        conditionId
+      }
+    }
+  }
+`;
+
+const USER_FORECAST_ORDER_BY_GQL: Record<string, string> = {
+  time: 'TIME',
+  createdAt: 'CREATED_AT',
+};
+
 export async function fetchUserForecasts(params: {
   attesterAddress: string;
   schemaId?: string;
@@ -186,37 +268,24 @@ export async function fetchUserForecasts(params: {
     orderDirection,
   } = params;
 
-  let normalizedAttesterAddress = attesterAddress;
-  if (attesterAddress) {
-    try {
-      normalizedAttesterAddress = getAddress(attesterAddress);
-    } catch (_e) {
-      // swallow
-    }
-  }
-
-  const filters: Record<string, { equals: string }>[] = [];
-  if (normalizedAttesterAddress) {
-    filters.push({ attester: { equals: normalizedAttesterAddress } });
-  }
-  if (conditionId) {
-    filters.push({ conditionId: { equals: conditionId } });
-  }
-
   const variables = {
-    where: {
-      schemaId: { equals: schemaId },
-      AND: filters,
-    },
+    schemaId,
+    attester: normalizeAttester(attesterAddress) ?? null,
+    conditionId: conditionId ?? null,
     take,
     skip,
-    orderBy: [{ [orderBy]: orderDirection }],
+    // Fall back to TIME if the caller passes an unmapped field — the old
+    // resolver accepted arbitrary Prisma fields, but `attestationsPage`
+    // only exposes TIME and CREATED_AT today.
+    orderBy: USER_FORECAST_ORDER_BY_GQL[orderBy] ?? 'TIME',
+    orderDirection,
   };
-  const data = await graphqlRequest<AttestationsQueryResponse>(
-    GET_ATTESTATIONS_PAGINATED_QUERY,
-    variables
+  const data = await graphqlRequest<{
+    attestationsPage: { items: RawAttestation[] };
+  }>(USER_FORECASTS_QUERY, variables);
+  return (data.attestationsPage?.items ?? []).map((att) =>
+    formatAttestationData(att)
   );
-  return (data.attestations || []).map((att) => formatAttestationData(att));
 }
 
 export function generateForecastsQueryKey(params: {

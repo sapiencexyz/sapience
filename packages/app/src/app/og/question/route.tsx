@@ -171,33 +171,31 @@ async function fetchConditionData(
 ): Promise<ConditionData> {
   try {
     const query = `
-      query ConditionForOG($where: ConditionWhereInput!) {
-        conditions(where: $where, take: 1) {
-          question
-          category { slug }
+      query ConditionForOG($filters: ConditionFilters!) {
+        conditionsPage(filters: $filters, take: 1) {
+          items {
+            question
+            category { slug }
+          }
         }
       }
     `;
 
-    const whereClause: { AND: Array<Record<string, unknown>> } = {
-      AND: [{ id: { in: [conditionId] } }],
-    };
+    const filters: Record<string, unknown> = { ids: [conditionId] };
     if (resolver) {
-      whereClause.AND.push({
-        resolver: { equals: resolver, mode: 'insensitive' },
-      });
+      filters.resolver = resolver;
     }
 
     const response = await fetch(getGraphQLEndpoint(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables: { where: whereClause } }),
+      body: JSON.stringify({ query, variables: { filters } }),
     });
 
     if (!response.ok) return { question: null, categorySlug: null };
 
     const result = await response.json();
-    const condition = result?.data?.conditions?.[0];
+    const condition = result?.data?.conditionsPage?.items?.[0];
     return {
       question: condition?.question || null,
       categorySlug: condition?.category?.slug || null,

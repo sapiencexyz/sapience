@@ -48,113 +48,65 @@ export interface ConditionGroupFilters {
   publicOnly?: boolean;
 }
 
+/**
+ * Top-level `conditionGroupsPage` exposes only `ids` as a filter today,
+ * so chain/public/search/category are applied client-side after fetch.
+ * The nested `ConditionGroup.conditions` field still accepts a
+ * Prisma-style `where` clause, which we use to narrow per-group rows by
+ * `chainId` (and optionally `public`).
+ */
 export const GET_CONDITION_GROUPS = /* GraphQL */ `
   query ConditionGroups(
     $take: Int
     $skip: Int
-    $where: ConditionGroupWhereInput
     $conditionsWhere: ConditionWhereInput
   ) {
-    conditionGroups(
-      orderBy: [{ createdAt: desc }]
-      take: $take
-      skip: $skip
-      where: $where
-    ) {
-      id
-      createdAt
-      name
-      category {
-        id
-        name
-        slug
-      }
-      conditions(
-        orderBy: [{ displayOrder: { sort: asc } }]
-        where: $conditionsWhere
-      ) {
+    conditionGroupsPage(take: $take, skip: $skip) {
+      items {
         id
         createdAt
-        question
-        shortName
-        optionName
-        endTime
-        public
-        description
-        similarMarkets
-        chainId
-        resolver
-        settled
-        resolvedToYes
-        nonDecisive
-        assertionId
-        assertionTimestamp
-        openInterest
-        similarMarketVolume
-        similarMarketImage
-        estimatedPrice
-        conditionGroupId
+        name
         category {
           id
           name
           slug
         }
-        displayOrder
+        conditions(
+          orderBy: [{ displayOrder: { sort: asc } }]
+          where: $conditionsWhere
+        ) {
+          id
+          createdAt
+          question
+          shortName
+          optionName
+          endTime
+          public
+          description
+          similarMarkets
+          chainId
+          resolver
+          settled
+          resolvedToYes
+          nonDecisive
+          assertionId
+          assertionTimestamp
+          openInterest
+          similarMarketVolume
+          similarMarketImage
+          estimatedPrice
+          conditionGroupId
+          category {
+            id
+            name
+            slug
+          }
+          displayOrder
+        }
       }
     }
   }
 `;
-
-function buildGroupWhereClause(opts?: {
-  chainId?: number;
-  filters?: ConditionGroupFilters;
-  includeEmptyGroups?: boolean;
-}): Record<string, unknown> {
-  const where: Record<string, unknown> = {};
-  const andConditions: Record<string, unknown>[] = [];
-
-  if (opts?.filters?.search?.trim()) {
-    const searchTerm = opts.filters.search.trim();
-    andConditions.push({
-      name: { contains: searchTerm, mode: 'insensitive' },
-    });
-  }
-
-  if (opts?.filters?.categorySlugs && opts.filters.categorySlugs.length > 0) {
-    andConditions.push({
-      category: {
-        is: {
-          slug: { in: opts.filters.categorySlugs },
-        },
-      },
-    });
-  }
-
-  const conditionSomeAnd: Record<string, unknown>[] = [];
-  if (opts?.filters?.publicOnly) {
-    conditionSomeAnd.push({ public: { equals: true } });
-  }
-  if (opts?.chainId !== undefined) {
-    conditionSomeAnd.push({ chainId: { equals: opts.chainId } });
-  }
-
-  const shouldRequireSomeCondition =
-    !opts?.includeEmptyGroups || conditionSomeAnd.length > 0;
-
-  if (shouldRequireSomeCondition) {
-    andConditions.push({
-      conditions: {
-        some: conditionSomeAnd.length > 0 ? { AND: conditionSomeAnd } : {},
-      },
-    });
-  }
-
-  if (andConditions.length > 0) {
-    where.AND = andConditions;
-  }
-
-  return where;
-}
 
 function buildConditionsWhereClause(opts?: {
   chainId?: number;
@@ -178,6 +130,21 @@ function buildConditionsWhereClause(opts?: {
   return where;
 }
 
+function passesGroupFilters(
+  group: ConditionGroupType,
+  filters?: ConditionGroupFilters
+): boolean {
+  if (filters?.search?.trim()) {
+    const needle = filters.search.trim().toLowerCase();
+    if (!group.name?.toLowerCase().includes(needle)) return false;
+  }
+  if (filters?.categorySlugs && filters.categorySlugs.length > 0) {
+    const slug = group.category?.slug;
+    if (!slug || !filters.categorySlugs.includes(slug)) return false;
+  }
+  return true;
+}
+
 export async function fetchConditionGroups(opts?: {
   take?: number;
   skip?: number;
@@ -191,16 +158,14 @@ export async function fetchConditionGroups(opts?: {
   const filters = opts?.filters;
   const includeEmptyGroups = opts?.includeEmptyGroups ?? false;
 
-  const where = buildGroupWhereClause({ chainId, filters, includeEmptyGroups });
   const conditionsWhere = buildConditionsWhereClause({ chainId, filters });
 
   type ConditionGroupsQueryResult = {
-    conditionGroups: ConditionGroupType[];
+    conditionGroupsPage: { items: ConditionGroupType[] };
   };
   const variables = {
     take,
     skip,
-    where: Object.keys(where).length > 0 ? where : undefined,
     conditionsWhere:
       Object.keys(conditionsWhere).length > 0 ? conditionsWhere : undefined,
   };
@@ -210,5 +175,14 @@ export async function fetchConditionGroups(opts?: {
     variables
   );
 
-  return data.conditionGroups ?? [];
+  const groups = data.conditionGroupsPage?.items ?? [];
+
+  // Apply name/category filters client-side (no server-side support yet).
+  return groups.filter((group) => {
+    if (!passesGroupFilters(group, filters)) return false;
+    if (!includeEmptyGroups && (group.conditions ?? []).length === 0) {
+      return false;
+    }
+    return true;
+  });
 }

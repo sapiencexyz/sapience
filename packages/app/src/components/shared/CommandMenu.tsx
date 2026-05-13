@@ -50,24 +50,39 @@ const PAGES = [
 /** Lightweight query — only fetches the fields the command palette needs */
 const SEARCH_QUESTIONS = /* GraphQL */ `
   query CommandMenuSearch($take: Int!, $chainId: Int, $search: String) {
-    questions(
+    questionsPage(
       take: $take
       skip: 0
       chainId: $chainId
-      sortField: "endTime"
-      sortDirection: "asc"
+      sortField: endTime
+      sortDirection: asc
       search: $search
     ) {
-      questionType
-      group {
-        id
-        name
-        category {
+      items {
+        questionType
+        group {
           id
           name
-          slug
+          category {
+            id
+            name
+            slug
+          }
+          conditions {
+            id
+            question
+            shortName
+            endTime
+            openInterest
+            resolver
+            category {
+              id
+              name
+              slug
+            }
+          }
         }
-        conditions {
+        condition {
           id
           question
           shortName
@@ -79,19 +94,6 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
             name
             slug
           }
-        }
-      }
-      condition {
-        id
-        question
-        shortName
-        endTime
-        openInterest
-        resolver
-        category {
-          id
-          name
-          slug
         }
       }
     }
@@ -121,7 +123,7 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
     queryKey: ['commandMenuSearch', search],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        questions: QuestionResult[];
+        questionsPage: { items: QuestionResult[] };
       }>(SEARCH_QUESTIONS, {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort
         // client-side to prefer future markets over expired ones
@@ -131,7 +133,7 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
       });
 
       const nowSec = Math.floor(Date.now() / 1000);
-      return (data.questions ?? [])
+      return (data.questionsPage?.items ?? [])
         .flatMap((q) => {
           if (q.questionType === 'condition' && q.condition) {
             return [q.condition];

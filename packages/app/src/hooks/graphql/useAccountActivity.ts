@@ -34,7 +34,7 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
     $pickConfigId: String
     $conditionId: String
   ) {
-    accountActivity(
+    accountActivityPage(
       address: $address
       take: $take
       skip: $skip
@@ -42,120 +42,122 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
       pickConfigId: $pickConfigId
       conditionId: $conditionId
     ) {
-      type
-      timestamp
-      prediction {
-        id
-        predictionId
-        chainId
-        marketAddress
-        predictor
-        counterparty
-        predictorToken
-        counterpartyToken
-        predictorCollateral
-        counterpartyCollateral
-        collateralDeposited
-        collateralDepositedAt
-        settled
-        settledAt
-        settleTxHash
-        result
-        predictorClaimable
-        counterpartyClaimable
-        createTxHash
-        createdAt
-        refCode
-        isLegacy
-        pickConfig {
+      items {
+        type
+        timestamp
+        prediction {
           id
+          predictionId
           chainId
           marketAddress
-          totalPredictorCollateral
-          totalCounterpartyCollateral
-          claimedPredictorCollateral
-          claimedCounterpartyCollateral
-          resolved
-          result
-          resolvedAt
+          predictor
+          counterparty
           predictorToken
           counterpartyToken
-          endsAt
+          predictorCollateral
+          counterpartyCollateral
+          collateralDeposited
+          collateralDepositedAt
+          settled
+          settledAt
+          settleTxHash
+          result
+          predictorClaimable
+          counterpartyClaimable
+          createTxHash
+          createdAt
+          refCode
           isLegacy
-          predictionId
-          picks {
+          pickConfig {
             id
-            pickConfigId
-            conditionResolver
-            conditionId
-            predictedOutcome
-            condition {
+            chainId
+            marketAddress
+            totalPredictorCollateral
+            totalCounterpartyCollateral
+            claimedPredictorCollateral
+            claimedCounterpartyCollateral
+            resolved
+            result
+            resolvedAt
+            predictorToken
+            counterpartyToken
+            endsAt
+            isLegacy
+            predictionId
+            picks {
               id
-              shortName
-              optionName
-              question
-              description
-              endTime
-              resolver
-              settled
-              resolvedToYes
-              nonDecisive
-              estimatedPrice
-              category {
-                slug
+              pickConfigId
+              conditionResolver
+              conditionId
+              predictedOutcome
+              condition {
+                id
+                shortName
+                optionName
+                question
+                description
+                endTime
+                resolver
+                settled
+                resolvedToYes
+                nonDecisive
+                estimatedPrice
+                category {
+                  slug
+                }
               }
             }
           }
         }
-      }
-      trade {
-        id
-        tradeHash
-        chainId
-        token
-        collateral
-        seller
-        buyer
-        tokenAmount
-        price
-        txHash
-        blockNumber
-        executedAt
-        pickConfig {
+        trade {
           id
+          tradeHash
           chainId
-          marketAddress
-          totalPredictorCollateral
-          totalCounterpartyCollateral
-          claimedPredictorCollateral
-          claimedCounterpartyCollateral
-          resolved
-          result
-          resolvedAt
-          predictorToken
-          counterpartyToken
-          endsAt
-          isLegacy
-          picks {
+          token
+          collateral
+          seller
+          buyer
+          tokenAmount
+          price
+          txHash
+          blockNumber
+          executedAt
+          pickConfig {
             id
-            pickConfigId
-            conditionResolver
-            conditionId
-            predictedOutcome
-            condition {
+            chainId
+            marketAddress
+            totalPredictorCollateral
+            totalCounterpartyCollateral
+            claimedPredictorCollateral
+            claimedCounterpartyCollateral
+            resolved
+            result
+            resolvedAt
+            predictorToken
+            counterpartyToken
+            endsAt
+            isLegacy
+            picks {
               id
-              shortName
-              optionName
-              question
-              description
-              endTime
-              resolver
-              settled
-              resolvedToYes
-              nonDecisive
-              estimatedPrice
-              category {
-                slug
+              pickConfigId
+              conditionResolver
+              conditionId
+              predictedOutcome
+              condition {
+                id
+                shortName
+                optionName
+                question
+                description
+                endTime
+                resolver
+                settled
+                resolvedToYes
+                nonDecisive
+                estimatedPrice
+                category {
+                  slug
+                }
               }
             }
           }
@@ -230,7 +232,7 @@ export function useAccountActivity({
       lastPage.length < pageSize ? undefined : allPages.length * pageSize,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        accountActivity: RawActivityItem[];
+        accountActivityPage: { items: RawActivityItem[] };
       }>(ACCOUNT_ACTIVITY_QUERY, {
         address: account ?? null,
         take: pageSize,
@@ -239,7 +241,7 @@ export function useAccountActivity({
         pickConfigId: pickConfigId ?? null,
         conditionId: conditionId ?? null,
       });
-      return resp?.accountActivity ?? [];
+      return resp?.accountActivityPage?.items ?? [];
     },
   });
 

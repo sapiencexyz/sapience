@@ -13,9 +13,22 @@ import { SCHEMA_UID } from '~/lib/constants';
 // ---------- GraphQL queries ----------
 
 const ATTESTATIONS_COUNT_QUERY = `
-  query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
-    attestations(where: $where, orderBy: { time: desc }, take: $take) {
-      id
+  query FindAttestationsCount(
+    $schemaId: String
+    $attester: String
+    $take: Int!
+  ) {
+    attestationsPage(
+      schemaId: $schemaId
+      attester: $attester
+      orderBy: TIME
+      orderDirection: desc
+      take: $take
+    ) {
+      totalCount
+      items {
+        id
+      }
     }
   }
 `;
@@ -106,17 +119,20 @@ async function fetchForecastsCount(address: string): Promise<number | null> {
   }
 
   const data = await gqlFetch<{
-    attestations: Array<{ id: string }>;
+    attestationsPage: {
+      totalCount: number | null;
+      items: Array<{ id: string }>;
+    };
   }>(ATTESTATIONS_COUNT_QUERY, {
-    where: {
-      schemaId: { equals: SCHEMA_UID },
-      AND: [{ attester: { equals: normalizedAddress } }],
-    },
+    schemaId: SCHEMA_UID,
+    attester: normalizedAddress,
     take: 100,
   });
 
-  const count = data?.attestations?.length;
-  return count != null ? count : null;
+  const totalCount = data?.attestationsPage?.totalCount;
+  if (totalCount != null) return totalCount;
+  const fallbackCount = data?.attestationsPage?.items?.length;
+  return fallbackCount != null ? fallbackCount : null;
 }
 
 // ---------- Public API ----------
