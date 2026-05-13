@@ -412,13 +412,18 @@ function AnalyticsPageContent(): React.ReactElement {
 
         {/* Charts */}
         <div className="space-y-4">
-          {/* Open Interest distribution: by category + by time-to-resolution */}
+          {/*
+           * Top Accounts on the left, with the two open-interest distribution
+           * charts stacked on the right. On <lg the whole block collapses to
+           * a single column (Top Accounts → by-category → by-time).
+           */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <OpenInterestByCategoryChart />
-            <OpenInterestByTimeToResolutionChart />
+            <AccountsLeaderboardCard />
+            <div className="flex flex-col gap-4">
+              <OpenInterestByCategoryChart />
+              <OpenInterestByTimeToResolutionChart />
+            </div>
           </div>
-
-          <AccountsLeaderboardCard />
 
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
