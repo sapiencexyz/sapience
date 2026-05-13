@@ -79,8 +79,13 @@ export function filterByRange<T extends { timestamp: number }>(
   );
 }
 
-/** Stable key fragment for react-query etc. */
+/**
+ * Stable key fragment for react-query etc. For presets we return just the
+ * preset name — DO NOT include resolved dates here, because `rangeToDates`
+ * uses `Date.now()` for presets, which would mint a new key on every render
+ * and put `useQuery` into an infinite refetch loop.
+ */
 export function rangeKey(range: TimeRange): string {
-  const { from, to } = rangeToDates(range);
-  return `${range.preset}:${from?.toISOString() ?? ''}:${to?.toISOString() ?? ''}`;
+  if (range.preset !== 'CUSTOM') return range.preset;
+  return `CUSTOM:${range.from?.toISOString() ?? ''}:${range.to?.toISOString() ?? ''}`;
 }
