@@ -74,6 +74,15 @@ export type AccountStatsRank = {
   volume: Scalars['String']['output'];
 };
 
+/** Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag. */
+export type AccuracyLeaderboardPage = Page & {
+  __typename?: 'AccuracyLeaderboardPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<ForecasterScore>;
+  /** Total forecasters with scored attestations. Populated only when selected. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
 /** Accuracy rank for an address on the forecasting leaderboard */
 export type AccuracyRank = {
   __typename?: 'AccuracyRank';
@@ -1659,8 +1668,11 @@ export type Query = {
   accountTotalVolume: Scalars['String']['output'];
   /** Time-bucketed trading volume for a single address */
   accountVolume: Array<VolumeDataPoint>;
-  /** Top forecasters ranked by accuracy score */
-  accuracyLeaderboard: Array<ForecasterScore>;
+  /**
+   * Top forecasters ranked by accuracy score. Page-shaped with server-truth
+   * `hasMore` and lazy `totalCount` (populated only when selected).
+   */
+  accuracyLeaderboardPage: AccuracyLeaderboardPage;
   attestations: Array<Attestation>;
   categories: Array<Category>;
   /**
@@ -1803,8 +1815,9 @@ export type QueryAccountVolumeArgs = {
 };
 
 
-export type QueryAccuracyLeaderboardArgs = {
-  limit?: Scalars['Int']['input'];
+export type QueryAccuracyLeaderboardPageArgs = {
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 

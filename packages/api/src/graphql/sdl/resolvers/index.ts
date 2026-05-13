@@ -70,7 +70,7 @@ import {
   predictions,
 } from './queries/escrow';
 import { questions } from './queries/questions';
-import { accountAccuracyRank, accuracyLeaderboard } from './queries/score';
+import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
 import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import {
@@ -87,7 +87,7 @@ export const resolvers: Resolvers = {
   Query: {
     // Leaderboards / account scores
     accountAccuracyRank,
-    accuracyLeaderboard,
+    accuracyLeaderboardPage,
     accountStatsLeaderboardPage,
     accountStatsRank,
     // Time series

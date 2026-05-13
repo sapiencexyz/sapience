@@ -473,6 +473,75 @@
       },
       {
         "kind": "OBJECT",
+        "name": "AccuracyLeaderboardPage",
+        "description": "Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag.",
+        "fields": [
+          {
+            "name": "items",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "ForecasterScore",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total forecasters with scored attestations. Populated only when selected.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "AccuracyRank",
         "description": "Accuracy rank for an address on the forecasting leaderboard",
         "fields": [
@@ -13039,6 +13108,11 @@
         "possibleTypes": [
           {
             "kind": "OBJECT",
+            "name": "AccuracyLeaderboardPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
             "name": "AccountStatsLeaderboardPage",
             "ofType": null
           }
@@ -15123,11 +15197,25 @@
             "deprecationReason": null
           },
           {
-            "name": "accuracyLeaderboard",
-            "description": "Top forecasters ranked by accuracy score",
+            "name": "accuracyLeaderboardPage",
+            "description": "Top forecasters ranked by accuracy score. Page-shaped with server-truth\n`hasMore` and lazy `totalCount` (populated only when selected).",
             "args": [
               {
-                "name": "limit",
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
+              },
+              {
+                "name": "take",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",
@@ -15145,17 +15233,9 @@
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "ForecasterScore",
-                    "ofType": null
-                  }
-                }
+                "kind": "OBJECT",
+                "name": "AccuracyLeaderboardPage",
+                "ofType": null
               }
             },
             "isDeprecated": false,

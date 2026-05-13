@@ -1,5 +1,5 @@
 /**
- * Accuracy-score queries: `accuracyLeaderboard` and `accountAccuracyRank`.
+ * Accuracy-score queries: `accuracyLeaderboardPage` and `accountAccuracyRank`.
  *
  * twError in `attester_market_tw_error` now stores (1 - brier) * tau,
  * i.e. an accuracy score where higher is better. The aggregate per
@@ -7,10 +7,11 @@
  * is sorted descending.
  *
  * A small module-scope TTL cache protects the DB from bursts on the
- * leaderboard aggregation (shared between `accuracyLeaderboard` and
- * `accountAccuracyRank`).
+ * leaderboard aggregation (shared between `accuracyLeaderboardPage`
+ * and `accountAccuracyRank`).
  */
 
+import type { GraphQLResolveInfo } from 'graphql';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
@@ -39,15 +40,31 @@ const getLeaderboardScores = async (): Promise<
   return scores;
 };
 
-export const accuracyLeaderboard: NonNullable<
-  QueryResolvers['accuracyLeaderboard']
-> = async (_parent, { limit }) => {
-  const capped = Math.max(1, Math.min(limit, 100));
+/** Did the client select `totalCount` on this `*Page` field? */
+const wantsTotalCount = (info: GraphQLResolveInfo): boolean => {
+  const sel = info.fieldNodes[0]?.selectionSet?.selections ?? [];
+  return sel.some(
+    (s) =>
+      s.kind === 'Field' &&
+      (s as { name: { value: string } }).name.value === 'totalCount'
+  );
+};
+
+const MAX_TAKE = 100;
+const MAX_SKIP = 1000;
+
+export const accuracyLeaderboardPage: NonNullable<
+  QueryResolvers['accuracyLeaderboardPage']
+> = async (_parent, { take, skip }, _ctx, info) => {
+  const cappedTake = Math.max(1, Math.min(take, MAX_TAKE));
+  const cappedSkip = Math.max(0, Math.min(skip, MAX_SKIP));
   const scores = await getLeaderboardScores();
-  return scores.slice(0, capped).map((s) => ({
-    address: s.attester,
-    accuracyScore: s.accuracyScore,
-  }));
+  const items = scores
+    .slice(cappedSkip, cappedSkip + cappedTake)
+    .map((s) => ({ address: s.attester, accuracyScore: s.accuracyScore }));
+  const hasMore = cappedSkip + items.length < scores.length;
+  const totalCount = wantsTotalCount(info) ? scores.length : null;
+  return { items, hasMore, totalCount };
 };
 
 export const accountAccuracyRank: NonNullable<

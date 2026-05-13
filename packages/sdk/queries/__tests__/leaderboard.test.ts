@@ -19,35 +19,41 @@ beforeEach(() => {
 // ============================================================================
 
 describe('fetchAccuracyLeaderboard', () => {
-  test('uses default limit of 10', async () => {
-    mockGraphqlRequest.mockResolvedValue({ accuracyLeaderboard: [] });
+  const wrap = (items: Array<{ address: string; accuracyScore: number }>) => ({
+    accuracyLeaderboardPage: { items, hasMore: false },
+  });
+
+  test('uses default limit of 10 (mapped to take)', async () => {
+    mockGraphqlRequest.mockResolvedValue(wrap([]));
     await fetchAccuracyLeaderboard();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(expect.any(String), {
-      limit: 10,
+      take: 10,
+      skip: 0,
     });
   });
 
-  test('passes custom limit', async () => {
-    mockGraphqlRequest.mockResolvedValue({ accuracyLeaderboard: [] });
+  test('passes custom limit through as take', async () => {
+    mockGraphqlRequest.mockResolvedValue(wrap([]));
     await fetchAccuracyLeaderboard(25);
     expect(mockGraphqlRequest).toHaveBeenCalledWith(expect.any(String), {
-      limit: 25,
+      take: 25,
+      skip: 0,
     });
   });
 
   test('returns empty array when no data', async () => {
-    mockGraphqlRequest.mockResolvedValue({ accuracyLeaderboard: null });
+    mockGraphqlRequest.mockResolvedValue({ accuracyLeaderboardPage: null });
     const result = await fetchAccuracyLeaderboard();
     expect(result).toEqual([]);
   });
 
   test('forwards slimmed ForecasterScore rows verbatim', async () => {
-    mockGraphqlRequest.mockResolvedValue({
-      accuracyLeaderboard: [
+    mockGraphqlRequest.mockResolvedValue(
+      wrap([
         { address: '0xa', accuracyScore: 0.9 },
         { address: '0xb', accuracyScore: 0.5 },
-      ],
-    });
+      ])
+    );
     const result = await fetchAccuracyLeaderboard();
     expect(result).toEqual([
       { address: '0xa', accuracyScore: 0.9 },

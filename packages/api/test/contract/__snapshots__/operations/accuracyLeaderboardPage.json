@@ -1,0 +1,15 @@
+{
+  "accuracyLeaderboardPage": {
+    "items": [
+      {
+        "address": "0x6a225f09e0ebe597f79e86875b3704325d40c84d",
+        "accuracyScore": 214.83
+      },
+      {
+        "address": "0xfed214cce9cc6f7ceb507de9fdf00a3899592caa",
+        "accuracyScore": 196.182
+      }
+    ],
+    "hasMore": false
+  }
+}

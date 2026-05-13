@@ -578,7 +578,7 @@ export function createComplexityEstimators(
       if (fieldName === 'accountBalance') return 2000;
       if (fieldName === 'accountPredictionCount') return 1000;
       // Full-table groupBy aggregates (no cache)
-      if (fieldName === 'accuracyLeaderboard') return 1500;
+      if (fieldName === 'accuracyLeaderboardPage') return 1500;
       if (fieldName === 'accountAccuracyRank') return 1500;
       // Single-address lookup against the merged account-stats set the
       // leaderboard slices. Same backing aggregation + TTL cache, so the

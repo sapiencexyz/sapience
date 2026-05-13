@@ -57,6 +57,19 @@ type AccountStatsRank {
   volume: String!
 }
 
+"""
+Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag.
+"""
+type AccuracyLeaderboardPage implements Page {
+  hasMore: Boolean!
+  items: [ForecasterScore!]!
+
+  """
+  Total forecasters with scored attestations. Populated only when selected.
+  """
+  totalCount: Int
+}
+
 """Accuracy rank for an address on the forecasting leaderboard"""
 type AccuracyRank {
   accuracyScore: Float!
@@ -1564,8 +1577,11 @@ type Query {
   """Time-bucketed trading volume for a single address"""
   accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
 
-  """Top forecasters ranked by accuracy score"""
-  accuracyLeaderboard(limit: Int! = 10): [ForecasterScore!]!
+  """
+  Top forecasters ranked by accuracy score. Page-shaped with server-truth
+  `hasMore` and lazy `totalCount` (populated only when selected).
+  """
+  accuracyLeaderboardPage(skip: Int! = 0, take: Int! = 10): AccuracyLeaderboardPage!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
 

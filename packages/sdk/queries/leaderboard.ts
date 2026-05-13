@@ -41,11 +41,14 @@ export interface AccountStatsRankResult {
   totalParticipants: number;
 }
 
-export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
-  query AccuracyLeaderboard($limit: Int!) {
-    accuracyLeaderboard(limit: $limit) {
-      address
-      accuracyScore
+export const GET_ACCURACY_LEADERBOARD_PAGE = /* GraphQL */ `
+  query AccuracyLeaderboardPage($take: Int!, $skip: Int!) {
+    accuracyLeaderboardPage(take: $take, skip: $skip) {
+      items {
+        address
+        accuracyScore
+      }
+      hasMore
     }
   }
 `;
@@ -174,14 +177,18 @@ export async function fetchAccountStatsRank(params: {
   return r;
 }
 
+/**
+ * Convenience wrapper: keep the original `limit` signature, internally
+ * call the Page form and return just the rows. For pagination + hasMore
+ * + totalCount, use `GET_ACCURACY_LEADERBOARD_PAGE` directly.
+ */
 export async function fetchAccuracyLeaderboard(
   limit = 10
 ): Promise<ForecasterScore[]> {
-  const data = await graphqlRequest<{ accuracyLeaderboard: ForecasterScore[] }>(
-    GET_ACCURACY_LEADERBOARD,
-    { limit }
-  );
-  return data.accuracyLeaderboard || [];
+  const data = await graphqlRequest<{
+    accuracyLeaderboardPage: { items: ForecasterScore[]; hasMore: boolean };
+  }>(GET_ACCURACY_LEADERBOARD_PAGE, { take: limit, skip: 0 });
+  return data?.accuracyLeaderboardPage?.items || [];
 }
 
 export async function fetchAccountAccuracyRank(
