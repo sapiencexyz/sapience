@@ -83,7 +83,7 @@ class ConditionSettledIndexer implements IIndexer {
 
   private async persistIndexerState(blockNumber: number): Promise<void> {
     logger.info(
-      `[ConditionSettledIndexer:${this.chainId}] Persisting watermark block=${blockNumber}`
+      `[ConditionSettledIndexer:${this.chainId}] Persisting watermark block=${blockNumber} contract=${this.contractAddress} legacy=${this.isLegacy}`
     );
     await prisma.indexerState.upsert({
       where: {

@@ -90,16 +90,27 @@ const volumeColumnFragments = {
 
 type VolumeKey = keyof typeof volumeColumnFragments;
 
+// Keys are the GraphQL `VolumeWindow` enum values exactly as they arrive in
+// the resolver (the SDK maps its friendly "1hFiltered"-style names to these
+// before sending the query). Anything unrecognized — including a missing
+// window — falls back to the all-time 24h column via `resolveVolumeKey`.
 const volumeWindowToKey: Record<string, VolumeKey> = {
-  '1h': 'volume1h',
-  '4h': 'volume4h',
-  '24h': 'volume24h',
-  '7d': 'volume7d',
-  '1hFiltered': 'volumeFiltered1h',
-  '4hFiltered': 'volumeFiltered4h',
-  '24hFiltered': 'volumeFiltered24h',
-  '7dFiltered': 'volumeFiltered7d',
+  oneHour: 'volume1h',
+  fourHours: 'volume4h',
+  twentyFourHours: 'volume24h',
+  sevenDays: 'volume7d',
+  oneHourFiltered: 'volumeFiltered1h',
+  fourHoursFiltered: 'volumeFiltered4h',
+  twentyFourHoursFiltered: 'volumeFiltered24h',
+  sevenDaysFiltered: 'volumeFiltered7d',
 };
+
+export const resolveVolumeKey = (
+  similarMarketVolumeWindow: string | null | undefined
+): VolumeKey =>
+  (similarMarketVolumeWindow != null
+    ? volumeWindowToKey[similarMarketVolumeWindow]
+    : undefined) ?? 'volume24h';
 
 const fieldByResolvedVolumeKey: Record<VolumeKey, string> = {
   volume1h: 'similarMarketVolume1h',
@@ -180,10 +191,9 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
     minSimilarMarketVolume != null ||
     maxSimilarMarketVolume != null;
 
-  const resolvedVolumeKey: VolumeKey =
-    (similarMarketVolumeWindow &&
-      volumeWindowToKey[similarMarketVolumeWindow]) ??
-    'volume24h';
+  const resolvedVolumeKey: VolumeKey = resolveVolumeKey(
+    similarMarketVolumeWindow
+  );
   const volumeFragments = volumeColumnFragments[resolvedVolumeKey];
   const useWindowedSimilarMarketVolume = similarMarketVolumeWindow != null;
 

@@ -70,14 +70,17 @@ ZeroDev's **Kernel** is an ERC-4337 smart account implementation with a **plugin
 
 ### Key Files
 
-| File                                                            | Purpose                                                   |
-| --------------------------------------------------------------- | --------------------------------------------------------- |
-| `packages/app/src/lib/session/sessionKeyManager.ts`             | Core session creation, restoration, and client management |
-| `packages/app/src/lib/context/SessionContext.tsx`               | React context provider for session state across the app   |
-| `packages/relayer/src/sessionAuth.ts`                           | Server-side session approval verification                 |
-| `packages/relayer/src/smartAccount.ts`                          | Computes deterministic smart account addresses            |
-| `packages/relayer/src/auctionSigVerify.ts`                      | Verifies auction signatures with session key support      |
-| `packages/app/src/hooks/blockchain/useSapienceWriteContract.ts` | Hook for contract writes with session key routing         |
+| File                                                            | Purpose                                                                                                                                                                                                                                  |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/app/src/lib/session/sessionKeyManager.ts`             | Core session creation, restoration, and client management                                                                                                                                                                                |
+| `packages/app/src/lib/context/SessionContext.tsx`               | React context provider for session state across the app                                                                                                                                                                                  |
+| `packages/sdk/session/verification.ts`                          | `verifySessionApproval`, `extractSessionKeyFromValidatorData` (formerly relayer-only)                                                                                                                                                    |
+| `packages/sdk/session/smartAccount.ts`                          | `computeSmartAccountAddress` — deterministic CREATE2 derivation                                                                                                                                                                          |
+| `packages/sdk/auction/escrowSigning.ts`                         | `verifyAuctionIntentSignature` / `verifyCounterpartyMintSignature` — predictor supports escrow/EOA/smart-account-owner/ZeroDev offline paths plus optional ERC-1271 fallback; counterparty supports escrow/EOA/smart-account-owner paths |
+| `packages/sdk/auction/validation.ts`                            | Tier 1 validation entry points used by the relayer                                                                                                                                                                                       |
+| `packages/app/src/hooks/blockchain/useSapienceWriteContract.ts` | Hook for contract writes with session key routing                                                                                                                                                                                        |
+
+The session-key verification logic lived in the relayer until it was consolidated into the SDK so app, relayer, and bots all share one implementation. The relayer now imports these helpers from `@sapience/sdk/session` and `@sapience/sdk/auction/*`.
 
 ---
 
@@ -548,14 +551,28 @@ ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc  # Server-side
 
 ## 13. ZeroDev SDK Dependencies
 
+ZeroDev pins differ by package — keep them in sync deliberately, not by accident.
+
+`packages/app` (consumes the full SDK + permission validators):
+
 ```json
 {
-  "@zerodev/sdk": "5.5.7", // Core smart account creation
-  "@zerodev/ecdsa-validator": "5.4.9", // ECDSA signature validators
-  "@zerodev/permissions": "5.6.3", // Permission validators and policies
-  "@zerodev/hooks": "5.3.4" // React hooks (app package)
+  "@zerodev/sdk": "5.5.7",
+  "@zerodev/ecdsa-validator": "5.4.9",
+  "@zerodev/permissions": "5.6.3"
 }
 ```
+
+`packages/relayer` and `packages/sdk` (verification only, no smart-account creation):
+
+```json
+{
+  "@zerodev/sdk": "5.4.5",
+  "@zerodev/ecdsa-validator": "5.3.3"
+}
+```
+
+The relayer/SDK pins lag the app intentionally — verification helpers don't need newer kernel features and the older versions have a smaller dependency surface for the server.
 
 ---
 

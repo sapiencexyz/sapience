@@ -1670,10 +1670,14 @@ export type ProtocolStat = {
   openInterest: Scalars['String']['output'];
   /** Realized PnL delta over the snapshot interval */
   periodPnL: Scalars['String']['output'];
+  /** Trade-count delta over the snapshot interval */
+  periodTradeCount: Scalars['Int']['output'];
   /** Cumulative-volume delta over the snapshot interval */
   periodVolume: Scalars['String']['output'];
   /** Unix epoch timestamp (seconds) aligned to the snapshot interval boundary */
   timestamp: Scalars['Int']['output'];
+  /** Cumulative count of predictions and secondary trades/sales */
+  totalTradeCount: Scalars['Int']['output'];
   vaultAirdropGains: Scalars['String']['output'];
   vaultAvailableAssets: Scalars['String']['output'];
   vaultBalance: Scalars['String']['output'];

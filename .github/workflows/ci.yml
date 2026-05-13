@@ -23,6 +23,7 @@ jobs:
       relayer: ${{ steps.filter.outputs.relayer }}
       ui: ${{ steps.filter.outputs.ui }}
       market-keeper: ${{ steps.filter.outputs.market-keeper }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -52,6 +53,12 @@ jobs:
             market-keeper:
               - 'packages/market-keeper/**'
               - 'packages/sdk/**'
+              - 'pnpm-lock.yaml'
+            docs:
+              - 'packages/docs/**'
+              - 'packages/sdk/contracts/addresses.ts'
+              - 'packages/sdk/types/escrow.ts'
+              - 'packages/sdk/types/secondary.ts'
               - 'pnpm-lock.yaml'
 
   test-api:
@@ -278,6 +285,27 @@ jobs:
       - run: forge fmt --check
         working-directory: packages/protocol
       - run: pnpm --filter protocol run test
+
+  check-docs-generated:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.12.0' }
+      - uses: pnpm/action-setup@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
+      - run: pnpm --filter @sapience/sdk run build:lib
+      - name: Verify generated docs are up to date
+        run: pnpm --filter docs run generate:check
 
   test-market-keeper:
     needs: changes

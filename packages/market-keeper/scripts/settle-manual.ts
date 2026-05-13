@@ -235,8 +235,12 @@ query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
     where: {
       AND: [
         { settled: { equals: false } }
-        { public: { equals: true } }
         { resolver: { equals: $resolver, mode: insensitive } }
+        # Explicit public filter: the conditions resolver defaults to
+        # public = true unless the query already filters on public, which
+        # would silently exclude privated conditions that still have
+        # engagement to settle. Match both values.
+        { OR: [{ public: { equals: true } }, { public: { equals: false } }] }
         {
           OR: [
             { openInterest: { gt: "0" } }

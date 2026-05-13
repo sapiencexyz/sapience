@@ -1,10 +1,23 @@
 # Protocol Stats — Accounting & Indexer Reference
 
 This document is the load-bearing reference for how the per-vault protocol-stats
-pipeline works after PR #1642 (`feat/vault-stats-claim-close-union`). Read this
-before touching `packages/api/src/helpers/protocolStats.ts`,
+pipeline works. Read this before touching `packages/api/src/services/protocolStats/`,
 `packages/api/src/workers/indexers/predictionMarketEscrowIndexer.ts`, or any of
 the related migrations / scripts.
+
+The pipeline is split across these files:
+
+| File                                         | Responsibility                                                                                                  |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `services/protocolStats/index.ts`            | Public surface; cron entry point                                                                                |
+| `services/protocolStats/snapshots.ts`        | Snapshot row construction, LHS/RHS/Δ logging                                                                    |
+| `services/protocolStats/vaultConfig.ts`      | `getConfiguredVaults` — vault discovery                                                                         |
+| `services/protocolStats/vaultAggregator.ts`  | `buildVaultAggregator` — prefetch closures shared across legs                                                   |
+| `services/protocolStats/vaultTvl.ts`         | `fetchVaultTVLAtBlock`, `fetchVaultDeployed` (LHS)                                                              |
+| `services/protocolStats/vaultPnL.ts`         | `calculateVaultFlows`, `calculateVaultPnL`, `calculateVaultSecondaryFlows`, `calculateVaultAirdrops` (RHS legs) |
+| `services/protocolStats/vaultUnredeemed.ts`  | `calculateVaultUnredeemedClaim`                                                                                 |
+| `services/protocolStats/backfill.ts`         | Historical re-runs (`pnpm start:backfill-stats`)                                                                |
+| `services/protocolStats/gapDecomposition.ts` | `PROTOCOL_STATS_GAP_DEBUG=1` forensic output                                                                    |
 
 The system's job is to turn on-chain wUSDe flows + protocol events into a
 per-vault, per-snapshot row in `protocol_stats_snapshot` that satisfies a
@@ -479,7 +492,7 @@ predictedOutcome)`.
   picks that share fungible position tokens, identified by `pickConfigId =
 keccak256(picks)`. One `Picks` row may have many `Prediction` rows.
 - **Prediction** — individual prediction with unique `predictionId =
-keccak256(pickConfigId, predictor, counterparty, nonce)`. Stores who paid
+keccak256(pickConfigId, predictor, counterparty, _globalNonce)`. Stores who paid
   what at mint time and the parameters of the deal.
 - **Position token** — ERC-20 representing a share in a `Picks` collateral
   pool. Two per pickConfig: predictor-token + counterparty-token. Holders can

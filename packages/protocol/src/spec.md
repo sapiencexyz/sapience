@@ -16,11 +16,11 @@
 
 ## Requirements and specs
 
-### Main changes in V2 (vs current V1-style boolean resolver + NFT position)
+### Architectural pillars
 
-- Each pick can have its own condition resolver, and a separate meta resolver resolves the overall prediction.
-- Resolvers return an outcome vector \[yesWeight, noWeight\] instead of a boolean.
-- Positions are represented by a pair of ERC20s (predictor token + counterparty token) per prediction, to enable partial transfers and secondary markets.
+- Each pick has its own condition resolver, and a meta resolver resolves the overall prediction.
+- Resolvers return an outcome vector \[yesWeight, noWeight\] rather than a boolean — non-decisive resolutions are first-class.
+- Positions are a pair of ERC20s (predictor token + counterparty token) per prediction. This enables partial transfers and secondary markets.
 
 ### Condition resolution
 
@@ -69,14 +69,14 @@
 
 ### Fungible Prediction Pools
 
-The V2 protocol uses fungible prediction pools where users with the same picks share tokens:
+The protocol uses fungible prediction pools where users with the same picks share tokens:
 
 #### Two-Level ID System
 
-| ID             | Formula                                                   | Purpose                                                                          |
-| -------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `pickConfigId` | `keccak256(picks)`                                        | Identifies the fungible token pair (reusable across predictions with same picks) |
-| `predictionId` | `keccak256(pickConfigId, predictor, counterparty, nonce)` | Identifies individual prediction (unique per mint, for audit trail)              |
+| ID             | Formula                                                          | Purpose                                                                          |
+| -------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `pickConfigId` | `keccak256(picks)`                                               | Identifies the fungible token pair (reusable across predictions with same picks) |
+| `predictionId` | `keccak256(pickConfigId, predictor, counterparty, _globalNonce)` | Identifies individual prediction (unique per mint, for audit trail)              |
 
 #### Token Minting: Both Sides Receive totalCollateral Tokens (C-1)
 
@@ -252,7 +252,7 @@ After burning `p` predictor tokens and `c` counterparty tokens (with payouts `pp
 
 ### SecondaryMarketEscrow (Atomic OTC Swap)
 
-Permissionless atomic OTC swap for V2 position tokens. No ownership, no funds at rest.
+Permissionless atomic OTC swap for position tokens. No ownership, no funds at rest.
 
 - Both parties sign off-chain via EIP-712 (`TradeApproval`); anyone can submit the trade
 - Supports EOA ECDSA and smart account ERC-1271 signatures
@@ -352,7 +352,7 @@ flowchart TB
     subgraph ARBITRUM["⛓️ ARBITRUM (Secondary Market)"]
         PMBR["PredictionMarketBridgeRemote<br/>mint & burn bridged tokens"]
         PMTF["PredictionMarketTokenFactory<br/>CREATE3 deployment"]
-        PMTB["PredictionMarketTokenBridged<br/>wrapped position tokens"]
+        PMTB["PredictionMarketToken<br/>bridged position tokens"]
         SMT["Secondary Market Trading"]
     end
 
@@ -627,7 +627,7 @@ After renouncing:
 
 ### PredictionMarketVault
 
-A passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions. Simplified from V1 to work with PredictionMarketEscrow's ERC20 position tokens.
+A passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions. Designed around PredictionMarketEscrow's ERC20 position tokens.
 
 #### Overview
 
@@ -643,16 +643,6 @@ The vault enables liquidity providers to pool assets that a designated manager c
 | Request expiration        | Requests expire after configurable time (default: 10 minutes)      |
 | Emergency mode            | Immediate proportional withdrawals using vault balance only        |
 | ERC1271 signatures        | Manager signs transactions on behalf of the vault                  |
-
-#### Differences from V1
-
-| V1                                                        | V2                                                      |
-| --------------------------------------------------------- | ------------------------------------------------------- |
-| Utilization rate tracking via `getUserCollateralDeposits` | No utilization tracking (V2 uses ERC20 position tokens) |
-| ERC721 receiver for NFT positions                         | No ERC721 receiver needed                               |
-| Complex `approveFundsUsage` with utilization checks       | Simple approval without utilization limits              |
-| Protocol tracking with `activeProtocols` set              | No protocol tracking                                    |
-| `_reconcileApprovals()` on withdrawals                    | No approval reconciliation                              |
 
 #### User Flow
 
@@ -700,13 +690,14 @@ When `emergencyMode` is enabled by owner:
 
 #### Admin Functions
 
-| Function                       | Description                          |
-| ------------------------------ | ------------------------------------ |
-| `setManager(address)`          | Change the manager address           |
-| `setInteractionDelay(uint256)` | Set delay between user requests      |
-| `setExpirationTime(uint256)`   | Set request expiration time          |
-| `toggleEmergencyMode()`        | Enable/disable emergency withdrawals |
-| `pause()` / `unpause()`        | Pause/unpause contract operations    |
+| Function                                 | Description                           |
+| ---------------------------------------- | ------------------------------------- |
+| `setManager(address)`                    | Change the manager address            |
+| `setDepositInteractionDelay(uint256)`    | Set delay between deposit requests    |
+| `setWithdrawalInteractionDelay(uint256)` | Set delay between withdrawal requests |
+| `setExpirationTime(uint256)`             | Set request expiration time           |
+| `toggleEmergencyMode()`                  | Enable/disable emergency withdrawals  |
+| `pause()` / `unpause()`                  | Pause/unpause contract operations     |
 
 #### Share Transfer Restrictions
 

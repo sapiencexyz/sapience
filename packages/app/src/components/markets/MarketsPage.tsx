@@ -437,6 +437,7 @@ const MarketsPage = () => {
                     onVolumeWindowChange={setVolumeWindow}
                     filterVolume={filterVolume}
                     onFilterVolumeChange={setFilterVolume}
+                    searchTerm={searchTerm}
                   />
                 </div>
               )}
