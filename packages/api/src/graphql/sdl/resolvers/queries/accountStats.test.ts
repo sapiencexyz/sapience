@@ -8,6 +8,18 @@ vi.mock('../../../../services/accountStats', () => ({
   calculateAccountVolumes: mockVolumes,
 }));
 
+const mockQueryAccountVolume = vi.fn();
+const mockQueryAccountPnl = vi.fn();
+const mockQueryAccountBalance = vi.fn();
+const mockQueryAccountPredictionCount = vi.fn();
+
+vi.mock('../../../../services/timeSeriesQueries', () => ({
+  queryAccountVolume: mockQueryAccountVolume,
+  queryAccountPnl: mockQueryAccountPnl,
+  queryAccountBalance: mockQueryAccountBalance,
+  queryAccountPredictionCount: mockQueryAccountPredictionCount,
+}));
+
 // No-op cache so each test sees its own mocked service data.
 vi.mock('../../../../lib/ttlCache', () => ({
   TtlCache: class {
@@ -18,9 +30,8 @@ vi.mock('../../../../lib/ttlCache', () => ({
   },
 }));
 
-const { accountStatsLeaderboardPage, accountStatsRank } = await import(
-  './accountStats'
-);
+const { accountStats, accountStatsLeaderboardPage, accountStatsRank } =
+  await import('./accountStats');
 const { AccountStatsMetric } = await import('../../__generated__/resolvers');
 
 type Filters = {
@@ -345,5 +356,196 @@ describe('Query.accountStatsRank', () => {
       fromEpoch: from,
       toEpoch: to,
     });
+  });
+});
+
+// ─── accountStats (time series fat row) ─────────────────────────────────────
+
+type AccountStatsArgs = {
+  address: string;
+  filters?: { fromEpoch?: number | null; toEpoch?: number | null } | null;
+};
+
+type AccountStatsRow = {
+  timestamp: number;
+  pnl: string;
+  cumulativePnl: string;
+  volume: string;
+  cumulativeVolume: string;
+  deployedCollateral: string;
+  claimableCollateral: string;
+  predictionsTotal: number;
+  predictionsWon: number;
+  predictionsLost: number;
+  predictionsPending: number;
+  predictionsNonDecisive: number;
+};
+
+const callStats = (args: AccountStatsArgs): Promise<AccountStatsRow[]> =>
+  (
+    accountStats as unknown as (
+      p: unknown,
+      a: AccountStatsArgs,
+      c: unknown,
+      i: unknown
+    ) => Promise<AccountStatsRow[]>
+  )({}, args, {}, {});
+
+describe('Query.accountStats', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Three aligned buckets (1d, 2d, 3d epoch); each helper returns its own slice.
+    mockQueryAccountVolume.mockResolvedValue([
+      { timestamp: 1_000_000, volume: WEI(10) },
+      { timestamp: 1_086_400, volume: WEI(5) },
+      { timestamp: 1_172_800, volume: WEI(20) },
+    ]);
+    mockQueryAccountPnl.mockResolvedValue([
+      { timestamp: 1_000_000, pnl: WEI(3), cumulativePnl: WEI(3) },
+      { timestamp: 1_086_400, pnl: WEI(-1), cumulativePnl: WEI(2) },
+      { timestamp: 1_172_800, pnl: WEI(7), cumulativePnl: WEI(9) },
+    ]);
+    mockQueryAccountBalance.mockResolvedValue([
+      {
+        timestamp: 1_000_000,
+        deployedCollateral: WEI(100),
+        claimableCollateral: WEI(0),
+      },
+      {
+        timestamp: 1_086_400,
+        deployedCollateral: WEI(80),
+        claimableCollateral: WEI(20),
+      },
+      {
+        timestamp: 1_172_800,
+        deployedCollateral: WEI(60),
+        claimableCollateral: WEI(40),
+      },
+    ]);
+    mockQueryAccountPredictionCount.mockResolvedValue([
+      {
+        timestamp: 1_000_000,
+        total: 2,
+        won: 0,
+        lost: 0,
+        pending: 2,
+        nonDecisive: 0,
+      },
+      {
+        timestamp: 1_086_400,
+        total: 1,
+        won: 1,
+        lost: 0,
+        pending: 0,
+        nonDecisive: 0,
+      },
+      {
+        timestamp: 1_172_800,
+        total: 3,
+        won: 1,
+        lost: 1,
+        pending: 1,
+        nonDecisive: 0,
+      },
+    ]);
+  });
+
+  it('merges all four helper series into the fat row by timestamp, ascending', async () => {
+    const rows = await callStats({ address: '0xABC' });
+    expect(rows.map((r) => r.timestamp)).toEqual([
+      1_000_000, 1_086_400, 1_172_800,
+    ]);
+
+    expect(rows[0]).toMatchObject({
+      timestamp: 1_000_000,
+      pnl: WEI(3),
+      cumulativePnl: WEI(3),
+      volume: WEI(10),
+      deployedCollateral: WEI(100),
+      claimableCollateral: WEI(0),
+      predictionsTotal: 2,
+      predictionsPending: 2,
+    });
+  });
+
+  it('computes `cumulativeVolume` as a running sum across buckets', async () => {
+    const rows = await callStats({ address: '0xabc' });
+    expect(rows.map((r) => r.cumulativeVolume)).toEqual([
+      WEI(10),
+      WEI(15),
+      WEI(35),
+    ]);
+  });
+
+  it('normalizes the address to lowercase before querying helpers', async () => {
+    await callStats({ address: '0xAbCdEf' });
+    for (const m of [
+      mockQueryAccountVolume,
+      mockQueryAccountPnl,
+      mockQueryAccountBalance,
+      mockQueryAccountPredictionCount,
+    ]) {
+      expect(m).toHaveBeenCalledWith(
+        '0xabcdef',
+        expect.any(String),
+        expect.any(Date),
+        expect.any(Date)
+      );
+    }
+  });
+
+  it('defaults to a 365-day window when neither bound is given', async () => {
+    const before = Math.floor(Date.now() / 1000);
+    await callStats({ address: '0xabc' });
+    const after = Math.floor(Date.now() / 1000);
+    const [, , fromDate, toDate] = mockQueryAccountVolume.mock.calls[0];
+    const fromEpoch = Math.floor((fromDate as Date).getTime() / 1000);
+    const toEpoch = Math.floor((toDate as Date).getTime() / 1000);
+    // `to` ≈ now, `from` ≈ now − 365d (within a 2-second tolerance for test latency).
+    expect(toEpoch).toBeGreaterThanOrEqual(before);
+    expect(toEpoch).toBeLessThanOrEqual(after + 1);
+    expect(toEpoch - fromEpoch).toBe(365 * 86_400);
+  });
+
+  it('respects explicit `fromEpoch` / `toEpoch` bounds', async () => {
+    const from = Math.floor(new Date('2026-01-01T00:00:00Z').getTime() / 1000);
+    const to = Math.floor(new Date('2026-02-01T00:00:00Z').getTime() / 1000);
+    await callStats({
+      address: '0xabc',
+      filters: { fromEpoch: from, toEpoch: to },
+    });
+    const [, , fromDate, toDate] = mockQueryAccountVolume.mock.calls[0];
+    expect(Math.floor((fromDate as Date).getTime() / 1000)).toBe(from);
+    expect(Math.floor((toDate as Date).getTime() / 1000)).toBe(to);
+  });
+
+  it('returns an empty array when every helper returns nothing', async () => {
+    for (const m of [
+      mockQueryAccountVolume,
+      mockQueryAccountPnl,
+      mockQueryAccountBalance,
+      mockQueryAccountPredictionCount,
+    ]) {
+      m.mockResolvedValue([]);
+    }
+    const rows = await callStats({ address: '0xabc' });
+    expect(rows).toEqual([]);
+  });
+
+  it('keeps bars that only some helpers report (sparse merge)', async () => {
+    // Volume + balance are sparse; pnl + counts have all three buckets.
+    mockQueryAccountVolume.mockResolvedValue([
+      { timestamp: 1_086_400, volume: WEI(5) },
+    ]);
+    mockQueryAccountBalance.mockResolvedValue([]);
+    const rows = await callStats({ address: '0xabc' });
+    expect(rows.map((r) => r.timestamp)).toEqual([
+      1_000_000, 1_086_400, 1_172_800,
+    ]);
+    expect(rows[0].volume).toBe('0');
+    expect(rows[0].deployedCollateral).toBe('0');
+    expect(rows[1].volume).toBe(WEI(5));
+    // Running cumulative volume still walks the merged-timestamp list.
+    expect(rows.map((r) => r.cumulativeVolume)).toEqual(['0', WEI(5), WEI(5)]);
   });
 });

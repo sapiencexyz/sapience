@@ -34,6 +34,7 @@ import { User } from './User';
 
 import { accountActivity } from './queries/activity';
 import {
+  accountStats,
   accountStatsLeaderboardPage,
   accountStatsRank,
 } from './queries/accountStats';
@@ -74,7 +75,15 @@ import { questions } from './queries/questions';
 import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
 import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
+import {
+  accountBalance,
+  accountPnl,
+  accountPredictionCount,
+  accountVolume,
+  protocolVolume,
+} from './queries/timeSeries';
 import { trade, tradeCount, trades } from './queries/trade';
+import { accountTotalVolume } from './queries/volume';
 
 export const resolvers: Resolvers = {
   ...scalarResolvers,
@@ -84,6 +93,8 @@ export const resolvers: Resolvers = {
     accuracyLeaderboardPage,
     accountStatsLeaderboardPage,
     accountStatsRank,
+    // Per-account stats time series (fat row)
+    accountStats,
     // Activity + unified feeds
     accountActivity,
     // Analytics
@@ -91,6 +102,13 @@ export const resolvers: Resolvers = {
     openInterestByTimeToResolution,
     protocolStats,
     vaultStats,
+    // Legacy per-metric time series (DEPRECATED — superseded by accountStats / accountStatsRank.volume / protocolStats).
+    accountBalance,
+    accountPnl,
+    accountPredictionCount,
+    accountVolume,
+    accountTotalVolume,
+    protocolVolume,
     // Collateral
     collateralBalance,
     collateralBalanceHistory,

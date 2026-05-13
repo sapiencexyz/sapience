@@ -113,6 +113,209 @@
     ],
     "types": [
       {
+        "kind": "OBJECT",
+        "name": "AccountStat",
+        "description": "One row of the per-account stats time series — wallet collateral\nposition, settlement PnL, trade volume, and prediction outcome counts\nat a single snapshot boundary. Mirrors the fat-row pattern used by\n`ProtocolStat` / `VaultStat`. Wei amounts are 18-decimal decimal strings;\ncounts are integers.\n\nToday this is assembled on-demand from the same SQL helpers that back\nthe deprecated `accountBalance` / `accountPnl` / `accountPredictionCount` /\n`accountVolume` resolvers, projected to a fixed daily cadence. A\nfollow-up will introduce a real per-account snapshot table and swap\nthe resolver to read from it — the wire shape is the destination, so\nclients are forward-compatible across that swap.",
+        "fields": [
+          {
+            "name": "timestamp",
+            "description": "Unix epoch timestamp (seconds) at the snapshot boundary",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pnl",
+            "description": "Realized PnL for this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cumulativePnl",
+            "description": "Running cumulative realized PnL through this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "volume",
+            "description": "Trade volume for this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cumulativeVolume",
+            "description": "Running cumulative trade volume through this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "deployedCollateral",
+            "description": "Active collateral in open positions at this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "claimableCollateral",
+            "description": "Collateral available to claim from settled positions at this bucket (wei, 18 dec)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "predictionsTotal",
+            "description": "Predictions opened in this bucket, total",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "predictionsWon",
+            "description": "Predictions won (settled in caller's favour) in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "predictionsLost",
+            "description": "Predictions lost in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "predictionsPending",
+            "description": "Predictions still pending at the bucket boundary",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "predictionsNonDecisive",
+            "description": "Predictions settled non-decisively in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "INPUT_OBJECT",
         "name": "AccountStatsFilters",
         "description": "Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields\nare optional: omit the input entirely to rank by `NET_PNL` over all time.\n`fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.\nBoth bounds are epoch seconds (inclusive).",
@@ -464,6 +667,37 @@
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "AccountStatsTimeSeriesFilters",
+        "description": "Window filter for `accountStats`. Both fields optional; epoch seconds,\ninclusive. `fromEpoch` omitted ⇒ no lower bound; `toEpoch` omitted ⇒ now.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "fromEpoch",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "toEpoch",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },
@@ -2717,6 +2951,65 @@
           }
         ],
         "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "BalanceDataPoint",
+        "description": "Time-bucketed collateral-balance data point (legacy).",
+        "fields": [
+          {
+            "name": "claimableCollateral",
+            "description": "Collateral available to claim from settled positions (wei)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "deployedCollateral",
+            "description": "Active collateral deployed in open positions (wei)",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "timestamp",
+            "description": "Unix epoch timestamp (seconds) for the start of this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -13415,6 +13708,65 @@
       },
       {
         "kind": "OBJECT",
+        "name": "PnlDataPoint",
+        "description": "Time-bucketed PnL data point with cumulative tracking (legacy).",
+        "fields": [
+          {
+            "name": "cumulativePnl",
+            "description": "Running cumulative PnL in wei",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pnl",
+            "description": "PnL for this bucket in wei",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "timestamp",
+            "description": "Unix epoch timestamp (seconds) for the start of this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "Position",
         "description": "ERC-20 token balance representing a side of a prediction position",
         "fields": [
@@ -14038,6 +14390,113 @@
         "possibleTypes": null
       },
       {
+        "kind": "OBJECT",
+        "name": "PredictionCountDataPoint",
+        "description": "Time-bucketed prediction-count data point with outcome breakdown (legacy).",
+        "fields": [
+          {
+            "name": "lost",
+            "description": "Predictions lost in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "nonDecisive",
+            "description": "Predictions settled as non-decisive in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pending",
+            "description": "Predictions still pending in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "timestamp",
+            "description": "Unix epoch timestamp (seconds) for the start of this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "total",
+            "description": "Total predictions opened in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "won",
+            "description": "Predictions won in this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "ENUM",
         "name": "PredictionSortField",
         "description": "Field to sort predictions by",
@@ -14311,6 +14770,378 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "accountStats",
+            "description": "Per-account stats time series — wallet collateral position, PnL, volume,\nand prediction outcome counts across snapshots in a window. Mirrors the\n`protocolStats` / `vaultStats` fat-row shape (no `interval` arg, server\npicks the cadence). Both bounds in `filters` are optional epoch seconds\n(inclusive); omit `filters` to return the full series.\n\nImplementation today wraps the legacy per-metric SQL helpers and emits\none point per day. A follow-up migrates this to a real per-account\nsnapshot table without changing the wire shape.",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filters",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "AccountStatsTimeSeriesFilters",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "AccountStat",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "accountBalance",
+            "description": "Time-bucketed collateral balance for a single address — deployed (in open\npositions) and claimable (settled but unredeemed). DEPRECATED: use\n`accountStats`; the fat row carries `deployedCollateral` /\n`claimableCollateral` per snapshot.",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "from",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "DateTimeISO",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "interval",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "ENUM",
+                    "name": "TimeInterval",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "to",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "DateTimeISO",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "BalanceDataPoint",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountStats` — the fat row carries `deployedCollateral` / `claimableCollateral` per snapshot."
+          },
+          {
+            "name": "accountPnl",
+            "description": "Time-bucketed profit-and-loss for a single address with cumulative tracking.\nDEPRECATED: use `accountStats`; the fat row carries `pnl` / `cumulativePnl`\nper snapshot.",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "from",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "DateTimeISO",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "interval",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "ENUM",
+                    "name": "TimeInterval",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "to",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "DateTimeISO",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "PnlDataPoint",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountStats` — the fat row carries `pnl` / `cumulativePnl` per snapshot."
+          },
+          {
+            "name": "accountPredictionCount",
+            "description": "Time-bucketed prediction count with outcome breakdown for a single address,\nbucketed by creation time. DEPRECATED: use `accountStats`; the fat row carries\n`predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending`\n/ `predictionsNonDecisive` per snapshot.",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "from",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "DateTimeISO",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "interval",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "ENUM",
+                    "name": "TimeInterval",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "to",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "DateTimeISO",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "PredictionCountDataPoint",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountStats` — the fat row carries `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending` / `predictionsNonDecisive` per snapshot."
+          },
+          {
+            "name": "accountVolume",
+            "description": "Time-bucketed trading volume for a single address. DEPRECATED: use\n`accountStats`; the fat row carries `volume` / `cumulativeVolume` per snapshot.",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "from",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "DateTimeISO",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "interval",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "ENUM",
+                    "name": "TimeInterval",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "to",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "DateTimeISO",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "VolumeDataPoint",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountStats` — the fat row carries `volume` / `cumulativeVolume` per snapshot."
+          },
+          {
+            "name": "accountTotalVolume",
+            "description": "Lifetime trading volume for a single address as a wei-decimal string.\nDEPRECATED: use `accountStatsRank(address: $a).volume` (omit `filters` for\nall-time).",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountStatsRank(address: $a).volume` (omit `filters` for all-time)."
           },
           {
             "name": "accountStatsLeaderboardPage",
@@ -16148,6 +16979,65 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "protocolVolume",
+            "description": "Time-bucketed total protocol trading volume across all users. DEPRECATED:\nuse `protocolStats`; the fat row carries `periodVolume` / `cumulativeVolume`\nper snapshot.",
+            "args": [
+              {
+                "name": "from",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "DateTimeISO",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "interval",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "ENUM",
+                    "name": "TimeInterval",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "to",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "DateTimeISO",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "VolumeDataPoint",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `protocolStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot."
           },
           {
             "name": "questions",
@@ -18117,6 +19007,41 @@
         "possibleTypes": null
       },
       {
+        "kind": "ENUM",
+        "name": "TimeInterval",
+        "description": "Time interval for bucketing the legacy per-account time-series resolvers.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "DAY",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "HOUR",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "MONTH",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "WEEK",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
         "kind": "OBJECT",
         "name": "TimeToResolutionBucket",
         "description": "Open-interest aggregated by time-to-resolution bucket. Each unsettled\nprediction's collateral is bucketed by the latest endTime among the conditions\nit touches (the moment its OI can finally be claimed). One row per non-empty\nbucket, ordered from soonest (bucket = 1) to furthest out.",
@@ -19569,6 +20494,49 @@
           {
             "name": "periodPnL",
             "description": "Realized PnL delta over the snapshot interval",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "VolumeDataPoint",
+        "description": "Time-bucketed volume data point for charts (legacy).",
+        "fields": [
+          {
+            "name": "timestamp",
+            "description": "Unix epoch timestamp (seconds) for the start of this bucket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "volume",
+            "description": "Total volume in wei for this bucket",
             "args": [],
             "type": {
               "kind": "NON_NULL",

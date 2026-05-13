@@ -27,13 +27,17 @@ A single activity entry — either a prediction or a trade, sorted by timestamp
 type ActivityItem {
   prediction: Prediction
 
-  """Unix seconds timestamp for sorting"""
+  """
+  Unix seconds timestamp for sorting
+  """
   timestamp: Int!
   trade: ActivityTrade
   type: String!
 }
 
-"""Trade fields embedded in an activity item"""
+"""
+Trade fields embedded in an activity item
+"""
 type ActivityTrade {
   blockNumber: Int!
   buyer: String!
@@ -262,8 +266,22 @@ input BoolNullableFilter {
 
 type Category {
   _count: CategoryCount
-  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
-  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  conditionGroups(
+    cursor: ConditionGroupWhereUniqueInput
+    distinct: [ConditionGroupScalarFieldEnum!]
+    orderBy: [ConditionGroupOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: ConditionGroupWhereInput
+  ): [ConditionGroup!]!
+  conditions(
+    cursor: ConditionWhereUniqueInput
+    distinct: [ConditionScalarFieldEnum!]
+    orderBy: [ConditionOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: ConditionWhereInput
+  ): [Condition!]!
   createdAt: DateTimeISO!
   id: Int!
   name: String!
@@ -384,7 +402,14 @@ type Condition {
   _count: ConditionCount
   assertionId: String
   assertionTimestamp: Int
-  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
+  attestations(
+    cursor: AttestationWhereUniqueInput
+    distinct: [AttestationScalarFieldEnum!]
+    orderBy: [AttestationOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: AttestationWhereInput
+  ): [Attestation!]!
   category(where: CategoryWhereInput): Category
   categoryId: Int
   chainId: Int!
@@ -395,28 +420,43 @@ type Condition {
   displayOrder: Int
   endTime: Int!
 
-  """YES probability from Polymarket (0.0–1.0), null for non-Polymarket"""
+  """
+  YES probability from Polymarket (0.0–1.0), null for non-Polymarket
+  """
   estimatedPrice: Float
   id: String!
   nonDecisive: Boolean!
   openInterest: String!
   optionName: String
   predictionCount: Int!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+  predictions(
+    cursor: LegacyPredictionWhereUniqueInput
+    distinct: [LegacyPredictionScalarFieldEnum!]
+    orderBy: [LegacyPredictionOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: LegacyPredictionWhereInput
+  ): [LegacyPrediction!]!
   public: Boolean!
   question: String!
   resolvedToYes: Boolean!
 
-  """Canonical resolver address for this condition (required)"""
+  """
+  Canonical resolver address for this condition (required)
+  """
   resolver: String!
   settled: Boolean!
   settledAt: Int
   shortName: String
 
-  """Image URL from Polymarket similar market"""
+  """
+  Image URL from Polymarket similar market
+  """
   similarMarketImage: String
 
-  """USD total trading volume from Polymarket similar market"""
+  """
+  USD total trading volume from Polymarket similar market
+  """
   similarMarketVolume: Float!
   similarMarketVolume1h: Float!
   similarMarketVolume4h: Float!
@@ -439,7 +479,14 @@ type ConditionGroup {
   _count: ConditionGroupCount
   category(where: CategoryWhereInput): Category
   categoryId: Int
-  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  conditions(
+    cursor: ConditionWhereUniqueInput
+    distinct: [ConditionScalarFieldEnum!]
+    orderBy: [ConditionOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: ConditionWhereInput
+  ): [Condition!]!
   createdAt: DateTimeISO!
   id: Int!
   name: String!
@@ -836,11 +883,15 @@ type AccuracyLeaderboardEntry {
   accuracyScore: Float!
 }
 
-"""Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag."""
+"""
+Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag.
+"""
 type AccuracyLeaderboardPage implements Page {
   items: [AccuracyLeaderboardEntry!]!
   hasMore: Boolean!
-  """Total forecasters on the leaderboard — populated unconditionally (cheap; derived from the in-memory leaderboard array)."""
+  """
+  Total forecasters on the leaderboard — populated unconditionally (cheap; derived from the in-memory leaderboard array).
+  """
   totalCount: Int
 }
 
@@ -866,7 +917,9 @@ input IntNullableFilter {
   notIn: [Int!]
 }
 
-"""Legacy position model (NFT-based, V1)"""
+"""
+Legacy position model (NFT-based, V1)
+"""
 type LegacyPosition {
   _count: LegacyPositionCount
   chainId: Int!
@@ -878,7 +931,14 @@ type LegacyPosition {
   id: Int!
   marketAddress: String!
   mintedAt: Int!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+  predictions(
+    cursor: LegacyPredictionWhereUniqueInput
+    distinct: [LegacyPredictionScalarFieldEnum!]
+    orderBy: [LegacyPredictionOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: LegacyPredictionWhereInput
+  ): [LegacyPrediction!]!
   predictor: String!
   predictorCollateral: String
   predictorNftTokenId: String!
@@ -1058,7 +1118,14 @@ type LimitOrder {
   orderId: String!
   placedAt: Int!
   placedTxHash: String!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+  predictions(
+    cursor: LegacyPredictionWhereUniqueInput
+    distinct: [LegacyPredictionScalarFieldEnum!]
+    orderBy: [LegacyPredictionOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: LegacyPredictionWhereInput
+  ): [LegacyPrediction!]!
   predictor: String!
   predictorCollateral: String!
   refCode: String
@@ -1273,9 +1340,13 @@ enum NullsOrder {
   last
 }
 
-"""Individual outcome pick within a pick configuration"""
+"""
+Individual outcome pick within a pick configuration
+"""
 type Pick {
-  """The condition this pick references. May be null if the conditionId is dangling."""
+  """
+  The condition this pick references. May be null if the conditionId is dangling.
+  """
   condition: Condition
   conditionId: String!
   conditionResolver: String!
@@ -1306,13 +1377,17 @@ type PickConfiguration {
   totalPredictorCollateral: String!
 }
 
-"""Paginated wrapper around Position rows with a server-truth hasMore flag"""
+"""
+Paginated wrapper around Position rows with a server-truth hasMore flag
+"""
 type PositionsPage {
   items: [Position!]!
   hasMore: Boolean!
 }
 
-"""ERC-20 token balance representing a side of a prediction position"""
+"""
+ERC-20 token balance representing a side of a prediction position
+"""
 type Position {
   balance: String!
   chainId: Int!
@@ -1329,7 +1404,9 @@ type Position {
   userCollateral: String
 }
 
-"""Field to sort positions by"""
+"""
+Field to sort positions by
+"""
 enum PositionSortField {
   CREATED_AT
   UPDATED_AT
@@ -1364,13 +1441,17 @@ type Prediction {
   settledAt: Int
 }
 
-"""Field to sort predictions by"""
+"""
+Field to sort predictions by
+"""
 enum PredictionSortField {
   CREATED_AT
   SETTLED_AT
 }
 
-"""Metric an account-stats leaderboard is ranked by."""
+"""
+Metric an account-stats leaderboard is ranked by.
+"""
 enum AccountStatsMetric {
   NET_PNL
   GAINS
@@ -1415,11 +1496,15 @@ interface Page {
   totalCount: Int
 }
 
-"""Paginated wrapper around `AccountStatsLeaderboardEntry` rows with a server-truth hasMore flag."""
+"""
+Paginated wrapper around `AccountStatsLeaderboardEntry` rows with a server-truth hasMore flag.
+"""
 type AccountStatsLeaderboardPage implements Page {
   items: [AccountStatsLeaderboardEntry!]!
   hasMore: Boolean!
-  """Total addresses with activity in the window — populated unconditionally (cheap; derived from the in-memory merged-stats array)."""
+  """
+  Total addresses with activity in the window — populated unconditionally (cheap; derived from the in-memory merged-stats array).
+  """
   totalCount: Int
 }
 
@@ -1443,10 +1528,14 @@ type AccountStatsRank {
   totalParticipants: Int!
 }
 
-"""Open-interest aggregated for a single category."""
+"""
+Open-interest aggregated for a single category.
+"""
 type CategoryOpenInterest {
   category: Category!
-  """Open interest in wei (decimal string)"""
+  """
+  Open interest in wei (decimal string)
+  """
   openInterest: String!
 }
 
@@ -1457,37 +1546,144 @@ it touches (the moment its OI can finally be claimed). One row per non-empty
 bucket, ordered from soonest (bucket = 1) to furthest out.
 """
 type TimeToResolutionBucket {
-  """Sort order: 1 = soonest, increasing for further-out buckets"""
+  """
+  Sort order: 1 = soonest, increasing for further-out buckets
+  """
   bucket: Int!
-  """Display label, e.g. ≤1d / 2-7d / 1-2mo"""
+  """
+  Display label, e.g. ≤1d / 2-7d / 1-2mo
+  """
   label: String!
-  """Open interest in wei (decimal string)"""
+  """
+  Open interest in wei (decimal string)
+  """
   openInterest: String!
-  """Number of predictions contributing to this bucket"""
+  """
+  Number of predictions contributing to this bucket
+  """
   predictionCount: Int!
 }
 
-"""Protocol-wide stats snapshot — no vault scoping."""
+"""
+Protocol-wide stats snapshot — no vault scoping.
+"""
 type ProtocolStat {
-  """Unix epoch timestamp (seconds) aligned to the snapshot interval boundary"""
+  """
+  Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
+  """
   timestamp: Int!
   cumulativeVolume: String!
 
-  """Cumulative count of predictions and secondary trades/sales"""
+  """
+  Cumulative count of predictions and secondary trades/sales
+  """
   totalTradeCount: Int!
 
-  """Trade-count delta over the snapshot interval"""
+  """
+  Trade-count delta over the snapshot interval
+  """
   periodTradeCount: Int!
 
-  """Cumulative-volume delta over the snapshot interval"""
+  """
+  Cumulative-volume delta over the snapshot interval
+  """
   periodVolume: String!
   openInterest: String!
   escrowBalance: String!
 }
 
-"""Vault-specific stats snapshot for a single vault address."""
+"""
+One row of the per-account stats time series — wallet collateral
+position, settlement PnL, trade volume, and prediction outcome counts
+at a single snapshot boundary. Mirrors the fat-row pattern used by
+`ProtocolStat` / `VaultStat`. Wei amounts are 18-decimal decimal strings;
+counts are integers.
+
+Today this is assembled on-demand from the same SQL helpers that back
+the deprecated `accountBalance` / `accountPnl` / `accountPredictionCount` /
+`accountVolume` resolvers, projected to a fixed daily cadence. A
+follow-up will introduce a real per-account snapshot table and swap
+the resolver to read from it — the wire shape is the destination, so
+clients are forward-compatible across that swap.
+"""
+type AccountStat {
+  """
+  Unix epoch timestamp (seconds) at the snapshot boundary
+  """
+  timestamp: Int!
+
+  """
+  Realized PnL for this bucket (wei, 18 dec)
+  """
+  pnl: String!
+
+  """
+  Running cumulative realized PnL through this bucket (wei, 18 dec)
+  """
+  cumulativePnl: String!
+
+  """
+  Trade volume for this bucket (wei, 18 dec)
+  """
+  volume: String!
+
+  """
+  Running cumulative trade volume through this bucket (wei, 18 dec)
+  """
+  cumulativeVolume: String!
+
+  """
+  Active collateral in open positions at this bucket (wei, 18 dec)
+  """
+  deployedCollateral: String!
+
+  """
+  Collateral available to claim from settled positions at this bucket (wei, 18 dec)
+  """
+  claimableCollateral: String!
+
+  """
+  Predictions opened in this bucket, total
+  """
+  predictionsTotal: Int!
+
+  """
+  Predictions won (settled in caller's favour) in this bucket
+  """
+  predictionsWon: Int!
+
+  """
+  Predictions lost in this bucket
+  """
+  predictionsLost: Int!
+
+  """
+  Predictions still pending at the bucket boundary
+  """
+  predictionsPending: Int!
+
+  """
+  Predictions settled non-decisively in this bucket
+  """
+  predictionsNonDecisive: Int!
+}
+
+"""
+Window filter for `accountStats`. Both fields optional; epoch seconds,
+inclusive. `fromEpoch` omitted ⇒ no lower bound; `toEpoch` omitted ⇒ now.
+"""
+input AccountStatsTimeSeriesFilters {
+  fromEpoch: Int
+  toEpoch: Int
+}
+
+"""
+Vault-specific stats snapshot for a single vault address.
+"""
 type VaultStat {
-  """Unix epoch timestamp (seconds) aligned to the snapshot interval boundary"""
+  """
+  Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
+  """
   timestamp: Int!
   vaultBalance: String!
   vaultAvailableAssets: String!
@@ -1499,16 +1695,24 @@ type VaultStat {
   vaultWithdrawals: String!
   vaultAirdropGains: String!
 
-  """Cumulative wUSDe paid by the vault on secondary-market buys"""
+  """
+  Cumulative wUSDe paid by the vault on secondary-market buys
+  """
   vaultSecondaryBought: String!
 
-  """Cumulative wUSDe received by the vault on secondary-market sells"""
+  """
+  Cumulative wUSDe received by the vault on secondary-market sells
+  """
   vaultSecondarySold: String!
 
-  """wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins"""
+  """
+  wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins
+  """
   vaultUnredeemedClaim: String!
 
-  """Realized PnL delta over the snapshot interval"""
+  """
+  Realized PnL delta over the snapshot interval
+  """
   periodPnL: String!
 }
 
@@ -1525,7 +1729,101 @@ type Query {
   """
   Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
-  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
+  accountActivity(
+    address: String
+    conditionId: String
+    pickConfigId: String
+    skip: Int! = 0
+    take: Int! = 20
+    type: String
+  ): [ActivityItem!]!
+
+  """
+  Per-account stats time series — wallet collateral position, PnL, volume,
+  and prediction outcome counts across snapshots in a window. Mirrors the
+  `protocolStats` / `vaultStats` fat-row shape (no `interval` arg, server
+  picks the cadence). Both bounds in `filters` are optional epoch seconds
+  (inclusive); omit `filters` to return the full series.
+
+  Implementation today wraps the legacy per-metric SQL helpers and emits
+  one point per day. A follow-up migrates this to a real per-account
+  snapshot table without changing the wire shape.
+  """
+  accountStats(
+    address: String!
+    filters: AccountStatsTimeSeriesFilters
+  ): [AccountStat!]!
+
+  """
+  Time-bucketed collateral balance for a single address — deployed (in open
+  positions) and claimable (settled but unredeemed). DEPRECATED: use
+  `accountStats`; the fat row carries `deployedCollateral` /
+  `claimableCollateral` per snapshot.
+  """
+  accountBalance(
+    address: String!
+    from: DateTimeISO
+    interval: TimeInterval!
+    to: DateTimeISO
+  ): [BalanceDataPoint!]!
+    @deprecated(
+      reason: "Use `accountStats` — the fat row carries `deployedCollateral` / `claimableCollateral` per snapshot."
+    )
+
+  """
+  Time-bucketed profit-and-loss for a single address with cumulative tracking.
+  DEPRECATED: use `accountStats`; the fat row carries `pnl` / `cumulativePnl`
+  per snapshot.
+  """
+  accountPnl(
+    address: String!
+    from: DateTimeISO
+    interval: TimeInterval!
+    to: DateTimeISO
+  ): [PnlDataPoint!]!
+    @deprecated(
+      reason: "Use `accountStats` — the fat row carries `pnl` / `cumulativePnl` per snapshot."
+    )
+
+  """
+  Time-bucketed prediction count with outcome breakdown for a single address,
+  bucketed by creation time. DEPRECATED: use `accountStats`; the fat row carries
+  `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending`
+  / `predictionsNonDecisive` per snapshot.
+  """
+  accountPredictionCount(
+    address: String!
+    from: DateTimeISO
+    interval: TimeInterval!
+    to: DateTimeISO
+  ): [PredictionCountDataPoint!]!
+    @deprecated(
+      reason: "Use `accountStats` — the fat row carries `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending` / `predictionsNonDecisive` per snapshot."
+    )
+
+  """
+  Time-bucketed trading volume for a single address. DEPRECATED: use
+  `accountStats`; the fat row carries `volume` / `cumulativeVolume` per snapshot.
+  """
+  accountVolume(
+    address: String!
+    from: DateTimeISO
+    interval: TimeInterval!
+    to: DateTimeISO
+  ): [VolumeDataPoint!]!
+    @deprecated(
+      reason: "Use `accountStats` — the fat row carries `volume` / `cumulativeVolume` per snapshot."
+    )
+
+  """
+  Lifetime trading volume for a single address as a wei-decimal string.
+  DEPRECATED: use `accountStatsRank(address: $a).volume` (omit `filters` for
+  all-time).
+  """
+  accountTotalVolume(address: String!): String!
+    @deprecated(
+      reason: "Use `accountStatsRank(address: $a).volume` (omit `filters` for all-time)."
+    )
 
   """
   Accounts ranked by an account metric (net PnL, gains, losses, or volume)
@@ -1534,7 +1832,11 @@ type Query {
   time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
   unconditionally (cheap in-memory derivation).
   """
-  accountStatsLeaderboardPage(filters: AccountStatsFilters, take: Int! = 25, skip: Int! = 0): AccountStatsLeaderboardPage!
+  accountStatsLeaderboardPage(
+    filters: AccountStatsFilters
+    take: Int! = 25
+    skip: Int! = 0
+  ): AccountStatsLeaderboardPage!
 
   """
   Stats + rank for a single address against the same ranked set the
@@ -1545,7 +1847,10 @@ type Query {
   window has no participants at all — that distinguishes "empty window"
   from "present window, address unranked").
   """
-  accountStatsRank(address: String!, filters: AccountStatsFilters): AccountStatsRank!
+  accountStatsRank(
+    address: String!
+    filters: AccountStatsFilters
+  ): AccountStatsRank!
 
   """
   Top forecasters ranked by lifetime accuracy. The time-weighted error
@@ -1553,61 +1858,179 @@ type Query {
   Page-shaped with server-truth `hasMore`; `totalCount` is populated
   unconditionally (cheap in-memory derivation).
   """
-  accuracyLeaderboardPage(take: Int! = 25, skip: Int! = 0): AccuracyLeaderboardPage!
-  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
-  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
+  accuracyLeaderboardPage(
+    take: Int! = 25
+    skip: Int! = 0
+  ): AccuracyLeaderboardPage!
+  attestations(
+    cursor: AttestationWhereUniqueInput
+    distinct: [AttestationScalarFieldEnum!]
+    orderBy: [AttestationOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: AttestationWhereInput
+  ): [Attestation!]!
+  categories(
+    cursor: CategoryWhereUniqueInput
+    distinct: [CategoryScalarFieldEnum!]
+    orderBy: [CategoryOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: CategoryWhereInput
+  ): [Category!]!
 
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
   """
-  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated
+  claims(
+    chainId: Int
+    holder: String
+    predictionId: String
+    skip: Int! = 0
+    take: Int! = 50
+  ): [Claim!]! @deprecated
 
   """
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
-  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated
-  collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
-  collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
-  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
+  closes(
+    address: String
+    chainId: Int
+    pickConfigId: String
+    skip: Int! = 0
+    take: Int! = 50
+  ): [Close!]! @deprecated
+  collateralBalance(
+    address: String!
+    atBlock: Int
+    chainId: Int!
+  ): CollateralBalanceType!
+  collateralBalanceHistory(
+    address: String!
+    chainId: Int!
+    count: Int! = 12
+    intervalHours: Int! = 168
+  ): [CollateralBalanceSnapshotType!]!
+  collateralTransfers(
+    address: String!
+    chainId: Int!
+    excludeProtocol: Boolean = false
+    limit: Int! = 100
+    offset: Int! = 0
+  ): [CollateralTransferType!]!
   condition(where: ConditionWhereUniqueInput!): Condition
-  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
-  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
-  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
+    @deprecated
+  conditionGroups(
+    cursor: ConditionGroupWhereUniqueInput
+    distinct: [ConditionGroupScalarFieldEnum!]
+    orderBy: [ConditionGroupOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: ConditionGroupWhereInput
+  ): [ConditionGroup!]!
+  conditions(
+    cursor: ConditionWhereUniqueInput
+    distinct: [ConditionScalarFieldEnum!]
+    orderBy: [ConditionOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: ConditionWhereInput
+  ): [Condition!]!
 
-  """Look up a single pick configuration by ID"""
+  """
+  Look up a single pick configuration by ID
+  """
   pickConfiguration(id: String!): PickConfiguration @deprecated
 
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
   """
-  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]!
+  pickConfigurations(
+    chainId: Int
+    resolved: Boolean
+    result: SettlementResult
+    skip: Int! = 0
+    take: Int! = 50
+    tokens: [String!]
+  ): [PickConfiguration!]!
 
-  """Top 20 most-used tags across public conditions"""
+  """
+  Top 20 most-used tags across public conditions
+  """
   popularTags: [String!]!
 
-  """Count of token positions for a given holder"""
+  """
+  Count of token positions for a given holder
+  """
   positionCount(chainId: Int, holder: String!, settled: Boolean): Int!
 
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
+  positions(
+    chainId: Int
+    collateralMax: String
+    collateralMin: String
+    conditionId: String
+    endsAtMax: Int
+    endsAtMin: Int
+    holder: String
+    holderWon: Boolean
+    orderBy: PositionSortField
+    orderDirection: SortOrder
+    pickConfigId: String
+    result: SettlementResult
+    settled: Boolean
+    skip: Int! = 0
+    take: Int! = 50
+  ): [Position!]!
 
   """
   Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
   """
-  positionsPage(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): PositionsPage!
+  positionsPage(
+    chainId: Int
+    collateralMax: String
+    collateralMin: String
+    conditionId: String
+    endsAtMax: Int
+    endsAtMin: Int
+    holder: String
+    holderWon: Boolean
+    orderBy: PositionSortField
+    orderDirection: SortOrder
+    pickConfigId: String
+    result: SettlementResult
+    settled: Boolean
+    skip: Int! = 0
+    take: Int! = 50
+  ): PositionsPage!
 
-  """Look up a single prediction by its on-chain prediction ID"""
+  """
+  Look up a single prediction by its on-chain prediction ID
+  """
   prediction(id: String!): Prediction
 
-  """Count of escrow predictions involving the given address"""
+  """
+  Count of escrow predictions involving the given address
+  """
   predictionCount(address: String!, chainId: Int): Int!
 
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
   """
-  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
+  predictions(
+    address: String
+    chainId: Int
+    conditionId: String
+    isLegacy: Boolean
+    orderBy: PredictionSortField
+    orderDirection: SortOrder
+    settled: Boolean
+    skip: Int! = 0
+    take: Int! = 50
+  ): [Prediction!]!
 
   """
   Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
@@ -1636,9 +2059,39 @@ type Query {
   protocolStats(fromEpoch: Int, toEpoch: Int): [ProtocolStat!]!
 
   """
+  Time-bucketed total protocol trading volume across all users. DEPRECATED:
+  use `protocolStats`; the fat row carries `periodVolume` / `cumulativeVolume`
+  per snapshot.
+  """
+  protocolVolume(
+    from: DateTimeISO
+    interval: TimeInterval!
+    to: DateTimeISO
+  ): [VolumeDataPoint!]!
+    @deprecated(
+      reason: "Use `protocolStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot."
+    )
+
+  """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """
-  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
+  questions(
+    categorySlugs: [String!]
+    chainId: Int
+    maxEstimatedPrice: Float
+    maxSimilarMarketVolume: Float
+    minEndTime: Int
+    minEstimatedPrice: Float
+    minSimilarMarketVolume: Float
+    resolutionStatus: ResolutionStatus
+    search: String
+    similarMarketVolumeWindow: VolumeWindow
+    skip: Int! = 0
+    sortDirection: SortOrder! = desc
+    sortField: QuestionSortField
+    tag: String
+    take: Int! = 50
+  ): [Question!]!
 
   """
   Public referral analytics. Referral codes are attribution hints, not
@@ -1652,18 +2105,38 @@ type Query {
   """
   referralCodes(id: Int, limit: Int = 100, cursor: Int): ReferralCodesPage!
 
-  """Look up a single secondary market trade by its trade hash"""
+  """
+  Look up a single secondary market trade by its trade hash
+  """
   trade(id: String!): Trade
 
-  """Count of secondary market trades matching the given filters"""
-  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated
+  """
+  Count of secondary market trades matching the given filters
+  """
+  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int!
+    @deprecated
 
   """
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
   """
-  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
+  trades(
+    address: String
+    buyer: String
+    chainId: Int
+    seller: String
+    skip: Int! = 0
+    take: Int! = 50
+    token: String
+  ): [Trade!]!
   user(where: UserWhereUniqueInput!): User
-  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated
+  users(
+    cursor: UserWhereUniqueInput
+    distinct: [UserScalarFieldEnum!]
+    orderBy: [UserOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: UserWhereInput
+  ): [User!]! @deprecated
 
   """
   Vault-specific statistics time series for a single vault address — vault
@@ -1678,6 +2151,114 @@ type Query {
   appended when `toEpoch` covers now.
   """
   vaultStats(fromEpoch: Int, toEpoch: Int, vaultAddress: String!): [VaultStat!]!
+}
+
+# -----------------------------------------------
+# Legacy per-metric time-series surface — DEPRECATED.
+# Each Query field below is replaced by the fat-row `accountStats`
+# resolver (or `accountStatsRank.volume` for the all-time scalar).
+# Kept for the Exchange UI app and any external consumer pinned to
+# these shapes; safe to remove once those callers migrate.
+# -----------------------------------------------
+
+"""
+Time interval for bucketing the legacy per-account time-series resolvers.
+"""
+enum TimeInterval {
+  DAY
+  HOUR
+  MONTH
+  WEEK
+}
+
+"""
+Time-bucketed collateral-balance data point (legacy).
+"""
+type BalanceDataPoint {
+  """
+  Collateral available to claim from settled positions (wei)
+  """
+  claimableCollateral: String!
+
+  """
+  Active collateral deployed in open positions (wei)
+  """
+  deployedCollateral: String!
+
+  """
+  Unix epoch timestamp (seconds) for the start of this bucket
+  """
+  timestamp: Int!
+}
+
+"""
+Time-bucketed PnL data point with cumulative tracking (legacy).
+"""
+type PnlDataPoint {
+  """
+  Running cumulative PnL in wei
+  """
+  cumulativePnl: String!
+
+  """
+  PnL for this bucket in wei
+  """
+  pnl: String!
+
+  """
+  Unix epoch timestamp (seconds) for the start of this bucket
+  """
+  timestamp: Int!
+}
+
+"""
+Time-bucketed prediction-count data point with outcome breakdown (legacy).
+"""
+type PredictionCountDataPoint {
+  """
+  Predictions lost in this bucket
+  """
+  lost: Int!
+
+  """
+  Predictions settled as non-decisive in this bucket
+  """
+  nonDecisive: Int!
+
+  """
+  Predictions still pending in this bucket
+  """
+  pending: Int!
+
+  """
+  Unix epoch timestamp (seconds) for the start of this bucket
+  """
+  timestamp: Int!
+
+  """
+  Total predictions opened in this bucket
+  """
+  total: Int!
+
+  """
+  Predictions won in this bucket
+  """
+  won: Int!
+}
+
+"""
+Time-bucketed volume data point for charts (legacy).
+"""
+type VolumeDataPoint {
+  """
+  Unix epoch timestamp (seconds) for the start of this bucket
+  """
+  timestamp: Int!
+
+  """
+  Total volume in wei for this bucket
+  """
+  volume: String!
 }
 
 enum QueryMode {
@@ -1703,7 +2284,9 @@ enum QuestionItemType {
   group
 }
 
-"""Field to sort questions by"""
+"""
+Field to sort questions by
+"""
 enum QuestionSortField {
   createdAt
   endTime
@@ -1734,7 +2317,9 @@ type ReferralCode {
   isActive: Boolean!
   expiresAt: Int
 
-  """Total number of users who have claimed this code, across all pages."""
+  """
+  Total number of users who have claimed this code, across all pages.
+  """
   claimCount: Int!
 
   """
@@ -1750,7 +2335,9 @@ type ReferralCode {
   """
   totalPositions: Int!
 
-  """Paginated per-claimant breakdown with trading volume + position count."""
+  """
+  Paginated per-claimant breakdown with trading volume + position count.
+  """
   claimants(limit: Int = 100, cursor: Int): ReferralCodeClaimantsPage!
 }
 
@@ -1802,7 +2389,9 @@ input ReferralCodeWhereInput {
   updatedAt: DateTimeFilter
 }
 
-"""Filter questions by their resolution status"""
+"""
+Filter questions by their resolution status
+"""
 enum ResolutionStatus {
   all
   resolved
@@ -1811,7 +2400,9 @@ enum ResolutionStatus {
   unresolved
 }
 
-"""Outcome of a prediction settlement"""
+"""
+Outcome of a prediction settlement
+"""
 enum SettlementResult {
   COUNTERPARTY_WINS
   NON_DECISIVE
@@ -1893,7 +2484,9 @@ used for referrals and other per-wallet metadata.
 type User {
   _count: UserCount
 
-  """Canonical Ethereum wallet address for this user."""
+  """
+  Canonical Ethereum wallet address for this user.
+  """
   address: String!
   createdAt: DateTimeISO!
   id: Int!
@@ -1904,9 +2497,18 @@ type User {
   """
   maxReferrals: Int!
 
-  """keccak256(utf8(trimmed_lowercase_code)) stored as 0x-prefixed hex."""
+  """
+  keccak256(utf8(trimmed_lowercase_code)) stored as 0x-prefixed hex.
+  """
   refCodeHash: String
-  referrals(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
+  referrals(
+    cursor: UserWhereUniqueInput
+    distinct: [UserScalarFieldEnum!]
+    orderBy: [UserOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: UserWhereInput
+  ): [User!]!
   referredBy(where: UserWhereInput): User
   referredByCode(where: ReferralCodeWhereInput): ReferralCode
   referredByCodeId: Int
@@ -1992,7 +2594,9 @@ input UserWhereUniqueInput {
   updatedAt: DateTimeFilter
 }
 
-"""Time window for volume-based sorting"""
+"""
+Time window for volume-based sorting
+"""
 enum VolumeWindow {
   fourHours
   fourHoursFiltered

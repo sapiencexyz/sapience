@@ -1,5 +1,5 @@
 /**
- * Account-stats queries that share a single aggregation pipeline:
+ * Account-stats queries — three surfaces, two pipelines:
  *
  *   - `accountStatsLeaderboardPage`: addresses ranked by a chosen account
  *     metric over an optional epoch-seconds window. Page-shaped with
@@ -8,23 +8,37 @@
  *   - `accountStatsRank`: stats + rank for ONE address, sourced from the same
  *     ranked set the leaderboard slices, so the two surfaces reconcile
  *     byte-for-byte.
+ *   - `accountStats`: per-account stats *time series* (fat row mirroring
+ *     `protocolStats` / `vaultStats`). Distinct pipeline from the two
+ *     leaderboard surfaces — see the dedicated docstring below.
  *
- * Metrics: NET_PNL / GAINS / LOSSES (from `calculateAccountPnLBreakdown`,
- * attributed to settlement time) and VOLUME (from `calculateAccountVolumes`,
- * attributed to trade time). Both aggregations for a given window are
- * merged by address and held in a short TTL cache; ranking and pagination
- * are trivial array ops once cached.
+ * Leaderboard metrics: NET_PNL / GAINS / LOSSES (from
+ * `calculateAccountPnLBreakdown`, attributed to settlement time) and VOLUME
+ * (from `calculateAccountVolumes`, attributed to trade time). Both
+ * aggregations for a given window are merged by address and held in a short
+ * TTL cache; ranking and pagination are trivial array ops once cached.
  *
- * `filters` omitted ⇒ rank by `NET_PNL` over all-time. Inside `filters`:
- * `fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.
+ * For the leaderboard/rank surfaces: `filters` omitted ⇒ rank by `NET_PNL`
+ * over all-time. Inside `filters`: `fromEpoch` omitted ⇒ no lower bound
+ * (all-time); `toEpoch` omitted ⇒ now.
  */
-import type { QueryResolvers } from '../../__generated__/resolvers';
+import type {
+  QueryResolvers,
+  AccountStat,
+} from '../../__generated__/resolvers';
 import { AccountStatsMetric } from '../../__generated__/resolvers';
 import { TtlCache } from '../../../../lib/ttlCache';
 import {
   calculateAccountPnLBreakdown,
   calculateAccountVolumes,
 } from '../../../../services/accountStats';
+import {
+  queryAccountVolume,
+  queryAccountPnl,
+  queryAccountBalance,
+  queryAccountPredictionCount,
+} from '../../../../services/timeSeriesQueries';
+import { TimeInterval as HelperTimeInterval } from '../../../../services/timeSeriesTypes';
 import { clampSkip, clampTake } from './pagination';
 
 interface AccountStatsLeaderboardEntry {
@@ -193,4 +207,116 @@ export const accountStatsRank: NonNullable<
   }
   const entry = ranked[idx];
   return { ...entry, rank: idx + 1, totalParticipants: ranked.length };
+};
+
+// ─── accountStats (time series fat row) ─────────────────────────────────────
+//
+// Wire shape mirrors `protocolStats` / `vaultStats`: caller passes a window,
+// server emits one row per snapshot. Today this wraps the legacy per-metric
+// SQL helpers at a fixed daily cadence and merges by timestamp. A follow-up
+// introduces a real per-account snapshot table + cron writer + backfill,
+// and this resolver swaps to a single `SELECT … FROM "AccountStatSnapshot"`
+// — no wire change.
+//
+// The legacy `accountBalance` / `accountPnl` / `accountPredictionCount` /
+// `accountVolume` resolvers are kept as `@deprecated` wrappers around the
+// same helpers; this resolver is their consolidated replacement.
+
+/** Max DAY buckets in the legacy helpers — matches `MAX_BUCKETS[DAY]`. */
+const MAX_DAY_BUCKETS = 365;
+const SECONDS_PER_DAY = 86_400;
+
+const epochToDate = (epoch: number): Date => new Date(epoch * 1000);
+
+/**
+ * `accountStats` — per-account stats time series. Both bounds in `filters`
+ * are optional epoch seconds (inclusive). When both are omitted the window
+ * defaults to the last 365 days (the DAY-bucket cap in the helper layer)
+ * rather than "all history" — a wider window would tip the helpers'
+ * bucket-count guard. Document this in the SDL.
+ */
+export const accountStats: NonNullable<QueryResolvers['accountStats']> = async (
+  _parent,
+  { address, filters }
+) => {
+  const addr = address.toLowerCase();
+
+  const nowEpoch = Math.floor(Date.now() / 1000);
+  const toEpoch = filters?.toEpoch ?? nowEpoch;
+  const fromEpoch =
+    filters?.fromEpoch ?? toEpoch - MAX_DAY_BUCKETS * SECONDS_PER_DAY;
+
+  const from = epochToDate(fromEpoch);
+  const to = epochToDate(toEpoch);
+
+  // Parallel fan-out across the four legacy helpers; each hits a separate
+  // `generate_series`-based SQL so contention is low.
+  const [volumePoints, pnlPoints, balancePoints, countPoints] =
+    await Promise.all([
+      queryAccountVolume(addr, HelperTimeInterval.DAY, from, to),
+      queryAccountPnl(addr, HelperTimeInterval.DAY, from, to),
+      queryAccountBalance(addr, HelperTimeInterval.DAY, from, to),
+      queryAccountPredictionCount(addr, HelperTimeInterval.DAY, from, to),
+    ]);
+
+  // Build by-timestamp lookups so a sparse helper doesn't drop bars from
+  // the merged series. The helpers share a generate_series spine, so in
+  // practice timestamps line up bucket-for-bucket — the maps are
+  // defensive scaffolding that costs nothing for the small bucket counts
+  // here (≤365).
+  type VolumeRow = (typeof volumePoints)[number];
+  type PnlRow = (typeof pnlPoints)[number];
+  type BalanceRow = (typeof balancePoints)[number];
+  type CountRow = (typeof countPoints)[number];
+
+  const byTs = <T extends { timestamp: number }>(
+    rows: readonly T[]
+  ): Map<number, T> => new Map(rows.map((r) => [r.timestamp, r]));
+
+  const volumeByTs = byTs<VolumeRow>(volumePoints);
+  const pnlByTs = byTs<PnlRow>(pnlPoints);
+  const balanceByTs = byTs<BalanceRow>(balancePoints);
+  const countByTs = byTs<CountRow>(countPoints);
+
+  // Union of all timestamps so a sparse helper doesn't drop bars; sort
+  // ascending for stable rendering on the consumer side.
+  const allTimestamps = Array.from(
+    new Set<number>([
+      ...volumePoints.map((r) => r.timestamp),
+      ...pnlPoints.map((r) => r.timestamp),
+      ...balancePoints.map((r) => r.timestamp),
+      ...countPoints.map((r) => r.timestamp),
+    ])
+  ).sort((a, b) => a - b);
+
+  // `queryAccountVolume` reports per-bucket volume only; cumulative is
+  // computed here as a running sum so the fat row matches `cumulativePnl`'s
+  // shape. (`queryAccountPnl` already supplies cumulative.)
+  let runningVolume = 0n;
+  const results: AccountStat[] = allTimestamps.map((ts) => {
+    const v = volumeByTs.get(ts);
+    const p = pnlByTs.get(ts);
+    const b = balanceByTs.get(ts);
+    const c = countByTs.get(ts);
+
+    const bucketVolume = v?.volume ?? '0';
+    runningVolume += BigInt(bucketVolume);
+
+    return {
+      timestamp: ts,
+      pnl: p?.pnl ?? '0',
+      cumulativePnl: p?.cumulativePnl ?? '0',
+      volume: bucketVolume,
+      cumulativeVolume: runningVolume.toString(),
+      deployedCollateral: b?.deployedCollateral ?? '0',
+      claimableCollateral: b?.claimableCollateral ?? '0',
+      predictionsTotal: c?.total ?? 0,
+      predictionsWon: c?.won ?? 0,
+      predictionsLost: c?.lost ?? 0,
+      predictionsPending: c?.pending ?? 0,
+      predictionsNonDecisive: c?.nonDecisive ?? 0,
+    };
+  });
+
+  return results;
 };

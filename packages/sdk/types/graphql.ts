@@ -21,6 +21,48 @@ export type Scalars = {
 };
 
 /**
+ * One row of the per-account stats time series — wallet collateral
+ * position, settlement PnL, trade volume, and prediction outcome counts
+ * at a single snapshot boundary. Mirrors the fat-row pattern used by
+ * `ProtocolStat` / `VaultStat`. Wei amounts are 18-decimal decimal strings;
+ * counts are integers.
+ *
+ * Today this is assembled on-demand from the same SQL helpers that back
+ * the deprecated `accountBalance` / `accountPnl` / `accountPredictionCount` /
+ * `accountVolume` resolvers, projected to a fixed daily cadence. A
+ * follow-up will introduce a real per-account snapshot table and swap
+ * the resolver to read from it — the wire shape is the destination, so
+ * clients are forward-compatible across that swap.
+ */
+export type AccountStat = {
+  __typename?: 'AccountStat';
+  /** Collateral available to claim from settled positions at this bucket (wei, 18 dec) */
+  claimableCollateral: Scalars['String']['output'];
+  /** Running cumulative realized PnL through this bucket (wei, 18 dec) */
+  cumulativePnl: Scalars['String']['output'];
+  /** Running cumulative trade volume through this bucket (wei, 18 dec) */
+  cumulativeVolume: Scalars['String']['output'];
+  /** Active collateral in open positions at this bucket (wei, 18 dec) */
+  deployedCollateral: Scalars['String']['output'];
+  /** Realized PnL for this bucket (wei, 18 dec) */
+  pnl: Scalars['String']['output'];
+  /** Predictions lost in this bucket */
+  predictionsLost: Scalars['Int']['output'];
+  /** Predictions settled non-decisively in this bucket */
+  predictionsNonDecisive: Scalars['Int']['output'];
+  /** Predictions still pending at the bucket boundary */
+  predictionsPending: Scalars['Int']['output'];
+  /** Predictions opened in this bucket, total */
+  predictionsTotal: Scalars['Int']['output'];
+  /** Predictions won (settled in caller's favour) in this bucket */
+  predictionsWon: Scalars['Int']['output'];
+  /** Unix epoch timestamp (seconds) at the snapshot boundary */
+  timestamp: Scalars['Int']['output'];
+  /** Trade volume for this bucket (wei, 18 dec) */
+  volume: Scalars['String']['output'];
+};
+
+/**
  * Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields
  * are optional: omit the input entirely to rank by `NET_PNL` over all time.
  * `fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.
@@ -81,6 +123,15 @@ export type AccountStatsRank = {
   rank?: Maybe<Scalars['Int']['output']>;
   totalParticipants: Scalars['Int']['output'];
   volume: Scalars['String']['output'];
+};
+
+/**
+ * Window filter for `accountStats`. Both fields optional; epoch seconds,
+ * inclusive. `fromEpoch` omitted ⇒ no lower bound; `toEpoch` omitted ⇒ now.
+ */
+export type AccountStatsTimeSeriesFilters = {
+  fromEpoch?: InputMaybe<Scalars['Int']['input']>;
+  toEpoch?: InputMaybe<Scalars['Int']['input']>;
 };
 
 /**
@@ -340,6 +391,17 @@ export type AttestationWhereUniqueInput = {
   time?: InputMaybe<IntFilter>;
   transactionHash?: InputMaybe<StringFilter>;
   uid?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** Time-bucketed collateral-balance data point (legacy). */
+export type BalanceDataPoint = {
+  __typename?: 'BalanceDataPoint';
+  /** Collateral available to claim from settled positions (wei) */
+  claimableCollateral: Scalars['String']['output'];
+  /** Active collateral deployed in open positions (wei) */
+  deployedCollateral: Scalars['String']['output'];
+  /** Unix epoch timestamp (seconds) for the start of this bucket */
+  timestamp: Scalars['Int']['output'];
 };
 
 export type BigIntFilter = {
@@ -1530,6 +1592,17 @@ export type PickConfiguration = {
   totalPredictorCollateral: Scalars['String']['output'];
 };
 
+/** Time-bucketed PnL data point with cumulative tracking (legacy). */
+export type PnlDataPoint = {
+  __typename?: 'PnlDataPoint';
+  /** Running cumulative PnL in wei */
+  cumulativePnl: Scalars['String']['output'];
+  /** PnL for this bucket in wei */
+  pnl: Scalars['String']['output'];
+  /** Unix epoch timestamp (seconds) for the start of this bucket */
+  timestamp: Scalars['Int']['output'];
+};
+
 /** ERC-20 token balance representing a side of a prediction position */
 export type Position = {
   __typename?: 'Position';
@@ -1588,6 +1661,23 @@ export type Prediction = {
   settledAt?: Maybe<Scalars['Int']['output']>;
 };
 
+/** Time-bucketed prediction-count data point with outcome breakdown (legacy). */
+export type PredictionCountDataPoint = {
+  __typename?: 'PredictionCountDataPoint';
+  /** Predictions lost in this bucket */
+  lost: Scalars['Int']['output'];
+  /** Predictions settled as non-decisive in this bucket */
+  nonDecisive: Scalars['Int']['output'];
+  /** Predictions still pending in this bucket */
+  pending: Scalars['Int']['output'];
+  /** Unix epoch timestamp (seconds) for the start of this bucket */
+  timestamp: Scalars['Int']['output'];
+  /** Total predictions opened in this bucket */
+  total: Scalars['Int']['output'];
+  /** Predictions won in this bucket */
+  won: Scalars['Int']['output'];
+};
+
 /** Field to sort predictions by */
 export type PredictionSortField =
   | 'CREATED_AT'
@@ -1622,6 +1712,41 @@ export type Query = {
   /** Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity. */
   accountActivity: Array<ActivityItem>;
   /**
+   * Time-bucketed collateral balance for a single address — deployed (in open
+   * positions) and claimable (settled but unredeemed). DEPRECATED: use
+   * `accountStats`; the fat row carries `deployedCollateral` /
+   * `claimableCollateral` per snapshot.
+   * @deprecated Use `accountStats` — the fat row carries `deployedCollateral` / `claimableCollateral` per snapshot.
+   */
+  accountBalance: Array<BalanceDataPoint>;
+  /**
+   * Time-bucketed profit-and-loss for a single address with cumulative tracking.
+   * DEPRECATED: use `accountStats`; the fat row carries `pnl` / `cumulativePnl`
+   * per snapshot.
+   * @deprecated Use `accountStats` — the fat row carries `pnl` / `cumulativePnl` per snapshot.
+   */
+  accountPnl: Array<PnlDataPoint>;
+  /**
+   * Time-bucketed prediction count with outcome breakdown for a single address,
+   * bucketed by creation time. DEPRECATED: use `accountStats`; the fat row carries
+   * `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending`
+   * / `predictionsNonDecisive` per snapshot.
+   * @deprecated Use `accountStats` — the fat row carries `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending` / `predictionsNonDecisive` per snapshot.
+   */
+  accountPredictionCount: Array<PredictionCountDataPoint>;
+  /**
+   * Per-account stats time series — wallet collateral position, PnL, volume,
+   * and prediction outcome counts across snapshots in a window. Mirrors the
+   * `protocolStats` / `vaultStats` fat-row shape (no `interval` arg, server
+   * picks the cadence). Both bounds in `filters` are optional epoch seconds
+   * (inclusive); omit `filters` to return the full series.
+   *
+   * Implementation today wraps the legacy per-metric SQL helpers and emits
+   * one point per day. A follow-up migrates this to a real per-account
+   * snapshot table without changing the wire shape.
+   */
+  accountStats: Array<AccountStat>;
+  /**
    * Accounts ranked by an account metric (net PnL, gains, losses, or volume)
    * over an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over
    * all-time. PnL metrics are attributed to settlement time, volume to trade
@@ -1639,6 +1764,19 @@ export type Query = {
    * from "present window, address unranked").
    */
   accountStatsRank: AccountStatsRank;
+  /**
+   * Lifetime trading volume for a single address as a wei-decimal string.
+   * DEPRECATED: use `accountStatsRank(address: $a).volume` (omit `filters` for
+   * all-time).
+   * @deprecated Use `accountStatsRank(address: $a).volume` (omit `filters` for all-time).
+   */
+  accountTotalVolume: Scalars['String']['output'];
+  /**
+   * Time-bucketed trading volume for a single address. DEPRECATED: use
+   * `accountStats`; the fat row carries `volume` / `cumulativeVolume` per snapshot.
+   * @deprecated Use `accountStats` — the fat row carries `volume` / `cumulativeVolume` per snapshot.
+   */
+  accountVolume: Array<VolumeDataPoint>;
   /**
    * Top forecasters ranked by lifetime accuracy. The time-weighted error
    * already weights by recency, so there's no window filter on this surface.
@@ -1706,6 +1844,13 @@ export type Query = {
    * .timestamp >= floor(now / interval) * interval`.
    */
   protocolStats: Array<ProtocolStat>;
+  /**
+   * Time-bucketed total protocol trading volume across all users. DEPRECATED:
+   * use `protocolStats`; the fat row carries `periodVolume` / `cumulativeVolume`
+   * per snapshot.
+   * @deprecated Use `protocolStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.
+   */
+  protocolVolume: Array<VolumeDataPoint>;
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
   /**
@@ -1762,6 +1907,36 @@ export type QueryAccountActivityArgs = {
 };
 
 
+export type QueryAccountBalanceArgs = {
+  address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccountPnlArgs = {
+  address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccountPredictionCountArgs = {
+  address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccountStatsArgs = {
+  address: Scalars['String']['input'];
+  filters?: InputMaybe<AccountStatsTimeSeriesFilters>;
+};
+
+
 export type QueryAccountStatsLeaderboardPageArgs = {
   filters?: InputMaybe<AccountStatsFilters>;
   skip?: Scalars['Int']['input'];
@@ -1772,6 +1947,19 @@ export type QueryAccountStatsLeaderboardPageArgs = {
 export type QueryAccountStatsRankArgs = {
   address: Scalars['String']['input'];
   filters?: InputMaybe<AccountStatsFilters>;
+};
+
+
+export type QueryAccountTotalVolumeArgs = {
+  address: Scalars['String']['input'];
+};
+
+
+export type QueryAccountVolumeArgs = {
+  address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
 };
 
 
@@ -1960,6 +2148,13 @@ export type QueryPredictionsArgs = {
 export type QueryProtocolStatsArgs = {
   fromEpoch?: InputMaybe<Scalars['Int']['input']>;
   toEpoch?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryProtocolVolumeArgs = {
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
 };
 
 
@@ -2230,6 +2425,13 @@ export type StringNullableListFilter = {
   isEmpty?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
+/** Time interval for bucketing the legacy per-account time-series resolvers. */
+export type TimeInterval =
+  | 'DAY'
+  | 'HOUR'
+  | 'MONTH'
+  | 'WEEK';
+
 /**
  * Open-interest aggregated by time-to-resolution bucket. Each unsettled
  * prediction's collateral is bucketed by the latest endTime among the conditions
@@ -2429,6 +2631,15 @@ export type VaultStat = {
   /** wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins */
   vaultUnredeemedClaim: Scalars['String']['output'];
   vaultWithdrawals: Scalars['String']['output'];
+};
+
+/** Time-bucketed volume data point for charts (legacy). */
+export type VolumeDataPoint = {
+  __typename?: 'VolumeDataPoint';
+  /** Unix epoch timestamp (seconds) for the start of this bucket */
+  timestamp: Scalars['Int']['output'];
+  /** Total volume in wei for this bucket */
+  volume: Scalars['String']['output'];
 };
 
 /** Time window for volume-based sorting */
