@@ -21,31 +21,16 @@ vi.mock('../../../../lib/ttlCache', () => ({
 const { accountStatsLeaderboardPage, accountStatsRank } = await import(
   './accountStats'
 );
-const { AccountStatMetric } = await import('../../__generated__/resolvers');
+const { AccountStatsMetric } = await import('../../__generated__/resolvers');
 
 type Filters = {
-  metric: (typeof AccountStatMetric)[keyof typeof AccountStatMetric];
+  metric?: (typeof AccountStatsMetric)[keyof typeof AccountStatsMetric];
   fromEpoch?: number | null;
   toEpoch?: number | null;
 };
-type Args = { filters: Filters; take: number; skip: number };
+type Args = { filters?: Filters | null; take: number; skip: number };
 
-// Minimal `info` mock matching the field-selection probe the resolver uses to
-// decide whether to populate `totalCount`. Each test names what it wants.
-const infoSelecting = (...fields: string[]) => ({
-  fieldNodes: [
-    {
-      selectionSet: {
-        selections: fields.map((name) => ({
-          kind: 'Field',
-          name: { value: name },
-        })),
-      },
-    },
-  ],
-});
-
-const call = (args: Args, fields: string[] = ['items', 'hasMore']) =>
+const call = (args: Args) =>
   (
     accountStatsLeaderboardPage as unknown as (
       p: unknown,
@@ -63,7 +48,7 @@ const call = (args: Args, fields: string[] = ['items', 'hasMore']) =>
       hasMore: boolean;
       totalCount: number | null;
     }>
-  )({}, args, {}, infoSelecting(...fields));
+  )({}, args, {}, {});
 
 const WEI = (n: number) => (BigInt(n) * 10n ** 18n).toString();
 
@@ -84,7 +69,7 @@ describe('Query.accountStatsLeaderboardPage', () => {
 
   it('ranks by net PnL descending and lowercases addresses', async () => {
     const page = await call({
-      filters: { metric: AccountStatMetric.NetPnl },
+      filters: { metric: AccountStatsMetric.NetPnl },
       take: 25,
       skip: 0,
     });
@@ -96,9 +81,19 @@ describe('Query.accountStatsLeaderboardPage', () => {
     ]);
   });
 
+  it('defaults to NET_PNL when `filters` is omitted entirely', async () => {
+    const page = await call({ take: 25, skip: 0 });
+    expect(page.items.map((r) => r.address)).toEqual([
+      '0xccc',
+      '0xaaa',
+      '0xddd',
+      '0xbbb',
+    ]);
+  });
+
   it('ranks by gains descending', async () => {
     const page = await call({
-      filters: { metric: AccountStatMetric.Gains },
+      filters: { metric: AccountStatsMetric.Gains },
       take: 25,
       skip: 0,
     });
@@ -110,7 +105,7 @@ describe('Query.accountStatsLeaderboardPage', () => {
 
   it('ranks by losses ascending (biggest loss first)', async () => {
     const page = await call({
-      filters: { metric: AccountStatMetric.Losses },
+      filters: { metric: AccountStatsMetric.Losses },
       take: 25,
       skip: 0,
     });
@@ -120,7 +115,7 @@ describe('Query.accountStatsLeaderboardPage', () => {
 
   it('ranks by volume descending', async () => {
     const page = await call({
-      filters: { metric: AccountStatMetric.Volume },
+      filters: { metric: AccountStatsMetric.Volume },
       take: 25,
       skip: 0,
     });
@@ -132,7 +127,7 @@ describe('Query.accountStatsLeaderboardPage', () => {
 
   it('merges PnL and volume per address, defaulting the missing side to "0"', async () => {
     const page = await call({
-      filters: { metric: AccountStatMetric.NetPnl },
+      filters: { metric: AccountStatsMetric.NetPnl },
       take: 25,
       skip: 0,
     });
@@ -145,7 +140,7 @@ describe('Query.accountStatsLeaderboardPage', () => {
 
   it('passes the resolved epoch window through; omitting `fromEpoch` means all-time', async () => {
     await call({
-      filters: { metric: AccountStatMetric.NetPnl },
+      filters: { metric: AccountStatsMetric.NetPnl },
       take: 25,
       skip: 0,
     });
@@ -165,7 +160,7 @@ describe('Query.accountStatsLeaderboardPage', () => {
     const to = Math.floor(new Date('2026-02-01T00:00:00Z').getTime() / 1000);
     await call({
       filters: {
-        metric: AccountStatMetric.NetPnl,
+        metric: AccountStatsMetric.NetPnl,
         fromEpoch: from,
         toEpoch: to,
       },
@@ -180,7 +175,7 @@ describe('Query.accountStatsLeaderboardPage', () => {
 
   it('caps take at 100 and applies skip', async () => {
     const page = await call({
-      filters: { metric: AccountStatMetric.NetPnl },
+      filters: { metric: AccountStatsMetric.NetPnl },
       take: 1000,
       skip: 1,
     });
@@ -192,7 +187,7 @@ describe('Query.accountStatsLeaderboardPage', () => {
 
   it('flags hasMore=true when the window has more rows than requested', async () => {
     const page = await call({
-      filters: { metric: AccountStatMetric.NetPnl },
+      filters: { metric: AccountStatsMetric.NetPnl },
       take: 2,
       skip: 0,
     });
@@ -200,28 +195,23 @@ describe('Query.accountStatsLeaderboardPage', () => {
     expect(page.hasMore).toBe(true);
   });
 
-  it('omits totalCount unless the client selected the field', async () => {
-    const without = await call(
-      { filters: { metric: AccountStatMetric.NetPnl }, take: 2, skip: 0 },
-      ['items', 'hasMore']
-    );
-    expect(without.totalCount).toBeNull();
-
-    const withTotal = await call(
-      { filters: { metric: AccountStatMetric.NetPnl }, take: 2, skip: 0 },
-      ['items', 'hasMore', 'totalCount']
-    );
-    expect(withTotal.totalCount).toBe(4);
+  it('populates totalCount unconditionally (cheap in-memory derivation)', async () => {
+    const page = await call({
+      filters: { metric: AccountStatsMetric.NetPnl },
+      take: 2,
+      skip: 0,
+    });
+    expect(page.totalCount).toBe(4);
   });
 });
 
 type RankArgs = {
   address: string;
-  filters: {
-    metric: (typeof AccountStatMetric)[keyof typeof AccountStatMetric];
+  filters?: {
+    metric?: (typeof AccountStatsMetric)[keyof typeof AccountStatsMetric];
     fromEpoch?: number | null;
     toEpoch?: number | null;
-  };
+  } | null;
 };
 type RankResult = {
   address: string;
@@ -262,7 +252,7 @@ describe('Query.accountStatsRank', () => {
   it('returns 1-indexed rank + stats for a present address by NET_PNL', async () => {
     const r = await callRank({
       address: '0xAAA',
-      filters: { metric: AccountStatMetric.NetPnl },
+      filters: { metric: AccountStatsMetric.NetPnl },
     });
     expect(r).toMatchObject({
       address: '0xaaa',
@@ -275,14 +265,20 @@ describe('Query.accountStatsRank', () => {
     });
   });
 
+  it('defaults to NET_PNL when `filters` is omitted', async () => {
+    const r = await callRank({ address: '0xaaa' });
+    expect(r.rank).toBe(2);
+    expect(r.totalParticipants).toBe(4);
+  });
+
   it('rank reflects metric — same address ranks differently by VOLUME vs NET_PNL', async () => {
     const byPnl = await callRank({
       address: '0xbbb',
-      filters: { metric: AccountStatMetric.NetPnl },
+      filters: { metric: AccountStatsMetric.NetPnl },
     });
     const byVolume = await callRank({
       address: '0xbbb',
-      filters: { metric: AccountStatMetric.Volume },
+      filters: { metric: AccountStatsMetric.Volume },
     });
     expect(byPnl.rank).toBe(4); // worst PnL
     expect(byVolume.rank).toBe(1); // highest volume
@@ -291,7 +287,7 @@ describe('Query.accountStatsRank', () => {
   it('rank=null + zero stats when the address has no activity in the window', async () => {
     const r = await callRank({
       address: '0xunknown',
-      filters: { metric: AccountStatMetric.NetPnl },
+      filters: { metric: AccountStatsMetric.NetPnl },
     });
     expect(r).toMatchObject({
       address: '0xunknown',
@@ -309,7 +305,7 @@ describe('Query.accountStatsRank', () => {
     mockVolumes.mockResolvedValue([]);
     const r = await callRank({
       address: '0xaaa',
-      filters: { metric: AccountStatMetric.NetPnl },
+      filters: { metric: AccountStatsMetric.NetPnl },
     });
     expect(r).toEqual({
       address: '0xaaa',
@@ -325,7 +321,7 @@ describe('Query.accountStatsRank', () => {
   it('passes the resolved epoch window through; omitting `fromEpoch` means all-time', async () => {
     await callRank({
       address: '0xaaa',
-      filters: { metric: AccountStatMetric.NetPnl },
+      filters: { metric: AccountStatsMetric.NetPnl },
     });
     expect(mockPnLBreakdown).toHaveBeenCalledWith({
       fromEpoch: undefined,
@@ -340,7 +336,7 @@ describe('Query.accountStatsRank', () => {
     await callRank({
       address: '0xaaa',
       filters: {
-        metric: AccountStatMetric.NetPnl,
+        metric: AccountStatsMetric.NetPnl,
         fromEpoch: from,
         toEpoch: to,
       },

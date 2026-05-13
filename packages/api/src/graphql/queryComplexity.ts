@@ -572,7 +572,6 @@ export function createComplexityEstimators(
       if (fieldName === 'accountActivity') return 500;
       if (fieldName === 'protocolStats') return 2000;
       if (fieldName === 'vaultStats') return 2000;
-      if (fieldName === 'accountTotalVolume') return 500;
       // Full-table groupBy aggregates (no cache)
       if (fieldName === 'accuracyLeaderboardPage') return 1500;
       if (fieldName === 'accountAccuracyRank') return 1500;

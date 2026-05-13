@@ -1,8 +1,8 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   fetchAccountStatsLeaderboard,
-  type AccountStatEntry,
-  type AccountStatMetric,
+  type AccountStatsLeaderboardEntry,
+  type AccountStatsMetric,
 } from '@sapience/sdk/queries';
 
 import {
@@ -12,11 +12,11 @@ import {
 } from '~/components/shared/timeRange';
 
 export function useAccountStatsLeaderboard(
-  metric: AccountStatMetric,
+  metric: AccountStatsMetric,
   range: TimeRange,
   limit = 10
 ) {
-  return useQuery<AccountStatEntry[]>({
+  return useQuery<AccountStatsLeaderboardEntry[]>({
     queryKey: ['accountStatsLeaderboard', metric, rangeKey(range), limit],
     queryFn: async () => {
       try {
@@ -36,4 +36,4 @@ export function useAccountStatsLeaderboard(
   });
 }
 
-export type { AccountStatEntry, AccountStatMetric };
+export type { AccountStatsLeaderboardEntry, AccountStatsMetric };

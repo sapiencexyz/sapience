@@ -1,10 +1,10 @@
 import { graphqlRequest } from './client/graphqlClient';
 import { toEpochOrNull } from './client/timeArgs';
 
-export type AccountStatMetric = 'NET_PNL' | 'GAINS' | 'LOSSES' | 'VOLUME';
+export type AccountStatsMetric = 'NET_PNL' | 'GAINS' | 'LOSSES' | 'VOLUME';
 
 /** All amounts are wei strings (18 decimals); `losses` is negative. */
-export interface AccountStatEntry {
+export interface AccountStatsLeaderboardEntry {
   address: string;
   netPnL: string;
   gains: string;
@@ -12,21 +12,21 @@ export interface AccountStatEntry {
   volume: string;
 }
 
-/** Row shape returned by `accuracyLeaderboardPage`. Slimmed: the 4 hardcoded-zero
- *  fields the resolver used to ship (`numScored`, `numTimeWeighted`,
- *  `sumErrorSquared`, `sumTimeWeightedError`) are no longer surfaced. */
-export type ForecasterScore = {
+/** Row shape returned by `accuracyLeaderboardPage` — one row of the accuracy
+ *  leaderboard with the lifetime time-weighted accuracy score. */
+export type AccuracyLeaderboardEntry = {
   address: string;
   accuracyScore: number;
 };
 
 /** Single-address result from `accountAccuracyRank`. `accuracyScore` is always
- *  a number (zero when unscored); `rank` is null for unscored addresses. */
+ *  a number (zero when unscored); `rank` is null for unscored addresses;
+ *  `totalParticipants` mirrors `AccountStatsRank`. */
 export interface AccuracyRankResult {
   address: string;
   accuracyScore: number;
   rank: number | null;
-  totalForecasters: number;
+  totalParticipants: number;
 }
 
 /** Single-address result from `accountStatsRank`. Stats fields are wei strings
@@ -60,14 +60,14 @@ export const GET_ACCOUNT_ACCURACY_RANK = /* GraphQL */ `
       address
       accuracyScore
       rank
-      totalForecasters
+      totalParticipants
     }
   }
 `;
 
 export const GET_ACCOUNT_STATS_LEADERBOARD_PAGE = /* GraphQL */ `
   query AccountStatsLeaderboardPage(
-    $filters: AccountStatsFilters!
+    $filters: AccountStatsFilters
     $take: Int!
     $skip: Int!
   ) {
@@ -85,7 +85,7 @@ export const GET_ACCOUNT_STATS_LEADERBOARD_PAGE = /* GraphQL */ `
 `;
 
 export const GET_ACCOUNT_STATS_RANK = /* GraphQL */ `
-  query AccountStatsRank($address: String!, $filters: AccountStatsFilters!) {
+  query AccountStatsRank($address: String!, $filters: AccountStatsFilters) {
     accountStatsRank(address: $address, filters: $filters) {
       address
       netPnL
@@ -100,20 +100,20 @@ export const GET_ACCOUNT_STATS_RANK = /* GraphQL */ `
 
 /**
  * Convenience wrapper: same Date/string-friendly inputs as before, fetches
- * the new `accountStatsLeaderboardPage` Page form, returns just the rows.
+ * the `accountStatsLeaderboardPage` Page form, returns just the rows.
  * For pagination + hasMore + totalCount, call the Page form via the GraphQL
  * client directly using `GET_ACCOUNT_STATS_LEADERBOARD_PAGE`.
  */
 export async function fetchAccountStatsLeaderboard(params: {
-  metric: AccountStatMetric;
+  metric: AccountStatsMetric;
   from?: Date | string | number | null;
   to?: Date | string | number | null;
   limit?: number;
   skip?: number;
-}): Promise<AccountStatEntry[]> {
+}): Promise<AccountStatsLeaderboardEntry[]> {
   const data = await graphqlRequest<{
     accountStatsLeaderboardPage: {
-      items: AccountStatEntry[];
+      items: AccountStatsLeaderboardEntry[];
       hasMore: boolean;
     };
   }>(GET_ACCOUNT_STATS_LEADERBOARD_PAGE, {
@@ -128,23 +128,31 @@ export async function fetchAccountStatsLeaderboard(params: {
   return data?.accountStatsLeaderboardPage?.items || [];
 }
 
+/**
+ * Convenience wrapper for single-address rank + stats. `filters` is optional
+ * on the wire; we only send one when the caller actually provided a `metric`
+ * or window, so the resolver falls through to its default (NET_PNL, all-time).
+ */
 export async function fetchAccountStatsRank(params: {
   address: string;
-  metric?: AccountStatMetric;
+  metric?: AccountStatsMetric;
   from?: Date | string | number | null;
   to?: Date | string | number | null;
 }): Promise<AccountStatsRankResult> {
   const addressLc = params.address.toLowerCase();
+  const fromEpoch = toEpochOrNull(params.from);
+  const toEpoch = toEpochOrNull(params.to);
+  const filters =
+    params.metric !== undefined || fromEpoch !== null || toEpoch !== null
+      ? {
+          metric: params.metric,
+          fromEpoch,
+          toEpoch,
+        }
+      : null;
   const data = await graphqlRequest<{
     accountStatsRank: AccountStatsRankResult | null;
-  }>(GET_ACCOUNT_STATS_RANK, {
-    address: addressLc,
-    filters: {
-      metric: params.metric ?? 'NET_PNL',
-      fromEpoch: toEpochOrNull(params.from),
-      toEpoch: toEpochOrNull(params.to),
-    },
-  });
+  }>(GET_ACCOUNT_STATS_RANK, { address: addressLc, filters });
   const r = data?.accountStatsRank;
   if (!r) {
     return {
@@ -166,10 +174,13 @@ export async function fetchAccountStatsRank(params: {
  * + totalCount, use `GET_ACCURACY_LEADERBOARD_PAGE` directly.
  */
 export async function fetchAccuracyLeaderboard(
-  limit = 10
-): Promise<ForecasterScore[]> {
+  limit = 25
+): Promise<AccuracyLeaderboardEntry[]> {
   const data = await graphqlRequest<{
-    accuracyLeaderboardPage: { items: ForecasterScore[]; hasMore: boolean };
+    accuracyLeaderboardPage: {
+      items: AccuracyLeaderboardEntry[];
+      hasMore: boolean;
+    };
   }>(GET_ACCURACY_LEADERBOARD_PAGE, { take: limit, skip: 0 });
   return data?.accuracyLeaderboardPage?.items || [];
 }
@@ -183,7 +194,7 @@ export async function fetchAccountAccuracyRank(
   }>(GET_ACCOUNT_ACCURACY_RANK, { address: a });
   const r = data?.accountAccuracyRank;
   if (!r) {
-    return { address: a, accuracyScore: 0, rank: null, totalForecasters: 0 };
+    return { address: a, accuracyScore: 0, rank: null, totalParticipants: 0 };
   }
   return r;
 }

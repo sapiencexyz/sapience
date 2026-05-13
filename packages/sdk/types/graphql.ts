@@ -20,9 +20,25 @@ export type Scalars = {
   Decimal: { input: any; output: any; }
 };
 
-/** Per-address account stats over a date range — all amounts are wei strings (losses negative). */
-export type AccountStatEntry = {
-  __typename?: 'AccountStatEntry';
+/**
+ * Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields
+ * are optional: omit the input entirely to rank by `NET_PNL` over all time.
+ * `fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.
+ * Both bounds are epoch seconds (inclusive).
+ */
+export type AccountStatsFilters = {
+  fromEpoch?: InputMaybe<Scalars['Int']['input']>;
+  metric?: InputMaybe<AccountStatsMetric>;
+  toEpoch?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/**
+ * One row of the account-stats leaderboard — an address with its net PnL,
+ * gross gains, gross losses, and trading volume over a window. All amounts
+ * are wei strings (18 decimals); `losses` is negative.
+ */
+export type AccountStatsLeaderboardEntry = {
+  __typename?: 'AccountStatsLeaderboardEntry';
   address: Scalars['String']['output'];
   gains: Scalars['String']['output'];
   losses: Scalars['String']['output'];
@@ -30,38 +46,31 @@ export type AccountStatEntry = {
   volume: Scalars['String']['output'];
 };
 
+/** Paginated wrapper around `AccountStatsLeaderboardEntry` rows with a server-truth hasMore flag. */
+export type AccountStatsLeaderboardPage = Page & {
+  __typename?: 'AccountStatsLeaderboardPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<AccountStatsLeaderboardEntry>;
+  /** Total addresses with activity in the window — populated unconditionally (cheap; derived from the in-memory merged-stats array). */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
 /** Metric an account-stats leaderboard is ranked by. */
-export type AccountStatMetric =
+export type AccountStatsMetric =
   | 'GAINS'
   | 'LOSSES'
   | 'NET_PNL'
   | 'VOLUME';
 
 /**
- * Filters for `accountStatsLeaderboardPage`. `fromEpoch` omitted means all-time;
- * `toEpoch` omitted means now. Both are epoch seconds.
- */
-export type AccountStatsFilters = {
-  fromEpoch?: InputMaybe<Scalars['Int']['input']>;
-  metric?: InputMaybe<AccountStatMetric>;
-  toEpoch?: InputMaybe<Scalars['Int']['input']>;
-};
-
-/** Paginated wrapper around AccountStatEntry rows with a server-truth hasMore flag. */
-export type AccountStatsLeaderboardPage = Page & {
-  __typename?: 'AccountStatsLeaderboardPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<AccountStatEntry>;
-  /** Total addresses with activity in the window. Populated only when selected. */
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
-
-/**
- * Stats + rank for a single address against the leaderboard's ranked set. Stat
- * fields mirror `AccountStatEntry` (always populated; zero when the address has
- * no activity in the requested window). `rank` is 1-indexed against the ranked
- * set for the chosen metric, or null when the address is absent from it.
- * `totalParticipants` is the size of the ranked set in the window.
+ * Stats + rank for a single address against the same ranked set the
+ * leaderboard slices. Stat fields mirror `AccountStatsLeaderboardEntry` and
+ * are always populated (zero when the address has no activity in the window).
+ * `rank` is 1-indexed against the ranked set for the chosen metric, or null
+ * when the address is absent from it. `totalParticipants` is the size of the
+ * ranked set in the window (0 when the window has no participants at all,
+ * distinguishing an empty-window stub from an unranked address in a
+ * populated window).
  */
 export type AccountStatsRank = {
   __typename?: 'AccountStatsRank';
@@ -74,22 +83,40 @@ export type AccountStatsRank = {
   volume: Scalars['String']['output'];
 };
 
-/** Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag. */
+/**
+ * One row of the accuracy leaderboard — an address with its lifetime
+ * accuracy score aggregated across every scored attestation. Parallel
+ * to `AccountStatsLeaderboardEntry`.
+ */
+export type AccuracyLeaderboardEntry = {
+  __typename?: 'AccuracyLeaderboardEntry';
+  accuracyScore: Scalars['Float']['output'];
+  address: Scalars['String']['output'];
+};
+
+/** Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag. */
 export type AccuracyLeaderboardPage = Page & {
   __typename?: 'AccuracyLeaderboardPage';
   hasMore: Scalars['Boolean']['output'];
-  items: Array<ForecasterScore>;
-  /** Total forecasters with scored attestations. Populated only when selected. */
+  items: Array<AccuracyLeaderboardEntry>;
+  /** Total forecasters on the leaderboard — populated unconditionally (cheap; derived from the in-memory leaderboard array). */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
-/** Accuracy rank for an address on the forecasting leaderboard */
+/**
+ * Accuracy rank and lifetime score for a single address. Mirrors
+ * `AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),
+ * `rank` (1-indexed, null when unranked), and `totalParticipants` (size of
+ * the scored-forecaster set). Accuracy is lifetime-aggregated — the
+ * time-weighted error already weights by recency, so there's no window
+ * filter on this surface.
+ */
 export type AccuracyRank = {
   __typename?: 'AccuracyRank';
   accuracyScore: Scalars['Float']['output'];
   address: Scalars['String']['output'];
   rank?: Maybe<Scalars['Int']['output']>;
-  totalForecasters: Scalars['Int']['output'];
+  totalParticipants: Scalars['Int']['output'];
 };
 
 /** A single activity entry — either a prediction or a trade, sorted by timestamp */
@@ -990,13 +1017,6 @@ export type FloatNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
-/** Accuracy score for a forecaster, aggregated across all scored markets */
-export type ForecasterScore = {
-  __typename?: 'ForecasterScore';
-  accuracyScore: Scalars['Float']['output'];
-  address: Scalars['String']['output'];
-};
-
 export type IntFilter = {
   equals?: InputMaybe<Scalars['Int']['input']>;
   gt?: InputMaybe<Scalars['Int']['input']>;
@@ -1468,8 +1488,9 @@ export type NullsOrder =
 /**
  * Shared shape for `*Page` paginated wrappers. Concrete types add their own
  * strongly-typed `items` field; `hasMore` and `totalCount` live here so a
- * generic `Page` helper can read them. `totalCount` is lazy — populated only
- * when the client selects the field.
+ * generic `Page` helper can read them. Concrete `*Page` types document
+ * whether `totalCount` is populated unconditionally (cheap, in-memory) or
+ * lazily (only when the client selects the field).
  */
 export type Page = {
   hasMore: Scalars['Boolean']['output'];
@@ -1590,19 +1611,39 @@ export type ProtocolStat = {
 
 export type Query = {
   __typename?: 'Query';
-  /** Accuracy rank and score for a single address relative to all forecasters */
+  /**
+   * Accuracy rank and lifetime score for a single address. Mirrors
+   * `accountStatsRank`'s shape: stats fields are always populated (zero for
+   * unscored addresses), `rank` is null when the address is absent from the
+   * ranked set, and `totalParticipants` is the size of the scored-forecaster
+   * set.
+   */
   accountAccuracyRank: AccuracyRank;
   /** Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity. */
   accountActivity: Array<ActivityItem>;
-  /** Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date window. `fromEpoch` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. Page-shaped with server-truth `hasMore` and lazy `totalCount`. */
-  accountStatsLeaderboardPage: AccountStatsLeaderboardPage;
-  /** Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional epoch-second window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set. */
-  accountStatsRank: AccountStatsRank;
-  /** Total lifetime trading volume in wei for the given address across all prediction types */
-  accountTotalVolume: Scalars['String']['output'];
   /**
-   * Top forecasters ranked by accuracy score. Page-shaped with server-truth
-   * `hasMore` and lazy `totalCount` (populated only when selected).
+   * Accounts ranked by an account metric (net PnL, gains, losses, or volume)
+   * over an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over
+   * all-time. PnL metrics are attributed to settlement time, volume to trade
+   * time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
+   * unconditionally (cheap in-memory derivation).
+   */
+  accountStatsLeaderboardPage: AccountStatsLeaderboardPage;
+  /**
+   * Stats + rank for a single address against the same ranked set the
+   * leaderboard slices. `filters` omitted ⇒ rank by `NET_PNL` over all-time.
+   * Stats fields are always present (zero when the address has no activity
+   * in the window). `rank` is null when the address is absent from the
+   * ranked set; `totalParticipants` is the ranked-set size (0 when the
+   * window has no participants at all — that distinguishes "empty window"
+   * from "present window, address unranked").
+   */
+  accountStatsRank: AccountStatsRank;
+  /**
+   * Top forecasters ranked by lifetime accuracy. The time-weighted error
+   * already weights by recency, so there's no window filter on this surface.
+   * Page-shaped with server-truth `hasMore`; `totalCount` is populated
+   * unconditionally (cheap in-memory derivation).
    */
   accuracyLeaderboardPage: AccuracyLeaderboardPage;
   attestations: Array<Attestation>;
@@ -1652,10 +1693,17 @@ export type Query = {
   predictions: Array<Prediction>;
   /**
    * Protocol-wide statistics time series at the configured snapshot cadence —
-   * cumulative volume, trade count, open interest, escrow balance. Window with
-   * `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted returns
-   * full history. When `toEpoch` covers now, the trailing in-progress bar is
-   * appended as a live candle.
+   * cumulative volume, trade count, open interest, escrow balance. Window
+   * with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
+   * returns full history.
+   *
+   * Bar timestamps: closed bars are labelled at *the start* of the interval
+   * they represent (capture time minus one interval), so a bar at
+   * `2026-01-01 00:00` summarizes activity ending `2026-01-02 00:00`. When
+   * `toEpoch` covers now, a trailing live candle is appended; the live
+   * candle's `timestamp` is the *current* interval boundary (not shifted
+   * back), so callers can distinguish it as `points[points.length - 1]
+   * .timestamp >= floor(now / interval) * interval`.
    */
   protocolStats: Array<ProtocolStat>;
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
@@ -1688,8 +1736,12 @@ export type Query = {
    * balance, deployed/available collateral, cumulative PnL, deposits,
    * withdrawals, airdrop gains, secondary flows, unredeemed claims. Window
    * with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
-   * returns full history. When `toEpoch` covers now, the trailing
-   * in-progress bar is appended as a live candle.
+   * returns full history.
+   *
+   * Bar timestamps follow the same convention as `protocolStats`: closed
+   * bars are labelled at the *start* of the interval they represent, and a
+   * trailing live candle (anchored to the *current* interval boundary) is
+   * appended when `toEpoch` covers now.
    */
   vaultStats: Array<VaultStat>;
 };
@@ -1711,7 +1763,7 @@ export type QueryAccountActivityArgs = {
 
 
 export type QueryAccountStatsLeaderboardPageArgs = {
-  filters: AccountStatsFilters;
+  filters?: InputMaybe<AccountStatsFilters>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
 };
@@ -1719,12 +1771,7 @@ export type QueryAccountStatsLeaderboardPageArgs = {
 
 export type QueryAccountStatsRankArgs = {
   address: Scalars['String']['input'];
-  filters: AccountStatsFilters;
-};
-
-
-export type QueryAccountTotalVolumeArgs = {
-  address: Scalars['String']['input'];
+  filters?: InputMaybe<AccountStatsFilters>;
 };
 
 

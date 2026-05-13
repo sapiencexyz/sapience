@@ -1,81 +1,16 @@
 """
-Per-address account stats over a date range — all amounts are wei strings (losses negative).
+Accuracy rank and lifetime score for a single address. Mirrors
+`AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),
+`rank` (1-indexed, null when unranked), and `totalParticipants` (size of
+the scored-forecaster set). Accuracy is lifetime-aggregated — the
+time-weighted error already weights by recency, so there's no window
+filter on this surface.
 """
-type AccountStatEntry {
+type AccuracyRank {
   address: String!
-  gains: String!
-  losses: String!
-  netPnL: String!
-  volume: String!
-}
-
-"""Metric an account-stats leaderboard is ranked by."""
-enum AccountStatMetric {
-  GAINS
-  LOSSES
-  NET_PNL
-  VOLUME
-}
-
-"""
-Filters for `accountStatsLeaderboardPage`. `fromEpoch` omitted means all-time;
-`toEpoch` omitted means now. Both are epoch seconds.
-"""
-input AccountStatsFilters {
-  fromEpoch: Int
-  metric: AccountStatMetric = NET_PNL
-  toEpoch: Int
-}
-
-"""
-Paginated wrapper around AccountStatEntry rows with a server-truth hasMore flag.
-"""
-type AccountStatsLeaderboardPage implements Page {
-  hasMore: Boolean!
-  items: [AccountStatEntry!]!
-
-  """
-  Total addresses with activity in the window. Populated only when selected.
-  """
-  totalCount: Int
-}
-
-"""
-Stats + rank for a single address against the leaderboard's ranked set. Stat
-fields mirror `AccountStatEntry` (always populated; zero when the address has
-no activity in the requested window). `rank` is 1-indexed against the ranked
-set for the chosen metric, or null when the address is absent from it.
-`totalParticipants` is the size of the ranked set in the window.
-"""
-type AccountStatsRank {
-  address: String!
-  gains: String!
-  losses: String!
-  netPnL: String!
+  accuracyScore: Float!
   rank: Int
   totalParticipants: Int!
-  volume: String!
-}
-
-"""
-Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag.
-"""
-type AccuracyLeaderboardPage implements Page {
-  hasMore: Boolean!
-  items: [ForecasterScore!]!
-
-  """
-  Total forecasters with scored attestations. Populated only when selected.
-  """
-  totalCount: Int
-}
-
-"""Accuracy rank for an address on the forecasting leaderboard"""
-type AccuracyRank {
-  accuracyScore: Float!
-  address: String!
-  rank: Int
-  totalForecasters: Int!
 }
 
 """
@@ -335,14 +270,6 @@ type CategoryCount {
 input CategoryNullableRelationFilter {
   is: CategoryWhereInput
   isNot: CategoryWhereInput
-}
-
-"""Open-interest aggregated for a single category."""
-type CategoryOpenInterest {
-  category: Category!
-
-  """Open interest in wei (decimal string)"""
-  openInterest: String!
 }
 
 input CategoryOrderByWithRelationInput {
@@ -891,10 +818,27 @@ input FloatNullableFilter {
   notIn: [Float!]
 }
 
-"""Accuracy score for a forecaster, aggregated across all scored markets"""
-type ForecasterScore {
-  accuracyScore: Float!
+"""
+One row of the accuracy leaderboard — an address with its lifetime
+accuracy score aggregated across every scored attestation. Parallel
+to `AccountStatsLeaderboardEntry`.
+"""
+type AccuracyLeaderboardEntry {
   address: String!
+  accuracyScore: Float!
+}
+
+"""
+Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag.
+"""
+type AccuracyLeaderboardPage implements Page {
+  items: [AccuracyLeaderboardEntry!]!
+  hasMore: Boolean!
+
+  """
+  Total forecasters on the leaderboard — populated unconditionally (cheap; derived from the in-memory leaderboard array).
+  """
+  totalCount: Int
 }
 
 input IntFilter {
@@ -1326,17 +1270,6 @@ enum NullsOrder {
   last
 }
 
-"""
-Shared shape for `*Page` paginated wrappers. Concrete types add their own
-strongly-typed `items` field; `hasMore` and `totalCount` live here so a
-generic `Page` helper can read them. `totalCount` is lazy — populated only
-when the client selects the field.
-"""
-interface Page {
-  hasMore: Boolean!
-  totalCount: Int
-}
-
 """Individual outcome pick within a pick configuration"""
 type Pick {
   """
@@ -1372,6 +1305,14 @@ type PickConfiguration {
   totalPredictorCollateral: String!
 }
 
+"""
+Paginated wrapper around Position rows with a server-truth hasMore flag
+"""
+type PositionsPage {
+  items: [Position!]!
+  hasMore: Boolean!
+}
+
 """ERC-20 token balance representing a side of a prediction position"""
 type Position {
   balance: String!
@@ -1393,14 +1334,6 @@ type Position {
 enum PositionSortField {
   CREATED_AT
   UPDATED_AT
-}
-
-"""
-Paginated wrapper around Position rows with a server-truth hasMore flag
-"""
-type PositionsPage {
-  hasMore: Boolean!
-  items: [Position!]!
 }
 
 """
@@ -1438,30 +1371,168 @@ enum PredictionSortField {
   SETTLED_AT
 }
 
+"""Metric an account-stats leaderboard is ranked by."""
+enum AccountStatsMetric {
+  NET_PNL
+  GAINS
+  LOSSES
+  VOLUME
+}
+
+"""
+One row of the account-stats leaderboard — an address with its net PnL,
+gross gains, gross losses, and trading volume over a window. All amounts
+are wei strings (18 decimals); `losses` is negative.
+"""
+type AccountStatsLeaderboardEntry {
+  address: String!
+  netPnL: String!
+  gains: String!
+  losses: String!
+  volume: String!
+}
+
+"""
+Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields
+are optional: omit the input entirely to rank by `NET_PNL` over all time.
+`fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.
+Both bounds are epoch seconds (inclusive).
+"""
+input AccountStatsFilters {
+  metric: AccountStatsMetric = NET_PNL
+  fromEpoch: Int
+  toEpoch: Int
+}
+
+"""
+Shared shape for `*Page` paginated wrappers. Concrete types add their own
+strongly-typed `items` field; `hasMore` and `totalCount` live here so a
+generic `Page` helper can read them. Concrete `*Page` types document
+whether `totalCount` is populated unconditionally (cheap, in-memory) or
+lazily (only when the client selects the field).
+"""
+interface Page {
+  hasMore: Boolean!
+  totalCount: Int
+}
+
+"""
+Paginated wrapper around `AccountStatsLeaderboardEntry` rows with a server-truth hasMore flag.
+"""
+type AccountStatsLeaderboardPage implements Page {
+  items: [AccountStatsLeaderboardEntry!]!
+  hasMore: Boolean!
+
+  """
+  Total addresses with activity in the window — populated unconditionally (cheap; derived from the in-memory merged-stats array).
+  """
+  totalCount: Int
+}
+
+"""
+Stats + rank for a single address against the same ranked set the
+leaderboard slices. Stat fields mirror `AccountStatsLeaderboardEntry` and
+are always populated (zero when the address has no activity in the window).
+`rank` is 1-indexed against the ranked set for the chosen metric, or null
+when the address is absent from it. `totalParticipants` is the size of the
+ranked set in the window (0 when the window has no participants at all,
+distinguishing an empty-window stub from an unranked address in a
+populated window).
+"""
+type AccountStatsRank {
+  address: String!
+  netPnL: String!
+  gains: String!
+  losses: String!
+  volume: String!
+  rank: Int
+  totalParticipants: Int!
+}
+
+"""Open-interest aggregated for a single category."""
+type CategoryOpenInterest {
+  category: Category!
+
+  """Open interest in wei (decimal string)"""
+  openInterest: String!
+}
+
+"""
+Open-interest aggregated by time-to-resolution bucket. Each unsettled
+prediction's collateral is bucketed by the latest endTime among the conditions
+it touches (the moment its OI can finally be claimed). One row per non-empty
+bucket, ordered from soonest (bucket = 1) to furthest out.
+"""
+type TimeToResolutionBucket {
+  """Sort order: 1 = soonest, increasing for further-out buckets"""
+  bucket: Int!
+
+  """Display label, e.g. ≤1d / 2-7d / 1-2mo"""
+  label: String!
+
+  """Open interest in wei (decimal string)"""
+  openInterest: String!
+
+  """Number of predictions contributing to this bucket"""
+  predictionCount: Int!
+}
+
 """Protocol-wide stats snapshot — no vault scoping."""
 type ProtocolStat {
+  """
+  Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
+  """
+  timestamp: Int!
   cumulativeVolume: String!
-  escrowBalance: String!
-  openInterest: String!
+
+  """Cumulative count of predictions and secondary trades/sales"""
+  totalTradeCount: Int!
 
   """Trade-count delta over the snapshot interval"""
   periodTradeCount: Int!
 
   """Cumulative-volume delta over the snapshot interval"""
   periodVolume: String!
+  openInterest: String!
+  escrowBalance: String!
+}
 
+"""Vault-specific stats snapshot for a single vault address."""
+type VaultStat {
   """
   Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
   """
   timestamp: Int!
+  vaultBalance: String!
+  vaultAvailableAssets: String!
+  vaultDeployed: String!
+  vaultCumulativePnL: String!
+  vaultPositionsWon: Int!
+  vaultPositionsLost: Int!
+  vaultDeposits: String!
+  vaultWithdrawals: String!
+  vaultAirdropGains: String!
 
-  """Cumulative count of predictions and secondary trades/sales"""
-  totalTradeCount: Int!
+  """Cumulative wUSDe paid by the vault on secondary-market buys"""
+  vaultSecondaryBought: String!
+
+  """Cumulative wUSDe received by the vault on secondary-market sells"""
+  vaultSecondarySold: String!
+
+  """wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins"""
+  vaultUnredeemedClaim: String!
+
+  """Realized PnL delta over the snapshot interval"""
+  periodPnL: String!
 }
 
 type Query {
   """
-  Accuracy rank and score for a single address relative to all forecasters
+  Accuracy rank and lifetime score for a single address. Mirrors
+  `accountStatsRank`'s shape: stats fields are always populated (zero for
+  unscored addresses), `rank` is null when the address is absent from the
+  ranked set, and `totalParticipants` is the size of the scored-forecaster
+  set.
   """
   accountAccuracyRank(address: String!): AccuracyRank!
 
@@ -1471,25 +1542,32 @@ type Query {
   accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
 
   """
-  Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date window. `fromEpoch` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. Page-shaped with server-truth `hasMore` and lazy `totalCount`.
+  Accounts ranked by an account metric (net PnL, gains, losses, or volume)
+  over an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over
+  all-time. PnL metrics are attributed to settlement time, volume to trade
+  time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
+  unconditionally (cheap in-memory derivation).
   """
-  accountStatsLeaderboardPage(filters: AccountStatsFilters!, skip: Int! = 0, take: Int! = 25): AccountStatsLeaderboardPage!
+  accountStatsLeaderboardPage(filters: AccountStatsFilters, take: Int! = 25, skip: Int! = 0): AccountStatsLeaderboardPage!
 
   """
-  Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional epoch-second window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set.
+  Stats + rank for a single address against the same ranked set the
+  leaderboard slices. `filters` omitted ⇒ rank by `NET_PNL` over all-time.
+  Stats fields are always present (zero when the address has no activity
+  in the window). `rank` is null when the address is absent from the
+  ranked set; `totalParticipants` is the ranked-set size (0 when the
+  window has no participants at all — that distinguishes "empty window"
+  from "present window, address unranked").
   """
-  accountStatsRank(address: String!, filters: AccountStatsFilters!): AccountStatsRank!
+  accountStatsRank(address: String!, filters: AccountStatsFilters): AccountStatsRank!
 
   """
-  Total lifetime trading volume in wei for the given address across all prediction types
+  Top forecasters ranked by lifetime accuracy. The time-weighted error
+  already weights by recency, so there's no window filter on this surface.
+  Page-shaped with server-truth `hasMore`; `totalCount` is populated
+  unconditionally (cheap in-memory derivation).
   """
-  accountTotalVolume(address: String!): String!
-
-  """
-  Top forecasters ranked by accuracy score. Page-shaped with server-truth
-  `hasMore` and lazy `totalCount` (populated only when selected).
-  """
-  accuracyLeaderboardPage(skip: Int! = 0, take: Int! = 10): AccuracyLeaderboardPage!
+  accuracyLeaderboardPage(take: Int! = 25, skip: Int! = 0): AccuracyLeaderboardPage!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
 
@@ -1509,16 +1587,6 @@ type Query {
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
-
-  """
-  Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
-  """
-  openInterestByCategory: [CategoryOpenInterest!]!
-
-  """
-  Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
-  """
-  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 
   """Look up a single pick configuration by ID"""
   pickConfiguration(id: String!): PickConfiguration @deprecated
@@ -1556,11 +1624,28 @@ type Query {
   predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
 
   """
+  Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
+  """
+  openInterestByCategory: [CategoryOpenInterest!]!
+
+  """
+  Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
+  """
+  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
+
+  """
   Protocol-wide statistics time series at the configured snapshot cadence —
-  cumulative volume, trade count, open interest, escrow balance. Window with
-  `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted returns
-  full history. When `toEpoch` covers now, the trailing in-progress bar is
-  appended as a live candle.
+  cumulative volume, trade count, open interest, escrow balance. Window
+  with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
+  returns full history.
+  
+  Bar timestamps: closed bars are labelled at *the start* of the interval
+  they represent (capture time minus one interval), so a bar at
+  `2026-01-01 00:00` summarizes activity ending `2026-01-02 00:00`. When
+  `toEpoch` covers now, a trailing live candle is appended; the live
+  candle's `timestamp` is the *current* interval boundary (not shifted
+  back), so callers can distinguish it as `points[points.length - 1]
+  .timestamp >= floor(now / interval) * interval`.
   """
   protocolStats(fromEpoch: Int, toEpoch: Int): [ProtocolStat!]!
 
@@ -1579,7 +1664,7 @@ type Query {
   analytics dialog). Per-claimant breakdown is available via the nested
   `claimants` field.
   """
-  referralCodes(cursor: Int, id: Int, limit: Int = 100): ReferralCodesPage!
+  referralCodes(id: Int, limit: Int = 100, cursor: Int): ReferralCodesPage!
 
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade
@@ -1599,8 +1684,12 @@ type Query {
   balance, deployed/available collateral, cumulative PnL, deposits,
   withdrawals, airdrop gains, secondary flows, unredeemed claims. Window
   with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
-  returns full history. When `toEpoch` covers now, the trailing
-  in-progress bar is appended as a live candle.
+  returns full history.
+  
+  Bar timestamps follow the same convention as `protocolStats`: closed
+  bars are labelled at the *start* of the interval they represent, and a
+  trailing live candle (anchored to the *current* interval boundary) is
+  appended when `toEpoch` covers now.
   """
   vaultStats(fromEpoch: Int, toEpoch: Int, vaultAddress: String!): [VaultStat!]!
 }
@@ -1650,18 +1739,23 @@ Credentialed create/update REST paths may still return hashes to the caller that
 created or administers the code.
 """
 type ReferralCode {
+  id: Int!
+  createdAt: DateTimeISO!
+  updatedAt: DateTimeISO!
+  createdBy: String!
+  creatorType: String!
+  maxClaims: Int!
+  isActive: Boolean!
+  expiresAt: Int
+
   """Total number of users who have claimed this code, across all pages."""
   claimCount: Int!
 
-  """Paginated per-claimant breakdown with trading volume + position count."""
-  claimants(cursor: Int, limit: Int = 100): ReferralCodeClaimantsPage!
-  createdAt: DateTimeISO!
-  createdBy: String!
-  creatorType: String!
-  expiresAt: Int
-  id: Int!
-  isActive: Boolean!
-  maxClaims: Int!
+  """
+  Sum of trading volume across every claimant's positions (predictor +
+  counterparty sides), as a stringified bigint. Aggregated server-side.
+  """
+  totalVolume: String!
 
   """
   Total position count across every claimant. A position with both predictor
@@ -1670,25 +1764,26 @@ type ReferralCode {
   """
   totalPositions: Int!
 
-  """
-  Sum of trading volume across every claimant's positions (predictor +
-  counterparty sides), as a stringified bigint. Aggregated server-side.
-  """
-  totalVolume: String!
-  updatedAt: DateTimeISO!
+  """Paginated per-claimant breakdown with trading volume + position count."""
+  claimants(limit: Int = 100, cursor: Int): ReferralCodeClaimantsPage!
 }
 
-type ReferralCodeClaimant {
-  address: String!
-  claimedAt: DateTimeISO!
-  id: Int!
-  positionCount: Int!
-  tradingVolume: String!
+type ReferralCodesPage {
+  items: [ReferralCode!]!
+  nextCursor: Int
 }
 
 type ReferralCodeClaimantsPage {
   items: [ReferralCodeClaimant!]!
   nextCursor: Int
+}
+
+type ReferralCodeClaimant {
+  id: Int!
+  address: String!
+  claimedAt: DateTimeISO!
+  tradingVolume: String!
+  positionCount: Int!
 }
 
 input ReferralCodeNullableRelationFilter {
@@ -1719,11 +1814,6 @@ input ReferralCodeWhereInput {
   isActive: BoolFilter
   maxClaims: IntFilter
   updatedAt: DateTimeFilter
-}
-
-type ReferralCodesPage {
-  items: [ReferralCode!]!
-  nextCursor: Int
 }
 
 """Filter questions by their resolution status"""
@@ -1789,26 +1879,6 @@ input StringNullableListFilter {
   hasEvery: [String!]
   hasSome: [String!]
   isEmpty: Boolean
-}
-
-"""
-Open-interest aggregated by time-to-resolution bucket. Each unsettled
-prediction's collateral is bucketed by the latest endTime among the conditions
-it touches (the moment its OI can finally be claimed). One row per non-empty
-bucket, ordered from soonest (bucket = 1) to furthest out.
-"""
-type TimeToResolutionBucket {
-  """Sort order: 1 = soonest, increasing for further-out buckets"""
-  bucket: Int!
-
-  """Display label, e.g. ≤1d / 2-7d / 1-2mo"""
-  label: String!
-
-  """Open interest in wei (decimal string)"""
-  openInterest: String!
-
-  """Number of predictions contributing to this bucket"""
-  predictionCount: Int!
 }
 
 """
@@ -1934,35 +2004,6 @@ input UserWhereUniqueInput {
   referredByCodeId: IntNullableFilter
   referredById: IntNullableFilter
   updatedAt: DateTimeFilter
-}
-
-"""Vault-specific stats snapshot for a single vault address."""
-type VaultStat {
-  """Realized PnL delta over the snapshot interval"""
-  periodPnL: String!
-
-  """
-  Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
-  """
-  timestamp: Int!
-  vaultAirdropGains: String!
-  vaultAvailableAssets: String!
-  vaultBalance: String!
-  vaultCumulativePnL: String!
-  vaultDeployed: String!
-  vaultDeposits: String!
-  vaultPositionsLost: Int!
-  vaultPositionsWon: Int!
-
-  """Cumulative wUSDe paid by the vault on secondary-market buys"""
-  vaultSecondaryBought: String!
-
-  """Cumulative wUSDe received by the vault on secondary-market sells"""
-  vaultSecondarySold: String!
-
-  """wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins"""
-  vaultUnredeemedClaim: String!
-  vaultWithdrawals: String!
 }
 
 """Time window for volume-based sorting"""

@@ -10,20 +10,18 @@
  * byte-identical.
  *
  * When `emitSchemaFile: true`, emits `schema.graphql` at the package
- * root with lexicographically-sorted types — same behaviour the old
- * type-graphql path provided via its own emitSchemaFile option. The
- * frontend `generate-types` chain reads that file.
+ * root preserving the source SDL's declaration order — notably
+ * `take, skip` on `*Page` queries lands in that order rather than
+ * alphabetized. Previously the emit ran through
+ * `lexicographicSortSchema`; that was dropped so the conventions
+ * encoded in the source SDL reach clients.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { makeExecutableSchema } from '@graphql-tools/schema';
-import {
-  lexicographicSortSchema,
-  printSchema,
-  type GraphQLSchema,
-} from 'graphql';
+import { printSchema, type GraphQLSchema } from 'graphql';
 import { resolvers } from './sdl/resolvers';
 
 export interface BuildApiSchemaOptions {
@@ -59,7 +57,7 @@ export const buildApiSchema = async (
     });
   }
   if (options.emitSchemaFile) {
-    const sdl = printSchema(lexicographicSortSchema(cachedSchema));
+    const sdl = printSchema(cachedSchema);
     writeFileSync(schemaOutPath, `${sdl}\n`, 'utf8');
   }
   return cachedSchema;

@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchAccountStatsRank,
-  type AccountStatMetric,
+  type AccountStatsMetric,
   type AccountStatsRankResult,
 } from '@sapience/sdk/queries';
 
@@ -16,7 +16,7 @@ import {
  */
 export const useAccountStatsRank = (
   address?: string,
-  metric: AccountStatMetric = 'NET_PNL',
+  metric: AccountStatsMetric = 'NET_PNL',
   range?: { from?: Date | string | null; to?: Date | string | null }
 ) => {
   const enabled = Boolean(address && address.trim() !== '');

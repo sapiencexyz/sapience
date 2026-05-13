@@ -24,20 +24,20 @@ describe('fetchAccuracyLeaderboard', () => {
     accuracyLeaderboardPage: { items, hasMore: false },
   });
 
-  test('uses default limit of 10 (mapped to take)', async () => {
+  test('uses default limit of 25 (mapped to take)', async () => {
     mockGraphqlRequest.mockResolvedValue(wrap([]));
     await fetchAccuracyLeaderboard();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(expect.any(String), {
-      take: 10,
+      take: 25,
       skip: 0,
     });
   });
 
   test('passes custom limit through as take', async () => {
     mockGraphqlRequest.mockResolvedValue(wrap([]));
-    await fetchAccuracyLeaderboard(25);
+    await fetchAccuracyLeaderboard(50);
     expect(mockGraphqlRequest).toHaveBeenCalledWith(expect.any(String), {
-      take: 25,
+      take: 50,
       skip: 0,
     });
   });
@@ -48,7 +48,7 @@ describe('fetchAccuracyLeaderboard', () => {
     expect(result).toEqual([]);
   });
 
-  test('forwards slimmed ForecasterScore rows verbatim', async () => {
+  test('forwards AccuracyLeaderboardEntry rows verbatim', async () => {
     mockGraphqlRequest.mockResolvedValue(
       wrap([
         { address: '0xa', accuracyScore: 0.9 },
@@ -74,7 +74,7 @@ describe('fetchAccountAccuracyRank', () => {
         address: '0xabcdef1234567890',
         accuracyScore: 0.85,
         rank: 5,
-        totalForecasters: 100,
+        totalParticipants: 100,
       },
     });
 
@@ -89,7 +89,7 @@ describe('fetchAccountAccuracyRank', () => {
         address: '0xabc',
         accuracyScore: 0.85,
         rank: 5,
-        totalForecasters: 100,
+        totalParticipants: 100,
       },
     });
 
@@ -98,7 +98,7 @@ describe('fetchAccountAccuracyRank', () => {
       address: '0xabc',
       accuracyScore: 0.85,
       rank: 5,
-      totalForecasters: 100,
+      totalParticipants: 100,
     });
   });
 
@@ -109,7 +109,7 @@ describe('fetchAccountAccuracyRank', () => {
       address: '0xabc',
       accuracyScore: 0,
       rank: null,
-      totalForecasters: 0,
+      totalParticipants: 0,
     });
   });
 });
@@ -211,7 +211,7 @@ describe('fetchAccountStatsLeaderboard', () => {
 // ============================================================================
 
 describe('fetchAccountStatsRank', () => {
-  test('lowercases address and defaults metric to NET_PNL', async () => {
+  test('lowercases address; omits filters entirely when caller provides no metric/window', async () => {
     mockGraphqlRequest.mockResolvedValue({
       accountStatsRank: {
         address: '0xabc',
@@ -227,9 +227,8 @@ describe('fetchAccountStatsRank', () => {
     await fetchAccountStatsRank({ address: '0xABC' });
     const [, vars] = mockGraphqlRequest.mock.calls[0];
     expect(vars.address).toBe('0xabc');
-    expect(vars.filters.metric).toBe('NET_PNL');
-    expect(vars.filters.fromEpoch).toBeNull();
-    expect(vars.filters.toEpoch).toBeNull();
+    // No filters supplied ⇒ resolver falls through to default NET_PNL / all-time.
+    expect(vars.filters).toBeNull();
   });
 
   test('passes explicit metric + Date window as epoch seconds', async () => {

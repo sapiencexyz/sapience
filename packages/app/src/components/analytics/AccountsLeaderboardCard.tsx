@@ -4,7 +4,7 @@ import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { Tabs, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { useState } from 'react';
 
-import type { AccountStatMetric } from '@sapience/sdk/queries';
+import type { AccountStatsMetric } from '@sapience/sdk/queries';
 
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
@@ -16,10 +16,10 @@ import TimeRangeFilter, {
 } from '~/components/shared/TimeRangeFilter';
 import {
   useAccountStatsLeaderboard,
-  type AccountStatEntry,
+  type AccountStatsLeaderboardEntry,
 } from '~/hooks/graphql/useAccountStatsLeaderboard';
 
-const METRICS: { value: AccountStatMetric; label: string }[] = [
+const METRICS: { value: AccountStatsMetric; label: string }[] = [
   { value: 'NET_PNL', label: 'Profit' },
   { value: 'GAINS', label: 'Gains' },
   { value: 'LOSSES', label: 'Losses' },
@@ -29,8 +29,8 @@ const METRICS: { value: AccountStatMetric; label: string }[] = [
 const ROW_COUNT = 10;
 
 function metricValue(
-  entry: AccountStatEntry,
-  metric: AccountStatMetric
+  entry: AccountStatsLeaderboardEntry,
+  metric: AccountStatsMetric
 ): string {
   switch (metric) {
     case 'GAINS':
@@ -56,7 +56,7 @@ function formatUsde(wei: string): string {
 
 export default function AccountsLeaderboardCard() {
   const [range, setRange] = useState<TimeRange>(presetRange('1M'));
-  const [metric, setMetric] = useState<AccountStatMetric>('NET_PNL');
+  const [metric, setMetric] = useState<AccountStatsMetric>('NET_PNL');
   const { data, isLoading } = useAccountStatsLeaderboard(
     metric,
     range,
@@ -77,7 +77,7 @@ export default function AccountsLeaderboardCard() {
           </div>
           <Tabs
             value={metric}
-            onValueChange={(v) => setMetric(v as AccountStatMetric)}
+            onValueChange={(v) => setMetric(v as AccountStatsMetric)}
           >
             <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
               {METRICS.map((m) => (

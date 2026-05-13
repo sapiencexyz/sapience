@@ -75,7 +75,6 @@ import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
 import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import { trade, tradeCount, trades } from './queries/trade';
-import { accountTotalVolume } from './queries/volume';
 
 export const resolvers: Resolvers = {
   ...scalarResolvers,
@@ -93,7 +92,6 @@ export const resolvers: Resolvers = {
     protocolStats,
     vaultStats,
     // Collateral
-    accountTotalVolume,
     collateralBalance,
     collateralBalanceHistory,
     collateralTransfers,

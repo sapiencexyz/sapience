@@ -113,9 +113,50 @@
     ],
     "types": [
       {
+        "kind": "INPUT_OBJECT",
+        "name": "AccountStatsFilters",
+        "description": "Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields\nare optional: omit the input entirely to rank by `NET_PNL` over all time.\n`fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.\nBoth bounds are epoch seconds (inclusive).",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "metric",
+            "description": null,
+            "type": {
+              "kind": "ENUM",
+              "name": "AccountStatsMetric",
+              "ofType": null
+            },
+            "defaultValue": "NET_PNL"
+          },
+          {
+            "name": "fromEpoch",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "toEpoch",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "OBJECT",
-        "name": "AccountStatEntry",
-        "description": "Per-address account stats over a date range — all amounts are wei strings (losses negative).",
+        "name": "AccountStatsLeaderboardEntry",
+        "description": "One row of the account-stats leaderboard — an address with its net PnL,\ngross gains, gross losses, and trading volume over a window. All amounts\nare wei strings (18 decimals); `losses` is negative.",
         "fields": [
           {
             "name": "address",
@@ -204,8 +245,77 @@
         "possibleTypes": null
       },
       {
+        "kind": "OBJECT",
+        "name": "AccountStatsLeaderboardPage",
+        "description": "Paginated wrapper around `AccountStatsLeaderboardEntry` rows with a server-truth hasMore flag.",
+        "fields": [
+          {
+            "name": "items",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "AccountStatsLeaderboardEntry",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Total addresses with activity in the window — populated unconditionally (cheap; derived from the in-memory merged-stats array).",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "ENUM",
-        "name": "AccountStatMetric",
+        "name": "AccountStatsMetric",
         "description": "Metric an account-stats leaderboard is ranked by.",
         "fields": null,
         "inputFields": null,
@@ -239,119 +349,9 @@
         "possibleTypes": null
       },
       {
-        "kind": "INPUT_OBJECT",
-        "name": "AccountStatsFilters",
-        "description": "Filters for `accountStatsLeaderboardPage`. `fromEpoch` omitted means all-time;\n`toEpoch` omitted means now. Both are epoch seconds.",
-        "fields": null,
-        "inputFields": [
-          {
-            "name": "metric",
-            "description": null,
-            "type": {
-              "kind": "ENUM",
-              "name": "AccountStatMetric",
-              "ofType": null
-            },
-            "defaultValue": "NET_PNL"
-          },
-          {
-            "name": "fromEpoch",
-            "description": null,
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "toEpoch",
-            "description": null,
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "defaultValue": null
-          }
-        ],
-        "interfaces": null,
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "AccountStatsLeaderboardPage",
-        "description": "Paginated wrapper around AccountStatEntry rows with a server-truth hasMore flag.",
-        "fields": [
-          {
-            "name": "items",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "AccountStatEntry",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalCount",
-            "description": "Total addresses with activity in the window. Populated only when selected.",
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [
-          {
-            "kind": "INTERFACE",
-            "name": "Page",
-            "ofType": null
-          }
-        ],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
         "kind": "OBJECT",
         "name": "AccountStatsRank",
-        "description": "Stats + rank for a single address against the leaderboard's ranked set. Stat\nfields mirror `AccountStatEntry` (always populated; zero when the address has\nno activity in the requested window). `rank` is 1-indexed against the ranked\nset for the chosen metric, or null when the address is absent from it.\n`totalParticipants` is the size of the ranked set in the window.",
+        "description": "Stats + rank for a single address against the same ranked set the\nleaderboard slices. Stat fields mirror `AccountStatsLeaderboardEntry` and\nare always populated (zero when the address has no activity in the window).\n`rank` is 1-indexed against the ranked set for the chosen metric, or null\nwhen the address is absent from it. `totalParticipants` is the size of the\nranked set in the window (0 when the window has no participants at all,\ndistinguishing an empty-window stub from an unranked address in a\npopulated window).",
         "fields": [
           {
             "name": "address",
@@ -469,8 +469,51 @@
       },
       {
         "kind": "OBJECT",
+        "name": "AccuracyLeaderboardEntry",
+        "description": "One row of the accuracy leaderboard — an address with its lifetime\naccuracy score aggregated across every scored attestation. Parallel\nto `AccountStatsLeaderboardEntry`.",
+        "fields": [
+          {
+            "name": "address",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "accuracyScore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Float",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "AccuracyLeaderboardPage",
-        "description": "Paginated wrapper around ForecasterScore leaderboard rows with a server-truth hasMore flag.",
+        "description": "Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag.",
         "fields": [
           {
             "name": "items",
@@ -487,7 +530,7 @@
                   "name": null,
                   "ofType": {
                     "kind": "OBJECT",
-                    "name": "ForecasterScore",
+                    "name": "AccuracyLeaderboardEntry",
                     "ofType": null
                   }
                 }
@@ -514,7 +557,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total forecasters with scored attestations. Populated only when selected.",
+            "description": "Total forecasters on the leaderboard — populated unconditionally (cheap; derived from the in-memory leaderboard array).",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -539,24 +582,8 @@
       {
         "kind": "OBJECT",
         "name": "AccuracyRank",
-        "description": "Accuracy rank for an address on the forecasting leaderboard",
+        "description": "Accuracy rank and lifetime score for a single address. Mirrors\n`AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),\n`rank` (1-indexed, null when unranked), and `totalParticipants` (size of\nthe scored-forecaster set). Accuracy is lifetime-aggregated — the\ntime-weighted error already weights by recency, so there's no window\nfilter on this surface.",
         "fields": [
-          {
-            "name": "accuracyScore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Float",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
           {
             "name": "address",
             "description": null,
@@ -567,6 +594,22 @@
               "ofType": {
                 "kind": "SCALAR",
                 "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "accuracyScore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Float",
                 "ofType": null
               }
             },
@@ -586,7 +629,7 @@
             "deprecationReason": null
           },
           {
-            "name": "totalForecasters",
+            "name": "totalParticipants",
             "description": null,
             "args": [],
             "type": {
@@ -8715,49 +8758,6 @@
         "possibleTypes": null
       },
       {
-        "kind": "OBJECT",
-        "name": "ForecasterScore",
-        "description": "Accuracy score for a forecaster, aggregated across all scored markets",
-        "fields": [
-          {
-            "name": "accuracyScore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Float",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "address",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
         "kind": "SCALAR",
         "name": "Int",
         "description": "The `Int` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1.",
@@ -13008,7 +13008,7 @@
       {
         "kind": "INTERFACE",
         "name": "Page",
-        "description": "Shared shape for `*Page` paginated wrappers. Concrete types add their own\nstrongly-typed `items` field; `hasMore` and `totalCount` live here so a\ngeneric `Page` helper can read them. `totalCount` is lazy — populated only\nwhen the client selects the field.",
+        "description": "Shared shape for `*Page` paginated wrappers. Concrete types add their own\nstrongly-typed `items` field; `hasMore` and `totalCount` live here so a\ngeneric `Page` helper can read them. Concrete `*Page` types document\nwhether `totalCount` is populated unconditionally (cheap, in-memory) or\nlazily (only when the client selects the field).",
         "fields": [
           {
             "name": "hasMore",
@@ -14190,7 +14190,7 @@
         "fields": [
           {
             "name": "accountAccuracyRank",
-            "description": "Accuracy rank and score for a single address relative to all forecasters",
+            "description": "Accuracy rank and lifetime score for a single address. Mirrors\n`accountStatsRank`'s shape: stats fields are always populated (zero for\nunscored addresses), `rank` is null when the address is absent from the\nranked set, and `totalParticipants` is the size of the scored-forecaster\nset.",
             "args": [
               {
                 "name": "address",
@@ -14314,35 +14314,17 @@
           },
           {
             "name": "accountStatsLeaderboardPage",
-            "description": "Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date window. `fromEpoch` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. Page-shaped with server-truth `hasMore` and lazy `totalCount`.",
+            "description": "Accounts ranked by an account metric (net PnL, gains, losses, or volume)\nover an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over\nall-time. PnL metrics are attributed to settlement time, volume to trade\ntime. Page-shaped with server-truth `hasMore`; `totalCount` is populated\nunconditionally (cheap in-memory derivation).",
             "args": [
               {
                 "name": "filters",
                 "description": null,
                 "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "INPUT_OBJECT",
-                    "name": "AccountStatsFilters",
-                    "ofType": null
-                  }
+                  "kind": "INPUT_OBJECT",
+                  "name": "AccountStatsFilters",
+                  "ofType": null
                 },
                 "defaultValue": null
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
               },
               {
                 "name": "take",
@@ -14357,6 +14339,20 @@
                   }
                 },
                 "defaultValue": "25"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -14373,7 +14369,7 @@
           },
           {
             "name": "accountStatsRank",
-            "description": "Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional epoch-second window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set.",
+            "description": "Stats + rank for a single address against the same ranked set the\nleaderboard slices. `filters` omitted ⇒ rank by `NET_PNL` over all-time.\nStats fields are always present (zero when the address has no activity\nin the window). `rank` is null when the address is absent from the\nranked set; `totalParticipants` is the ranked-set size (0 when the\nwindow has no participants at all — that distinguishes \"empty window\"\nfrom \"present window, address unranked\").",
             "args": [
               {
                 "name": "address",
@@ -14393,13 +14389,9 @@
                 "name": "filters",
                 "description": null,
                 "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "INPUT_OBJECT",
-                    "name": "AccountStatsFilters",
-                    "ofType": null
-                  }
+                  "kind": "INPUT_OBJECT",
+                  "name": "AccountStatsFilters",
+                  "ofType": null
                 },
                 "defaultValue": null
               }
@@ -14417,40 +14409,23 @@
             "deprecationReason": null
           },
           {
-            "name": "accountTotalVolume",
-            "description": "Total lifetime trading volume in wei for the given address across all prediction types",
+            "name": "accuracyLeaderboardPage",
+            "description": "Top forecasters ranked by lifetime accuracy. The time-weighted error\nalready weights by recency, so there's no window filter on this surface.\nPage-shaped with server-truth `hasMore`; `totalCount` is populated\nunconditionally (cheap in-memory derivation).",
             "args": [
               {
-                "name": "address",
+                "name": "take",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",
                   "name": null,
                   "ofType": {
                     "kind": "SCALAR",
-                    "name": "String",
+                    "name": "Int",
                     "ofType": null
                   }
                 },
-                "defaultValue": null
-              }
-            ],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "accuracyLeaderboardPage",
-            "description": "Top forecasters ranked by accuracy score. Page-shaped with server-truth\n`hasMore` and lazy `totalCount` (populated only when selected).",
-            "args": [
+                "defaultValue": "25"
+              },
               {
                 "name": "skip",
                 "description": null,
@@ -14464,20 +14439,6 @@
                   }
                 },
                 "defaultValue": "0"
-              },
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "10"
               }
             ],
             "type": {
@@ -16145,7 +16106,7 @@
           },
           {
             "name": "protocolStats",
-            "description": "Protocol-wide statistics time series at the configured snapshot cadence —\ncumulative volume, trade count, open interest, escrow balance. Window with\n`fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted returns\nfull history. When `toEpoch` covers now, the trailing in-progress bar is\nappended as a live candle.",
+            "description": "Protocol-wide statistics time series at the configured snapshot cadence —\ncumulative volume, trade count, open interest, escrow balance. Window\nwith `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted\nreturns full history.\n\nBar timestamps: closed bars are labelled at *the start* of the interval\nthey represent (capture time minus one interval), so a bar at\n`2026-01-01 00:00` summarizes activity ending `2026-01-02 00:00`. When\n`toEpoch` covers now, a trailing live candle is appended; the live\ncandle's `timestamp` is the *current* interval boundary (not shifted\nback), so callers can distinguish it as `points[points.length - 1]\n.timestamp >= floor(now / interval) * interval`.",
             "args": [
               {
                 "name": "fromEpoch",
@@ -16747,7 +16708,7 @@
           },
           {
             "name": "vaultStats",
-            "description": "Vault-specific statistics time series for a single vault address — vault\nbalance, deployed/available collateral, cumulative PnL, deposits,\nwithdrawals, airdrop gains, secondary flows, unredeemed claims. Window\nwith `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted\nreturns full history. When `toEpoch` covers now, the trailing\nin-progress bar is appended as a live candle.",
+            "description": "Vault-specific statistics time series for a single vault address — vault\nbalance, deployed/available collateral, cumulative PnL, deposits,\nwithdrawals, airdrop gains, secondary flows, unredeemed claims. Window\nwith `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted\nreturns full history.\n\nBar timestamps follow the same convention as `protocolStats`: closed\nbars are labelled at the *start* of the interval they represent, and a\ntrailing live candle (anchored to the *current* interval boundary) is\nappended when `toEpoch` covers now.",
             "args": [
               {
                 "name": "fromEpoch",

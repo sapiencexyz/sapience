@@ -15,7 +15,6 @@
  *  - `calculateAccountVolumes` — per-address staked + traded collateral,
  *    attributed to *trade time* (`position.mintedAt`,
  *    `Prediction.onChainCreatedAt`, `secondary_trade.executedAt`).
- *    Matches `accountTotalVolume` semantics.
  *
  * Returned amounts are wei strings (18 decimals); `losses` is negative.
  */

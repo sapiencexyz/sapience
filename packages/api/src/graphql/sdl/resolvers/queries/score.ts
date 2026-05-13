@@ -1,20 +1,21 @@
 /**
  * Accuracy-score queries: `accuracyLeaderboardPage` and `accountAccuracyRank`.
  *
- * twError in `attester_market_tw_error` now stores (1 - brier) * tau,
+ * `twError` in `attester_market_tw_error` now stores `(1 - brier) * tau`,
  * i.e. an accuracy score where higher is better. The aggregate per
- * attester is averaged across their scored markets; the leaderboard
- * is sorted descending.
+ * attester is averaged across their scored markets; the leaderboard is
+ * sorted descending. The time-weighted error already weights by recency,
+ * so there's no window filter on either of these resolvers — accuracy is
+ * lifetime-aggregated by design.
  *
  * A small module-scope TTL cache protects the DB from bursts on the
- * leaderboard aggregation (shared between `accuracyLeaderboardPage`
- * and `accountAccuracyRank`).
+ * leaderboard aggregation (shared between the two resolvers).
  */
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
-import { clampSkip, clampTake, wantsTotalCount } from './pagination';
+import { clampSkip, clampTake } from './pagination';
 
 const leaderboardCache = new TtlCache<
   string,
@@ -40,18 +41,21 @@ const getLeaderboardScores = async (): Promise<
   return scores;
 };
 
+const DEFAULT_LEADERBOARD_TAKE = 25;
+
 export const accuracyLeaderboardPage: NonNullable<
   QueryResolvers['accuracyLeaderboardPage']
-> = async (_parent, { take, skip }, _ctx, info) => {
-  const cappedTake = clampTake(take);
+> = async (_parent, { take, skip }) => {
+  const cappedTake = clampTake(take, { defaultTake: DEFAULT_LEADERBOARD_TAKE });
   const cappedSkip = clampSkip(skip);
   const scores = await getLeaderboardScores();
   const items = scores
     .slice(cappedSkip, cappedSkip + cappedTake)
     .map((s) => ({ address: s.attester, accuracyScore: s.accuracyScore }));
   const hasMore = cappedSkip + items.length < scores.length;
-  const totalCount = wantsTotalCount(info) ? scores.length : null;
-  return { items, hasMore, totalCount };
+  // totalCount is cheap (the in-memory cached array's length), so populate
+  // unconditionally — no field-resolver lazy gate needed for this surface.
+  return { items, hasMore, totalCount: scores.length };
 };
 
 export const accountAccuracyRank: NonNullable<
@@ -59,12 +63,12 @@ export const accountAccuracyRank: NonNullable<
 > = async (_parent, { address }) => {
   const target = address.toLowerCase();
   const scores = await getLeaderboardScores();
-  const totalForecasters = scores.length;
+  const totalParticipants = scores.length;
   const idx = scores.findIndex((s) => s.attester === target);
   return {
     address: target,
     accuracyScore: idx >= 0 ? scores[idx].accuracyScore : 0,
     rank: idx >= 0 ? idx + 1 : null,
-    totalForecasters,
+    totalParticipants,
   };
 };
