@@ -206,11 +206,6 @@ export const protocolStats: NonNullable<
           p."chainId"
         FROM "Prediction" p
         LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
-        WHERE NOT EXISTS (
-          SELECT 1 FROM "Pick" pi
-          JOIN "condition" c ON c.id = pi."conditionId"
-          WHERE pi."pickConfigId" = pk.id AND c.public = false
-        )
       ) combined ON
         combined.created_ts <= ts.timestamp
         AND (combined.settled_ts IS NULL OR combined.settled_ts > ts.timestamp)
@@ -233,11 +228,23 @@ export const protocolStats: NonNullable<
   const interval = resolveSnapshotIntervalSeconds();
 
   // Cumulative PnL surfaced to the chart rolls up trading activity:
-  // settlement PnL plus net secondary-market trade flow. Airdrops are
-  // tracked separately so they can be reported alongside without
-  // distorting the trading return shown in the PnL chart.
+  // settlement PnL, plus wUSDe already earmarked for the vault from
+  // resolved-but-not-yet-redeemed wins, plus net secondary-market trade flow.
+  //
+  // `vaultRealizedPnL` is `grossPayouts(Claim ∪ Close) − primaryCollateral`:
+  // the cost basis (`primaryCollateral`) is recognized the moment a pickConfig
+  // resolves, but the payout only lands once the holder's `redeem()`/`burn()`
+  // is indexed. Between those two events a winning position contributes
+  // `−stake` instead of `+profit` — a transient phantom loss that crashed the
+  // PnL chart on days when a chunk of the vault's positions resolved before the
+  // keeper's `redeemFromEscrow` tx was indexed. `vaultUnredeemedClaim` (= total
+  // collateral owed on the vault's winning sides, net of what it's already
+  // claimed) exactly cancels that gap, so the line stays stable across the
+  // resolve → redeem → index cycle. Airdrops are tracked separately so they can
+  // be reported alongside without distorting the trading return shown here.
   const cumulativePnL = (s: (typeof protocolSnapshots)[number]): bigint =>
     BigInt(s.vaultRealizedPnL) +
+    BigInt(s.vaultUnredeemedClaim) +
     BigInt(s.vaultSecondarySold) -
     BigInt(s.vaultSecondaryBought);
 
@@ -327,6 +334,7 @@ export const protocolStats: NonNullable<
 
     const liveCumulativePnL =
       livePnlResult.realizedPnL +
+      liveUnredeemedClaim +
       liveSecondaryFlows.sold -
       liveSecondaryFlows.bought;
     const livePeriodPnL = (
@@ -414,7 +422,8 @@ const ANALYTICS_CACHE_TTL_MS = 60_000;
  * `condition_group.totalOpenInterest`) so the chainId filter applies cleanly.
  * Math is equivalent: the denormalized group total is a sum of its
  * conditions' OI, so summing condition rows produces the same per-category
- * total. Uses `IDX_condition_market_filter (public, chainId, ...)`.
+ * total. Counts private conditions too so this breakdown reconciles with the
+ * protocol-wide OI total.
  *
  * Cached in-process for 60s — single-flighted, so concurrent requests
  * collapse to one DB hit and the result feeds the public CDN as well.
@@ -431,8 +440,7 @@ const fetchOpenInterestByCategory = memoTtl(
       SUM(c."openInterest"::numeric)::text AS total_oi
     FROM condition c
     INNER JOIN category cat ON cat.id = c."categoryId"
-    WHERE c.public = true
-      AND c.settled = false
+    WHERE c.settled = false
       AND c."chainId" = ${chainId}
     GROUP BY cat.id, cat.name, cat.slug, cat."createdAt"
     HAVING SUM(c."openInterest"::numeric) > 0
@@ -477,17 +485,17 @@ const TTR_BUCKET_LABELS: Record<number, string> = {
 /**
  * Query.openInterestByTimeToResolution — protocol-wide OI bucketed by how soon
  * each prediction's collateral can finally be claimed. Pre-aggregates each
- * pickConfig once (max endTime across legs, all-public flag), then joins
- * predictions in a single pass — avoiding the Pick × condition fan-out that
- * the obvious join would create. Predictions whose latest endTime is in the
- * past but haven't been resolved roll into bucket 1 (imminent / overdue).
+ * pickConfig once (max endTime across legs), then joins predictions in a
+ * single pass — avoiding the Pick × condition fan-out that the obvious join
+ * would create. Predictions whose latest endTime is in the past but haven't
+ * been resolved roll into bucket 1 (imminent / overdue).
  *
- * Mirrors the privacy filter used by the OI time-series resolver: drops any
- * prediction that touches a non-public condition, so the totals reconcile with
- * what's shown elsewhere. The CTE pre-filters Pick rows by condition.chainId
- * so the per-pickConfig aggregation only walks rows for the target chain
- * (Pick legs are co-chain with their pickConfig in practice). Cached
- * in-process for 60s with single-flight.
+ * Counts OI on private conditions too — collateral locked in a privated
+ * condition is still real protocol OI that someone can eventually claim, so
+ * these totals reconcile with the OI time-series resolver. The CTE pre-filters
+ * Pick rows by condition.chainId so the per-pickConfig aggregation only walks
+ * rows for the target chain (Pick legs are co-chain with their pickConfig in
+ * practice). Cached in-process for 60s with single-flight.
  */
 const fetchOpenInterestByTimeToResolution = memoTtl(
   async (): Promise<TimeToResolutionBucket[]> => {
@@ -496,8 +504,7 @@ const fetchOpenInterestByTimeToResolution = memoTtl(
     WITH per_pick_config AS (
       SELECT
         pi."pickConfigId" AS pick_config_id,
-        MAX(c."endTime")  AS max_end_time,
-        BOOL_AND(c.public) AS all_public
+        MAX(c."endTime")  AS max_end_time
       FROM "Pick" pi
       JOIN "condition" c ON c.id = pi."conditionId"
       WHERE c."chainId" = ${chainId}
@@ -523,7 +530,6 @@ const fetchOpenInterestByTimeToResolution = memoTtl(
     JOIN per_pick_config x ON x.pick_config_id = pk.id
     WHERE pk.resolved = false
       AND pk."chainId" = ${chainId}
-      AND x.all_public
     GROUP BY bucket
     ORDER BY bucket
   `;

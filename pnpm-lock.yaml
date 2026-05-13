@@ -6565,7 +6565,7 @@ packages:
     resolution: {integrity: sha512-LEyx4aLEC3x6T0UguF6YILf+ntvmOaWsVfENmIW0E9H09vKlLDGelMjjSm0jkDHALj8A8quZ/HapKNigzwge+Q==}
 
   abi-decoder@https://codeload.github.com/UMAprotocol/abi-decoder/tar.gz/1f18b7037985bf9b8960a6dc39dc52579ef274bb:
-    resolution: {tarball: https://codeload.github.com/UMAprotocol/abi-decoder/tar.gz/1f18b7037985bf9b8960a6dc39dc52579ef274bb}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/UMAprotocol/abi-decoder/tar.gz/1f18b7037985bf9b8960a6dc39dc52579ef274bb}
     version: 2.2.2
 
   abitype@1.0.6:
@@ -9483,7 +9483,7 @@ packages:
     resolution: {integrity: sha512-j0KLYPhm6zeac4lz3oJ3o65qvgQCcPubiyotZrXqEaG4hNagNYO8qdlUrX5vwqv9ohqeT/Z3j6+yW067yWWdUw==}
 
   forge-std@https://codeload.github.com/foundry-rs/forge-std/tar.gz/0e01ca7ba958b8d9818a25b0a10031b0ba3c4c59:
-    resolution: {tarball: https://codeload.github.com/foundry-rs/forge-std/tar.gz/0e01ca7ba958b8d9818a25b0a10031b0ba3c4c59}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/foundry-rs/forge-std/tar.gz/0e01ca7ba958b8d9818a25b0a10031b0ba3c4c59}
     version: 1.10.0
 
   fork-ts-checker-webpack-plugin@8.0.0:
@@ -12138,7 +12138,7 @@ packages:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
 
   node-metamask@https://codeload.github.com/UMAprotocol/node-metamask/tar.gz/36b33cb82558bafcd3ab0dcfbd35b26c2c0a2584:
-    resolution: {tarball: https://codeload.github.com/UMAprotocol/node-metamask/tar.gz/36b33cb82558bafcd3ab0dcfbd35b26c2c0a2584}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/UMAprotocol/node-metamask/tar.gz/36b33cb82558bafcd3ab0dcfbd35b26c2c0a2584}
     version: 1.1.2
 
   node-mock-http@1.0.3:

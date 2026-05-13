@@ -42,7 +42,6 @@ interface IConditionalTokensConditionResolver is IConditionResolver {
     error InvalidSourceChain(uint32 expected, uint32 actual);
     error InvalidSender(address expected, address actual);
     error InvalidCommandType(uint16 commandType);
-    error ConditionNotSettled(bytes32 conditionId);
 
     // ============ Functions ============
 

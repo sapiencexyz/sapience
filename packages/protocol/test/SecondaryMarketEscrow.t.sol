@@ -143,24 +143,6 @@ contract MockMultisig is IERC1271 {
     }
 }
 
-contract MockAccountFactory {
-    mapping(address => mapping(uint256 => address)) private _accounts;
-
-    function setAccount(address owner, uint256 index, address account)
-        external
-    {
-        _accounts[owner][index] = account;
-    }
-
-    function getAccountAddress(address owner, uint256 index)
-        external
-        view
-        returns (address)
-    {
-        return _accounts[owner][index];
-    }
-}
-
 contract SecondaryMarketEscrowTest is Test {
     SecondaryMarketEscrow public escrow;
     MockERC20 public positionToken;
@@ -190,8 +172,7 @@ contract SecondaryMarketEscrowTest is Test {
         buyer = vm.addr(buyerPk);
         relayer = vm.addr(4);
 
-        // Deploy contracts (no account factory for basic tests)
-        escrow = new SecondaryMarketEscrow(address(0));
+        escrow = new SecondaryMarketEscrow();
         positionToken = new MockERC20("Position Token", "POS", 18);
         collateralToken = new MockERC20("Collateral", "USDE", 18);
 
@@ -1110,10 +1091,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
     SecondaryMarketEscrow public escrow;
     MockERC20 public positionToken;
     MockERC20 public collateralToken;
-    MockAccountFactory public factory;
 
-    uint256 public ownerPk;
-    address public owner;
     uint256 public sessionKeyPk;
     address public sessionKey;
 
@@ -1131,18 +1109,13 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
     bytes32 public constant REF_CODE = keccak256("test-ref");
 
     function setUp() public {
-        ownerPk = 10;
-        owner = vm.addr(ownerPk);
         sessionKeyPk = 11;
         sessionKey = vm.addr(sessionKeyPk);
         buyerPk = 12;
         buyer = vm.addr(buyerPk);
         smartAccount = address(0xBEEF);
 
-        factory = new MockAccountFactory();
-        factory.setAccount(owner, 0, smartAccount);
-
-        escrow = new SecondaryMarketEscrow(address(factory));
+        escrow = new SecondaryMarketEscrow();
         positionToken = new MockERC20("Position Token", "POS", 18);
         collateralToken = new MockERC20("Collateral", "USDE", 18);
 
@@ -1184,36 +1157,26 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function _createSessionKeyData() internal view returns (bytes memory) {
-        uint256 validUntil = block.timestamp + 1 days;
-        bytes32 permissionsHash = keccak256("TRADE");
-
-        // Owner signs session key approval
-        bytes32 sessionApprovalHash = escrow.getSessionKeyApprovalHash(
-            sessionKey, smartAccount, validUntil, permissionsHash, block.chainid
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPk, sessionApprovalHash);
-        bytes memory ownerSig = abi.encodePacked(r, s, v);
-
-        IV2Types.SessionKeyData memory skData = IV2Types.SessionKeyData({
-            sessionKey: sessionKey,
-            owner: owner,
-            validUntil: validUntil,
-            permissionsHash: permissionsHash,
-            chainId: block.chainid,
-            ownerSignature: ownerSig
-        });
-
-        return abi.encode(skData);
+    /// @notice Any non-empty bytes blob — the legacy on-chain session-key
+    /// path is now refused before decode, so the precise contents do not
+    /// matter. The escrow reverts with `LegacySessionKeyDataDisabled` purely
+    /// based on `sessionKeyData.length != 0`.
+    function _legacySessionKeyDataBlob() internal pure returns (bytes memory) {
+        return hex"deadbeef";
     }
 
-    function test_executeTrade_withSessionKeySeller() public {
+    // The legacy on-chain session-key path used factory CREATE2 derivation as
+    // proof of authority and could not see Kernel validator rotations. It is
+    // now refused: any non-empty `sellerSessionKeyData` / `buyerSessionKeyData`
+    // reverts with `LegacySessionKeyDataDisabled`. Smart-account session keys
+    // must validate via the smart account's own ERC-1271 path.
+
+    function test_executeTrade_legacySessionKeyData_seller_reverts() public {
         bytes32 tradeHash = _computeTradeHash();
         uint256 sNonce = _freshNonce();
         uint256 bNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
-        // Session key signs the trade approval for smart account
         bytes memory sellerSig = _signTradeApproval(
             tradeHash, smartAccount, sNonce, deadline, sessionKeyPk
         );
@@ -1234,214 +1197,66 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
         request.sellerSignature = sellerSig;
         request.buyerSignature = buyerSig;
         request.refCode = REF_CODE;
-        request.sellerSessionKeyData = _createSessionKeyData();
+        request.sellerSessionKeyData = _legacySessionKeyDataBlob();
         request.buyerSessionKeyData = "";
 
-        uint256 smartAccountPosBefore = positionToken.balanceOf(smartAccount);
-
-        escrow.executeTrade(request);
-
-        assertEq(
-            positionToken.balanceOf(smartAccount),
-            smartAccountPosBefore - TOKEN_AMOUNT
+        vm.expectRevert(
+            ISecondaryMarketEscrow.LegacySessionKeyDataDisabled.selector
         );
-        assertEq(collateralToken.balanceOf(smartAccount), PRICE);
-        assertEq(positionToken.balanceOf(buyer), TOKEN_AMOUNT);
+        escrow.executeTrade(request);
     }
 
-    function test_executeTrade_sessionKey_expiredSession() public {
-        bytes32 tradeHash = _computeTradeHash();
+    function test_executeTrade_legacySessionKeyData_buyer_reverts() public {
+        // Compute a seller-only legitimate trade hash (seller is an EOA that
+        // signs valid ECDSA) so we reach buyer-side validation, where the
+        // legacy blob must trip the new revert.
+        uint256 _seller2Pk = uint256(keccak256("legacy.seller2"));
+        address _seller2 = vm.addr(_seller2Pk);
+        positionToken.mint(_seller2, TOKEN_AMOUNT);
+        vm.prank(_seller2);
+        positionToken.approve(address(escrow), type(uint256).max);
+
         uint256 sNonce = _freshNonce();
         uint256 bNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
-
-        bytes memory sellerSig = _signTradeApproval(
-            tradeHash, smartAccount, sNonce, deadline, sessionKeyPk
-        );
-        bytes memory buyerSig =
-            _signTradeApproval(tradeHash, buyer, bNonce, deadline, buyerPk);
-
-        // Create session key data with expired validUntil
-        uint256 validUntil = block.timestamp - 1;
-        bytes32 permissionsHash = keccak256("TRADE");
-
-        bytes32 sessionApprovalHash = escrow.getSessionKeyApprovalHash(
-            sessionKey, smartAccount, validUntil, permissionsHash, block.chainid
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPk, sessionApprovalHash);
-        bytes memory ownerSig = abi.encodePacked(r, s, v);
-
-        IV2Types.SessionKeyData memory skData = IV2Types.SessionKeyData({
-            sessionKey: sessionKey,
-            owner: owner,
-            validUntil: validUntil,
-            permissionsHash: permissionsHash,
-            chainId: block.chainid,
-            ownerSignature: ownerSig
-        });
-
-        ISecondaryMarketEscrow.TradeRequest memory request;
-        request.token = address(positionToken);
-        request.collateral = address(collateralToken);
-        request.seller = smartAccount;
-        request.buyer = buyer;
-        request.tokenAmount = TOKEN_AMOUNT;
-        request.price = PRICE;
-        request.sellerNonce = sNonce;
-        request.buyerNonce = bNonce;
-        request.sellerDeadline = deadline;
-        request.buyerDeadline = deadline;
-        request.sellerSignature = sellerSig;
-        request.buyerSignature = buyerSig;
-        request.refCode = REF_CODE;
-        request.sellerSessionKeyData = abi.encode(skData);
-        request.buyerSessionKeyData = "";
-
-        vm.expectRevert(ISecondaryMarketEscrow.InvalidSignature.selector);
-        escrow.executeTrade(request);
-    }
-
-    function test_executeTrade_sessionKey_wrongChainId() public {
-        bytes32 tradeHash = _computeTradeHash();
-        uint256 sNonce = _freshNonce();
-        uint256 bNonce = _freshNonce();
-        uint256 deadline = block.timestamp + 1 hours;
-
-        bytes memory sellerSig = _signTradeApproval(
-            tradeHash, smartAccount, sNonce, deadline, sessionKeyPk
-        );
-        bytes memory buyerSig =
-            _signTradeApproval(tradeHash, buyer, bNonce, deadline, buyerPk);
-
-        // Create session key data with wrong chain ID
-        uint256 validUntil = block.timestamp + 1 days;
-        bytes32 permissionsHash = keccak256("TRADE");
-        uint256 wrongChainId = 999;
-
-        bytes32 sessionApprovalHash = escrow.getSessionKeyApprovalHash(
-            sessionKey, smartAccount, validUntil, permissionsHash, wrongChainId
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPk, sessionApprovalHash);
-        bytes memory ownerSig = abi.encodePacked(r, s, v);
-
-        IV2Types.SessionKeyData memory skData = IV2Types.SessionKeyData({
-            sessionKey: sessionKey,
-            owner: owner,
-            validUntil: validUntil,
-            permissionsHash: permissionsHash,
-            chainId: wrongChainId,
-            ownerSignature: ownerSig
-        });
-
-        ISecondaryMarketEscrow.TradeRequest memory request;
-        request.token = address(positionToken);
-        request.collateral = address(collateralToken);
-        request.seller = smartAccount;
-        request.buyer = buyer;
-        request.tokenAmount = TOKEN_AMOUNT;
-        request.price = PRICE;
-        request.sellerNonce = sNonce;
-        request.buyerNonce = bNonce;
-        request.sellerDeadline = deadline;
-        request.buyerDeadline = deadline;
-        request.sellerSignature = sellerSig;
-        request.buyerSignature = buyerSig;
-        request.refCode = REF_CODE;
-        request.sellerSessionKeyData = abi.encode(skData);
-        request.buyerSessionKeyData = "";
-
-        vm.expectRevert(ISecondaryMarketEscrow.InvalidSignature.selector);
-        escrow.executeTrade(request);
-    }
-
-    function _signRaw(uint256 pk, bytes32 hash)
-        internal
-        pure
-        returns (bytes memory)
-    {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, hash);
-        return abi.encodePacked(r, s, v);
-    }
-
-    function test_executeTrade_sessionKey_noAccountFactory() public {
-        // Deploy escrow without account factory
-        SecondaryMarketEscrow escrowNoFactory =
-            new SecondaryMarketEscrow(address(0));
-
-        vm.prank(smartAccount);
-        positionToken.approve(address(escrowNoFactory), type(uint256).max);
-        vm.prank(buyer);
-        collateralToken.approve(address(escrowNoFactory), type(uint256).max);
 
         bytes32 tradeHash = keccak256(
             abi.encode(
                 address(positionToken),
                 address(collateralToken),
-                smartAccount,
+                _seller2,
                 buyer,
                 TOKEN_AMOUNT,
                 PRICE
             )
         );
 
-        uint256 deadline = block.timestamp + 1 hours;
-
-        bytes memory sellerSig = _signRaw(
-            sessionKeyPk,
-            escrowNoFactory.getTradeApprovalHash(
-                tradeHash, smartAccount, 0, deadline
-            )
+        bytes memory sellerSig = _signTradeApproval(
+            tradeHash, _seller2, sNonce, deadline, _seller2Pk
         );
-        bytes memory buyerSig = _signRaw(
-            buyerPk,
-            escrowNoFactory.getTradeApprovalHash(tradeHash, buyer, 0, deadline)
-        );
-
-        // Create session key data
-        bytes memory sessionKeyData;
-        {
-            uint256 validUntil = block.timestamp + 1 days;
-            bytes32 permissionsHash = keccak256("TRADE");
-            bytes memory ownerSig = _signRaw(
-                ownerPk,
-                escrowNoFactory.getSessionKeyApprovalHash(
-                    sessionKey,
-                    smartAccount,
-                    validUntil,
-                    permissionsHash,
-                    block.chainid
-                )
-            );
-            sessionKeyData = abi.encode(
-                IV2Types.SessionKeyData({
-                    sessionKey: sessionKey,
-                    owner: owner,
-                    validUntil: validUntil,
-                    permissionsHash: permissionsHash,
-                    chainId: block.chainid,
-                    ownerSignature: ownerSig
-                })
-            );
-        }
+        bytes memory buyerSig =
+            _signTradeApproval(tradeHash, buyer, bNonce, deadline, buyerPk);
 
         ISecondaryMarketEscrow.TradeRequest memory request;
         request.token = address(positionToken);
         request.collateral = address(collateralToken);
-        request.seller = smartAccount;
+        request.seller = _seller2;
         request.buyer = buyer;
         request.tokenAmount = TOKEN_AMOUNT;
         request.price = PRICE;
-        request.sellerNonce = 0;
-        request.buyerNonce = 0;
+        request.sellerNonce = sNonce;
+        request.buyerNonce = bNonce;
         request.sellerDeadline = deadline;
         request.buyerDeadline = deadline;
         request.sellerSignature = sellerSig;
         request.buyerSignature = buyerSig;
         request.refCode = REF_CODE;
-        request.sellerSessionKeyData = sessionKeyData;
-        request.buyerSessionKeyData = "";
+        request.sellerSessionKeyData = "";
+        request.buyerSessionKeyData = _legacySessionKeyDataBlob();
 
-        vm.expectRevert(ISecondaryMarketEscrow.AccountFactoryNotSet.selector);
-        escrowNoFactory.executeTrade(request);
+        vm.expectRevert(
+            ISecondaryMarketEscrow.LegacySessionKeyDataDisabled.selector
+        );
+        escrow.executeTrade(request);
     }
 }

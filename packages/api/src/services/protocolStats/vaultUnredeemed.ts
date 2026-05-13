@@ -22,6 +22,13 @@ import { resolveVaultAddress } from './vaultConfig';
  * (Picks.resolved = true, which is what gates `redeem()` on-chain), the vault's
  * counterparty stake AND prize are sitting in escrow earmarked for it.
  *
+ * The vault is normally redeemed via `redeem()` (→ `Claim`), but a win can also
+ * be settled via the bilateral burn path (`burn()` → `Close`). `calculateVaultPnL`
+ * counts BOTH event streams in its gross payouts, so we net BOTH out here — Claim
+ * rows whose holder is the vault, plus the vault's payout legs on `Close` rows
+ * for the same resolved-winning pickConfigs — otherwise a win exited via `burn()`
+ * would be double-counted (once in `vaultRealizedPnL`, once in this residual).
+ *
  * Clamped at 0n. The `Claim.predictionId` column actually stores the on-chain
  * pickConfigId (known indexer misnomer); we don't join through it — we just sum
  * Claim rows whose holder is the vault.
@@ -47,7 +54,11 @@ export async function calculateVaultUnredeemedClaim(
           ...(resolvedFilter ? { resolvedAt: resolvedFilter } : {}),
         },
       },
-      select: { predictorCollateral: true, counterpartyCollateral: true },
+      select: {
+        predictorCollateral: true,
+        counterpartyCollateral: true,
+        pickConfigId: true,
+      },
     }),
     prisma.prediction.findMany({
       where: {
@@ -59,7 +70,11 @@ export async function calculateVaultUnredeemedClaim(
           ...(resolvedFilter ? { resolvedAt: resolvedFilter } : {}),
         },
       },
-      select: { predictorCollateral: true, counterpartyCollateral: true },
+      select: {
+        predictorCollateral: true,
+        counterpartyCollateral: true,
+        pickConfigId: true,
+      },
     }),
     prisma.claim.findMany({
       where: {
@@ -72,15 +87,47 @@ export async function calculateVaultUnredeemedClaim(
   ]);
 
   let owed = 0n;
-  for (const p of counterpartyWins) {
+  const winningPickConfigIds = new Set<string>();
+  for (const p of [...counterpartyWins, ...predictorWins]) {
     owed += BigInt(p.predictorCollateral) + BigInt(p.counterpartyCollateral);
-  }
-  for (const p of predictorWins) {
-    owed += BigInt(p.predictorCollateral) + BigInt(p.counterpartyCollateral);
+    if (p.pickConfigId) winningPickConfigIds.add(p.pickConfigId);
   }
 
   let claimed = 0n;
   for (const c of claims) claimed += BigInt(c.collateralPaid);
+
+  // Wins settled through the bilateral burn path show up as `Close` rows
+  // rather than `Claim` rows; their payout legs are already in
+  // `vaultRealizedPnL`, so subtract them from the owed residual too. Scoped to
+  // the resolved-winning pickConfigs so a pre-resolution burn (where the
+  // prediction isn't in `owed` at all) can't over-subtract.
+  if (winningPickConfigIds.size > 0) {
+    const closes = await prisma.close.findMany({
+      where: {
+        chainId,
+        pickConfigId: { in: [...winningPickConfigIds] },
+        OR: [
+          { predictorHolder: vaultAddress },
+          { counterpartyHolder: vaultAddress },
+        ],
+        ...(beforeTimestamp ? { burnedAt: { lte: beforeTimestamp } } : {}),
+      },
+      select: {
+        predictorHolder: true,
+        counterpartyHolder: true,
+        predictorPayout: true,
+        counterpartyPayout: true,
+      },
+    });
+    for (const c of closes) {
+      if (c.predictorHolder.toLowerCase() === vaultAddress) {
+        claimed += BigInt(c.predictorPayout);
+      }
+      if (c.counterpartyHolder.toLowerCase() === vaultAddress) {
+        claimed += BigInt(c.counterpartyPayout);
+      }
+    }
+  }
 
   const remainder = owed - claimed;
   return remainder > 0n ? remainder : 0n;

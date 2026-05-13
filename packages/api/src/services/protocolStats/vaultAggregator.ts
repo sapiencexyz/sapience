@@ -103,6 +103,7 @@ export async function buildVaultAggregator(
         },
         select: {
           burnedAt: true,
+          pickConfigId: true,
           predictorHolder: true,
           counterpartyHolder: true,
           predictorPayout: true,
@@ -286,31 +287,40 @@ export async function buildVaultAggregator(
   // regardless of which sibling triggered the on-chain resolution.
   const unredeemedClaimAt = (t: number, vaultAddress: string): bigint => {
     let owed = 0n;
+    const winningPickConfigIds = new Set<string>();
     for (const p of predictions) {
       const pc = p.pickConfiguration;
       if (!pc || !pc.resolved) continue;
       if (pc.resolvedAt === null || pc.resolvedAt > t) continue;
       const counterpartyIsVault = p.counterparty.toLowerCase() === vaultAddress;
       const predictorIsVault = p.predictor.toLowerCase() === vaultAddress;
-      if (
-        counterpartyIsVault &&
-        pc.result === SettlementResult.COUNTERPARTY_WINS
-      ) {
-        owed +=
-          BigInt(p.predictorCollateral) + BigInt(p.counterpartyCollateral);
-      } else if (
-        predictorIsVault &&
-        pc.result === SettlementResult.PREDICTOR_WINS
-      ) {
-        owed +=
-          BigInt(p.predictorCollateral) + BigInt(p.counterpartyCollateral);
-      }
+      const vaultWon =
+        (counterpartyIsVault &&
+          pc.result === SettlementResult.COUNTERPARTY_WINS) ||
+        (predictorIsVault && pc.result === SettlementResult.PREDICTOR_WINS);
+      if (!vaultWon) continue;
+      owed += BigInt(p.predictorCollateral) + BigInt(p.counterpartyCollateral);
+      if (p.pickConfigId) winningPickConfigIds.add(p.pickConfigId);
     }
     let claimed = 0n;
     for (const c of claims) {
       if (c.holder.toLowerCase() !== vaultAddress) continue;
       if (c.redeemedAt > t) continue;
       claimed += BigInt(c.collateralPaid);
+    }
+    // Wins settled via the bilateral burn path (`Close`) are already in
+    // `pnlAt`'s gross payouts — net their vault-side legs out of the residual
+    // too. Scoped to resolved-winning pickConfigs so a pre-resolution burn
+    // can't over-subtract. Mirrors `calculateVaultUnredeemedClaim`.
+    for (const c of closes) {
+      if (c.burnedAt > t) continue;
+      if (!winningPickConfigIds.has(c.pickConfigId)) continue;
+      if (c.predictorHolder.toLowerCase() === vaultAddress) {
+        claimed += BigInt(c.predictorPayout);
+      }
+      if (c.counterpartyHolder.toLowerCase() === vaultAddress) {
+        claimed += BigInt(c.counterpartyPayout);
+      }
     }
     const remainder = owed - claimed;
     return remainder > 0n ? remainder : 0n;

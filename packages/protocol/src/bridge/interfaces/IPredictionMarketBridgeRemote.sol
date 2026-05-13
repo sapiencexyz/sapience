@@ -28,9 +28,6 @@ interface IPredictionMarketBridgeRemote is IPredictionMarketBridgeBase {
         bool isNewDeployment
     );
 
-    /// @notice Emitted when factory is updated
-    event FactoryUpdated(address factory);
-
     // ============ Errors ============
 
     /// @notice Token is not a valid factory-deployed position token

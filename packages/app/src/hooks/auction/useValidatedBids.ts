@@ -73,6 +73,15 @@ export function useValidatedBids(
   const validatingRef = useRef<Set<string>>(new Set());
   const validatedSignaturesRef = useRef<Set<string>>(new Set());
 
+  // Input fingerprint: a validation in flight is only safe to commit if the
+  // validation context (every input flowing into validateBidOnChain) still
+  // matches the snapshot taken when validation started. The ref is updated
+  // synchronously during render (below, after validationContextKey is
+  // computed) so an in-flight validation that resolves between a render
+  // with a new context and the cleanup effect still sees the latest key
+  // and drops itself as stale.
+  const inputFingerprintRef = useRef<string>('');
+
   // Can we validate?
   const canValidate = useMemo(() => {
     if (!enabled || !predictionMarketAddress || !collateralTokenAddress)
@@ -105,8 +114,6 @@ export function useValidatedBids(
     [picks]
   );
 
-  // Invalidate cached results when prediction inputs change
-  // (predictionHash changes, so all previous validations are stale)
   const picksKey = useMemo(
     () =>
       picks
@@ -120,12 +127,54 @@ export function useValidatedBids(
     [picks]
   );
 
+  // Single source of truth for "what is `validateBidOnChain` going to hash
+  // against?" — every input that flows into the on-chain digest must be in
+  // here. Used both to invalidate the cache when context changes and to
+  // detect in-flight results that completed against an obsolete context.
+  // Sponsor address is only included when isSponsored is true, mirroring
+  // how `runValidation` passes it (undefined otherwise).
+  const validationContextKey = useMemo(
+    () =>
+      [
+        picksKey,
+        predictorAddress?.toLowerCase() ?? '',
+        predictorCollateral ?? '',
+        predictorNonce ?? '',
+        isSponsored ? (sponsorAddress?.toLowerCase() ?? '') : '',
+        String(chainId),
+        predictionMarketAddress?.toLowerCase() ?? '',
+        collateralTokenAddress?.toLowerCase() ?? '',
+      ].join('::'),
+    [
+      picksKey,
+      predictorAddress,
+      predictorCollateral,
+      predictorNonce,
+      isSponsored,
+      sponsorAddress,
+      chainId,
+      predictionMarketAddress,
+      collateralTokenAddress,
+    ]
+  );
+
+  // Track the latest validation context synchronously during render. An
+  // in-flight validation that resolves between a render with a new context
+  // and the cleanup useEffect below would otherwise read a stale ref and
+  // commit under the wrong context. Mutating a ref during render is the
+  // standard React pattern for "always-current value visible to async
+  // closures" and is idempotent under concurrent rendering.
+  inputFingerprintRef.current = validationContextKey;
+
   useEffect(() => {
-    // Clear all cached validation when prediction inputs change
+    // Invalidate cached results when any input that affects the on-chain
+    // validation digest changes. The fingerprint ref is updated above
+    // during render — this effect only handles the state-mutating side of
+    // the cleanup (clearing the maps).
     validatedSignaturesRef.current.clear();
     validatingRef.current.clear();
     setValidationResults(new Map());
-  }, [picksKey, predictorCollateral, predictorNonce]);
+  }, [validationContextKey]);
 
   // Validate new bids when they arrive
   useEffect(() => {
@@ -159,7 +208,11 @@ export function useValidatedBids(
     }
     setIsValidating(true);
 
-    let cancelled = false;
+    // Snapshot the validation context at start. If `validationContextKey`
+    // changes before commit (any input that flows into the on-chain digest:
+    // picks, predictor, collateral, nonce, sponsor, chain, escrow, token),
+    // the result is stale and must be dropped.
+    const startFingerprint = validationContextKey;
 
     const runValidation = async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -232,8 +285,20 @@ export function useValidatedBids(
         )
       );
 
-      if (cancelled) return;
+      // Drop stale results: if prediction inputs changed during the
+      // request, the validation hashed against an obsolete predictor
+      // snapshot and committing would poison the cache. validatingRef is
+      // cleared by the input-change effect, so no need to clean it here.
+      if (inputFingerprintRef.current !== startFingerprint) {
+        setIsValidating(validatingRef.current.size > 0);
+        return;
+      }
 
+      // Commit: results are sig-keyed and idempotent. Stale entries (sigs
+      // no longer in rawBids) are pruned by the cleanup effect below; this
+      // commit path also runs after a same-input rerender (relayer
+      // rebroadcast of the same bid), so we must NOT discard purely on the
+      // basis of effect re-run.
       setValidationResults((prev) => {
         const updated = new Map(prev);
         for (const [sig, result] of results) {
@@ -248,10 +313,9 @@ export function useValidatedBids(
     };
 
     runValidation();
-
-    return () => {
-      cancelled = true;
-    };
+    // Listed individually so the lint rule is satisfied for each closure
+    // read; validationContextKey duplicates the same trigger set as a single
+    // string used for stale-result detection in `runValidation`.
   }, [
     rawBids,
     canValidate,
@@ -264,6 +328,7 @@ export function useValidatedBids(
     picksJson,
     isSponsored,
     sponsorAddress,
+    validationContextKey,
   ]);
 
   // Clean up stale entries (bids no longer in rawBids)

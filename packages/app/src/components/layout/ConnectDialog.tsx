@@ -11,13 +11,20 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Wallet } from 'lucide-react';
+import {
+  CHAIN_ID_ETHEREAL_TESTNET,
+  DEFAULT_CHAIN_ID,
+} from '@sapience/sdk/constants';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useAuth } from '~/lib/context/AuthContext';
 import { useSession } from '~/lib/context/SessionContext';
 import {
   useSettings,
   DEFAULT_CONNECTION_DURATION_HOURS,
 } from '~/lib/context/SettingsContext';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+
+// On staging (Ethereal Testnet) we don't gate access behind an invite code.
+const IS_STAGING = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
 
 const USER_REFERRAL_STATUS_QUERY = `
   query UserReferralStatus($wallet: String!) {
@@ -243,44 +250,47 @@ export default function ConnectDialog({
       const createSessionAsync = async () => {
         try {
           const currentAddress = address.toLowerCase();
-          let hasReferral = false;
+          // Staging skips the invite-code gate entirely.
+          let hasReferral = IS_STAGING;
 
-          try {
-            const data = await graphqlRequest<{
-              user: {
-                address: string;
-                refCodeHash?: string | null;
-                referredBy?: { id: number } | null;
-                referredByCode?: { id: number } | null;
-              } | null;
-            }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
-
-            const user = data?.user;
-            hasReferral = !!(
-              user &&
-              (user.refCodeHash || user.referredBy || user.referredByCode)
-            );
-
-            console.debug('[ConnectDialog] Referral check:', {
-              currentAddress,
-              hasReferral,
-              refCodeHash: user?.refCodeHash,
-              referredBy: user?.referredBy,
-              referredByCode: user?.referredByCode,
-            });
-          } catch (error) {
-            console.error(
-              '[ConnectDialog] Failed to check referral status:',
-              error
-            );
-            // On error, check localStorage fallback (same logic as Header)
+          if (!IS_STAGING) {
             try {
-              const key = `sapience:referralCode:${currentAddress}`;
-              const existing = window.localStorage.getItem(key);
-              hasReferral = !!existing;
-            } catch {
-              // If localStorage fails, assume no referral
-              hasReferral = false;
+              const data = await graphqlRequest<{
+                user: {
+                  address: string;
+                  refCodeHash?: string | null;
+                  referredBy?: { id: number } | null;
+                  referredByCode?: { id: number } | null;
+                } | null;
+              }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
+
+              const user = data?.user;
+              hasReferral = !!(
+                user &&
+                (user.refCodeHash || user.referredBy || user.referredByCode)
+              );
+
+              console.debug('[ConnectDialog] Referral check:', {
+                currentAddress,
+                hasReferral,
+                refCodeHash: user?.refCodeHash,
+                referredBy: user?.referredBy,
+                referredByCode: user?.referredByCode,
+              });
+            } catch (error) {
+              console.error(
+                '[ConnectDialog] Failed to check referral status:',
+                error
+              );
+              // On error, check localStorage fallback (same logic as Header)
+              try {
+                const key = `sapience:referralCode:${currentAddress}`;
+                const existing = window.localStorage.getItem(key);
+                hasReferral = !!existing;
+              } catch {
+                // If localStorage fails, assume no referral
+                hasReferral = false;
+              }
             }
           }
 
