@@ -25,6 +25,8 @@ import { AttestationScore } from './AttestationScore';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
+import { ConditionGroupsPage } from './ConditionGroupsPage';
+import { ConditionsPage } from './ConditionsPage';
 import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
@@ -52,16 +54,17 @@ import {
   collateralBalanceHistory,
   collateralTransfers,
 } from './queries/collateralBalance';
-import { conditions } from './queries/conditions';
+import { conditionsPage } from './queries/conditions';
+import { conditionGroup, conditionGroupsPage } from './queries/conditionGroups';
 import {
   attestations,
   categories,
   condition,
-  conditionGroup,
-  conditionGroups,
   user,
   users,
 } from './queries/crud';
+import { conditions } from './queries/deprecated/conditions';
+import { conditionGroups } from './queries/deprecated/conditionGroups';
 import {
   claims,
   closes,
@@ -122,6 +125,7 @@ export const resolvers: Resolvers = {
     collateralTransfers,
     // Conditions / questions
     conditions,
+    conditionsPage,
     questions,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
@@ -150,6 +154,7 @@ export const resolvers: Resolvers = {
     condition,
     conditionGroup,
     conditionGroups,
+    conditionGroupsPage,
     user,
     users,
   },
@@ -158,6 +163,8 @@ export const resolvers: Resolvers = {
   Category,
   Condition,
   ConditionGroup,
+  ConditionGroupsPage,
+  ConditionsPage,
   LegacyPosition,
   LegacyPrediction,
   LimitOrder,

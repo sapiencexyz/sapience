@@ -670,6 +670,55 @@ export type ConditionCountPredictionsArgs = {
   where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
+/**
+ * Engagement status for a Condition. A condition has "engagement" if it
+ * has non-zero open interest OR at least one attestation. Used by
+ * cleanup workflows to find dead markets and recheck them.
+ */
+export type ConditionEngagement =
+  /** `openInterest != 0` OR at least one attestation. */
+  | 'ANY'
+  /** `openInterest = 0` AND no attestations. */
+  | 'NONE';
+
+/**
+ * Flat filter input for the `conditionsPage` query. Each field is optional;
+ * values combine with AND. Replaces the Prisma-derived `ConditionWhereInput`
+ * for client-facing access.
+ */
+export type ConditionFilters = {
+  /** Restrict to conditions whose category slug is in this set. */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to a single chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to a single condition group. */
+  conditionGroupId?: InputMaybe<Scalars['Int']['input']>;
+  /** Engagement filter (used by cleanup workflows). See `ConditionEngagement`. */
+  engagement?: InputMaybe<ConditionEngagement>;
+  /** When true, only return conditions that have a non-empty `similarMarkets` array. */
+  hasSimilarMarkets?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to these condition IDs (case-insensitive). */
+  ids?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to conditions with `endTime <= this`. */
+  maxEndTime?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to conditions with `endTime >= this`. */
+  minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to conditions resolved YES (true) or NO (false). Implies settled=true. */
+  resolvedToYes?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Match the resolver address (case-insensitive). */
+  resolver?: InputMaybe<Scalars['String']['input']>;
+  /** Match any of these resolver addresses (case-insensitive). */
+  resolverIn?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Free-text search across question, shortName, and description (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to settled (true) or unsettled (false) conditions. */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to conditions not assigned to any condition group. */
+  ungroupedOnly?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Visibility filter. Defaults to `PUBLIC` when omitted. */
+  visibility?: InputMaybe<ConditionVisibility>;
+};
+
 export type ConditionGroup = {
   __typename?: 'ConditionGroup';
   _count?: Maybe<ConditionGroupCount>;
@@ -705,6 +754,15 @@ export type ConditionGroupCount = {
 
 export type ConditionGroupCountConditionArgs = {
   where?: InputMaybe<ConditionWhereInput>;
+};
+
+/**
+ * Flat filter input for the `conditionGroupsPage` query. Each field is optional;
+ * values combine with AND.
+ */
+export type ConditionGroupFilters = {
+  /** Restrict to these condition group IDs. */
+  ids?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
 export type ConditionGroupListRelationFilter = {
@@ -817,6 +875,15 @@ export type ConditionGroupWhereUniqueInput = {
   totalSimilarMarketVolumeFiltered24h?: InputMaybe<DecimalFilter>;
 };
 
+/** Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag */
+export type ConditionGroupsPage = Page & {
+  __typename?: 'ConditionGroupsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<ConditionGroup>;
+  /** Total ConditionGroup rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
 export type ConditionListRelationFilter = {
   every?: InputMaybe<ConditionWhereInput>;
   none?: InputMaybe<ConditionWhereInput>;
@@ -914,6 +981,19 @@ export type ConditionScalarFieldEnum =
   | 'similarMarkets'
   | 'tags';
 
+/** Sort fields for the `conditionsPage` query */
+export type ConditionSortField =
+  | 'CREATED_AT'
+  | 'END_TIME'
+  | 'OPEN_INTEREST'
+  | 'PREDICTION_COUNT';
+
+/** Visibility filter for the `conditionsPage` query */
+export type ConditionVisibility =
+  | 'ALL'
+  | 'PRIVATE'
+  | 'PUBLIC';
+
 export type ConditionWhereInput = {
   AND?: InputMaybe<Array<ConditionWhereInput>>;
   NOT?: InputMaybe<Array<ConditionWhereInput>>;
@@ -1000,6 +1080,15 @@ export type ConditionWhereUniqueInput = {
   similarMarketVolumeFiltered24h?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
+};
+
+/** Paginated wrapper around Condition rows with a server-truth hasMore flag */
+export type ConditionsPage = Page & {
+  __typename?: 'ConditionsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Condition>;
+  /** Total Condition rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type DateTimeFilter = {
@@ -1832,8 +1921,14 @@ export type Query = {
   condition?: Maybe<Condition>;
   /** @deprecated Field no longer supported */
   conditionGroup?: Maybe<ConditionGroup>;
+  /** @deprecated Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal. */
   conditionGroups: Array<ConditionGroup>;
+  /** Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag. */
+  conditionGroupsPage: ConditionGroupsPage;
+  /** @deprecated Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal. */
   conditions: Array<Condition>;
+  /** Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input. */
+  conditionsPage: ConditionsPage;
   /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
   openInterestByCategory: Array<CategoryOpenInterest>;
   /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
@@ -2101,6 +2196,13 @@ export type QueryConditionGroupsArgs = {
 };
 
 
+export type QueryConditionGroupsPageArgs = {
+  filters?: InputMaybe<ConditionGroupFilters>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
 export type QueryConditionsArgs = {
   cursor?: InputMaybe<ConditionWhereUniqueInput>;
   distinct?: InputMaybe<Array<ConditionScalarFieldEnum>>;
@@ -2108,6 +2210,15 @@ export type QueryConditionsArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<ConditionWhereInput>;
+};
+
+
+export type QueryConditionsPageArgs = {
+  filters?: InputMaybe<ConditionFilters>;
+  orderBy?: InputMaybe<ConditionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 

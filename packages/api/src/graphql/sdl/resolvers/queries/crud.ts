@@ -113,33 +113,6 @@ export const condition: NonNullable<QueryResolvers['condition']> = async (
     where: asPrismaArgs<Prisma.ConditionWhereUniqueInput>(where),
   });
 
-export const conditionGroup: NonNullable<
-  QueryResolvers['conditionGroup']
-> = async (_parent, { where }) =>
-  prisma.conditionGroup.findUnique({
-    where: asPrismaArgs<Prisma.ConditionGroupWhereUniqueInput>(where),
-  });
-
-export const conditionGroups: NonNullable<
-  QueryResolvers['conditionGroups']
-> = async (_parent, { where, orderBy, cursor, take, skip, distinct }) =>
-  prisma.conditionGroup.findMany({
-    where: asPrismaArgs<Prisma.ConditionGroupWhereInput | undefined>(
-      where ?? undefined
-    ),
-    orderBy: asPrismaArgs<
-      Prisma.ConditionGroupOrderByWithRelationInput[] | undefined
-    >(orderBy ?? undefined),
-    cursor: asPrismaArgs<Prisma.ConditionGroupWhereUniqueInput | undefined>(
-      cursor ?? undefined
-    ),
-    take: take ?? undefined,
-    skip: skip ?? undefined,
-    distinct: asPrismaArgs<Prisma.ConditionGroupScalarFieldEnum[] | undefined>(
-      distinct ?? undefined
-    ),
-  });
-
 export const user: NonNullable<QueryResolvers['user']> = async (
   _parent,
   { where }

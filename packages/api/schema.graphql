@@ -1351,6 +1351,127 @@ type PickConfigurationsPage implements Page {
   totalCount: Int
 }
 
+"""
+Paginated wrapper around Condition rows with a server-truth hasMore flag
+"""
+type ConditionsPage implements Page {
+  items: [Condition!]!
+  hasMore: Boolean!
+
+  """Total Condition rows matching the filters. Populated when available."""
+  totalCount: Int
+}
+
+"""
+Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag
+"""
+type ConditionGroupsPage implements Page {
+  items: [ConditionGroup!]!
+  hasMore: Boolean!
+
+  """
+  Total ConditionGroup rows matching the filters. Populated when available.
+  """
+  totalCount: Int
+}
+
+"""Sort fields for the `conditionsPage` query"""
+enum ConditionSortField {
+  CREATED_AT
+  END_TIME
+  OPEN_INTEREST
+  PREDICTION_COUNT
+}
+
+"""Visibility filter for the `conditionsPage` query"""
+enum ConditionVisibility {
+  PUBLIC
+  PRIVATE
+  ALL
+}
+
+"""
+Engagement status for a Condition. A condition has "engagement" if it
+has non-zero open interest OR at least one attestation. Used by
+cleanup workflows to find dead markets and recheck them.
+"""
+enum ConditionEngagement {
+  """`openInterest = 0` AND no attestations."""
+  NONE
+
+  """`openInterest != 0` OR at least one attestation."""
+  ANY
+}
+
+"""
+Flat filter input for the `conditionsPage` query. Each field is optional;
+values combine with AND. Replaces the Prisma-derived `ConditionWhereInput`
+for client-facing access.
+"""
+input ConditionFilters {
+  """Restrict to these condition IDs (case-insensitive)."""
+  ids: [String!]
+
+  """Restrict to a single chain."""
+  chainId: Int
+
+  """Match the resolver address (case-insensitive)."""
+  resolver: String
+
+  """Match any of these resolver addresses (case-insensitive)."""
+  resolverIn: [String!]
+
+  """
+  Free-text search across question, shortName, and description (case-insensitive).
+  """
+  search: String
+
+  """Restrict to conditions whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """Restrict to conditions with `endTime >= this`."""
+  minEndTime: Int
+
+  """Restrict to conditions with `endTime <= this`."""
+  maxEndTime: Int
+
+  """Visibility filter. Defaults to `PUBLIC` when omitted."""
+  visibility: ConditionVisibility
+
+  """Restrict to conditions not assigned to any condition group."""
+  ungroupedOnly: Boolean
+
+  """Restrict to a single condition group."""
+  conditionGroupId: Int
+
+  """Restrict to settled (true) or unsettled (false) conditions."""
+  settled: Boolean
+
+  """
+  Restrict to conditions resolved YES (true) or NO (false). Implies settled=true.
+  """
+  resolvedToYes: Boolean
+
+  """
+  When true, only return conditions that have a non-empty `similarMarkets` array.
+  """
+  hasSimilarMarkets: Boolean
+
+  """
+  Engagement filter (used by cleanup workflows). See `ConditionEngagement`.
+  """
+  engagement: ConditionEngagement
+}
+
+"""
+Flat filter input for the `conditionGroupsPage` query. Each field is optional;
+values combine with AND.
+"""
+input ConditionGroupFilters {
+  """Restrict to these condition group IDs."""
+  ids: [Int!]
+}
+
 """ERC-20 token balance representing a side of a prediction position"""
 type Position {
   balance: String!
@@ -1728,8 +1849,18 @@ type Query {
   collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
-  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
-  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
+  """
+  conditionGroupsPage(filters: ConditionGroupFilters, take: Int! = 50, skip: Int! = 0): ConditionGroupsPage!
+  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input.
+  """
+  conditionsPage(filters: ConditionFilters, orderBy: ConditionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0): ConditionsPage!
 
   """Look up a single pick configuration by ID"""
   pickConfiguration(id: String!): PickConfiguration @deprecated
