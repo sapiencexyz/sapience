@@ -43,7 +43,7 @@ export type AccountStatMetric =
  */
 export type AccountStatsFilters = {
   fromEpoch?: InputMaybe<Scalars['Int']['input']>;
-  metric?: AccountStatMetric;
+  metric?: InputMaybe<AccountStatMetric>;
   toEpoch?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -1790,9 +1790,7 @@ export type QueryAccountStatsLeaderboardPageArgs = {
 
 export type QueryAccountStatsRankArgs = {
   address: Scalars['String']['input'];
-  fromEpoch?: InputMaybe<Scalars['Int']['input']>;
-  metric?: AccountStatMetric;
-  toEpoch?: InputMaybe<Scalars['Int']['input']>;
+  filters: AccountStatsFilters;
 };
 
 

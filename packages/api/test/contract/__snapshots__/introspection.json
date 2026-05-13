@@ -248,13 +248,9 @@
             "name": "metric",
             "description": null,
             "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "ENUM",
-                "name": "AccountStatMetric",
-                "ofType": null
-              }
+              "kind": "ENUM",
+              "name": "AccountStatMetric",
+              "ofType": null
             },
             "defaultValue": "NET_PNL"
           },
@@ -14838,36 +14834,16 @@
                 "defaultValue": null
               },
               {
-                "name": "fromEpoch",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "metric",
+                "name": "filters",
                 "description": null,
                 "type": {
                   "kind": "NON_NULL",
                   "name": null,
                   "ofType": {
-                    "kind": "ENUM",
-                    "name": "AccountStatMetric",
+                    "kind": "INPUT_OBJECT",
+                    "name": "AccountStatsFilters",
                     "ofType": null
                   }
-                },
-                "defaultValue": "NET_PNL"
-              },
-              {
-                "name": "toEpoch",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
                 },
                 "defaultValue": null
               }

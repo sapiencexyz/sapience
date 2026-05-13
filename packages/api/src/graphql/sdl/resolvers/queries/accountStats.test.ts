@@ -217,9 +217,11 @@ describe('Query.accountStatsLeaderboardPage', () => {
 
 type RankArgs = {
   address: string;
-  metric: (typeof AccountStatMetric)[keyof typeof AccountStatMetric];
-  fromEpoch?: number | null;
-  toEpoch?: number | null;
+  filters: {
+    metric: (typeof AccountStatMetric)[keyof typeof AccountStatMetric];
+    fromEpoch?: number | null;
+    toEpoch?: number | null;
+  };
 };
 type RankResult = {
   address: string;
@@ -260,7 +262,7 @@ describe('Query.accountStatsRank', () => {
   it('returns 1-indexed rank + stats for a present address by NET_PNL', async () => {
     const r = await callRank({
       address: '0xAAA',
-      metric: AccountStatMetric.NetPnl,
+      filters: { metric: AccountStatMetric.NetPnl },
     });
     expect(r).toMatchObject({
       address: '0xaaa',
@@ -276,11 +278,11 @@ describe('Query.accountStatsRank', () => {
   it('rank reflects metric — same address ranks differently by VOLUME vs NET_PNL', async () => {
     const byPnl = await callRank({
       address: '0xbbb',
-      metric: AccountStatMetric.NetPnl,
+      filters: { metric: AccountStatMetric.NetPnl },
     });
     const byVolume = await callRank({
       address: '0xbbb',
-      metric: AccountStatMetric.Volume,
+      filters: { metric: AccountStatMetric.Volume },
     });
     expect(byPnl.rank).toBe(4); // worst PnL
     expect(byVolume.rank).toBe(1); // highest volume
@@ -289,7 +291,7 @@ describe('Query.accountStatsRank', () => {
   it('rank=null + zero stats when the address has no activity in the window', async () => {
     const r = await callRank({
       address: '0xunknown',
-      metric: AccountStatMetric.NetPnl,
+      filters: { metric: AccountStatMetric.NetPnl },
     });
     expect(r).toMatchObject({
       address: '0xunknown',
@@ -307,7 +309,7 @@ describe('Query.accountStatsRank', () => {
     mockVolumes.mockResolvedValue([]);
     const r = await callRank({
       address: '0xaaa',
-      metric: AccountStatMetric.NetPnl,
+      filters: { metric: AccountStatMetric.NetPnl },
     });
     expect(r).toEqual({
       address: '0xaaa',
@@ -321,7 +323,10 @@ describe('Query.accountStatsRank', () => {
   });
 
   it('passes the resolved epoch window through; omitting `fromEpoch` means all-time', async () => {
-    await callRank({ address: '0xaaa', metric: AccountStatMetric.NetPnl });
+    await callRank({
+      address: '0xaaa',
+      filters: { metric: AccountStatMetric.NetPnl },
+    });
     expect(mockPnLBreakdown).toHaveBeenCalledWith({
       fromEpoch: undefined,
       toEpoch: expect.any(Number),
@@ -334,9 +339,11 @@ describe('Query.accountStatsRank', () => {
     const to = Math.floor(new Date('2026-02-01T00:00:00Z').getTime() / 1000);
     await callRank({
       address: '0xaaa',
-      metric: AccountStatMetric.NetPnl,
-      fromEpoch: from,
-      toEpoch: to,
+      filters: {
+        metric: AccountStatMetric.NetPnl,
+        fromEpoch: from,
+        toEpoch: to,
+      },
     });
     expect(mockPnLBreakdown).toHaveBeenCalledWith({
       fromEpoch: from,

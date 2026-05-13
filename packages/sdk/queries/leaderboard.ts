@@ -84,18 +84,8 @@ export const GET_ACCOUNT_STATS_LEADERBOARD_PAGE = /* GraphQL */ `
 `;
 
 export const GET_ACCOUNT_STATS_RANK = /* GraphQL */ `
-  query AccountStatsRank(
-    $address: String!
-    $metric: AccountStatMetric! = NET_PNL
-    $fromEpoch: Int
-    $toEpoch: Int
-  ) {
-    accountStatsRank(
-      address: $address
-      metric: $metric
-      fromEpoch: $fromEpoch
-      toEpoch: $toEpoch
-    ) {
+  query AccountStatsRank($address: String!, $filters: AccountStatsFilters!) {
+    accountStatsRank(address: $address, filters: $filters) {
       address
       netPnL
       gains
@@ -158,9 +148,11 @@ export async function fetchAccountStatsRank(params: {
     accountStatsRank: AccountStatsRankResult | null;
   }>(GET_ACCOUNT_STATS_RANK, {
     address: addressLc,
-    metric: params.metric ?? 'NET_PNL',
-    fromEpoch: toEpochOrNull(params.from),
-    toEpoch: toEpochOrNull(params.to),
+    filters: {
+      metric: params.metric ?? 'NET_PNL',
+      fromEpoch: toEpochOrNull(params.from),
+      toEpoch: toEpochOrNull(params.to),
+    },
   });
   const r = data?.accountStatsRank;
   if (!r) {

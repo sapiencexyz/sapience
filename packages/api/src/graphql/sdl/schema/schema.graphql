@@ -1427,7 +1427,7 @@ Filters for `accountStatsLeaderboardPage`. `fromEpoch` omitted means all-time;
 `toEpoch` omitted means now. Both are epoch seconds.
 """
 input AccountStatsFilters {
-  metric: AccountStatMetric! = NET_PNL
+  metric: AccountStatMetric = NET_PNL
   fromEpoch: Int
   toEpoch: Int
 }
@@ -1571,7 +1571,7 @@ type Query {
   """
   Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional epoch-second window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set.
   """
-  accountStatsRank(address: String!, fromEpoch: Int, metric: AccountStatMetric! = NET_PNL, toEpoch: Int): AccountStatsRank!
+  accountStatsRank(address: String!, filters: AccountStatsFilters!): AccountStatsRank!
 
   """
   Total lifetime trading volume in wei for the given address across all prediction types

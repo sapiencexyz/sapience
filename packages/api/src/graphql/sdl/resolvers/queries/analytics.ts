@@ -138,13 +138,12 @@ const runFatStats = async (
       ].map((a) => a.toLowerCase())
     : [];
 
-  const windowedSnapshots = await getProtocolStatsTimeSeries(
-    undefined,
+  const windowedSnapshots = await getProtocolStatsTimeSeries({
     chainId,
-    vaultAddresses,
-    fromEpoch ?? undefined,
-    toEpoch ?? undefined
-  );
+    vaultAddress: vaultAddresses,
+    fromEpoch: fromEpoch ?? undefined,
+    toEpoch: toEpoch ?? undefined,
+  });
   if (windowedSnapshots.length === 0) {
     return [];
   }
@@ -155,7 +154,11 @@ const runFatStats = async (
   // values. Trimmed from the final result.
   const baselineSnapshot =
     fromEpoch != null && vaultAddresses.length > 0
-      ? await getPriorSnapshot(vaultAddresses, fromEpoch, chainId)
+      ? await getPriorSnapshot({
+          vaultAddress: vaultAddresses,
+          fromEpoch,
+          chainId,
+        })
       : null;
   const rawSnapshots = baselineSnapshot
     ? [baselineSnapshot, ...windowedSnapshots]

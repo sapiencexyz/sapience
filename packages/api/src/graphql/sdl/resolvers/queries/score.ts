@@ -11,10 +11,10 @@
  * and `accountAccuracyRank`).
  */
 
-import type { GraphQLResolveInfo } from 'graphql';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
+import { clampSkip, clampTake, wantsTotalCount } from './pagination';
 
 const leaderboardCache = new TtlCache<
   string,
@@ -40,24 +40,11 @@ const getLeaderboardScores = async (): Promise<
   return scores;
 };
 
-/** Did the client select `totalCount` on this `*Page` field? */
-const wantsTotalCount = (info: GraphQLResolveInfo): boolean => {
-  const sel = info.fieldNodes[0]?.selectionSet?.selections ?? [];
-  return sel.some(
-    (s) =>
-      s.kind === 'Field' &&
-      (s as { name: { value: string } }).name.value === 'totalCount'
-  );
-};
-
-const MAX_TAKE = 100;
-const MAX_SKIP = 1000;
-
 export const accuracyLeaderboardPage: NonNullable<
   QueryResolvers['accuracyLeaderboardPage']
 > = async (_parent, { take, skip }, _ctx, info) => {
-  const cappedTake = Math.max(1, Math.min(take, MAX_TAKE));
-  const cappedSkip = Math.max(0, Math.min(skip, MAX_SKIP));
+  const cappedTake = clampTake(take);
+  const cappedSkip = clampSkip(skip);
   const scores = await getLeaderboardScores();
   const items = scores
     .slice(cappedSkip, cappedSkip + cappedTake)

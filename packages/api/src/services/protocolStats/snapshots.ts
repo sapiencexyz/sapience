@@ -29,16 +29,6 @@ import { createLogger } from '../../core/logger';
 const log = createLogger('services.protocolStats.snapshots');
 
 /**
- * Get UTC midnight timestamp for a given date.
- */
-function getUtcMidnightTimestamp(date: Date): number {
-  return Math.floor(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) /
-      1000
-  );
-}
-
-/**
  * Create or update stats snapshot with all data.
  */
 export async function upsertProtocolStatsSnapshot(
@@ -341,26 +331,27 @@ const buildVaultFilter = (vaultAddress?: string | readonly string[]) => {
 /**
  * Snapshot time series for the chosen vault address (or all when omitted).
  *
- * `days` is the legacy cutoff: snapshots strictly newer than midnight-N-days-ago.
- * `fromEpoch` / `toEpoch` take precedence when set — explicit window for the
- * windowed resolver path. When neither is provided, returns all history.
+ * `fromEpoch` / `toEpoch` (inclusive epoch seconds) define the window; both
+ * omitted returns all history.
  */
 export async function getProtocolStatsTimeSeries(
-  days?: number,
-  chainId: number = DEFAULT_CHAIN_ID,
-  vaultAddress?: string | readonly string[],
-  fromEpoch?: number,
-  toEpoch?: number
+  options: {
+    chainId?: number;
+    vaultAddress?: string | readonly string[];
+    fromEpoch?: number;
+    toEpoch?: number;
+  } = {}
 ) {
-  const vaultFilter = buildVaultFilter(vaultAddress);
+  const {
+    chainId = DEFAULT_CHAIN_ID,
+    vaultAddress,
+    fromEpoch,
+    toEpoch,
+  } = options;
 
   const timestampFilter: Record<string, number> = {};
   if (fromEpoch != null) timestampFilter.gte = fromEpoch;
   if (toEpoch != null) timestampFilter.lte = toEpoch;
-  // Only apply the legacy `days` cutoff when no explicit window is set.
-  if (Object.keys(timestampFilter).length === 0 && days) {
-    timestampFilter.gte = getUtcMidnightTimestamp(new Date()) - days * 86400;
-  }
 
   return prisma.protocolStatsSnapshot.findMany({
     where: {
@@ -368,7 +359,7 @@ export async function getProtocolStatsTimeSeries(
         ? { timestamp: timestampFilter }
         : {}),
       chainId,
-      ...vaultFilter,
+      ...buildVaultFilter(vaultAddress),
     },
     orderBy: { timestamp: 'asc' },
   });
@@ -380,11 +371,12 @@ export async function getProtocolStatsTimeSeries(
  * for the first row of a windowed query. Without it, the first windowed
  * bar would emit cumulative-since-time-zero as its period delta.
  */
-export async function getPriorSnapshot(
-  vaultAddress: string | readonly string[],
-  fromEpoch: number,
-  chainId: number = DEFAULT_CHAIN_ID
-) {
+export async function getPriorSnapshot(options: {
+  vaultAddress: string | readonly string[];
+  fromEpoch: number;
+  chainId?: number;
+}) {
+  const { vaultAddress, fromEpoch, chainId = DEFAULT_CHAIN_ID } = options;
   return prisma.protocolStatsSnapshot.findFirst({
     where: {
       ...buildVaultFilter(vaultAddress),

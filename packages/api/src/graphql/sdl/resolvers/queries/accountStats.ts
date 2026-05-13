@@ -16,7 +16,6 @@
  *
  * `fromEpoch` omitted ⇒ all-time (no lower bound). `toEpoch` omitted ⇒ now.
  */
-import type { GraphQLResolveInfo } from 'graphql';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import { AccountStatMetric } from '../../__generated__/resolvers';
 import { TtlCache } from '../../../../lib/ttlCache';
@@ -24,6 +23,7 @@ import {
   calculateAccountPnLBreakdown,
   calculateAccountVolumes,
 } from '../../../../services/accountStats';
+import { clampSkip, clampTake, wantsTotalCount } from './pagination';
 
 interface AccountStatEntry {
   address: string;
@@ -121,21 +121,6 @@ const resolveWindow = (
   return { fromEpoch: fromEpochResolved, toEpochResolved };
 };
 
-/** Did the client select `totalCount` on this `*Page` field? */
-const wantsTotalCount = (info: GraphQLResolveInfo): boolean => {
-  const sel = info.fieldNodes[0]?.selectionSet?.selections ?? [];
-  return sel.some(
-    (s) =>
-      s.kind === 'Field' &&
-      (s as { name: { value: string } }).name.value === 'totalCount'
-  );
-};
-
-const MAX_TAKE = 100;
-const MAX_SKIP = 1000;
-const clampTake = (n: number): number => Math.max(1, Math.min(n, MAX_TAKE));
-const clampSkip = (n: number): number => Math.max(0, Math.min(n, MAX_SKIP));
-
 export const accountStatsLeaderboardPage: NonNullable<
   QueryResolvers['accountStatsLeaderboardPage']
 > = async (_parent, { filters, take, skip }, _ctx, info) => {
@@ -186,7 +171,8 @@ const emptyStatsRank = (
  */
 export const accountStatsRank: NonNullable<
   QueryResolvers['accountStatsRank']
-> = async (_parent, { address, metric, fromEpoch, toEpoch }) => {
+> = async (_parent, { address, filters }) => {
+  const { metric, fromEpoch, toEpoch } = filters;
   const addressLc = address.toLowerCase();
   const { fromEpoch: fromResolved, toEpochResolved } = resolveWindow(
     fromEpoch,
@@ -195,7 +181,7 @@ export const accountStatsRank: NonNullable<
   const entries = await getMerged(fromResolved, toEpochResolved);
   if (entries.length === 0) return emptyStatsRank(addressLc);
 
-  const ranked = rankedFor(entries, metric);
+  const ranked = rankedFor(entries, metric ?? AccountStatMetric.NetPnl);
   const idx = ranked.findIndex((e) => e.address === addressLc);
   if (idx < 0) {
     return { ...emptyStatsRank(addressLc), totalParticipants: ranked.length };
