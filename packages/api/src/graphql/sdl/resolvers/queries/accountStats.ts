@@ -229,25 +229,31 @@ const SECONDS_PER_DAY = 86_400;
 const epochToDate = (epoch: number): Date => new Date(epoch * 1000);
 
 /**
- * `accountStats` — per-account stats time series. Both bounds in `filters`
- * are optional epoch seconds (inclusive). When both are omitted the window
- * defaults to the last 365 days (the DAY-bucket cap in the helper layer)
- * rather than "all history" — a wider window would tip the helpers'
- * bucket-count guard. Document this in the SDL.
+ * `accountStats` — per-account stats time series. Args mirror
+ * `protocolStats` / `vaultStats`: `address` plus optional inclusive
+ * epoch-second bounds `fromEpoch` / `toEpoch`. Both omitted ⇒ last 365
+ * days (the DAY-bucket cap in the helper layer); the SDL doc-string
+ * documents this. A wider window would tip the helpers' bucket-count
+ * guard until the snapshot table lands and the cap goes away.
+ *
+ * Field naming follows the family: per-bucket deltas use the `period…`
+ * prefix (`periodPnL`, `periodVolume`), cumulative-through-bucket values
+ * use the `cumulative…` prefix (`cumulativePnL`, `cumulativeVolume`).
+ * `PnL` is capitalized to match `netPnL` on the leaderboard surfaces.
  */
 export const accountStats: NonNullable<QueryResolvers['accountStats']> = async (
   _parent,
-  { address, filters }
+  { address, fromEpoch, toEpoch }
 ) => {
   const addr = address.toLowerCase();
 
   const nowEpoch = Math.floor(Date.now() / 1000);
-  const toEpoch = filters?.toEpoch ?? nowEpoch;
-  const fromEpoch =
-    filters?.fromEpoch ?? toEpoch - MAX_DAY_BUCKETS * SECONDS_PER_DAY;
+  const resolvedTo = toEpoch ?? nowEpoch;
+  const resolvedFrom =
+    fromEpoch ?? resolvedTo - MAX_DAY_BUCKETS * SECONDS_PER_DAY;
 
-  const from = epochToDate(fromEpoch);
-  const to = epochToDate(toEpoch);
+  const from = epochToDate(resolvedFrom);
+  const to = epochToDate(resolvedTo);
 
   // Parallel fan-out across the four legacy helpers; each hits a separate
   // `generate_series`-based SQL so contention is low.
@@ -290,8 +296,8 @@ export const accountStats: NonNullable<QueryResolvers['accountStats']> = async (
   ).sort((a, b) => a - b);
 
   // `queryAccountVolume` reports per-bucket volume only; cumulative is
-  // computed here as a running sum so the fat row matches `cumulativePnl`'s
-  // shape. (`queryAccountPnl` already supplies cumulative.)
+  // computed here as a running sum so the fat row matches the
+  // `cumulativePnL` shape. (`queryAccountPnl` already supplies cumulative.)
   let runningVolume = 0n;
   const results: AccountStat[] = allTimestamps.map((ts) => {
     const v = volumeByTs.get(ts);
@@ -304,9 +310,9 @@ export const accountStats: NonNullable<QueryResolvers['accountStats']> = async (
 
     return {
       timestamp: ts,
-      pnl: p?.pnl ?? '0',
-      cumulativePnl: p?.cumulativePnl ?? '0',
-      volume: bucketVolume,
+      periodPnL: p?.pnl ?? '0',
+      cumulativePnL: p?.cumulativePnl ?? '0',
+      periodVolume: bucketVolume,
       cumulativeVolume: runningVolume.toString(),
       deployedCollateral: b?.deployedCollateral ?? '0',
       claimableCollateral: b?.claimableCollateral ?? '0',

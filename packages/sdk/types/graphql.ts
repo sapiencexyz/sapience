@@ -24,8 +24,9 @@ export type Scalars = {
  * One row of the per-account stats time series — wallet collateral
  * position, settlement PnL, trade volume, and prediction outcome counts
  * at a single snapshot boundary. Mirrors the fat-row pattern used by
- * `ProtocolStat` / `VaultStat`. Wei amounts are 18-decimal decimal strings;
- * counts are integers.
+ * `ProtocolStat` / `VaultStat`: per-bucket deltas use the `period…`
+ * prefix, cumulative-through-bucket values use the `cumulative…` prefix.
+ * Wei amounts are 18-decimal decimal strings; counts are integers.
  *
  * Today this is assembled on-demand from the same SQL helpers that back
  * the deprecated `accountBalance` / `accountPnl` / `accountPredictionCount` /
@@ -39,13 +40,15 @@ export type AccountStat = {
   /** Collateral available to claim from settled positions at this bucket (wei, 18 dec) */
   claimableCollateral: Scalars['String']['output'];
   /** Running cumulative realized PnL through this bucket (wei, 18 dec) */
-  cumulativePnl: Scalars['String']['output'];
+  cumulativePnL: Scalars['String']['output'];
   /** Running cumulative trade volume through this bucket (wei, 18 dec) */
   cumulativeVolume: Scalars['String']['output'];
   /** Active collateral in open positions at this bucket (wei, 18 dec) */
   deployedCollateral: Scalars['String']['output'];
-  /** Realized PnL for this bucket (wei, 18 dec) */
-  pnl: Scalars['String']['output'];
+  /** Realized PnL delta over this bucket (wei, 18 dec) */
+  periodPnL: Scalars['String']['output'];
+  /** Trade volume delta over this bucket (wei, 18 dec) */
+  periodVolume: Scalars['String']['output'];
   /** Predictions lost in this bucket */
   predictionsLost: Scalars['Int']['output'];
   /** Predictions settled non-decisively in this bucket */
@@ -58,8 +61,6 @@ export type AccountStat = {
   predictionsWon: Scalars['Int']['output'];
   /** Unix epoch timestamp (seconds) at the snapshot boundary */
   timestamp: Scalars['Int']['output'];
-  /** Trade volume for this bucket (wei, 18 dec) */
-  volume: Scalars['String']['output'];
 };
 
 /**
@@ -123,15 +124,6 @@ export type AccountStatsRank = {
   rank?: Maybe<Scalars['Int']['output']>;
   totalParticipants: Scalars['Int']['output'];
   volume: Scalars['String']['output'];
-};
-
-/**
- * Window filter for `accountStats`. Both fields optional; epoch seconds,
- * inclusive. `fromEpoch` omitted ⇒ no lower bound; `toEpoch` omitted ⇒ now.
- */
-export type AccountStatsTimeSeriesFilters = {
-  fromEpoch?: InputMaybe<Scalars['Int']['input']>;
-  toEpoch?: InputMaybe<Scalars['Int']['input']>;
 };
 
 /**
@@ -1721,9 +1713,9 @@ export type Query = {
   accountBalance: Array<BalanceDataPoint>;
   /**
    * Time-bucketed profit-and-loss for a single address with cumulative tracking.
-   * DEPRECATED: use `accountStats`; the fat row carries `pnl` / `cumulativePnl`
-   * per snapshot.
-   * @deprecated Use `accountStats` — the fat row carries `pnl` / `cumulativePnl` per snapshot.
+   * DEPRECATED: use `accountStats`; the fat row carries `periodPnL` /
+   * `cumulativePnL` per snapshot.
+   * @deprecated Use `accountStats` — the fat row carries `periodPnL` / `cumulativePnL` per snapshot.
    */
   accountPnl: Array<PnlDataPoint>;
   /**
@@ -1737,9 +1729,10 @@ export type Query = {
   /**
    * Per-account stats time series — wallet collateral position, PnL, volume,
    * and prediction outcome counts across snapshots in a window. Mirrors the
-   * `protocolStats` / `vaultStats` fat-row shape (no `interval` arg, server
-   * picks the cadence). Both bounds in `filters` are optional epoch seconds
-   * (inclusive); omit `filters` to return the full series.
+   * `protocolStats` / `vaultStats` fat-row shape: no `interval` arg, server
+   * picks the cadence; `fromEpoch` / `toEpoch` are optional epoch seconds
+   * (inclusive). Both omitted ⇒ last 365 days (the DAY-bucket cap in the
+   * helper layer until the snapshot table lands).
    *
    * Implementation today wraps the legacy per-metric SQL helpers and emits
    * one point per day. A follow-up migrates this to a real per-account
@@ -1773,8 +1766,8 @@ export type Query = {
   accountTotalVolume: Scalars['String']['output'];
   /**
    * Time-bucketed trading volume for a single address. DEPRECATED: use
-   * `accountStats`; the fat row carries `volume` / `cumulativeVolume` per snapshot.
-   * @deprecated Use `accountStats` — the fat row carries `volume` / `cumulativeVolume` per snapshot.
+   * `accountStats`; the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.
+   * @deprecated Use `accountStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.
    */
   accountVolume: Array<VolumeDataPoint>;
   /**
@@ -1933,7 +1926,8 @@ export type QueryAccountPredictionCountArgs = {
 
 export type QueryAccountStatsArgs = {
   address: Scalars['String']['input'];
-  filters?: InputMaybe<AccountStatsTimeSeriesFilters>;
+  fromEpoch?: InputMaybe<Scalars['Int']['input']>;
+  toEpoch?: InputMaybe<Scalars['Int']['input']>;
 };
 
 

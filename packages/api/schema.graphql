@@ -1501,8 +1501,9 @@ type ProtocolStat {
 One row of the per-account stats time series — wallet collateral
 position, settlement PnL, trade volume, and prediction outcome counts
 at a single snapshot boundary. Mirrors the fat-row pattern used by
-`ProtocolStat` / `VaultStat`. Wei amounts are 18-decimal decimal strings;
-counts are integers.
+`ProtocolStat` / `VaultStat`: per-bucket deltas use the `period…`
+prefix, cumulative-through-bucket values use the `cumulative…` prefix.
+Wei amounts are 18-decimal decimal strings; counts are integers.
 
 Today this is assembled on-demand from the same SQL helpers that back
 the deprecated `accountBalance` / `accountPnl` / `accountPredictionCount` /
@@ -1515,14 +1516,14 @@ type AccountStat {
   """Unix epoch timestamp (seconds) at the snapshot boundary"""
   timestamp: Int!
 
-  """Realized PnL for this bucket (wei, 18 dec)"""
-  pnl: String!
+  """Realized PnL delta over this bucket (wei, 18 dec)"""
+  periodPnL: String!
 
   """Running cumulative realized PnL through this bucket (wei, 18 dec)"""
-  cumulativePnl: String!
+  cumulativePnL: String!
 
-  """Trade volume for this bucket (wei, 18 dec)"""
-  volume: String!
+  """Trade volume delta over this bucket (wei, 18 dec)"""
+  periodVolume: String!
 
   """Running cumulative trade volume through this bucket (wei, 18 dec)"""
   cumulativeVolume: String!
@@ -1549,15 +1550,6 @@ type AccountStat {
 
   """Predictions settled non-decisively in this bucket"""
   predictionsNonDecisive: Int!
-}
-
-"""
-Window filter for `accountStats`. Both fields optional; epoch seconds,
-inclusive. `fromEpoch` omitted ⇒ no lower bound; `toEpoch` omitted ⇒ now.
-"""
-input AccountStatsTimeSeriesFilters {
-  fromEpoch: Int
-  toEpoch: Int
 }
 
 """Vault-specific stats snapshot for a single vault address."""
@@ -1607,15 +1599,16 @@ type Query {
   """
   Per-account stats time series — wallet collateral position, PnL, volume,
   and prediction outcome counts across snapshots in a window. Mirrors the
-  `protocolStats` / `vaultStats` fat-row shape (no `interval` arg, server
-  picks the cadence). Both bounds in `filters` are optional epoch seconds
-  (inclusive); omit `filters` to return the full series.
+  `protocolStats` / `vaultStats` fat-row shape: no `interval` arg, server
+  picks the cadence; `fromEpoch` / `toEpoch` are optional epoch seconds
+  (inclusive). Both omitted ⇒ last 365 days (the DAY-bucket cap in the
+  helper layer until the snapshot table lands).
   
   Implementation today wraps the legacy per-metric SQL helpers and emits
   one point per day. A follow-up migrates this to a real per-account
   snapshot table without changing the wire shape.
   """
-  accountStats(address: String!, filters: AccountStatsTimeSeriesFilters): [AccountStat!]!
+  accountStats(address: String!, fromEpoch: Int, toEpoch: Int): [AccountStat!]!
 
   """
   Time-bucketed collateral balance for a single address — deployed (in open
@@ -1627,10 +1620,10 @@ type Query {
 
   """
   Time-bucketed profit-and-loss for a single address with cumulative tracking.
-  DEPRECATED: use `accountStats`; the fat row carries `pnl` / `cumulativePnl`
-  per snapshot.
+  DEPRECATED: use `accountStats`; the fat row carries `periodPnL` /
+  `cumulativePnL` per snapshot.
   """
-  accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `pnl` / `cumulativePnl` per snapshot.")
+  accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `periodPnL` / `cumulativePnL` per snapshot.")
 
   """
   Time-bucketed prediction count with outcome breakdown for a single address,
@@ -1642,9 +1635,9 @@ type Query {
 
   """
   Time-bucketed trading volume for a single address. DEPRECATED: use
-  `accountStats`; the fat row carries `volume` / `cumulativeVolume` per snapshot.
+  `accountStats`; the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.
   """
-  accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `volume` / `cumulativeVolume` per snapshot.")
+  accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.")
 
   """
   Lifetime trading volume for a single address as a wei-decimal string.

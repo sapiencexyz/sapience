@@ -363,14 +363,15 @@ describe('Query.accountStatsRank', () => {
 
 type AccountStatsArgs = {
   address: string;
-  filters?: { fromEpoch?: number | null; toEpoch?: number | null } | null;
+  fromEpoch?: number | null;
+  toEpoch?: number | null;
 };
 
 type AccountStatsRow = {
   timestamp: number;
-  pnl: string;
-  cumulativePnl: string;
-  volume: string;
+  periodPnL: string;
+  cumulativePnL: string;
+  periodVolume: string;
   cumulativeVolume: string;
   deployedCollateral: string;
   claimableCollateral: string;
@@ -458,9 +459,9 @@ describe('Query.accountStats', () => {
 
     expect(rows[0]).toMatchObject({
       timestamp: 1_000_000,
-      pnl: WEI(3),
-      cumulativePnl: WEI(3),
-      volume: WEI(10),
+      periodPnL: WEI(3),
+      cumulativePnL: WEI(3),
+      periodVolume: WEI(10),
       deployedCollateral: WEI(100),
       claimableCollateral: WEI(0),
       predictionsTotal: 2,
@@ -510,10 +511,7 @@ describe('Query.accountStats', () => {
   it('respects explicit `fromEpoch` / `toEpoch` bounds', async () => {
     const from = Math.floor(new Date('2026-01-01T00:00:00Z').getTime() / 1000);
     const to = Math.floor(new Date('2026-02-01T00:00:00Z').getTime() / 1000);
-    await callStats({
-      address: '0xabc',
-      filters: { fromEpoch: from, toEpoch: to },
-    });
+    await callStats({ address: '0xabc', fromEpoch: from, toEpoch: to });
     const [, , fromDate, toDate] = mockQueryAccountVolume.mock.calls[0];
     expect(Math.floor((fromDate as Date).getTime() / 1000)).toBe(from);
     expect(Math.floor((toDate as Date).getTime() / 1000)).toBe(to);
@@ -542,9 +540,9 @@ describe('Query.accountStats', () => {
     expect(rows.map((r) => r.timestamp)).toEqual([
       1_000_000, 1_086_400, 1_172_800,
     ]);
-    expect(rows[0].volume).toBe('0');
+    expect(rows[0].periodVolume).toBe('0');
     expect(rows[0].deployedCollateral).toBe('0');
-    expect(rows[1].volume).toBe(WEI(5));
+    expect(rows[1].periodVolume).toBe(WEI(5));
     // Running cumulative volume still walks the merged-timestamp list.
     expect(rows.map((r) => r.cumulativeVolume)).toEqual(['0', WEI(5), WEI(5)]);
   });
