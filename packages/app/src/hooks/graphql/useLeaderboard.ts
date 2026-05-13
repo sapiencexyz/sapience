@@ -26,8 +26,9 @@ const useAllTimeLeaderboard = () => {
         return [];
       }
     },
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 };
 

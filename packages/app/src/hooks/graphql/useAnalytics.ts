@@ -8,14 +8,23 @@ import {
   type TimeToResolutionBucket,
 } from '@sapience/sdk/queries';
 
-const CACHE_TIME_MS = 60 * 1000;
+// Protocol-wide analytics move slowly (snapshots are at-best hourly) and the
+// queries are server-expensive, so we cache aggressively and don't refetch on
+// tab focus — there's nothing the user can do about throttling, and the
+// background polling already keeps the data fresh enough.
+const CACHE_TIME_MS = 5 * 60 * 1000;
+
+const ANALYTICS_QUERY_OPTS = {
+  staleTime: CACHE_TIME_MS,
+  refetchInterval: CACHE_TIME_MS,
+  refetchOnWindowFocus: false,
+} as const;
 
 export function useProtocolStats(vaultAddress?: string) {
   return useQuery<ProtocolStat[]>({
     queryKey: ['protocolStats', vaultAddress?.toLowerCase() ?? null],
     queryFn: () => fetchProtocolStats(vaultAddress),
-    staleTime: CACHE_TIME_MS,
-    refetchInterval: CACHE_TIME_MS,
+    ...ANALYTICS_QUERY_OPTS,
   });
 }
 
@@ -23,8 +32,7 @@ export function useOpenInterestByCategory() {
   return useQuery<CategoryOpenInterest[]>({
     queryKey: ['openInterestByCategory'],
     queryFn: fetchOpenInterestByCategory,
-    staleTime: CACHE_TIME_MS,
-    refetchInterval: CACHE_TIME_MS,
+    ...ANALYTICS_QUERY_OPTS,
   });
 }
 
@@ -32,8 +40,7 @@ export function useOpenInterestByTimeToResolution() {
   return useQuery<TimeToResolutionBucket[]>({
     queryKey: ['openInterestByTimeToResolution'],
     queryFn: fetchOpenInterestByTimeToResolution,
-    staleTime: CACHE_TIME_MS,
-    refetchInterval: CACHE_TIME_MS,
+    ...ANALYTICS_QUERY_OPTS,
   });
 }
 
