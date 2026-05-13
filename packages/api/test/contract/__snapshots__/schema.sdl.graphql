@@ -1440,20 +1440,6 @@ enum PredictionSortField {
   SETTLED_AT
 }
 
-"""Aggregated profit/loss entry for a single address across all positions"""
-type ProfitEntry {
-  address: String!
-  totalPnL: String!
-}
-
-"""Profit rank and total PnL for an address on the leaderboard"""
-type ProfitRank {
-  address: String!
-  rank: Int
-  totalParticipants: Int!
-  totalPnL: String!
-}
-
 """
 Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
 Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
@@ -1525,11 +1511,6 @@ type Query {
   Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time
   """
   accountPredictionCount(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PredictionCountDataPoint!]!
-
-  """
-  Profit rank and total PnL for a single address relative to all participants
-  """
-  accountProfitRank(address: String!): ProfitRank! @deprecated
 
   """
   Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date range. `from` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time.
@@ -1615,11 +1596,6 @@ type Query {
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
   """
   predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
-
-  """
-  Profit leaderboard — addresses ranked by total PnL across all positions
-  """
-  profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
 
   """
   Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest

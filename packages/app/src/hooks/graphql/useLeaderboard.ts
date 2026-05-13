@@ -1,9 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import {
-  fetchAccountStatsLeaderboard,
-  type AggregatedLeaderboardEntry,
-} from '@sapience/sdk/queries';
+import { fetchAccountStatsLeaderboard } from '@sapience/sdk/queries';
+
+// FE-only adapter shape — the wire row is `AccountStatEntry` (wei strings),
+// but `ProfitCell` consumes a human-readable decimal. Defined here so it
+// stays co-located with the (only) consumer.
+export interface AggregatedLeaderboardEntry {
+  address: string;
+  totalPnL: string;
+}
 
 const useAllTimeLeaderboard = () => {
   return useQuery<AggregatedLeaderboardEntry[]>({
@@ -43,5 +48,3 @@ export const useLeaderboard = () => {
     setSelectedTimeframe,
   };
 };
-
-export type { AggregatedLeaderboardEntry };

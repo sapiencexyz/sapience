@@ -1,6 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import {
-  fetchLeaderboard,
   fetchAccuracyLeaderboard,
   fetchAccountAccuracyRank,
   fetchAccountStatsRank,
@@ -13,40 +12,6 @@ vi.mock('../client/graphqlClient', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-// ============================================================================
-// fetchLeaderboard
-// ============================================================================
-
-describe('fetchLeaderboard', () => {
-  test('returns top 100 entries', async () => {
-    const entries = Array.from({ length: 150 }, (_, i) => ({
-      address: `0x${i.toString(16).padStart(40, '0')}`,
-      totalPnL: `${i}`,
-    }));
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: entries });
-
-    const result = await fetchLeaderboard();
-    expect(result).toHaveLength(100);
-  });
-
-  test('returns empty array when no data', async () => {
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: null });
-    const result = await fetchLeaderboard();
-    expect(result).toEqual([]);
-  });
-
-  test('returns all entries when fewer than 100', async () => {
-    const entries = [
-      { address: '0xabc', totalPnL: '100' },
-      { address: '0xdef', totalPnL: '50' },
-    ];
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: entries });
-
-    const result = await fetchLeaderboard();
-    expect(result).toHaveLength(2);
-  });
 });
 
 // ============================================================================

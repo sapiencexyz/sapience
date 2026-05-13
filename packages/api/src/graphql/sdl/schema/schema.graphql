@@ -1397,12 +1397,6 @@ enum PredictionSortField {
   SETTLED_AT
 }
 
-"""Aggregated profit/loss entry for a single address across all positions"""
-type ProfitEntry {
-  address: String!
-  totalPnL: String!
-}
-
 """Metric an account-stats leaderboard is ranked by."""
 enum AccountStatMetric {
   NET_PNL
@@ -1435,14 +1429,6 @@ type AccountStatsRank {
   volume: String!
   rank: Int
   totalParticipants: Int!
-}
-
-"""Profit rank and total PnL for an address on the leaderboard"""
-type ProfitRank {
-  address: String!
-  rank: Int
-  totalParticipants: Int!
-  totalPnL: String!
 }
 
 """Open-interest aggregated for a single category."""
@@ -1540,11 +1526,6 @@ type Query {
   accountPredictionCount(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PredictionCountDataPoint!]!
 
   """
-  Profit rank and total PnL for a single address relative to all participants
-  """
-  accountProfitRank(address: String!): ProfitRank! @deprecated
-
-  """
   Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date range. `from` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time.
   """
   accountStatsLeaderboard(from: DateTimeISO, limit: Int! = 25, metric: AccountStatMetric! = NET_PNL, skip: Int! = 0, to: DateTimeISO): [AccountStatEntry!]!
@@ -1618,11 +1599,6 @@ type Query {
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
   """
   predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
-
-  """
-  Profit leaderboard — addresses ranked by total PnL across all positions
-  """
-  profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
 
   """
   Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.

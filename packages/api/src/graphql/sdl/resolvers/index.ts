@@ -69,7 +69,6 @@ import {
   predictionCount,
   predictions,
 } from './queries/escrow';
-import { accountProfitRank, profitLeaderboard } from './queries/pnl';
 import { questions } from './queries/questions';
 import { accountAccuracyRank, accuracyLeaderboard } from './queries/score';
 import { referralCodes } from './queries/referrals';
@@ -90,10 +89,8 @@ export const resolvers: Resolvers = {
     // Leaderboards / account scores
     accountAccuracyRank,
     accuracyLeaderboard,
-    accountProfitRank,
     accountStatsLeaderboard,
     accountStatsRank,
-    profitLeaderboard,
     // Time series
     accountBalance,
     accountPnl,

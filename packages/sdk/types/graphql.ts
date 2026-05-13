@@ -1572,22 +1572,6 @@ export type PredictionSortField =
   | 'CREATED_AT'
   | 'SETTLED_AT';
 
-/** Aggregated profit/loss entry for a single address across all positions */
-export type ProfitEntry = {
-  __typename?: 'ProfitEntry';
-  address: Scalars['String']['output'];
-  totalPnL: Scalars['String']['output'];
-};
-
-/** Profit rank and total PnL for an address on the leaderboard */
-export type ProfitRank = {
-  __typename?: 'ProfitRank';
-  address: Scalars['String']['output'];
-  rank?: Maybe<Scalars['Int']['output']>;
-  totalParticipants: Scalars['Int']['output'];
-  totalPnL: Scalars['String']['output'];
-};
-
 /**
  * Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
  * Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
@@ -1637,11 +1621,6 @@ export type Query = {
   accountPnl: Array<PnlDataPoint>;
   /** Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time */
   accountPredictionCount: Array<PredictionCountDataPoint>;
-  /**
-   * Profit rank and total PnL for a single address relative to all participants
-   * @deprecated Field no longer supported
-   */
-  accountProfitRank: ProfitRank;
   /** Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date range. `from` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. */
   accountStatsLeaderboard: Array<AccountStatEntry>;
   /** Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional date window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set. */
@@ -1697,8 +1676,6 @@ export type Query = {
   predictionCount: Scalars['Int']['output'];
   /** Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status */
   predictions: Array<Prediction>;
-  /** Profit leaderboard — addresses ranked by total PnL across all positions */
-  profitLeaderboard: Array<ProfitEntry>;
   /** Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest */
   protocolStats: Array<ProtocolStat>;
   /**
@@ -1770,11 +1747,6 @@ export type QueryAccountPredictionCountArgs = {
   from?: InputMaybe<Scalars['DateTimeISO']['input']>;
   interval: TimeInterval;
   to?: InputMaybe<Scalars['DateTimeISO']['input']>;
-};
-
-
-export type QueryAccountProfitRankArgs = {
-  address: Scalars['String']['input'];
 };
 
 
@@ -1986,12 +1958,6 @@ export type QueryPredictionsArgs = {
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
-};
-
-
-export type QueryProfitLeaderboardArgs = {
-  limit?: Scalars['Int']['input'];
-  skip?: Scalars['Int']['input'];
 };
 
 

@@ -1,10 +1,5 @@
 import { graphqlRequest } from './client/graphqlClient';
 
-export interface AggregatedLeaderboardEntry {
-  address: string;
-  totalPnL: string;
-}
-
 export type AccountStatMetric = 'NET_PNL' | 'GAINS' | 'LOSSES' | 'VOLUME';
 
 /** All amounts are wei strings (18 decimals); `losses` is negative. */
@@ -45,15 +40,6 @@ export interface AccountStatsRankResult {
   rank: number | null;
   totalParticipants: number;
 }
-
-export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
-  query ProfitLeaderboard($limit: Int, $skip: Int) {
-    profitLeaderboard(limit: $limit, skip: $skip) {
-      address
-      totalPnL
-    }
-  }
-`;
 
 export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
   query AccuracyLeaderboard($limit: Int!) {
@@ -168,15 +154,6 @@ export async function fetchAccountStatsRank(params: {
     };
   }
   return r;
-}
-
-export async function fetchLeaderboard(): Promise<
-  AggregatedLeaderboardEntry[]
-> {
-  const data = await graphqlRequest<{
-    profitLeaderboard: AggregatedLeaderboardEntry[];
-  }>(GET_PROFIT_LEADERBOARD);
-  return (data?.profitLeaderboard || []).slice(0, 100);
 }
 
 export async function fetchAccuracyLeaderboard(
