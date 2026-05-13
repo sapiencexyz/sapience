@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   fetchAccountStatsLeaderboard,
   type AccountStatEntry,
@@ -27,6 +27,9 @@ export function useAccountStatsLeaderboard(
         return [];
       }
     },
+    // Hold the previous list while a new (metric, range) combo loads, so the
+    // card doesn't collapse to a spinner and re-expand on every tab click.
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: false,

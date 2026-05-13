@@ -89,35 +89,42 @@ export default function AccountsLeaderboardCard() {
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center h-[260px]">
-            <Loader className="w-8 h-8" />
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="flex items-center justify-center h-[260px] text-muted-foreground">
-            No data available
-          </div>
-        ) : (
-          <ul className="divide-y divide-brand-white/10">
-            {rows.map((entry, index) => (
-              <li
-                key={entry.address}
-                className="flex items-center justify-between gap-3 py-2.5"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-5 text-right text-sm text-muted-foreground tabular-nums">
-                    {index + 1}
+        {/*
+         * Reserve the row area so it doesn't pop in height when switching
+         * between loader, empty state, and full list. Roughly: 10 rows ×
+         * (avatar 22 + py-2.5 = 42px) + 9 dividers ≈ 429px.
+         */}
+        <div className="min-h-[430px]">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-[430px]">
+              <Loader className="w-8 h-8" />
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="flex items-center justify-center h-[430px] text-muted-foreground">
+              No data available
+            </div>
+          ) : (
+            <ul className="divide-y divide-brand-white/10">
+              {rows.map((entry, index) => (
+                <li
+                  key={entry.address}
+                  className="flex items-center justify-between gap-3 py-2.5"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-5 text-right text-sm text-muted-foreground tabular-nums">
+                      {index + 1}
+                    </span>
+                    <EnsAvatar address={entry.address} width={22} height={22} />
+                    <AddressDisplay address={entry.address} />
+                  </div>
+                  <span className="font-mono text-sm text-brand-white whitespace-nowrap">
+                    {formatUsde(metricValue(entry, metric))}
                   </span>
-                  <EnsAvatar address={entry.address} width={22} height={22} />
-                  <AddressDisplay address={entry.address} />
-                </div>
-                <span className="font-mono text-sm text-brand-white whitespace-nowrap">
-                  {formatUsde(metricValue(entry, metric))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
