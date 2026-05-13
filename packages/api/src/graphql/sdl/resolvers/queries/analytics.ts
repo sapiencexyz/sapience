@@ -283,11 +283,23 @@ const runFatStats = async (
   const interval = resolveSnapshotIntervalSeconds();
 
   // Cumulative PnL surfaced to the chart rolls up trading activity:
-  // settlement PnL plus net secondary-market trade flow. Airdrops are
-  // tracked separately so they can be reported alongside without
-  // distorting the trading return shown in the PnL chart.
+  // settlement PnL, plus wUSDe already earmarked for the vault from
+  // resolved-but-not-yet-redeemed wins, plus net secondary-market trade flow.
+  //
+  // `vaultRealizedPnL` is `grossPayouts(Claim ∪ Close) − primaryCollateral`:
+  // the cost basis (`primaryCollateral`) is recognized the moment a pickConfig
+  // resolves, but the payout only lands once the holder's `redeem()`/`burn()`
+  // is indexed. Between those two events a winning position contributes
+  // `−stake` instead of `+profit` — a transient phantom loss that crashed the
+  // PnL chart on days when a chunk of the vault's positions resolved before the
+  // keeper's `redeemFromEscrow` tx was indexed. `vaultUnredeemedClaim` (= total
+  // collateral owed on the vault's winning sides, net of what it's already
+  // claimed) exactly cancels that gap, so the line stays stable across the
+  // resolve → redeem → index cycle. Airdrops are tracked separately so they can
+  // be reported alongside without distorting the trading return shown here.
   const cumulativePnL = (s: (typeof protocolSnapshots)[number]): bigint =>
     BigInt(s.vaultRealizedPnL) +
+    BigInt(s.vaultUnredeemedClaim) +
     BigInt(s.vaultSecondarySold) -
     BigInt(s.vaultSecondaryBought);
 
@@ -378,6 +390,7 @@ const runFatStats = async (
 
       const liveCumulativePnL =
         livePnlResult.realizedPnL +
+        liveUnredeemedClaim +
         liveSecondaryFlows.sold -
         liveSecondaryFlows.bought;
       const livePeriodPnL = (

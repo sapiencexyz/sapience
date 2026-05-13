@@ -201,7 +201,10 @@ export async function run(config: LoadTestConfig): Promise<void> {
   if (httpDriver) {
     workers.push(
       (async () => {
-        const heavyQueries = ['conditions', 'accountStatsLeaderboard'] as const;
+        const heavyQueries = [
+          'conditions',
+          'accountStatsLeaderboardPage',
+        ] as const;
         while (Date.now() < endTime) {
           const q =
             heavyQueries[Math.floor(Math.random() * heavyQueries.length)];

@@ -2,6 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import {
   fetchAccuracyLeaderboard,
   fetchAccountAccuracyRank,
+  fetchAccountStatsLeaderboard,
   fetchAccountStatsRank,
 } from '../leaderboard';
 
@@ -110,6 +111,98 @@ describe('fetchAccountAccuracyRank', () => {
       rank: null,
       totalForecasters: 0,
     });
+  });
+});
+
+// ============================================================================
+// fetchAccountStatsLeaderboard
+// ============================================================================
+
+describe('fetchAccountStatsLeaderboard', () => {
+  const row = (address: string, netPnL: string) => ({
+    address,
+    netPnL,
+    gains: '0',
+    losses: '0',
+    volume: '0',
+  });
+  const wrap = (items: ReturnType<typeof row>[]) => ({
+    accountStatsLeaderboardPage: { items, hasMore: false },
+  });
+
+  test('builds the filters input from metric + epoch defaults', async () => {
+    mockGraphqlRequest.mockResolvedValue(wrap([]));
+    await fetchAccountStatsLeaderboard({ metric: 'NET_PNL' });
+    const [, vars] = mockGraphqlRequest.mock.calls[0];
+    expect(vars.filters).toEqual({
+      metric: 'NET_PNL',
+      fromEpoch: null,
+      toEpoch: null,
+    });
+    expect(vars.take).toBe(25);
+    expect(vars.skip).toBe(0);
+  });
+
+  test('coerces Date inputs to epoch seconds', async () => {
+    mockGraphqlRequest.mockResolvedValue(wrap([]));
+    const from = new Date('2026-01-01T00:00:00Z');
+    const to = new Date('2026-02-01T00:00:00Z');
+    await fetchAccountStatsLeaderboard({ metric: 'VOLUME', from, to });
+    const [, vars] = mockGraphqlRequest.mock.calls[0];
+    expect(vars.filters.metric).toBe('VOLUME');
+    expect(vars.filters.fromEpoch).toBe(Math.floor(from.getTime() / 1000));
+    expect(vars.filters.toEpoch).toBe(Math.floor(to.getTime() / 1000));
+  });
+
+  test('passes ISO strings through Date constructor → epoch seconds', async () => {
+    mockGraphqlRequest.mockResolvedValue(wrap([]));
+    await fetchAccountStatsLeaderboard({
+      metric: 'GAINS',
+      from: '2026-03-15T12:00:00Z',
+    });
+    const [, vars] = mockGraphqlRequest.mock.calls[0];
+    expect(vars.filters.fromEpoch).toBe(
+      Math.floor(new Date('2026-03-15T12:00:00Z').getTime() / 1000)
+    );
+    expect(vars.filters.toEpoch).toBeNull();
+  });
+
+  test('passes numeric epoch seconds through unchanged', async () => {
+    mockGraphqlRequest.mockResolvedValue(wrap([]));
+    await fetchAccountStatsLeaderboard({
+      metric: 'LOSSES',
+      from: 1_700_000_000,
+      to: 1_710_000_000,
+    });
+    const [, vars] = mockGraphqlRequest.mock.calls[0];
+    expect(vars.filters.fromEpoch).toBe(1_700_000_000);
+    expect(vars.filters.toEpoch).toBe(1_710_000_000);
+  });
+
+  test('returns the page items array', async () => {
+    mockGraphqlRequest.mockResolvedValue(
+      wrap([row('0xa', '100'), row('0xb', '50')])
+    );
+    const result = await fetchAccountStatsLeaderboard({ metric: 'NET_PNL' });
+    expect(result.map((r) => r.address)).toEqual(['0xa', '0xb']);
+  });
+
+  test('returns empty array on null response', async () => {
+    mockGraphqlRequest.mockResolvedValue({ accountStatsLeaderboardPage: null });
+    const result = await fetchAccountStatsLeaderboard({ metric: 'NET_PNL' });
+    expect(result).toEqual([]);
+  });
+
+  test('forwards limit + skip', async () => {
+    mockGraphqlRequest.mockResolvedValue(wrap([]));
+    await fetchAccountStatsLeaderboard({
+      metric: 'NET_PNL',
+      limit: 100,
+      skip: 50,
+    });
+    const [, vars] = mockGraphqlRequest.mock.calls[0];
+    expect(vars.take).toBe(100);
+    expect(vars.skip).toBe(50);
   });
 });
 

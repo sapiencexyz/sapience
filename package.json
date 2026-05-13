@@ -4,7 +4,9 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter docs run build",
+    "build": "pnpm run build:backend",
+    "build:backend": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/api run prisma:generate",
+    "build:web": "pnpm --filter @sapience/app run build && pnpm --filter docs run build",
     "test": "pnpm run test --recursive",
     "dev:app": "pnpm --filter @sapience/app run dev",
     "dev:docs": "pnpm --filter docs run dev",

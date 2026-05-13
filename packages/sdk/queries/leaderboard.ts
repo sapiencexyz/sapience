@@ -11,7 +11,7 @@ export interface AccountStatEntry {
   volume: string;
 }
 
-/** Row shape returned by `accuracyLeaderboard`. Slimmed: the 4 hardcoded-zero
+/** Row shape returned by `accuracyLeaderboardPage`. Slimmed: the 4 hardcoded-zero
  *  fields the resolver used to ship (`numScored`, `numTimeWeighted`,
  *  `sumErrorSquared`, `sumTimeWeightedError`) are no longer surfaced. */
 export type ForecasterScore = {

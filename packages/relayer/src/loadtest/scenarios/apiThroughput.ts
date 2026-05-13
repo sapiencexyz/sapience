@@ -44,7 +44,7 @@ export async function run(config: LoadTestConfig): Promise<void> {
   const concurrencyLevels = [1, 5, 10, 20, preset.httpConcurrency];
   const queries: QueryName[] = [
     'protocolStats',
-    'accountStatsLeaderboard',
+    'accountStatsLeaderboardPage',
     'conditions',
     'markets',
   ];
