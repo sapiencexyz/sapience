@@ -1678,11 +1678,6 @@ export type Query = {
   predictions: Array<Prediction>;
   /** Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest */
   protocolStats: Array<ProtocolStat>;
-  /**
-   * Time-bucketed total protocol trading volume across all users
-   * @deprecated Field no longer supported
-   */
-  protocolVolume: Array<VolumeDataPoint>;
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
   /**
@@ -1963,13 +1958,6 @@ export type QueryPredictionsArgs = {
 
 export type QueryProtocolStatsArgs = {
   vaultAddress?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryProtocolVolumeArgs = {
-  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
-  interval: TimeInterval;
-  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
 };
 
 

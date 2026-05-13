@@ -1602,9 +1602,6 @@ type Query {
   """
   protocolStats(vaultAddress: String): [ProtocolStat!]!
 
-  """Time-bucketed total protocol trading volume across all users"""
-  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated
-
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """

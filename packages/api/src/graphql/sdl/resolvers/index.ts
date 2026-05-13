@@ -78,7 +78,6 @@ import {
   accountPnl,
   accountPredictionCount,
   accountVolume,
-  protocolVolume,
 } from './queries/timeSeries';
 import { trade, tradeCount, trades } from './queries/trade';
 import { accountTotalVolume } from './queries/volume';
@@ -96,7 +95,6 @@ export const resolvers: Resolvers = {
     accountPnl,
     accountPredictionCount,
     accountVolume,
-    protocolVolume,
     // Activity + unified feeds
     accountActivity,
     // Analytics

@@ -16717,65 +16717,6 @@
             "deprecationReason": null
           },
           {
-            "name": "protocolVolume",
-            "description": "Time-bucketed total protocol trading volume across all users",
-            "args": [
-              {
-                "name": "from",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "DateTimeISO",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "interval",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "ENUM",
-                    "name": "TimeInterval",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "to",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "DateTimeISO",
-                  "ofType": null
-                },
-                "defaultValue": null
-              }
-            ],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "VolumeDataPoint",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": true,
-            "deprecationReason": "No longer supported"
-          },
-          {
             "name": "questions",
             "description": "Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field",
             "args": [
