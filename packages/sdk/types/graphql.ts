@@ -37,6 +37,24 @@ export type AccountStatMetric =
   | 'NET_PNL'
   | 'VOLUME';
 
+/**
+ * Stats + rank for a single address against the leaderboard's ranked set. Stat
+ * fields mirror `AccountStatEntry` (always populated; zero when the address has
+ * no activity in the requested window). `rank` is 1-indexed against the ranked
+ * set for the chosen metric, or null when the address is absent from it.
+ * `totalParticipants` is the size of the ranked set in the window.
+ */
+export type AccountStatsRank = {
+  __typename?: 'AccountStatsRank';
+  address: Scalars['String']['output'];
+  gains: Scalars['String']['output'];
+  losses: Scalars['String']['output'];
+  netPnL: Scalars['String']['output'];
+  rank?: Maybe<Scalars['Int']['output']>;
+  totalParticipants: Scalars['Int']['output'];
+  volume: Scalars['String']['output'];
+};
+
 /** Accuracy rank for an address on the forecasting leaderboard */
 export type AccuracyRank = {
   __typename?: 'AccuracyRank';
@@ -960,10 +978,6 @@ export type ForecasterScore = {
   __typename?: 'ForecasterScore';
   accuracyScore: Scalars['Float']['output'];
   address: Scalars['String']['output'];
-  numScored: Scalars['Int']['output'];
-  numTimeWeighted: Scalars['Int']['output'];
-  sumErrorSquared: Scalars['Float']['output'];
-  sumTimeWeightedError: Scalars['Float']['output'];
 };
 
 export type IntFilter = {
@@ -1613,11 +1627,6 @@ export type ProtocolStat = {
 
 export type Query = {
   __typename?: 'Query';
-  /**
-   * Accuracy score for a single forecaster address, or null if no scored attestations exist
-   * @deprecated Field no longer supported
-   */
-  accountAccuracy?: Maybe<ForecasterScore>;
   /** Accuracy rank and score for a single address relative to all forecasters */
   accountAccuracyRank: AccuracyRank;
   /** Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity. */
@@ -1635,6 +1644,8 @@ export type Query = {
   accountProfitRank: ProfitRank;
   /** Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date range. `from` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time. */
   accountStatsLeaderboard: Array<AccountStatEntry>;
+  /** Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional date window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set. */
+  accountStatsRank: AccountStatsRank;
   /** Total lifetime trading volume in wei for the given address across all prediction types */
   accountTotalVolume: Scalars['String']['output'];
   /** Time-bucketed trading volume for a single address */
@@ -1723,11 +1734,6 @@ export type Query = {
 };
 
 
-export type QueryAccountAccuracyArgs = {
-  address: Scalars['String']['input'];
-};
-
-
 export type QueryAccountAccuracyRankArgs = {
   address: Scalars['String']['input'];
 };
@@ -1777,6 +1783,14 @@ export type QueryAccountStatsLeaderboardArgs = {
   limit?: Scalars['Int']['input'];
   metric?: AccountStatMetric;
   skip?: Scalars['Int']['input'];
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccountStatsRankArgs = {
+  address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  metric?: AccountStatMetric;
   to?: InputMaybe<Scalars['DateTimeISO']['input']>;
 };
 

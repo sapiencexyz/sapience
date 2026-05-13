@@ -1,6 +1,5 @@
 /**
- * Accuracy-score queries: `accountAccuracy`, `accuracyLeaderboard`,
- * `accountAccuracyRank`.
+ * Accuracy-score queries: `accuracyLeaderboard` and `accountAccuracyRank`.
  *
  * twError in `attester_market_tw_error` now stores (1 - brier) * tau,
  * i.e. an accuracy score where higher is better. The aggregate per
@@ -40,30 +39,6 @@ const getLeaderboardScores = async (): Promise<
   return scores;
 };
 
-export const accountAccuracy: NonNullable<
-  QueryResolvers['accountAccuracy']
-> = async (_parent, { address }) => {
-  const a = address.toLowerCase();
-  const rows = await prisma.attesterMarketTwError.findMany({
-    where: { attester: a },
-    select: { twError: true },
-  });
-  if (rows.length === 0) return null;
-  const numTimeWeighted = rows.length;
-  const sumTimeWeightedError = rows.reduce(
-    (acc, r) => acc + (r.twError || 0),
-    0
-  );
-  return {
-    address: a,
-    numScored: 0,
-    sumErrorSquared: 0,
-    numTimeWeighted,
-    sumTimeWeightedError,
-    accuracyScore: sumTimeWeightedError / numTimeWeighted,
-  };
-};
-
 export const accuracyLeaderboard: NonNullable<
   QueryResolvers['accuracyLeaderboard']
 > = async (_parent, { limit }) => {
@@ -71,10 +46,6 @@ export const accuracyLeaderboard: NonNullable<
   const scores = await getLeaderboardScores();
   return scores.slice(0, capped).map((s) => ({
     address: s.attester,
-    numScored: 0,
-    sumErrorSquared: 0,
-    numTimeWeighted: 0,
-    sumTimeWeightedError: 0,
     accuracyScore: s.accuracyScore,
   }));
 };

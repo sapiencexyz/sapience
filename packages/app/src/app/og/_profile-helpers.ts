@@ -1,32 +1,16 @@
 // Profile-specific helpers for OG image generation
 
 import { isAddress, getAddress } from 'viem';
+import {
+  fetchAccountAccuracyRank,
+  fetchAccountStatsRank,
+} from '@sapience/sdk/queries';
+import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
 import { mainnetClient } from '~/lib/utils/util';
 import { getEnsAvatarUrlForAddress } from '~/lib/ens/avatar';
-import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
 import { SCHEMA_UID } from '~/lib/constants';
 
 // ---------- GraphQL queries ----------
-
-const ALL_TIME_PROFIT_LEADERBOARD_QUERY = `
-  query ProfitLeaderboard($limit: Int) {
-    profitLeaderboard(limit: $limit) {
-      address
-      totalPnL
-    }
-  }
-`;
-
-const ACCURACY_RANK_QUERY = `
-  query AccountAccuracyRank($address: String!) {
-    accountAccuracyRank(address: $address) {
-      address
-      accuracyScore
-      rank
-      totalForecasters
-    }
-  }
-`;
 
 const TRADING_VOLUME_QUERY = `
   query TradingVolume($address: String!) {
@@ -80,22 +64,18 @@ async function fetchProfitRank(address: string): Promise<{
   rank: number | null;
   totalParticipants: number;
 }> {
-  const data = await gqlFetch<{
-    profitLeaderboard: Array<{ address: string; totalPnL: string }>;
-  }>(ALL_TIME_PROFIT_LEADERBOARD_QUERY, { limit: 100 });
-
-  const entries = data?.profitLeaderboard || [];
-  const sorted = entries.sort(
-    (a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL)
-  );
-  const addressLc = address.toLowerCase();
-  const idx = sorted.findIndex((e) => e.address.toLowerCase() === addressLc);
-  const entry = idx >= 0 ? sorted[idx] : null;
-
+  // Single per-address resolver against the same ranked set the analytics
+  // leaderboard slices — no top-100 scan, so users outside the top 100 still
+  // get a real PnL number. `netPnL` is wei, so convert for display.
+  const r = await fetchAccountStatsRank({
+    address,
+    metric: 'NET_PNL',
+  });
+  const totalPnL = parseFloat(r.netPnL) / 1e18;
   return {
-    totalPnL: entry ? parseFloat(entry.totalPnL) : null,
-    rank: idx >= 0 ? idx + 1 : null,
-    totalParticipants: sorted.length,
+    totalPnL: r.rank == null && totalPnL === 0 ? null : totalPnL,
+    rank: r.rank,
+    totalParticipants: r.totalParticipants,
   };
 }
 
@@ -104,20 +84,11 @@ async function fetchAccuracyRank(address: string): Promise<{
   rank: number | null;
   totalForecasters: number;
 }> {
-  const data = await gqlFetch<{
-    accountAccuracyRank: {
-      accuracyScore: number;
-      rank: number | null;
-      totalForecasters: number;
-    };
-  }>(ACCURACY_RANK_QUERY, { address: address.toLowerCase() });
-
-  const r = data?.accountAccuracyRank;
-  if (!r) return { accuracyScore: null, rank: null, totalForecasters: 0 };
+  const r = await fetchAccountAccuracyRank(address);
   return {
-    accuracyScore: r.accuracyScore ?? null,
+    accuracyScore: r.rank == null ? null : r.accuracyScore,
     rank: r.rank,
-    totalForecasters: r.totalForecasters ?? 0,
+    totalForecasters: r.totalForecasters,
   };
 }
 

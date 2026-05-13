@@ -583,6 +583,10 @@ export function createComplexityEstimators(
       // Full-table groupBy aggregates (no cache)
       if (fieldName === 'accuracyLeaderboard') return 1500;
       if (fieldName === 'accountAccuracyRank') return 1500;
+      // Single-address lookup against the merged account-stats set the
+      // leaderboard slices. Same backing aggregation + TTL cache, so the
+      // worst-case fan-out matches the leaderboard.
+      if (fieldName === 'accountStatsRank') return 2000;
       // Introspection fields — cost for mixed queries
       if (fieldName === '__schema') return 100;
       if (fieldName === '__type') return 50;

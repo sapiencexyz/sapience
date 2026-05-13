@@ -33,7 +33,10 @@ import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
 import { accountActivity } from './queries/activity';
-import { accountStatsLeaderboard } from './queries/accountStats';
+import {
+  accountStatsLeaderboard,
+  accountStatsRank,
+} from './queries/accountStats';
 import {
   openInterestByCategory,
   openInterestByTimeToResolution,
@@ -68,11 +71,7 @@ import {
 } from './queries/escrow';
 import { accountProfitRank, profitLeaderboard } from './queries/pnl';
 import { questions } from './queries/questions';
-import {
-  accountAccuracy,
-  accountAccuracyRank,
-  accuracyLeaderboard,
-} from './queries/score';
+import { accountAccuracyRank, accuracyLeaderboard } from './queries/score';
 import { referralCodes } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import {
@@ -89,11 +88,11 @@ export const resolvers: Resolvers = {
   ...scalarResolvers,
   Query: {
     // Leaderboards / account scores
-    accountAccuracy,
     accountAccuracyRank,
     accuracyLeaderboard,
     accountProfitRank,
     accountStatsLeaderboard,
+    accountStatsRank,
     profitLeaderboard,
     // Time series
     accountBalance,

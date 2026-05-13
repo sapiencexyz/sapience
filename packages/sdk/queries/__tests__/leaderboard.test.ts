@@ -2,8 +2,8 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import {
   fetchLeaderboard,
   fetchAccuracyLeaderboard,
-  fetchForecasterRank,
-  fetchUserProfitRank,
+  fetchAccountAccuracyRank,
+  fetchAccountStatsRank,
 } from '../leaderboard';
 
 const mockGraphqlRequest = vi.fn();
@@ -75,23 +75,38 @@ describe('fetchAccuracyLeaderboard', () => {
     const result = await fetchAccuracyLeaderboard();
     expect(result).toEqual([]);
   });
+
+  test('forwards slimmed ForecasterScore rows verbatim', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      accuracyLeaderboard: [
+        { address: '0xa', accuracyScore: 0.9 },
+        { address: '0xb', accuracyScore: 0.5 },
+      ],
+    });
+    const result = await fetchAccuracyLeaderboard();
+    expect(result).toEqual([
+      { address: '0xa', accuracyScore: 0.9 },
+      { address: '0xb', accuracyScore: 0.5 },
+    ]);
+  });
 });
 
 // ============================================================================
-// fetchForecasterRank
+// fetchAccountAccuracyRank
 // ============================================================================
 
-describe('fetchForecasterRank', () => {
+describe('fetchAccountAccuracyRank', () => {
   test('lowercases address before sending', async () => {
     mockGraphqlRequest.mockResolvedValue({
       accountAccuracyRank: {
+        address: '0xabcdef1234567890',
         accuracyScore: 0.85,
         rank: 5,
         totalForecasters: 100,
       },
     });
 
-    await fetchForecasterRank('0xAbCdEf1234567890');
+    await fetchAccountAccuracyRank('0xAbCdEf1234567890');
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].address).toBe('0xabcdef1234567890');
   });
@@ -99,184 +114,122 @@ describe('fetchForecasterRank', () => {
   test('returns rank data when found', async () => {
     mockGraphqlRequest.mockResolvedValue({
       accountAccuracyRank: {
+        address: '0xabc',
         accuracyScore: 0.85,
         rank: 5,
         totalForecasters: 100,
       },
     });
 
-    const result = await fetchForecasterRank('0xabc');
+    const result = await fetchAccountAccuracyRank('0xabc');
     expect(result).toEqual({
+      address: '0xabc',
       accuracyScore: 0.85,
       rank: 5,
       totalForecasters: 100,
     });
   });
 
-  test('returns nulls when rank data is missing', async () => {
+  test('returns zero-stub when rank data is missing', async () => {
     mockGraphqlRequest.mockResolvedValue({ accountAccuracyRank: null });
-    const result = await fetchForecasterRank('0xabc');
+    const result = await fetchAccountAccuracyRank('0xABC');
     expect(result).toEqual({
-      accuracyScore: null,
+      address: '0xabc',
+      accuracyScore: 0,
       rank: null,
       totalForecasters: 0,
     });
   });
-
-  test('defaults accuracyScore to 0 when null', async () => {
-    mockGraphqlRequest.mockResolvedValue({
-      accountAccuracyRank: {
-        accuracyScore: null,
-        rank: 3,
-        totalForecasters: 50,
-      },
-    });
-
-    const result = await fetchForecasterRank('0xabc');
-    expect(result.accuracyScore).toBe(0);
-  });
-
-  test('defaults totalForecasters to 0 when null', async () => {
-    mockGraphqlRequest.mockResolvedValue({
-      accountAccuracyRank: {
-        accuracyScore: 0.5,
-        rank: 1,
-        totalForecasters: null,
-      },
-    });
-
-    const result = await fetchForecasterRank('0xabc');
-    expect(result.totalForecasters).toBe(0);
-  });
 });
 
 // ============================================================================
-// fetchUserProfitRank
+// fetchAccountStatsRank
 // ============================================================================
 
-describe('fetchUserProfitRank', () => {
-  const leaderboardEntries = [
-    { address: '0xAlice', totalPnL: '500' },
-    { address: '0xBob', totalPnL: '1000' },
-    { address: '0xCharlie', totalPnL: '200' },
-    { address: '0xDave', totalPnL: '750' },
-  ];
-
-  test('sorts entries by totalPnL descending and assigns rank', async () => {
+describe('fetchAccountStatsRank', () => {
+  test('lowercases address and defaults metric to NET_PNL', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: leaderboardEntries,
+      accountStatsRank: {
+        address: '0xabc',
+        netPnL: '100',
+        gains: '200',
+        losses: '-100',
+        volume: '500',
+        rank: 3,
+        totalParticipants: 10,
+      },
     });
 
-    const result = await fetchUserProfitRank('0xBob');
-    // Sorted: Bob(1000), Dave(750), Alice(500), Charlie(200)
-    expect(result.rank).toBe(1);
-    expect(result.totalPnL).toBe('1000');
-    expect(result.totalParticipants).toBe(4);
+    await fetchAccountStatsRank({ address: '0xABC' });
+    const [, vars] = mockGraphqlRequest.mock.calls[0];
+    expect(vars.address).toBe('0xabc');
+    expect(vars.metric).toBe('NET_PNL');
+    expect(vars.from).toBeNull();
+    expect(vars.to).toBeNull();
   });
 
-  test('calculates correct rank for middle entry', async () => {
+  test('passes explicit metric + Date window as ISO strings', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: leaderboardEntries,
+      accountStatsRank: {
+        address: '0xabc',
+        netPnL: '0',
+        gains: '0',
+        losses: '0',
+        volume: '500',
+        rank: 1,
+        totalParticipants: 1,
+      },
     });
 
-    const result = await fetchUserProfitRank('0xAlice');
-    // Sorted: Bob(1000), Dave(750), Alice(500), Charlie(200) → rank 3
-    expect(result.rank).toBe(3);
-    expect(result.totalPnL).toBe('500');
-  });
-
-  test('calculates correct rank for last entry', async () => {
-    mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: leaderboardEntries,
+    const from = new Date('2026-01-01T00:00:00Z');
+    const to = new Date('2026-02-01T00:00:00Z');
+    await fetchAccountStatsRank({
+      address: '0xabc',
+      metric: 'VOLUME',
+      from,
+      to,
     });
-
-    const result = await fetchUserProfitRank('0xCharlie');
-    expect(result.rank).toBe(4);
+    const [, vars] = mockGraphqlRequest.mock.calls[0];
+    expect(vars.metric).toBe('VOLUME');
+    expect(vars.from).toBe(from.toISOString());
+    expect(vars.to).toBe(to.toISOString());
   });
 
-  test('returns null rank when user not found', async () => {
-    mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: leaderboardEntries,
+  test('returns zero-stub when resolver returns null', async () => {
+    mockGraphqlRequest.mockResolvedValue({ accountStatsRank: null });
+    const result = await fetchAccountStatsRank({ address: '0xABC' });
+    expect(result).toEqual({
+      address: '0xabc',
+      netPnL: '0',
+      gains: '0',
+      losses: '0',
+      volume: '0',
+      rank: null,
+      totalParticipants: 0,
     });
-
-    const result = await fetchUserProfitRank('0xUnknown');
-    expect(result.rank).toBeNull();
-    expect(result.totalPnL).toBe('0');
-    expect(result.totalParticipants).toBe(4);
   });
 
-  test('case-insensitive address matching', async () => {
+  test('forwards resolver result verbatim', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: [{ address: '0xAbCdEf', totalPnL: '100' }],
+      accountStatsRank: {
+        address: '0xabc',
+        netPnL: '42',
+        gains: '50',
+        losses: '-8',
+        volume: '1000',
+        rank: 2,
+        totalParticipants: 4,
+      },
     });
-
-    const result = await fetchUserProfitRank('0xABCDEF');
-    expect(result.rank).toBe(1);
-    expect(result.totalPnL).toBe('100');
-  });
-
-  test('handles empty leaderboard', async () => {
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: [] });
-
-    const result = await fetchUserProfitRank('0xAny');
-    expect(result.rank).toBeNull();
-    expect(result.totalPnL).toBe('0');
-    expect(result.totalParticipants).toBe(0);
-  });
-
-  test('handles null leaderboard response', async () => {
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: null });
-
-    const result = await fetchUserProfitRank('0xAny');
-    expect(result.rank).toBeNull();
-    expect(result.totalPnL).toBe('0');
-    expect(result.totalParticipants).toBe(0);
-  });
-
-  test('sorts string PnL values numerically, not lexicographically', async () => {
-    mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: [
-        { address: '0xA', totalPnL: '9' },
-        { address: '0xB', totalPnL: '100' },
-        { address: '0xC', totalPnL: '20' },
-      ],
+    const result = await fetchAccountStatsRank({ address: '0xabc' });
+    expect(result).toEqual({
+      address: '0xabc',
+      netPnL: '42',
+      gains: '50',
+      losses: '-8',
+      volume: '1000',
+      rank: 2,
+      totalParticipants: 4,
     });
-
-    // Numeric sort: 100, 20, 9
-    const resultB = await fetchUserProfitRank('0xB');
-    expect(resultB.rank).toBe(1);
-
-    mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: [
-        { address: '0xA', totalPnL: '9' },
-        { address: '0xB', totalPnL: '100' },
-        { address: '0xC', totalPnL: '20' },
-      ],
-    });
-
-    const resultA = await fetchUserProfitRank('0xA');
-    expect(resultA.rank).toBe(3);
-  });
-
-  test('handles negative PnL values', async () => {
-    mockGraphqlRequest.mockResolvedValue({
-      profitLeaderboard: [
-        { address: '0xA', totalPnL: '-50' },
-        { address: '0xB', totalPnL: '100' },
-        { address: '0xC', totalPnL: '-10' },
-      ],
-    });
-
-    // Sorted: B(100), C(-10), A(-50)
-    const result = await fetchUserProfitRank('0xA');
-    expect(result.rank).toBe(3);
-    expect(result.totalPnL).toBe('-50');
-  });
-
-  test('requests limit of 100', async () => {
-    mockGraphqlRequest.mockResolvedValue({ profitLeaderboard: [] });
-    await fetchUserProfitRank('0xAny');
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1]).toEqual({ limit: 100 });
   });
 });

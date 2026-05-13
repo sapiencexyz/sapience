@@ -834,10 +834,6 @@ input FloatNullableFilter {
 type ForecasterScore {
   accuracyScore: Float!
   address: String!
-  numScored: Int!
-  numTimeWeighted: Int!
-  sumErrorSquared: Float!
-  sumTimeWeightedError: Float!
 }
 
 input IntFilter {
@@ -1424,6 +1420,23 @@ type AccountStatEntry {
   volume: String!
 }
 
+"""
+Stats + rank for a single address against the leaderboard's ranked set. Stat
+fields mirror `AccountStatEntry` (always populated; zero when the address has
+no activity in the requested window). `rank` is 1-indexed against the ranked
+set for the chosen metric, or null when the address is absent from it.
+`totalParticipants` is the size of the ranked set in the window.
+"""
+type AccountStatsRank {
+  address: String!
+  netPnL: String!
+  gains: String!
+  losses: String!
+  volume: String!
+  rank: Int
+  totalParticipants: Int!
+}
+
 """Profit rank and total PnL for an address on the leaderboard"""
 type ProfitRank {
   address: String!
@@ -1502,11 +1515,6 @@ type ProtocolStat {
 
 type Query {
   """
-  Accuracy score for a single forecaster address, or null if no scored attestations exist
-  """
-  accountAccuracy(address: String!): ForecasterScore @deprecated
-
-  """
   Accuracy rank and score for a single address relative to all forecasters
   """
   accountAccuracyRank(address: String!): AccuracyRank!
@@ -1540,6 +1548,11 @@ type Query {
   Accounts ranked by an account metric (net PnL, gains, losses, or volume) over an optional date range. `from` omitted means all-time; PnL metrics are attributed to settlement time, volume to trade time.
   """
   accountStatsLeaderboard(from: DateTimeISO, limit: Int! = 25, metric: AccountStatMetric! = NET_PNL, skip: Int! = 0, to: DateTimeISO): [AccountStatEntry!]!
+
+  """
+  Stats + rank for a single address against the same ranked set the leaderboard slices, scoped by the chosen metric and optional date window. Stats fields are always present (zero when the address has no activity in the window); `rank` is null when the address is absent from the ranked set, and `totalParticipants` reflects the size of the ranked set.
+  """
+  accountStatsRank(address: String!, from: DateTimeISO, metric: AccountStatMetric! = NET_PNL, to: DateTimeISO): AccountStatsRank!
 
   """
   Total lifetime trading volume in wei for the given address across all prediction types

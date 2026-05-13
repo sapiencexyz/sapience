@@ -1,6 +1,10 @@
 /**
- * `accountStatsLeaderboard` — addresses ranked by a chosen account metric
- * over an optional date range.
+ * Account-stats queries that share a single aggregation pipeline:
+ *
+ *   - `accountStatsLeaderboard`: addresses ranked by a chosen account metric
+ *     over an optional date range.
+ *   - `accountStatsRank`: stats + rank for ONE address, sourced from the same
+ *     ranked set the leaderboard slices, so the two surfaces reconcile.
  *
  * Metrics: NET_PNL / GAINS / LOSSES (from `calculateAccountPnLBreakdown`,
  * attributed to settlement time) and VOLUME (from `calculateAccountVolumes`,
@@ -75,21 +79,15 @@ const getMerged = async (
   return merged;
 };
 
-/** Snap epoch seconds down to the minute so the cache key isn't unique per request. */
-const floorToMinute = (epochSeconds: number): number =>
-  Math.floor(epochSeconds / 60) * 60;
-
-export const accountStatsLeaderboard: NonNullable<
-  QueryResolvers['accountStatsLeaderboard']
-> = async (_parent, { metric, from, to, limit, skip }) => {
-  const toDate = to ?? new Date();
-  const toEpoch = floorToMinute(Math.floor(toDate.getTime() / 1000));
-  const fromEpoch =
-    from != null ? floorToMinute(Math.floor(from.getTime() / 1000)) : undefined;
-
-  const entries = await getMerged(fromEpoch, toEpoch);
-
-  const ranked = [...entries].sort((a, b) => {
+/**
+ * Order a merged set by the chosen metric. Returns a new array so callers
+ * sharing the cached `entries` don't see mutated ordering on next sort.
+ */
+const rankedFor = (
+  entries: AccountStatEntry[],
+  metric: AccountStatMetric
+): AccountStatEntry[] =>
+  [...entries].sort((a, b) => {
     switch (metric) {
       case AccountStatMetric.Gains:
         return num(b.gains) - num(a.gains);
@@ -104,6 +102,72 @@ export const accountStatsLeaderboard: NonNullable<
     }
   });
 
+/** Snap epoch seconds down to the minute so the cache key isn't unique per request. */
+const floorToMinute = (epochSeconds: number): number =>
+  Math.floor(epochSeconds / 60) * 60;
+
+const resolveWindow = (
+  from: Date | null | undefined,
+  to: Date | null | undefined
+): { fromEpoch: number | undefined; toEpoch: number } => {
+  const toDate = to ?? new Date();
+  const toEpoch = floorToMinute(Math.floor(toDate.getTime() / 1000));
+  const fromEpoch =
+    from != null ? floorToMinute(Math.floor(from.getTime() / 1000)) : undefined;
+  return { fromEpoch, toEpoch };
+};
+
+export const accountStatsLeaderboard: NonNullable<
+  QueryResolvers['accountStatsLeaderboard']
+> = async (_parent, { metric, from, to, limit, skip }) => {
+  const { fromEpoch, toEpoch } = resolveWindow(from, to);
+  const entries = await getMerged(fromEpoch, toEpoch);
+  const ranked = rankedFor(entries, metric);
   const cappedLimit = Math.max(1, Math.min(limit, 100));
   return ranked.slice(skip, skip + cappedLimit);
+};
+
+/** Empty-window stub: address echoed back with all stats zeroed and no rank. */
+const emptyStatsRank = (
+  address: string
+): {
+  address: string;
+  netPnL: string;
+  gains: string;
+  losses: string;
+  volume: string;
+  rank: number | null;
+  totalParticipants: number;
+} => ({
+  address,
+  netPnL: '0',
+  gains: '0',
+  losses: '0',
+  volume: '0',
+  rank: null,
+  totalParticipants: 0,
+});
+
+/**
+ * `accountStatsRank` — single-address lookup against the same ranked set the
+ * leaderboard slices. Reuses `getMerged` + `rankedFor`, so rank and stats
+ * here always reconcile with `accountStatsLeaderboard` for the same window.
+ * Stats are always returned (zero when the address has no activity); `rank`
+ * is null when the address is absent from the ranked set.
+ */
+export const accountStatsRank: NonNullable<
+  QueryResolvers['accountStatsRank']
+> = async (_parent, { address, metric, from, to }) => {
+  const addressLc = address.toLowerCase();
+  const { fromEpoch, toEpoch } = resolveWindow(from, to);
+  const entries = await getMerged(fromEpoch, toEpoch);
+  if (entries.length === 0) return emptyStatsRank(addressLc);
+
+  const ranked = rankedFor(entries, metric);
+  const idx = ranked.findIndex((e) => e.address === addressLc);
+  if (idx < 0) {
+    return { ...emptyStatsRank(addressLc), totalParticipants: ranked.length };
+  }
+  const entry = ranked[idx];
+  return { ...entry, rank: idx + 1, totalParticipants: ranked.length };
 };

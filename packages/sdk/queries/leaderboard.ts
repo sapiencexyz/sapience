@@ -16,23 +16,32 @@ export interface AccountStatEntry {
   volume: string;
 }
 
+/** Row shape returned by `accuracyLeaderboard`. Slimmed: the 4 hardcoded-zero
+ *  fields the resolver used to ship (`numScored`, `numTimeWeighted`,
+ *  `sumErrorSquared`, `sumTimeWeightedError`) are no longer surfaced. */
 export type ForecasterScore = {
   address: string;
-  numScored: number;
-  sumErrorSquared: number;
-  numTimeWeighted: number;
-  sumTimeWeightedError: number;
   accuracyScore: number;
 };
 
-export interface ForecasterRankResult {
-  accuracyScore: number | null;
+/** Single-address result from `accountAccuracyRank`. `accuracyScore` is always
+ *  a number (zero when unscored); `rank` is null for unscored addresses. */
+export interface AccuracyRankResult {
+  address: string;
+  accuracyScore: number;
   rank: number | null;
   totalForecasters: number;
 }
 
-export interface UserProfitRankResult {
-  totalPnL: string;
+/** Single-address result from `accountStatsRank`. Stats fields are wei strings
+ *  always present (zero when no activity in the window); `rank` is null when
+ *  the address is absent from the ranked set for the chosen metric. */
+export interface AccountStatsRankResult {
+  address: string;
+  netPnL: string;
+  gains: string;
+  losses: string;
+  volume: string;
   rank: number | null;
   totalParticipants: number;
 }
@@ -50,10 +59,6 @@ export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
   query AccuracyLeaderboard($limit: Int!) {
     accuracyLeaderboard(limit: $limit) {
       address
-      numScored
-      sumErrorSquared
-      numTimeWeighted
-      sumTimeWeightedError
       accuracyScore
     }
   }
@@ -94,6 +99,25 @@ export const GET_ACCOUNT_STATS_LEADERBOARD = /* GraphQL */ `
   }
 `;
 
+export const GET_ACCOUNT_STATS_RANK = /* GraphQL */ `
+  query AccountStatsRank(
+    $address: String!
+    $metric: AccountStatMetric! = NET_PNL
+    $from: DateTimeISO
+    $to: DateTimeISO
+  ) {
+    accountStatsRank(address: $address, metric: $metric, from: $from, to: $to) {
+      address
+      netPnL
+      gains
+      losses
+      volume
+      rank
+      totalParticipants
+    }
+  }
+`;
+
 const toIsoOrNull = (v?: Date | string | null): string | null =>
   v == null ? null : v instanceof Date ? v.toISOString() : v;
 
@@ -116,6 +140,36 @@ export async function fetchAccountStatsLeaderboard(params: {
   return data?.accountStatsLeaderboard || [];
 }
 
+export async function fetchAccountStatsRank(params: {
+  address: string;
+  metric?: AccountStatMetric;
+  from?: Date | string | null;
+  to?: Date | string | null;
+}): Promise<AccountStatsRankResult> {
+  const addressLc = params.address.toLowerCase();
+  const data = await graphqlRequest<{
+    accountStatsRank: AccountStatsRankResult | null;
+  }>(GET_ACCOUNT_STATS_RANK, {
+    address: addressLc,
+    metric: params.metric ?? 'NET_PNL',
+    from: toIsoOrNull(params.from),
+    to: toIsoOrNull(params.to),
+  });
+  const r = data?.accountStatsRank;
+  if (!r) {
+    return {
+      address: addressLc,
+      netPnL: '0',
+      gains: '0',
+      losses: '0',
+      volume: '0',
+      rank: null,
+      totalParticipants: 0,
+    };
+  }
+  return r;
+}
+
 export async function fetchLeaderboard(): Promise<
   AggregatedLeaderboardEntry[]
 > {
@@ -135,52 +189,16 @@ export async function fetchAccuracyLeaderboard(
   return data.accuracyLeaderboard || [];
 }
 
-export async function fetchForecasterRank(
+export async function fetchAccountAccuracyRank(
   address: string
-): Promise<ForecasterRankResult> {
+): Promise<AccuracyRankResult> {
   const a = address.toLowerCase();
   const data = await graphqlRequest<{
-    accountAccuracyRank: {
-      accuracyScore: number;
-      rank: number | null;
-      totalForecasters: number;
-    };
+    accountAccuracyRank: AccuracyRankResult | null;
   }>(GET_ACCOUNT_ACCURACY_RANK, { address: a });
   const r = data?.accountAccuracyRank;
-  if (!r) return { accuracyScore: null, rank: null, totalForecasters: 0 };
-  return {
-    accuracyScore: r.accuracyScore ?? 0,
-    rank: r.rank,
-    totalForecasters: r.totalForecasters ?? 0,
-  };
-}
-
-export async function fetchUserProfitRank(
-  ownerAddress: string
-): Promise<UserProfitRankResult> {
-  const addressLc = ownerAddress.toLowerCase();
-
-  const data = await graphqlRequest<{
-    profitLeaderboard: Array<{
-      address: string;
-      totalPnL: string;
-    }>;
-  }>(GET_PROFIT_LEADERBOARD, { limit: 100 });
-
-  const entries = data?.profitLeaderboard || [];
-  const sortedEntries = entries.sort(
-    (a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL)
-  );
-
-  const totalParticipants = sortedEntries.length;
-  const index = sortedEntries.findIndex(
-    (e) => e.address.toLowerCase() === addressLc
-  );
-  const userEntry = sortedEntries.find(
-    (e) => e.address.toLowerCase() === addressLc
-  );
-  const totalPnL = userEntry?.totalPnL || '0';
-  const rank = index >= 0 ? index + 1 : null;
-
-  return { totalPnL, rank, totalParticipants };
+  if (!r) {
+    return { address: a, accuracyScore: 0, rank: null, totalForecasters: 0 };
+  }
+  return r;
 }
