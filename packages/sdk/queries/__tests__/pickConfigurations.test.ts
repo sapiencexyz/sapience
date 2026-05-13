@@ -15,7 +15,9 @@ beforeEach(() => {
 
 describe('fetchPickConfigurations', () => {
   test('uses default take=10 and skip=0 when no opts provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ pickConfigurations: [] });
+    mockGraphqlRequest.mockResolvedValue({
+      pickConfigurationsPage: { items: [] },
+    });
     await fetchPickConfigurations();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       GET_PICK_CONFIGURATIONS,
@@ -24,7 +26,9 @@ describe('fetchPickConfigurations', () => {
   });
 
   test('passes custom take, skip, and chainId', async () => {
-    mockGraphqlRequest.mockResolvedValue({ pickConfigurations: [] });
+    mockGraphqlRequest.mockResolvedValue({
+      pickConfigurationsPage: { items: [] },
+    });
     await fetchPickConfigurations({ take: 50, skip: 5, chainId: 42161 });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       GET_PICK_CONFIGURATIONS,
@@ -33,7 +37,9 @@ describe('fetchPickConfigurations', () => {
   });
 
   test('passes resolved param when provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ pickConfigurations: [] });
+    mockGraphqlRequest.mockResolvedValue({
+      pickConfigurationsPage: { items: [] },
+    });
     await fetchPickConfigurations({ resolved: false });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       GET_PICK_CONFIGURATIONS,
@@ -42,7 +48,9 @@ describe('fetchPickConfigurations', () => {
   });
 
   test('does not send resolved key when not provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ pickConfigurations: [] });
+    mockGraphqlRequest.mockResolvedValue({
+      pickConfigurationsPage: { items: [] },
+    });
     await fetchPickConfigurations({ take: 5 });
     const vars = mockGraphqlRequest.mock.calls[0][1];
     expect(vars.resolved).toBeUndefined();
@@ -56,16 +64,20 @@ describe('fetchPickConfigurations', () => {
         totalPredictorCollateral: '100',
         totalCounterpartyCollateral: '200',
         resolved: false,
-        picks: [{ conditionId: 'c1', conditionResolver: 'r1', predictedOutcome: 1 }],
+        picks: [
+          { conditionId: 'c1', conditionResolver: 'r1', predictedOutcome: 1 },
+        ],
       },
     ];
-    mockGraphqlRequest.mockResolvedValue({ pickConfigurations: configs });
+    mockGraphqlRequest.mockResolvedValue({
+      pickConfigurationsPage: { items: configs },
+    });
     const result = await fetchPickConfigurations();
     expect(result).toEqual(configs);
   });
 
-  test('returns empty array when response pickConfigurations is null', async () => {
-    mockGraphqlRequest.mockResolvedValue({ pickConfigurations: null });
+  test('returns empty array when response pickConfigurationsPage.items is missing', async () => {
+    mockGraphqlRequest.mockResolvedValue({ pickConfigurationsPage: {} });
     const result = await fetchPickConfigurations();
     expect(result).toEqual([]);
   });

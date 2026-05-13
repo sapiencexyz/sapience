@@ -30,6 +30,7 @@ import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
 import { PositionsPage } from './PositionsPage';
+import { PredictionsPage } from './PredictionsPage';
 import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
@@ -64,14 +65,18 @@ import {
   claims,
   closes,
   pickConfiguration,
-  pickConfigurations,
+  pickConfigurationsPage,
   positionCount,
   positionsPage,
   prediction,
   predictionCount,
-  predictions,
+  predictionsPage,
 } from './queries/escrow';
-import { positions } from './queries/deprecated/escrow';
+import {
+  pickConfigurations,
+  positions,
+  predictions,
+} from './queries/deprecated/escrow';
 import { questions } from './queries/questions';
 import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
 import { referralCodes } from './queries/referrals';
@@ -122,12 +127,14 @@ export const resolvers: Resolvers = {
     closes,
     pickConfiguration,
     pickConfigurations,
+    pickConfigurationsPage,
     positionCount,
     positions,
     positionsPage,
     prediction,
     predictionCount,
     predictions,
+    predictionsPage,
     // Secondary market trades
     trade,
     tradeCount,
@@ -155,6 +162,7 @@ export const resolvers: Resolvers = {
   LimitOrder,
   Pick,
   PositionsPage,
+  PredictionsPage,
   ReferralCode,
   User,
 };

@@ -1588,6 +1588,15 @@ export type PickConfiguration = {
   totalPredictorCollateral: Scalars['String']['output'];
 };
 
+/** Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag */
+export type PickConfigurationsPage = Page & {
+  __typename?: 'PickConfigurationsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<PickConfiguration>;
+  /** Total PickConfiguration rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
 /** Time-bucketed PnL data point with cumulative tracking (legacy). */
 export type PnlDataPoint = {
   __typename?: 'PnlDataPoint';
@@ -1690,6 +1699,18 @@ export type PredictionCountDataPoint = {
 export type PredictionSortField =
   | 'CREATED_AT'
   | 'SETTLED_AT';
+
+/** Paginated wrapper around Prediction rows with a server-truth hasMore flag */
+export type PredictionsPage = Page & {
+  __typename?: 'PredictionsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Prediction>;
+  /**
+   * Total Prediction rows matching the filters. Computed lazily — the
+   * count query only fires when this field is selected in the operation.
+   */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
 
 /** Protocol-wide stats snapshot — no vault scoping. */
 export type ProtocolStat = {
@@ -1822,8 +1843,13 @@ export type Query = {
    * @deprecated Field no longer supported
    */
   pickConfiguration?: Maybe<PickConfiguration>;
-  /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
+  /**
+   * Paginated list of pick configurations, filterable by chain, resolution status, and result
+   * @deprecated Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal.
+   */
   pickConfigurations: Array<PickConfiguration>;
+  /** Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll. */
+  pickConfigurationsPage: PickConfigurationsPage;
   /** Top 20 most-used tags across public conditions */
   popularTags: Array<Scalars['String']['output']>;
   /**
@@ -1840,10 +1866,18 @@ export type Query = {
   positionsPage: PositionsPage;
   /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
-  /** Count of escrow predictions involving the given address */
+  /**
+   * Count of escrow predictions involving the given address
+   * @deprecated Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   */
   predictionCount: Scalars['Int']['output'];
-  /** Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status */
+  /**
+   * Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
+   * @deprecated Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.
+   */
   predictions: Array<Prediction>;
+  /** Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll. */
+  predictionsPage: PredictionsPage;
   /**
    * Protocol-wide statistics time series at the configured snapshot cadence —
    * cumulative volume, trade count, open interest, escrow balance. Window
@@ -2092,6 +2126,16 @@ export type QueryPickConfigurationsArgs = {
 };
 
 
+export type QueryPickConfigurationsPageArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  resolved?: InputMaybe<Scalars['Boolean']['input']>;
+  result?: InputMaybe<SettlementResult>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+
 export type QueryPositionCountArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   holder: Scalars['String']['input'];
@@ -2149,6 +2193,19 @@ export type QueryPredictionCountArgs = {
 
 
 export type QueryPredictionsArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
+  orderBy?: InputMaybe<PredictionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryPredictionsPageArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;

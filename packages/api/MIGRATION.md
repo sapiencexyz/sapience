@@ -4,6 +4,111 @@ A running log of API changes that downstream services should adopt. Entries are 
 
 ---
 
+## `predictionsPage` — paginated escrow predictions, replaces `predictions`
+
+### TL;DR
+
+Three additive changes:
+
+1. **`predictionsPage`** is the canonical query for escrow predictions. The bare `predictions` query is now `@deprecated`. Migrate at your convenience; `predictions` continues to work and returns identical data.
+2. **`PredictionsPage.totalCount: Int`** is new and lazy. Selecting it issues a single `COUNT(*)` server-side; not selecting it costs nothing. Use this instead of `predictionCount` (also deprecated).
+3. **`pickConfigurationsPage`** mirrors the same shape for pick configurations. The bare `pickConfigurations` query is now `@deprecated`.
+
+Nothing breaks today. All deprecated queries continue to return the same payload; introspection emits deprecation notices.
+
+### Migration: `predictions` → `predictionsPage`
+
+**Before**
+
+```graphql
+query MyForecasts($address: String!) {
+  predictions(address: $address, take: 50, skip: 0) {
+    id
+    predictionId
+    settled
+  }
+}
+```
+
+**After**
+
+```graphql
+query MyForecasts($address: String!) {
+  predictionsPage(address: $address, take: 50, skip: 0) {
+    hasMore
+    items {
+      id
+      predictionId
+      settled
+    }
+  }
+}
+```
+
+Pagination rule: prefer `hasMore` over `items.length === 0` as the stop signal.
+
+### Migration: `predictionCount` → `predictionsPage(...).totalCount`
+
+**Before**
+
+```graphql
+query MyForecastsCount($address: String!) {
+  predictionCount(address: $address)
+}
+```
+
+**After**
+
+```graphql
+query MyForecastsCount($address: String!) {
+  predictionsPage(address: $address, take: 1) {
+    totalCount
+  }
+}
+```
+
+`totalCount` is **lazy** — `prisma.prediction.count(...)` only fires when the field is selected, so other page requests pay nothing for it.
+
+### Migration: `pickConfigurations` → `pickConfigurationsPage`
+
+**Before**
+
+```graphql
+query Combos($tokens: [String!]) {
+  pickConfigurations(tokens: $tokens, take: 100) {
+    id
+    picks {
+      conditionId
+    }
+  }
+}
+```
+
+**After**
+
+```graphql
+query Combos($tokens: [String!]) {
+  pickConfigurationsPage(tokens: $tokens, take: 100) {
+    hasMore
+    items {
+      id
+      picks {
+        conditionId
+      }
+    }
+  }
+}
+```
+
+### Reference
+
+- Resolver source: [`packages/api/src/graphql/sdl/resolvers/queries/escrow.ts`](src/graphql/sdl/resolvers/queries/escrow.ts) (`runPredictions`, `runPickConfigurations`)
+- Field resolver: [`packages/api/src/graphql/sdl/resolvers/PredictionsPage.ts`](src/graphql/sdl/resolvers/PredictionsPage.ts) — lazy `totalCount`
+- Deprecated wrappers: [`packages/api/src/graphql/sdl/resolvers/queries/deprecated/escrow.ts`](src/graphql/sdl/resolvers/queries/deprecated/escrow.ts)
+- SDL: [`packages/api/src/graphql/sdl/schema/schema.graphql`](src/graphql/sdl/schema/schema.graphql) (search `PredictionsPage`, `PickConfigurationsPage`)
+
+---
+
 ## `positionsPage` — paginated V2 holdings, replaces `positions`
 
 ### TL;DR
