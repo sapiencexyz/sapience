@@ -1,4 +1,5 @@
 import { graphqlRequest } from './client/graphqlClient';
+import { toEpochOrNull } from './client/timeArgs';
 
 export type AccountStatMetric = 'NET_PNL' | 'GAINS' | 'LOSSES' | 'VOLUME';
 
@@ -96,16 +97,6 @@ export const GET_ACCOUNT_STATS_RANK = /* GraphQL */ `
     }
   }
 `;
-
-/** Convert a Date/string/epoch-seconds input into an epoch-seconds Int for
- *  the wire `fromEpoch`/`toEpoch` args. Strings are parsed as ISO; numbers
- *  pass through (assumed already-seconds). */
-const toEpochOrNull = (v?: Date | string | number | null): number | null => {
-  if (v == null) return null;
-  if (typeof v === 'number') return v;
-  const d = v instanceof Date ? v : new Date(v);
-  return Math.floor(d.getTime() / 1000);
-};
 
 /**
  * Convenience wrapper: same Date/string-friendly inputs as before, fetches

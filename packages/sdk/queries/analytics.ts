@@ -1,4 +1,5 @@
 import { graphqlRequest } from './client/graphqlClient';
+import { toEpochOrNull } from './client/timeArgs';
 
 /** Protocol-wide stats snapshot — no vault scoping. */
 export interface ProtocolStat {
@@ -28,14 +29,6 @@ export interface VaultStat {
   vaultUnredeemedClaim: string;
   periodPnL: string;
 }
-
-/** Convert a Date/string/epoch-seconds input into an epoch-seconds Int. */
-const toEpochOrNull = (v?: Date | string | number | null): number | null => {
-  if (v == null) return null;
-  if (typeof v === 'number') return v;
-  const d = v instanceof Date ? v : new Date(v);
-  return Math.floor(d.getTime() / 1000);
-};
 
 export const GET_PROTOCOL_STATS = /* GraphQL */ `
   query ProtocolStats($fromEpoch: Int, $toEpoch: Int) {
