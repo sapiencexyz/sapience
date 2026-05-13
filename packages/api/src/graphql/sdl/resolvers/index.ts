@@ -25,6 +25,7 @@ import { AttestationScore } from './AttestationScore';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
+import { ActivityItemsPage } from './ActivityItemsPage';
 import { ConditionGroupsPage } from './ConditionGroupsPage';
 import { ConditionsPage } from './ConditionsPage';
 import { LegacyPosition } from './LegacyPosition';
@@ -36,9 +37,11 @@ import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
 import { QuestionsPage } from './QuestionsPage';
 import { ReferralCode } from './ReferralCode';
+import { TradesPage } from './TradesPage';
 import { User } from './User';
 
-import { accountActivity } from './queries/activity';
+import { accountActivityPage } from './queries/activity';
+import { accountActivity } from './queries/deprecated/activity';
 import {
   accountStats,
   accountStatsLeaderboardPage,
@@ -94,7 +97,8 @@ import {
   accountVolume,
   protocolVolume,
 } from './queries/timeSeries';
-import { trade, tradeCount, trades } from './queries/trade';
+import { trade, tradesPage } from './queries/trade';
+import { trades, tradeCount } from './queries/deprecated/trade';
 import { accountTotalVolume } from './queries/volume';
 
 export const resolvers: Resolvers = {
@@ -109,6 +113,7 @@ export const resolvers: Resolvers = {
     accountStats,
     // Activity + unified feeds
     accountActivity,
+    accountActivityPage,
     // Analytics
     openInterestByCategory,
     openInterestByTimeToResolution,
@@ -147,6 +152,7 @@ export const resolvers: Resolvers = {
     trade,
     tradeCount,
     trades,
+    tradesPage,
     // Referrals
     referralCodes,
     // Tags
@@ -161,6 +167,7 @@ export const resolvers: Resolvers = {
     user,
     users,
   },
+  ActivityItemsPage,
   Attestation,
   AttestationScore,
   Category,
@@ -177,5 +184,6 @@ export const resolvers: Resolvers = {
   PredictionsPage,
   QuestionsPage,
   ReferralCode,
+  TradesPage,
   User,
 };

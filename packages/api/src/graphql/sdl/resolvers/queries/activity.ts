@@ -11,28 +11,34 @@
 
 import type {
   QueryResolvers,
+  QueryAccountActivityArgs,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
+import { clampSkip, clampTake } from './pagination';
 
-const MAX_SKIP = 500;
-
-export const accountActivity: NonNullable<
-  QueryResolvers['accountActivity']
-> = async (
-  _parent,
-  { address, take, skip, type, pickConfigId, conditionId }
-) => {
-  const cappedTake = Math.max(1, Math.min(take ?? 20, 100));
-  const cappedSkip = Math.max(0, Math.min(skip ?? 0, MAX_SKIP));
+export const runAccountActivity = async ({
+  address,
+  take,
+  skip,
+  type,
+  pickConfigId,
+  conditionId,
+}: QueryAccountActivityArgs): Promise<{
+  items: ResolversParentTypes['ActivityItem'][];
+  hasMore: boolean;
+}> => {
+  const cappedTake = clampTake(take, { defaultTake: 20, maxTake: 100 });
+  const cappedSkip = clampSkip(skip);
   const addr = address?.toLowerCase();
   const pickConfigIdLower = pickConfigId?.toLowerCase();
   const conditionIdLower = conditionId?.toLowerCase();
 
   const includePredictions = !type || type === 'prediction';
   const includeTrades = !type || type === 'trade';
-  const fetchSize = cappedSkip + cappedTake;
+  // Fetch one extra row from each side to detect hasMore via the merged set
+  const fetchSize = cappedSkip + cappedTake + 1;
 
   let scopedPickConfigIds: string[] | null = null;
   if (conditionIdLower) {
@@ -52,7 +58,7 @@ export const accountActivity: NonNullable<
   }
 
   if (scopedPickConfigIds !== null && scopedPickConfigIds.length === 0) {
-    return [];
+    return { items: [], hasMore: false };
   }
 
   const scopedTokens: string[] = [];
@@ -138,9 +144,9 @@ export const accountActivity: NonNullable<
         })
       : [];
 
-  // Pick.condition uses the per-request conditionById DataLoader to batch
-  // every conditionId touched by this page's picks (predictions + trades)
-  // into a single findMany on first access — no eager preload needed here.
+  // Pick.condition lookups for this page batch through the request's
+  // `conditionById` DataLoader at field-resolution time, so no eager
+  // pre-load is needed here.
 
   const pickConfigsByToken = new Map<
     string,
@@ -226,5 +232,15 @@ export const accountActivity: NonNullable<
   }
 
   items.sort((a, b) => b.timestamp - a.timestamp);
-  return items.slice(cappedSkip, cappedSkip + cappedTake);
+  const hasMore = items.length > cappedSkip + cappedTake;
+  return {
+    items: items.slice(cappedSkip, cappedSkip + cappedTake),
+    hasMore,
+  };
+};
+
+export const accountActivityPage: NonNullable<
+  QueryResolvers['accountActivityPage']
+> = async (_parent, args) => {
+  return runAccountActivity(args);
 };

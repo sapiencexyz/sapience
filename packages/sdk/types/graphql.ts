@@ -172,6 +172,15 @@ export type ActivityItem = {
   type: Scalars['String']['output'];
 };
 
+/** Paginated wrapper around ActivityItem rows with a server-truth hasMore flag */
+export type ActivityItemsPage = Page & {
+  __typename?: 'ActivityItemsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<ActivityItem>;
+  /** Total activity rows matching the filters. May be null when the merged-feed count is not computed. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
 /** Trade fields embedded in an activity item */
 export type ActivityTrade = {
   __typename?: 'ActivityTrade';
@@ -1827,8 +1836,13 @@ export type Query = {
    * set.
    */
   accountAccuracyRank: AccuracyRank;
-  /** Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity. */
+  /**
+   * Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
+   * @deprecated Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.
+   */
   accountActivity: Array<ActivityItem>;
+  /** Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag. */
+  accountActivityPage: ActivityItemsPage;
   /**
    * Time-bucketed collateral balance for a single address — deployed (in open
    * positions) and claimable (settled but unredeemed). DEPRECATED: use
@@ -2020,8 +2034,13 @@ export type Query = {
    * @deprecated Field no longer supported
    */
   tradeCount: Scalars['Int']['output'];
-  /** Paginated list of secondary market trades, filterable by seller, buyer, token, and chain */
+  /**
+   * Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
+   * @deprecated Use `tradesPage` — same data with a server-truth `hasMore` stop signal.
+   */
   trades: Array<Trade>;
+  /** Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag. */
+  tradesPage: TradesPage;
   user?: Maybe<User>;
   /** @deprecated Field no longer supported */
   users: Array<User>;
@@ -2047,6 +2066,16 @@ export type QueryAccountAccuracyRankArgs = {
 
 
 export type QueryAccountActivityArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  type?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAccountActivityPageArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
@@ -2416,6 +2445,17 @@ export type QueryTradesArgs = {
 };
 
 
+export type QueryTradesPageArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  buyer?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  seller?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  token?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryUserArgs = {
   where: UserWhereUniqueInput;
 };
@@ -2683,6 +2723,15 @@ export type Trade = {
   tokenAmount: Scalars['String']['output'];
   tradeHash: Scalars['String']['output'];
   txHash: Scalars['String']['output'];
+};
+
+/** Paginated wrapper around Trade rows with a server-truth hasMore flag */
+export type TradesPage = Page & {
+  __typename?: 'TradesPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Trade>;
+  /** Total Trade rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /**

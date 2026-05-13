@@ -1442,6 +1442,22 @@ type QuestionsPage implements Page {
   totalCount: Int
 }
 
+"""Paginated wrapper around Trade rows with a server-truth hasMore flag"""
+type TradesPage implements Page {
+  items: [Trade!]!
+  hasMore: Boolean!
+  """Total Trade rows matching the filters. Populated when available."""
+  totalCount: Int
+}
+
+"""Paginated wrapper around ActivityItem rows with a server-truth hasMore flag"""
+type ActivityItemsPage implements Page {
+  items: [ActivityItem!]!
+  hasMore: Boolean!
+  """Total activity rows matching the filters. May be null when the merged-feed count is not computed."""
+  totalCount: Int
+}
+
 """Sort fields for the `conditionsPage` query"""
 enum ConditionSortField {
   CREATED_AT
@@ -1860,6 +1876,21 @@ type Query {
     take: Int! = 20
     type: String
   ): [ActivityItem!]!
+    @deprecated(
+      reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal."
+    )
+
+  """
+  Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag.
+  """
+  accountActivityPage(
+    address: String
+    conditionId: String
+    pickConfigId: String
+    skip: Int! = 0
+    take: Int! = 20
+    type: String
+  ): ActivityItemsPage!
 
   """
   Per-account stats time series — wallet collateral position, PnL, volume,
@@ -2343,6 +2374,22 @@ type Query {
     take: Int! = 50
     token: String
   ): [Trade!]!
+    @deprecated(
+      reason: "Use `tradesPage` — same data with a server-truth `hasMore` stop signal."
+    )
+
+  """
+  Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.
+  """
+  tradesPage(
+    address: String
+    buyer: String
+    chainId: Int
+    seller: String
+    skip: Int! = 0
+    take: Int! = 50
+    token: String
+  ): TradesPage!
   user(where: UserWhereUniqueInput!): User
   users(
     cursor: UserWhereUniqueInput
