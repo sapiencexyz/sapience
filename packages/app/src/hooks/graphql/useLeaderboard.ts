@@ -15,7 +15,7 @@ const useAllTimeLeaderboard = () => {
         // human-readable decimal string so we divide here.
         const entries = await fetchAccountStatsLeaderboard({
           metric: 'NET_PNL',
-          limit: 100,
+          limit: 10,
         });
         return entries.map((e) => ({
           address: e.address,

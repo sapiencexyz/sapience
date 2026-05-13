@@ -413,15 +413,23 @@ function AnalyticsPageContent(): React.ReactElement {
         {/* Charts */}
         <div className="space-y-4">
           {/*
-           * Top Accounts on the left, with the two open-interest distribution
-           * charts stacked on the right. On <lg the whole block collapses to
-           * a single column (Top Accounts → by-category → by-time).
+           * Top Accounts on the left dictates the row height (it has the
+           * tallest natural content). The right column is a flex stack of
+           * the two open-interest distribution charts, each `flex-1` so
+           * they split the available height — their cards use h-full and
+           * the charts inside render at the parent height.
+           * On <lg the whole block collapses to a single column
+           * (Top Accounts → by-category → by-time).
            */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <AccountsLeaderboardCard />
-            <div className="flex flex-col gap-4">
-              <OpenInterestByCategoryChart />
-              <OpenInterestByTimeToResolutionChart />
+            <div className="flex flex-col gap-4 lg:h-full min-h-0">
+              <div className="flex-1 min-h-0">
+                <OpenInterestByCategoryChart />
+              </div>
+              <div className="flex-1 min-h-0">
+                <OpenInterestByTimeToResolutionChart />
+              </div>
             </div>
           </div>
 

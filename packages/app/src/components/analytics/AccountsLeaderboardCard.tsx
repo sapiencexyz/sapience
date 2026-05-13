@@ -20,7 +20,7 @@ import {
 } from '~/hooks/graphql/useAccountStatsLeaderboard';
 
 const METRICS: { value: AccountStatMetric; label: string }[] = [
-  { value: 'NET_PNL', label: 'Net PnL' },
+  { value: 'NET_PNL', label: 'Profit' },
   { value: 'GAINS', label: 'Gains' },
   { value: 'LOSSES', label: 'Losses' },
   { value: 'VOLUME', label: 'Volume' },
@@ -68,25 +68,25 @@ export default function AccountsLeaderboardCard() {
   return (
     <Card className="bg-brand-black border border-brand-white/10">
       <CardContent className="p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <h3 className="sc-heading text-foreground flex items-center gap-1.5">
-            Top Accounts
-          </h3>
-          <div className="flex flex-wrap items-center gap-2">
-            <Tabs
-              value={metric}
-              onValueChange={(v) => setMetric(v as AccountStatMetric)}
-            >
-              <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
-                {METRICS.map((m) => (
-                  <TabsTrigger key={m.value} value={m.value}>
-                    {m.label}
-                  </TabsTrigger>
-                ))}
-              </SegmentedTabsList>
-            </Tabs>
+        <div className="mb-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="sc-heading text-foreground flex items-center gap-1.5">
+              Top Accounts
+            </h3>
             <TimeRangeFilter value={range} onChange={setRange} />
           </div>
+          <Tabs
+            value={metric}
+            onValueChange={(v) => setMetric(v as AccountStatMetric)}
+          >
+            <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
+              {METRICS.map((m) => (
+                <TabsTrigger key={m.value} value={m.value}>
+                  {m.label}
+                </TabsTrigger>
+              ))}
+            </SegmentedTabsList>
+          </Tabs>
         </div>
 
         {/*
