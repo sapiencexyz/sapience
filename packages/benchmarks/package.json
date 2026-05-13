@@ -5,10 +5,12 @@
   "license": "MIT",
   "description": "Load-testing scripts for the Sapience API. Requires the k6 binary on PATH (https://k6.io/docs/get-started/installation/).",
   "scripts": {
-    "trigger-429": "k6 run scenarios/trigger-429.js",
-    "trigger-429:json": "k6 run --out json=results/trigger-429.json scenarios/trigger-429.js",
-    "trigger-global-shed": "k6 run scenarios/trigger-global-shed.js",
-    "trigger-global-shed:json": "k6 run --out json=results/trigger-global-shed.json scenarios/trigger-global-shed.js"
+    "trigger-429": "mkdir -p results && k6 run scenarios/trigger-429.js",
+    "trigger-429:json": "mkdir -p results && k6 run --out json=results/trigger-429.json scenarios/trigger-429.js",
+    "trigger-global-shed": "mkdir -p results && k6 run scenarios/trigger-global-shed.js",
+    "trigger-global-shed:json": "mkdir -p results && k6 run --out json=results/trigger-global-shed.json scenarios/trigger-global-shed.js",
+    "survey-endpoints": "mkdir -p results && k6 run scenarios/endpoint-latency-survey.js",
+    "survey-endpoints:json": "mkdir -p results && k6 run --out json=results/endpoint-latency-survey-samples.json scenarios/endpoint-latency-survey.js"
   },
   "engines": {
     "node": ">=22.12",

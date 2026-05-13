@@ -344,7 +344,9 @@ const buildLiveCandle = async (
   const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
   const livePeriodVolume = (BigInt(liveCumVol) - BigInt(lastCumVol)).toString();
 
-  const lastTradeCount = Number(tradeCountMap.get(lastSnapshot.timestamp) || '0');
+  const lastTradeCount = Number(
+    tradeCountMap.get(lastSnapshot.timestamp) || '0'
+  );
   const liveTradeCount = Number(
     tradeCountMap.get(nowTimestamp) || lastTradeCount
   );
@@ -489,12 +491,13 @@ const toProtocolStat = (stat: StatsSnapshot): ProtocolStat => ({
 
 export const protocolStats: NonNullable<
   QueryResolvers['protocolStats']
-> = async () => (await fetchStatsForVault(undefined)).map(toProtocolStat);
+> = async () =>
+  (await cachedFetchStatsForVault(PROTOCOL_VAULT_KEY)).map(toProtocolStat);
 
 export const vaultStats: NonNullable<QueryResolvers['vaultStats']> = async (
   _parent,
   { vaultAddress }
-) => fetchStatsForVault(vaultAddress);
+) => cachedFetchStatsForVault(vaultAddress);
 
 interface CategoryOpenInterestRow {
   category_id: number;
@@ -531,7 +534,61 @@ const memoTtl = <T>(
   };
 };
 
+/**
+ * Keyed variant: same single-flight semantics, but per cache key. Used for
+ * resolvers whose result depends on a single stable arg (e.g. vaultAddress).
+ * Unknown keys are cached too, so a flood of bad-arg requests can't bypass
+ * the single-flight — `maxSize` provides FIFO eviction as a safety net.
+ */
+const memoTtlByKey = <V>(
+  fn: (key: string) => Promise<V>,
+  ttlMs: number,
+  maxSize: number
+): ((key: string) => Promise<V>) => {
+  const cache = new Map<string, { value: V; expiresAt: number }>();
+  const inflight = new Map<string, Promise<V>>();
+  return async (key: string) => {
+    const now = Date.now();
+    const hit = cache.get(key);
+    if (hit && hit.expiresAt > now) return hit.value;
+    const pending = inflight.get(key);
+    if (pending) return pending;
+    const p = (async () => {
+      try {
+        const value = await fn(key);
+        cache.set(key, { value, expiresAt: Date.now() + ttlMs });
+        if (cache.size > maxSize) {
+          const firstKey = cache.keys().next().value;
+          if (firstKey !== undefined) cache.delete(firstKey);
+        }
+        return value;
+      } finally {
+        inflight.delete(key);
+      }
+    })();
+    inflight.set(key, p);
+    return p;
+  };
+};
+
 const ANALYTICS_CACHE_TTL_MS = 60_000;
+
+/**
+ * `protocolStats` (no args) and `vaultStats` (vaultAddress arg) share the
+ * same expensive fetchStatsForVault path. Both are time-series aggregates
+ * over snapshot history plus 9 parallel vault-contract RPCs for the live
+ * candle — easily 400-900ms uncached. 60s TTL collapses concurrent traffic
+ * to one DB+RPC round per vault per minute. maxSize=10 covers all
+ * configured vaults plus a few stray invalid addresses without unbounded
+ * growth.
+ */
+const PROTOCOL_VAULT_KEY = '__protocol__';
+const cachedFetchStatsForVault = memoTtlByKey(
+  (key: string) =>
+    fetchStatsForVault(key === PROTOCOL_VAULT_KEY ? undefined : key),
+  ANALYTICS_CACHE_TTL_MS,
+  10
+);
 
 /**
  * Query.openInterestByCategory — protocol-wide open interest aggregated by

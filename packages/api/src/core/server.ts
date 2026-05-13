@@ -131,6 +131,13 @@ const startServer = async () => {
 
   const httpServer = createServer(app);
 
+  // Socket-level timeouts. Node defaults (60s headers / 5min request /
+  // 5s keepalive) leave a slowloris vector — these tighten the ceiling
+  // without affecting legitimate clients, whose headers complete in <100ms.
+  httpServer.headersTimeout = 5_000;
+  httpServer.requestTimeout = 20_000;
+  httpServer.keepAliveTimeout = 5_000;
+
   // Create WebSocket server and route upgrades centrally
   const chatWss = createChatWebSocketServer();
 

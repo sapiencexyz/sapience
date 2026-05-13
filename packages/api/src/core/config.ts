@@ -39,8 +39,8 @@ const validators = {
     desc: 'Postgres connection string',
   }),
   CONNECTION_POOL_SIZE: num({
-    default: 20,
-    desc: 'Max Prisma connection pool size',
+    default: 60,
+    desc: 'Max Prisma connection pool size. Sized to exceed GRAPHQL_MAX_CONCURRENT_OPERATIONS so admitted requests do not queue at the driver while holding global slots.',
   }),
   GRAPHQL_MAX_CONCURRENT_OPERATIONS: num({
     default: 50,

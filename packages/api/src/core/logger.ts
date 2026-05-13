@@ -1,9 +1,19 @@
+import { config as dotEnvConfig } from 'dotenv';
 import pino, {
   type Logger,
   type LoggerOptions,
   type DestinationStream,
 } from 'pino';
+import { fromRoot } from '../lib/fromRoot';
 import Sentry from './instrument';
+
+// Load .env before reading process.env. core/config also loads dotenv, but
+// only lazily on first access — and this module's NODE_ENV check runs
+// eagerly at import time (before any code touches config), which would
+// otherwise see undefined and fall back to JSON output in dev.
+// We load dotenv directly (not via core/config) to skip envalid validation,
+// which would require DATABASE_URL and break build scripts / isolated tests.
+dotEnvConfig({ path: fromRoot('.env') });
 
 /**
  * House logging conventions (object-first):
@@ -19,13 +29,6 @@ import Sentry from './instrument';
  * In production, level >= 50 is forwarded to Sentry via the multistream
  * destination below. In development, Sentry is disabled (see instrument.ts)
  * and logs are pretty-printed.
- *
- * NOTE: this module reads `process.env` directly rather than going through
- * `core/config`. Importing `config` would force envalid to validate the
- * full env (including DATABASE_URL with no default) at logger-import time,
- * which breaks any context that doesn't have DATABASE_URL set — build
- * scripts, isolated tests, etc. The `LOG_LEVEL` envalid entry in config.ts
- * still exists for documentation + validation when something else reads it.
  */
 
 const PINO_LEVELS = [
