@@ -5,32 +5,23 @@ import {
   type AccountStatMetric,
 } from '@sapience/sdk/queries';
 
-import { PERIOD_DAYS, type Period } from '~/components/shared/PeriodFilter';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** Window start for a period, or `undefined` for ALL (no lower bound). */
-export function periodToFrom(period: Period): Date | undefined {
-  const days = PERIOD_DAYS[period];
-  return Number.isFinite(days)
-    ? new Date(Date.now() - days * DAY_MS)
-    : undefined;
-}
+import {
+  rangeKey,
+  rangeToDates,
+  type TimeRange,
+} from '~/components/shared/timeRange';
 
 export function useAccountStatsLeaderboard(
   metric: AccountStatMetric,
-  period: Period,
+  range: TimeRange,
   limit = 10
 ) {
   return useQuery<AccountStatEntry[]>({
-    queryKey: ['accountStatsLeaderboard', metric, period, limit],
+    queryKey: ['accountStatsLeaderboard', metric, rangeKey(range), limit],
     queryFn: async () => {
       try {
-        return await fetchAccountStatsLeaderboard({
-          metric,
-          from: periodToFrom(period),
-          limit,
-        });
+        const { from, to } = rangeToDates(range);
+        return await fetchAccountStatsLeaderboard({ metric, from, to, limit });
       } catch (error) {
         console.error('Error in useAccountStatsLeaderboard:', error);
         return [];

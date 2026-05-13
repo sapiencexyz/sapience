@@ -5,6 +5,7 @@ import {
   calculateVaultPnlHeadlineApy,
   computeVaultPnlYDomain,
 } from '../vaultPnlChartUtils';
+import { presetRange } from '~/components/shared/timeRange';
 
 const ONE_DAY = 24 * 60 * 60;
 const ONE_WUSDE = 10n ** 18n;
@@ -44,7 +45,11 @@ describe('vaultPnlChartUtils', () => {
       makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 100, pnl: 30 }),
     ];
 
-    const chartData = buildVaultPnlChartData(protocolStats, '3M', NOW_SEC);
+    const chartData = buildVaultPnlChartData(
+      protocolStats,
+      presetRange('3M'),
+      NOW_SEC
+    );
 
     expect(chartData).toHaveLength(4);
     expect(chartData.map((point) => point.timestamp)).toEqual([
@@ -65,7 +70,11 @@ describe('vaultPnlChartUtils', () => {
       makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 100, pnl: 30 }),
     ];
 
-    const chartData = buildVaultPnlChartData(protocolStats, '3M', NOW_SEC);
+    const chartData = buildVaultPnlChartData(
+      protocolStats,
+      presetRange('3M'),
+      NOW_SEC
+    );
 
     const expectedApy = (Math.pow(1.2, 365 / 42) - 1) * 100;
 
@@ -88,7 +97,7 @@ describe('vaultPnlChartUtils', () => {
 
     const chartData = buildVaultPnlChartData(
       protocolStats,
-      'ALL',
+      presetRange('ALL'),
       NOW_SEC,
       anchorSec
     );
@@ -113,7 +122,7 @@ describe('vaultPnlChartUtils', () => {
 
     const chartData = buildVaultPnlChartData(
       protocolStats,
-      'ALL',
+      presetRange('ALL'),
       NOW_SEC,
       anchorSec
     );
@@ -133,7 +142,7 @@ describe('vaultPnlChartUtils', () => {
 
     const chartData = buildVaultPnlChartData(
       protocolStats,
-      'ALL',
+      presetRange('ALL'),
       NOW_SEC,
       anchorSec
     );
@@ -178,7 +187,11 @@ describe('vaultPnlChartUtils', () => {
       makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 100, pnl: 10 }),
     ];
 
-    const chartData = buildVaultPnlChartData(protocolStats, '1W', NOW_SEC);
+    const chartData = buildVaultPnlChartData(
+      protocolStats,
+      presetRange('1W'),
+      NOW_SEC
+    );
 
     expect(chartData.map((point) => point.timestamp)).toEqual([
       NOW_SEC - 3 * ONE_DAY,

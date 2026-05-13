@@ -9,8 +9,11 @@ import type { AccountStatMetric } from '@sapience/sdk/queries';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import Loader from '~/components/shared/Loader';
-import PeriodFilter, { type Period } from '~/components/shared/PeriodFilter';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
+import TimeRangeFilter, {
+  presetRange,
+  type TimeRange,
+} from '~/components/shared/TimeRangeFilter';
 import {
   useAccountStatsLeaderboard,
   type AccountStatEntry,
@@ -52,11 +55,11 @@ function formatUsde(wei: string): string {
 }
 
 export default function AccountsLeaderboardCard() {
-  const [period, setPeriod] = useState<Period>('1M');
+  const [range, setRange] = useState<TimeRange>(presetRange('1M'));
   const [metric, setMetric] = useState<AccountStatMetric>('NET_PNL');
   const { data, isLoading } = useAccountStatsLeaderboard(
     metric,
-    period,
+    range,
     ROW_COUNT
   );
 
@@ -82,7 +85,7 @@ export default function AccountsLeaderboardCard() {
                 ))}
               </SegmentedTabsList>
             </Tabs>
-            <PeriodFilter value={period} onChange={setPeriod} />
+            <TimeRangeFilter value={range} onChange={setRange} />
           </div>
         </div>
 

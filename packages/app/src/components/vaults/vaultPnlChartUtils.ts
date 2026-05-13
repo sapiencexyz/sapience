@@ -1,5 +1,5 @@
 import type { ProtocolStat } from '~/hooks/graphql/useAnalytics';
-import { PERIOD_DAYS, type Period } from '~/components/shared/PeriodFilter';
+import { rangeToEpochs, type TimeRange } from '~/components/shared/timeRange';
 
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
 
@@ -31,20 +31,23 @@ function findFirstActivePointIndex(points: BasePoint[]): number {
 
 export function buildVaultPnlChartData(
   protocolStats: ProtocolStat[] | undefined,
-  period: Period,
+  range: TimeRange,
   nowSec = Math.floor(Date.now() / 1000),
   anchorSec?: number
 ): VaultPnlChartPoint[] {
   if (!protocolStats || protocolStats.length === 0) return [];
 
-  const periodDays = PERIOD_DAYS[period];
-  const periodCutoff =
-    periodDays === Infinity ? 0 : nowSec - periodDays * ONE_DAY_IN_SECONDS;
+  const { fromSec, toSec } = rangeToEpochs(range, new Date(nowSec * 1000));
+  const periodCutoff = fromSec ?? 0;
+  const upperBound = toSec ?? nowSec;
   const cutoffTimestamp =
     anchorSec !== undefined ? Math.max(periodCutoff, anchorSec) : periodCutoff;
 
   const filteredPoints = protocolStats
-    .filter((stat) => stat.timestamp >= cutoffTimestamp)
+    .filter(
+      (stat) =>
+        stat.timestamp >= cutoffTimestamp && stat.timestamp <= upperBound
+    )
     .map(mapProtocolStatToPoint);
 
   if (filteredPoints.length === 0) return [];

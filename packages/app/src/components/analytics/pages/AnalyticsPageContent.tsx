@@ -28,10 +28,11 @@ import Loader from '~/components/shared/Loader';
 import AccountsLeaderboardCard from '~/components/analytics/AccountsLeaderboardCard';
 import OpenInterestByCategoryChart from '~/components/analytics/OpenInterestByCategoryChart';
 import OpenInterestByTimeToResolutionChart from '~/components/analytics/OpenInterestByTimeToResolutionChart';
-import PeriodFilter, {
-  type Period,
-  PERIOD_DAYS,
-} from '~/components/shared/PeriodFilter';
+import TimeRangeFilter, {
+  filterByRange,
+  presetRange,
+  type TimeRange,
+} from '~/components/shared/TimeRangeFilter';
 
 function formatLargeNumber(
   value: number,
@@ -173,18 +174,6 @@ const CHART_AXIS_STYLE = {
 // hug the card edge consistently across all charts on the analytics page.
 const CHART_MARGIN = { top: 10, right: 4, left: -4, bottom: 0 };
 
-function filterDataByPeriod<T extends { timestamp: number }>(
-  data: T[],
-  period: Period
-): T[] {
-  const days = PERIOD_DAYS[period];
-  if (days === Infinity) return data;
-
-  const now = Math.floor(Date.now() / 1000);
-  const cutoff = now - days * 86400;
-  return data.filter((item) => item.timestamp >= cutoff);
-}
-
 // Collapse sub-daily snapshots to one point per UTC day, keeping the last
 // observation in the day. Used for stock-like metrics (OI, TVL) where summing
 // would be wrong; the input is assumed to be in chronological order.
@@ -201,10 +190,14 @@ function AnalyticsPageContent(): React.ReactElement {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
 
   // Period states for each chart
-  const [volumePeriod, setVolumePeriod] = useState<Period>('1M');
-  const [tradeCountPeriod, setTradeCountPeriod] = useState<Period>('1M');
-  const [oiPeriod, setOiPeriod] = useState<Period>('1M');
-  const [tvlPeriod, setTvlPeriod] = useState<Period>('1M');
+  const [volumePeriod, setVolumePeriod] = useState<TimeRange>(
+    presetRange('1M')
+  );
+  const [tradeCountPeriod, setTradeCountPeriod] = useState<TimeRange>(
+    presetRange('1M')
+  );
+  const [oiPeriod, setOiPeriod] = useState<TimeRange>(presetRange('1M'));
+  const [tvlPeriod, setTvlPeriod] = useState<TimeRange>(presetRange('1M'));
 
   // Fetch protocol stats and daily volumes
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
@@ -253,7 +246,7 @@ function AnalyticsPageContent(): React.ReactElement {
   // configurable and often runs multiple times per day, so without this the
   // "Daily Volume" bar chart shows N bars per day instead of one.
   const filteredVolumeData = useMemo(() => {
-    const filtered = filterDataByPeriod(volumeChartData, volumePeriod);
+    const filtered = filterByRange(volumeChartData, volumePeriod);
     const byDay = new Map<number, number>();
     for (const point of filtered) {
       const dayStart = Math.floor(point.timestamp / 86400) * 86400;
@@ -265,7 +258,7 @@ function AnalyticsPageContent(): React.ReactElement {
   }, [volumeChartData, volumePeriod]);
 
   const filteredTradeCountData = useMemo(() => {
-    const filtered = filterDataByPeriod(tradeCountChartData, tradeCountPeriod);
+    const filtered = filterByRange(tradeCountChartData, tradeCountPeriod);
     const byDay = new Map<number, number>();
     for (const point of filtered) {
       const dayStart = Math.floor(point.timestamp / 86400) * 86400;
@@ -281,12 +274,12 @@ function AnalyticsPageContent(): React.ReactElement {
   // instead of N. OI and TVL are stocks, not flows — picking the last sample
   // matches how end-of-day balances are conventionally reported.
   const filteredOiData = useMemo(
-    () => bucketStatsByDay(filterDataByPeriod(statsChartData, oiPeriod)),
+    () => bucketStatsByDay(filterByRange(statsChartData, oiPeriod)),
     [statsChartData, oiPeriod]
   );
 
   const filteredTvlData = useMemo(
-    () => bucketStatsByDay(filterDataByPeriod(statsChartData, tvlPeriod)),
+    () => bucketStatsByDay(filterByRange(statsChartData, tvlPeriod)),
     [statsChartData, tvlPeriod]
   );
 
@@ -433,7 +426,10 @@ function AnalyticsPageContent(): React.ReactElement {
                 <h3 className="sc-heading text-foreground flex items-center gap-1.5">
                   Daily Volume
                 </h3>
-                <PeriodFilter value={volumePeriod} onChange={setVolumePeriod} />
+                <TimeRangeFilter
+                  value={volumePeriod}
+                  onChange={setVolumePeriod}
+                />
               </div>
               <div className="h-[300px]">
                 {isLoading ? (
@@ -494,7 +490,7 @@ function AnalyticsPageContent(): React.ReactElement {
                 <h3 className="sc-heading text-foreground flex items-center gap-1.5">
                   Daily Trades
                 </h3>
-                <PeriodFilter
+                <TimeRangeFilter
                   value={tradeCountPeriod}
                   onChange={setTradeCountPeriod}
                 />
@@ -560,7 +556,7 @@ function AnalyticsPageContent(): React.ReactElement {
                 <h3 className="sc-heading text-foreground flex items-center gap-1.5">
                   Open Interest
                 </h3>
-                <PeriodFilter value={oiPeriod} onChange={setOiPeriod} />
+                <TimeRangeFilter value={oiPeriod} onChange={setOiPeriod} />
               </div>
               <div className="h-[300px]">
                 {isLoading ? (
@@ -640,7 +636,7 @@ function AnalyticsPageContent(): React.ReactElement {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="sc-heading text-foreground">Protocol TVL</h3>
-                <PeriodFilter value={tvlPeriod} onChange={setTvlPeriod} />
+                <TimeRangeFilter value={tvlPeriod} onChange={setTvlPeriod} />
               </div>
               <div className="h-[300px]">
                 {isLoading ? (
