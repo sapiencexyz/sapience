@@ -1458,6 +1458,14 @@ type ActivityItemsPage implements Page {
   totalCount: Int
 }
 
+"""Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag"""
+type CollateralTransfersPage implements Page {
+  items: [CollateralTransferType!]!
+  hasMore: Boolean!
+  """Total CollateralTransfer rows matching the filters. Populated when available."""
+  totalCount: Int
+}
+
 """Sort fields for the `conditionsPage` query"""
 enum ConditionSortField {
   CREATED_AT
@@ -2074,6 +2082,20 @@ type Query {
     limit: Int! = 100
     offset: Int! = 0
   ): [CollateralTransferType!]!
+    @deprecated(
+      reason: "Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal."
+    )
+
+  """
+  Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.
+  """
+  collateralTransfersPage(
+    address: String!
+    chainId: Int!
+    excludeProtocol: Boolean = false
+    take: Int! = 100
+    skip: Int! = 0
+  ): CollateralTransfersPage!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
     @deprecated

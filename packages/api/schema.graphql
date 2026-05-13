@@ -1410,6 +1410,19 @@ type ActivityItemsPage implements Page {
   totalCount: Int
 }
 
+"""
+Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag
+"""
+type CollateralTransfersPage implements Page {
+  items: [CollateralTransferType!]!
+  hasMore: Boolean!
+
+  """
+  Total CollateralTransfer rows matching the filters. Populated when available.
+  """
+  totalCount: Int
+}
+
 """Sort fields for the `conditionsPage` query"""
 enum ConditionSortField {
   CREATED_AT
@@ -1886,7 +1899,12 @@ type Query {
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
   collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
-  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
+  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]! @deprecated(reason: "Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal.")
+
+  """
+  Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.
+  """
+  collateralTransfersPage(address: String!, chainId: Int!, excludeProtocol: Boolean = false, take: Int! = 100, skip: Int! = 0): CollateralTransfersPage!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal.")

@@ -26,6 +26,7 @@ import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
 import { ActivityItemsPage } from './ActivityItemsPage';
+import { CollateralTransfersPage } from './CollateralTransfersPage';
 import { ConditionGroupsPage } from './ConditionGroupsPage';
 import { ConditionsPage } from './ConditionsPage';
 import { LegacyPosition } from './LegacyPosition';
@@ -56,8 +57,9 @@ import {
 import {
   collateralBalance,
   collateralBalanceHistory,
-  collateralTransfers,
+  collateralTransfersPage,
 } from './queries/collateralBalance';
+import { collateralTransfers } from './queries/deprecated/collateralBalance';
 import { conditionsPage } from './queries/conditions';
 import { conditionGroup, conditionGroupsPage } from './queries/conditionGroups';
 import { questionsPage } from './queries/questions';
@@ -130,6 +132,7 @@ export const resolvers: Resolvers = {
     collateralBalance,
     collateralBalanceHistory,
     collateralTransfers,
+    collateralTransfersPage,
     // Conditions / questions
     conditions,
     conditionsPage,
@@ -171,6 +174,7 @@ export const resolvers: Resolvers = {
   Attestation,
   AttestationScore,
   Category,
+  CollateralTransfersPage,
   Condition,
   ConditionGroup,
   ConditionGroupsPage,

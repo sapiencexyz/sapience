@@ -12,7 +12,7 @@ const mockPrisma = vi.hoisted(() => ({
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
 import type { QueryCollateralTransfersArgs } from '../../__generated__/resolvers';
-import { collateralTransfers } from './collateralBalance';
+import { collateralTransfers } from './deprecated/collateralBalance';
 
 type CollateralTransfersFn = (
   parent: unknown,
@@ -181,7 +181,10 @@ describe('collateralTransfers', () => {
     );
 
     const args = mockPrisma.collateralTransfer.findMany.mock.calls[0][0];
-    expect(args.take).toBe(500);
+    // The `*Page` resolver fetches cappedTake + 1 to detect hasMore via the
+    // overflow row, so the prisma `take` is 501 even though only 500 items
+    // are returned to the client.
+    expect(args.take).toBe(501);
     expect(args.skip).toBe(7);
   });
 });

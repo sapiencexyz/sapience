@@ -586,6 +586,15 @@ export type CollateralTransferType = {
   value: Scalars['String']['output'];
 };
 
+/** Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag */
+export type CollateralTransfersPage = Page & {
+  __typename?: 'CollateralTransfersPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<CollateralTransferType>;
+  /** Total CollateralTransfer rows matching the filters. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
 export type Condition = {
   __typename?: 'Condition';
   _count?: Maybe<ConditionCount>;
@@ -1931,7 +1940,10 @@ export type Query = {
   closes: Array<Close>;
   collateralBalance: CollateralBalanceType;
   collateralBalanceHistory: Array<CollateralBalanceSnapshotType>;
+  /** @deprecated Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal. */
   collateralTransfers: Array<CollateralTransferType>;
+  /** Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args. */
+  collateralTransfersPage: CollateralTransfersPage;
   condition?: Maybe<Condition>;
   /** @deprecated Field no longer supported */
   conditionGroup?: Maybe<ConditionGroup>;
@@ -2207,6 +2219,15 @@ export type QueryCollateralTransfersArgs = {
   excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: Scalars['Int']['input'];
   offset?: Scalars['Int']['input'];
+};
+
+
+export type QueryCollateralTransfersPageArgs = {
+  address: Scalars['String']['input'];
+  chainId: Scalars['Int']['input'];
+  excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 

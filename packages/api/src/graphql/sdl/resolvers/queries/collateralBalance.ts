@@ -9,9 +9,13 @@
  */
 
 import { getProtocolAddressesForChain } from '@sapience/sdk/contracts';
-import type { QueryResolvers } from '../../__generated__/resolvers';
+import type {
+  QueryResolvers,
+  QueryCollateralTransfersPageArgs,
+} from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import { clampSkip, clampTake } from './pagination';
 
 export const collateralBalance: NonNullable<
   QueryResolvers['collateralBalance']
@@ -92,30 +96,68 @@ export const collateralBalanceHistory: NonNullable<
   }));
 };
 
-export const collateralTransfers: NonNullable<
-  QueryResolvers['collateralTransfers']
-> = async (_parent, { address, chainId, excludeProtocol, limit, offset }) => {
+type CollateralTransferRow = Awaited<
+  ReturnType<typeof prisma.collateralTransfer.findMany>
+>[number];
+
+export type CollateralTransfersPageEnvelope = {
+  items: CollateralTransferRow[];
+  hasMore: boolean;
+  _countWhere?: Prisma.CollateralTransferWhereInput;
+};
+
+const buildCollateralTransfersWhere = (
+  address: string,
+  chainId: number,
+  excludeProtocol: boolean | null | undefined
+): Prisma.CollateralTransferWhereInput => {
   const addr = address.toLowerCase();
   const protocolAddresses = excludeProtocol
     ? getProtocolAddressesForChain(chainId)
     : [];
-  const excludeClause =
-    protocolAddresses.length > 0
-      ? {
-          AND: [
-            { from: { notIn: protocolAddresses } },
-            { to: { notIn: protocolAddresses } },
-          ],
-        }
-      : {};
-  return prisma.collateralTransfer.findMany({
-    where: {
-      chainId,
-      OR: [{ from: addr }, { to: addr }],
-      ...excludeClause,
-    },
+  const where: Prisma.CollateralTransferWhereInput = {
+    chainId,
+    OR: [{ from: addr }, { to: addr }],
+  };
+  if (protocolAddresses.length > 0) {
+    where.AND = [
+      { from: { notIn: protocolAddresses } },
+      { to: { notIn: protocolAddresses } },
+    ];
+  }
+  return where;
+};
+
+export const runCollateralTransfers = async ({
+  address,
+  chainId,
+  excludeProtocol,
+  take,
+  skip,
+}: QueryCollateralTransfersPageArgs): Promise<CollateralTransfersPageEnvelope> => {
+  const cappedTake = clampTake(take, { defaultTake: 100, maxTake: 500 });
+  const skipVal = clampSkip(skip);
+  const where = buildCollateralTransfersWhere(
+    address,
+    chainId,
+    excludeProtocol
+  );
+  const rawRows = await prisma.collateralTransfer.findMany({
+    where,
     orderBy: { blockNumber: 'desc' },
-    take: Math.min(limit, 500),
-    skip: offset,
+    take: cappedTake + 1,
+    skip: skipVal,
   });
+  const hasMore = rawRows.length > cappedTake;
+  return {
+    items: rawRows.slice(0, cappedTake),
+    hasMore,
+    _countWhere: where,
+  };
+};
+
+export const collateralTransfersPage: NonNullable<
+  QueryResolvers['collateralTransfersPage']
+> = async (_parent, args) => {
+  return runCollateralTransfers(args);
 };
