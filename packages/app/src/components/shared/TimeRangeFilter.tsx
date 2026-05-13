@@ -72,8 +72,12 @@ export default function TimeRangeFilter({ value, onChange, className }: Props) {
             defaultMonth={value.from ?? new Date(Date.now() - 30 * DAY_MS)}
             selected={{ from: value.from, to: value.to }}
             onSelect={(r) => {
-              if (r?.from) {
+              // Only commit once both ends are picked, so a click-then-click
+              // selection fires a single state change (and a single network
+              // request downstream) instead of two.
+              if (r?.from && r.to) {
                 onChange({ preset: 'CUSTOM', from: r.from, to: r.to });
+                setOpen(false);
               }
             }}
             disabled={{ after: new Date() }}
