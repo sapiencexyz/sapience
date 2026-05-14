@@ -17,7 +17,6 @@ import {
   queryAccountVolume,
   queryAccountPnl,
   queryAccountBalance,
-  queryProtocolVolume,
   queryAccountPredictionCount,
 } from '../../../../services/timeSeriesQueries';
 import { TimeInterval as HelperTimeInterval } from '../../../../services/timeSeriesTypes';
@@ -61,15 +60,6 @@ export const accountPredictionCount: NonNullable<
 > = async (_parent, { address, interval, from, to }) =>
   queryAccountPredictionCount(
     address,
-    toHelperInterval(interval),
-    from instanceof Date ? from : from ? new Date(from) : undefined,
-    to instanceof Date ? to : to ? new Date(to) : undefined
-  );
-
-export const protocolVolume: NonNullable<
-  QueryResolvers['protocolVolume']
-> = async (_parent, { interval, from, to }) =>
-  queryProtocolVolume(
     toHelperInterval(interval),
     from instanceof Date ? from : from ? new Date(from) : undefined,
     to instanceof Date ? to : to ? new Date(to) : undefined

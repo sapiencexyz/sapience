@@ -1686,26 +1686,12 @@ type Query {
   accuracyLeaderboardPage(take: Int! = 25, skip: Int! = 0): AccuracyLeaderboardPage!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
-
-  """
-  Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
-  """
-  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated
-
-  """
-  Paginated list of position close (burn) records, filterable by address, pick config, and chain
-  """
-  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
   collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
   collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
   condition(where: ConditionWhereUniqueInput!): Condition
-  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
-
-  """Look up a single pick configuration by ID"""
-  pickConfiguration(id: String!): PickConfiguration @deprecated
 
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
@@ -1766,13 +1752,6 @@ type Query {
   protocolStats(fromEpoch: Int, toEpoch: Int): [ProtocolStat!]!
 
   """
-  Time-bucketed total protocol trading volume across all users. DEPRECATED:
-  use `protocolStats`; the fat row carries `periodVolume` / `cumulativeVolume`
-  per snapshot.
-  """
-  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated(reason: "Use `protocolStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.")
-
-  """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """
   questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
@@ -1792,15 +1771,11 @@ type Query {
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade
 
-  """Count of secondary market trades matching the given filters"""
-  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated
-
   """
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
   """
   trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
   user(where: UserWhereUniqueInput!): User
-  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated
 
   """
   Vault-specific statistics time series for a single vault address — vault

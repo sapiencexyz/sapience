@@ -72,15 +72,3 @@ export const trade: NonNullable<QueryResolvers['trade']> = async (
   });
   return r ? mapTrade(r) : null;
 };
-
-export const tradeCount: NonNullable<QueryResolvers['tradeCount']> = async (
-  _parent,
-  { seller, buyer, token, chainId }
-) => {
-  const where: Prisma.SecondaryTradeWhereInput = {};
-  if (seller) where.seller = seller.toLowerCase();
-  if (buyer) where.buyer = buyer.toLowerCase();
-  if (token) where.token = token.toLowerCase();
-  if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-  return prisma.secondaryTrade.count({ where });
-};

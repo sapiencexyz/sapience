@@ -55,15 +55,10 @@ import {
   attestations,
   categories,
   condition,
-  conditionGroup,
   conditionGroups,
   user,
-  users,
 } from './queries/crud';
 import {
-  claims,
-  closes,
-  pickConfiguration,
   pickConfigurations,
   positionCount,
   positionsPage,
@@ -81,9 +76,8 @@ import {
   accountPnl,
   accountPredictionCount,
   accountVolume,
-  protocolVolume,
 } from './queries/timeSeries';
-import { trade, tradeCount, trades } from './queries/trade';
+import { trade, trades } from './queries/trade';
 import { accountTotalVolume } from './queries/volume';
 
 export const resolvers: Resolvers = {
@@ -109,7 +103,6 @@ export const resolvers: Resolvers = {
     accountPredictionCount,
     accountVolume,
     accountTotalVolume,
-    protocolVolume,
     // Collateral
     collateralBalance,
     collateralBalanceHistory,
@@ -117,10 +110,7 @@ export const resolvers: Resolvers = {
     // Conditions / questions
     conditions,
     questions,
-    // Escrow (predictions / positions / claims / closes / pick configs)
-    claims,
-    closes,
-    pickConfiguration,
+    // Escrow (predictions / positions / pick configs)
     pickConfigurations,
     positionCount,
     positions,
@@ -130,7 +120,6 @@ export const resolvers: Resolvers = {
     predictions,
     // Secondary market trades
     trade,
-    tradeCount,
     trades,
     // Referrals
     referralCodes,
@@ -140,10 +129,8 @@ export const resolvers: Resolvers = {
     attestations,
     categories,
     condition,
-    conditionGroup,
     conditionGroups,
     user,
-    users,
   },
   Attestation,
   AttestationScore,

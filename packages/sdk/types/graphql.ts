@@ -1795,33 +1795,16 @@ export type Query = {
   accuracyLeaderboardPage: AccuracyLeaderboardPage;
   attestations: Array<Attestation>;
   categories: Array<Category>;
-  /**
-   * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
-   * @deprecated Field no longer supported
-   */
-  claims: Array<Claim>;
-  /**
-   * Paginated list of position close (burn) records, filterable by address, pick config, and chain
-   * @deprecated Field no longer supported
-   */
-  closes: Array<Close>;
   collateralBalance: CollateralBalanceType;
   collateralBalanceHistory: Array<CollateralBalanceSnapshotType>;
   collateralTransfers: Array<CollateralTransferType>;
   condition?: Maybe<Condition>;
-  /** @deprecated Field no longer supported */
-  conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
   /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
   openInterestByCategory: Array<CategoryOpenInterest>;
   /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
-  /**
-   * Look up a single pick configuration by ID
-   * @deprecated Field no longer supported
-   */
-  pickConfiguration?: Maybe<PickConfiguration>;
   /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
   pickConfigurations: Array<PickConfiguration>;
   /** Top 20 most-used tags across public conditions */
@@ -1859,13 +1842,6 @@ export type Query = {
    * .timestamp >= floor(now / interval) * interval`.
    */
   protocolStats: Array<ProtocolStat>;
-  /**
-   * Time-bucketed total protocol trading volume across all users. DEPRECATED:
-   * use `protocolStats`; the fat row carries `periodVolume` / `cumulativeVolume`
-   * per snapshot.
-   * @deprecated Use `protocolStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.
-   */
-  protocolVolume: Array<VolumeDataPoint>;
   /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
   /**
@@ -1881,16 +1857,9 @@ export type Query = {
   referralCodes: ReferralCodesPage;
   /** Look up a single secondary market trade by its trade hash */
   trade?: Maybe<Trade>;
-  /**
-   * Count of secondary market trades matching the given filters
-   * @deprecated Field no longer supported
-   */
-  tradeCount: Scalars['Int']['output'];
   /** Paginated list of secondary market trades, filterable by seller, buyer, token, and chain */
   trades: Array<Trade>;
   user?: Maybe<User>;
-  /** @deprecated Field no longer supported */
-  users: Array<User>;
   /**
    * Vault-specific statistics time series for a single vault address — vault
    * balance, deployed/available collateral, cumulative PnL, deposits,
@@ -2005,24 +1974,6 @@ export type QueryCategoriesArgs = {
 };
 
 
-export type QueryClaimsArgs = {
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  holder?: InputMaybe<Scalars['String']['input']>;
-  predictionId?: InputMaybe<Scalars['String']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-};
-
-
-export type QueryClosesArgs = {
-  address?: InputMaybe<Scalars['String']['input']>;
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  pickConfigId?: InputMaybe<Scalars['String']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-};
-
-
 export type QueryCollateralBalanceArgs = {
   address: Scalars['String']['input'];
   atBlock?: InputMaybe<Scalars['Int']['input']>;
@@ -2052,11 +2003,6 @@ export type QueryConditionArgs = {
 };
 
 
-export type QueryConditionGroupArgs = {
-  where: ConditionGroupWhereUniqueInput;
-};
-
-
 export type QueryConditionGroupsArgs = {
   cursor?: InputMaybe<ConditionGroupWhereUniqueInput>;
   distinct?: InputMaybe<Array<ConditionGroupScalarFieldEnum>>;
@@ -2074,11 +2020,6 @@ export type QueryConditionsArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<ConditionWhereInput>;
-};
-
-
-export type QueryPickConfigurationArgs = {
-  id: Scalars['String']['input'];
 };
 
 
@@ -2167,13 +2108,6 @@ export type QueryProtocolStatsArgs = {
 };
 
 
-export type QueryProtocolVolumeArgs = {
-  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
-  interval: TimeInterval;
-  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
-};
-
-
 export type QueryQuestionsArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
@@ -2205,14 +2139,6 @@ export type QueryTradeArgs = {
 };
 
 
-export type QueryTradeCountArgs = {
-  buyer?: InputMaybe<Scalars['String']['input']>;
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  seller?: InputMaybe<Scalars['String']['input']>;
-  token?: InputMaybe<Scalars['String']['input']>;
-};
-
-
 export type QueryTradesArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   buyer?: InputMaybe<Scalars['String']['input']>;
@@ -2226,16 +2152,6 @@ export type QueryTradesArgs = {
 
 export type QueryUserArgs = {
   where: UserWhereUniqueInput;
-};
-
-
-export type QueryUsersArgs = {
-  cursor?: InputMaybe<UserWhereUniqueInput>;
-  distinct?: InputMaybe<Array<UserScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<UserOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<UserWhereInput>;
 };
 
 
