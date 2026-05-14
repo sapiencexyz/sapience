@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchAccountAccuracyRank,
-  type AccuracyRankResult,
+  type AccountAccuracyRankResult,
 } from '@sapience/sdk/queries';
 
 /**
@@ -16,7 +16,7 @@ export const useAccountAccuracyRank = (address?: string) => {
   const enabled = Boolean(address && address.trim() !== '');
   const addressLc = (address || '').toLowerCase();
 
-  return useQuery<AccuracyRankResult>({
+  return useQuery<AccountAccuracyRankResult>({
     queryKey: ['accountAccuracyRank', addressLc],
     enabled,
     queryFn: () => fetchAccountAccuracyRank(addressLc),

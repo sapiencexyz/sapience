@@ -203,7 +203,7 @@ export async function preBatchAuctionPayloads(
  * GraphQL query strings for expensive resolvers.
  */
 export const GRAPHQL_QUERIES = {
-  protocolStats: `query { protocolStats { timestamp cumulativeVolume totalTradeCount periodVolume openInterest escrowBalance } }`,
+  protocolStats: `query { protocolStats { timestamp cumulativeVolume cumulativeTradeCount periodVolume openInterest escrowBalance } }`,
   accountStatsLeaderboardPage: `query { accountStatsLeaderboardPage(filters: { metric: NET_PNL }, take: 50) { items { address netPnL gains losses volume } hasMore } }`,
   conditions: `query { conditions(first: 20) { id resolver conditionId predictions(first: 10) { id predictor counterparty predictorCollateral counterpartyCollateral settled } } }`,
   markets: `query { markets(first: 20) { id title status volume predictions { id } } }`,

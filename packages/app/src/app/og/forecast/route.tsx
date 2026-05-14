@@ -88,9 +88,9 @@ export async function GET(req: Request) {
         if (attestation.condition?.endTime) {
           endTs = attestation.condition.endTime;
         }
-        if (attestation.prediction) {
+        if (attestation.forecast) {
           try {
-            const pct = Math.round(d18ToPercentage(attestation.prediction));
+            const pct = Math.round(d18ToPercentage(attestation.forecast));
             oddsRaw = `${pct}`;
           } catch {
             // keep existing oddsRaw

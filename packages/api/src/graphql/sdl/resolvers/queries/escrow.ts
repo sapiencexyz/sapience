@@ -168,10 +168,14 @@ export const predictionsPage: NonNullable<
 
 export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   _parent,
-  { id }
+  { predictionId, id }
 ) => {
+  const key = predictionId ?? id;
+  if (!key) {
+    throw new Error('prediction: pass `predictionId` (or the deprecated `id`)');
+  }
   const r = await prisma.prediction.findUnique({
-    where: { predictionId: id.toLowerCase() },
+    where: { predictionId: key.toLowerCase() },
     include: { pickConfiguration: { include: { picks: true } } },
   });
   return r ? mapPrediction(r) : null;

@@ -31,7 +31,7 @@ async function getHook() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockResolvedValue({ accountActivity: [] });
+  mockGraphqlRequest.mockResolvedValue({ activityPage: { items: [] } });
 });
 
 describe('useAccountActivity', () => {
@@ -60,23 +60,25 @@ describe('useAccountActivity', () => {
     const useAccountActivity = await getHook();
 
     mockGraphqlRequest.mockResolvedValue({
-      accountActivity: [
-        {
-          type: 'prediction',
-          timestamp: 1700000000,
-          prediction: {
-            id: 'p1',
-            predictionId: '1',
-            predictor: '0xaaa',
-            counterparty: '0xbbb',
-            predictorCollateral: '0',
-            counterpartyCollateral: '0',
-            settled: false,
-            pickConfig: null,
+      activityPage: {
+        items: [
+          {
+            type: 'prediction',
+            timestamp: 1700000000,
+            prediction: {
+              id: 'p1',
+              predictionId: '1',
+              predictor: '0xaaa',
+              counterparty: '0xbbb',
+              predictorCollateral: '0',
+              counterpartyCollateral: '0',
+              settled: false,
+              pickConfig: null,
+            },
+            trade: null,
           },
-          trade: null,
-        },
-      ],
+        ],
+      },
     });
 
     const { result } = renderHook(() => useAccountActivity({}), {
@@ -136,42 +138,46 @@ describe('useAccountActivity', () => {
 
     mockGraphqlRequest
       .mockResolvedValueOnce({
-        accountActivity: [
-          {
-            type: 'prediction',
-            timestamp: 1700000000,
-            prediction: {
-              id: 'p1',
-              predictionId: '1',
-              predictor: '0xaaa',
-              counterparty: '0xbbb',
-              predictorCollateral: '0',
-              counterpartyCollateral: '0',
-              settled: false,
-              pickConfig: null,
+        activityPage: {
+          items: [
+            {
+              type: 'prediction',
+              timestamp: 1700000000,
+              prediction: {
+                id: 'p1',
+                predictionId: '1',
+                predictor: '0xaaa',
+                counterparty: '0xbbb',
+                predictorCollateral: '0',
+                counterpartyCollateral: '0',
+                settled: false,
+                pickConfig: null,
+              },
+              trade: null,
             },
-            trade: null,
-          },
-        ],
+          ],
+        },
       })
       .mockResolvedValueOnce({
-        accountActivity: [
-          {
-            type: 'prediction',
-            timestamp: 1700000001,
-            prediction: {
-              id: 'p2',
-              predictionId: '2',
-              predictor: '0xccc',
-              counterparty: '0xddd',
-              predictorCollateral: '0',
-              counterpartyCollateral: '0',
-              settled: false,
-              pickConfig: null,
+        activityPage: {
+          items: [
+            {
+              type: 'prediction',
+              timestamp: 1700000001,
+              prediction: {
+                id: 'p2',
+                predictionId: '2',
+                predictor: '0xccc',
+                counterparty: '0xddd',
+                predictorCollateral: '0',
+                counterpartyCollateral: '0',
+                settled: false,
+                pickConfig: null,
+              },
+              trade: null,
             },
-            trade: null,
-          },
-        ],
+          ],
+        },
       });
 
     const { result } = renderHook(() => useAccountActivity({ pageSize: 1 }), {

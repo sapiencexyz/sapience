@@ -11,7 +11,7 @@ export const ATTESTATION_BY_UID_QUERY = `
         uid
         attester
         attestedAt
-        prediction
+        forecast
         comment
         conditionId
         condition {
@@ -47,13 +47,13 @@ export interface AttestationData {
   uid: string;
   attester: string;
   attestedAt: number;
-  prediction: string;
+  forecast: string;
   comment?: string | null;
   conditionId?: string | null;
   condition?: AttestationCondition | null;
 }
 
-// Convert D18 prediction value to percentage (0-100)
+// Convert D18 forecast value to percentage (0-100)
 export function d18ToPercentage(d18Value: string): number {
   const value = BigInt(d18Value);
   return Number(value) / 1e18;

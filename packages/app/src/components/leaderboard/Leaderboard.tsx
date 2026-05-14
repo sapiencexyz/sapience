@@ -40,7 +40,7 @@ import type { AggregatedLeaderboardEntry } from '~/hooks/graphql/useLeaderboard'
 import { useLeaderboard } from '~/hooks/graphql/useLeaderboard';
 import {
   useAccuracyLeaderboard,
-  type AccuracyLeaderboardEntry,
+  type AccountAccuracyLeaderboardEntry,
 } from '~/hooks/graphql/useAccuracyLeaderboard';
 
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
@@ -329,7 +329,7 @@ const AccuracyLeaderboard = () => {
   const { data, isLoading } = useAccuracyLeaderboard(100);
   const { currentAddress: address } = useCurrentAddress();
 
-  const columns = useMemo<ColumnDef<AccuracyLeaderboardEntry>[]>(
+  const columns = useMemo<ColumnDef<AccountAccuracyLeaderboardEntry>[]>(
     () => [
       { id: 'rank', header: () => '', cell: RankCell },
       {
@@ -368,7 +368,7 @@ const AccuracyLeaderboard = () => {
     []
   );
 
-  const table = useReactTable<AccuracyLeaderboardEntry>({
+  const table = useReactTable<AccountAccuracyLeaderboardEntry>({
     data: data ?? [],
     columns,
     getCoreRowModel: getCoreRowModel(),

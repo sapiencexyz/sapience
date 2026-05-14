@@ -83,11 +83,11 @@ model Attestation {
   resolver        String?  @db.VarChar
   conditionId      String?  @db.VarChar
   condition        Condition? @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  prediction      String   @db.VarChar
+  forecast        String   @db.VarChar
   comment         String?  @db.Text
 
   // Relation to scores
-  attestation_score AttestationScore?
+  attestationScore AttestationScore?
 
   @@unique([uid], map: "UQ_attestation_uid")
   @@index([attester], map: "IDX_attestation_attester")

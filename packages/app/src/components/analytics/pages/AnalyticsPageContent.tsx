@@ -202,7 +202,7 @@ function AnalyticsPageContent(): React.ReactElement {
   const [tvlPeriod, setTvlPeriod] = useState<TimeRange>(presetRange('1M'));
 
   // Protocol-wide series (volume, OI, escrow, trade count) and the protocol
-  // vault's vault-specific series (vaultAvailableAssets for the TVL calc).
+  // vault's vault-specific series (`availableAssets` for the TVL calc).
   // After the SDL split, the two live on separate resolvers + types; we zip
   // them by timestamp downstream.
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
@@ -220,10 +220,10 @@ function AnalyticsPageContent(): React.ReactElement {
   }, [vaultStats]);
 
   // Prepare chart data for protocol stats (TVL, OI). TVL composes
-  // `escrowBalance` (protocol-wide) with `vaultAvailableAssets` (protocol
-  // vault). Snapshot timestamps line up between the two queries since the
-  // cron writes both in the same row; we look up vault rows by timestamp
-  // to defend against drift.
+  // `escrowBalance` (protocol-wide) with `VaultStat.availableAssets`
+  // (protocol vault). Snapshot timestamps line up between the two queries
+  // since the cron writes both in the same row; we look up vault rows by
+  // timestamp to defend against drift.
   const vaultPointByTs = useMemo(() => {
     const map = new Map<number, NonNullable<typeof vaultStats>[number]>();
     if (vaultStats) for (const p of vaultStats) map.set(p.timestamp, p);
@@ -238,7 +238,7 @@ function AnalyticsPageContent(): React.ReactElement {
       const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
       const vaultPoint = vaultPointByTs.get(point.timestamp);
       const vaultAvailableAssets = vaultPoint
-        ? parseFloat(vaultPoint.vaultAvailableAssets) / 1e18
+        ? parseFloat(vaultPoint.availableAssets) / 1e18
         : 0;
       return {
         timestamp: point.timestamp,
@@ -350,9 +350,7 @@ function AnalyticsPageContent(): React.ReactElement {
                           Undeployed Vault Funds
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
-                          {formatNumber(
-                            vaultSummary?.vaultAvailableAssets || '0'
-                          )}{' '}
+                          {formatNumber(vaultSummary?.availableAssets || '0')}{' '}
                           {collateralSymbol}
                         </span>
                       </div>
@@ -429,7 +427,7 @@ function AnalyticsPageContent(): React.ReactElement {
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
-                    {formatCount(summary?.totalTradeCount ?? 0)}
+                    {formatCount(summary?.cumulativeTradeCount ?? 0)}
                   </span>
                 )}
               </div>

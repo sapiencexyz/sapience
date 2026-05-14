@@ -48,7 +48,7 @@ describe('fetchAccuracyLeaderboard', () => {
     expect(result).toEqual([]);
   });
 
-  test('forwards AccuracyLeaderboardEntry rows verbatim', async () => {
+  test('forwards AccountAccuracyLeaderboardEntry rows verbatim', async () => {
     mockGraphqlRequest.mockResolvedValue(
       wrap([
         { address: '0xa', accuracyScore: 0.9 },

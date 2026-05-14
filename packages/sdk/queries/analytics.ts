@@ -5,7 +5,7 @@ import { toEpochOrNull } from './client/timeArgs';
 export interface ProtocolStat {
   timestamp: number;
   cumulativeVolume: string;
-  totalTradeCount: number;
+  cumulativeTradeCount: number;
   periodTradeCount: number;
   periodVolume: string;
   openInterest: string;
@@ -15,18 +15,18 @@ export interface ProtocolStat {
 /** Vault-specific stats snapshot for a single vault address. */
 export interface VaultStat {
   timestamp: number;
-  vaultBalance: string;
-  vaultAvailableAssets: string;
-  vaultDeployed: string;
-  vaultCumulativePnL: string;
-  vaultPositionsWon: number;
-  vaultPositionsLost: number;
-  vaultDeposits: string;
-  vaultWithdrawals: string;
-  vaultAirdropGains: string;
-  vaultSecondaryBought: string;
-  vaultSecondarySold: string;
-  vaultUnredeemedClaim: string;
+  balance: string;
+  availableAssets: string;
+  deployed: string;
+  cumulativePnL: string;
+  positionsWon: number;
+  positionsLost: number;
+  deposits: string;
+  withdrawals: string;
+  airdropGains: string;
+  secondaryBought: string;
+  secondarySold: string;
+  unredeemedClaim: string;
   periodPnL: string;
 }
 
@@ -35,7 +35,7 @@ export const GET_PROTOCOL_STATS = /* GraphQL */ `
     protocolStats(from: $from, to: $to) {
       timestamp
       cumulativeVolume
-      totalTradeCount
+      cumulativeTradeCount
       periodTradeCount
       periodVolume
       openInterest
@@ -52,18 +52,18 @@ export const GET_VAULT_STATS = /* GraphQL */ `
   ) {
     vaultStats(vaultAddress: $vaultAddress, from: $from, to: $to) {
       timestamp
-      vaultBalance
-      vaultAvailableAssets
-      vaultDeployed
-      vaultCumulativePnL
-      vaultPositionsWon
-      vaultPositionsLost
-      vaultDeposits
-      vaultWithdrawals
-      vaultAirdropGains
-      vaultSecondaryBought
-      vaultSecondarySold
-      vaultUnredeemedClaim
+      balance
+      availableAssets
+      deployed
+      cumulativePnL
+      positionsWon
+      positionsLost
+      deposits
+      withdrawals
+      airdropGains
+      secondaryBought
+      secondarySold
+      unredeemedClaim
       periodPnL
     }
   }
