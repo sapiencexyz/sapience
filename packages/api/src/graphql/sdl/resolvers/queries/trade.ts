@@ -13,6 +13,7 @@
 import type {
   QueryResolvers,
   QueryTradesArgs,
+  QueryTradesPageArgs,
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
@@ -81,11 +82,29 @@ export const runTrades = async ({
   return { items: rows.map(mapTrade), hasMore, _countWhere: where };
 };
 
+/**
+ * Merge `filters: TradeFilters` with the deprecated flat arg shape.
+ * `filters` wins on conflicts. The `address` vs `seller`/`buyer`
+ * mutual-exclusion check happens downstream in `runTrades`.
+ */
+const mergeTradeFilters = (args: QueryTradesPageArgs): QueryTradesArgs => {
+  const f = args.filters ?? null;
+  return {
+    take: args.take,
+    skip: args.skip,
+    address: f?.address ?? args.address ?? null,
+    seller: f?.seller ?? args.seller ?? null,
+    buyer: f?.buyer ?? args.buyer ?? null,
+    token: f?.token ?? args.token ?? null,
+    chainId: f?.chainId ?? args.chainId ?? null,
+  };
+};
+
 export const tradesPage: NonNullable<QueryResolvers['tradesPage']> = async (
   _parent,
   args
 ) => {
-  return runTrades(args);
+  return runTrades(mergeTradeFilters(args));
 };
 
 export const trade: NonNullable<QueryResolvers['trade']> = async (

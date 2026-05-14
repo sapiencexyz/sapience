@@ -8,8 +8,8 @@ describe('Questions query', () => {
     const result = await executeOperation(GET_QUESTIONS, {
       take: 10,
       skip: 0,
-      sortField: 'openInterest',
-      sortDirection: 'desc',
+      orderBy: 'openInterest',
+      orderDirection: 'desc',
     });
     expect(result.errors).toBeUndefined();
     await expect(

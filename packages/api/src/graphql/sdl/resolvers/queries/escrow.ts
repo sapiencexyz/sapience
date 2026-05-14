@@ -34,8 +34,11 @@
 import type {
   QueryResolvers,
   QueryPickConfigurationsArgs,
+  QueryPickConfigurationsPageArgs,
   QueryPositionsArgs,
+  QueryPositionsPageArgs,
   QueryPredictionsArgs,
+  QueryPredictionsPageArgs,
   Prediction,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
@@ -160,10 +163,32 @@ export const runPredictions = async ({
   };
 };
 
+/**
+ * Merge `filters: PredictionFilters` (preferred) with the deprecated flat
+ * arg shape, so `runPredictions` sees a single canonical set of fields.
+ * When a field appears in both, `filters` wins.
+ */
+const mergePredictionFilters = (
+  args: QueryPredictionsPageArgs
+): QueryPredictionsArgs => {
+  const f = args.filters ?? null;
+  return {
+    take: args.take,
+    skip: args.skip,
+    orderBy: args.orderBy,
+    orderDirection: args.orderDirection,
+    address: f?.address ?? args.address ?? null,
+    chainId: f?.chainId ?? args.chainId ?? null,
+    conditionId: f?.conditionId ?? args.conditionId ?? null,
+    isLegacy: f?.isLegacy ?? args.isLegacy ?? null,
+    settled: f?.settled ?? args.settled ?? null,
+  };
+};
+
 export const predictionsPage: NonNullable<
   QueryResolvers['predictionsPage']
 > = async (_parent, args) => {
-  return runPredictions(args);
+  return runPredictions(mergePredictionFilters(args));
 };
 
 export const prediction: NonNullable<QueryResolvers['prediction']> = async (
@@ -225,10 +250,28 @@ export const runPickConfigurations = async ({
   };
 };
 
+/**
+ * Merge `filters: PickConfigurationFilters` with the deprecated flat
+ * arg shape. `filters` wins on conflicts.
+ */
+const mergePickConfigurationFilters = (
+  args: QueryPickConfigurationsPageArgs
+): QueryPickConfigurationsArgs => {
+  const f = args.filters ?? null;
+  return {
+    take: args.take,
+    skip: args.skip,
+    chainId: f?.chainId ?? args.chainId ?? null,
+    resolved: f?.resolved ?? args.resolved ?? null,
+    result: f?.result ?? args.result ?? null,
+    tokens: f?.tokens ?? args.tokens ?? null,
+  };
+};
+
 export const pickConfigurationsPage: NonNullable<
   QueryResolvers['pickConfigurationsPage']
 > = async (_parent, args) => {
-  return runPickConfigurations(args);
+  return runPickConfigurations(mergePickConfigurationFilters(args));
 };
 
 export const pickConfiguration: NonNullable<
@@ -857,10 +900,37 @@ export const runPositions = async (
   return { items: sorted, hasMore, totalCount: null, _countWhere: where };
 };
 
+/**
+ * Merge `filters: PositionFilters` with the deprecated flat arg shape.
+ * `filters` wins on conflicts.
+ */
+const mergePositionFilters = (
+  args: QueryPositionsPageArgs
+): QueryPositionsArgs => {
+  const f = args.filters ?? null;
+  return {
+    take: args.take,
+    skip: args.skip,
+    orderBy: args.orderBy,
+    orderDirection: args.orderDirection,
+    holder: f?.holder ?? args.holder ?? null,
+    chainId: f?.chainId ?? args.chainId ?? null,
+    conditionId: f?.conditionId ?? args.conditionId ?? null,
+    pickConfigId: f?.pickConfigId ?? args.pickConfigId ?? null,
+    result: f?.result ?? args.result ?? null,
+    settled: f?.settled ?? args.settled ?? null,
+    holderWon: f?.holderWon ?? args.holderWon ?? null,
+    collateralMin: f?.collateralMin ?? args.collateralMin ?? null,
+    collateralMax: f?.collateralMax ?? args.collateralMax ?? null,
+    endsAtMin: f?.endsAtMin ?? args.endsAtMin ?? null,
+    endsAtMax: f?.endsAtMax ?? args.endsAtMax ?? null,
+  };
+};
+
 export const positionsPage: NonNullable<
   QueryResolvers['positionsPage']
 > = async (_parent, args) => {
-  return runPositions(args);
+  return runPositions(mergePositionFilters(args));
 };
 
 export const closes: NonNullable<QueryResolvers['closes']> = async (

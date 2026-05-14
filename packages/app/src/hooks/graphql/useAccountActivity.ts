@@ -26,22 +26,8 @@ export type TradeActivity = {
 export type ActivityItem = PredictionActivity | TradeActivity;
 
 const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
-  query AccountActivity(
-    $address: String
-    $take: Int
-    $skip: Int
-    $type: ActivityItemType
-    $pickConfigId: String
-    $conditionId: String
-  ) {
-    accountActivityPage(
-      address: $address
-      take: $take
-      skip: $skip
-      type: $type
-      pickConfigId: $pickConfigId
-      conditionId: $conditionId
-    ) {
+  query AccountActivity($filters: ActivityFilters, $take: Int, $skip: Int) {
+    accountActivityPage(filters: $filters, take: $take, skip: $skip) {
       items {
         type
         timestamp
@@ -234,12 +220,14 @@ export function useAccountActivity({
       const resp = await graphqlRequest<{
         accountActivityPage: { items: RawActivityItem[] };
       }>(ACCOUNT_ACTIVITY_QUERY, {
-        address: account ?? null,
+        filters: {
+          address: account ?? null,
+          type: typeFilter ?? null,
+          pickConfigId: pickConfigId ?? null,
+          conditionId: conditionId ?? null,
+        },
         take: pageSize,
         skip: pageParam,
-        type: typeFilter ?? null,
-        pickConfigId: pickConfigId ?? null,
-        conditionId: conditionId ?? null,
       });
       return resp?.accountActivityPage?.items ?? [];
     },

@@ -19,13 +19,8 @@ export type SecondaryTrade = {
 };
 
 const TRADES_BY_SELLER_QUERY = /* GraphQL */ `
-  query TradesBySeller(
-    $seller: String!
-    $chainId: Int
-    $take: Int
-    $skip: Int
-  ) {
-    tradesPage(seller: $seller, chainId: $chainId, take: $take, skip: $skip) {
+  query TradesBySeller($filters: TradeFilters, $take: Int, $skip: Int) {
+    tradesPage(filters: $filters, take: $take, skip: $skip) {
       items {
         id
         tradeHash
@@ -45,8 +40,8 @@ const TRADES_BY_SELLER_QUERY = /* GraphQL */ `
 `;
 
 const TRADES_BY_BUYER_QUERY = /* GraphQL */ `
-  query TradesByBuyer($buyer: String!, $chainId: Int, $take: Int, $skip: Int) {
-    tradesPage(buyer: $buyer, chainId: $chainId, take: $take, skip: $skip) {
+  query TradesByBuyer($filters: TradeFilters, $take: Int, $skip: Int) {
+    tradesPage(filters: $filters, take: $take, skip: $skip) {
       items {
         id
         tradeHash
@@ -66,8 +61,8 @@ const TRADES_BY_BUYER_QUERY = /* GraphQL */ `
 `;
 
 const ALL_TRADES_QUERY = /* GraphQL */ `
-  query AllTrades($chainId: Int, $take: Int, $skip: Int) {
-    tradesPage(chainId: $chainId, take: $take, skip: $skip) {
+  query AllTrades($filters: TradeFilters, $take: Int, $skip: Int) {
+    tradesPage(filters: $filters, take: $take, skip: $skip) {
       items {
         id
         tradeHash
@@ -126,8 +121,7 @@ export function useSecondaryTradesByAddress(params: {
         graphqlRequest<{ tradesPage: { items: SecondaryTrade[] } }>(
           TRADES_BY_SELLER_QUERY,
           {
-            seller: address,
-            chainId: chainId ?? null,
+            filters: { seller: address, chainId: chainId ?? null },
             take,
             skip,
           }
@@ -135,8 +129,7 @@ export function useSecondaryTradesByAddress(params: {
         graphqlRequest<{ tradesPage: { items: SecondaryTrade[] } }>(
           TRADES_BY_BUYER_QUERY,
           {
-            buyer: address,
-            chainId: chainId ?? null,
+            filters: { buyer: address, chainId: chainId ?? null },
             take,
             skip,
           }
@@ -206,7 +199,11 @@ export function useSecondaryTrades(params: {
     queryFn: async () => {
       const resp = await graphqlRequest<{
         tradesPage: { items: SecondaryTrade[] };
-      }>(ALL_TRADES_QUERY, { chainId: chainId ?? null, take, skip });
+      }>(ALL_TRADES_QUERY, {
+        filters: { chainId: chainId ?? null },
+        take,
+        skip,
+      });
       return resp?.tradesPage?.items ?? [];
     },
   });

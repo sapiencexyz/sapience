@@ -135,7 +135,7 @@ describe('fetchForecasts', () => {
     mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchForecasts({});
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].schemaId).toBe(
+    expect(call[1].filters.schemaId).toBe(
       '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49'
     );
   });
@@ -154,14 +154,16 @@ describe('fetchForecasts', () => {
     });
     const call = mockGraphqlRequest.mock.calls[0];
     // viem getAddress returns EIP-55 checksummed version
-    expect(call[1].attester).toBe('0x1234567890AbcdEF1234567890aBcdef12345678');
+    expect(call[1].filters.attester).toBe(
+      '0x1234567890AbcdEF1234567890aBcdef12345678'
+    );
   });
 
   test('includes conditionId filter when provided', async () => {
     mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchForecasts({ conditionId: 'cond-1' });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].conditionId).toBe('cond-1');
+    expect(call[1].filters.conditionId).toBe('cond-1');
   });
 
   test('returns response in legacy `{ attestations }` shape', async () => {

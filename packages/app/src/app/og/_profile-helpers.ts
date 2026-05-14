@@ -13,15 +13,10 @@ import { SCHEMA_UID } from '~/lib/constants';
 // ---------- GraphQL queries ----------
 
 const ATTESTATIONS_COUNT_QUERY = `
-  query FindAttestationsCount(
-    $schemaId: String
-    $attester: String
-    $take: Int!
-  ) {
+  query FindAttestationsCount($filters: AttestationFilters, $take: Int!) {
     attestationsPage(
-      schemaId: $schemaId
-      attester: $attester
-      orderBy: TIME
+      filters: $filters
+      orderBy: ATTESTED_AT
       orderDirection: desc
       take: $take
     ) {
@@ -124,8 +119,7 @@ async function fetchForecastsCount(address: string): Promise<number | null> {
       items: Array<{ id: string }>;
     };
   }>(ATTESTATIONS_COUNT_QUERY, {
-    schemaId: SCHEMA_UID,
-    attester: normalizedAddress,
+    filters: { schemaId: SCHEMA_UID, attester: normalizedAddress },
     take: 100,
   });
 

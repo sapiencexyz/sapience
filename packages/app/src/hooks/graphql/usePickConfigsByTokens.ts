@@ -9,8 +9,8 @@ import type { PickConfigData, PickData } from '~/hooks/graphql/usePositions';
 // is fetched inline so callers can build their conditionsMap from a
 // single round trip — see Pick resolver + pickConfigurationsPage resolver.
 const PICK_CONFIGS_BY_TOKENS_QUERY = `
-  query PickConfigsByTokens($tokens: [String!]) {
-    pickConfigurationsPage(tokens: $tokens, take: 100) {
+  query PickConfigsByTokens($filters: PickConfigurationFilters) {
+    pickConfigurationsPage(filters: $filters, take: 100) {
       items {
         id
         chainId
@@ -76,7 +76,7 @@ export function usePickConfigsByTokens(tokens: string[]) {
     queryFn: async () => {
       const resp = await graphqlRequest<{
         pickConfigurationsPage: { items: PickConfigData[] };
-      }>(PICK_CONFIGS_BY_TOKENS_QUERY, { tokens: sorted });
+      }>(PICK_CONFIGS_BY_TOKENS_QUERY, { filters: { tokens: sorted } });
       return resp?.pickConfigurationsPage?.items ?? [];
     },
   });

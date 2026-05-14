@@ -199,6 +199,21 @@ export type AccuracyRank = {
   totalParticipants: Scalars['Int']['output'];
 };
 
+/**
+ * Flat filter input for the `accountActivityPage` query. Each field is
+ * optional; values combine with AND. Omit `address` for a global feed.
+ */
+export type ActivityFilters = {
+  /** Restrict to a single account's activity (case-insensitive). Omit for a global feed. */
+  address?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to activity on a single condition. */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to activity tied to a single pick configuration. */
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to just prediction events or just trade events. Omit for both. */
+  type?: InputMaybe<ActivityItemType>;
+};
+
 /** A single activity entry — either a prediction or a trade, sorted by timestamp */
 export type ActivityItem = {
   __typename?: 'ActivityItem';
@@ -281,6 +296,27 @@ export type AttestationAttestation_ScoreArgs = {
 
 export type AttestationConditionArgs = {
   where?: InputMaybe<ConditionWhereInput>;
+};
+
+/**
+ * Flat filter input for the `attestationsPage` query. Each field is optional;
+ * values combine with AND.
+ */
+export type AttestationFilters = {
+  /** Restrict to a single attester address (case-insensitive). */
+  attester?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to attestations on a single condition. */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to attestations with `time <= this` (epoch seconds). */
+  maxTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Restrict to attestations with `time >= this` (epoch seconds). */
+  minTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Restrict to a single recipient address (case-insensitive). */
+  recipient?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single EAS schema ID. */
+  schemaId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single attestation by UID. */
+  uid?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type AttestationListRelationFilter = {
@@ -1839,6 +1875,21 @@ export type PickConfiguration = {
   totalPredictorCollateral: Scalars['String']['output'];
 };
 
+/**
+ * Flat filter input for the `pickConfigurationsPage` query. Each field is
+ * optional; values combine with AND.
+ */
+export type PickConfigurationFilters = {
+  /** Restrict to a single chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to resolved (true) or unresolved (false) pick configurations. */
+  resolved?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to pick configurations with this settlement result. */
+  result?: InputMaybe<SettlementResult>;
+  /** Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request. */
+  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
 /** Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag */
 export type PickConfigurationsPage = Page & {
   __typename?: 'PickConfigurationsPage';
@@ -1874,6 +1925,37 @@ export type Position = {
   totalPayout?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTimeISO']['output'];
   userCollateral?: Maybe<Scalars['String']['output']>;
+};
+
+/**
+ * Flat filter input for the `positionsPage` query. Each field is optional;
+ * values combine with AND. Replaces the flat-arg shape on the resolver; the
+ * old args remain for one release with `@deprecated` so existing callers can
+ * migrate without breaking.
+ */
+export type PositionFilters = {
+  /** Restrict to a single chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei). */
+  collateralMax?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei). */
+  collateralMin?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions tied to a single condition (via the pickConfig join). */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions whose pickConfig `endsAt <= this`. */
+  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Restrict to positions whose pickConfig `endsAt >= this`. */
+  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Restrict to a single holder address (case-insensitive). */
+  holder?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions where the holder won (true) or lost (false). Combines side with settlement result. */
+  holderWon?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to a single pick configuration. */
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions whose pickConfig settled with this result. */
+  result?: InputMaybe<SettlementResult>;
+  /** Restrict to settled (true) or unsettled (false) positions. */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 /** Field to sort positions by */
@@ -1937,6 +2019,23 @@ export type PredictionCountDataPoint = {
   total: Scalars['Int']['output'];
   /** Predictions won in this bucket */
   won: Scalars['Int']['output'];
+};
+
+/**
+ * Flat filter input for the `predictionsPage` query. Each field is optional;
+ * values combine with AND.
+ */
+export type PredictionFilters = {
+  /** Restrict to predictions where the address is predictor or counterparty (case-insensitive). */
+  address?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to predictions on a single condition (via the pickConfig join). */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to legacy (true) or non-legacy (false) predictions. */
+  isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to settled (true) or unsettled (false) predictions. */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 /** Field to sort predictions by */
@@ -2010,7 +2109,14 @@ export type Query = {
    * @deprecated Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.
    */
   accountActivity: Array<ActivityItem>;
-  /** Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag. */
+  /**
+   * Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag.
+   *
+   * Filtering is via `filters: ActivityFilters`. The flat-arg filters
+   * (`address`, `conditionId`, `pickConfigId`, `type`) are retained for one
+   * release with `@deprecated` so existing callers can migrate without
+   * breaking; new callers should use `filters:`.
+   */
   accountActivityPage: ActivityItemsPage;
   /**
    * Time-bucketed collateral balance for a single address — deployed (in open
@@ -2094,7 +2200,14 @@ export type Query = {
   accuracyLeaderboardPage: AccuracyLeaderboardPage;
   /** @deprecated Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal. */
   attestations: Array<Attestation>;
-  /** Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order. */
+  /**
+   * Same as `attestations`, but with a purpose-built `AttestationFilters` input and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
+   *
+   * Filtering is via `filters: AttestationFilters`. The flat-arg filters
+   * (`uid`, `attester`, `recipient`, `conditionId`, `schemaId`, `minTime`,
+   * `maxTime`) are retained for one release with `@deprecated` so existing
+   * callers can migrate without breaking; new callers should use `filters:`.
+   */
   attestationsPage: AttestationsPage;
   /** @deprecated Use `categoriesPage` — purpose-built paginated wrapper with server-truth `hasMore`. Shares the same TtlCache as the deprecated path. */
   categories: Array<Category>;
@@ -2142,7 +2255,14 @@ export type Query = {
    * @deprecated Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal.
    */
   pickConfigurations: Array<PickConfiguration>;
-  /** Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll. */
+  /**
+   * Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+   *
+   * Filtering is via `filters: PickConfigurationFilters`. The flat-arg
+   * filters (`chainId`, `resolved`, `result`, `tokens`) are retained for
+   * one release with `@deprecated` so existing callers can migrate without
+   * breaking; new callers should use `filters:`.
+   */
   pickConfigurationsPage: PickConfigurationsPage;
   /** Top 20 most-used tags across public conditions */
   popularTags: Array<Scalars['String']['output']>;
@@ -2156,7 +2276,14 @@ export type Query = {
    * @deprecated Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.
    */
   positions: Array<Position>;
-  /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. */
+  /**
+   * Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
+   *
+   * Filtering is via `filters: PositionFilters`. The flat-arg filters
+   * (`holder`, `chainId`, `conditionId`, …) are retained for one release
+   * with `@deprecated` so existing callers can migrate without breaking;
+   * new callers should use `filters:`.
+   */
   positionsPage: PositionsPage;
   /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
@@ -2170,7 +2297,14 @@ export type Query = {
    * @deprecated Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.
    */
   predictions: Array<Prediction>;
-  /** Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll. */
+  /**
+   * Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+   *
+   * Filtering is via `filters: PredictionFilters`. The flat-arg filters
+   * (`address`, `chainId`, `conditionId`, `isLegacy`, `settled`) are
+   * retained for one release with `@deprecated` so existing callers can
+   * migrate without breaking; new callers should use `filters:`.
+   */
   predictionsPage: PredictionsPage;
   /**
    * Protocol-wide statistics time series at the configured snapshot cadence —
@@ -2199,7 +2333,14 @@ export type Query = {
    * @deprecated Use `questionsPage` — same data with a server-truth `hasMore` stop signal.
    */
   questions: Array<Question>;
-  /** Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag. */
+  /**
+   * Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
+   *
+   * Sorting uses `orderBy` / `orderDirection` to match the convention on
+   * every other `*Page` resolver. The original `sortField` / `sortDirection`
+   * args are retained for one release with `@deprecated`; new callers
+   * should use `orderBy:` / `orderDirection:`.
+   */
   questionsPage: QuestionsPage;
   /**
    * Public referral analytics. Referral codes are attribution hints, not
@@ -2224,7 +2365,14 @@ export type Query = {
    * @deprecated Use `tradesPage` — same data with a server-truth `hasMore` stop signal.
    */
   trades: Array<Trade>;
-  /** Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag. */
+  /**
+   * Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.
+   *
+   * Filtering is via `filters: TradeFilters`. The flat-arg filters
+   * (`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one
+   * release with `@deprecated` so existing callers can migrate without
+   * breaking; new callers should use `filters:`.
+   */
   tradesPage: TradesPage;
   /** @deprecated Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains. */
   user?: Maybe<User>;
@@ -2274,6 +2422,7 @@ export type QueryAccountActivityArgs = {
 export type QueryAccountActivityPageArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  filters?: InputMaybe<ActivityFilters>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
@@ -2364,6 +2513,7 @@ export type QueryAttestationsArgs = {
 export type QueryAttestationsPageArgs = {
   attester?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  filters?: InputMaybe<AttestationFilters>;
   maxTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
   minTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
   orderBy?: InputMaybe<AttestationSortField>;
@@ -2506,6 +2656,7 @@ export type QueryPickConfigurationsArgs = {
 
 export type QueryPickConfigurationsPageArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  filters?: InputMaybe<PickConfigurationFilters>;
   resolved?: InputMaybe<Scalars['Boolean']['input']>;
   result?: InputMaybe<SettlementResult>;
   skip?: Scalars['Int']['input'];
@@ -2547,6 +2698,7 @@ export type QueryPositionsPageArgs = {
   conditionId?: InputMaybe<Scalars['String']['input']>;
   endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
   endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  filters?: InputMaybe<PositionFilters>;
   holder?: InputMaybe<Scalars['String']['input']>;
   holderWon?: InputMaybe<Scalars['Boolean']['input']>;
   orderBy?: InputMaybe<PositionSortField>;
@@ -2587,6 +2739,7 @@ export type QueryPredictionsPageArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  filters?: InputMaybe<PredictionFilters>;
   isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
   orderBy?: InputMaybe<PredictionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
@@ -2632,6 +2785,8 @@ export type QueryQuestionsArgs = {
 
 export type QueryQuestionsPageArgs = {
   filters?: InputMaybe<QuestionFilters>;
+  orderBy?: InputMaybe<QuestionSortField>;
+  orderDirection?: SortOrder;
   skip?: Scalars['Int']['input'];
   sortDirection?: SortOrder;
   sortField?: InputMaybe<QuestionSortField>;
@@ -2674,6 +2829,7 @@ export type QueryTradesPageArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   buyer?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  filters?: InputMaybe<TradeFilters>;
   seller?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
@@ -3002,6 +3158,24 @@ export type Trade = {
   tokenAmount: Scalars['String']['output'];
   tradeHash: Scalars['String']['output'];
   txHash: Scalars['String']['output'];
+};
+
+/**
+ * Flat filter input for the `tradesPage` query. Each field is optional;
+ * values combine with AND. `address` and (`seller` | `buyer`) are mutually
+ * exclusive — passing both yields an error.
+ */
+export type TradeFilters = {
+  /** Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`. */
+  address?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single buyer address (case-insensitive). */
+  buyer?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to a single seller address (case-insensitive). */
+  seller?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single position token address (case-insensitive). */
+  token?: InputMaybe<Scalars['String']['input']>;
 };
 
 /** Paginated wrapper around Trade rows with a server-truth hasMore flag */

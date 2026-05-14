@@ -36,16 +36,9 @@ type AttestationsQueryResponse = {
  * already consume.
  */
 export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
-  query FindAttestations(
-    $schemaId: String
-    $attester: String
-    $conditionId: String
-    $take: Int!
-  ) {
+  query FindAttestations($filters: AttestationFilters, $take: Int!) {
     attestationsPage(
-      schemaId: $schemaId
-      attester: $attester
-      conditionId: $conditionId
+      filters: $filters
       orderBy: ATTESTED_AT
       orderDirection: desc
       take: $take
@@ -76,16 +69,12 @@ export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
  */
 export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
   query FindAttestationsPaginated(
-    $schemaId: String!
-    $attester: String
-    $conditionId: String
+    $filters: AttestationFilters
     $take: Int! = 10
     $skip: Int! = 0
   ) {
     attestationsPage(
-      schemaId: $schemaId
-      attester: $attester
-      conditionId: $conditionId
+      filters: $filters
       orderBy: ATTESTED_AT
       orderDirection: desc
       take: $take
@@ -155,9 +144,11 @@ export async function fetchForecasts(
   const data = await graphqlRequest<{
     attestationsPage: { items: RawAttestation[] };
   }>(GET_ATTESTATIONS_QUERY, {
-    schemaId,
-    attester: normalizeAttester(attesterAddress) ?? null,
-    conditionId: conditionId ?? null,
+    filters: {
+      schemaId,
+      attester: normalizeAttester(attesterAddress) ?? null,
+      conditionId: conditionId ?? null,
+    },
     take: 100,
   });
 
@@ -182,9 +173,11 @@ export async function fetchForecastsPage(
   const data = await graphqlRequest<{
     attestationsPage: { items: RawAttestation[]; hasMore: boolean };
   }>(GET_ATTESTATIONS_PAGINATED_QUERY, {
-    schemaId,
-    attester: normalizeAttester(attesterAddress) ?? null,
-    conditionId: conditionId ?? null,
+    filters: {
+      schemaId,
+      attester: normalizeAttester(attesterAddress) ?? null,
+      conditionId: conditionId ?? null,
+    },
     take: page.take,
     skip: page.skip,
   });
@@ -197,18 +190,14 @@ export async function fetchForecastsPage(
 
 const USER_FORECASTS_QUERY = /* GraphQL */ `
   query UserForecasts(
-    $schemaId: String
-    $attester: String
-    $conditionId: String
+    $filters: AttestationFilters
     $take: Int!
     $skip: Int!
     $orderBy: AttestationSortField
     $orderDirection: SortOrder
   ) {
     attestationsPage(
-      schemaId: $schemaId
-      attester: $attester
-      conditionId: $conditionId
+      filters: $filters
       take: $take
       skip: $skip
       orderBy: $orderBy
@@ -253,9 +242,11 @@ export async function fetchUserForecasts(params: {
   } = params;
 
   const variables = {
-    schemaId,
-    attester: normalizeAttester(attesterAddress) ?? null,
-    conditionId: conditionId ?? null,
+    filters: {
+      schemaId,
+      attester: normalizeAttester(attesterAddress) ?? null,
+      conditionId: conditionId ?? null,
+    },
     take,
     skip,
     // Fall back to ATTESTED_AT if the caller passes an unmapped field —

@@ -135,9 +135,7 @@ describe('usePositionBalances — pagination', () => {
       expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
     expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
-      holder: HOLDER,
-      chainId: 42,
-      settled: true,
+      filters: { holder: HOLDER, chainId: 42, settled: true },
       take: 25,
       skip: 0,
     });

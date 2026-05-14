@@ -24,8 +24,8 @@ describe('fetchQuestionsSorted', () => {
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].take).toBe(10);
     expect(call[1].skip).toBe(0);
-    expect(call[1].sortField).toBe('createdAt');
-    expect(call[1].sortDirection).toBe('desc');
+    expect(call[1].orderBy).toBe('createdAt');
+    expect(call[1].orderDirection).toBe('desc');
   });
 
   test('normalizes missing chainId to null', async () => {

@@ -722,12 +722,23 @@ export const runQuestions = async (
 export const questionsPage: NonNullable<
   QueryResolvers['questionsPage']
 > = async (_parent, args) => {
-  const { filters, sortField, sortDirection, take, skip } = args;
+  const {
+    filters,
+    orderBy,
+    orderDirection,
+    sortField,
+    sortDirection,
+    take,
+    skip,
+  } = args;
+  // `orderBy` / `orderDirection` is the canonical sort-arg shape across
+  // every `*Page` resolver; `sortField` / `sortDirection` remain for one
+  // release as `@deprecated` siblings. Prefer the new args when present.
   return runQuestions({
     take,
     skip,
-    sortField,
-    sortDirection,
+    sortField: orderBy ?? sortField,
+    sortDirection: orderBy != null ? orderDirection : sortDirection,
     chainId: filters?.chainId ?? null,
     contractAddress: filters?.contractAddress ?? null,
     contractAddressIn: filters?.contractAddressIn ?? null,

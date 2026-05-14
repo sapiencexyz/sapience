@@ -2038,6 +2038,123 @@ type VaultStat {
   periodPnL: String!
 }
 
+"""
+Flat filter input for the `positionsPage` query. Each field is optional;
+values combine with AND. Replaces the flat-arg shape on the resolver; the
+old args remain for one release with `@deprecated` so existing callers can
+migrate without breaking.
+"""
+input PositionFilters {
+  """Restrict to a single holder address (case-insensitive)."""
+  holder: String
+  """Restrict to a single chain."""
+  chainId: Int
+  """Restrict to positions tied to a single condition (via the pickConfig join)."""
+  conditionId: String
+  """Restrict to a single pick configuration."""
+  pickConfigId: String
+  """Restrict to positions whose pickConfig settled with this result."""
+  result: SettlementResult
+  """Restrict to settled (true) or unsettled (false) positions."""
+  settled: Boolean
+  """Restrict to positions where the holder won (true) or lost (false). Combines side with settlement result."""
+  holderWon: Boolean
+  """Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei)."""
+  collateralMin: String
+  """Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei)."""
+  collateralMax: String
+  """Restrict to positions whose pickConfig `endsAt >= this`."""
+  endsAtMin: UnixSeconds
+  """Restrict to positions whose pickConfig `endsAt <= this`."""
+  endsAtMax: UnixSeconds
+}
+
+"""
+Flat filter input for the `predictionsPage` query. Each field is optional;
+values combine with AND.
+"""
+input PredictionFilters {
+  """Restrict to predictions where the address is predictor or counterparty (case-insensitive)."""
+  address: String
+  """Restrict to a single chain."""
+  chainId: Int
+  """Restrict to predictions on a single condition (via the pickConfig join)."""
+  conditionId: String
+  """Restrict to legacy (true) or non-legacy (false) predictions."""
+  isLegacy: Boolean
+  """Restrict to settled (true) or unsettled (false) predictions."""
+  settled: Boolean
+}
+
+"""
+Flat filter input for the `tradesPage` query. Each field is optional;
+values combine with AND. `address` and (`seller` | `buyer`) are mutually
+exclusive — passing both yields an error.
+"""
+input TradeFilters {
+  """Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`."""
+  address: String
+  """Restrict to a single seller address (case-insensitive)."""
+  seller: String
+  """Restrict to a single buyer address (case-insensitive)."""
+  buyer: String
+  """Restrict to a single position token address (case-insensitive)."""
+  token: String
+  """Restrict to a single chain."""
+  chainId: Int
+}
+
+"""
+Flat filter input for the `attestationsPage` query. Each field is optional;
+values combine with AND.
+"""
+input AttestationFilters {
+  """Restrict to a single attestation by UID."""
+  uid: String
+  """Restrict to a single attester address (case-insensitive)."""
+  attester: String
+  """Restrict to a single recipient address (case-insensitive)."""
+  recipient: String
+  """Restrict to attestations on a single condition."""
+  conditionId: String
+  """Restrict to a single EAS schema ID."""
+  schemaId: String
+  """Restrict to attestations with `time >= this` (epoch seconds)."""
+  minTime: UnixSeconds
+  """Restrict to attestations with `time <= this` (epoch seconds)."""
+  maxTime: UnixSeconds
+}
+
+"""
+Flat filter input for the `pickConfigurationsPage` query. Each field is
+optional; values combine with AND.
+"""
+input PickConfigurationFilters {
+  """Restrict to a single chain."""
+  chainId: Int
+  """Restrict to resolved (true) or unresolved (false) pick configurations."""
+  resolved: Boolean
+  """Restrict to pick configurations with this settlement result."""
+  result: SettlementResult
+  """Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request."""
+  tokens: [String!]
+}
+
+"""
+Flat filter input for the `accountActivityPage` query. Each field is
+optional; values combine with AND. Omit `address` for a global feed.
+"""
+input ActivityFilters {
+  """Restrict to a single account's activity (case-insensitive). Omit for a global feed."""
+  address: String
+  """Restrict to activity on a single condition."""
+  conditionId: String
+  """Restrict to activity tied to a single pick configuration."""
+  pickConfigId: String
+  """Restrict to just prediction events or just trade events. Omit for both."""
+  type: ActivityItemType
+}
+
 type Query {
   """
   Accuracy rank and lifetime score for a single address. Mirrors
@@ -2077,14 +2194,32 @@ type Query {
 
   """
   Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag.
+
+  Filtering is via `filters: ActivityFilters`. The flat-arg filters
+  (`address`, `conditionId`, `pickConfigId`, `type`) are retained for one
+  release with `@deprecated` so existing callers can migrate without
+  breaking; new callers should use `filters:`.
   """
   accountActivityPage(
-    address: String
-    conditionId: String
-    pickConfigId: String
-    skip: Int! = 0
+    filters: ActivityFilters
     take: Int! = 20
+    skip: Int! = 0
+    address: String
+      @deprecated(
+        reason: "Use `filters: { address: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    conditionId: String
+      @deprecated(
+        reason: "Use `filters: { conditionId: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    pickConfigId: String
+      @deprecated(
+        reason: "Use `filters: { pickConfigId: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
     type: ActivityItemType
+      @deprecated(
+        reason: "Use `filters: { type: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
   ): ActivityItemsPage!
 
   """
@@ -2243,20 +2378,47 @@ type Query {
     )
 
   """
-  Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
+  Same as `attestations`, but with a purpose-built `AttestationFilters` input and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
+
+  Filtering is via `filters: AttestationFilters`. The flat-arg filters
+  (`uid`, `attester`, `recipient`, `conditionId`, `schemaId`, `minTime`,
+  `maxTime`) are retained for one release with `@deprecated` so existing
+  callers can migrate without breaking; new callers should use `filters:`.
   """
   attestationsPage(
-    attester: String
-    conditionId: String
-    maxTime: UnixSeconds
-    minTime: UnixSeconds
+    filters: AttestationFilters
     orderBy: AttestationSortField
     orderDirection: SortOrder
-    recipient: String
-    schemaId: String
-    uid: String
     take: Int! = 50
     skip: Int! = 0
+    attester: String
+      @deprecated(
+        reason: "Use `filters: { attester: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    conditionId: String
+      @deprecated(
+        reason: "Use `filters: { conditionId: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    maxTime: UnixSeconds
+      @deprecated(
+        reason: "Use `filters: { maxTime: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    minTime: UnixSeconds
+      @deprecated(
+        reason: "Use `filters: { minTime: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    recipient: String
+      @deprecated(
+        reason: "Use `filters: { recipient: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    schemaId: String
+      @deprecated(
+        reason: "Use `filters: { schemaId: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    uid: String
+      @deprecated(
+        reason: "Use `filters: { uid: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
   ): AttestationsPage!
   categories(
     cursor: CategoryWhereUniqueInput
@@ -2414,14 +2576,32 @@ type Query {
 
   """
   Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+
+  Filtering is via `filters: PickConfigurationFilters`. The flat-arg
+  filters (`chainId`, `resolved`, `result`, `tokens`) are retained for
+  one release with `@deprecated` so existing callers can migrate without
+  breaking; new callers should use `filters:`.
   """
   pickConfigurationsPage(
-    chainId: Int
-    resolved: Boolean
-    result: SettlementResult
-    skip: Int! = 0
+    filters: PickConfigurationFilters
     take: Int! = 50
+    skip: Int! = 0
+    chainId: Int
+      @deprecated(
+        reason: "Use `filters: { chainId: ... }` on `PickConfigurationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    resolved: Boolean
+      @deprecated(
+        reason: "Use `filters: { resolved: ... }` on `PickConfigurationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    result: SettlementResult
+      @deprecated(
+        reason: "Use `filters: { result: ... }` on `PickConfigurationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
     tokens: [String!]
+      @deprecated(
+        reason: "Use `filters: { tokens: ... }` on `PickConfigurationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
   ): PickConfigurationsPage!
 
   """
@@ -2466,23 +2646,62 @@ type Query {
 
   """
   Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
+
+  Filtering is via `filters: PositionFilters`. The flat-arg filters
+  (`holder`, `chainId`, `conditionId`, …) are retained for one release
+  with `@deprecated` so existing callers can migrate without breaking;
+  new callers should use `filters:`.
   """
   positionsPage(
-    chainId: Int
-    collateralMax: String
-    collateralMin: String
-    conditionId: String
-    endsAtMax: UnixSeconds
-    endsAtMin: UnixSeconds
-    holder: String
-    holderWon: Boolean
+    filters: PositionFilters
     orderBy: PositionSortField
     orderDirection: SortOrder
-    pickConfigId: String
-    result: SettlementResult
-    settled: Boolean
-    skip: Int! = 0
     take: Int! = 50
+    skip: Int! = 0
+    chainId: Int
+      @deprecated(
+        reason: "Use `filters: { chainId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    collateralMax: String
+      @deprecated(
+        reason: "Use `filters: { collateralMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    collateralMin: String
+      @deprecated(
+        reason: "Use `filters: { collateralMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    conditionId: String
+      @deprecated(
+        reason: "Use `filters: { conditionId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    endsAtMax: UnixSeconds
+      @deprecated(
+        reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    endsAtMin: UnixSeconds
+      @deprecated(
+        reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    holder: String
+      @deprecated(
+        reason: "Use `filters: { holder: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    holderWon: Boolean
+      @deprecated(
+        reason: "Use `filters: { holderWon: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    pickConfigId: String
+      @deprecated(
+        reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    result: SettlementResult
+      @deprecated(
+        reason: "Use `filters: { result: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    settled: Boolean
+      @deprecated(
+        reason: "Use `filters: { settled: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
   ): PositionsPage!
 
   """
@@ -2518,17 +2737,38 @@ type Query {
 
   """
   Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+
+  Filtering is via `filters: PredictionFilters`. The flat-arg filters
+  (`address`, `chainId`, `conditionId`, `isLegacy`, `settled`) are
+  retained for one release with `@deprecated` so existing callers can
+  migrate without breaking; new callers should use `filters:`.
   """
   predictionsPage(
-    address: String
-    chainId: Int
-    conditionId: String
-    isLegacy: Boolean
+    filters: PredictionFilters
     orderBy: PredictionSortField
     orderDirection: SortOrder
-    settled: Boolean
-    skip: Int! = 0
     take: Int! = 50
+    skip: Int! = 0
+    address: String
+      @deprecated(
+        reason: "Use `filters: { address: ... }` on `PredictionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    chainId: Int
+      @deprecated(
+        reason: "Use `filters: { chainId: ... }` on `PredictionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    conditionId: String
+      @deprecated(
+        reason: "Use `filters: { conditionId: ... }` on `PredictionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    isLegacy: Boolean
+      @deprecated(
+        reason: "Use `filters: { isLegacy: ... }` on `PredictionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    settled: Boolean
+      @deprecated(
+        reason: "Use `filters: { settled: ... }` on `PredictionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
   ): PredictionsPage!
 
   """
@@ -2608,13 +2848,26 @@ type Query {
 
   """
   Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
+
+  Sorting uses `orderBy` / `orderDirection` to match the convention on
+  every other `*Page` resolver. The original `sortField` / `sortDirection`
+  args are retained for one release with `@deprecated`; new callers
+  should use `orderBy:` / `orderDirection:`.
   """
   questionsPage(
     filters: QuestionFilters
+    orderBy: QuestionSortField
+    orderDirection: SortOrder! = desc
+    take: Int! = 50
     skip: Int! = 0
     sortDirection: SortOrder! = desc
+      @deprecated(
+        reason: "Use `orderDirection:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`)."
+      )
     sortField: QuestionSortField
-    take: Int! = 50
+      @deprecated(
+        reason: "Use `orderBy:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`)."
+      )
   ): QuestionsPage!
 
   """
@@ -2664,15 +2917,36 @@ type Query {
 
   """
   Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.
+
+  Filtering is via `filters: TradeFilters`. The flat-arg filters
+  (`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one
+  release with `@deprecated` so existing callers can migrate without
+  breaking; new callers should use `filters:`.
   """
   tradesPage(
-    address: String
-    buyer: String
-    chainId: Int
-    seller: String
-    skip: Int! = 0
+    filters: TradeFilters
     take: Int! = 50
+    skip: Int! = 0
+    address: String
+      @deprecated(
+        reason: "Use `filters: { address: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    buyer: String
+      @deprecated(
+        reason: "Use `filters: { buyer: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    chainId: Int
+      @deprecated(
+        reason: "Use `filters: { chainId: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    seller: String
+      @deprecated(
+        reason: "Use `filters: { seller: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
     token: String
+      @deprecated(
+        reason: "Use `filters: { token: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
   ): TradesPage!
   user(where: UserWhereUniqueInput!): User
     @deprecated(
