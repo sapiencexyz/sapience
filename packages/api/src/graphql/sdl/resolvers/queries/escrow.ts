@@ -217,6 +217,8 @@ export const runPickConfigurations = async ({
 }: QueryPickConfigurationsArgs): Promise<{
   items: ReturnType<typeof mapPickConfig>[];
   hasMore: boolean;
+  totalCount: number | null;
+  _countWhere?: Prisma.PicksWhereInput;
 }> => {
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
@@ -245,7 +247,12 @@ export const runPickConfigurations = async ({
   });
   const hasMore = rawRows.length > cappedTake;
   const rows = rawRows.slice(0, cappedTake);
-  return { items: rows.map((r) => mapPickConfig(r)), hasMore };
+  return {
+    items: rows.map((r) => mapPickConfig(r)),
+    hasMore,
+    totalCount: null,
+    _countWhere: where,
+  };
 };
 
 export const pickConfigurationsPage: NonNullable<

@@ -4,6 +4,7 @@ const mockPrisma = vi.hoisted(() => ({
   position: { findMany: vi.fn(), count: vi.fn() },
   secondaryTrade: { findMany: vi.fn() },
   pick: { findMany: vi.fn() },
+  picks: { findMany: vi.fn(), count: vi.fn() },
   $queryRaw: vi.fn(),
 }));
 
@@ -12,11 +13,13 @@ vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 import type {
   QueryPositionsArgs,
   QueryPositionCountArgs,
+  QueryPickConfigurationsArgs,
 } from '../../__generated__/resolvers';
 import {
   __clearPositionSynthesisCache,
   positionCount,
   positionsPage,
+  pickConfigurationsPage,
 } from './escrow';
 
 // Resolvers in the generated module are typed as the
@@ -806,5 +809,42 @@ describe('positionCount resolver', () => {
       holder: ALICE.toLowerCase(),
       NOT: { balance: '0', pickConfiguration: { resolved: false } },
     });
+  });
+});
+
+type PickConfigurationsPageFn = (
+  parent: unknown,
+  args: QueryPickConfigurationsArgs,
+  ctx: unknown,
+  info: unknown
+) => Promise<{
+  items: unknown[];
+  hasMore: boolean;
+  totalCount: number | null;
+  _countWhere?: unknown;
+}>;
+const pickConfigurationsPageFn =
+  pickConfigurationsPage as unknown as PickConfigurationsPageFn;
+
+describe('pickConfigurationsPage resolver — page envelope', () => {
+  beforeEach(() => {
+    mockPrisma.picks.findMany.mockReset();
+    mockPrisma.picks.count.mockReset();
+  });
+
+  it('returns _countWhere matching the findMany where so totalCount stays lazy', async () => {
+    mockPrisma.picks.findMany.mockResolvedValue([]);
+
+    const result = await pickConfigurationsPageFn(
+      undefined,
+      { take: 10, chainId: 1, resolved: false },
+      undefined,
+      undefined
+    );
+
+    expect(result.totalCount).toBeNull();
+    expect(mockPrisma.picks.count).not.toHaveBeenCalled();
+    const findManyWhere = mockPrisma.picks.findMany.mock.calls[0][0].where;
+    expect(result._countWhere).toEqual(findManyWhere);
   });
 });

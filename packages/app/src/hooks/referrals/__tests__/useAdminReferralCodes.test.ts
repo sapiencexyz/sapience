@@ -42,19 +42,18 @@ const makeRow = (id: number) => ({
   totalPositions: 0,
 });
 
-const page = (
-  items: ReturnType<typeof makeRow>[],
-  nextCursor: number | null
-) => ({ referralCodes: { items, nextCursor } });
+const page = (items: ReturnType<typeof makeRow>[], hasMore: boolean) => ({
+  referralCodesPage: { items, hasMore },
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 describe('useAdminReferralCodes — pagination', () => {
-  it('returns the single page when nextCursor is null', async () => {
+  it('returns the single page when hasMore is false', async () => {
     mockGraphqlRequest.mockResolvedValueOnce(
-      page([makeRow(1), makeRow(2)], null)
+      page([makeRow(1), makeRow(2)], false)
     );
 
     const { useAdminReferralCodes } = await import('../useAdminReferralCodes');
@@ -67,16 +66,16 @@ describe('useAdminReferralCodes — pagination', () => {
     });
     expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     expect(mockGraphqlRequest).toHaveBeenCalledWith(expect.any(String), {
-      limit: 500,
-      cursor: null,
+      take: 500,
+      skip: 0,
     });
   });
 
-  it('follows nextCursor across multiple pages and concatenates results', async () => {
+  it('walks pages via take/skip and concatenates results', async () => {
     mockGraphqlRequest
-      .mockResolvedValueOnce(page([makeRow(10), makeRow(9)], 9))
-      .mockResolvedValueOnce(page([makeRow(8), makeRow(7)], 7))
-      .mockResolvedValueOnce(page([makeRow(6)], null));
+      .mockResolvedValueOnce(page([makeRow(10), makeRow(9)], true))
+      .mockResolvedValueOnce(page([makeRow(8), makeRow(7)], true))
+      .mockResolvedValueOnce(page([makeRow(6)], false));
 
     const { useAdminReferralCodes } = await import('../useAdminReferralCodes');
     const { result } = renderHook(() => useAdminReferralCodes(), {
@@ -88,22 +87,21 @@ describe('useAdminReferralCodes — pagination', () => {
     });
     expect(mockGraphqlRequest).toHaveBeenCalledTimes(3);
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(1, expect.any(String), {
-      limit: 500,
-      cursor: null,
+      take: 500,
+      skip: 0,
     });
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(2, expect.any(String), {
-      limit: 500,
-      cursor: 9,
+      take: 500,
+      skip: 500,
     });
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(3, expect.any(String), {
-      limit: 500,
-      cursor: 7,
+      take: 500,
+      skip: 1000,
     });
   });
 
-  it('caps at MAX_PAGES so a non-progressing cursor cannot loop forever', async () => {
-    // Server pathologically keeps returning a non-null cursor.
-    mockGraphqlRequest.mockResolvedValue(page([makeRow(1)], 1));
+  it('caps at MAX_PAGES so a server that never sets hasMore: false cannot loop forever', async () => {
+    mockGraphqlRequest.mockResolvedValue(page([makeRow(1)], true));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const { useAdminReferralCodes } = await import('../useAdminReferralCodes');
@@ -114,7 +112,6 @@ describe('useAdminReferralCodes — pagination', () => {
     await waitFor(() => {
       expect(result.current.data).toBeDefined();
     });
-    // 50 pages × 1 row each
     expect(result.current.data?.length).toBe(50);
     expect(mockGraphqlRequest).toHaveBeenCalledTimes(50);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('MAX_PAGES'));
