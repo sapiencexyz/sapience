@@ -285,11 +285,9 @@ describe('queryComplexity', () => {
             simpleEstimator({ defaultComplexity: 1 }),
           ],
         });
-        // itemsPage selection set: items (which itself is a list of
-        // ItemType, default 10) → 1 + 1*10 = 11. hasMore/totalCount
-        // would be smaller. Selection set picks max = 11.
-        // itemsPage applies the envelope multiplier: 1 + 11 * 50 = 551.
-        expect(complexity).toBe(551);
+        // items (envelope-items field, multiplier suppressed): id (1).
+        // itemsPage envelope: 1 + 1 * 50 = 51.
+        expect(complexity).toBe(51);
       });
 
       it('uses default listSize when *Page take arg is missing', () => {
@@ -302,10 +300,9 @@ describe('queryComplexity', () => {
             simpleEstimator({ defaultComplexity: 1 }),
           ],
         });
-        // Both the inner items list and the outer envelope fall back
-        // to the default listSize of 10.
-        // items: 1 + 1*10 = 11. itemsPage: 1 + 11*10 = 111.
-        expect(complexity).toBe(111);
+        // items (envelope-items, multiplier suppressed): id (1).
+        // itemsPage: 1 + 1 * 10 (default) = 11.
+        expect(complexity).toBe(11);
       });
 
       it('caps *Page envelope at maxListSize', () => {
@@ -318,14 +315,18 @@ describe('queryComplexity', () => {
             simpleEstimator({ defaultComplexity: 1 }),
           ],
         });
-        // take=5000 caps at 100. items default 10 (already <= maxListSize).
-        // items: 1 + 1*10 = 11. itemsPage: 1 + 11*100 = 1101.
-        expect(complexity).toBe(1101);
+        // take=5000 caps at 100. items (envelope-items): id (1).
+        // itemsPage: 1 + 1 * 100 = 101.
+        expect(complexity).toBe(101);
       });
 
       it('paginated `*Page` and bare-array list with the same take price equivalently', () => {
         // Same selection set, same take — switching to the *Page
-        // wrapper should not change the cost order of magnitude.
+        // wrapper should produce the same complexity (modulo the
+        // envelope's own self-cost of 1). The previous estimator
+        // priced *Page ~10× higher because both the envelope and the
+        // inner `items` list applied multipliers; the items-of-page
+        // case now suppresses its own multiplier.
         const bareQuery = parse(`{ items(take: 50) { id name } }`);
         const pageQuery = parse(
           `{ itemsPage(take: 50) { items { id name } } }`
@@ -344,12 +345,36 @@ describe('queryComplexity', () => {
           query: pageQuery,
           estimators: ests,
         });
-        // Both are in the same order of magnitude. *Page is somewhat
-        // higher because the inner `items` list also applies the
-        // default-10 multiplier; that's the safe bias direction
-        // (over-price the envelope, not under-price it).
-        expect(pageCost).toBeGreaterThanOrEqual(bareCost);
-        expect(pageCost).toBeLessThan(bareCost * 20);
+        // bare: 1 + (id + name) * 50 = 101.
+        // page: items (envelope-items): 2. itemsPage: 1 + 2 * 50 = 101.
+        expect(bareCost).toBe(101);
+        expect(pageCost).toBe(101);
+      });
+
+      it('does not double-count multipliers through deeply nested *Page selections', () => {
+        // Regression for the audit finding: with the old estimator,
+        // a query like `positionsPage(take: 15) { items { pickConfig
+        // { picks { condition { ... } } } } }` paid `take × 10`
+        // (≈150×) for every leaf inside `items`, inflating the cost
+        // by an order of magnitude and rejecting reasonable queries
+        // under the default complexity budget. The fix here keeps the
+        // `take` multiplier from the envelope but drops the redundant
+        // `items` multiplier.
+        const query = parse(
+          `{ itemsPage(take: 15) { items { id children(take: 5) { id } } } }`
+        );
+        const complexity = getComplexity({
+          schema: testSchema,
+          query,
+          estimators: [
+            listMultiplierEstimator({ defaultListSize: 10 }),
+            simpleEstimator({ defaultComplexity: 1 }),
+          ],
+        });
+        // children: 1 + 1*5 = 6.
+        // items (envelope-items, multiplier suppressed): id + children = 7.
+        // itemsPage: 1 + 7*15 = 106.
+        expect(complexity).toBe(106);
       });
     });
   });

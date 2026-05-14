@@ -5,7 +5,7 @@
  * `first` / `limit`) so cost analysis reflects "how many rows the
  * resolver will materialize", not just the depth of the selection set.
  *
- * Two cases are recognized:
+ * Three cases are recognized:
  *
  * 1. Direct list fields — `predictions: [Prediction!]!`. The deprecated
  *    bare-array shape. Take comes from the field's own args.
@@ -19,6 +19,14 @@
  *    named return type ends in `Page` (and exposes an `items: [X!]!`
  *    field, matching the SDL contract test) as a list of `take` rows
  *    so the two shapes price equivalently.
+ *
+ * 3. The `items: [X!]!` field of a `*Page` envelope itself. This is a
+ *    list field, so case (1) would naively fire and multiply children
+ *    by `defaultListSize` — but the envelope in case (2) already
+ *    multiplied by `take`, so combining both factors over-counts by
+ *    `defaultListSize` (10× by default). We detect this case via the
+ *    parent type ending in `Page` and pass through the child cost
+ *    unmultiplied, letting the envelope alone determine the row count.
  */
 import {
   isListType,
@@ -47,6 +55,16 @@ const fieldReturnsPageEnvelope = (field: {
   return isListType(getNullableType(items.type));
 };
 
+const isItemsOfPageEnvelope = (
+  parentTypeName: string | undefined,
+  fieldName: string
+): boolean => {
+  if (fieldName !== 'items') return false;
+  if (!parentTypeName) return false;
+  if (parentTypeName === 'Page') return false;
+  return parentTypeName.endsWith('Page');
+};
+
 export function listMultiplierEstimator(
   options?: ListMultiplierEstimatorOptions
 ): ComplexityEstimator {
@@ -54,10 +72,20 @@ export function listMultiplierEstimator(
   const maxListSize = options?.maxListSize ?? 1000;
 
   return (args) => {
-    const { field, args: fieldArgs, childComplexity } = args;
+    const { type: parentType, field, args: fieldArgs, childComplexity } = args;
 
     const isListField = isListType(getNullableType(field.type));
     const isPageEnvelope = !isListField && fieldReturnsPageEnvelope(field);
+
+    // The `items` field of a *Page envelope: the envelope above already
+    // multiplied by `take`; multiplying again here would double-count
+    // by `defaultListSize`. Pass child cost through unmultiplied.
+    if (
+      isListField &&
+      isItemsOfPageEnvelope((parentType as { name?: string }).name, field.name)
+    ) {
+      return childComplexity;
+    }
 
     if (!isListField && !isPageEnvelope) {
       // Not a list or *Page envelope, let other estimators handle.
