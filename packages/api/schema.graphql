@@ -2040,7 +2040,7 @@ type Query {
   analytics dialog). Per-claimant breakdown is available via the nested
   `claimants` field.
   """
-  referralCodes(id: Int, limit: Int = 100, cursor: Int): ReferralCodesPage!
+  referralCodesPage(id: Int, take: Int! = 100, skip: Int! = 0): ReferralCodesPage!
 
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade
@@ -2058,7 +2058,7 @@ type Query {
   """
   tradesPage(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): TradesPage!
   user(where: UserWhereUniqueInput!): User
-  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. No live consumers — user lookups go through `user(address:)` or `referralCodes`.")
+  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. No live consumers — user lookups go through `user(address:)` or `referralCodesPage`.")
 
   """
   Vault-specific statistics time series for a single vault address — vault
@@ -2212,17 +2212,29 @@ type ReferralCode {
   totalPositions: Int!
 
   """Paginated per-claimant breakdown with trading volume + position count."""
-  claimants(limit: Int = 100, cursor: Int): ReferralCodeClaimantsPage!
+  claimants(take: Int! = 100, skip: Int! = 0): ReferralCodeClaimantsPage!
 }
 
-type ReferralCodesPage {
+"""
+Paginated wrapper around ReferralCode rows with a server-truth hasMore flag
+"""
+type ReferralCodesPage implements Page {
   items: [ReferralCode!]!
-  nextCursor: Int
+  hasMore: Boolean!
+
+  """Total ReferralCode rows. Populated when available."""
+  totalCount: Int
 }
 
-type ReferralCodeClaimantsPage {
+"""
+Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore flag
+"""
+type ReferralCodeClaimantsPage implements Page {
   items: [ReferralCodeClaimant!]!
-  nextCursor: Int
+  hasMore: Boolean!
+
+  """Total claimant rows for this code. Populated when available."""
+  totalCount: Int
 }
 
 type ReferralCodeClaimant {

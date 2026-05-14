@@ -108,11 +108,7 @@ describe('SDL contract: *Page types', () => {
         def.interfaces?.some((i) => i.name.value === 'Page') ?? false;
       if (!implementsPage) offenders.push(typeName);
     }
-    // Document the cursor-based laggers — flagged for a follow-up PR
-    // but not blocking until then.
-    const lagging = new Set(['ReferralCodesPage', 'ReferralCodeClaimantsPage']);
-    const blocking = offenders.filter((o) => !lagging.has(o));
-    expect(blocking, '*Page types that should implement `Page`').toEqual([]);
+    expect(offenders, '*Page types that should implement `Page`').toEqual([]);
   });
 });
 
@@ -129,10 +125,6 @@ describe('SDL contract: *Page query args', () => {
       if (!argNames.includes('skip')) missing.push('skip');
       if (missing.length) offenders.push({ field: name, missing });
     }
-    // `referralCodesPage` uses cursor pagination (`limit` / `cursor`) — flagged
-    // for the cursor → offset migration follow-up.
-    const cursorLaggers = new Set(['referralCodesPage']);
-    const blocking = offenders.filter((o) => !cursorLaggers.has(o.field));
-    expect(blocking, '*Page queries missing take/skip args').toEqual([]);
+    expect(offenders, '*Page queries missing take/skip args').toEqual([]);
   });
 });

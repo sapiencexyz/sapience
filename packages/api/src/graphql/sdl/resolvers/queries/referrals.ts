@@ -1,5 +1,5 @@
 /**
- * Query.referralCodes — public referral analytics.
+ * Query.referralCodesPage — public referral analytics.
  *
  * Security model: referral codes are attribution hints, not authorization
  * credentials. Public reads can expose creator/claimant/volume analytics because
@@ -17,15 +17,7 @@
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
-
-const DEFAULT_LIMIT = 100;
-const MAX_LIMIT = 500;
-
-function clampLimit(limit: number | null | undefined): number {
-  if (limit == null) return DEFAULT_LIMIT;
-  if (!Number.isFinite(limit) || limit <= 0) return DEFAULT_LIMIT;
-  return Math.min(Math.floor(limit), MAX_LIMIT);
-}
+import { clampSkip, clampTake } from './pagination';
 
 type StatsRow = {
   id: number;
@@ -90,17 +82,15 @@ export async function fetchCodeStats(
   return result;
 }
 
-export const referralCodes: NonNullable<
-  QueryResolvers['referralCodes']
+export const referralCodesPage: NonNullable<
+  QueryResolvers['referralCodesPage']
 > = async (_parent, args) => {
-  const limit = clampLimit(args.limit);
-  const cursor = args.cursor ?? null;
   const id = args.id ?? null;
 
   // Single-code mode: skip pagination and just return that one row.
   if (id != null) {
     const code = await prisma.referralCode.findUnique({ where: { id } });
-    if (!code) return { items: [], nextCursor: null };
+    if (!code) return { items: [], hasMore: false, totalCount: 0 };
     const statsMap = await fetchCodeStats([id]);
     const stats = statsMap.get(id) ?? {
       claimCount: 0,
@@ -109,19 +99,22 @@ export const referralCodes: NonNullable<
     };
     return {
       items: [{ ...code, ...stats }],
-      nextCursor: null,
+      hasMore: false,
+      totalCount: 1,
     };
   }
 
+  const cappedTake = clampTake(args.take, { defaultTake: 100, maxTake: 500 });
+  const skipVal = clampSkip(args.skip, { maxSkip: 10_000 });
+
   const codes = await prisma.referralCode.findMany({
-    where: cursor !== null ? { id: { lt: cursor } } : undefined,
     orderBy: { id: 'desc' },
-    take: limit + 1,
+    take: cappedTake + 1,
+    skip: skipVal,
   });
 
-  const hasMore = codes.length > limit;
-  const visible = hasMore ? codes.slice(0, limit) : codes;
-  const nextCursor = hasMore ? visible[visible.length - 1].id : null;
+  const hasMore = codes.length > cappedTake;
+  const visible = hasMore ? codes.slice(0, cappedTake) : codes;
 
   const statsMap = await fetchCodeStats(visible.map((c) => c.id));
 
@@ -134,5 +127,12 @@ export const referralCodes: NonNullable<
     return { ...c, ...stats };
   });
 
-  return { items, nextCursor };
+  // `_countWhere` carries a (currently always-true) Prisma where to the
+  // ReferralCodesPage.totalCount field resolver so the COUNT(*) only fires
+  // on selection.
+  return {
+    items,
+    hasMore,
+    _countWhere: {},
+  };
 };

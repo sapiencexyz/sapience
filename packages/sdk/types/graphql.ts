@@ -2055,7 +2055,7 @@ export type Query = {
    * analytics dialog). Per-claimant breakdown is available via the nested
    * `claimants` field.
    */
-  referralCodes: ReferralCodesPage;
+  referralCodesPage: ReferralCodesPage;
   /** Look up a single secondary market trade by its trade hash */
   trade?: Maybe<Trade>;
   /**
@@ -2071,7 +2071,7 @@ export type Query = {
   /** Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag. */
   tradesPage: TradesPage;
   user?: Maybe<User>;
-  /** @deprecated Unused; will be removed. No live consumers — user lookups go through `user(address:)` or `referralCodes`. */
+  /** @deprecated Unused; will be removed. No live consumers — user lookups go through `user(address:)` or `referralCodesPage`. */
   users: Array<User>;
   /**
    * Vault-specific statistics time series for a single vault address — vault
@@ -2467,10 +2467,10 @@ export type QueryQuestionsPageArgs = {
 };
 
 
-export type QueryReferralCodesArgs = {
-  cursor?: InputMaybe<Scalars['Int']['input']>;
+export type QueryReferralCodesPageArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 
@@ -2618,8 +2618,8 @@ export type ReferralCode = {
  * created or administers the code.
  */
 export type ReferralCodeClaimantsArgs = {
-  cursor?: InputMaybe<Scalars['Int']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 export type ReferralCodeClaimant = {
@@ -2631,10 +2631,13 @@ export type ReferralCodeClaimant = {
   tradingVolume: Scalars['String']['output'];
 };
 
-export type ReferralCodeClaimantsPage = {
+/** Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore flag */
+export type ReferralCodeClaimantsPage = Page & {
   __typename?: 'ReferralCodeClaimantsPage';
+  hasMore: Scalars['Boolean']['output'];
   items: Array<ReferralCodeClaimant>;
-  nextCursor?: Maybe<Scalars['Int']['output']>;
+  /** Total claimant rows for this code. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type ReferralCodeNullableRelationFilter = {
@@ -2667,10 +2670,13 @@ export type ReferralCodeWhereInput = {
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
 
-export type ReferralCodesPage = {
+/** Paginated wrapper around ReferralCode rows with a server-truth hasMore flag */
+export type ReferralCodesPage = Page & {
   __typename?: 'ReferralCodesPage';
+  hasMore: Scalars['Boolean']['output'];
   items: Array<ReferralCode>;
-  nextCursor?: Maybe<Scalars['Int']['output']>;
+  /** Total ReferralCode rows. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Filter questions by their resolution status */

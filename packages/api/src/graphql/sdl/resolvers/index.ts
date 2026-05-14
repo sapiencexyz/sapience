@@ -39,6 +39,8 @@ import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
 import { QuestionsPage } from './QuestionsPage';
 import { ReferralCode } from './ReferralCode';
+import { ReferralCodeClaimantsPage } from './ReferralCodeClaimantsPage';
+import { ReferralCodesPage } from './ReferralCodesPage';
 import { TradesPage } from './TradesPage';
 import { User } from './User';
 
@@ -92,7 +94,7 @@ import {
   predictions,
 } from './queries/deprecated/escrow';
 import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
-import { referralCodes } from './queries/referrals';
+import { referralCodesPage } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import {
   accountBalance,
@@ -159,7 +161,7 @@ export const resolvers: Resolvers = {
     trades,
     tradesPage,
     // Referrals
-    referralCodes,
+    referralCodesPage,
     // Tags
     popularTags,
     // CRUD passthroughs
@@ -192,6 +194,8 @@ export const resolvers: Resolvers = {
   PredictionsPage,
   QuestionsPage,
   ReferralCode,
+  ReferralCodeClaimantsPage,
+  ReferralCodesPage,
   TradesPage,
   User,
 };
