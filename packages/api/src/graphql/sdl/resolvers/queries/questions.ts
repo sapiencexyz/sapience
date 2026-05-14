@@ -733,12 +733,16 @@ export const questionsPage: NonNullable<
   } = args;
   // `orderBy` / `orderDirection` is the canonical sort-arg shape across
   // every `*Page` resolver; `sortField` / `sortDirection` remain for one
-  // release as `@deprecated` siblings. Prefer the new args when present.
+  // release as `@deprecated` siblings. Each axis falls back independently
+  // — `(orderDirection: asc)` alone should honor `asc` even when the
+  // caller leaves `orderBy` (and the legacy `sortField` / `sortDirection`)
+  // at defaults. `orderDirection` is intentionally nullable on the SDL so
+  // the resolver can distinguish "client set it" from "schema default".
   return runQuestions({
     take,
     skip,
     sortField: orderBy ?? sortField,
-    sortDirection: orderBy != null ? orderDirection : sortDirection,
+    sortDirection: orderDirection ?? sortDirection,
     chainId: filters?.chainId ?? null,
     contractAddress: filters?.contractAddress ?? null,
     contractAddressIn: filters?.contractAddressIn ?? null,

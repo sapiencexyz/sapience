@@ -19498,15 +19498,11 @@
                 "name": "orderDirection",
                 "description": null,
                 "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "ENUM",
-                    "name": "SortOrder",
-                    "ofType": null
-                  }
+                  "kind": "ENUM",
+                  "name": "SortOrder",
+                  "ofType": null
                 },
-                "defaultValue": "desc"
+                "defaultValue": null
               },
               {
                 "name": "take",

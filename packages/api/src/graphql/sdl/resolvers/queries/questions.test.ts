@@ -8,7 +8,9 @@ const mockPrisma = vi.hoisted(() => ({
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
-const { resolveVolumeKey, runQuestions } = await import('./questions');
+const { resolveVolumeKey, runQuestions, questionsPage } = await import(
+  './questions'
+);
 
 beforeEach(() => {
   mockPrisma.$queryRaw.mockReset();
@@ -128,6 +130,67 @@ describe('runQuestions — page envelope', () => {
     mockPrisma.$queryRaw.mockResolvedValue([]);
     await runQuestions({ take: 10, skip: -50 });
     expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+  });
+});
+
+// The `questionsPage` wrapper merges the new `orderBy` / `orderDirection`
+// args with the deprecated `sortField` / `sortDirection` siblings. The two
+// axes fall back independently so a caller can adopt the new args one at
+// a time — e.g. `(orderDirection: asc)` alone must honor `asc` rather
+// than silently falling through to the `sortDirection` default of `desc`.
+describe('questionsPage — sort-arg merge', () => {
+  type WrapperArgs = {
+    filters?: unknown;
+    orderBy?: 'createdAt' | 'endTime' | 'openInterest' | 'predictionCount';
+    orderDirection?: 'asc' | 'desc';
+    sortField?: 'createdAt' | 'endTime' | 'openInterest' | 'predictionCount';
+    sortDirection?: 'asc' | 'desc';
+    take: number;
+    skip: number;
+  };
+  type ResolverFn = (
+    parent: unknown,
+    args: WrapperArgs,
+    ctx: unknown,
+    info: unknown
+  ) => Promise<unknown>;
+  const questionsPageFn = questionsPage as unknown as ResolverFn;
+
+  // Read the SQL direction back: `Prisma.raw(...)` wraps `ASC` / `DESC` in a
+  // sql fragment whose serialized form includes the literal string.
+  const directionFromCall = (): string => {
+    const callArgs = mockPrisma.$queryRaw.mock.calls[0];
+    const json = JSON.stringify(callArgs);
+    if (json.includes('"ASC"')) return 'ASC';
+    if (json.includes('"DESC"')) return 'DESC';
+    throw new Error(`could not find direction in SQL call: ${json}`);
+  };
+
+  const invoke = async (args: Partial<WrapperArgs>) => {
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+    await questionsPageFn({}, { take: 10, skip: 0, ...args }, {}, {});
+  };
+
+  it('uses orderDirection when only the new direction arg is passed', async () => {
+    // Regression: previously the wrapper ignored orderDirection unless
+    // orderBy was also set, which silently broke `(orderDirection: asc)`.
+    await invoke({ orderDirection: 'asc' });
+    expect(directionFromCall()).toBe('ASC');
+  });
+
+  it('uses sortDirection when only the deprecated direction arg is passed', async () => {
+    await invoke({ sortDirection: 'asc' });
+    expect(directionFromCall()).toBe('ASC');
+  });
+
+  it('prefers orderDirection over sortDirection when both are set', async () => {
+    await invoke({ orderDirection: 'asc', sortDirection: 'desc' });
+    expect(directionFromCall()).toBe('ASC');
+  });
+
+  it('defaults to desc when neither direction arg is set', async () => {
+    await invoke({});
+    expect(directionFromCall()).toBe('DESC');
   });
 });
 

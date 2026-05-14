@@ -2857,7 +2857,7 @@ type Query {
   questionsPage(
     filters: QuestionFilters
     orderBy: QuestionSortField
-    orderDirection: SortOrder! = desc
+    orderDirection: SortOrder
     take: Int! = 50
     skip: Int! = 0
     sortDirection: SortOrder! = desc

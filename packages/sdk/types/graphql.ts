@@ -2786,7 +2786,7 @@ export type QueryQuestionsArgs = {
 export type QueryQuestionsPageArgs = {
   filters?: InputMaybe<QuestionFilters>;
   orderBy?: InputMaybe<QuestionSortField>;
-  orderDirection?: SortOrder;
+  orderDirection?: InputMaybe<SortOrder>;
   skip?: Scalars['Int']['input'];
   sortDirection?: SortOrder;
   sortField?: InputMaybe<QuestionSortField>;

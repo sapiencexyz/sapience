@@ -2374,7 +2374,7 @@ type Query {
   args are retained for one release with `@deprecated`; new callers
   should use `orderBy:` / `orderDirection:`.
   """
-  questionsPage(filters: QuestionFilters, orderBy: QuestionSortField, orderDirection: SortOrder! = desc, take: Int! = 50, skip: Int! = 0, sortDirection: SortOrder! = desc @deprecated(reason: "Use `orderDirection:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`)."), sortField: QuestionSortField @deprecated(reason: "Use `orderBy:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`).")): QuestionsPage!
+  questionsPage(filters: QuestionFilters, orderBy: QuestionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, sortDirection: SortOrder! = desc @deprecated(reason: "Use `orderDirection:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`)."), sortField: QuestionSortField @deprecated(reason: "Use `orderBy:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`).")): QuestionsPage!
 
   """
   Public referral analytics. Referral codes are attribution hints, not
