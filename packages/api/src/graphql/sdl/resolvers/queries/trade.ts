@@ -109,10 +109,14 @@ export const tradesPage: NonNullable<QueryResolvers['tradesPage']> = async (
 
 export const trade: NonNullable<QueryResolvers['trade']> = async (
   _parent,
-  { id }
+  { tradeHash, id }
 ) => {
+  const key = tradeHash ?? id;
+  if (!key) {
+    throw new Error('trade: pass `tradeHash` (or the deprecated `id`)');
+  }
   const r = await prisma.secondaryTrade.findUnique({
-    where: { tradeHash: id.toLowerCase() },
+    where: { tradeHash: key.toLowerCase() },
   });
   return r ? mapTrade(r) : null;
 };

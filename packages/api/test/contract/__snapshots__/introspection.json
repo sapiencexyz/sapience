@@ -233,6 +233,189 @@
       },
       {
         "kind": "OBJECT",
+        "name": "AccountAccuracyLeaderboardEntry",
+        "description": "One row of the accuracy leaderboard — an address with its lifetime\naccuracy score aggregated across every scored attestation. Parallel\nto `AccountStatsLeaderboardEntry`.",
+        "fields": [
+          {
+            "name": "address",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "accuracyScore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Float",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "AccountAccuracyLeaderboardPage",
+        "description": "Paginated wrapper around `AccountAccuracyLeaderboardEntry` rows with a server-truth hasMore flag.",
+        "fields": [
+          {
+            "name": "items",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "AccountAccuracyLeaderboardEntry",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Eagerly populated: derived from the in-memory leaderboard array.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "AccountAccuracyRank",
+        "description": "Accuracy rank and lifetime score for a single address. Mirrors\n`AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),\n`rank` (1-indexed, null when unranked), and `totalParticipants` (size of\nthe scored-forecaster set). Accuracy is lifetime-aggregated — the\ntime-weighted error already weights by recency, so there's no window\nfilter on this surface.",
+        "fields": [
+          {
+            "name": "address",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "accuracyScore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Float",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "rank",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalParticipants",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "AccountStat",
         "description": "One row of the per-account stats time series — wallet collateral\nposition, settlement PnL, trade volume, and prediction outcome counts\nat a single snapshot boundary. Mirrors the fat-row pattern used by\n`ProtocolStat` / `VaultStat`: per-bucket deltas use the `period…`\nprefix, cumulative-through-bucket values use the `cumulative…` prefix.\nWei amounts are 18-decimal decimal strings; counts are integers.\n\nToday this is assembled on-demand from the same SQL helpers that back\nthe deprecated `accountBalance` / `accountPnl` / `accountPredictionCount` /\n`accountVolume` resolvers, projected to a fixed daily cadence. A\nfollow-up will introduce a real per-account snapshot table and swap\nthe resolver to read from it — the wire shape is the destination, so\nclients are forward-compatible across that swap.",
         "fields": [
@@ -790,189 +973,6 @@
         "possibleTypes": null
       },
       {
-        "kind": "OBJECT",
-        "name": "AccuracyLeaderboardEntry",
-        "description": "One row of the accuracy leaderboard — an address with its lifetime\naccuracy score aggregated across every scored attestation. Parallel\nto `AccountStatsLeaderboardEntry`.",
-        "fields": [
-          {
-            "name": "address",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "accuracyScore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Float",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "AccuracyLeaderboardPage",
-        "description": "Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag.",
-        "fields": [
-          {
-            "name": "items",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "AccuracyLeaderboardEntry",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalCount",
-            "description": "Eagerly populated: derived from the in-memory leaderboard array.",
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [
-          {
-            "kind": "INTERFACE",
-            "name": "Page",
-            "ofType": null
-          }
-        ],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "AccuracyRank",
-        "description": "Accuracy rank and lifetime score for a single address. Mirrors\n`AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),\n`rank` (1-indexed, null when unranked), and `totalParticipants` (size of\nthe scored-forecaster set). Accuracy is lifetime-aggregated — the\ntime-weighted error already weights by recency, so there's no window\nfilter on this surface.",
-        "fields": [
-          {
-            "name": "address",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "accuracyScore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Float",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "rank",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalParticipants",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
         "kind": "INPUT_OBJECT",
         "name": "ActivityFilters",
         "description": "Flat filter input for the `accountActivityPage` query. Each field is\noptional; values combine with AND. Omit `address` for a global feed.",
@@ -1403,7 +1403,7 @@
         "description": null,
         "fields": [
           {
-            "name": "attestation_score",
+            "name": "attestationScore",
             "description": null,
             "args": [
               {
@@ -1569,8 +1569,8 @@
             "deprecationReason": null
           },
           {
-            "name": "prediction",
-            "description": null,
+            "name": "forecast",
+            "description": "Raw forecast value as recorded on-chain — the `uint256 forecast` field\non the EAS attestation schema, returned as a decimal string in D18\nfixed-point representing a probability in `[0, 1e18]`. For the\ncanonical normalized probability use `Attestation.attestationScore.probabilityFloat`\n(0–1 float) or `Attestation.attestationScore.probabilityD18`\n(18-decimal fixed-point string).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -1848,7 +1848,7 @@
         "fields": null,
         "inputFields": [
           {
-            "name": "attestation_score",
+            "name": "attestationScore",
             "description": null,
             "type": {
               "kind": "INPUT_OBJECT",
@@ -1948,7 +1948,7 @@
             "defaultValue": null
           },
           {
-            "name": "prediction",
+            "name": "forecast",
             "description": null,
             "type": {
               "kind": "ENUM",
@@ -2110,7 +2110,7 @@
             "deprecationReason": null
           },
           {
-            "name": "prediction",
+            "name": "forecast",
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null
@@ -2965,7 +2965,7 @@
             "defaultValue": null
           },
           {
-            "name": "attestation_score",
+            "name": "attestationScore",
             "description": null,
             "type": {
               "kind": "INPUT_OBJECT",
@@ -3065,7 +3065,7 @@
             "defaultValue": null
           },
           {
-            "name": "prediction",
+            "name": "forecast",
             "description": null,
             "type": {
               "kind": "INPUT_OBJECT",
@@ -3200,7 +3200,7 @@
             "defaultValue": null
           },
           {
-            "name": "attestation_score",
+            "name": "attestationScore",
             "description": null,
             "type": {
               "kind": "INPUT_OBJECT",
@@ -3300,7 +3300,7 @@
             "defaultValue": null
           },
           {
-            "name": "prediction",
+            "name": "forecast",
             "description": null,
             "type": {
               "kind": "INPUT_OBJECT",
@@ -4875,66 +4875,7 @@
       },
       {
         "kind": "OBJECT",
-        "name": "CollateralBalanceSnapshotType",
-        "description": null,
-        "fields": [
-          {
-            "name": "balance",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "index",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "timestamp",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "DateTimeISO",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "CollateralBalanceType",
+        "name": "CollateralBalance",
         "description": null,
         "fields": [
           {
@@ -5005,35 +4946,11 @@
       },
       {
         "kind": "OBJECT",
-        "name": "CollateralTransfersPage",
-        "description": "Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag",
+        "name": "CollateralBalanceSnapshot",
+        "description": null,
         "fields": [
           {
-            "name": "items",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "CollateralTransferType",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
+            "name": "balance",
             "description": null,
             "args": [],
             "type": {
@@ -5041,7 +4958,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Boolean",
+                "name": "String",
                 "ofType": null
               }
             },
@@ -5049,32 +4966,46 @@
             "deprecationReason": null
           },
           {
-            "name": "totalCount",
+            "name": "index",
             "description": null,
             "args": [],
             "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "timestamp",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "DateTimeISO",
+                "ofType": null
+              }
             },
             "isDeprecated": false,
             "deprecationReason": null
           }
         ],
         "inputFields": null,
-        "interfaces": [
-          {
-            "kind": "INTERFACE",
-            "name": "Page",
-            "ofType": null
-          }
-        ],
+        "interfaces": [],
         "enumValues": null,
         "possibleTypes": null
       },
       {
         "kind": "OBJECT",
-        "name": "CollateralTransferType",
+        "name": "CollateralTransfer",
         "description": null,
         "fields": [
           {
@@ -5208,6 +5139,75 @@
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "CollateralTransfersPage",
+        "description": "Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag",
+        "fields": [
+          {
+            "name": "items",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "CollateralTransfer",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -10136,7 +10136,7 @@
       {
         "kind": "OBJECT",
         "name": "ForecasterScore",
-        "description": "DEPRECATED — kept only as the return type of `accountAccuracy`, which is\nitself `@deprecated`. The leaderboard-row shape lives on\n`AccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation\ncounters (`numScored`, `numTimeWeighted`, `sumErrorSquared`,\n`sumTimeWeightedError`) were always returned as zeros from the resolver\neven on main, so callers should treat them as non-load-bearing.",
+        "description": "DEPRECATED — kept only as the return type of `accountAccuracy`, which is\nitself `@deprecated`. The leaderboard-row shape lives on\n`AccountAccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation\ncounters (`numScored`, `numTimeWeighted`, `sumErrorSquared`,\n`sumTimeWeightedError`) were always returned as zeros from the resolver\neven on main, so callers should treat them as non-load-bearing.",
         "fields": [
           {
             "name": "accuracyScore",
@@ -14528,7 +14528,7 @@
         "possibleTypes": [
           {
             "kind": "OBJECT",
-            "name": "AccuracyLeaderboardPage",
+            "name": "AccountAccuracyLeaderboardPage",
             "ofType": null
           },
           {
@@ -16280,7 +16280,7 @@
             "deprecationReason": null
           },
           {
-            "name": "totalTradeCount",
+            "name": "cumulativeTradeCount",
             "description": "Cumulative count of predictions and secondary trades/sales",
             "args": [],
             "type": {
@@ -16394,7 +16394,7 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "AccuracyRank",
+                "name": "AccountAccuracyRank",
                 "ofType": null
               }
             },
@@ -16519,11 +16519,11 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal."
+            "deprecationReason": "Use `activityPage` — same data with a server-truth `hasMore` stop signal."
           },
           {
-            "name": "accountActivityPage",
-            "description": "Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag.\n\nFiltering is via `filters: ActivityFilters`. The flat-arg filters\n(`address`, `conditionId`, `pickConfigId`, `type`) are retained for one\nrelease with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.",
+            "name": "activityPage",
+            "description": "Unified activity feed (predictions + trades merged by timestamp), wrapped\nin an `ActivityItemsPage` with a server-truth `hasMore` flag. When\n`address` is provided the feed is scoped to that account; otherwise it\nreturns recent global activity.\n\nFiltering is via `filters: ActivityFilters`. The flat-arg filters\n(`address`, `conditionId`, `pickConfigId`, `type`) are retained for one\nrelease with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.",
             "args": [
               {
                 "name": "filters",
@@ -16575,6 +16575,91 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "accountActivityPage",
+            "description": "Deprecated alias for `activityPage` — the `account*` prefix predates the\nglobal-feed mode (added when `address` became optional). Kept on the\nflat-arg shape; callers wanting the `filters:` input should migrate\nto `activityPage`.",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "conditionId",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "pickConfigId",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
+              },
+              {
+                "name": "take",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "20"
+              },
+              {
+                "name": "type",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "ActivityItemType",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "ActivityItemsPage",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `activityPage` — same resolver, the name reflects that the resolver also serves the global feed when `address` is omitted."
           },
           {
             "name": "accountStats",
@@ -17123,7 +17208,7 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "AccuracyLeaderboardPage",
+                "name": "AccountAccuracyLeaderboardPage",
                 "ofType": null
               }
             },
@@ -17666,7 +17751,7 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "CollateralBalanceType",
+                "name": "CollateralBalance",
                 "ofType": null
               }
             },
@@ -17745,7 +17830,7 @@
                   "name": null,
                   "ofType": {
                     "kind": "OBJECT",
-                    "name": "CollateralBalanceSnapshotType",
+                    "name": "CollateralBalanceSnapshot",
                     "ofType": null
                   }
                 }
@@ -17836,7 +17921,7 @@
                   "name": null,
                   "ofType": {
                     "kind": "OBJECT",
-                    "name": "CollateralTransferType",
+                    "name": "CollateralTransfer",
                     "ofType": null
                   }
                 }
@@ -18859,19 +18944,15 @@
           },
           {
             "name": "prediction",
-            "description": "Look up a single prediction by its on-chain prediction ID",
+            "description": "Look up a single prediction by its on-chain prediction ID. Pass\n`predictionId:` — the legacy `id:` arg is kept (deprecated) so existing\ncallers keep working through one release.",
             "args": [
               {
-                "name": "id",
+                "name": "predictionId",
                 "description": null,
                 "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "String",
-                    "ofType": null
-                  }
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
                 },
                 "defaultValue": null
               }
@@ -19602,19 +19683,15 @@
           },
           {
             "name": "trade",
-            "description": "Look up a single secondary market trade by its trade hash",
+            "description": "Look up a single secondary market trade by its trade hash. Pass\n`tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing\ncallers keep working through one release.",
             "args": [
               {
-                "name": "id",
+                "name": "tradeHash",
                 "description": null,
                 "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "String",
-                    "ofType": null
-                  }
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
                 },
                 "defaultValue": null
               }
@@ -23092,7 +23169,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultBalance",
+            "name": "balance",
             "description": null,
             "args": [],
             "type": {
@@ -23108,7 +23185,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultAvailableAssets",
+            "name": "availableAssets",
             "description": null,
             "args": [],
             "type": {
@@ -23124,7 +23201,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultDeployed",
+            "name": "deployed",
             "description": null,
             "args": [],
             "type": {
@@ -23140,7 +23217,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultCumulativePnL",
+            "name": "cumulativePnL",
             "description": null,
             "args": [],
             "type": {
@@ -23156,7 +23233,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultPositionsWon",
+            "name": "positionsWon",
             "description": null,
             "args": [],
             "type": {
@@ -23172,7 +23249,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultPositionsLost",
+            "name": "positionsLost",
             "description": null,
             "args": [],
             "type": {
@@ -23188,7 +23265,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultDeposits",
+            "name": "deposits",
             "description": null,
             "args": [],
             "type": {
@@ -23204,7 +23281,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultWithdrawals",
+            "name": "withdrawals",
             "description": null,
             "args": [],
             "type": {
@@ -23220,7 +23297,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultAirdropGains",
+            "name": "airdropGains",
             "description": null,
             "args": [],
             "type": {
@@ -23236,7 +23313,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultSecondaryBought",
+            "name": "secondaryBought",
             "description": "Cumulative wUSDe paid by the vault on secondary-market buys",
             "args": [],
             "type": {
@@ -23252,7 +23329,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultSecondarySold",
+            "name": "secondarySold",
             "description": "Cumulative wUSDe received by the vault on secondary-market sells",
             "args": [],
             "type": {
@@ -23268,7 +23345,7 @@
             "deprecationReason": null
           },
           {
-            "name": "vaultUnredeemedClaim",
+            "name": "unredeemedClaim",
             "description": "wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins",
             "args": [],
             "type": {

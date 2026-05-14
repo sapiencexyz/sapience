@@ -11,7 +11,7 @@
 
 import type {
   QueryResolvers,
-  QueryAccountActivityPageArgs,
+  QueryActivityPageArgs,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
@@ -260,13 +260,13 @@ export const runAccountActivity = async ({
  * `filters` wins on conflicts. Takes the RequireFields'd resolver shape
  * (`take`/`skip` non-null because the schema declares defaults).
  */
-type AccountActivityPageResolverArgs = QueryAccountActivityPageArgs & {
+type ActivityPageResolverArgs = QueryActivityPageArgs & {
   take: number;
   skip: number;
 };
 
 const mergeActivityFilters = (
-  args: AccountActivityPageResolverArgs
+  args: ActivityPageResolverArgs
 ): RunAccountActivityArgs => {
   const f = args.filters ?? null;
   return {
@@ -279,8 +279,20 @@ const mergeActivityFilters = (
   };
 };
 
+export const activityPage: NonNullable<QueryResolvers['activityPage']> = async (
+  _parent,
+  args
+) => {
+  return runAccountActivity(mergeActivityFilters(args));
+};
+
+/**
+ * Deprecated alias kept for one release while consumers migrate to
+ * `activityPage`. Stays on the flat-arg shape — callers wanting the
+ * `filters:` input should migrate to `activityPage` directly.
+ */
 export const accountActivityPage: NonNullable<
   QueryResolvers['accountActivityPage']
 > = async (_parent, args) => {
-  return runAccountActivity(mergeActivityFilters(args));
+  return runAccountActivity(args);
 };

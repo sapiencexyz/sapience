@@ -123,7 +123,7 @@ describe('Query.vaultStats', () => {
     expect(mockGetProtocolStatsTimeSeries).not.toHaveBeenCalled();
   });
 
-  it('rolls vaultUnredeemedClaim into vaultCumulativePnL for both snapshots and the live candle', async () => {
+  it('rolls vaultUnredeemedClaim into cumulativePnL for both snapshots and the live candle', async () => {
     // A chunk of the vault's positions resolved before the keeper's redeem tx
     // was indexed: realized PnL is deeply negative (cost recognized, payout
     // not yet), but the wUSDe is already earmarked in `vaultUnredeemedClaim`.
@@ -165,13 +165,13 @@ describe('Query.vaultStats', () => {
     // 2 persisted snapshots + 1 live candle.
     expect(result).toHaveLength(3);
     // Snapshot 0: 100 + 0 + 0 - 0
-    expect(result[0].vaultCumulativePnL).toBe('100');
+    expect(result[0].cumulativePnL).toBe('100');
     // Snapshot 1: -970 + 988 + 7 - 5 = 20
-    expect(result[1].vaultCumulativePnL).toBe('20');
+    expect(result[1].cumulativePnL).toBe('20');
     // Period PnL between the two snapshots: 20 - 100 = -80
     expect(result[1].periodPnL).toBe('-80');
     // Live candle: realizedPnL(-970) + unredeemed(988) + sold(7) - bought(5) = 20
-    expect(result[2].vaultCumulativePnL).toBe('20');
+    expect(result[2].cumulativePnL).toBe('20');
   });
 });
 

@@ -27,7 +27,7 @@ export type ActivityItem = PredictionActivity | TradeActivity;
 
 const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
   query AccountActivity($filters: ActivityFilters, $take: Int, $skip: Int) {
-    accountActivityPage(filters: $filters, take: $take, skip: $skip) {
+    activityPage(filters: $filters, take: $take, skip: $skip) {
       items {
         type
         timestamp
@@ -218,7 +218,7 @@ export function useAccountActivity({
       lastPage.length < pageSize ? undefined : allPages.length * pageSize,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        accountActivityPage: { items: RawActivityItem[] };
+        activityPage: { items: RawActivityItem[] };
       }>(ACCOUNT_ACTIVITY_QUERY, {
         filters: {
           address: account ?? null,
@@ -229,7 +229,7 @@ export function useAccountActivity({
         take: pageSize,
         skip: pageParam,
       });
-      return resp?.accountActivityPage?.items ?? [];
+      return resp?.activityPage?.items ?? [];
     },
   });
 

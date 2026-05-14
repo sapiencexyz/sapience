@@ -26,12 +26,12 @@ describe('formatAttestationData', () => {
     uid: '0xabc123',
     attester: '0x1234567890abcdef1234567890abcdef12345678',
     attestedAt: 1700000000,
-    prediction: '75',
+    forecast: '75',
     comment: 'I think yes',
     conditionId: 'cond-1',
   };
 
-  test('maps prediction to value field', () => {
+  test('maps forecast to value field', () => {
     const result = formatAttestationData(baseAttestation);
     expect(result.value).toBe('75');
   });
@@ -226,7 +226,7 @@ describe('fetchUserForecasts', () => {
             uid: '0xabc',
             attester: '0x1234567890abcdef1234567890abcdef12345678',
             attestedAt: 1700000000,
-            prediction: '80',
+            forecast: '80',
             comment: 'test',
           },
         ],
@@ -242,7 +242,7 @@ describe('fetchUserForecasts', () => {
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0].value).toBe('80'); // mapped from prediction
+    expect(result[0].value).toBe('80'); // mapped from forecast
     expect(result[0].shortAttester).toBe('0x1234...5678');
   });
 

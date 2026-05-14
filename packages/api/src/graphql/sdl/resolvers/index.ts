@@ -46,7 +46,7 @@ import { ReferralCodesPage } from './ReferralCodesPage';
 import { TradesPage } from './TradesPage';
 import { User } from './User';
 
-import { accountActivityPage } from './queries/activity';
+import { accountActivityPage, activityPage } from './queries/activity';
 import { accountActivity } from './queries/deprecated/activity';
 import {
   accountStats,
@@ -126,6 +126,7 @@ export const resolvers: Resolvers = {
     // Activity + unified feeds
     accountActivity,
     accountActivityPage,
+    activityPage,
     // Analytics
     openInterestByCategory,
     openInterestByTimeToResolution,

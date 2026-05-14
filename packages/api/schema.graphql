@@ -6,7 +6,7 @@ the scored-forecaster set). Accuracy is lifetime-aggregated — the
 time-weighted error already weights by recency, so there's no window
 filter on this surface.
 """
-type AccuracyRank {
+type AccountAccuracyRank {
   address: String!
   accuracyScore: Float!
   rank: Int
@@ -16,7 +16,7 @@ type AccuracyRank {
 """
 DEPRECATED — kept only as the return type of `accountAccuracy`, which is
 itself `@deprecated`. The leaderboard-row shape lives on
-`AccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation
+`AccountAccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation
 counters (`numScored`, `numTimeWeighted`, `sumErrorSquared`,
 `sumTimeWeightedError`) were always returned as zeros from the resolver
 even on main, so callers should treat them as non-load-bearing.
@@ -120,7 +120,7 @@ type ActivityTrade {
 }
 
 type Attestation {
-  attestation_score(where: AttestationScoreWhereInput): AttestationScore
+  attestationScore(where: AttestationScoreWhereInput): AttestationScore
   attester: String!
   blockNumber: Int!
   comment: String
@@ -130,7 +130,16 @@ type Attestation {
   data: String!
   decodedDataJson: String!
   id: Int!
-  prediction: String!
+
+  """
+  Raw forecast value as recorded on-chain — the `uint256 forecast` field
+  on the EAS attestation schema, returned as a decimal string in D18
+  fixed-point representing a probability in `[0, 1e18]`. For the
+  canonical normalized probability use `Attestation.attestationScore.probabilityFloat`
+  (0–1 float) or `Attestation.attestationScore.probabilityD18`
+  (18-decimal fixed-point string).
+  """
+  forecast: String!
   recipient: String!
   resolver: String
   schemaId: String!
@@ -157,7 +166,7 @@ input AttestationOrderByRelationAggregateInput {
 }
 
 input AttestationOrderByWithRelationInput {
-  attestation_score: AttestationScoreOrderByWithRelationInput
+  attestationScore: AttestationScoreOrderByWithRelationInput
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrderInput
@@ -167,7 +176,7 @@ input AttestationOrderByWithRelationInput {
   data: SortOrder
   decodedDataJson: SortOrder
   id: SortOrder
-  prediction: SortOrder
+  forecast: SortOrder
   recipient: SortOrder
   resolver: SortOrderInput
   schemaId: SortOrder
@@ -190,7 +199,7 @@ enum AttestationScalarFieldEnum {
   data
   decodedDataJson
   id
-  prediction
+  forecast
   recipient
   resolver
   schemaId
@@ -268,7 +277,7 @@ input AttestationWhereInput {
   AND: [AttestationWhereInput!]
   NOT: [AttestationWhereInput!]
   OR: [AttestationWhereInput!]
-  attestation_score: AttestationScoreNullableRelationFilter
+  attestationScore: AttestationScoreNullableRelationFilter
   attester: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
@@ -278,7 +287,7 @@ input AttestationWhereInput {
   data: StringFilter
   decodedDataJson: StringFilter
   id: IntFilter
-  prediction: StringFilter
+  forecast: StringFilter
   recipient: StringFilter
   resolver: StringNullableFilter
   schemaId: StringFilter
@@ -291,7 +300,7 @@ input AttestationWhereUniqueInput {
   AND: [AttestationWhereInput!]
   NOT: [AttestationWhereInput!]
   OR: [AttestationWhereInput!]
-  attestation_score: AttestationScoreNullableRelationFilter
+  attestationScore: AttestationScoreNullableRelationFilter
   attester: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
@@ -301,7 +310,7 @@ input AttestationWhereUniqueInput {
   data: StringFilter
   decodedDataJson: StringFilter
   id: Int
-  prediction: StringFilter
+  forecast: StringFilter
   recipient: StringFilter
   resolver: StringNullableFilter
   schemaId: StringFilter
@@ -432,20 +441,20 @@ type Close {
   txHash: String!
 }
 
-type CollateralBalanceSnapshotType {
+type CollateralBalanceSnapshot {
   balance: String!
   index: Int!
   timestamp: DateTimeISO!
 }
 
-type CollateralBalanceType {
+type CollateralBalance {
   address: String!
   atBlock: Int
   balance: String!
   chainId: Int!
 }
 
-type CollateralTransferType {
+type CollateralTransfer {
   blockNumber: Int!
   chainId: Int!
   from: String!
@@ -912,16 +921,16 @@ One row of the accuracy leaderboard — an address with its lifetime
 accuracy score aggregated across every scored attestation. Parallel
 to `AccountStatsLeaderboardEntry`.
 """
-type AccuracyLeaderboardEntry {
+type AccountAccuracyLeaderboardEntry {
   address: String!
   accuracyScore: Float!
 }
 
 """
-Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag.
+Paginated wrapper around `AccountAccuracyLeaderboardEntry` rows with a server-truth hasMore flag.
 """
-type AccuracyLeaderboardPage implements Page {
-  items: [AccuracyLeaderboardEntry!]!
+type AccountAccuracyLeaderboardPage implements Page {
+  items: [AccountAccuracyLeaderboardEntry!]!
   hasMore: Boolean!
 
   """Eagerly populated: derived from the in-memory leaderboard array."""
@@ -1474,10 +1483,10 @@ type ActivityItemsPage implements Page {
 }
 
 """
-Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag
+Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag
 """
 type CollateralTransfersPage implements Page {
-  items: [CollateralTransferType!]!
+  items: [CollateralTransfer!]!
   hasMore: Boolean!
   totalCount: Int
 }
@@ -1839,7 +1848,7 @@ type ProtocolStat {
   cumulativeVolume: String!
 
   """Cumulative count of predictions and secondary trades/sales"""
-  totalTradeCount: Int!
+  cumulativeTradeCount: Int!
 
   """Trade-count delta over the snapshot interval"""
   periodTradeCount: Int!
@@ -1909,24 +1918,24 @@ type AccountStat {
 type VaultStat {
   """Snapshot boundary, aligned to the snapshot interval."""
   timestamp: UnixSeconds!
-  vaultBalance: String!
-  vaultAvailableAssets: String!
-  vaultDeployed: String!
-  vaultCumulativePnL: String!
-  vaultPositionsWon: Int!
-  vaultPositionsLost: Int!
-  vaultDeposits: String!
-  vaultWithdrawals: String!
-  vaultAirdropGains: String!
+  balance: String!
+  availableAssets: String!
+  deployed: String!
+  cumulativePnL: String!
+  positionsWon: Int!
+  positionsLost: Int!
+  deposits: String!
+  withdrawals: String!
+  airdropGains: String!
 
   """Cumulative wUSDe paid by the vault on secondary-market buys"""
-  vaultSecondaryBought: String!
+  secondaryBought: String!
 
   """Cumulative wUSDe received by the vault on secondary-market sells"""
-  vaultSecondarySold: String!
+  secondarySold: String!
 
   """wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins"""
-  vaultUnredeemedClaim: String!
+  unredeemedClaim: String!
 
   """Realized PnL delta over the snapshot interval"""
   periodPnL: String!
@@ -2107,7 +2116,7 @@ type Query {
   ranked set, and `totalParticipants` is the size of the scored-forecaster
   set.
   """
-  accountAccuracyRank(address: String!): AccuracyRank!
+  accountAccuracyRank(address: String!): AccountAccuracyRank!
 
   """
   Lifetime accuracy score for a single address, or null if no scored
@@ -2118,17 +2127,28 @@ type Query {
   """
   Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
-  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]! @deprecated(reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.")
+  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]! @deprecated(reason: "Use `activityPage` — same data with a server-truth `hasMore` stop signal.")
 
   """
-  Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag.
+  Unified activity feed (predictions + trades merged by timestamp), wrapped
+  in an `ActivityItemsPage` with a server-truth `hasMore` flag. When
+  `address` is provided the feed is scoped to that account; otherwise it
+  returns recent global activity.
   
   Filtering is via `filters: ActivityFilters`. The flat-arg filters
   (`address`, `conditionId`, `pickConfigId`, `type`) are retained for one
   release with `@deprecated` so existing callers can migrate without
   breaking; new callers should use `filters:`.
   """
-  accountActivityPage(filters: ActivityFilters, take: Int! = 20, skip: Int! = 0, address: String @deprecated(reason: "Use `filters: { address: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), conditionId: String @deprecated(reason: "Use `filters: { conditionId: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), pickConfigId: String @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), type: ActivityItemType @deprecated(reason: "Use `filters: { type: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers.")): ActivityItemsPage!
+  activityPage(filters: ActivityFilters, take: Int! = 20, skip: Int! = 0, address: String @deprecated(reason: "Use `filters: { address: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), conditionId: String @deprecated(reason: "Use `filters: { conditionId: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), pickConfigId: String @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), type: ActivityItemType @deprecated(reason: "Use `filters: { type: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers.")): ActivityItemsPage!
+
+  """
+  Deprecated alias for `activityPage` — the `account*` prefix predates the
+  global-feed mode (added when `address` became optional). Kept on the
+  flat-arg shape; callers wanting the `filters:` input should migrate
+  to `activityPage`.
+  """
+  accountActivityPage(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: ActivityItemType): ActivityItemsPage! @deprecated(reason: "Use `activityPage` — same resolver, the name reflects that the resolver also serves the global feed when `address` is omitted.")
 
   """
   Per-account stats time series — wallet collateral position, PnL, volume,
@@ -2212,7 +2232,7 @@ type Query {
   Page-shaped with server-truth `hasMore`; `totalCount` is populated
   unconditionally (cheap in-memory derivation).
   """
-  accuracyLeaderboardPage(take: Int! = 25, skip: Int! = 0): AccuracyLeaderboardPage!
+  accuracyLeaderboardPage(take: Int! = 25, skip: Int! = 0): AccountAccuracyLeaderboardPage!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]! @deprecated(reason: "Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal.")
 
   """
@@ -2238,9 +2258,9 @@ type Query {
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated(reason: "Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement.")
-  collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
-  collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
-  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]! @deprecated(reason: "Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal.")
+  collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalance!
+  collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshot!]!
+  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransfer!]! @deprecated(reason: "Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal.")
 
   """
   Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.
@@ -2307,8 +2327,12 @@ type Query {
   """
   positionsPage(filters: PositionFilters, orderBy: PositionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), collateralMax: String @deprecated(reason: "Use `filters: { collateralMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), collateralMin: String @deprecated(reason: "Use `filters: { collateralMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), conditionId: String @deprecated(reason: "Use `filters: { conditionId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), endsAtMax: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), endsAtMin: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), holder: String @deprecated(reason: "Use `filters: { holder: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), holderWon: Boolean @deprecated(reason: "Use `filters: { holderWon: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), pickConfigId: String @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), result: SettlementResult @deprecated(reason: "Use `filters: { result: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), settled: Boolean @deprecated(reason: "Use `filters: { settled: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers.")): PositionsPage!
 
-  """Look up a single prediction by its on-chain prediction ID"""
-  prediction(id: String!): Prediction
+  """
+  Look up a single prediction by its on-chain prediction ID. Pass
+  `predictionId:` — the legacy `id:` arg is kept (deprecated) so existing
+  callers keep working through one release.
+  """
+  prediction(predictionId: String, id: String @deprecated(reason: "Use `predictionId:` — same value, the new arg name disambiguates it from the `Prediction.id` (Int!) row id surfaced on `predictionsPage` rows.")): Prediction
 
   """Count of escrow predictions involving the given address"""
   predictionCount(address: String!, chainId: Int): Int! @deprecated(reason: "Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.")
@@ -2388,8 +2412,12 @@ type Query {
   """
   referralCodesPage(id: Int, take: Int! = 100, skip: Int! = 0): ReferralCodesPage!
 
-  """Look up a single secondary market trade by its trade hash"""
-  trade(id: String!): Trade
+  """
+  Look up a single secondary market trade by its trade hash. Pass
+  `tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing
+  callers keep working through one release.
+  """
+  trade(tradeHash: String, id: String @deprecated(reason: "Use `tradeHash:` — same value, the new arg name disambiguates it from the `Trade.id` (Int!) row id surfaced on `tradesPage` rows.")): Trade
 
   """Count of secondary market trades matching the given filters"""
   tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated(reason: "Use `tradesPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.")

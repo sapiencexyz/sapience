@@ -87,14 +87,14 @@ export type {
  * user redeems.
  *
  * Splits across the two row types: `escrowBalance` is protocol-wide,
- * `vaultAvailableAssets` is vault-specific, so the caller passes both.
+ * `availableAssets` is vault-specific, so the caller passes both.
  */
 export function getProtocolTvlWei(
   protocolStat: Pick<ProtocolStat, 'escrowBalance'> | null | undefined,
-  vaultStat: Pick<VaultStat, 'vaultAvailableAssets'> | null | undefined
+  vaultStat: Pick<VaultStat, 'availableAssets'> | null | undefined
 ): bigint {
   return (
     BigInt(protocolStat?.escrowBalance || '0') +
-    BigInt(vaultStat?.vaultAvailableAssets || '0')
+    BigInt(vaultStat?.availableAssets || '0')
   );
 }

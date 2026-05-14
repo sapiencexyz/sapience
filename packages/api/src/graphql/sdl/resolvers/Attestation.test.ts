@@ -12,7 +12,7 @@ type RelationFn = (
 ) => Promise<unknown>;
 
 const callField = (
-  field: 'condition' | 'attestation_score',
+  field: 'condition' | 'attestationScore',
   parent: unknown,
   args: unknown,
   ctx: unknown

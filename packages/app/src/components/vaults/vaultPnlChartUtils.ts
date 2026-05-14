@@ -17,13 +17,11 @@ type BasePoint = Pick<VaultPnlChartPoint, 'timestamp' | 'pnl' | 'tvl'>;
 function mapVaultStatToPoint(point: VaultStat): BasePoint {
   return {
     timestamp: point.timestamp,
-    pnl: point.vaultCumulativePnL
-      ? parseFloat(point.vaultCumulativePnL) / 1e18
-      : 0,
+    pnl: point.cumulativePnL ? parseFloat(point.cumulativePnL) / 1e18 : 0,
     // TVL denominator for the per-vault chart is the vault's own balance —
     // `escrowBalance` (now on `ProtocolStat`) is intentionally excluded
     // since this chart reports a single vault's return, not protocol-wide.
-    tvl: parseFloat(point.vaultBalance) / 1e18,
+    tvl: parseFloat(point.balance) / 1e18,
   };
 }
 

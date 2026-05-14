@@ -239,8 +239,8 @@ const PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
 `;
 
 const PREDICTION_QUERY = /* GraphQL */ `
-  query Prediction($id: String!) {
-    prediction(id: $id) {
+  query Prediction($predictionId: String!) {
+    prediction(predictionId: $predictionId) {
       id
       predictionId
       chainId
@@ -584,7 +584,7 @@ export function usePrediction(predictionId?: string) {
     queryFn: async () => {
       const resp = await graphqlRequest<{ prediction: Prediction | null }>(
         PREDICTION_QUERY,
-        { id: predictionId }
+        { predictionId }
       );
       return resp?.prediction ?? null;
     },
