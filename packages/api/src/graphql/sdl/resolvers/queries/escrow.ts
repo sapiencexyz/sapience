@@ -41,6 +41,7 @@ import type {
   QueryPredictionsPageArgs,
   Prediction,
   ResolversParentTypes,
+  SettlementResult,
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
@@ -100,6 +101,17 @@ export type PredictionsPageEnvelope = {
   _countWhere?: Prisma.PredictionWhereInput;
 };
 
+/**
+ * Extended args for `runPredictions` — superset of the deprecated bare
+ * `predictions(...)` args. The richer filter fields (`result`,
+ * `endsAtMin`/`Max`) live only on `predictionsPage` / `PredictionFilters`.
+ */
+export type RunPredictionsArgs = QueryPredictionsArgs & {
+  result?: SettlementResult | null;
+  endsAtMin?: number | null;
+  endsAtMax?: number | null;
+};
+
 export const runPredictions = async ({
   take,
   skip,
@@ -108,9 +120,12 @@ export const runPredictions = async ({
   chainId,
   settled,
   isLegacy,
+  result,
+  endsAtMin,
+  endsAtMax,
   orderBy,
   orderDirection,
-}: QueryPredictionsArgs): Promise<PredictionsPageEnvelope> => {
+}: RunPredictionsArgs): Promise<PredictionsPageEnvelope> => {
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
   const addr = address?.toLowerCase();
@@ -134,6 +149,20 @@ export const runPredictions = async ({
   if (chainId !== undefined && chainId !== null) filters.push({ chainId });
   if (settled !== undefined && settled !== null) filters.push({ settled });
   if (isLegacy !== undefined && isLegacy !== null) filters.push({ isLegacy });
+  // result / endsAt range filters live on the pickConfig join.
+  if (result) {
+    filters.push({
+      pickConfiguration: {
+        result: result as unknown as Prisma.EnumSettlementResultFilter,
+      },
+    });
+  }
+  if (endsAtMin != null || endsAtMax != null) {
+    const range: Prisma.IntFilter = {};
+    if (endsAtMin != null) range.gte = endsAtMin;
+    if (endsAtMax != null) range.lte = endsAtMax;
+    filters.push({ pickConfiguration: { endsAt: range } });
+  }
   if (filters.length > 0) where.AND = filters;
 
   const direction = orderDirection === 'asc' ? 'asc' : 'desc';
@@ -166,11 +195,12 @@ export const runPredictions = async ({
 /**
  * Merge `filters: PredictionFilters` (preferred) with the deprecated flat
  * arg shape, so `runPredictions` sees a single canonical set of fields.
- * When a field appears in both, `filters` wins.
+ * When a field appears in both, `filters` wins. The richer filters
+ * (`result`, `endsAtMin`/`Max`) live only on `PredictionFilters`.
  */
 const mergePredictionFilters = (
   args: QueryPredictionsPageArgs
-): QueryPredictionsArgs => {
+): RunPredictionsArgs => {
   const f = args.filters ?? null;
   return {
     take: args.take,
@@ -182,6 +212,9 @@ const mergePredictionFilters = (
     conditionId: f?.conditionId ?? args.conditionId ?? null,
     isLegacy: f?.isLegacy ?? args.isLegacy ?? null,
     settled: f?.settled ?? args.settled ?? null,
+    result: f?.result ?? null,
+    endsAtMin: f?.endsAtMin ?? null,
+    endsAtMax: f?.endsAtMax ?? null,
   };
 };
 
@@ -206,6 +239,11 @@ export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   return r ? mapPrediction(r) : null;
 };
 
+export type RunPickConfigurationsArgs = QueryPickConfigurationsArgs & {
+  orderBy?: 'CREATED_AT' | 'ENDS_AT' | 'RESOLVED_AT' | null;
+  orderDirection?: 'asc' | 'desc' | null;
+};
+
 export const runPickConfigurations = async ({
   take,
   skip,
@@ -213,7 +251,9 @@ export const runPickConfigurations = async ({
   resolved,
   result,
   tokens,
-}: QueryPickConfigurationsArgs): Promise<{
+  orderBy,
+  orderDirection,
+}: RunPickConfigurationsArgs): Promise<{
   items: ReturnType<typeof mapPickConfig>[];
   hasMore: boolean;
   totalCount: number | null;
@@ -237,9 +277,16 @@ export const runPickConfigurations = async ({
       { counterpartyToken: { in: lowered } },
     ];
   }
+  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
+  const orderByClause: Prisma.PicksOrderByWithRelationInput =
+    orderBy === 'ENDS_AT'
+      ? { endsAt: direction }
+      : orderBy === 'RESOLVED_AT'
+        ? { resolvedAt: direction }
+        : { createdAt: direction };
   const rawRows = await prisma.picks.findMany({
     where,
-    orderBy: { createdAt: 'desc' },
+    orderBy: orderByClause,
     take: cappedTake + 1,
     skip: skipVal,
     include: { picks: true },
@@ -260,7 +307,7 @@ export const runPickConfigurations = async ({
  */
 const mergePickConfigurationFilters = (
   args: QueryPickConfigurationsPageArgs
-): QueryPickConfigurationsArgs => {
+): RunPickConfigurationsArgs => {
   const f = args.filters ?? null;
   return {
     take: args.take,
@@ -269,6 +316,8 @@ const mergePickConfigurationFilters = (
     resolved: f?.resolved ?? args.resolved ?? null,
     result: f?.result ?? args.result ?? null,
     tokens: f?.tokens ?? args.tokens ?? null,
+    orderBy: args.orderBy ?? null,
+    orderDirection: args.orderDirection ?? null,
   };
 };
 

@@ -4,6 +4,37 @@
 # header is preserved for historical context, but this file IS edited
 # directly. The generated counterpart is `packages/api/schema.graphql`
 # at the package root, emitted by `buildApiSchema` for client codegen.
+#
+# -----------------------------------------------
+# Wire-format conventions (apply across every type in this file)
+# -----------------------------------------------
+#
+#   Amounts (collateral, balances, payouts, PnL, volume):
+#     `String` carrying a base-10 integer in wei. Sapience's collateral
+#     token is wUSDe, 18 decimals — divide by 1e18 to render. Negative
+#     amounts are allowed where it makes sense (`losses`, `cumulativePnL`).
+#
+#   Addresses:
+#     `String` carrying a 0x-prefixed lowercase 20-byte hex address. The
+#     indexer normalizes everything to lowercase; filter args accept
+#     mixed-case and lowercase them server-side.
+#
+#   Hashes / token ids:
+#     `String` carrying a 0x-prefixed lowercase 32-byte hex value.
+#
+#   Timestamps:
+#     - `UnixSeconds` — integer epoch seconds. Used for on-chain
+#       timestamps (event times, deadlines, attestation times).
+#     - `DateTimeISO` — ISO 8601 string. Used for Postgres-managed
+#       timestamps (`createdAt`, `updatedAt`, snapshot row boundaries).
+#
+#   IDs:
+#     - `Int!` ids (`id` fields on Prisma-backed types) are internal row
+#       ids — stable per row, not stable across deployments / re-indexes.
+#       Use type-specific public identifiers when persisting client
+#       state: `predictionId` (on-chain), `tradeHash` (on-chain),
+#       `pickConfigId` (deterministic 0x-hash), condition `id` (chain
+#       :: market :: question hash).
 # -----------------------------------------------
 
 """
@@ -1591,6 +1622,33 @@ enum ConditionSortField {
   PREDICTION_COUNT
 }
 
+"""Sort fields for the `conditionGroupsPage` query."""
+enum ConditionGroupSortField {
+  CREATED_AT
+  MAX_END_TIME
+  TOTAL_OPEN_INTEREST
+  TOTAL_PREDICTION_COUNT
+}
+
+"""Sort fields for the `tradesPage` query."""
+enum TradeSortField {
+  EXECUTED_AT
+  BLOCK_NUMBER
+}
+
+"""Sort fields for the `pickConfigurationsPage` query."""
+enum PickConfigurationSortField {
+  CREATED_AT
+  ENDS_AT
+  RESOLVED_AT
+}
+
+"""Sort fields for the `collateralTransfersPage` query."""
+enum CollateralTransferSortField {
+  BLOCK_NUMBER
+  TIMESTAMP
+}
+
 """Visibility filter for the `conditionsPage` query"""
 enum ConditionVisibility {
   PUBLIC
@@ -1709,21 +1767,55 @@ input ConditionGroupFilters {
 }
 
 """
-ERC-20 token balance representing a side of a prediction position
+ERC-20 token balance representing one side of a prediction position. The
+underlying Position row may surface as multiple `*Page` items: one
+"open" row carrying remaining cost basis, plus one synthesized "sell"
+row per secondary-market disposal (so PnL realizes incrementally).
 """
 type Position {
+  """
+  Number of position tokens still held (decimal string, 18 decimals on
+  Sapience). Synthesized sell rows carry `"0"` here — the realized PnL
+  delta from that sell lives on `realizedPnL`.
+  """
   balance: String!
   chainId: Int!
   createdAt: DateTimeISO!
+  """Holder wallet address (lowercase 0x-hex)."""
   holder: String!
+  """
+  Synthetic row id. Open rows use the underlying Position row id
+  serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
+  """
   id: String!
+  """True if this is the predictor token side; false for counterparty."""
   isPredictorToken: Boolean!
   pickConfig: PickConfiguration
   pickConfigId: String!
+  """
+  Realized PnL delta for a synthesized sell row (wei, 18 decimals;
+  signed — negative when sold below cost basis). Null on open rows;
+  use `cumulativePnL` on the bucketed `accountStats` series for the
+  holder-wide aggregate.
+  """
   realizedPnL: String
+  """ERC-20 position token address (lowercase 0x-hex)."""
   tokenAddress: String!
+  """
+  Cumulative payout the contract would owe this position if every
+  matched prediction resolved in the holder's favour (wei, 18 dec).
+  Equal to the total collateral pool across the holder's matched
+  predictions, NOT the net profit. Null when the holder has no matched
+  predictions on this pickConfig.
+  """
   totalPayout: String
   updatedAt: DateTimeISO!
+  """
+  Cost basis remaining on the holder's open balance (wei, 18 dec). For
+  synthesized sell rows this is the basis allocated to the shares
+  disposed of, computed via running WAC. Null when there is no basis to
+  surface (zero-balance settled position, etc.).
+  """
   userCollateral: String
 }
 
@@ -2093,6 +2185,12 @@ input PredictionFilters {
   isLegacy: Boolean
   """Restrict to settled (true) or unsettled (false) predictions."""
   settled: Boolean
+  """Restrict to predictions whose pickConfig settled with this result."""
+  result: SettlementResult
+  """Restrict to predictions whose pickConfig `endsAt >= this`."""
+  endsAtMin: UnixSeconds
+  """Restrict to predictions whose pickConfig `endsAt <= this`."""
+  endsAtMax: UnixSeconds
 }
 
 """
@@ -2111,6 +2209,10 @@ input TradeFilters {
   token: String
   """Restrict to a single chain."""
   chainId: Int
+  """Restrict to trades with `executedAt >= this` (epoch seconds, inclusive)."""
+  executedAtMin: UnixSeconds
+  """Restrict to trades with `executedAt <= this` (epoch seconds, inclusive)."""
+  executedAtMax: UnixSeconds
 }
 
 """
@@ -2499,11 +2601,27 @@ type Query {
     atBlock: Int
     chainId: Int!
   ): CollateralBalance!
+  """
+  Cumulative wUSDe collateral balance for an address at `count + 1`
+  evenly-spaced snapshot boundaries going back from now. The snapshot
+  cadence is `intervalSeconds` (preferred); the legacy `intervalHours`
+  arg is retained as a deprecated alias — when both are supplied,
+  `intervalSeconds` wins.
+  """
   collateralBalanceHistory(
     address: String!
     chainId: Int!
     count: Int! = 12
+    """
+    Snapshot cadence in seconds. Replaces the deprecated `intervalHours`
+    arg; when omitted (and `intervalHours` is also omitted) defaults to
+    168 hours (7 days), matching the previous default.
+    """
+    intervalSeconds: Int
     intervalHours: Int! = 168
+      @deprecated(
+        reason: "Use `intervalSeconds:` — drops the unit-suffix to match the unit-on-scalar convention used elsewhere. When both are supplied, `intervalSeconds` wins."
+      )
   ): [CollateralBalanceSnapshot!]!
   collateralTransfers(
     address: String!
@@ -2518,11 +2636,16 @@ type Query {
 
   """
   Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.
+
+  Sorting via `orderBy: CollateralTransferSortField` + `orderDirection: SortOrder`.
+  Defaults to `BLOCK_NUMBER` / `desc` when omitted.
   """
   collateralTransfersPage(
     address: String!
     chainId: Int!
     excludeProtocol: Boolean = false
+    orderBy: CollateralTransferSortField
+    orderDirection: SortOrder
     take: Int! = 100
     skip: Int! = 0
   ): CollateralTransfersPage!
@@ -2553,9 +2676,14 @@ type Query {
     )
   """
   Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
+
+  Sorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.
+  Defaults to `CREATED_AT` / `desc` when omitted.
   """
   conditionGroupsPage(
     filters: ConditionGroupFilters
+    orderBy: ConditionGroupSortField
+    orderDirection: SortOrder
     take: Int! = 50
     skip: Int! = 0
   ): ConditionGroupsPage!
@@ -2611,9 +2739,14 @@ type Query {
   filters (`chainId`, `resolved`, `result`, `tokens`) are retained for
   one release with `@deprecated` so existing callers can migrate without
   breaking; new callers should use `filters:`.
+
+  Sorting via `orderBy: PickConfigurationSortField` + `orderDirection: SortOrder`.
+  Defaults to `CREATED_AT` / `desc` when omitted.
   """
   pickConfigurationsPage(
     filters: PickConfigurationFilters
+    orderBy: PickConfigurationSortField
+    orderDirection: SortOrder
     take: Int! = 50
     skip: Int! = 0
     chainId: Int
@@ -2968,9 +3101,14 @@ type Query {
   (`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one
   release with `@deprecated` so existing callers can migrate without
   breaking; new callers should use `filters:`.
+
+  Sorting via `orderBy: TradeSortField` + `orderDirection: SortOrder`.
+  Defaults to `EXECUTED_AT` / `desc` when omitted.
   """
   tradesPage(
     filters: TradeFilters
+    orderBy: TradeSortField
+    orderDirection: SortOrder
     take: Int! = 50
     skip: Int! = 0
     address: String
@@ -3398,20 +3536,29 @@ input StringNullableListFilter {
 }
 
 """
-Secondary market trade record where position tokens are exchanged between users
+Secondary market trade record where position tokens are exchanged
+between users. The on-chain reference is `tradeHash`; `id` is an
+internal row id (see schema-preamble conventions).
 """
 type Trade {
   blockNumber: Int!
+  """Buyer wallet address (lowercase 0x-hex)."""
   buyer: String!
   chainId: Int!
+  """Collateral asset address paid in this trade (lowercase 0x-hex)."""
   collateral: String!
   executedAt: UnixSeconds!
   id: Int!
+  """Total collateral paid by buyer (wei, 18 dec). `price / tokenAmount` is the per-share price."""
   price: String!
   refCode: String
+  """Seller wallet address (lowercase 0x-hex)."""
   seller: String!
+  """Position token address being exchanged (lowercase 0x-hex)."""
   token: String!
+  """Quantity of position tokens transferred (wei, 18 dec on Sapience)."""
   tokenAmount: String!
+  """Canonical trade hash — the on-chain identifier (0x-prefixed)."""
   tradeHash: String!
   txHash: String!
 }

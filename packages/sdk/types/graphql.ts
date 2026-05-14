@@ -704,6 +704,11 @@ export type CollateralTransfer = {
   value: Scalars['String']['output'];
 };
 
+/** Sort fields for the `collateralTransfersPage` query. */
+export type CollateralTransferSortField =
+  | 'BLOCK_NUMBER'
+  | 'TIMESTAMP';
+
 /** Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag */
 export type CollateralTransfersPage = Page & {
   __typename?: 'CollateralTransfersPage';
@@ -1001,6 +1006,13 @@ export type ConditionGroupScalarFieldEnum =
   | 'totalSimilarMarketVolumeFiltered4h'
   | 'totalSimilarMarketVolumeFiltered7d'
   | 'totalSimilarMarketVolumeFiltered24h';
+
+/** Sort fields for the `conditionGroupsPage` query. */
+export type ConditionGroupSortField =
+  | 'CREATED_AT'
+  | 'MAX_END_TIME'
+  | 'TOTAL_OPEN_INTEREST'
+  | 'TOTAL_PREDICTION_COUNT';
 
 export type ConditionGroupWhereInput = {
   AND?: InputMaybe<Array<ConditionGroupWhereInput>>;
@@ -1898,6 +1910,12 @@ export type PickConfigurationFilters = {
   tokens?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
+/** Sort fields for the `pickConfigurationsPage` query. */
+export type PickConfigurationSortField =
+  | 'CREATED_AT'
+  | 'ENDS_AT'
+  | 'RESOLVED_AT';
+
 /** Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag */
 export type PickConfigurationsPage = Page & {
   __typename?: 'PickConfigurationsPage';
@@ -1917,21 +1935,57 @@ export type PnlDataPoint = {
   timestamp: Scalars['Int']['output'];
 };
 
-/** ERC-20 token balance representing a side of a prediction position */
+/**
+ * ERC-20 token balance representing one side of a prediction position. The
+ * underlying Position row may surface as multiple `*Page` items: one
+ * "open" row carrying remaining cost basis, plus one synthesized "sell"
+ * row per secondary-market disposal (so PnL realizes incrementally).
+ */
 export type Position = {
   __typename?: 'Position';
+  /**
+   * Number of position tokens still held (decimal string, 18 decimals on
+   * Sapience). Synthesized sell rows carry `"0"` here — the realized PnL
+   * delta from that sell lives on `realizedPnL`.
+   */
   balance: Scalars['String']['output'];
   chainId: Scalars['Int']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
+  /** Holder wallet address (lowercase 0x-hex). */
   holder: Scalars['String']['output'];
+  /**
+   * Synthetic row id. Open rows use the underlying Position row id
+   * serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
+   */
   id: Scalars['String']['output'];
+  /** True if this is the predictor token side; false for counterparty. */
   isPredictorToken: Scalars['Boolean']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   pickConfigId: Scalars['String']['output'];
+  /**
+   * Realized PnL delta for a synthesized sell row (wei, 18 decimals;
+   * signed — negative when sold below cost basis). Null on open rows;
+   * use `cumulativePnL` on the bucketed `accountStats` series for the
+   * holder-wide aggregate.
+   */
   realizedPnL?: Maybe<Scalars['String']['output']>;
+  /** ERC-20 position token address (lowercase 0x-hex). */
   tokenAddress: Scalars['String']['output'];
+  /**
+   * Cumulative payout the contract would owe this position if every
+   * matched prediction resolved in the holder's favour (wei, 18 dec).
+   * Equal to the total collateral pool across the holder's matched
+   * predictions, NOT the net profit. Null when the holder has no matched
+   * predictions on this pickConfig.
+   */
   totalPayout?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTimeISO']['output'];
+  /**
+   * Cost basis remaining on the holder's open balance (wei, 18 dec). For
+   * synthesized sell rows this is the basis allocated to the shares
+   * disposed of, computed via running WAC. Null when there is no basis to
+   * surface (zero-balance settled position, etc.).
+   */
   userCollateral?: Maybe<Scalars['String']['output']>;
 };
 
@@ -2040,8 +2094,14 @@ export type PredictionFilters = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to predictions on a single condition (via the pickConfig join). */
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to predictions whose pickConfig `endsAt <= this`. */
+  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Restrict to predictions whose pickConfig `endsAt >= this`. */
+  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
   /** Restrict to legacy (true) or non-legacy (false) predictions. */
   isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to predictions whose pickConfig settled with this result. */
+  result?: InputMaybe<SettlementResult>;
   /** Restrict to settled (true) or unsettled (false) predictions. */
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -2243,10 +2303,22 @@ export type Query = {
    */
   closes: Array<Close>;
   collateralBalance: CollateralBalance;
+  /**
+   * Cumulative wUSDe collateral balance for an address at `count + 1`
+   * evenly-spaced snapshot boundaries going back from now. The snapshot
+   * cadence is `intervalSeconds` (preferred); the legacy `intervalHours`
+   * arg is retained as a deprecated alias — when both are supplied,
+   * `intervalSeconds` wins.
+   */
   collateralBalanceHistory: Array<CollateralBalanceSnapshot>;
   /** @deprecated Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal. */
   collateralTransfers: Array<CollateralTransfer>;
-  /** Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args. */
+  /**
+   * Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.
+   *
+   * Sorting via `orderBy: CollateralTransferSortField` + `orderDirection: SortOrder`.
+   * Defaults to `BLOCK_NUMBER` / `desc` when omitted.
+   */
   collateralTransfersPage: CollateralTransfersPage;
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape. */
   condition?: Maybe<Condition>;
@@ -2254,7 +2326,12 @@ export type Query = {
   conditionGroup?: Maybe<ConditionGroup>;
   /** @deprecated Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal. */
   conditionGroups: Array<ConditionGroup>;
-  /** Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag. */
+  /**
+   * Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
+   *
+   * Sorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.
+   * Defaults to `CREATED_AT` / `desc` when omitted.
+   */
   conditionGroupsPage: ConditionGroupsPage;
   /** @deprecated Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal. */
   conditions: Array<Condition>;
@@ -2281,6 +2358,9 @@ export type Query = {
    * filters (`chainId`, `resolved`, `result`, `tokens`) are retained for
    * one release with `@deprecated` so existing callers can migrate without
    * breaking; new callers should use `filters:`.
+   *
+   * Sorting via `orderBy: PickConfigurationSortField` + `orderDirection: SortOrder`.
+   * Defaults to `CREATED_AT` / `desc` when omitted.
    */
   pickConfigurationsPage: PickConfigurationsPage;
   /** Top 20 most-used tags across public conditions */
@@ -2399,6 +2479,9 @@ export type Query = {
    * (`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one
    * release with `@deprecated` so existing callers can migrate without
    * breaking; new callers should use `filters:`.
+   *
+   * Sorting via `orderBy: TradeSortField` + `orderDirection: SortOrder`.
+   * Defaults to `EXECUTED_AT` / `desc` when omitted.
    */
   tradesPage: TradesPage;
   /** @deprecated Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains. */
@@ -2609,6 +2692,7 @@ export type QueryCollateralBalanceHistoryArgs = {
   chainId: Scalars['Int']['input'];
   count?: Scalars['Int']['input'];
   intervalHours?: Scalars['Int']['input'];
+  intervalSeconds?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2625,6 +2709,8 @@ export type QueryCollateralTransfersPageArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
   excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
+  orderBy?: InputMaybe<CollateralTransferSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
 };
@@ -2652,6 +2738,8 @@ export type QueryConditionGroupsArgs = {
 
 export type QueryConditionGroupsPageArgs = {
   filters?: InputMaybe<ConditionGroupFilters>;
+  orderBy?: InputMaybe<ConditionGroupSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
 };
@@ -2694,6 +2782,8 @@ export type QueryPickConfigurationsArgs = {
 export type QueryPickConfigurationsPageArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   filters?: InputMaybe<PickConfigurationFilters>;
+  orderBy?: InputMaybe<PickConfigurationSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
   resolved?: InputMaybe<Scalars['Boolean']['input']>;
   result?: InputMaybe<SettlementResult>;
   skip?: Scalars['Int']['input'];
@@ -2869,6 +2959,8 @@ export type QueryTradesPageArgs = {
   buyer?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   filters?: InputMaybe<TradeFilters>;
+  orderBy?: InputMaybe<TradeSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
   seller?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
@@ -3181,20 +3273,31 @@ export type TimeToResolutionBucket = {
   predictionCount: Scalars['Int']['output'];
 };
 
-/** Secondary market trade record where position tokens are exchanged between users */
+/**
+ * Secondary market trade record where position tokens are exchanged
+ * between users. The on-chain reference is `tradeHash`; `id` is an
+ * internal row id (see schema-preamble conventions).
+ */
 export type Trade = {
   __typename?: 'Trade';
   blockNumber: Scalars['Int']['output'];
+  /** Buyer wallet address (lowercase 0x-hex). */
   buyer: Scalars['String']['output'];
   chainId: Scalars['Int']['output'];
+  /** Collateral asset address paid in this trade (lowercase 0x-hex). */
   collateral: Scalars['String']['output'];
   executedAt: Scalars['UnixSeconds']['output'];
   id: Scalars['Int']['output'];
+  /** Total collateral paid by buyer (wei, 18 dec). `price / tokenAmount` is the per-share price. */
   price: Scalars['String']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
+  /** Seller wallet address (lowercase 0x-hex). */
   seller: Scalars['String']['output'];
+  /** Position token address being exchanged (lowercase 0x-hex). */
   token: Scalars['String']['output'];
+  /** Quantity of position tokens transferred (wei, 18 dec on Sapience). */
   tokenAmount: Scalars['String']['output'];
+  /** Canonical trade hash — the on-chain identifier (0x-prefixed). */
   tradeHash: Scalars['String']['output'];
   txHash: Scalars['String']['output'];
 };
@@ -3211,11 +3314,20 @@ export type TradeFilters = {
   buyer?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to trades with `executedAt <= this` (epoch seconds, inclusive). */
+  executedAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Restrict to trades with `executedAt >= this` (epoch seconds, inclusive). */
+  executedAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
   /** Restrict to a single seller address (case-insensitive). */
   seller?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single position token address (case-insensitive). */
   token?: InputMaybe<Scalars['String']['input']>;
 };
+
+/** Sort fields for the `tradesPage` query. */
+export type TradeSortField =
+  | 'BLOCK_NUMBER'
+  | 'EXECUTED_AT';
 
 /** Paginated wrapper around Trade rows with a server-truth hasMore flag */
 export type TradesPage = Page & {

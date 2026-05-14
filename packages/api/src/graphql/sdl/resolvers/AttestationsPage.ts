@@ -1,22 +1,12 @@
 /**
- * AttestationsPage field resolvers — lazy `totalCount`.
+ * AttestationsPage field resolvers. `totalCount` is lazy — see
+ * `lazyTotalCount` for the shared `_countWhere` contract.
  */
 
 import type { AttestationsPageResolvers } from '../__generated__/resolvers';
 import prisma from '../../../core/db';
-
-type AttestationsPageParent = {
-  totalCount?: number | null;
-  _countWhere?: NonNullable<
-    Parameters<typeof prisma.attestation.count>[0]
-  >['where'];
-};
+import { lazyTotalCount } from './pageTotalCount';
 
 export const AttestationsPage: AttestationsPageResolvers = {
-  totalCount: async (parent: unknown) => {
-    const p = parent as AttestationsPageParent;
-    if (typeof p.totalCount === 'number') return p.totalCount;
-    if (!p._countWhere) return null;
-    return prisma.attestation.count({ where: p._countWhere });
-  },
+  totalCount: lazyTotalCount(prisma.attestation),
 };
