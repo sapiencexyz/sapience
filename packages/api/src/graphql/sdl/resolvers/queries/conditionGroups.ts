@@ -28,9 +28,18 @@ import type {
   QueryResolvers,
   QueryConditionGroupsPageArgs,
   ConditionGroupFilters,
+  ConditionGroupSortField,
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { clampSkip, clampTake } from './pagination';
+
+const CONDITION_GROUP_ORDER_FIELD_MAP: Record<ConditionGroupSortField, string> =
+  {
+    CREATED_AT: 'createdAt',
+    MAX_END_TIME: 'maxEndTime',
+    TOTAL_OPEN_INTEREST: 'totalOpenInterest',
+    TOTAL_PREDICTION_COUNT: 'totalPredictionCount',
+  };
 
 type Where = Prisma.ConditionGroupWhereInput;
 
@@ -81,14 +90,24 @@ export const conditionGroup: NonNullable<
 
 export const conditionGroupsPage: NonNullable<
   QueryResolvers['conditionGroupsPage']
-> = async (_parent, { filters, take, skip }: QueryConditionGroupsPageArgs) => {
+> = async (
+  _parent,
+  { filters, orderBy, orderDirection, take, skip }: QueryConditionGroupsPageArgs
+) => {
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
   const where = buildConditionGroupsWhereFromFilters(filters);
 
+  const direction: 'asc' | 'desc' = orderDirection === 'asc' ? 'asc' : 'desc';
+  const orderField =
+    (orderBy && CONDITION_GROUP_ORDER_FIELD_MAP[orderBy]) ?? 'createdAt';
+  const orderByClause = {
+    [orderField]: direction,
+  } as Prisma.ConditionGroupOrderByWithRelationInput;
+
   const rawRows = await prisma.conditionGroup.findMany({
     where,
-    orderBy: { createdAt: 'desc' },
+    orderBy: orderByClause,
     take: cappedTake + 1,
     skip: skipVal,
   });

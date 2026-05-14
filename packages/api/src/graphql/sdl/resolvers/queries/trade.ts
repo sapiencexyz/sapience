@@ -45,6 +45,20 @@ export type TradesPageEnvelope = {
   _countWhere?: Prisma.SecondaryTradeWhereInput;
 };
 
+/**
+ * Extended args accepted by `runTrades` — superset of the deprecated bare
+ * `trades(...)` args. The new filter fields (`executedAtMin`/`Max`) and
+ * sort args (`orderBy`/`orderDirection`) live only on `tradesPage` /
+ * `TradeFilters`; passing them through here keeps a single canonical
+ * pipeline for both surfaces.
+ */
+export type RunTradesArgs = QueryTradesArgs & {
+  executedAtMin?: number | null;
+  executedAtMax?: number | null;
+  orderBy?: 'EXECUTED_AT' | 'BLOCK_NUMBER' | null;
+  orderDirection?: 'asc' | 'desc' | null;
+};
+
 export const runTrades = async ({
   take,
   skip,
@@ -53,7 +67,11 @@ export const runTrades = async ({
   buyer,
   token,
   chainId,
-}: QueryTradesArgs): Promise<TradesPageEnvelope> => {
+  executedAtMin,
+  executedAtMax,
+  orderBy,
+  orderDirection,
+}: RunTradesArgs): Promise<TradesPageEnvelope> => {
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
   const where: Prisma.SecondaryTradeWhereInput = {};
@@ -71,9 +89,22 @@ export const runTrades = async ({
   }
   if (token) where.token = token.toLowerCase();
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
+  if (executedAtMin != null || executedAtMax != null) {
+    const range: Prisma.IntFilter = {};
+    if (executedAtMin != null) range.gte = executedAtMin;
+    if (executedAtMax != null) range.lte = executedAtMax;
+    where.executedAt = range;
+  }
+
+  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
+  const orderByClause: Prisma.SecondaryTradeOrderByWithRelationInput =
+    orderBy === 'BLOCK_NUMBER'
+      ? { blockNumber: direction }
+      : { executedAt: direction };
+
   const rawRows = await prisma.secondaryTrade.findMany({
     where,
-    orderBy: { executedAt: 'desc' },
+    orderBy: orderByClause,
     take: cappedTake + 1,
     skip: skipVal,
   });
@@ -85,9 +116,10 @@ export const runTrades = async ({
 /**
  * Merge `filters: TradeFilters` with the deprecated flat arg shape.
  * `filters` wins on conflicts. The `address` vs `seller`/`buyer`
- * mutual-exclusion check happens downstream in `runTrades`.
+ * mutual-exclusion check happens downstream in `runTrades`. New
+ * filter fields (`executedAtMin`/`Max`) live only on `TradeFilters`.
  */
-const mergeTradeFilters = (args: QueryTradesPageArgs): QueryTradesArgs => {
+const mergeTradeFilters = (args: QueryTradesPageArgs): RunTradesArgs => {
   const f = args.filters ?? null;
   return {
     take: args.take,
@@ -97,6 +129,10 @@ const mergeTradeFilters = (args: QueryTradesPageArgs): QueryTradesArgs => {
     buyer: f?.buyer ?? args.buyer ?? null,
     token: f?.token ?? args.token ?? null,
     chainId: f?.chainId ?? args.chainId ?? null,
+    executedAtMin: f?.executedAtMin ?? null,
+    executedAtMax: f?.executedAtMax ?? null,
+    orderBy: args.orderBy ?? null,
+    orderDirection: args.orderDirection ?? null,
   };
 };
 

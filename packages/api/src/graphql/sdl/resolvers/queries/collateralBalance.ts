@@ -45,10 +45,21 @@ export const collateralBalance: NonNullable<
 
 export const collateralBalanceHistory: NonNullable<
   QueryResolvers['collateralBalanceHistory']
-> = async (_parent, { address, intervalHours, count, chainId }) => {
+> = async (
+  _parent,
+  {
+    address,
+    intervalSeconds: intervalSecondsArg,
+    intervalHours,
+    count,
+    chainId,
+  }
+) => {
   const addr = address.toLowerCase();
   const cappedCount = Math.min(count, 365);
-  const intervalSeconds = intervalHours * 3600;
+  // `intervalSeconds` wins when both are passed (matches the SDL doc-string).
+  // Falls back to `intervalHours * 3600` so existing callers keep working.
+  const intervalSeconds = intervalSecondsArg ?? intervalHours * 3600;
   const rows = await prisma.$queryRaw<
     { index: number; boundary: Date; balance: string }[]
   >`
@@ -132,6 +143,8 @@ export const runCollateralTransfers = async ({
   address,
   chainId,
   excludeProtocol,
+  orderBy,
+  orderDirection,
   take,
   skip,
 }: QueryCollateralTransfersPageArgs): Promise<CollateralTransfersPageEnvelope> => {
@@ -147,9 +160,16 @@ export const runCollateralTransfers = async ({
     chainId,
     excludeProtocol
   );
+
+  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
+  const orderByClause: Prisma.CollateralTransferOrderByWithRelationInput =
+    orderBy === 'TIMESTAMP'
+      ? { timestamp: direction }
+      : { blockNumber: direction };
+
   const rawRows = await prisma.collateralTransfer.findMany({
     where,
-    orderBy: { blockNumber: 'desc' },
+    orderBy: orderByClause,
     take: cappedTake + 1,
     skip: skipVal,
   });

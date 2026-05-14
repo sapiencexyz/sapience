@@ -5143,6 +5143,29 @@
         "possibleTypes": null
       },
       {
+        "kind": "ENUM",
+        "name": "CollateralTransferSortField",
+        "description": "Sort fields for the `collateralTransfersPage` query.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "BLOCK_NUMBER",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "TIMESTAMP",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
         "kind": "OBJECT",
         "name": "CollateralTransfersPage",
         "description": "Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag",
@@ -7075,6 +7098,41 @@
           },
           {
             "name": "totalSimilarMarketVolumeFiltered24h",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "ConditionGroupSortField",
+        "description": "Sort fields for the `conditionGroupsPage` query.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "CREATED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "MAX_END_TIME",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "TOTAL_OPEN_INTEREST",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "TOTAL_PREDICTION_COUNT",
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null
@@ -15021,6 +15079,35 @@
         "possibleTypes": null
       },
       {
+        "kind": "ENUM",
+        "name": "PickConfigurationSortField",
+        "description": "Sort fields for the `pickConfigurationsPage` query.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "CREATED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "ENDS_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "RESOLVED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
         "kind": "OBJECT",
         "name": "PickConfigurationsPage",
         "description": "Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag",
@@ -15151,11 +15238,11 @@
       {
         "kind": "OBJECT",
         "name": "Position",
-        "description": "ERC-20 token balance representing a side of a prediction position",
+        "description": "ERC-20 token balance representing one side of a prediction position. The\nunderlying Position row may surface as multiple `*Page` items: one\n\"open\" row carrying remaining cost basis, plus one synthesized \"sell\"\nrow per secondary-market disposal (so PnL realizes incrementally).",
         "fields": [
           {
             "name": "balance",
-            "description": null,
+            "description": "Number of position tokens still held (decimal string, 18 decimals on\nSapience). Synthesized sell rows carry `\"0\"` here — the realized PnL\ndelta from that sell lives on `realizedPnL`.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -15203,7 +15290,7 @@
           },
           {
             "name": "holder",
-            "description": null,
+            "description": "Holder wallet address (lowercase 0x-hex).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -15219,7 +15306,7 @@
           },
           {
             "name": "id",
-            "description": null,
+            "description": "Synthetic row id. Open rows use the underlying Position row id\nserialized as a string; synthesized sell rows append `\"-sell-<tradeHash>\"`.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -15235,7 +15322,7 @@
           },
           {
             "name": "isPredictorToken",
-            "description": null,
+            "description": "True if this is the predictor token side; false for counterparty.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -15279,7 +15366,7 @@
           },
           {
             "name": "realizedPnL",
-            "description": null,
+            "description": "Realized PnL delta for a synthesized sell row (wei, 18 decimals;\nsigned — negative when sold below cost basis). Null on open rows;\nuse `cumulativePnL` on the bucketed `accountStats` series for the\nholder-wide aggregate.",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -15291,7 +15378,7 @@
           },
           {
             "name": "tokenAddress",
-            "description": null,
+            "description": "ERC-20 position token address (lowercase 0x-hex).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -15307,7 +15394,7 @@
           },
           {
             "name": "totalPayout",
-            "description": null,
+            "description": "Cumulative payout the contract would owe this position if every\nmatched prediction resolved in the holder's favour (wei, 18 dec).\nEqual to the total collateral pool across the holder's matched\npredictions, NOT the net profit. Null when the holder has no matched\npredictions on this pickConfig.",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -15335,7 +15422,7 @@
           },
           {
             "name": "userCollateral",
-            "description": null,
+            "description": "Cost basis remaining on the holder's open balance (wei, 18 dec). For\nsynthesized sell rows this is the basis allocated to the shares\ndisposed of, computed via running WAC. Null when there is no basis to\nsurface (zero-balance settled position, etc.).",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -16070,6 +16157,36 @@
             "type": {
               "kind": "SCALAR",
               "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "result",
+            "description": "Restrict to predictions whose pickConfig settled with this result.",
+            "type": {
+              "kind": "ENUM",
+              "name": "SettlementResult",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "endsAtMin",
+            "description": "Restrict to predictions whose pickConfig `endsAt >= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "endsAtMax",
+            "description": "Restrict to predictions whose pickConfig `endsAt <= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "defaultValue": null
@@ -17760,7 +17877,7 @@
           },
           {
             "name": "collateralBalanceHistory",
-            "description": null,
+            "description": "Cumulative wUSDe collateral balance for an address at `count + 1`\nevenly-spaced snapshot boundaries going back from now. The snapshot\ncadence is `intervalSeconds` (preferred); the legacy `intervalHours`\narg is retained as a deprecated alias — when both are supplied,\n`intervalSeconds` wins.",
             "args": [
               {
                 "name": "address",
@@ -17805,18 +17922,14 @@
                 "defaultValue": "12"
               },
               {
-                "name": "intervalHours",
-                "description": null,
+                "name": "intervalSeconds",
+                "description": "Snapshot cadence in seconds. Replaces the deprecated `intervalHours`\narg; when omitted (and `intervalHours` is also omitted) defaults to\n168 hours (7 days), matching the previous default.",
                 "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
                 },
-                "defaultValue": "168"
+                "defaultValue": null
               }
             ],
             "type": {
@@ -17932,7 +18045,7 @@
           },
           {
             "name": "collateralTransfersPage",
-            "description": "Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.",
+            "description": "Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.\n\nSorting via `orderBy: CollateralTransferSortField` + `orderDirection: SortOrder`.\nDefaults to `BLOCK_NUMBER` / `desc` when omitted.",
             "args": [
               {
                 "name": "address",
@@ -17971,6 +18084,26 @@
                   "ofType": null
                 },
                 "defaultValue": "false"
+              },
+              {
+                "name": "orderBy",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "CollateralTransferSortField",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderDirection",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "SortOrder",
+                  "ofType": null
+                },
+                "defaultValue": null
               },
               {
                 "name": "take",
@@ -18197,7 +18330,7 @@
           },
           {
             "name": "conditionGroupsPage",
-            "description": "Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.",
+            "description": "Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.\n\nSorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.\nDefaults to `CREATED_AT` / `desc` when omitted.",
             "args": [
               {
                 "name": "filters",
@@ -18205,6 +18338,26 @@
                 "type": {
                   "kind": "INPUT_OBJECT",
                   "name": "ConditionGroupFilters",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderBy",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "ConditionGroupSortField",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderDirection",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "SortOrder",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18556,7 +18709,7 @@
           },
           {
             "name": "pickConfigurationsPage",
-            "description": "Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.\n\nFiltering is via `filters: PickConfigurationFilters`. The flat-arg\nfilters (`chainId`, `resolved`, `result`, `tokens`) are retained for\none release with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.",
+            "description": "Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.\n\nFiltering is via `filters: PickConfigurationFilters`. The flat-arg\nfilters (`chainId`, `resolved`, `result`, `tokens`) are retained for\none release with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.\n\nSorting via `orderBy: PickConfigurationSortField` + `orderDirection: SortOrder`.\nDefaults to `CREATED_AT` / `desc` when omitted.",
             "args": [
               {
                 "name": "filters",
@@ -18564,6 +18717,26 @@
                 "type": {
                   "kind": "INPUT_OBJECT",
                   "name": "PickConfigurationFilters",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderBy",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "PickConfigurationSortField",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderDirection",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "SortOrder",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -19866,7 +20039,7 @@
           },
           {
             "name": "tradesPage",
-            "description": "Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.\n\nFiltering is via `filters: TradeFilters`. The flat-arg filters\n(`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one\nrelease with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.",
+            "description": "Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.\n\nFiltering is via `filters: TradeFilters`. The flat-arg filters\n(`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one\nrelease with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.\n\nSorting via `orderBy: TradeSortField` + `orderDirection: SortOrder`.\nDefaults to `EXECUTED_AT` / `desc` when omitted.",
             "args": [
               {
                 "name": "filters",
@@ -19874,6 +20047,26 @@
                 "type": {
                   "kind": "INPUT_OBJECT",
                   "name": "TradeFilters",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderBy",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "TradeSortField",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderDirection",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "SortOrder",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -21848,7 +22041,7 @@
       {
         "kind": "OBJECT",
         "name": "Trade",
-        "description": "Secondary market trade record where position tokens are exchanged between users",
+        "description": "Secondary market trade record where position tokens are exchanged\nbetween users. The on-chain reference is `tradeHash`; `id` is an\ninternal row id (see schema-preamble conventions).",
         "fields": [
           {
             "name": "blockNumber",
@@ -21868,7 +22061,7 @@
           },
           {
             "name": "buyer",
-            "description": null,
+            "description": "Buyer wallet address (lowercase 0x-hex).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -21900,7 +22093,7 @@
           },
           {
             "name": "collateral",
-            "description": null,
+            "description": "Collateral asset address paid in this trade (lowercase 0x-hex).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -21948,7 +22141,7 @@
           },
           {
             "name": "price",
-            "description": null,
+            "description": "Total collateral paid by buyer (wei, 18 dec). `price / tokenAmount` is the per-share price.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -21976,7 +22169,7 @@
           },
           {
             "name": "seller",
-            "description": null,
+            "description": "Seller wallet address (lowercase 0x-hex).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -21992,7 +22185,7 @@
           },
           {
             "name": "token",
-            "description": null,
+            "description": "Position token address being exchanged (lowercase 0x-hex).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -22008,7 +22201,7 @@
           },
           {
             "name": "tokenAmount",
-            "description": null,
+            "description": "Quantity of position tokens transferred (wei, 18 dec on Sapience).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -22024,7 +22217,7 @@
           },
           {
             "name": "tradeHash",
-            "description": null,
+            "description": "Canonical trade hash — the on-chain identifier (0x-prefixed).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -22115,10 +22308,53 @@
               "ofType": null
             },
             "defaultValue": null
+          },
+          {
+            "name": "executedAtMin",
+            "description": "Restrict to trades with `executedAt >= this` (epoch seconds, inclusive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "executedAtMax",
+            "description": "Restrict to trades with `executedAt <= this` (epoch seconds, inclusive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
           }
         ],
         "interfaces": null,
         "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "TradeSortField",
+        "description": "Sort fields for the `tradesPage` query.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "EXECUTED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "BLOCK_NUMBER",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
         "possibleTypes": null
       },
       {
