@@ -128,3 +128,58 @@ describe('SDL contract: *Page query args', () => {
     expect(offenders, '*Page queries missing take/skip args').toEqual([]);
   });
 });
+
+const printType = (t: import('graphql').TypeNode): string => {
+  if (t.kind === Kind.NON_NULL_TYPE) return `${printType(t.type)}!`;
+  if (t.kind === Kind.LIST_TYPE) return `[${printType(t.type)}]`;
+  return t.name.value;
+};
+
+describe('SDL contract: *Page fields', () => {
+  it('every *Page type declares the canonical fields: items: [X!]!, hasMore: Boolean!, totalCount: Int', () => {
+    const offenders: { type: string; issues: string[] }[] = [];
+    for (const def of doc.definitions) {
+      if (def.kind !== Kind.OBJECT_TYPE_DEFINITION) continue;
+      const typeName = def.name.value;
+      if (!typeName.endsWith('Page') || typeName === 'Page') continue;
+      const fieldsByName = new Map(
+        (def.fields ?? []).map((f) => [f.name.value, f])
+      );
+
+      const issues: string[] = [];
+
+      const items = fieldsByName.get('items');
+      if (!items) issues.push('missing `items` field');
+      else {
+        const printed = printType(items.type);
+        // Accept any `[X!]!` shape (the row type varies per page).
+        if (!/^\[[A-Za-z][A-Za-z0-9]*!\]!$/.test(printed)) {
+          issues.push(`items must be [X!]! — got ${printed}`);
+        }
+      }
+
+      const hasMore = fieldsByName.get('hasMore');
+      if (!hasMore) issues.push('missing `hasMore` field');
+      else if (printType(hasMore.type) !== 'Boolean!') {
+        issues.push(
+          `hasMore must be Boolean! — got ${printType(hasMore.type)}`
+        );
+      }
+
+      const totalCount = fieldsByName.get('totalCount');
+      if (!totalCount) issues.push('missing `totalCount` field');
+      else if (printType(totalCount.type) !== 'Int') {
+        // Intentionally nullable: zero means "0 rows match"; null means
+        // "not computed for this call" (lazy or always-null pages).
+        issues.push(
+          `totalCount must be Int (nullable) — got ${printType(totalCount.type)}`
+        );
+      }
+
+      if (issues.length) offenders.push({ type: typeName, issues });
+    }
+    expect(offenders, '*Page types with non-canonical field shapes').toEqual(
+      []
+    );
+  });
+});
