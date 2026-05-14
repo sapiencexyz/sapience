@@ -45,6 +45,7 @@ const config: CodegenConfig = {
           DateTimeISO: 'Date',
           Decimal: 'string',
           BigInt: 'bigint',
+          UnixSeconds: 'number',
         },
         // Resolver types accept both plain return values and Promises
         // so resolvers can be `async` without being forced to wrap.

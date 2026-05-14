@@ -63,10 +63,8 @@ A single activity entry — either a prediction or a trade, sorted by timestamp
 type ActivityItem {
   prediction: Prediction
 
-  """
-  Unix seconds timestamp for sorting
-  """
-  timestamp: Int!
+  """Unix seconds timestamp for sorting."""
+  timestamp: UnixSeconds!
   trade: ActivityTrade
   type: ActivityItemType!
 }
@@ -89,7 +87,7 @@ type ActivityTrade {
   buyer: String!
   chainId: Int!
   collateral: String!
-  executedAt: Int!
+  executedAt: UnixSeconds!
   id: Int!
   pickConfig: PickConfiguration
   price: String!
@@ -115,7 +113,7 @@ type Attestation {
   recipient: String!
   resolver: String
   schemaId: String!
-  time: Int!
+  time: UnixSeconds!
   transactionHash: String!
   uid: String!
 }
@@ -180,7 +178,7 @@ type AttestationScore {
   createdAt: DateTimeISO!
   errorSquared: Float
   id: Int!
-  madeAt: Int!
+  madeAt: UnixSeconds!
   marketAddress: String
   marketId: String
   outcome: Int
@@ -395,7 +393,7 @@ type Claim {
   marketAddress: String!
   positionToken: String!
   predictionId: String!
-  redeemedAt: Int!
+  redeemedAt: UnixSeconds!
   refCode: String
   tokensBurned: String!
   txHash: String!
@@ -405,7 +403,7 @@ type Claim {
 Record of a position close where both sides burn tokens and receive payouts
 """
 type Close {
-  burnedAt: Int!
+  burnedAt: UnixSeconds!
   chainId: Int!
   counterpartyHolder: String!
   counterpartyPayout: String!
@@ -447,7 +445,7 @@ type CollateralTransferType {
 type Condition {
   _count: ConditionCount
   assertionId: String
-  assertionTimestamp: Int
+  assertionTimestamp: UnixSeconds
   attestations(
     cursor: AttestationWhereUniqueInput
     distinct: [AttestationScalarFieldEnum!]
@@ -464,7 +462,7 @@ type Condition {
   createdAt: DateTimeISO!
   description: String!
   displayOrder: Int
-  endTime: Int!
+  endTime: UnixSeconds!
 
   """
   YES probability from Polymarket (0.0–1.0), null for non-Polymarket
@@ -492,7 +490,7 @@ type Condition {
   """
   resolver: String!
   settled: Boolean!
-  settledAt: Int
+  settledAt: UnixSeconds
   shortName: String
 
   """
@@ -871,6 +869,18 @@ input DateTimeNullableFilter {
 GraphQL Scalar representing the Prisma.Decimal type, based on Decimal.js library.
 """
 scalar Decimal
+
+"""
+Integer Unix timestamp in seconds (UTC). Used for any timestamp that
+originates on-chain or in blockchain-indexed data (block times, market
+deadlines, attestation times). Wire format is the same as `Int`; the
+scalar exists to carry the unit and TZ contract in the type system
+instead of in the field name.
+
+Use `DateTimeISO` instead for Postgres-managed timestamps that originate
+in our own database (`createdAt`, `updatedAt`, snapshot row boundaries).
+"""
+scalar UnixSeconds
 
 input DecimalFilter {
   equals: Decimal
@@ -1411,7 +1421,7 @@ type PickConfiguration {
   claimedCounterpartyCollateral: String!
   claimedPredictorCollateral: String!
   counterpartyToken: String
-  endsAt: Int
+  endsAt: UnixSeconds
   id: String!
   isLegacy: Boolean!
   marketAddress: String!
@@ -1419,7 +1429,7 @@ type PickConfiguration {
   predictionId: String
   predictorToken: String
   resolved: Boolean!
-  resolvedAt: Int
+  resolvedAt: UnixSeconds
   result: SettlementResult!
   totalCounterpartyCollateral: String!
   totalPredictorCollateral: String!
@@ -1561,9 +1571,9 @@ input ConditionFilters {
   """Restrict to conditions whose category slug is in this set."""
   categorySlugs: [String!]
   """Restrict to conditions with `endTime >= this`."""
-  minEndTime: Int
+  minEndTime: UnixSeconds
   """Restrict to conditions with `endTime <= this`."""
-  maxEndTime: Int
+  maxEndTime: UnixSeconds
   """Visibility filter. Defaults to `PUBLIC` when omitted."""
   visibility: ConditionVisibility
   """Restrict to conditions not assigned to any condition group."""
@@ -1651,7 +1661,7 @@ Escrow-based prediction record between a predictor and counterparty, with collat
 type Prediction {
   chainId: Int!
   collateralDeposited: String
-  collateralDepositedAt: Int
+  collateralDepositedAt: UnixSeconds
   counterparty: String!
   counterpartyClaimable: String
   counterpartyCollateral: String!
@@ -1671,7 +1681,7 @@ type Prediction {
   result: SettlementResult!
   settleTxHash: String
   settled: Boolean!
-  settledAt: Int
+  settledAt: UnixSeconds
 }
 
 """
@@ -1813,10 +1823,8 @@ type TimeToResolutionBucket {
 Protocol-wide stats snapshot — no vault scoping.
 """
 type ProtocolStat {
-  """
-  Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
-  """
-  timestamp: Int!
+  """Snapshot boundary, aligned to the snapshot interval."""
+  timestamp: UnixSeconds!
   cumulativeVolume: String!
 
   """
@@ -1853,10 +1861,8 @@ the resolver to read from it — the wire shape is the destination, so
 clients are forward-compatible across that swap.
 """
 type AccountStat {
-  """
-  Unix epoch timestamp (seconds) at the snapshot boundary
-  """
-  timestamp: Int!
+  """Snapshot boundary."""
+  timestamp: UnixSeconds!
 
   """
   Realized PnL delta over this bucket (wei, 18 dec)
@@ -1919,9 +1925,9 @@ Vault-specific stats snapshot for a single vault address.
 """
 type VaultStat {
   """
-  Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
+  Snapshot boundary, aligned to the snapshot interval.
   """
-  timestamp: Int!
+  timestamp: UnixSeconds!
   vaultBalance: String!
   vaultAvailableAssets: String!
   vaultDeployed: String!
@@ -2134,8 +2140,8 @@ type Query {
   attestationsPage(
     attester: String
     conditionId: String
-    maxTime: Int
-    minTime: Int
+    maxTime: UnixSeconds
+    minTime: UnixSeconds
     orderBy: AttestationSortField
     orderDirection: SortOrder
     recipient: String
@@ -2331,8 +2337,8 @@ type Query {
     collateralMax: String
     collateralMin: String
     conditionId: String
-    endsAtMax: Int
-    endsAtMin: Int
+    endsAtMax: UnixSeconds
+    endsAtMin: UnixSeconds
     holder: String
     holderWon: Boolean
     orderBy: PositionSortField
@@ -2355,8 +2361,8 @@ type Query {
     collateralMax: String
     collateralMin: String
     conditionId: String
-    endsAtMax: Int
-    endsAtMin: Int
+    endsAtMax: UnixSeconds
+    endsAtMin: UnixSeconds
     holder: String
     holderWon: Boolean
     orderBy: PositionSortField
@@ -2733,8 +2739,8 @@ input QuestionFilters {
   categorySlugs: [String!]
   """Single-tag filter (case-sensitive against the condition's `tags` array)."""
   tag: String
-  """Restrict to conditions with `endTime >= this` (epoch seconds)."""
-  minEndTime: Int
+  """Restrict to conditions with `endTime >= this`."""
+  minEndTime: UnixSeconds
   """Resolution-status filter; defaults to `all` when omitted."""
   resolutionStatus: ResolutionStatus
   """Restrict to conditions with `estimatedPrice >= this`."""
@@ -2772,7 +2778,7 @@ type ReferralCode {
   creatorType: String!
   maxClaims: Int!
   isActive: Boolean!
-  expiresAt: Int
+  expiresAt: UnixSeconds
 
   """
   Total number of users who have claimed this code, across all pages.
@@ -2930,7 +2936,7 @@ type Trade {
   buyer: String!
   chainId: Int!
   collateral: String!
-  executedAt: Int!
+  executedAt: UnixSeconds!
   id: Int!
   price: String!
   refCode: String

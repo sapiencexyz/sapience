@@ -18,6 +18,8 @@ export type Scalars = {
   DateTimeISO: { input: any; output: any; }
   /** Prisma.Decimal — round-tripped as a decimal string with arbitrary precision. */
   Decimal: { input: any; output: any; }
+  /** Integer Unix timestamp in seconds (UTC). Wire format is Int; the scalar carries the unit/TZ contract in the type system rather than the field name. */
+  UnixSeconds: { input: any; output: any; }
 };
 
 /**
@@ -90,8 +92,8 @@ export type AccountStat = {
   predictionsTotal: Scalars['Int']['output'];
   /** Predictions won (settled in caller's favour) in this bucket */
   predictionsWon: Scalars['Int']['output'];
-  /** Unix epoch timestamp (seconds) at the snapshot boundary */
-  timestamp: Scalars['Int']['output'];
+  /** Snapshot boundary. */
+  timestamp: Scalars['UnixSeconds']['output'];
 };
 
 /**
@@ -197,8 +199,8 @@ export type AccuracyRank = {
 export type ActivityItem = {
   __typename?: 'ActivityItem';
   prediction?: Maybe<Prediction>;
-  /** Unix seconds timestamp for sorting */
-  timestamp: Scalars['Int']['output'];
+  /** Unix seconds timestamp for sorting. */
+  timestamp: Scalars['UnixSeconds']['output'];
   trade?: Maybe<ActivityTrade>;
   type: ActivityItemType;
 };
@@ -228,7 +230,7 @@ export type ActivityTrade = {
   buyer: Scalars['String']['output'];
   chainId: Scalars['Int']['output'];
   collateral: Scalars['String']['output'];
-  executedAt: Scalars['Int']['output'];
+  executedAt: Scalars['UnixSeconds']['output'];
   id: Scalars['Int']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   price: Scalars['String']['output'];
@@ -255,7 +257,7 @@ export type Attestation = {
   recipient: Scalars['String']['output'];
   resolver?: Maybe<Scalars['String']['output']>;
   schemaId: Scalars['String']['output'];
-  time: Scalars['Int']['output'];
+  time: Scalars['UnixSeconds']['output'];
   transactionHash: Scalars['String']['output'];
   uid: Scalars['String']['output'];
 };
@@ -330,7 +332,7 @@ export type AttestationScore = {
   createdAt: Scalars['DateTimeISO']['output'];
   errorSquared?: Maybe<Scalars['Float']['output']>;
   id: Scalars['Int']['output'];
-  madeAt: Scalars['Int']['output'];
+  madeAt: Scalars['UnixSeconds']['output'];
   marketAddress?: Maybe<Scalars['String']['output']>;
   marketId?: Maybe<Scalars['String']['output']>;
   outcome?: Maybe<Scalars['Int']['output']>;
@@ -596,7 +598,7 @@ export type Claim = {
   marketAddress: Scalars['String']['output'];
   positionToken: Scalars['String']['output'];
   predictionId: Scalars['String']['output'];
-  redeemedAt: Scalars['Int']['output'];
+  redeemedAt: Scalars['UnixSeconds']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
   tokensBurned: Scalars['String']['output'];
   txHash: Scalars['String']['output'];
@@ -605,7 +607,7 @@ export type Claim = {
 /** Record of a position close where both sides burn tokens and receive payouts */
 export type Close = {
   __typename?: 'Close';
-  burnedAt: Scalars['Int']['output'];
+  burnedAt: Scalars['UnixSeconds']['output'];
   chainId: Scalars['Int']['output'];
   counterpartyHolder: Scalars['String']['output'];
   counterpartyPayout: Scalars['String']['output'];
@@ -659,7 +661,7 @@ export type Condition = {
   __typename?: 'Condition';
   _count?: Maybe<ConditionCount>;
   assertionId?: Maybe<Scalars['String']['output']>;
-  assertionTimestamp?: Maybe<Scalars['Int']['output']>;
+  assertionTimestamp?: Maybe<Scalars['UnixSeconds']['output']>;
   attestations: Array<Attestation>;
   category?: Maybe<Category>;
   categoryId?: Maybe<Scalars['Int']['output']>;
@@ -669,7 +671,7 @@ export type Condition = {
   createdAt: Scalars['DateTimeISO']['output'];
   description: Scalars['String']['output'];
   displayOrder?: Maybe<Scalars['Int']['output']>;
-  endTime: Scalars['Int']['output'];
+  endTime: Scalars['UnixSeconds']['output'];
   /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket */
   estimatedPrice?: Maybe<Scalars['Float']['output']>;
   id: Scalars['String']['output'];
@@ -684,7 +686,7 @@ export type Condition = {
   /** Canonical resolver address for this condition (required) */
   resolver: Scalars['String']['output'];
   settled: Scalars['Boolean']['output'];
-  settledAt?: Maybe<Scalars['Int']['output']>;
+  settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   /** Image URL from Polymarket similar market */
   similarMarketImage?: Maybe<Scalars['String']['output']>;
@@ -778,9 +780,9 @@ export type ConditionFilters = {
   /** Restrict to these condition IDs (case-insensitive). */
   ids?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Restrict to conditions with `endTime <= this`. */
-  maxEndTime?: InputMaybe<Scalars['Int']['input']>;
+  maxEndTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
   /** Restrict to conditions with `endTime >= this`. */
-  minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  minEndTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
   /** Restrict to conditions resolved YES (true) or NO (false). Implies settled=true. */
   resolvedToYes?: InputMaybe<Scalars['Boolean']['input']>;
   /** Match the resolver address (case-insensitive). */
@@ -1772,7 +1774,7 @@ export type PickConfiguration = {
   claimedCounterpartyCollateral: Scalars['String']['output'];
   claimedPredictorCollateral: Scalars['String']['output'];
   counterpartyToken?: Maybe<Scalars['String']['output']>;
-  endsAt?: Maybe<Scalars['Int']['output']>;
+  endsAt?: Maybe<Scalars['UnixSeconds']['output']>;
   id: Scalars['String']['output'];
   isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
@@ -1780,7 +1782,7 @@ export type PickConfiguration = {
   predictionId?: Maybe<Scalars['String']['output']>;
   predictorToken?: Maybe<Scalars['String']['output']>;
   resolved: Scalars['Boolean']['output'];
-  resolvedAt?: Maybe<Scalars['Int']['output']>;
+  resolvedAt?: Maybe<Scalars['UnixSeconds']['output']>;
   result: SettlementResult;
   totalCounterpartyCollateral: Scalars['String']['output'];
   totalPredictorCollateral: Scalars['String']['output'];
@@ -1846,7 +1848,7 @@ export type Prediction = {
   __typename?: 'Prediction';
   chainId: Scalars['Int']['output'];
   collateralDeposited?: Maybe<Scalars['String']['output']>;
-  collateralDepositedAt?: Maybe<Scalars['Int']['output']>;
+  collateralDepositedAt?: Maybe<Scalars['UnixSeconds']['output']>;
   counterparty: Scalars['String']['output'];
   counterpartyClaimable?: Maybe<Scalars['String']['output']>;
   counterpartyCollateral: Scalars['String']['output'];
@@ -1866,7 +1868,7 @@ export type Prediction = {
   result: SettlementResult;
   settleTxHash?: Maybe<Scalars['String']['output']>;
   settled: Scalars['Boolean']['output'];
-  settledAt?: Maybe<Scalars['Int']['output']>;
+  settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
 };
 
 /** Time-bucketed prediction-count data point with outcome breakdown (legacy). */
@@ -1909,8 +1911,8 @@ export type ProtocolStat = {
   periodTradeCount: Scalars['Int']['output'];
   /** Cumulative-volume delta over the snapshot interval */
   periodVolume: Scalars['String']['output'];
-  /** Unix epoch timestamp (seconds) aligned to the snapshot interval boundary */
-  timestamp: Scalars['Int']['output'];
+  /** Snapshot boundary, aligned to the snapshot interval. */
+  timestamp: Scalars['UnixSeconds']['output'];
   /** Cumulative count of predictions and secondary trades/sales */
   totalTradeCount: Scalars['Int']['output'];
 };
@@ -2272,8 +2274,8 @@ export type QueryAttestationsArgs = {
 export type QueryAttestationsPageArgs = {
   attester?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
-  maxTime?: InputMaybe<Scalars['Int']['input']>;
-  minTime?: InputMaybe<Scalars['Int']['input']>;
+  maxTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  minTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
   orderBy?: InputMaybe<AttestationSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   recipient?: InputMaybe<Scalars['String']['input']>;
@@ -2434,8 +2436,8 @@ export type QueryPositionsArgs = {
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
-  endsAtMax?: InputMaybe<Scalars['Int']['input']>;
-  endsAtMin?: InputMaybe<Scalars['Int']['input']>;
+  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
   holder?: InputMaybe<Scalars['String']['input']>;
   holderWon?: InputMaybe<Scalars['Boolean']['input']>;
   orderBy?: InputMaybe<PositionSortField>;
@@ -2453,8 +2455,8 @@ export type QueryPositionsPageArgs = {
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
-  endsAtMax?: InputMaybe<Scalars['Int']['input']>;
-  endsAtMin?: InputMaybe<Scalars['Int']['input']>;
+  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
   holder?: InputMaybe<Scalars['String']['input']>;
   holderWon?: InputMaybe<Scalars['Boolean']['input']>;
   orderBy?: InputMaybe<PositionSortField>;
@@ -2635,8 +2637,8 @@ export type QuestionFilters = {
   maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   /** Restrict to conditions with similar-market volume `<= this`. */
   maxSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
-  /** Restrict to conditions with `endTime >= this` (epoch seconds). */
-  minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to conditions with `endTime >= this`. */
+  minEndTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
   /** Restrict to conditions with `estimatedPrice >= this`. */
   minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   /** Restrict to conditions with similar-market volume `>= this`. */
@@ -2697,7 +2699,7 @@ export type ReferralCode = {
   createdAt: Scalars['DateTimeISO']['output'];
   createdBy: Scalars['String']['output'];
   creatorType: Scalars['String']['output'];
-  expiresAt?: Maybe<Scalars['Int']['output']>;
+  expiresAt?: Maybe<Scalars['UnixSeconds']['output']>;
   id: Scalars['Int']['output'];
   isActive: Scalars['Boolean']['output'];
   maxClaims: Scalars['Int']['output'];
@@ -2882,7 +2884,7 @@ export type Trade = {
   buyer: Scalars['String']['output'];
   chainId: Scalars['Int']['output'];
   collateral: Scalars['String']['output'];
-  executedAt: Scalars['Int']['output'];
+  executedAt: Scalars['UnixSeconds']['output'];
   id: Scalars['Int']['output'];
   price: Scalars['String']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
@@ -3047,8 +3049,8 @@ export type VaultStat = {
   __typename?: 'VaultStat';
   /** Realized PnL delta over the snapshot interval */
   periodPnL: Scalars['String']['output'];
-  /** Unix epoch timestamp (seconds) aligned to the snapshot interval boundary */
-  timestamp: Scalars['Int']['output'];
+  /** Snapshot boundary, aligned to the snapshot interval. */
+  timestamp: Scalars['UnixSeconds']['output'];
   vaultAirdropGains: Scalars['String']['output'];
   vaultAvailableAssets: Scalars['String']['output'];
   vaultBalance: Scalars['String']['output'];

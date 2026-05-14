@@ -55,8 +55,8 @@ A single activity entry — either a prediction or a trade, sorted by timestamp
 type ActivityItem {
   prediction: Prediction
 
-  """Unix seconds timestamp for sorting"""
-  timestamp: Int!
+  """Unix seconds timestamp for sorting."""
+  timestamp: UnixSeconds!
   trade: ActivityTrade
   type: ActivityItemType!
 }
@@ -77,7 +77,7 @@ type ActivityTrade {
   buyer: String!
   chainId: Int!
   collateral: String!
-  executedAt: Int!
+  executedAt: UnixSeconds!
   id: Int!
   pickConfig: PickConfiguration
   price: String!
@@ -103,7 +103,7 @@ type Attestation {
   recipient: String!
   resolver: String
   schemaId: String!
-  time: Int!
+  time: UnixSeconds!
   transactionHash: String!
   uid: String!
 }
@@ -168,7 +168,7 @@ type AttestationScore {
   createdAt: DateTimeISO!
   errorSquared: Float
   id: Int!
-  madeAt: Int!
+  madeAt: UnixSeconds!
   marketAddress: String
   marketId: String
   outcome: Int
@@ -369,7 +369,7 @@ type Claim {
   marketAddress: String!
   positionToken: String!
   predictionId: String!
-  redeemedAt: Int!
+  redeemedAt: UnixSeconds!
   refCode: String
   tokensBurned: String!
   txHash: String!
@@ -379,7 +379,7 @@ type Claim {
 Record of a position close where both sides burn tokens and receive payouts
 """
 type Close {
-  burnedAt: Int!
+  burnedAt: UnixSeconds!
   chainId: Int!
   counterpartyHolder: String!
   counterpartyPayout: String!
@@ -421,7 +421,7 @@ type CollateralTransferType {
 type Condition {
   _count: ConditionCount
   assertionId: String
-  assertionTimestamp: Int
+  assertionTimestamp: UnixSeconds
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   category(where: CategoryWhereInput): Category
   categoryId: Int
@@ -431,7 +431,7 @@ type Condition {
   createdAt: DateTimeISO!
   description: String!
   displayOrder: Int
-  endTime: Int!
+  endTime: UnixSeconds!
 
   """YES probability from Polymarket (0.0–1.0), null for non-Polymarket"""
   estimatedPrice: Float
@@ -448,7 +448,7 @@ type Condition {
   """Canonical resolver address for this condition (required)"""
   resolver: String!
   settled: Boolean!
-  settledAt: Int
+  settledAt: UnixSeconds
   shortName: String
 
   """Image URL from Polymarket similar market"""
@@ -816,6 +816,11 @@ input DateTimeNullableFilter {
 Prisma.Decimal — round-tripped as a decimal string with arbitrary precision.
 """
 scalar Decimal
+
+"""
+Integer Unix timestamp in seconds (UTC). Wire format is Int; the scalar carries the unit/TZ contract in the type system rather than the field name.
+"""
+scalar UnixSeconds
 
 input DecimalFilter {
   equals: Decimal
@@ -1335,7 +1340,7 @@ type PickConfiguration {
   claimedCounterpartyCollateral: String!
   claimedPredictorCollateral: String!
   counterpartyToken: String
-  endsAt: Int
+  endsAt: UnixSeconds
   id: String!
   isLegacy: Boolean!
   marketAddress: String!
@@ -1343,7 +1348,7 @@ type PickConfiguration {
   predictionId: String
   predictorToken: String
   resolved: Boolean!
-  resolvedAt: Int
+  resolvedAt: UnixSeconds
   result: SettlementResult!
   totalCounterpartyCollateral: String!
   totalPredictorCollateral: String!
@@ -1518,10 +1523,10 @@ input ConditionFilters {
   categorySlugs: [String!]
 
   """Restrict to conditions with `endTime >= this`."""
-  minEndTime: Int
+  minEndTime: UnixSeconds
 
   """Restrict to conditions with `endTime <= this`."""
-  maxEndTime: Int
+  maxEndTime: UnixSeconds
 
   """Visibility filter. Defaults to `PUBLIC` when omitted."""
   visibility: ConditionVisibility
@@ -1616,7 +1621,7 @@ Escrow-based prediction record between a predictor and counterparty, with collat
 type Prediction {
   chainId: Int!
   collateralDeposited: String
-  collateralDepositedAt: Int
+  collateralDepositedAt: UnixSeconds
   counterparty: String!
   counterpartyClaimable: String
   counterpartyCollateral: String!
@@ -1636,7 +1641,7 @@ type Prediction {
   result: SettlementResult!
   settleTxHash: String
   settled: Boolean!
-  settledAt: Int
+  settledAt: UnixSeconds
 }
 
 """Field to sort predictions by"""
@@ -1765,10 +1770,8 @@ type TimeToResolutionBucket {
 
 """Protocol-wide stats snapshot — no vault scoping."""
 type ProtocolStat {
-  """
-  Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
-  """
-  timestamp: Int!
+  """Snapshot boundary, aligned to the snapshot interval."""
+  timestamp: UnixSeconds!
   cumulativeVolume: String!
 
   """Cumulative count of predictions and secondary trades/sales"""
@@ -1799,8 +1802,8 @@ the resolver to read from it — the wire shape is the destination, so
 clients are forward-compatible across that swap.
 """
 type AccountStat {
-  """Unix epoch timestamp (seconds) at the snapshot boundary"""
-  timestamp: Int!
+  """Snapshot boundary."""
+  timestamp: UnixSeconds!
 
   """Realized PnL delta over this bucket (wei, 18 dec)"""
   periodPnL: String!
@@ -1840,10 +1843,8 @@ type AccountStat {
 
 """Vault-specific stats snapshot for a single vault address."""
 type VaultStat {
-  """
-  Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
-  """
-  timestamp: Int!
+  """Snapshot boundary, aligned to the snapshot interval."""
+  timestamp: UnixSeconds!
   vaultBalance: String!
   vaultAvailableAssets: String!
   vaultDeployed: String!
@@ -1969,7 +1970,7 @@ type Query {
   """
   Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
   """
-  attestationsPage(attester: String, conditionId: String, maxTime: Int, minTime: Int, orderBy: AttestationSortField, orderDirection: SortOrder, recipient: String, schemaId: String, uid: String, take: Int! = 50, skip: Int! = 0): AttestationsPage!
+  attestationsPage(attester: String, conditionId: String, maxTime: UnixSeconds, minTime: UnixSeconds, orderBy: AttestationSortField, orderDirection: SortOrder, recipient: String, schemaId: String, uid: String, take: Int! = 50, skip: Int! = 0): AttestationsPage!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesPage` — purpose-built paginated wrapper with server-truth `hasMore`. Shares the same TtlCache as the deprecated path.")
 
   """Paginated category list, sorted alphabetically by name."""
@@ -2036,12 +2037,12 @@ type Query {
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.")
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: UnixSeconds, endsAtMin: UnixSeconds, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.")
 
   """
   Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
   """
-  positionsPage(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): PositionsPage!
+  positionsPage(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: UnixSeconds, endsAtMin: UnixSeconds, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): PositionsPage!
 
   """Look up a single prediction by its on-chain prediction ID"""
   prediction(id: String!): Prediction
@@ -2267,8 +2268,8 @@ input QuestionFilters {
   """
   tag: String
 
-  """Restrict to conditions with `endTime >= this` (epoch seconds)."""
-  minEndTime: Int
+  """Restrict to conditions with `endTime >= this`."""
+  minEndTime: UnixSeconds
 
   """Resolution-status filter; defaults to `all` when omitted."""
   resolutionStatus: ResolutionStatus
@@ -2312,7 +2313,7 @@ type ReferralCode {
   creatorType: String!
   maxClaims: Int!
   isActive: Boolean!
-  expiresAt: Int
+  expiresAt: UnixSeconds
 
   """Total number of users who have claimed this code, across all pages."""
   claimCount: Int!
@@ -2463,7 +2464,7 @@ type Trade {
   buyer: String!
   chainId: Int!
   collateral: String!
-  executedAt: Int!
+  executedAt: UnixSeconds!
   id: Int!
   price: String!
   refCode: String

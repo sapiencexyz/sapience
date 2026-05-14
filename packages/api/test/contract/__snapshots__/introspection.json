@@ -238,14 +238,14 @@
         "fields": [
           {
             "name": "timestamp",
-            "description": "Unix epoch timestamp (seconds) at the snapshot boundary",
+            "description": "Snapshot boundary.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
@@ -991,14 +991,14 @@
           },
           {
             "name": "timestamp",
-            "description": "Unix seconds timestamp for sorting",
+            "description": "Unix seconds timestamp for sorting.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
@@ -1209,7 +1209,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
@@ -1586,7 +1586,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
@@ -2112,7 +2112,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
@@ -4453,7 +4453,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
@@ -4524,7 +4524,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
@@ -5098,7 +5098,7 @@
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "isDeprecated": false,
@@ -5344,7 +5344,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
@@ -5626,7 +5626,7 @@
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "isDeprecated": false,
@@ -6037,7 +6037,7 @@
             "description": "Restrict to conditions with `endTime >= this`.",
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "defaultValue": null
@@ -6047,7 +6047,7 @@
             "description": "Restrict to conditions with `endTime <= this`.",
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "defaultValue": null
@@ -14494,7 +14494,7 @@
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "isDeprecated": false,
@@ -14618,7 +14618,7 @@
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "isDeprecated": false,
@@ -15140,7 +15140,7 @@
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "isDeprecated": false,
@@ -15436,7 +15436,7 @@
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "isDeprecated": false,
@@ -15654,14 +15654,14 @@
         "fields": [
           {
             "name": "timestamp",
-            "description": "Unix epoch timestamp (seconds) aligned to the snapshot interval boundary",
+            "description": "Snapshot boundary, aligned to the snapshot interval.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
@@ -16637,7 +16637,7 @@
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "Int",
+                  "name": "UnixSeconds",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -16647,7 +16647,7 @@
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "Int",
+                  "name": "UnixSeconds",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18123,7 +18123,7 @@
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "Int",
+                  "name": "UnixSeconds",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18133,7 +18133,7 @@
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "Int",
+                  "name": "UnixSeconds",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18306,7 +18306,7 @@
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "Int",
+                  "name": "UnixSeconds",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18316,7 +18316,7 @@
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "Int",
+                  "name": "UnixSeconds",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -19836,10 +19836,10 @@
           },
           {
             "name": "minEndTime",
-            "description": "Restrict to conditions with `endTime >= this` (epoch seconds).",
+            "description": "Restrict to conditions with `endTime >= this`.",
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "defaultValue": null
@@ -20165,7 +20165,7 @@
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "isDeprecated": false,
@@ -21477,7 +21477,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
@@ -21680,6 +21680,16 @@
             "ofType": null
           }
         ],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "SCALAR",
+        "name": "UnixSeconds",
+        "description": "Integer Unix timestamp in seconds (UTC). Wire format is Int; the scalar carries the unit/TZ contract in the type system rather than the field name.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },
@@ -22637,14 +22647,14 @@
         "fields": [
           {
             "name": "timestamp",
-            "description": "Unix epoch timestamp (seconds) aligned to the snapshot interval boundary",
+            "description": "Snapshot boundary, aligned to the snapshot interval.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "Int",
+                "name": "UnixSeconds",
                 "ofType": null
               }
             },
