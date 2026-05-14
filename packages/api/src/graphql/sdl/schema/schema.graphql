@@ -1571,11 +1571,33 @@ for client-facing access.
 input ConditionFilters {
   """Restrict to these condition IDs (case-insensitive)."""
   ids: [String!]
-  """Restrict to a single chain."""
+  """
+  Restrict to a single chain. When omitted and a `contractAddress*` filter is
+  present, defaults to the API's `DEFAULT_CHAIN_ID` so address lookups are not
+  silently cross-chain (contract addresses are not a global namespace).
+  """
   chainId: Int
-  """Match the resolver address (case-insensitive)."""
+  """
+  Match the on-chain contract address that owns the condition
+  (case-insensitive). Maps to the DB `resolver` column. Pair with `chainId`
+  for a fully-qualified `(chainId, address)` lookup; if omitted, `chainId`
+  defaults to `DEFAULT_CHAIN_ID`.
+  """
+  contractAddress: String
+  """
+  Match any of these on-chain contract addresses (case-insensitive). Same
+  semantics as `contractAddress` — see its docs for `chainId` defaulting.
+  """
+  contractAddressIn: [String!]
+  """
+  Match the resolver address (case-insensitive). Protocol-jargon alias of
+  `contractAddress`; new callers should prefer `contractAddress`.
+  """
   resolver: String
-  """Match any of these resolver addresses (case-insensitive)."""
+  """
+  Match any of these resolver addresses (case-insensitive). Protocol-jargon
+  alias of `contractAddressIn`; new callers should prefer `contractAddressIn`.
+  """
   resolverIn: [String!]
   """Free-text search across question, shortName, and description (case-insensitive)."""
   search: String
@@ -2781,8 +2803,23 @@ values combine with AND. Mirrors the inline-arg shape that the deprecated
 `questions(...)` resolver kept.
 """
 input QuestionFilters {
-  """Restrict to a single chain."""
+  """
+  Restrict to a single chain. When omitted and a `contractAddress*` filter is
+  present, defaults to the API's `DEFAULT_CHAIN_ID` so address lookups are not
+  silently cross-chain.
+  """
   chainId: Int
+  """
+  Match the on-chain contract address that owns the underlying condition
+  (case-insensitive). Maps to the DB `condition.resolver` column. Pair with
+  `chainId`; if omitted, `chainId` defaults to `DEFAULT_CHAIN_ID`.
+  """
+  contractAddress: String
+  """
+  Match any of these on-chain contract addresses (case-insensitive). Same
+  semantics as `contractAddress`.
+  """
+  contractAddressIn: [String!]
   """Free-text search across the group/condition's `name`, `question`, `shortName`, and `tags` (case-insensitive)."""
   search: String
   """Restrict to questions whose category slug is in this set."""

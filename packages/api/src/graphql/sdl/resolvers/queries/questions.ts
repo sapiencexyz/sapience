@@ -34,6 +34,8 @@
  *                         them to the QuestionReturn shape
  */
 
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+
 import type {
   QueryResolvers,
   QueryQuestionsArgs,
@@ -137,6 +139,18 @@ const fieldByResolvedVolumeKey: Record<VolumeKey, string> = {
   volumeFiltered7d: 'similarMarketVolumeFiltered7d',
 };
 
+/**
+ * Inputs accepted by `runQuestions`. Superset of the deprecated
+ * `questions(...)` resolver's `QueryQuestionsArgs` — the new
+ * contract-address filters live only on `QuestionFilters` (i.e. only
+ * reachable via `questionsPage`), so they're tacked on here instead of
+ * pollinating the deprecated bare-args shape.
+ */
+export type RunQuestionsInput = QueryQuestionsArgs & {
+  contractAddress?: string | null;
+  contractAddressIn?: string[] | null;
+};
+
 interface NormalizedArgs {
   take: number;
   skip: number;
@@ -144,6 +158,8 @@ interface NormalizedArgs {
   categorySlugs: string[] | null;
   tag: string | null;
   chainId: number | null | undefined;
+  contractAddress: string | null;
+  contractAddressIn: string[] | null;
   minEndTime: number | null | undefined;
   resolutionStatus: QueryQuestionsArgs['resolutionStatus'];
   minEstimatedPrice: number | null | undefined;
@@ -163,7 +179,7 @@ interface NormalizedArgs {
   requiresConditionJoin: boolean;
 }
 
-const normalizeArgs = (args: QueryQuestionsArgs): NormalizedArgs => {
+const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
   const sortField = args.sortField ?? 'endTime';
   const volumeKey: VolumeKey =
     (args.similarMarketVolumeWindow &&
@@ -171,8 +187,29 @@ const normalizeArgs = (args: QueryQuestionsArgs): NormalizedArgs => {
     'volume24h';
   const useWindowedSimilarMarketVolume = args.similarMarketVolumeWindow != null;
 
+  // Contract-address filter normalization. Lowercased once here so the SQL
+  // and Prisma `where` branches both compare against the canonical form the
+  // DB stores. When a caller filters by address without specifying a chain,
+  // default to `DEFAULT_CHAIN_ID` — addresses aren't a global namespace.
+  const contractAddress = args.contractAddress
+    ? args.contractAddress.toLowerCase()
+    : null;
+  const contractAddressIn =
+    args.contractAddressIn && args.contractAddressIn.length > 0
+      ? args.contractAddressIn.map((a) => a.toLowerCase())
+      : null;
+  const hasContractAddressFilter =
+    contractAddress != null || contractAddressIn != null;
+  const effectiveChainId =
+    args.chainId != null
+      ? args.chainId
+      : hasContractAddressFilter
+        ? DEFAULT_CHAIN_ID
+        : args.chainId;
+
   const hasConditionFilters =
-    args.chainId != null ||
+    effectiveChainId != null ||
+    hasContractAddressFilter ||
     (args.resolutionStatus != null && args.resolutionStatus !== 'all') ||
     args.minEstimatedPrice != null ||
     args.maxEstimatedPrice != null ||
@@ -186,7 +223,9 @@ const normalizeArgs = (args: QueryQuestionsArgs): NormalizedArgs => {
     search: args.search?.slice(0, 200) ?? null,
     categorySlugs: args.categorySlugs?.slice(0, 50) ?? null,
     tag: args.tag?.slice(0, 200) ?? null,
-    chainId: args.chainId,
+    chainId: effectiveChainId,
+    contractAddress,
+    contractAddressIn,
     minEndTime: args.minEndTime,
     resolutionStatus: args.resolutionStatus,
     minEstimatedPrice: args.minEstimatedPrice,
@@ -277,8 +316,25 @@ const buildConditionFilterFragments = (
       ? Prisma.sql`AND c."chainId" = ${n.chainId}`
       : Prisma.empty;
 
+  // Contract-address filter applied at the same condition-row level as
+  // `chainId` — both the group LEFT JOIN and the ungrouped-condition
+  // branch consume `conditionFilters`, so this scopes both. Without it
+  // the page would pick the right groups but `hydrateItems` would still
+  // need a matching Prisma `where` (kept in `buildConditionWhere` below)
+  // to avoid hydrating extra conditions.
+  const contractAddressFilter = (() => {
+    if (n.contractAddress != null) {
+      return Prisma.sql`AND c."resolver" = ${n.contractAddress}`;
+    }
+    if (n.contractAddressIn != null && n.contractAddressIn.length > 0) {
+      return Prisma.sql`AND c."resolver" = ANY(${n.contractAddressIn}::text[])`;
+    }
+    return Prisma.empty;
+  })();
+
   const conditionFilters = Prisma.sql`
     ${chainIdFilter}
+    ${contractAddressFilter}
     ${resolvedFilter}
     ${priceFilter}
     ${similarMarketVolumeFilter}
@@ -541,11 +597,23 @@ const buildConditionWhere = (n: NormalizedArgs): Prisma.ConditionWhereInput => {
     return { [field]: similarMarketVolumeRangeFilter };
   })();
 
+  // Mirror the SQL `contractAddressFilter` so the two-pass resolver
+  // hydrates only the conditions the UNION surfaced. Without this, the
+  // page picks the right groups but `hydrateItems` still pulls every
+  // sibling condition on the group.
+  const contractAddressPrismaFilter =
+    n.contractAddress != null
+      ? { resolver: n.contractAddress }
+      : n.contractAddressIn != null && n.contractAddressIn.length > 0
+        ? { resolver: { in: n.contractAddressIn } }
+        : {};
+
   return {
     public: true,
     ...(n.chainId !== null && n.chainId !== undefined
       ? { chainId: n.chainId }
       : {}),
+    ...contractAddressPrismaFilter,
     ...resolvedPrismaFilter,
     ...(n.minEndTime !== null && n.minEndTime !== undefined
       ? { endTime: { gte: n.minEndTime } }
@@ -639,7 +707,7 @@ const hydrateItems = async (
 };
 
 export const runQuestions = async (
-  args: QueryQuestionsArgs
+  args: RunQuestionsInput
 ): Promise<{ items: QuestionReturn[]; hasMore: boolean }> => {
   const n = normalizeArgs(args);
   const sortedItems = await fetchSortedItems(n);
@@ -661,6 +729,8 @@ export const questionsPage: NonNullable<
     sortField,
     sortDirection,
     chainId: filters?.chainId ?? null,
+    contractAddress: filters?.contractAddress ?? null,
+    contractAddressIn: filters?.contractAddressIn ?? null,
     search: filters?.search ?? null,
     categorySlugs: filters?.categorySlugs ?? null,
     tag: filters?.tag ?? null,

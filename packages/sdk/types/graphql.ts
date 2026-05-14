@@ -780,10 +780,26 @@ export type ConditionEngagement =
 export type ConditionFilters = {
   /** Restrict to conditions whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Restrict to a single chain. */
+  /**
+   * Restrict to a single chain. When omitted and a `contractAddress*` filter is
+   * present, defaults to the API's `DEFAULT_CHAIN_ID` so address lookups are not
+   * silently cross-chain (contract addresses are not a global namespace).
+   */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to a single condition group. */
   conditionGroupId?: InputMaybe<Scalars['Int']['input']>;
+  /**
+   * Match the on-chain contract address that owns the condition
+   * (case-insensitive). Maps to the DB `resolver` column. Pair with `chainId`
+   * for a fully-qualified `(chainId, address)` lookup; if omitted, `chainId`
+   * defaults to `DEFAULT_CHAIN_ID`.
+   */
+  contractAddress?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Match any of these on-chain contract addresses (case-insensitive). Same
+   * semantics as `contractAddress` — see its docs for `chainId` defaulting.
+   */
+  contractAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Engagement filter (used by cleanup workflows). See `ConditionEngagement`. */
   engagement?: InputMaybe<ConditionEngagement>;
   /** When true, only return conditions that have a non-empty `similarMarkets` array. */
@@ -796,9 +812,15 @@ export type ConditionFilters = {
   minEndTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
   /** Restrict to conditions resolved YES (true) or NO (false). Implies settled=true. */
   resolvedToYes?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Match the resolver address (case-insensitive). */
+  /**
+   * Match the resolver address (case-insensitive). Protocol-jargon alias of
+   * `contractAddress`; new callers should prefer `contractAddress`.
+   */
   resolver?: InputMaybe<Scalars['String']['input']>;
-  /** Match any of these resolver addresses (case-insensitive). */
+  /**
+   * Match any of these resolver addresses (case-insensitive). Protocol-jargon
+   * alias of `contractAddressIn`; new callers should prefer `contractAddressIn`.
+   */
   resolverIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Free-text search across question, shortName, and description (case-insensitive). */
   search?: InputMaybe<Scalars['String']['input']>;
@@ -2648,8 +2670,23 @@ export type Question = {
 export type QuestionFilters = {
   /** Restrict to questions whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Restrict to a single chain. */
+  /**
+   * Restrict to a single chain. When omitted and a `contractAddress*` filter is
+   * present, defaults to the API's `DEFAULT_CHAIN_ID` so address lookups are not
+   * silently cross-chain.
+   */
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  /**
+   * Match the on-chain contract address that owns the underlying condition
+   * (case-insensitive). Maps to the DB `condition.resolver` column. Pair with
+   * `chainId`; if omitted, `chainId` defaults to `DEFAULT_CHAIN_ID`.
+   */
+  contractAddress?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Match any of these on-chain contract addresses (case-insensitive). Same
+   * semantics as `contractAddress`.
+   */
+  contractAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Restrict to conditions with `estimatedPrice <= this`. */
   maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   /** Restrict to conditions with similar-market volume `<= this`. */

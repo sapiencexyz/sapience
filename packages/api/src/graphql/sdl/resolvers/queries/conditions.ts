@@ -16,6 +16,8 @@
  * this matches the deployed ConditionResolver behaviour.
  */
 
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+
 import type { Prisma } from '../../../../../generated/prisma';
 import type {
   QueryResolvers,
@@ -38,14 +40,34 @@ const buildConditionsWhereFromFilters = (
     const lowered = filters.ids.map((id) => id.toLowerCase());
     and.push({ id: { in: lowered } });
   }
-  if (filters.chainId != null) {
-    and.push({ chainId: { equals: filters.chainId } });
+
+  // Contract-address filters: `contractAddress` and `contractAddressIn` are
+  // the public-facing names; both map to the DB `resolver` column. The
+  // legacy `resolver` / `resolverIn` inputs are protocol-jargon aliases and
+  // are kept for back-compat. Contract addresses are not a global namespace,
+  // so when a caller filters by address without specifying a chain, we
+  // default to `DEFAULT_CHAIN_ID` to keep lookups single-chain.
+  const contractAddress = filters.contractAddress ?? filters.resolver ?? null;
+  const contractAddressIn =
+    filters.contractAddressIn ?? filters.resolverIn ?? null;
+  const hasContractAddressFilter =
+    contractAddress != null ||
+    (contractAddressIn != null && contractAddressIn.length > 0);
+
+  const effectiveChainId =
+    filters.chainId != null
+      ? filters.chainId
+      : hasContractAddressFilter
+        ? DEFAULT_CHAIN_ID
+        : null;
+  if (effectiveChainId != null) {
+    and.push({ chainId: { equals: effectiveChainId } });
   }
-  if (filters.resolver) {
-    and.push({ resolver: { equals: filters.resolver.toLowerCase() } });
+  if (contractAddress) {
+    and.push({ resolver: { equals: contractAddress.toLowerCase() } });
   }
-  if (filters.resolverIn && filters.resolverIn.length > 0) {
-    const lowered = filters.resolverIn.map((r) => r.toLowerCase());
+  if (contractAddressIn && contractAddressIn.length > 0) {
+    const lowered = contractAddressIn.map((r) => r.toLowerCase());
     and.push({ resolver: { in: lowered } });
   }
   if (filters.search?.trim()) {

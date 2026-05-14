@@ -130,3 +130,88 @@ describe('runQuestions — page envelope', () => {
     expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
   });
 });
+
+// The `$queryRaw` tag is invoked with a TemplateStringsArray plus nested
+// `Prisma.sql` fragments — interpolated scalars live in the
+// `.values` array of each fragment, not at the top level. A JSON dump of
+// the full call args is the most resilient way to assert that
+// contract-address normalization (lowercasing + chainId default) reached
+// the SQL boundary, since the tree structure is private to Prisma.
+const queryRawCallJson = (): string =>
+  JSON.stringify(mockPrisma.$queryRaw.mock.calls[0]);
+
+describe('runQuestions — contract-address filter', () => {
+  it('defaults chainId to DEFAULT_CHAIN_ID when contractAddress is set and chainId is omitted', async () => {
+    const { DEFAULT_CHAIN_ID } = await import('@sapience/sdk/constants');
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+    await runQuestions({
+      take: 10,
+      skip: 0,
+      contractAddress: '0xCAFE',
+    });
+    const sql = queryRawCallJson();
+    expect(sql).toContain(String(DEFAULT_CHAIN_ID));
+    expect(sql).toContain('0xcafe');
+  });
+
+  it('explicit chainId wins over the contract-address default', async () => {
+    const { DEFAULT_CHAIN_ID } = await import('@sapience/sdk/constants');
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+    await runQuestions({
+      take: 10,
+      skip: 0,
+      contractAddress: '0xCAFE',
+      chainId: 8453,
+    });
+    const sql = queryRawCallJson();
+    expect(sql).toContain('8453');
+    expect(sql).toContain('0xcafe');
+    // The default chain must NOT also be interpolated — otherwise both
+    // chainIds would AND together and the query would return nothing.
+    if (DEFAULT_CHAIN_ID !== 8453) {
+      expect(sql).not.toContain(String(DEFAULT_CHAIN_ID));
+    }
+  });
+
+  it('contractAddressIn lowercases entries and applies default chain', async () => {
+    const { DEFAULT_CHAIN_ID } = await import('@sapience/sdk/constants');
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+    await runQuestions({
+      take: 10,
+      skip: 0,
+      contractAddressIn: ['0xAAA', '0xBBB'],
+    });
+    const sql = queryRawCallJson();
+    expect(sql).toContain(String(DEFAULT_CHAIN_ID));
+    expect(sql).toContain('0xaaa');
+    expect(sql).toContain('0xbbb');
+  });
+
+  it('mirrors the contract-address filter into the hydrated-group conditions where clause', async () => {
+    // One group row so hydrate runs and conditionGroup.findMany is called.
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'group',
+        group_id: 1,
+        condition_id: null,
+        prediction_count: 0n,
+      },
+    ]);
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+    mockPrisma.condition.findMany.mockResolvedValue([]);
+    await runQuestions({
+      take: 10,
+      skip: 0,
+      contractAddress: '0xCAFE',
+    });
+    const include = mockPrisma.conditionGroup.findMany.mock.calls[0][0]
+      .include as {
+      condition: { where: { resolver?: unknown; chainId?: unknown } };
+    };
+    expect(include.condition.where.resolver).toBe('0xcafe');
+    // chainId default also bleeds through — same DEFAULT_CHAIN_ID
+    // semantics as the SQL fragment so the two-pass resolver agrees.
+    const { DEFAULT_CHAIN_ID } = await import('@sapience/sdk/constants');
+    expect(include.condition.where.chainId).toBe(DEFAULT_CHAIN_ID);
+  });
+});

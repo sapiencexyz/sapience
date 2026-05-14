@@ -130,6 +130,34 @@ describe('buildConditionsFilters', () => {
     });
   });
 
+  describe('contractAddress filter', () => {
+    test('forwards contractAddress as-is (case preserved here; server lowercases)', () => {
+      expect(
+        buildConditionsFilters(undefined, { contractAddress: '0xCAFE' })
+      ).toEqual({ contractAddress: '0xCAFE' });
+    });
+
+    test('forwards contractAddressIn array', () => {
+      expect(
+        buildConditionsFilters(undefined, {
+          contractAddressIn: ['0xAAA', '0xBBB'],
+        })
+      ).toEqual({ contractAddressIn: ['0xAAA', '0xBBB'] });
+    });
+
+    test('ignores empty contractAddressIn array', () => {
+      expect(
+        buildConditionsFilters(undefined, { contractAddressIn: [] })
+      ).toEqual({});
+    });
+
+    test('pairs with explicit chainId when supplied', () => {
+      expect(
+        buildConditionsFilters(8453, { contractAddress: '0xCAFE' })
+      ).toEqual({ chainId: 8453, contractAddress: '0xCAFE' });
+    });
+  });
+
   test('combines multiple filters as flat object', () => {
     const result = buildConditionsFilters(5064014, {
       visibility: 'public',

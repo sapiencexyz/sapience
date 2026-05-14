@@ -43,6 +43,14 @@ export interface ConditionFilters {
   publicOnly?: boolean;
   ungroupedOnly?: boolean;
   visibility?: 'all' | 'public' | 'private';
+  /**
+   * On-chain contract address (case-insensitive). When set without `chainId`,
+   * the API defaults the chain to its `DEFAULT_CHAIN_ID` — addresses are not
+   * a global namespace, so cross-chain lookups have to be opt-in.
+   */
+  contractAddress?: string;
+  /** Same as `contractAddress` but matches any address in the list. */
+  contractAddressIn?: string[];
 }
 
 export const GET_CONDITIONS = /* GraphQL */ `
@@ -129,6 +137,13 @@ export function buildConditionsFilters(
 
   if (filters?.ungroupedOnly) {
     out.ungroupedOnly = true;
+  }
+
+  if (filters?.contractAddress) {
+    out.contractAddress = filters.contractAddress;
+  }
+  if (filters?.contractAddressIn && filters.contractAddressIn.length > 0) {
+    out.contractAddressIn = filters.contractAddressIn;
   }
 
   return out;

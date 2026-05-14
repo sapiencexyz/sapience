@@ -87,6 +87,41 @@ describe('fetchQuestionsSorted', () => {
     expect(call[1].filters.resolutionStatus).toBe('unresolved');
   });
 
+  test('forwards contractAddress as-is (server lowercases)', async () => {
+    await fetchQuestionsSorted({
+      ...baseParams,
+      contractAddress: '0xCAFE',
+    });
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].filters.contractAddress).toBe('0xCAFE');
+    expect(call[1].filters.contractAddressIn).toBeNull();
+  });
+
+  test('forwards contractAddressIn array', async () => {
+    await fetchQuestionsSorted({
+      ...baseParams,
+      contractAddressIn: ['0xAAA', '0xBBB'],
+    });
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].filters.contractAddressIn).toEqual(['0xAAA', '0xBBB']);
+  });
+
+  test('normalizes empty contractAddressIn to null', async () => {
+    await fetchQuestionsSorted({
+      ...baseParams,
+      contractAddressIn: [],
+    });
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].filters.contractAddressIn).toBeNull();
+  });
+
+  test('normalizes missing contract-address fields to null', async () => {
+    await fetchQuestionsSorted(baseParams);
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].filters.contractAddress).toBeNull();
+    expect(call[1].filters.contractAddressIn).toBeNull();
+  });
+
   test('returns questions from response', async () => {
     const questions = [
       { questionType: 'condition', condition: { id: '1' }, group: null },

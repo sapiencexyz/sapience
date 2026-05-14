@@ -163,6 +163,70 @@ describe('conditionsPage — filter construction', () => {
     });
   });
 
+  it('contractAddress is lower-cased and mapped to the resolver column', async () => {
+    await callPage({
+      filters: { contractAddress: '0xCAFE' } as ConditionFilters,
+    });
+    expect(whereOf().AND).toContainEqual({
+      resolver: { equals: '0xcafe' },
+    });
+  });
+
+  it('contractAddressIn lower-cases each entry and maps to resolver in:[…]', async () => {
+    await callPage({
+      filters: { contractAddressIn: ['0xAAA', '0xBBB'] } as ConditionFilters,
+    });
+    expect(whereOf().AND).toContainEqual({
+      resolver: { in: ['0xaaa', '0xbbb'] },
+    });
+  });
+
+  it('contractAddress without chainId defaults chain to DEFAULT_CHAIN_ID', async () => {
+    const { DEFAULT_CHAIN_ID } = await import('@sapience/sdk/constants');
+    await callPage({
+      filters: { contractAddress: '0xcafe' } as ConditionFilters,
+    });
+    expect(whereOf().AND).toContainEqual({
+      chainId: { equals: DEFAULT_CHAIN_ID },
+    });
+  });
+
+  it('explicit chainId wins over the contractAddress default', async () => {
+    await callPage({
+      filters: {
+        contractAddress: '0xcafe',
+        chainId: 8453,
+      } as ConditionFilters,
+    });
+    const and = whereOf().AND as Record<string, unknown>[];
+    expect(and).toContainEqual({ chainId: { equals: 8453 } });
+    // Ensure no second chainId clause from the default sneaks in.
+    const chainIdClauses = and.filter((c) => 'chainId' in c);
+    expect(chainIdClauses).toHaveLength(1);
+  });
+
+  it('contractAddressIn without chainId also defaults chain to DEFAULT_CHAIN_ID', async () => {
+    const { DEFAULT_CHAIN_ID } = await import('@sapience/sdk/constants');
+    await callPage({
+      filters: {
+        contractAddressIn: ['0xAAA', '0xBBB'],
+      } as ConditionFilters,
+    });
+    const and = whereOf().AND as Record<string, unknown>[];
+    expect(and).toContainEqual({ chainId: { equals: DEFAULT_CHAIN_ID } });
+    expect(and).toContainEqual({ resolver: { in: ['0xaaa', '0xbbb'] } });
+  });
+
+  it('resolver alias still defaults chainId for back-compat', async () => {
+    const { DEFAULT_CHAIN_ID } = await import('@sapience/sdk/constants');
+    await callPage({
+      filters: { resolver: '0xCAFE' } as ConditionFilters,
+    });
+    expect(whereOf().AND).toContainEqual({
+      chainId: { equals: DEFAULT_CHAIN_ID },
+    });
+  });
+
   it('search builds a case-insensitive OR across question/shortName/description', async () => {
     await callPage({ filters: { search: '  hello  ' } as ConditionFilters });
     const search = (whereOf().AND as Record<string, unknown>[]).find(

@@ -153,6 +153,13 @@ export interface FetchQuestionsSortedParams {
   take: number;
   skip: number;
   chainId?: number;
+  /**
+   * On-chain contract address (case-insensitive). When set without `chainId`,
+   * the API defaults the chain to its `DEFAULT_CHAIN_ID`.
+   */
+  contractAddress?: string;
+  /** Same as `contractAddress` but matches any address in the list. */
+  contractAddressIn?: string[];
   sortField: SortField;
   sortDirection: SortDirection;
   search?: string;
@@ -180,6 +187,10 @@ export async function fetchQuestionsSorted(
     sortDirection: params.sortDirection,
     filters: {
       chainId: params.chainId ?? null,
+      contractAddress: params.contractAddress ?? null,
+      contractAddressIn: params.contractAddressIn?.length
+        ? params.contractAddressIn
+        : null,
       search: params.search?.trim() || null,
       categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
       minEndTime: params.minEndTime ?? null,
