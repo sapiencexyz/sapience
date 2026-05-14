@@ -14648,16 +14648,6 @@
             "kind": "OBJECT",
             "name": "AccountStatsLeaderboardPage",
             "ofType": null
-          },
-          {
-            "kind": "OBJECT",
-            "name": "ReferralCodesPage",
-            "ofType": null
-          },
-          {
-            "kind": "OBJECT",
-            "name": "ReferralCodeClaimantsPage",
-            "ofType": null
           }
         ]
       },
@@ -19800,61 +19790,6 @@
             "deprecationReason": null
           },
           {
-            "name": "referralCodesPage",
-            "description": "Public referral analytics. Referral codes are attribution hints, not\nauthorization credentials: using someone else's code credits that referrer's\nvolume/claims, but does not grant access to funds or admin capabilities.\n\nReturns paginated referral codes with claim count and aggregate trading volume /\nposition count baked in. Pass `id` to filter to a single code (e.g. for the\nanalytics dialog). Per-claimant breakdown is available via the nested\n`claimants` field.",
-            "args": [
-              {
-                "name": "id",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "100"
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              }
-            ],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "OBJECT",
-                "name": "ReferralCodesPage",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
             "name": "trade",
             "description": "Look up a single secondary market trade by its trade hash. Pass\n`tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing\ncallers keep working through one release.",
             "args": [
@@ -20238,7 +20173,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Unused; will be removed. No live consumers — account lookups go through `account(address:)` or `referralCodesPage`."
+            "deprecationReason": "Unused; will be removed. No live consumers — account lookups go through `account(address:)`."
           },
           {
             "name": "vaultStats",
@@ -20684,7 +20619,7 @@
       {
         "kind": "OBJECT",
         "name": "ReferralCode",
-        "description": "Public referral code metadata and analytics. This intentionally includes creator,\nclaim counts, aggregate volume/position stats, and claimant breakdowns.\n\nReferral codes are low-security attribution hints: using someone else's code only\ncredits that referrer; it does not grant access to funds or privileged actions.\n\n`codeHash` is intentionally omitted from GraphQL because public clients should\nnot need it, and referral-code identity in this API is the integer `id`.\nCredentialed create/update REST paths may still return hashes to the caller that\ncreated or administers the code.",
+        "description": "Public referral code metadata. Exposed via `User.referredByCode` /\n`Account.referredByCode` so clients can render an account's referrer.\n\nReferral codes are low-security attribution hints: using someone else's code\nonly credits that referrer; it does not grant access to funds or privileged\nactions. `codeHash` is intentionally omitted from GraphQL — public clients\nidentify codes by integer `id`. Aggregate analytics (claim count, volume,\nclaimants) live on the public REST endpoint `GET /referrals/codes`.",
         "fields": [
           {
             "name": "id",
@@ -20809,263 +20744,10 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
-          },
-          {
-            "name": "claimCount",
-            "description": "Total number of users who have claimed this code, across all pages.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalVolume",
-            "description": "Sum of trading volume across every claimant's positions (predictor +\ncounterparty sides), as a stringified bigint. Aggregated server-side.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalPositions",
-            "description": "Total position count across every claimant. A position with both predictor\nand counterparty in the claimant set is counted twice, matching the\nper-side semantics.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "claimants",
-            "description": "Paginated per-claimant breakdown with trading volume + position count.",
-            "args": [
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "100"
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              }
-            ],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "OBJECT",
-                "name": "ReferralCodeClaimantsPage",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
           }
         ],
         "inputFields": null,
         "interfaces": [],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "ReferralCodeClaimant",
-        "description": null,
-        "fields": [
-          {
-            "name": "id",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "address",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "claimedAt",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "DateTimeISO",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "tradingVolume",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "positionCount",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "ReferralCodeClaimantsPage",
-        "description": "Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore flag",
-        "fields": [
-          {
-            "name": "items",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "ReferralCodeClaimant",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalCount",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [
-          {
-            "kind": "INTERFACE",
-            "name": "Page",
-            "ofType": null
-          }
-        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -21188,75 +20870,6 @@
           }
         ],
         "interfaces": null,
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "ReferralCodesPage",
-        "description": "Paginated wrapper around ReferralCode rows with a server-truth hasMore flag",
-        "fields": [
-          {
-            "name": "items",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "ReferralCode",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalCount",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [
-          {
-            "kind": "INTERFACE",
-            "name": "Page",
-            "ofType": null
-          }
-        ],
         "enumValues": null,
         "possibleTypes": null
       },

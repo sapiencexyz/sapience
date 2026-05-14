@@ -2519,18 +2519,6 @@ type Query {
   questionsPage(filters: QuestionFilters, orderBy: QuestionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, sortDirection: SortOrder! = desc @deprecated(reason: "Use `orderDirection:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`)."), sortField: QuestionSortField @deprecated(reason: "Use `orderBy:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`).")): QuestionsPage!
 
   """
-  Public referral analytics. Referral codes are attribution hints, not
-  authorization credentials: using someone else's code credits that referrer's
-  volume/claims, but does not grant access to funds or admin capabilities.
-  
-  Returns paginated referral codes with claim count and aggregate trading volume /
-  position count baked in. Pass `id` to filter to a single code (e.g. for the
-  analytics dialog). Per-claimant breakdown is available via the nested
-  `claimants` field.
-  """
-  referralCodesPage(id: Int, take: Int! = 100, skip: Int! = 0): ReferralCodesPage!
-
-  """
   Look up a single secondary market trade by its trade hash. Pass
   `tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing
   callers keep working through one release.
@@ -2558,7 +2546,7 @@ type Query {
   """
   tradesPage(filters: TradeFilters, orderBy: TradeSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, address: String @deprecated(reason: "Use `filters: { address: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), buyer: String @deprecated(reason: "Use `filters: { buyer: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), seller: String @deprecated(reason: "Use `filters: { seller: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), token: String @deprecated(reason: "Use `filters: { token: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers.")): TradesPage!
   user(where: UserWhereUniqueInput!): User @deprecated(reason: "Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains.")
-  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. No live consumers — account lookups go through `account(address:)` or `referralCodesPage`.")
+  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. No live consumers — account lookups go through `account(address:)`.")
 
   """
   Vault-specific statistics time series for a single vault address — vault
@@ -2738,16 +2726,14 @@ input QuestionFilters {
 }
 
 """
-Public referral code metadata and analytics. This intentionally includes creator,
-claim counts, aggregate volume/position stats, and claimant breakdowns.
+Public referral code metadata. Exposed via `User.referredByCode` /
+`Account.referredByCode` so clients can render an account's referrer.
 
-Referral codes are low-security attribution hints: using someone else's code only
-credits that referrer; it does not grant access to funds or privileged actions.
-
-`codeHash` is intentionally omitted from GraphQL because public clients should
-not need it, and referral-code identity in this API is the integer `id`.
-Credentialed create/update REST paths may still return hashes to the caller that
-created or administers the code.
+Referral codes are low-security attribution hints: using someone else's code
+only credits that referrer; it does not grant access to funds or privileged
+actions. `codeHash` is intentionally omitted from GraphQL — public clients
+identify codes by integer `id`. Aggregate analytics (claim count, volume,
+claimants) live on the public REST endpoint `GET /referrals/codes`.
 """
 type ReferralCode {
   id: Int!
@@ -2758,51 +2744,6 @@ type ReferralCode {
   maxClaims: Int!
   isActive: Boolean!
   expiresAt: UnixSeconds
-
-  """Total number of users who have claimed this code, across all pages."""
-  claimCount: Int!
-
-  """
-  Sum of trading volume across every claimant's positions (predictor +
-  counterparty sides), as a stringified bigint. Aggregated server-side.
-  """
-  totalVolume: String!
-
-  """
-  Total position count across every claimant. A position with both predictor
-  and counterparty in the claimant set is counted twice, matching the
-  per-side semantics.
-  """
-  totalPositions: Int!
-
-  """Paginated per-claimant breakdown with trading volume + position count."""
-  claimants(take: Int! = 100, skip: Int! = 0): ReferralCodeClaimantsPage!
-}
-
-"""
-Paginated wrapper around ReferralCode rows with a server-truth hasMore flag
-"""
-type ReferralCodesPage implements Page {
-  items: [ReferralCode!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""
-Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore flag
-"""
-type ReferralCodeClaimantsPage implements Page {
-  items: [ReferralCodeClaimant!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-type ReferralCodeClaimant {
-  id: Int!
-  address: String!
-  claimedAt: DateTimeISO!
-  tradingVolume: String!
-  positionCount: Int!
 }
 
 input ReferralCodeNullableRelationFilter {
