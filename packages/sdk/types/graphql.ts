@@ -94,7 +94,7 @@ export type AccountStatsLeaderboardPage = Page & {
   __typename?: 'AccountStatsLeaderboardPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<AccountStatsLeaderboardEntry>;
-  /** Total addresses with activity in the window — populated unconditionally (cheap; derived from the in-memory merged-stats array). */
+  /** Eagerly populated: derived from the in-memory merged-stats array. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -142,7 +142,7 @@ export type AccuracyLeaderboardPage = Page & {
   __typename?: 'AccuracyLeaderboardPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<AccuracyLeaderboardEntry>;
-  /** Total forecasters on the leaderboard — populated unconditionally (cheap; derived from the in-memory leaderboard array). */
+  /** Eagerly populated: derived from the in-memory leaderboard array. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -186,7 +186,7 @@ export type ActivityItemsPage = Page & {
   __typename?: 'ActivityItemsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ActivityItem>;
-  /** Total activity rows matching the filters. May be null when the merged-feed count is not computed. */
+  /** May be null: the merged predictions/trades feed doesn't compute a unified count. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -413,7 +413,6 @@ export type AttestationsPage = Page & {
   __typename?: 'AttestationsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Attestation>;
-  /** Total Attestation rows matching the filters. Populated when available. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -454,7 +453,6 @@ export type CategoriesPage = Page & {
   __typename?: 'CategoriesPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Category>;
-  /** Total Category rows. Populated when available. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -623,7 +621,6 @@ export type CollateralTransfersPage = Page & {
   __typename?: 'CollateralTransfersPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<CollateralTransferType>;
-  /** Total CollateralTransfer rows matching the filters. Populated when available. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -952,7 +949,6 @@ export type ConditionGroupsPage = Page & {
   __typename?: 'ConditionGroupsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ConditionGroup>;
-  /** Total ConditionGroup rows matching the filters. Populated when available. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1159,7 +1155,6 @@ export type ConditionsPage = Page & {
   __typename?: 'ConditionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Condition>;
-  /** Total Condition rows matching the filters. Populated when available. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1706,13 +1701,24 @@ export type NullsOrder =
 
 /**
  * Shared shape for `*Page` paginated wrappers. Concrete types add their own
- * strongly-typed `items` field; `hasMore` and `totalCount` live here so a
- * generic `Page` helper can read them. Concrete `*Page` types document
- * whether `totalCount` is populated unconditionally (cheap, in-memory) or
- * lazily (only when the client selects the field).
+ * strongly-typed `items` field; `hasMore` and `totalCount` live here so generic
+ * clients can read them across page types.
  */
 export type Page = {
+  /** Server-truth signal that more rows exist beyond this page. Always populated. */
   hasMore: Scalars['Boolean']['output'];
+  /**
+   * Total rows matching the same filters as `items`.
+   *
+   * Lazy by default — the count query only fires when this field is selected
+   * in the operation, so paginated requests that don't need a total don't pay
+   * for one. Concrete `*Page` types call out the two exceptions to this:
+   *   - **Eagerly populated**: the count is cheap (e.g. derived from the same
+   *     in-memory array `items` was sliced from), so it's always set.
+   *   - **May be null**: the underlying query (unions, merged feeds) cannot
+   *     efficiently produce a stable total, so the field is null even when
+   *     the client selects it.
+   */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1754,7 +1760,6 @@ export type PickConfigurationsPage = Page & {
   __typename?: 'PickConfigurationsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<PickConfiguration>;
-  /** Total PickConfiguration rows matching the filters. Populated when available. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1794,20 +1799,14 @@ export type PositionSortField =
 
 /**
  * Paginated wrapper around Position rows with a server-truth hasMore flag.
- * `totalCount` is the count of underlying Position rows that match the filters
- * (not the count of rendered event-stream rows, which can be larger due to
- * per-sell synthetic expansion). Implements the shared `Page` interface so
- * generic clients can read `hasMore` / `totalCount` across page types.
+ * `totalCount` counts underlying Position rows matching the filters (not the
+ * rendered event-stream rows, which can be larger due to per-sell synthetic
+ * expansion).
  */
 export type PositionsPage = Page & {
   __typename?: 'PositionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Position>;
-  /**
-   * Total Position rows matching the filters. Computed lazily — the count
-   * query only fires when this field is selected in the operation, so
-   * pagination requests that don't need a total don't pay for one.
-   */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1866,10 +1865,6 @@ export type PredictionsPage = Page & {
   __typename?: 'PredictionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Prediction>;
-  /**
-   * Total Prediction rows matching the filters. Computed lazily — the
-   * count query only fires when this field is selected in the operation.
-   */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -2633,7 +2628,7 @@ export type QuestionsPage = Page & {
   __typename?: 'QuestionsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Question>;
-  /** Total Question rows matching the filters. May be null for complex unioned queries. */
+  /** May be null: the underlying union/aggregation can't produce a stable total cheaply. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -2708,7 +2703,6 @@ export type ReferralCodeClaimantsPage = Page & {
   __typename?: 'ReferralCodeClaimantsPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ReferralCodeClaimant>;
-  /** Total claimant rows for this code. Populated when available. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -2747,7 +2741,6 @@ export type ReferralCodesPage = Page & {
   __typename?: 'ReferralCodesPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<ReferralCode>;
-  /** Total ReferralCode rows. Populated when available. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -2861,7 +2854,6 @@ export type TradesPage = Page & {
   __typename?: 'TradesPage';
   hasMore: Scalars['Boolean']['output'];
   items: Array<Trade>;
-  /** Total Trade rows matching the filters. Populated when available. */
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 

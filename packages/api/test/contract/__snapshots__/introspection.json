@@ -494,7 +494,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total addresses with activity in the window — populated unconditionally (cheap; derived from the in-memory merged-stats array).",
+            "description": "Eagerly populated: derived from the in-memory merged-stats array.",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -760,7 +760,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total forecasters on the leaderboard — populated unconditionally (cheap; derived from the in-memory leaderboard array).",
+            "description": "Eagerly populated: derived from the in-memory leaderboard array.",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -967,7 +967,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total activity rows matching the filters. May be null when the merged-feed count is not computed.",
+            "description": "May be null: the merged predictions/trades feed doesn't compute a unified count.",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -2615,7 +2615,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total Attestation rows matching the filters. Populated when available.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -3402,7 +3402,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total Category rows. Populated when available.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -4783,7 +4783,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total CollateralTransfer rows matching the filters. Populated when available.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -6834,7 +6834,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total ConditionGroup rows matching the filters. Populated when available.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -8198,7 +8198,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total Condition rows matching the filters. Populated when available.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -14089,11 +14089,11 @@
       {
         "kind": "INTERFACE",
         "name": "Page",
-        "description": "Shared shape for `*Page` paginated wrappers. Concrete types add their own\nstrongly-typed `items` field; `hasMore` and `totalCount` live here so a\ngeneric `Page` helper can read them. Concrete `*Page` types document\nwhether `totalCount` is populated unconditionally (cheap, in-memory) or\nlazily (only when the client selects the field).",
+        "description": "Shared shape for `*Page` paginated wrappers. Concrete types add their own\nstrongly-typed `items` field; `hasMore` and `totalCount` live here so generic\nclients can read them across page types.",
         "fields": [
           {
             "name": "hasMore",
-            "description": null,
+            "description": "Server-truth signal that more rows exist beyond this page. Always populated.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -14109,7 +14109,7 @@
           },
           {
             "name": "totalCount",
-            "description": null,
+            "description": "Total rows matching the same filters as `items`.\n\nLazy by default — the count query only fires when this field is selected\nin the operation, so paginated requests that don't need a total don't pay\nfor one. Concrete `*Page` types call out the two exceptions to this:\n  - **Eagerly populated**: the count is cheap (e.g. derived from the same\n    in-memory array `items` was sliced from), so it's always set.\n  - **May be null**: the underlying query (unions, merged feeds) cannot\n    efficiently produce a stable total, so the field is null even when\n    the client selects it.",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -14606,7 +14606,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total PickConfiguration rows matching the filters. Populated when available.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -14916,7 +14916,7 @@
       {
         "kind": "OBJECT",
         "name": "PositionsPage",
-        "description": "Paginated wrapper around Position rows with a server-truth hasMore flag.\n`totalCount` is the count of underlying Position rows that match the filters\n(not the count of rendered event-stream rows, which can be larger due to\nper-sell synthetic expansion). Implements the shared `Page` interface so\ngeneric clients can read `hasMore` / `totalCount` across page types.",
+        "description": "Paginated wrapper around Position rows with a server-truth hasMore flag.\n`totalCount` counts underlying Position rows matching the filters (not the\nrendered event-stream rows, which can be larger due to per-sell synthetic\nexpansion).",
         "fields": [
           {
             "name": "items",
@@ -14960,7 +14960,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total Position rows matching the filters. Computed lazily — the count\nquery only fires when this field is selected in the operation, so\npagination requests that don't need a total don't pay for one.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -15506,7 +15506,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total Prediction rows matching the filters. Computed lazily — the\ncount query only fires when this field is selected in the operation.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -19874,7 +19874,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total Question rows matching the filters. May be null for complex unioned queries.",
+            "description": "May be null: the underlying union/aggregation can't produce a stable total cheaply.",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -20262,7 +20262,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total claimant rows for this code. Populated when available.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -20453,7 +20453,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total ReferralCode rows. Populated when available.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -21515,7 +21515,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Total Trade rows matching the filters. Populated when available.",
+            "description": null,
             "args": [],
             "type": {
               "kind": "SCALAR",

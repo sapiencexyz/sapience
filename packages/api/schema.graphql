@@ -845,9 +845,7 @@ type AccuracyLeaderboardPage implements Page {
   items: [AccuracyLeaderboardEntry!]!
   hasMore: Boolean!
 
-  """
-  Total forecasters on the leaderboard — populated unconditionally (cheap; derived from the in-memory leaderboard array).
-  """
+  """Eagerly populated: derived from the in-memory leaderboard array."""
   totalCount: Int
 }
 
@@ -1317,20 +1315,13 @@ type PickConfiguration {
 
 """
 Paginated wrapper around Position rows with a server-truth hasMore flag.
-`totalCount` is the count of underlying Position rows that match the filters
-(not the count of rendered event-stream rows, which can be larger due to
-per-sell synthetic expansion). Implements the shared `Page` interface so
-generic clients can read `hasMore` / `totalCount` across page types.
+`totalCount` counts underlying Position rows matching the filters (not the
+rendered event-stream rows, which can be larger due to per-sell synthetic
+expansion).
 """
 type PositionsPage implements Page {
   items: [Position!]!
   hasMore: Boolean!
-
-  """
-  Total Position rows matching the filters. Computed lazily — the count
-  query only fires when this field is selected in the operation, so
-  pagination requests that don't need a total don't pay for one.
-  """
   totalCount: Int
 }
 
@@ -1340,11 +1331,6 @@ Paginated wrapper around Prediction rows with a server-truth hasMore flag
 type PredictionsPage implements Page {
   items: [Prediction!]!
   hasMore: Boolean!
-
-  """
-  Total Prediction rows matching the filters. Computed lazily — the
-  count query only fires when this field is selected in the operation.
-  """
   totalCount: Int
 }
 
@@ -1354,10 +1340,6 @@ Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag
 type PickConfigurationsPage implements Page {
   items: [PickConfiguration!]!
   hasMore: Boolean!
-
-  """
-  Total PickConfiguration rows matching the filters. Populated when available.
-  """
   totalCount: Int
 }
 
@@ -1367,8 +1349,6 @@ Paginated wrapper around Condition rows with a server-truth hasMore flag
 type ConditionsPage implements Page {
   items: [Condition!]!
   hasMore: Boolean!
-
-  """Total Condition rows matching the filters. Populated when available."""
   totalCount: Int
 }
 
@@ -1378,10 +1358,6 @@ Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag
 type ConditionGroupsPage implements Page {
   items: [ConditionGroup!]!
   hasMore: Boolean!
-
-  """
-  Total ConditionGroup rows matching the filters. Populated when available.
-  """
   totalCount: Int
 }
 
@@ -1393,7 +1369,7 @@ type QuestionsPage implements Page {
   hasMore: Boolean!
 
   """
-  Total Question rows matching the filters. May be null for complex unioned queries.
+  May be null: the underlying union/aggregation can't produce a stable total cheaply.
   """
   totalCount: Int
 }
@@ -1402,8 +1378,6 @@ type QuestionsPage implements Page {
 type TradesPage implements Page {
   items: [Trade!]!
   hasMore: Boolean!
-
-  """Total Trade rows matching the filters. Populated when available."""
   totalCount: Int
 }
 
@@ -1415,7 +1389,7 @@ type ActivityItemsPage implements Page {
   hasMore: Boolean!
 
   """
-  Total activity rows matching the filters. May be null when the merged-feed count is not computed.
+  May be null: the merged predictions/trades feed doesn't compute a unified count.
   """
   totalCount: Int
 }
@@ -1426,10 +1400,6 @@ Paginated wrapper around CollateralTransferType rows with a server-truth hasMore
 type CollateralTransfersPage implements Page {
   items: [CollateralTransferType!]!
   hasMore: Boolean!
-
-  """
-  Total CollateralTransfer rows matching the filters. Populated when available.
-  """
   totalCount: Int
 }
 
@@ -1439,8 +1409,6 @@ Paginated wrapper around Attestation rows with a server-truth hasMore flag
 type AttestationsPage implements Page {
   items: [Attestation!]!
   hasMore: Boolean!
-
-  """Total Attestation rows matching the filters. Populated when available."""
   totalCount: Int
 }
 
@@ -1450,8 +1418,6 @@ Paginated wrapper around Category rows with a server-truth hasMore flag
 type CategoriesPage implements Page {
   items: [Category!]!
   hasMore: Boolean!
-
-  """Total Category rows. Populated when available."""
   totalCount: Int
 }
 
@@ -1678,13 +1644,27 @@ input AccountStatsFilters {
 
 """
 Shared shape for `*Page` paginated wrappers. Concrete types add their own
-strongly-typed `items` field; `hasMore` and `totalCount` live here so a
-generic `Page` helper can read them. Concrete `*Page` types document
-whether `totalCount` is populated unconditionally (cheap, in-memory) or
-lazily (only when the client selects the field).
+strongly-typed `items` field; `hasMore` and `totalCount` live here so generic
+clients can read them across page types.
 """
 interface Page {
+  """
+  Server-truth signal that more rows exist beyond this page. Always populated.
+  """
   hasMore: Boolean!
+
+  """
+  Total rows matching the same filters as `items`.
+  
+  Lazy by default — the count query only fires when this field is selected
+  in the operation, so paginated requests that don't need a total don't pay
+  for one. Concrete `*Page` types call out the two exceptions to this:
+    - **Eagerly populated**: the count is cheap (e.g. derived from the same
+      in-memory array `items` was sliced from), so it's always set.
+    - **May be null**: the underlying query (unions, merged feeds) cannot
+      efficiently produce a stable total, so the field is null even when
+      the client selects it.
+  """
   totalCount: Int
 }
 
@@ -1695,9 +1675,7 @@ type AccountStatsLeaderboardPage implements Page {
   items: [AccountStatsLeaderboardEntry!]!
   hasMore: Boolean!
 
-  """
-  Total addresses with activity in the window — populated unconditionally (cheap; derived from the in-memory merged-stats array).
-  """
+  """Eagerly populated: derived from the in-memory merged-stats array."""
   totalCount: Int
 }
 
@@ -2319,8 +2297,6 @@ Paginated wrapper around ReferralCode rows with a server-truth hasMore flag
 type ReferralCodesPage implements Page {
   items: [ReferralCode!]!
   hasMore: Boolean!
-
-  """Total ReferralCode rows. Populated when available."""
   totalCount: Int
 }
 
@@ -2330,8 +2306,6 @@ Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore f
 type ReferralCodeClaimantsPage implements Page {
   items: [ReferralCodeClaimant!]!
   hasMore: Boolean!
-
-  """Total claimant rows for this code. Populated when available."""
   totalCount: Int
 }
 
