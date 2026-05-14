@@ -43,6 +43,7 @@ import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 import { TtlCache } from '../../../../lib/ttlCache';
+import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { clampSkip, clampTake } from './pagination';
 
 type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
@@ -80,6 +81,7 @@ const mapPrediction = (
 export const predictionCount: NonNullable<
   QueryResolvers['predictionCount']
 > = async (_parent, { address, chainId }) => {
+  logDeprecatedHit('predictionCount');
   const addr = address.toLowerCase();
   const where: Prisma.PredictionWhereInput = {
     OR: [{ predictor: addr }, { counterparty: addr }],
@@ -91,6 +93,7 @@ export const predictionCount: NonNullable<
 export const positionCount: NonNullable<
   QueryResolvers['positionCount']
 > = async (_parent, { holder, settled, chainId }) => {
+  logDeprecatedHit('positionCount');
   // Mirror the visibility rule applied in `positions`: drop zero-balance
   // unresolved rows (off-platform transfers/burns) so the count matches the
   // set of underlying positions surfaced to clients.
@@ -254,6 +257,7 @@ export const pickConfigurationsPage: NonNullable<
 export const pickConfiguration: NonNullable<
   QueryResolvers['pickConfiguration']
 > = async (_parent, { id }, ctx) => {
+  logDeprecatedHit('pickConfiguration');
   const r = ctx?.loaders
     ? await ctx.loaders.pickConfigById.load(id)
     : await prisma.picks.findUnique({

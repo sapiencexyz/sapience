@@ -5,14 +5,16 @@
 
 import type { QueryResolvers } from '../../../__generated__/resolvers';
 import { Prisma } from '../../../../../../generated/prisma';
+import { logDeprecatedHit } from '../../../../../lib/deprecationTelemetry';
 import prisma from '../../../../../core/db';
 
 const asPrismaArgs = <T>(value: unknown): T => value as T;
 
 export const conditionGroups: NonNullable<
   QueryResolvers['conditionGroups']
-> = async (_parent, { where, orderBy, cursor, take, skip, distinct }) =>
-  prisma.conditionGroup.findMany({
+> = async (_parent, { where, orderBy, cursor, take, skip, distinct }) => {
+  logDeprecatedHit('conditionGroups');
+  return prisma.conditionGroup.findMany({
     where: asPrismaArgs<Prisma.ConditionGroupWhereInput | undefined>(
       where ?? undefined
     ),
@@ -28,3 +30,4 @@ export const conditionGroups: NonNullable<
       distinct ?? undefined
     ),
   });
+};

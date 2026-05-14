@@ -5,11 +5,13 @@
  */
 
 import type { QueryResolvers } from '../../../__generated__/resolvers';
+import { logDeprecatedHit } from '../../../../../lib/deprecationTelemetry';
 import { runAccountActivity } from '../activity';
 
 export const accountActivity: NonNullable<
   QueryResolvers['accountActivity']
 > = async (_parent, args) => {
+  logDeprecatedHit('accountActivity');
   const { items } = await runAccountActivity(args);
   return items;
 };

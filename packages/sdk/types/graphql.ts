@@ -1947,12 +1947,12 @@ export type Query = {
   categories: Array<Category>;
   /**
    * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
-   * @deprecated Field no longer supported
+   * @deprecated Unused; will be removed. No live consumers — claim records are reachable as a side-effect of position settlement.
    */
   claims: Array<Claim>;
   /**
    * Paginated list of position close (burn) records, filterable by address, pick config, and chain
-   * @deprecated Field no longer supported
+   * @deprecated Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement.
    */
   closes: Array<Close>;
   collateralBalance: CollateralBalanceType;
@@ -1962,7 +1962,7 @@ export type Query = {
   /** Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args. */
   collateralTransfersPage: CollateralTransfersPage;
   condition?: Maybe<Condition>;
-  /** @deprecated Field no longer supported */
+  /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape. */
   conditionGroup?: Maybe<ConditionGroup>;
   /** @deprecated Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal. */
   conditionGroups: Array<ConditionGroup>;
@@ -1978,7 +1978,7 @@ export type Query = {
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   /**
    * Look up a single pick configuration by ID
-   * @deprecated Field no longer supported
+   * @deprecated Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsPage` for list lookups.
    */
   pickConfiguration?: Maybe<PickConfiguration>;
   /**
@@ -2060,7 +2060,7 @@ export type Query = {
   trade?: Maybe<Trade>;
   /**
    * Count of secondary market trades matching the given filters
-   * @deprecated Field no longer supported
+   * @deprecated Use `tradesPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
    */
   tradeCount: Scalars['Int']['output'];
   /**
@@ -2071,7 +2071,7 @@ export type Query = {
   /** Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag. */
   tradesPage: TradesPage;
   user?: Maybe<User>;
-  /** @deprecated Field no longer supported */
+  /** @deprecated Unused; will be removed. No live consumers — user lookups go through `user(address:)` or `referralCodes`. */
   users: Array<User>;
   /**
    * Vault-specific statistics time series for a single vault address — vault

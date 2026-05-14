@@ -12,6 +12,7 @@
 
 import type { Prisma } from '../../../../../../generated/prisma';
 import type { QueryResolvers } from '../../../__generated__/resolvers';
+import { logDeprecatedHit } from '../../../../../lib/deprecationTelemetry';
 import prisma from '../../../../../core/db';
 
 type Where = Prisma.ConditionWhereInput;
@@ -47,6 +48,7 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
   _parent,
   { where, orderBy, cursor, take, skip, distinct }
 ) => {
+  logDeprecatedHit('conditions');
   const w = where as Where | null | undefined;
   const effectiveWhere: Where =
     hasIdFilter(w) || hasPublicFilter(w)

@@ -4,12 +4,14 @@
  */
 
 import type { QueryResolvers } from '../../../__generated__/resolvers';
+import { logDeprecatedHit } from '../../../../../lib/deprecationTelemetry';
 import { runQuestions } from '../questions';
 
 export const questions: NonNullable<QueryResolvers['questions']> = async (
   _parent,
   args
 ) => {
+  logDeprecatedHit('questions');
   const { items } = await runQuestions(args);
   return items;
 };

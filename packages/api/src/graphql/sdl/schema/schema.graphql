@@ -2086,7 +2086,10 @@ type Query {
     predictionId: String
     skip: Int! = 0
     take: Int! = 50
-  ): [Claim!]! @deprecated
+  ): [Claim!]!
+    @deprecated(
+      reason: "Unused; will be removed. No live consumers — claim records are reachable as a side-effect of position settlement."
+    )
 
   """
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
@@ -2097,7 +2100,10 @@ type Query {
     pickConfigId: String
     skip: Int! = 0
     take: Int! = 50
-  ): [Close!]! @deprecated
+  ): [Close!]!
+    @deprecated(
+      reason: "Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement."
+    )
   collateralBalance(
     address: String!
     atBlock: Int
@@ -2132,7 +2138,9 @@ type Query {
   ): CollateralTransfersPage!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
-    @deprecated
+    @deprecated(
+      reason: "Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape."
+    )
   conditionGroups(
     cursor: ConditionGroupWhereUniqueInput
     distinct: [ConditionGroupScalarFieldEnum!]
@@ -2177,7 +2185,10 @@ type Query {
   """
   Look up a single pick configuration by ID
   """
-  pickConfiguration(id: String!): PickConfiguration @deprecated
+  pickConfiguration(id: String!): PickConfiguration
+    @deprecated(
+      reason: "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsPage` for list lookups."
+    )
 
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
@@ -2416,7 +2427,9 @@ type Query {
   Count of secondary market trades matching the given filters
   """
   tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int!
-    @deprecated
+    @deprecated(
+      reason: "Use `tradesPage(...).totalCount` — same number, available alongside the page payload, no extra query needed."
+    )
 
   """
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
@@ -2454,7 +2467,10 @@ type Query {
     skip: Int
     take: Int
     where: UserWhereInput
-  ): [User!]! @deprecated
+  ): [User!]!
+    @deprecated(
+      reason: "Unused; will be removed. No live consumers — user lookups go through `user(address:)` or `referralCodes`."
+    )
 
   """
   Vault-specific statistics time series for a single vault address — vault
