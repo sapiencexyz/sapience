@@ -79,19 +79,74 @@ describe('conditionGroupsPage — pagination envelope', () => {
 });
 
 describe('conditionGroupsPage — filter mapping', () => {
-  it('omits AND when no filters are supplied (no Prisma narrowing)', async () => {
+  it('with no filters: drops empty groups by default (some-Conditions clause)', async () => {
     await callPage({ filters: null });
-    expect(whereOf()).toEqual({});
+    expect(whereOf()).toEqual({ AND: [{ condition: { some: {} } }] });
   });
 
-  it('translates filters.ids → AND[{ id: { in } }]', async () => {
+  it('translates filters.ids → AND[{ id: { in } }] + default non-empty', async () => {
     await callPage({ filters: { ids: [1, 2, 3] } });
-    expect(whereOf()).toEqual({ AND: [{ id: { in: [1, 2, 3] } }] });
+    expect(whereOf()).toEqual({
+      AND: [{ id: { in: [1, 2, 3] } }, { condition: { some: {} } }],
+    });
   });
 
-  it('treats empty ids array as no-filter (no AND clause)', async () => {
+  it('treats empty ids array as no-id-filter (only the default some-Conditions clause)', async () => {
     await callPage({ filters: { ids: [] } });
+    expect(whereOf()).toEqual({ AND: [{ condition: { some: {} } }] });
+  });
+
+  it('search → name contains, case-insensitive', async () => {
+    await callPage({ filters: { search: ' Election ' } });
+    expect(whereOf()).toEqual({
+      AND: [
+        { name: { contains: 'Election', mode: 'insensitive' } },
+        { condition: { some: {} } },
+      ],
+    });
+  });
+
+  it('categorySlugs → category.is.slug.in', async () => {
+    await callPage({ filters: { categorySlugs: ['crypto', 'politics'] } });
+    expect(whereOf()).toEqual({
+      AND: [
+        { category: { is: { slug: { in: ['crypto', 'politics'] } } } },
+        { condition: { some: {} } },
+      ],
+    });
+  });
+
+  it('chainId pushes down to conditions.some.chainId (replaces the default empty some-clause)', async () => {
+    await callPage({ filters: { chainId: 42161 } });
+    expect(whereOf()).toEqual({
+      AND: [{ condition: { some: { chainId: 42161 } } }],
+    });
+  });
+
+  it('publicOnly pushes down to conditions.some.public=true', async () => {
+    await callPage({ filters: { publicOnly: true } });
+    expect(whereOf()).toEqual({
+      AND: [{ condition: { some: { public: true } } }],
+    });
+  });
+
+  it('chainId + publicOnly combine into a single some-clause (same Condition row must satisfy both)', async () => {
+    await callPage({ filters: { chainId: 42161, publicOnly: true } });
+    expect(whereOf()).toEqual({
+      AND: [{ condition: { some: { chainId: 42161, public: true } } }],
+    });
+  });
+
+  it('includeEmpty=true drops the default non-empty clause entirely', async () => {
+    await callPage({ filters: { includeEmpty: true } });
     expect(whereOf()).toEqual({});
+  });
+
+  it('includeEmpty=true with chainId still pushes chainId into a some-clause', async () => {
+    await callPage({ filters: { includeEmpty: true, chainId: 1 } });
+    expect(whereOf()).toEqual({
+      AND: [{ condition: { some: { chainId: 1 } } }],
+    });
   });
 });
 

@@ -802,8 +802,30 @@ export type ConditionGroupCountConditionArgs = {
  * values combine with AND.
  */
 export type ConditionGroupFilters = {
+  /** Restrict to groups whose category slug is in this set. */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  /**
+   * Restrict to groups that have at least one Condition on this chain.
+   * Implemented as a `conditions: { some: { chainId: $chainId } }` filter, so
+   * groups whose conditions live on other chains drop out of the page.
+   */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to these condition group IDs. */
   ids?: InputMaybe<Array<Scalars['Int']['input']>>;
+  /**
+   * When false (default), groups with no Conditions are filtered out — this
+   * matches what every UI consumer wants. When true, empty groups are
+   * included (admin-style use cases only).
+   */
+  includeEmpty?: InputMaybe<Scalars['Boolean']['input']>;
+  /**
+   * When true, restrict to groups that have at least one *public* Condition.
+   * Defaults to false — matches the deprecated bare-array surface, which had
+   * no visibility filter on the group itself.
+   */
+  publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Free-text search across the group's `name` (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type ConditionGroupListRelationFilter = {

@@ -229,6 +229,18 @@ You can fragment on `Page` to read `hasMore` / `totalCount` generically (useful 
 
 ---
 
+### Filter-arg convention
+
+The `*Page` queries take filter args in one of two shapes:
+
+- **Flat top-level args** — for surfaces whose filter primitives are
+  semantically distinct query knobs (e.g. `predictionsPage(address:, chainId:, conditionId:, settled:, …)`). Most pages use this.
+- **`filters: <X>Filters`** — for surfaces with an open-ended typed filter struct that's expected to evolve (e.g. `conditionsPage(filters: ConditionFilters, …)`, `conditionGroupsPage(filters: ConditionGroupFilters, …)`, `accountStatsLeaderboardPage(filters: AccountStatsFilters, …)`). The wrapper lets us add filter fields without churning the resolver signature.
+
+Don't mix the two on a single query. When in doubt, prefer the flat form for ≤3 filter scalars; introduce a `<X>Filters` input when the filter surface is likely to grow past that.
+
+---
+
 ### Behavior change: `skip` cap
 
 `positionsPage(skip: $skip)` now applies a server-side ceiling of `skip ≤ 10_000`. Values above the cap are silently truncated to 10_000.

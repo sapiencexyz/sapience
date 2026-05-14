@@ -1560,6 +1560,35 @@ values combine with AND.
 input ConditionGroupFilters {
   """Restrict to these condition group IDs."""
   ids: [Int!]
+
+  """
+  Free-text search across the group's `name` (case-insensitive).
+  """
+  search: String
+
+  """Restrict to groups whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """
+  Restrict to groups that have at least one Condition on this chain.
+  Implemented as a `conditions: { some: { chainId: $chainId } }` filter, so
+  groups whose conditions live on other chains drop out of the page.
+  """
+  chainId: Int
+
+  """
+  When true, restrict to groups that have at least one *public* Condition.
+  Defaults to false — matches the deprecated bare-array surface, which had
+  no visibility filter on the group itself.
+  """
+  publicOnly: Boolean
+
+  """
+  When false (default), groups with no Conditions are filtered out — this
+  matches what every UI consumer wants. When true, empty groups are
+  included (admin-style use cases only).
+  """
+  includeEmpty: Boolean
 }
 
 """
