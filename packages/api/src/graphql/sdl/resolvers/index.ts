@@ -23,6 +23,7 @@ import { scalarResolvers } from './scalars';
 import { Attestation } from './Attestation';
 import { AttestationScore } from './AttestationScore';
 import { AttestationsPage } from './AttestationsPage';
+import { CategoriesPage } from './CategoriesPage';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
@@ -71,6 +72,7 @@ import {
   attestations,
   attestationsPage,
   categories,
+  categoriesPage,
   condition,
   user,
   users,
@@ -168,6 +170,7 @@ export const resolvers: Resolvers = {
     attestations,
     attestationsPage,
     categories,
+    categoriesPage,
     condition,
     conditionGroup,
     conditionGroups,
@@ -179,6 +182,7 @@ export const resolvers: Resolvers = {
   Attestation,
   AttestationScore,
   AttestationsPage,
+  CategoriesPage,
   Category,
   CollateralTransfersPage,
   Condition,

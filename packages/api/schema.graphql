@@ -1434,6 +1434,17 @@ type AttestationsPage implements Page {
   totalCount: Int
 }
 
+"""
+Paginated wrapper around Category rows with a server-truth hasMore flag
+"""
+type CategoriesPage implements Page {
+  items: [Category!]!
+  hasMore: Boolean!
+
+  """Total Category rows. Populated when available."""
+  totalCount: Int
+}
+
 """Sort fields for the `attestationsPage` query"""
 enum AttestationSortField {
   TIME
@@ -1908,7 +1919,10 @@ type Query {
   Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
   """
   attestationsPage(attester: String, conditionId: String, maxTime: Int, minTime: Int, orderBy: AttestationSortField, orderDirection: SortOrder, recipient: String, schemaId: String, uid: String, take: Int! = 50, skip: Int! = 0): AttestationsPage!
-  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
+  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesPage` — purpose-built paginated wrapper with server-truth `hasMore`. Shares the same TtlCache as the deprecated path.")
+
+  """Paginated category list, sorted alphabetically by name."""
+  categoriesPage(take: Int! = 100, skip: Int! = 0): CategoriesPage!
 
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain

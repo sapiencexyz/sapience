@@ -440,6 +440,15 @@ export type BoolNullableFilter = {
   not?: InputMaybe<NestedBoolNullableFilter>;
 };
 
+/** Paginated wrapper around Category rows with a server-truth hasMore flag */
+export type CategoriesPage = Page & {
+  __typename?: 'CategoriesPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Category>;
+  /** Total Category rows. Populated when available. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
 export type Category = {
   __typename?: 'Category';
   _count?: Maybe<CategoryCount>;
@@ -1944,7 +1953,10 @@ export type Query = {
   attestations: Array<Attestation>;
   /** Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order. */
   attestationsPage: AttestationsPage;
+  /** @deprecated Use `categoriesPage` — purpose-built paginated wrapper with server-truth `hasMore`. Shares the same TtlCache as the deprecated path. */
   categories: Array<Category>;
+  /** Paginated category list, sorted alphabetically by name. */
+  categoriesPage: CategoriesPage;
   /**
    * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
    * @deprecated Unused; will be removed. No live consumers — claim records are reachable as a side-effect of position settlement.
@@ -2209,6 +2221,12 @@ export type QueryCategoriesArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<CategoryWhereInput>;
+};
+
+
+export type QueryCategoriesPageArgs = {
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 

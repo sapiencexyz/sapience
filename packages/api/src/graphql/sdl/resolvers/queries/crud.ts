@@ -17,6 +17,7 @@
 import type {
   QueryResolvers,
   QueryAttestationsPageArgs,
+  QueryCategoriesPageArgs,
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
@@ -124,6 +125,35 @@ export const user: NonNullable<QueryResolvers['user']> = async (
   prisma.user.findUnique({
     where: asPrismaArgs<Prisma.UserWhereUniqueInput>(where),
   });
+
+export const categoriesPage: NonNullable<
+  QueryResolvers['categoriesPage']
+> = async (_parent, { take, skip }: QueryCategoriesPageArgs) => {
+  const cappedTake = clampTake(take, { defaultTake: 100, maxTake: 500 });
+  const skipVal = clampSkip(skip);
+  const isFullPage = skipVal === 0 && cappedTake >= 100;
+
+  if (isFullPage) {
+    const cached = categoriesCache.get(CATEGORIES_CACHE_KEY);
+    if (cached) {
+      return {
+        items: cached.slice(0, cappedTake),
+        hasMore: cached.length > cappedTake,
+      };
+    }
+  }
+
+  const rawRows = await prisma.category.findMany({
+    orderBy: { name: 'asc' },
+    take: cappedTake + 1,
+    skip: skipVal,
+  });
+  const hasMore = rawRows.length > cappedTake;
+  const items = rawRows.slice(0, cappedTake);
+
+  if (isFullPage && !hasMore) categoriesCache.set(CATEGORIES_CACHE_KEY, items);
+  return { items, hasMore };
+};
 
 export type AttestationsPageEnvelope = {
   items: Awaited<ReturnType<typeof prisma.attestation.findMany>>;
