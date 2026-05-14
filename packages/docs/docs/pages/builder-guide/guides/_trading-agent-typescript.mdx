@@ -78,27 +78,28 @@ const account = privateKeyToAccount(process.env.PRIVATE_KEY as Hex);
 async function fetchCondition() {
   const nowSec = Math.floor(Date.now() / 1000);
   const query = gql`
-    query Conditions($chainId: Int, $nowSec: Int) {
-      conditions(
-        where: {
-          chainId: { equals: $chainId }
-          public: { equals: true }
-          endTime: { gt: $nowSec }
-        }
-        orderBy: { endTime: asc }
+    query Conditions($chainId: Int!, $nowSec: Int!) {
+      conditionsPage(
+        filters: { chainId: $chainId, visibility: PUBLIC, minEndTime: $nowSec }
+        orderBy: endTime
+        orderDirection: asc
         take: 1
       ) {
-        id
-        question
-        shortName
+        items {
+          id
+          question
+          shortName
+        }
       }
     }
   `;
-  const { conditions } = await graphqlRequest<{ conditions: any[] }>(query, {
+  const { conditionsPage } = await graphqlRequest<{
+    conditionsPage: { items: any[] };
+  }>(query, {
     chainId: CHAIN_ID_ETHEREAL,
     nowSec,
   });
-  return conditions[0];
+  return conditionsPage.items[0];
 }
 
 // 2. Generate forecast using LLM
