@@ -63,7 +63,7 @@ export default function ForecastPageClient({
 
   const question = attestation.condition?.question ?? 'Question not available';
   const attester = attestation.attester;
-  const createdAt = new Date(attestation.time * 1000);
+  const createdAt = new Date(attestation.attestedAt * 1000);
   const comment = attestation.comment?.trim() || null;
 
   // Prediction percentage

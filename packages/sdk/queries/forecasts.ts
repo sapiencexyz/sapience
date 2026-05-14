@@ -8,7 +8,7 @@ interface RawAttestation {
   id: string;
   uid: string;
   attester: string;
-  time: number;
+  attestedAt: number;
   prediction: string;
   comment: string;
   conditionId?: string;
@@ -46,7 +46,7 @@ export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
       schemaId: $schemaId
       attester: $attester
       conditionId: $conditionId
-      orderBy: TIME
+      orderBy: ATTESTED_AT
       orderDirection: desc
       take: $take
     ) {
@@ -54,7 +54,7 @@ export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
         id
         uid
         attester
-        time
+        attestedAt
         prediction
         comment
         conditionId
@@ -86,7 +86,7 @@ export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
       schemaId: $schemaId
       attester: $attester
       conditionId: $conditionId
-      orderBy: TIME
+      orderBy: ATTESTED_AT
       orderDirection: desc
       take: $take
       skip: $skip
@@ -95,7 +95,7 @@ export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
         id
         uid
         attester
-        time
+        attestedAt
         prediction
         comment
         conditionId
@@ -109,7 +109,7 @@ export const formatAttestationData = (
   attestation: RawAttestation
 ): FormattedAttestation => {
   const formattedTime = new Date(
-    Number(attestation.time) * 1000
+    Number(attestation.attestedAt) * 1000
   ).toLocaleString();
 
   return {
@@ -122,7 +122,7 @@ export const formatAttestationData = (
     )}...${attestation.attester.slice(-4)}`,
     value: attestation.prediction,
     time: formattedTime,
-    rawTime: attestation.time,
+    rawTime: attestation.attestedAt,
     comment: attestation.comment,
     conditionId: attestation.conditionId,
   };
@@ -218,7 +218,7 @@ const USER_FORECASTS_QUERY = /* GraphQL */ `
         id
         uid
         attester
-        time
+        attestedAt
         prediction
         comment
         conditionId
@@ -228,7 +228,8 @@ const USER_FORECASTS_QUERY = /* GraphQL */ `
 `;
 
 const USER_FORECAST_ORDER_BY_GQL: Record<string, string> = {
-  time: 'TIME',
+  time: 'ATTESTED_AT',
+  attestedAt: 'ATTESTED_AT',
   createdAt: 'CREATED_AT',
 };
 
@@ -257,10 +258,10 @@ export async function fetchUserForecasts(params: {
     conditionId: conditionId ?? null,
     take,
     skip,
-    // Fall back to TIME if the caller passes an unmapped field — the old
-    // resolver accepted arbitrary Prisma fields, but `attestationsPage`
-    // only exposes TIME and CREATED_AT today.
-    orderBy: USER_FORECAST_ORDER_BY_GQL[orderBy] ?? 'TIME',
+    // Fall back to ATTESTED_AT if the caller passes an unmapped field —
+    // the old resolver accepted arbitrary Prisma fields, but
+    // `attestationsPage` only exposes ATTESTED_AT and CREATED_AT today.
+    orderBy: USER_FORECAST_ORDER_BY_GQL[orderBy] ?? 'ATTESTED_AT',
     orderDirection,
   };
   const data = await graphqlRequest<{

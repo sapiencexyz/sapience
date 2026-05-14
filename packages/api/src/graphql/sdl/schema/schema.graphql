@@ -113,7 +113,18 @@ type Attestation {
   recipient: String!
   resolver: String
   schemaId: String!
+
+  """
+  When the attestation was made on-chain. Replaces the legacy `time`
+  field — same value, the new name follows the `*At` event-timestamp
+  convention used elsewhere in the schema.
+  """
+  attestedAt: UnixSeconds!
+
   time: UnixSeconds!
+    @deprecated(
+      reason: "Use `attestedAt` — same value, name follows the `*At` event-timestamp convention."
+    )
   transactionHash: String!
   uid: String!
 }
@@ -1521,7 +1532,7 @@ type CategoriesPage implements Page {
 
 """Sort fields for the `attestationsPage` query"""
 enum AttestationSortField {
-  TIME
+  ATTESTED_AT
   CREATED_AT
 }
 

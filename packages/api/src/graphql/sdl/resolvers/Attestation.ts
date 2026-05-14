@@ -16,12 +16,15 @@ import { loadRelation } from './relationHelpers';
 
 type PrismaAttestation = {
   id: number;
+  time: number;
   conditionId?: string | null;
   condition?: unknown;
   [k: string]: unknown;
 };
 
 export const Attestation: AttestationResolvers = {
+  attestedAt: (parent) => (parent as PrismaAttestation).time,
+
   condition: async (parent, args, ctx) => {
     const p = parent as PrismaAttestation;
     if (p.condition !== undefined) return p.condition as never;

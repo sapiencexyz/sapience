@@ -1578,8 +1578,8 @@
             "deprecationReason": null
           },
           {
-            "name": "time",
-            "description": null,
+            "name": "attestedAt",
+            "description": "When the attestation was made on-chain. Replaces the legacy `time`\nfield — same value, the new name follows the `*At` event-timestamp\nconvention used elsewhere in the schema.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -1592,6 +1592,22 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "time",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "UnixSeconds",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `attestedAt` — same value, name follows the `*At` event-timestamp convention."
           },
           {
             "name": "transactionHash",
@@ -2673,7 +2689,7 @@
         "interfaces": null,
         "enumValues": [
           {
-            "name": "TIME",
+            "name": "ATTESTED_AT",
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null

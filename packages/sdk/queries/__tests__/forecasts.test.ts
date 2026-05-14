@@ -25,7 +25,7 @@ describe('formatAttestationData', () => {
     id: '42',
     uid: '0xabc123',
     attester: '0x1234567890abcdef1234567890abcdef12345678',
-    time: 1700000000,
+    attestedAt: 1700000000,
     prediction: '75',
     comment: 'I think yes',
     conditionId: 'cond-1',
@@ -223,7 +223,7 @@ describe('fetchUserForecasts', () => {
             id: '1',
             uid: '0xabc',
             attester: '0x1234567890abcdef1234567890abcdef12345678',
-            time: 1700000000,
+            attestedAt: 1700000000,
             prediction: '80',
             comment: 'test',
           },
@@ -255,7 +255,7 @@ describe('fetchUserForecasts', () => {
     });
 
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].orderBy).toBe('TIME');
+    expect(call[1].orderBy).toBe('ATTESTED_AT');
     expect(call[1].orderDirection).toBe('asc');
     expect(call[1].take).toBe(10);
     expect(call[1].skip).toBe(5);

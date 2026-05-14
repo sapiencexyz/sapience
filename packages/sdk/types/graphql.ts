@@ -248,6 +248,12 @@ export type ActivityTrade = {
 export type Attestation = {
   __typename?: 'Attestation';
   attestation_score?: Maybe<AttestationScore>;
+  /**
+   * When the attestation was made on-chain. Replaces the legacy `time`
+   * field — same value, the new name follows the `*At` event-timestamp
+   * convention used elsewhere in the schema.
+   */
+  attestedAt: Scalars['UnixSeconds']['output'];
   attester: Scalars['String']['output'];
   blockNumber: Scalars['Int']['output'];
   comment?: Maybe<Scalars['String']['output']>;
@@ -261,6 +267,7 @@ export type Attestation = {
   recipient: Scalars['String']['output'];
   resolver?: Maybe<Scalars['String']['output']>;
   schemaId: Scalars['String']['output'];
+  /** @deprecated Use `attestedAt` — same value, name follows the `*At` event-timestamp convention. */
   time: Scalars['UnixSeconds']['output'];
   transactionHash: Scalars['String']['output'];
   uid: Scalars['String']['output'];
@@ -396,8 +403,8 @@ export type AttestationScoreWhereInput = {
 
 /** Sort fields for the `attestationsPage` query */
 export type AttestationSortField =
-  | 'CREATED_AT'
-  | 'TIME';
+  | 'ATTESTED_AT'
+  | 'CREATED_AT';
 
 export type AttestationWhereInput = {
   AND?: InputMaybe<Array<AttestationWhereInput>>;

@@ -10,7 +10,7 @@ export const ATTESTATION_BY_UID_QUERY = `
         id
         uid
         attester
-        time
+        attestedAt
         prediction
         comment
         conditionId
@@ -46,7 +46,7 @@ export interface AttestationData {
   id: number;
   uid: string;
   attester: string;
-  time: number;
+  attestedAt: number;
   prediction: string;
   comment?: string | null;
   conditionId?: string | null;
