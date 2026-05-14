@@ -30,7 +30,7 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
     $address: String
     $take: Int
     $skip: Int
-    $type: String
+    $type: ActivityItemType
     $pickConfigId: String
     $conditionId: String
   ) {

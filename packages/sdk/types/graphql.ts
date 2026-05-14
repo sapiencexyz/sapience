@@ -169,8 +169,17 @@ export type ActivityItem = {
   /** Unix seconds timestamp for sorting */
   timestamp: Scalars['Int']['output'];
   trade?: Maybe<ActivityTrade>;
-  type: Scalars['String']['output'];
+  type: ActivityItemType;
 };
+
+/**
+ * Discriminator for which side of `ActivityItem` is populated. Wire values
+ * are lowercase to preserve compatibility with the deprecated `accountActivity`
+ * path that shipped before the enum tightening.
+ */
+export type ActivityItemType =
+  | 'prediction'
+  | 'trade';
 
 /** Paginated wrapper around ActivityItem rows with a server-truth hasMore flag */
 export type ActivityItemsPage = Page & {
@@ -2134,7 +2143,7 @@ export type QueryAccountActivityArgs = {
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
-  type?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<ActivityItemType>;
 };
 
 
@@ -2144,7 +2153,7 @@ export type QueryAccountActivityPageArgs = {
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
-  type?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<ActivityItemType>;
 };
 
 

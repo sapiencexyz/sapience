@@ -32,7 +32,17 @@ type ActivityItem {
   """
   timestamp: Int!
   trade: ActivityTrade
-  type: String!
+  type: ActivityItemType!
+}
+
+"""
+Discriminator for which side of `ActivityItem` is populated. Wire values
+are lowercase to preserve compatibility with the deprecated `accountActivity`
+path that shipped before the enum tightening.
+"""
+enum ActivityItemType {
+  prediction
+  trade
 }
 
 """
@@ -1933,7 +1943,7 @@ type Query {
     pickConfigId: String
     skip: Int! = 0
     take: Int! = 20
-    type: String
+    type: ActivityItemType
   ): [ActivityItem!]!
     @deprecated(
       reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal."
@@ -1948,7 +1958,7 @@ type Query {
     pickConfigId: String
     skip: Int! = 0
     take: Int! = 20
-    type: String
+    type: ActivityItemType
   ): ActivityItemsPage!
 
   """

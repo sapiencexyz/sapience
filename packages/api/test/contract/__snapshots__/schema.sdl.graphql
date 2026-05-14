@@ -22,7 +22,17 @@ type ActivityItem {
   """Unix seconds timestamp for sorting"""
   timestamp: Int!
   trade: ActivityTrade
-  type: String!
+  type: ActivityItemType!
+}
+
+"""
+Discriminator for which side of `ActivityItem` is populated. Wire values
+are lowercase to preserve compatibility with the deprecated `accountActivity`
+path that shipped before the enum tightening.
+"""
+enum ActivityItemType {
+  prediction
+  trade
 }
 
 """Trade fields embedded in an activity item"""
@@ -1856,12 +1866,12 @@ type Query {
   """
   Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
-  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]! @deprecated(reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.")
+  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: ActivityItemType): [ActivityItem!]! @deprecated(reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.")
 
   """
   Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag.
   """
-  accountActivityPage(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): ActivityItemsPage!
+  accountActivityPage(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: ActivityItemType): ActivityItemsPage!
 
   """
   Per-account stats time series — wallet collateral position, PnL, volume,

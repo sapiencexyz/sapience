@@ -906,8 +906,8 @@
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
-                "kind": "SCALAR",
-                "name": "String",
+                "kind": "ENUM",
+                "name": "ActivityItemType",
                 "ofType": null
               }
             },
@@ -987,6 +987,29 @@
           }
         ],
         "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "ActivityItemType",
+        "description": "Discriminator for which side of `ActivityItem` is populated. Wire values\nare lowercase to preserve compatibility with the deprecated `accountActivity`\npath that shipped before the enum tightening.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "prediction",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "trade",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
         "possibleTypes": null
       },
       {
@@ -15730,8 +15753,8 @@
                 "name": "type",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
+                  "kind": "ENUM",
+                  "name": "ActivityItemType",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -15823,8 +15846,8 @@
                 "name": "type",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
+                  "kind": "ENUM",
+                  "name": "ActivityItemType",
                   "ofType": null
                 },
                 "defaultValue": null
