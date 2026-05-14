@@ -62,7 +62,7 @@ export const predictionCount: NonNullable<
 
 export const positionCount: NonNullable<
   QueryResolvers['positionCount']
-> = async (_parent, { holder, settled, chainId }) => {
+> = async (_parent, { holder, settled, chainId, positiveBalanceOnly }) => {
   logDeprecatedHit('positionCount');
   // Mirror the visibility rule applied in `positions`: drop zero-balance
   // unresolved rows (off-platform transfers/burns) so the count matches the
@@ -75,5 +75,18 @@ export const positionCount: NonNullable<
     where.pickConfiguration = { resolved: settled };
   }
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
+  // Permissive: same OR clause as `runPositions` so count and list
+  // semantics agree. Note this is a no-op on top of the baseline `NOT`
+  // above (which already excludes balance=0 unresolved rows) — kept
+  // explicit so the flag's effect is greppable in this file and so the
+  // semantics don't drift if the baseline rule changes.
+  if (positiveBalanceOnly) {
+    where.AND = {
+      OR: [
+        { balance: { not: '0' } },
+        { pickConfiguration: { resolved: true } },
+      ],
+    };
+  }
   return prisma.position.count({ where });
 };

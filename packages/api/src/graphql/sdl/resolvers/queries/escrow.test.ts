@@ -828,6 +828,194 @@ describe('positionCount resolver', () => {
       NOT: { balance: '0', pickConfiguration: { resolved: false } },
     });
   });
+
+  it('positiveBalanceOnly=true: adds permissive (balance!=0 OR resolved) clause', async () => {
+    mockPrisma.position.count.mockResolvedValue(1);
+
+    await positionCountFn(
+      undefined,
+      { holder: ALICE, positiveBalanceOnly: true },
+      undefined,
+      undefined
+    );
+
+    const callArgs = mockPrisma.position.count.mock.calls[0][0];
+    expect(callArgs.where).toMatchObject({
+      holder: ALICE.toLowerCase(),
+      AND: {
+        OR: [
+          { balance: { not: '0' } },
+          { pickConfiguration: { resolved: true } },
+        ],
+      },
+    });
+  });
+});
+
+describe('positions resolver — positiveBalanceOnly filter', () => {
+  it('partial sale: emits OPEN row only, suppresses CLOSED rows', async () => {
+    // Without the flag this fixture emits one CLOSED + one OPEN row
+    // (see "partial secondary sale" test). With the flag, only the OPEN
+    // row should survive.
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({
+        balance: '100',
+        pickConfiguration: makePickConfig({
+          predictions: [makePrediction()],
+        }),
+      }),
+    ]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
+      makeTrade({
+        seller: ALICE,
+        buyer: '0xcarol',
+        price: '60',
+        tokenAmount: '100',
+        executedAt: TS_SELL,
+        tradeHash: '0xtrade1',
+      }),
+    ]);
+
+    const result = await callPositions({ positiveBalanceOnly: true });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: '1',
+      balance: '100',
+      realizedPnL: null,
+    });
+  });
+
+  it('runPositions issues the permissive (balance!=0 OR resolved) where clause', async () => {
+    // The flag adds a permissive AND-wrapped OR so claimed winners
+    // (zero-balance, resolved) remain visible while zero-balance
+    // unresolved rows are excluded before synthesis.
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({ positiveBalanceOnly: true });
+
+    const findManyWhere = mockPrisma.position.findMany.mock.calls[0][0].where;
+    expect(findManyWhere).toMatchObject({
+      holder: ALICE.toLowerCase(),
+      AND: {
+        OR: [
+          { balance: { not: '0' } },
+          { pickConfiguration: { resolved: true } },
+        ],
+      },
+    });
+  });
+
+  it('synthesis suppresses CLOSED rows even if findMany returns a zero-balance row', async () => {
+    // Defense-in-depth: the Prisma where filter normally excludes
+    // zero-balance rows, but if a fixture/test forces one through,
+    // synthesis must still suppress its disposal-emission loop.
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({
+        balance: '0',
+        pickConfiguration: makePickConfig({
+          predictions: [makePrediction()],
+        }),
+      }),
+    ]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
+      makeTrade({
+        seller: ALICE,
+        buyer: '0xcarol',
+        price: '150',
+        tokenAmount: '200',
+        executedAt: TS_SELL,
+        tradeHash: '0xtrade1',
+      }),
+    ]);
+
+    const result = await callPositions({ positiveBalanceOnly: true });
+
+    expect(result).toHaveLength(0);
+  });
+
+  it('resolved zero-balance position (claimed winner): still emits its OPEN row under the flag', async () => {
+    // Permissive semantics keep claimed winners visible — their
+    // settlement payout / cost basis is meaningful history. Matches
+    // the existing `positionCount` baseline visibility rule.
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({
+        balance: '0',
+        pickConfiguration: makePickConfig({
+          resolved: true,
+          result: 'PREDICTOR_WINS',
+          resolvedAt: TS_SELL,
+          predictions: [makePrediction()],
+        }),
+      }),
+    ]);
+
+    const result = await callPositions({ positiveBalanceOnly: true });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: '1',
+      balance: '0',
+      // Resolved-position OPEN row carries the cost basis / payout.
+      userCollateral: '100',
+      totalPayout: '200',
+    });
+  });
+
+  it('positionsPage _countWhere reflects the filter so totalCount stays consistent', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    const result = await positionsPageFn(
+      undefined,
+      { take: 50, skip: 0, holder: ALICE, positiveBalanceOnly: true },
+      undefined,
+      undefined
+    );
+
+    // _countWhere must mirror the findMany where so PositionsPage.totalCount
+    // returns the filtered count, not the unfiltered count.
+    expect(result._countWhere).toMatchObject({
+      AND: {
+        OR: [
+          { balance: { not: '0' } },
+          { pickConfiguration: { resolved: true } },
+        ],
+      },
+    });
+  });
+
+  it('synthesis cache: flipping the flag invalidates the entry', async () => {
+    const positionRow = makePosition({
+      balance: '200',
+      pickConfiguration: makePickConfig({
+        predictions: [makePrediction()],
+      }),
+    });
+    // Trade history that would normally produce a CLOSED row, so the
+    // two cache entries (flag on / flag off) have different row counts.
+    mockPrisma.position.findMany.mockResolvedValue([positionRow]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
+      makeTrade({
+        seller: ALICE,
+        buyer: '0xcarol',
+        price: '60',
+        tokenAmount: '100',
+        executedAt: TS_BUY,
+        tradeHash: '0xtrade1',
+      }),
+    ]);
+
+    const withoutFlag = await callPositions({ positiveBalanceOnly: false });
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
+
+    const withFlag = await callPositions({ positiveBalanceOnly: true });
+    // Different cache key → second trades fetch fires.
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(2);
+
+    // And the row sets differ — flag-off emits CLOSED + OPEN, flag-on
+    // emits OPEN only.
+    expect(withoutFlag.length).toBeGreaterThan(withFlag.length);
+  });
 });
 
 type PickConfigurationsPageFn = (

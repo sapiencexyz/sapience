@@ -4,6 +4,64 @@ A running log of API changes that downstream services should adopt. Entries are 
 
 ---
 
+## `positiveBalanceOnly` — server-side balance filter on positions queries
+
+### TL;DR
+
+New optional `positiveBalanceOnly: Boolean` arg on `positionsPage`, `positionCount`, and the deprecated `positions` query — also a field on `PositionFilters` (the preferred path post-#1719). Defaults to `false`/omitted; existing callers are unaffected.
+
+When set to `true`, the resolver:
+
+1. Filters raw `Position` rows at the Prisma layer to exclude zero-balance unresolved rows.
+2. Skips emission of synthesized per-sell **CLOSED** rows — the `balance: "0"` event rows recording realized PnL from secondary-market sells on unresolved positions.
+
+Zero-balance **resolved** rows (claimed winners whose payout has been redeemed) stay visible — this matches the existing `positionCount` baseline visibility rule, so count and list semantics agree under the flag. The OPEN row for partially-sold positions is returned as usual. `PositionsPage.totalCount` reflects the same Prisma filter so pagination stays consistent under the flag.
+
+### When to use it
+
+UI surfaces that show "currently open positions" — anywhere a zero-balance unresolved row would otherwise be filtered client-side. Server-side filtering keeps `skip`/`take` pagination and `totalCount` accurate.
+
+### Usage — preferred (`filters:` input)
+
+```graphql
+query OpenPositions($holder: String!) {
+  positionsPage(
+    filters: { holder: $holder, positiveBalanceOnly: true }
+    take: 50
+  ) {
+    hasMore
+    totalCount
+    items {
+      id
+      balance
+      pickConfig {
+        resolved
+      }
+    }
+  }
+}
+```
+
+### Usage — deprecated flat-arg form
+
+```graphql
+query OpenPositions($holder: String!) {
+  positionsPage(holder: $holder, positiveBalanceOnly: true, take: 50) {
+    hasMore
+    items {
+      id
+      balance
+    }
+  }
+}
+```
+
+### `positionCount` under the flag
+
+`positionCount(holder, positiveBalanceOnly: true)` returns the same number as `positionsPage(filters: { holder, positiveBalanceOnly: true }, take: 1).totalCount`. Both apply the same permissive `(balance != '0' OR pickConfig.resolved = true)` predicate. Prefer the `*Page.totalCount` shape.
+
+---
+
 ## `predictionsPage` — paginated escrow predictions, replaces `predictions`
 
 ### TL;DR

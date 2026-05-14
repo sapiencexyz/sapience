@@ -2014,6 +2014,17 @@ export type PositionFilters = {
   holderWon?: InputMaybe<Scalars['Boolean']['input']>;
   /** Restrict to a single pick configuration. */
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * When true, hides zero-balance UNRESOLVED rows and skips emission of
+   * synthesized per-sell CLOSED rows (the `balance: "0"` event rows
+   * recording realized PnL from secondary-market sells on unresolved
+   * positions). Zero-balance RESOLVED rows — claimed winners with their
+   * settlement payout — remain visible, matching the existing
+   * `positionCount` visibility rule. The OPEN row for partially-sold
+   * positions is also returned. `totalCount` reflects the same filter, so
+   * pagination stays consistent under the flag.
+   */
+  positiveBalanceOnly?: InputMaybe<Scalars['Boolean']['input']>;
   /** Restrict to positions whose pickConfig settled with this result. */
   result?: InputMaybe<SettlementResult>;
   /** Restrict to settled (true) or unsettled (false) positions. */
@@ -2795,6 +2806,7 @@ export type QueryPickConfigurationsPageArgs = {
 export type QueryPositionCountArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   holder: Scalars['String']['input'];
+  positiveBalanceOnly?: InputMaybe<Scalars['Boolean']['input']>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
@@ -2811,6 +2823,7 @@ export type QueryPositionsArgs = {
   orderBy?: InputMaybe<PositionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  positiveBalanceOnly?: InputMaybe<Scalars['Boolean']['input']>;
   result?: InputMaybe<SettlementResult>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];
@@ -2831,6 +2844,7 @@ export type QueryPositionsPageArgs = {
   orderBy?: InputMaybe<PositionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  positiveBalanceOnly?: InputMaybe<Scalars['Boolean']['input']>;
   result?: InputMaybe<SettlementResult>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];

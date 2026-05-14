@@ -2168,6 +2168,17 @@ input PositionFilters {
   endsAtMin: UnixSeconds
   """Restrict to positions whose pickConfig `endsAt <= this`."""
   endsAtMax: UnixSeconds
+  """
+  When true, hides zero-balance UNRESOLVED rows and skips emission of
+  synthesized per-sell CLOSED rows (the `balance: "0"` event rows
+  recording realized PnL from secondary-market sells on unresolved
+  positions). Zero-balance RESOLVED rows — claimed winners with their
+  settlement payout — remain visible, matching the existing
+  `positionCount` visibility rule. The OPEN row for partially-sold
+  positions is also returned. `totalCount` reflects the same filter, so
+  pagination stays consistent under the flag.
+  """
+  positiveBalanceOnly: Boolean
 }
 
 """
@@ -2775,7 +2786,12 @@ type Query {
   """
   Count of token positions for a given holder
   """
-  positionCount(chainId: Int, holder: String!, settled: Boolean): Int!
+  positionCount(
+    chainId: Int
+    holder: String!
+    positiveBalanceOnly: Boolean
+    settled: Boolean
+  ): Int!
     @deprecated(
       reason: "Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed."
     )
@@ -2798,6 +2814,10 @@ type Query {
     orderBy: PositionSortField
     orderDirection: SortOrder
     pickConfigId: String
+    # When true, hides zero-balance UNRESOLVED rows and suppresses
+    # synthesized per-sell CLOSED rows. Claimed winners (zero-balance,
+    # resolved) stay visible. See `positionsPage` for details.
+    positiveBalanceOnly: Boolean
     result: SettlementResult
     settled: Boolean
     skip: Int! = 0
@@ -2856,6 +2876,10 @@ type Query {
     pickConfigId: String
       @deprecated(
         reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
+      )
+    positiveBalanceOnly: Boolean
+      @deprecated(
+        reason: "Use `filters: { positiveBalanceOnly: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
       )
     result: SettlementResult
       @deprecated(

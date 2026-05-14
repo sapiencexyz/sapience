@@ -375,12 +375,22 @@ const positionSynthesisCache = new TtlCache<string, PositionShape[]>({
   maxSize: 10_000,
 });
 
-const positionSynthesisCacheKey = (r: {
-  chainId: number;
-  tokenAddress: string;
-  holder: string;
-  updatedAt: Date;
-}) => `${r.chainId}:${r.tokenAddress}:${r.holder}:${r.updatedAt.getTime()}`;
+const positionSynthesisCacheKey = (
+  r: {
+    chainId: number;
+    tokenAddress: string;
+    holder: string;
+    updatedAt: Date;
+  },
+  positiveBalanceOnly: boolean
+) =>
+  // The flag changes synthesizer output (suppresses CLOSED rows), so it
+  // must be part of the cache key — otherwise a request with the flag
+  // off can serve a flag-on entry (or vice versa) under the same
+  // updatedAt and return the wrong row set.
+  `${r.chainId}:${r.tokenAddress}:${r.holder}:${r.updatedAt.getTime()}:${
+    positiveBalanceOnly ? 'p' : 'a'
+  }`;
 
 /** Test-only: clear synthesis cache between test cases. */
 export const __clearPositionSynthesisCache = () =>
@@ -407,6 +417,7 @@ type NormalizedPositionsArgs = {
   holderWon: boolean | null | undefined;
   collateralMin: string | null | undefined;
   collateralMax: string | null | undefined;
+  positiveBalanceOnly: boolean;
   orderField: 'createdAt' | 'updatedAt';
   orderDirection: 'asc' | 'desc';
 };
@@ -436,6 +447,7 @@ const normalizePositionsArgs = (
   holderWon: args.holderWon,
   collateralMin: args.collateralMin,
   collateralMax: args.collateralMax,
+  positiveBalanceOnly: args.positiveBalanceOnly ?? false,
   // PositionSortField SDL enum values are CREATED_AT / UPDATED_AT; map
   // to the Prisma column name for orderBy.
   orderField: args.orderBy === 'CREATED_AT' ? 'createdAt' : 'updatedAt',
@@ -485,6 +497,7 @@ const buildPositionsWhere = (
     endsAtMin,
     endsAtMax,
     holderWon,
+    positiveBalanceOnly,
   } = args;
 
   if (!holderLower && !conditionId && !pickConfigIdLower) return null;
@@ -496,6 +509,21 @@ const buildPositionsWhere = (
     where.pickConfigId = { in: conditionPickConfigIds };
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (pickConfigIdLower && !conditionId) where.pickConfigId = pickConfigIdLower;
+  // Permissive: keep rows where balance > 0 OR the pickConfig is
+  // resolved. Resolved zero-balance rows are claimed winners — their
+  // settlement PnL is meaningful history and should stay visible.
+  // Matches the existing `positionCount` baseline visibility rule so
+  // count and list semantics line up under the flag. Layered via
+  // `where.AND` so it coexists with the `where.OR` clause that the
+  // `holderWon` branch may add later in this function.
+  if (positiveBalanceOnly) {
+    where.AND = {
+      OR: [
+        { balance: { not: '0' } },
+        { pickConfiguration: { resolved: true } },
+      ],
+    };
+  }
 
   if (settled !== undefined && settled !== null) {
     where.pickConfiguration = {
@@ -638,7 +666,8 @@ const positionKey = (chainId: number, token: string, holder: string) =>
  */
 const synthesizePositionRow = (
   r: PositionRow,
-  trades: readonly TradeRow[]
+  trades: readonly TradeRow[],
+  positiveBalanceOnly: boolean
 ): PositionShape[] => {
   const pc = r.pickConfiguration;
   let totalPayout = 0n;
@@ -735,7 +764,9 @@ const synthesizePositionRow = (
 
   // Emit one synthetic row per sell (only meaningful for unresolved
   // pickConfigs — once settled, the existing PnL flow takes over).
-  if (!isResolved) {
+  // `positiveBalanceOnly` suppresses these zero-balance event rows so
+  // the UI can show only currently-held positions.
+  if (!isResolved && !positiveBalanceOnly) {
     for (const d of disposalRows) {
       out.push({
         id: `${r.id}-sell-${d.tradeHash}`,
@@ -788,12 +819,15 @@ const synthesizePositionRow = (
  * Hits skip both the trades fetch and the synthesis loop entirely.
  */
 const synthesizePositionsPage = async (
-  rows: PositionRow[]
+  rows: PositionRow[],
+  positiveBalanceOnly: boolean
 ): Promise<PositionShape[]> => {
   const cachedByRow = new Map<PositionRow, PositionShape[]>();
   const missedRows: PositionRow[] = [];
   for (const r of rows) {
-    const cached = positionSynthesisCache.get(positionSynthesisCacheKey(r));
+    const cached = positionSynthesisCache.get(
+      positionSynthesisCacheKey(r, positiveBalanceOnly)
+    );
     if (cached) cachedByRow.set(r, cached);
     else missedRows.push(r);
   }
@@ -843,8 +877,15 @@ const synthesizePositionsPage = async (
       continue;
     }
     const k = positionKey(r.chainId, r.tokenAddress, r.holder);
-    const synthesized = synthesizePositionRow(r, tradesByPos.get(k) ?? []);
-    positionSynthesisCache.set(positionSynthesisCacheKey(r), synthesized);
+    const synthesized = synthesizePositionRow(
+      r,
+      tradesByPos.get(k) ?? [],
+      positiveBalanceOnly
+    );
+    positionSynthesisCache.set(
+      positionSynthesisCacheKey(r, positiveBalanceOnly),
+      synthesized
+    );
     out.push(...synthesized);
   }
   return out;
@@ -944,7 +985,10 @@ export const runPositions = async (
   const hasMore = rawRows.length > norm.cappedTake;
   const rows = rawRows.slice(0, norm.cappedTake);
 
-  const synthesized = await synthesizePositionsPage(rows);
+  const synthesized = await synthesizePositionsPage(
+    rows,
+    norm.positiveBalanceOnly
+  );
   const sorted = sortSynthesizedRows(
     synthesized,
     norm.orderField,
@@ -977,6 +1021,8 @@ const mergePositionFilters = (
     collateralMax: f?.collateralMax ?? args.collateralMax ?? null,
     endsAtMin: f?.endsAtMin ?? args.endsAtMin ?? null,
     endsAtMax: f?.endsAtMax ?? args.endsAtMax ?? null,
+    positiveBalanceOnly:
+      f?.positiveBalanceOnly ?? args.positiveBalanceOnly ?? null,
   };
 };
 
