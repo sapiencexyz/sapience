@@ -135,6 +135,11 @@ export const runCollateralTransfers = async ({
   take,
   skip,
 }: QueryCollateralTransfersPageArgs): Promise<CollateralTransfersPageEnvelope> => {
+  // maxTake=500 (vs the standard 100) is intentional: collateral
+  // history is an audit-style surface where the FE wants to bulk-page
+  // a user's full transfer log. Per-row cost is small and the table is
+  // append-only — the only protection we want is preventing a single
+  // request from gulping the entire table.
   const cappedTake = clampTake(take, { defaultTake: 100, maxTake: 500 });
   const skipVal = clampSkip(skip);
   const where = buildCollateralTransfersWhere(

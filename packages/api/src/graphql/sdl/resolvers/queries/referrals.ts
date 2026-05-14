@@ -104,6 +104,10 @@ export const referralCodesPage: NonNullable<
     };
   }
 
+  // Admin tool (`useAdminReferralCodes`) auto-paginates at PAGE_SIZE=500
+  // to avoid silent truncation when an org accumulates many codes. The
+  // 10_000 maxSkip is then derived: PAGE_SIZE × MAX_PAGES (20) = 10_000.
+  // If we ever raise MAX_PAGES, lift this together.
   const cappedTake = clampTake(args.take, { defaultTake: 100, maxTake: 500 });
   const skipVal = clampSkip(args.skip, { maxSkip: 10_000 });
 

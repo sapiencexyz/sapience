@@ -1,13 +1,14 @@
 /**
  * ReferralCode field resolvers.
  *
- * The root `Query.referralCodes` resolver pre-computes claimCount /
+ * The root `Query.referralCodesPage` resolver pre-computes claimCount /
  * totalVolume / totalPositions and attaches them to each parent row, so
  * default field resolvers handle the lookup. The resolvers below cover
  * two things the default can't:
- *   - `claimants(limit, cursor)`: paginated per-claimant breakdown
+ *   - `claimants(take, skip)`: paginated per-claimant breakdown wrapped
+ *     in a `ReferralCodeClaimantsPage`.
  *   - lazy fallback for the three scalar analytics fields when a code
- *     is reached via a path other than `Query.referralCodes` (e.g.
+ *     is reached via a path other than `Query.referralCodesPage` (e.g.
  *     `User.referredByCode`), where the parent is a bare Prisma row.
  */
 
@@ -62,6 +63,10 @@ export const ReferralCode: ReferralCodeResolvers = {
   },
 
   claimants: async (parent, args) => {
+    // Admin analytics surface (`useAdminReferralCodeAnalytics`)
+    // fetches the full claimant list up front; raised caps match
+    // `referralCodesPage` so a code with many redemptions doesn't
+    // silently truncate.
     const take = clampTake(args.take, { defaultTake: 100, maxTake: 500 });
     const skip = clampSkip(args.skip, { maxSkip: 10_000 });
     const codeId = (parent as EnrichedParent).id;

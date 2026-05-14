@@ -194,7 +194,7 @@ describe('attestationsPage — orderBy mapping', () => {
 });
 
 describe('categoriesPage — pagination envelope', () => {
-  it('caps take at 500 and probes for hasMore', async () => {
+  it('caps take at MAX_TAKE (100) and probes for hasMore', async () => {
     await categoriesPageFn(
       undefined,
       { take: 9999, skip: 0 } as QueryCategoriesPageArgs,
@@ -202,7 +202,7 @@ describe('categoriesPage — pagination envelope', () => {
       undefined
     );
     const args = mockPrisma.category.findMany.mock.calls[0][0];
-    expect(args.take).toBe(501);
+    expect(args.take).toBe(101);
   });
 
   it('orders by name asc (alphabetical for the picker UI)', async () => {

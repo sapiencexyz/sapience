@@ -112,8 +112,8 @@ describe('useAdminReferralCodes — pagination', () => {
     await waitFor(() => {
       expect(result.current.data).toBeDefined();
     });
-    expect(result.current.data?.length).toBe(50);
-    expect(mockGraphqlRequest).toHaveBeenCalledTimes(50);
+    expect(result.current.data?.length).toBe(20);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(20);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('MAX_PAGES'));
     warn.mockRestore();
   });

@@ -115,10 +115,12 @@ const REFERRAL_CODES_QUERY = `
   }
 `;
 
-// Server caps `take` at 500 per page. We auto-paginate so the admin UI
-// doesn't silently truncate at 500 codes; MAX_PAGES is a safety net.
+// Server caps `take` at 500 per page and `skip` at 10_000. We
+// auto-paginate so the admin UI doesn't silently truncate at 500
+// codes; MAX_PAGES (= maxSkip / PAGE_SIZE) is the safety net that
+// matches the server cap so we don't loop fetching the same window.
 const PAGE_SIZE = 500;
-const MAX_PAGES = 50;
+const MAX_PAGES = 20;
 
 type ReferralCodesPageResponse = {
   referralCodesPage: {

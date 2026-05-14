@@ -129,7 +129,10 @@ export const user: NonNullable<QueryResolvers['user']> = async (
 export const categoriesPage: NonNullable<
   QueryResolvers['categoriesPage']
 > = async (_parent, { take, skip }: QueryCategoriesPageArgs) => {
-  const cappedTake = clampTake(take, { defaultTake: 100, maxTake: 500 });
+  // Categories is a tiny lookup table (<100 rows). Stick to the
+  // default MAX_TAKE = 100; if it ever grows past a single page we'll
+  // revisit before lifting the cap.
+  const cappedTake = clampTake(take, { defaultTake: 100 });
   const skipVal = clampSkip(skip);
   const isFullPage = skipVal === 0 && cappedTake >= 100;
 
