@@ -5984,7 +5984,7 @@
           },
           {
             "name": "chainId",
-            "description": "Restrict to a single chain.",
+            "description": "Restrict to a single chain. When omitted and a `contractAddress*` filter is\npresent, defaults to the API's `DEFAULT_CHAIN_ID` so address lookups are not\nsilently cross-chain (contract addresses are not a global namespace).",
             "type": {
               "kind": "SCALAR",
               "name": "Int",
@@ -5993,8 +5993,36 @@
             "defaultValue": null
           },
           {
+            "name": "contractAddress",
+            "description": "Match the on-chain contract address that owns the condition\n(case-insensitive). Maps to the DB `resolver` column. Pair with `chainId`\nfor a fully-qualified `(chainId, address)` lookup; if omitted, `chainId`\ndefaults to `DEFAULT_CHAIN_ID`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "contractAddressIn",
+            "description": "Match any of these on-chain contract addresses (case-insensitive). Same\nsemantics as `contractAddress` — see its docs for `chainId` defaulting.",
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          },
+          {
             "name": "resolver",
-            "description": "Match the resolver address (case-insensitive).",
+            "description": "Match the resolver address (case-insensitive). Protocol-jargon alias of\n`contractAddress`; new callers should prefer `contractAddress`.",
             "type": {
               "kind": "SCALAR",
               "name": "String",
@@ -6004,7 +6032,7 @@
           },
           {
             "name": "resolverIn",
-            "description": "Match any of these resolver addresses (case-insensitive).",
+            "description": "Match any of these resolver addresses (case-insensitive). Protocol-jargon\nalias of `contractAddressIn`; new callers should prefer `contractAddressIn`.",
             "type": {
               "kind": "LIST",
               "name": null,
@@ -9970,6 +9998,113 @@
           }
         ],
         "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "ForecasterScore",
+        "description": "DEPRECATED — kept only as the return type of `accountAccuracy`, which is\nitself `@deprecated`. The leaderboard-row shape lives on\n`AccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation\ncounters (`numScored`, `numTimeWeighted`, `sumErrorSquared`,\n`sumTimeWeightedError`) were always returned as zeros from the resolver\neven on main, so callers should treat them as non-load-bearing.",
+        "fields": [
+          {
+            "name": "accuracyScore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Float",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "address",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "numScored",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "numTimeWeighted",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "sumErrorSquared",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Float",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "sumTimeWeightedError",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Float",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -15665,6 +15800,77 @@
       },
       {
         "kind": "OBJECT",
+        "name": "ProfitRank",
+        "description": "DEPRECATED — kept only as the return type of `accountProfitRank`, which is\nitself `@deprecated`. The replacement `AccountStatsRank` carries the same\nrank / totalParticipants plus a richer per-metric stat breakdown\n(`netPnL` / `gains` / `losses` / `volume`); `totalPnL` here maps to\n`AccountStatsRank.netPnL`.",
+        "fields": [
+          {
+            "name": "address",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "rank",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalParticipants",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalPnL",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "ProtocolStat",
         "description": "Protocol-wide stats snapshot — no vault scoping.",
         "fields": [
@@ -15821,6 +16027,33 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "accountAccuracy",
+            "description": "Lifetime accuracy score for a single address, or null if no scored\nattestations exist.",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "OBJECT",
+              "name": "ForecasterScore",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountAccuracyRank` for the rank-and-score shape, or `accuracyLeaderboardPage` for the leaderboard. `ForecasterScore`'s legacy counter fields (numScored, sumErrorSquared, …) were always returned as zeros."
           },
           {
             "name": "accountActivity",
@@ -16477,6 +16710,37 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "accountProfitRank",
+            "description": "Profit rank and total PnL for a single address relative to all\nparticipants. Lifetime (no window).",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "ProfitRank",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `accountStatsRank(address:)` — same rank + totalParticipants, plus a richer stat breakdown. `ProfitRank.totalPnL` maps to `AccountStatsRank.netPnL`."
           },
           {
             "name": "accuracyLeaderboardPage",
@@ -19804,11 +20068,39 @@
         "inputFields": [
           {
             "name": "chainId",
-            "description": "Restrict to a single chain.",
+            "description": "Restrict to a single chain. When omitted and a `contractAddress*` filter is\npresent, defaults to the API's `DEFAULT_CHAIN_ID` so address lookups are not\nsilently cross-chain.",
             "type": {
               "kind": "SCALAR",
               "name": "Int",
               "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "contractAddress",
+            "description": "Match the on-chain contract address that owns the underlying condition\n(case-insensitive). Maps to the DB `condition.resolver` column. Pair with\n`chainId`; if omitted, `chainId` defaults to `DEFAULT_CHAIN_ID`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "contractAddressIn",
+            "description": "Match any of these on-chain contract addresses (case-insensitive). Same\nsemantics as `contractAddress`.",
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              }
             },
             "defaultValue": null
           },

@@ -182,15 +182,34 @@ const emptyStatsRank = (
 });
 
 /**
- * `accountStatsRank` — single-address lookup against the same ranked set the
- * leaderboard slices. Reuses `getMerged` + `rankedFor`, so rank and stats
- * here always reconcile with `accountStatsLeaderboardPage` for the same
- * window. Stats are always returned (zero when the address has no activity);
- * `rank` is null when the address is absent from the ranked set.
+ * `runAccountStatsRank` — bare function form, callable from both the live
+ * resolver and the deprecated `accountProfitRank` wrapper. Reuses
+ * `getMerged` + `rankedFor`, so rank and stats here always reconcile with
+ * `accountStatsLeaderboardPage` for the same window. Stats are always
+ * returned (zero when the address has no activity); `rank` is null when
+ * the address is absent from the ranked set.
  */
-export const accountStatsRank: NonNullable<
-  QueryResolvers['accountStatsRank']
-> = async (_parent, { address, filters }) => {
+export const runAccountStatsRank = async ({
+  address,
+  filters,
+}: {
+  address: string;
+  filters?: {
+    metric?: AccountStatsMetric | null;
+    from?: number | null;
+    to?: number | null;
+    fromEpoch?: number | null;
+    toEpoch?: number | null;
+  } | null;
+}): Promise<{
+  address: string;
+  netPnL: string;
+  gains: string;
+  losses: string;
+  volume: string;
+  rank: number | null;
+  totalParticipants: number;
+}> => {
   const metric = filters?.metric ?? AccountStatsMetric.NetPnl;
   const addressLc = address.toLowerCase();
   const { fromEpoch: fromResolved, toEpochResolved } = resolveWindow(
@@ -208,6 +227,10 @@ export const accountStatsRank: NonNullable<
   const entry = ranked[idx];
   return { ...entry, rank: idx + 1, totalParticipants: ranked.length };
 };
+
+export const accountStatsRank: NonNullable<
+  QueryResolvers['accountStatsRank']
+> = (_parent, args) => runAccountStatsRank(args);
 
 // ─── accountStats (time series fat row) ─────────────────────────────────────
 //

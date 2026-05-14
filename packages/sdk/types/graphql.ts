@@ -1293,6 +1293,24 @@ export type FloatNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
+/**
+ * DEPRECATED — kept only as the return type of `accountAccuracy`, which is
+ * itself `@deprecated`. The leaderboard-row shape lives on
+ * `AccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation
+ * counters (`numScored`, `numTimeWeighted`, `sumErrorSquared`,
+ * `sumTimeWeightedError`) were always returned as zeros from the resolver
+ * even on main, so callers should treat them as non-load-bearing.
+ */
+export type ForecasterScore = {
+  __typename?: 'ForecasterScore';
+  accuracyScore: Scalars['Float']['output'];
+  address: Scalars['String']['output'];
+  numScored: Scalars['Int']['output'];
+  numTimeWeighted: Scalars['Int']['output'];
+  sumErrorSquared: Scalars['Float']['output'];
+  sumTimeWeightedError: Scalars['Float']['output'];
+};
+
 export type IntFilter = {
   equals?: InputMaybe<Scalars['Int']['input']>;
   gt?: InputMaybe<Scalars['Int']['input']>;
@@ -1934,6 +1952,21 @@ export type PredictionsPage = Page & {
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
+/**
+ * DEPRECATED — kept only as the return type of `accountProfitRank`, which is
+ * itself `@deprecated`. The replacement `AccountStatsRank` carries the same
+ * rank / totalParticipants plus a richer per-metric stat breakdown
+ * (`netPnL` / `gains` / `losses` / `volume`); `totalPnL` here maps to
+ * `AccountStatsRank.netPnL`.
+ */
+export type ProfitRank = {
+  __typename?: 'ProfitRank';
+  address: Scalars['String']['output'];
+  rank?: Maybe<Scalars['Int']['output']>;
+  totalParticipants: Scalars['Int']['output'];
+  totalPnL: Scalars['String']['output'];
+};
+
 /** Protocol-wide stats snapshot — no vault scoping. */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
@@ -1958,6 +1991,12 @@ export type Query = {
    * Prisma-shaped `UserWhereUniqueInput`.
    */
   account?: Maybe<Account>;
+  /**
+   * Lifetime accuracy score for a single address, or null if no scored
+   * attestations exist.
+   * @deprecated Use `accountAccuracyRank` for the rank-and-score shape, or `accuracyLeaderboardPage` for the leaderboard. `ForecasterScore`'s legacy counter fields (numScored, sumErrorSquared, …) were always returned as zeros.
+   */
+  accountAccuracy?: Maybe<ForecasterScore>;
   /**
    * Accuracy rank and lifetime score for a single address. Mirrors
    * `accountStatsRank`'s shape: stats fields are always populated (zero for
@@ -1996,6 +2035,12 @@ export type Query = {
    * @deprecated Use `accountStats` — the fat row carries `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending` / `predictionsNonDecisive` per snapshot.
    */
   accountPredictionCount: Array<PredictionCountDataPoint>;
+  /**
+   * Profit rank and total PnL for a single address relative to all
+   * participants. Lifetime (no window).
+   * @deprecated Use `accountStatsRank(address:)` — same rank + totalParticipants, plus a richer stat breakdown. `ProfitRank.totalPnL` maps to `AccountStatsRank.netPnL`.
+   */
+  accountProfitRank: ProfitRank;
   /**
    * Per-account stats time series — wallet collateral position, PnL, volume,
    * and prediction outcome counts across snapshots in a window. Mirrors the
@@ -2206,6 +2251,11 @@ export type QueryAccountArgs = {
 };
 
 
+export type QueryAccountAccuracyArgs = {
+  address: Scalars['String']['input'];
+};
+
+
 export type QueryAccountAccuracyRankArgs = {
   address: Scalars['String']['input'];
 };
@@ -2252,6 +2302,11 @@ export type QueryAccountPredictionCountArgs = {
   from?: InputMaybe<Scalars['DateTimeISO']['input']>;
   interval: TimeInterval;
   to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccountProfitRankArgs = {
+  address: Scalars['String']['input'];
 };
 
 

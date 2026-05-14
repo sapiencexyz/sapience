@@ -97,6 +97,7 @@ import {
   predictionCount,
 } from './queries/deprecated/escrow';
 import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
+import { accountAccuracy, accountProfitRank } from './queries/deprecated/score';
 import { referralCodesPage } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import {
@@ -114,7 +115,9 @@ export const resolvers: Resolvers = {
   ...scalarResolvers,
   Query: {
     // Leaderboards / account scores
+    accountAccuracy,
     accountAccuracyRank,
+    accountProfitRank,
     accuracyLeaderboardPage,
     accountStatsLeaderboardPage,
     accountStatsRank,

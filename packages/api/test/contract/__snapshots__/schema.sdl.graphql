@@ -14,6 +14,37 @@ type AccuracyRank {
 }
 
 """
+DEPRECATED — kept only as the return type of `accountAccuracy`, which is
+itself `@deprecated`. The leaderboard-row shape lives on
+`AccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation
+counters (`numScored`, `numTimeWeighted`, `sumErrorSquared`,
+`sumTimeWeightedError`) were always returned as zeros from the resolver
+even on main, so callers should treat them as non-load-bearing.
+"""
+type ForecasterScore {
+  accuracyScore: Float!
+  address: String!
+  numScored: Int!
+  numTimeWeighted: Int!
+  sumErrorSquared: Float!
+  sumTimeWeightedError: Float!
+}
+
+"""
+DEPRECATED — kept only as the return type of `accountProfitRank`, which is
+itself `@deprecated`. The replacement `AccountStatsRank` carries the same
+rank / totalParticipants plus a richer per-metric stat breakdown
+(`netPnL` / `gains` / `losses` / `volume`); `totalPnL` here maps to
+`AccountStatsRank.netPnL`.
+"""
+type ProfitRank {
+  address: String!
+  rank: Int
+  totalParticipants: Int!
+  totalPnL: String!
+}
+
+"""
 Address-keyed account record. The thin replacement for the Prisma-leaked
 `User` type — exposes only the fields the public API actually needs (today,
 that's referral-graph data). When address-keyed metadata that doesn't fit
@@ -1912,6 +1943,12 @@ type Query {
   accountAccuracyRank(address: String!): AccuracyRank!
 
   """
+  Lifetime accuracy score for a single address, or null if no scored
+  attestations exist.
+  """
+  accountAccuracy(address: String!): ForecasterScore @deprecated(reason: "Use `accountAccuracyRank` for the rank-and-score shape, or `accuracyLeaderboardPage` for the leaderboard. `ForecasterScore`'s legacy counter fields (numScored, sumErrorSquared, …) were always returned as zeros.")
+
+  """
   Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
   accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: ActivityItemType): [ActivityItem!]! @deprecated(reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.")
@@ -1990,6 +2027,12 @@ type Query {
   from "present window, address unranked").
   """
   accountStatsRank(address: String!, filters: AccountStatsFilters): AccountStatsRank!
+
+  """
+  Profit rank and total PnL for a single address relative to all
+  participants. Lifetime (no window).
+  """
+  accountProfitRank(address: String!): ProfitRank! @deprecated(reason: "Use `accountStatsRank(address:)` — same rank + totalParticipants, plus a richer stat breakdown. `ProfitRank.totalPnL` maps to `AccountStatsRank.netPnL`.")
 
   """
   Top forecasters ranked by lifetime accuracy. The time-weighted error
