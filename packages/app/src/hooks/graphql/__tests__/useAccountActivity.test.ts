@@ -48,9 +48,11 @@ describe('useAccountActivity', () => {
 
     const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toMatchObject({
-      address: null,
-      pickConfigId: null,
-      conditionId: null,
+      filters: {
+        address: null,
+        pickConfigId: null,
+        conditionId: null,
+      },
       take: 20,
       skip: 0,
     });
@@ -126,10 +128,12 @@ describe('useAccountActivity', () => {
 
     const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toMatchObject({
-      address: '0xABCDEF0000000000000000000000000000000001',
-      pickConfigId: 'pc1',
-      conditionId: 'c1',
-      type: 'trade',
+      filters: {
+        address: '0xABCDEF0000000000000000000000000000000001',
+        pickConfigId: 'pc1',
+        conditionId: 'c1',
+        type: 'trade',
+      },
     });
   });
 
