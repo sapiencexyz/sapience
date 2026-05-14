@@ -69,7 +69,7 @@ export default function ForecastPageClient({
   // Prediction percentage
   let percentage: number | null = null;
   try {
-    percentage = d18ToPercentage(attestation.prediction);
+    percentage = d18ToPercentage(attestation.forecast);
   } catch {
     // ignore
   }

@@ -87,8 +87,8 @@ const ALL_TRADES_QUERY = /* GraphQL */ `
 `;
 
 const TRADE_QUERY = /* GraphQL */ `
-  query Trade($id: String!) {
-    trade(id: $id) {
+  query Trade($tradeHash: String!) {
+    trade(tradeHash: $tradeHash) {
       id
       tradeHash
       chainId
@@ -178,7 +178,7 @@ export function useSecondaryTrade(tradeHash?: string) {
     queryFn: async () => {
       const resp = await graphqlRequest<{
         trade: SecondaryTrade | null;
-      }>(TRADE_QUERY, { id: tradeHash });
+      }>(TRADE_QUERY, { tradeHash });
       return resp?.trade ?? null;
     },
   });

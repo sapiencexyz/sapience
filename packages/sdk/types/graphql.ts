@@ -54,6 +54,42 @@ export type Account = {
 };
 
 /**
+ * One row of the accuracy leaderboard — an address with its lifetime
+ * accuracy score aggregated across every scored attestation. Parallel
+ * to `AccountStatsLeaderboardEntry`.
+ */
+export type AccountAccuracyLeaderboardEntry = {
+  __typename?: 'AccountAccuracyLeaderboardEntry';
+  accuracyScore: Scalars['Float']['output'];
+  address: Scalars['String']['output'];
+};
+
+/** Paginated wrapper around `AccountAccuracyLeaderboardEntry` rows with a server-truth hasMore flag. */
+export type AccountAccuracyLeaderboardPage = Page & {
+  __typename?: 'AccountAccuracyLeaderboardPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<AccountAccuracyLeaderboardEntry>;
+  /** Eagerly populated: derived from the in-memory leaderboard array. */
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
+/**
+ * Accuracy rank and lifetime score for a single address. Mirrors
+ * `AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),
+ * `rank` (1-indexed, null when unranked), and `totalParticipants` (size of
+ * the scored-forecaster set). Accuracy is lifetime-aggregated — the
+ * time-weighted error already weights by recency, so there's no window
+ * filter on this surface.
+ */
+export type AccountAccuracyRank = {
+  __typename?: 'AccountAccuracyRank';
+  accuracyScore: Scalars['Float']['output'];
+  address: Scalars['String']['output'];
+  rank?: Maybe<Scalars['Int']['output']>;
+  totalParticipants: Scalars['Int']['output'];
+};
+
+/**
  * One row of the per-account stats time series — wallet collateral
  * position, settlement PnL, trade volume, and prediction outcome counts
  * at a single snapshot boundary. Mirrors the fat-row pattern used by
@@ -163,42 +199,6 @@ export type AccountStatsRank = {
   volume: Scalars['String']['output'];
 };
 
-/**
- * One row of the accuracy leaderboard — an address with its lifetime
- * accuracy score aggregated across every scored attestation. Parallel
- * to `AccountStatsLeaderboardEntry`.
- */
-export type AccuracyLeaderboardEntry = {
-  __typename?: 'AccuracyLeaderboardEntry';
-  accuracyScore: Scalars['Float']['output'];
-  address: Scalars['String']['output'];
-};
-
-/** Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag. */
-export type AccuracyLeaderboardPage = Page & {
-  __typename?: 'AccuracyLeaderboardPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<AccuracyLeaderboardEntry>;
-  /** Eagerly populated: derived from the in-memory leaderboard array. */
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
-
-/**
- * Accuracy rank and lifetime score for a single address. Mirrors
- * `AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),
- * `rank` (1-indexed, null when unranked), and `totalParticipants` (size of
- * the scored-forecaster set). Accuracy is lifetime-aggregated — the
- * time-weighted error already weights by recency, so there's no window
- * filter on this surface.
- */
-export type AccuracyRank = {
-  __typename?: 'AccuracyRank';
-  accuracyScore: Scalars['Float']['output'];
-  address: Scalars['String']['output'];
-  rank?: Maybe<Scalars['Int']['output']>;
-  totalParticipants: Scalars['Int']['output'];
-};
-
 /** A single activity entry — either a prediction or a trade, sorted by timestamp */
 export type ActivityItem = {
   __typename?: 'ActivityItem';
@@ -247,7 +247,7 @@ export type ActivityTrade = {
 
 export type Attestation = {
   __typename?: 'Attestation';
-  attestation_score?: Maybe<AttestationScore>;
+  attestationScore?: Maybe<AttestationScore>;
   /**
    * When the attestation was made on-chain. Replaces the legacy `time`
    * field — same value, the new name follows the `*At` event-timestamp
@@ -262,8 +262,16 @@ export type Attestation = {
   createdAt: Scalars['DateTimeISO']['output'];
   data: Scalars['String']['output'];
   decodedDataJson: Scalars['String']['output'];
+  /**
+   * Raw forecast value as recorded on-chain — the `uint256 forecast` field
+   * on the EAS attestation schema, returned as a decimal string in D18
+   * fixed-point representing a probability in `[0, 1e18]`. For the
+   * canonical normalized probability use `Attestation.attestationScore.probabilityFloat`
+   * (0–1 float) or `Attestation.attestationScore.probabilityD18`
+   * (18-decimal fixed-point string).
+   */
+  forecast: Scalars['String']['output'];
   id: Scalars['Int']['output'];
-  prediction: Scalars['String']['output'];
   recipient: Scalars['String']['output'];
   resolver?: Maybe<Scalars['String']['output']>;
   schemaId: Scalars['String']['output'];
@@ -274,7 +282,7 @@ export type Attestation = {
 };
 
 
-export type AttestationAttestation_ScoreArgs = {
+export type AttestationAttestationScoreArgs = {
   where?: InputMaybe<AttestationScoreWhereInput>;
 };
 
@@ -294,7 +302,7 @@ export type AttestationOrderByRelationAggregateInput = {
 };
 
 export type AttestationOrderByWithRelationInput = {
-  attestation_score?: InputMaybe<AttestationScoreOrderByWithRelationInput>;
+  attestationScore?: InputMaybe<AttestationScoreOrderByWithRelationInput>;
   attester?: InputMaybe<SortOrder>;
   blockNumber?: InputMaybe<SortOrder>;
   comment?: InputMaybe<SortOrderInput>;
@@ -303,8 +311,8 @@ export type AttestationOrderByWithRelationInput = {
   createdAt?: InputMaybe<SortOrder>;
   data?: InputMaybe<SortOrder>;
   decodedDataJson?: InputMaybe<SortOrder>;
+  forecast?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
-  prediction?: InputMaybe<SortOrder>;
   recipient?: InputMaybe<SortOrder>;
   resolver?: InputMaybe<SortOrderInput>;
   schemaId?: InputMaybe<SortOrder>;
@@ -326,8 +334,8 @@ export type AttestationScalarFieldEnum =
   | 'createdAt'
   | 'data'
   | 'decodedDataJson'
+  | 'forecast'
   | 'id'
-  | 'prediction'
   | 'recipient'
   | 'resolver'
   | 'schemaId'
@@ -410,7 +418,7 @@ export type AttestationWhereInput = {
   AND?: InputMaybe<Array<AttestationWhereInput>>;
   NOT?: InputMaybe<Array<AttestationWhereInput>>;
   OR?: InputMaybe<Array<AttestationWhereInput>>;
-  attestation_score?: InputMaybe<AttestationScoreNullableRelationFilter>;
+  attestationScore?: InputMaybe<AttestationScoreNullableRelationFilter>;
   attester?: InputMaybe<StringFilter>;
   blockNumber?: InputMaybe<IntFilter>;
   comment?: InputMaybe<StringNullableFilter>;
@@ -419,8 +427,8 @@ export type AttestationWhereInput = {
   createdAt?: InputMaybe<DateTimeFilter>;
   data?: InputMaybe<StringFilter>;
   decodedDataJson?: InputMaybe<StringFilter>;
+  forecast?: InputMaybe<StringFilter>;
   id?: InputMaybe<IntFilter>;
-  prediction?: InputMaybe<StringFilter>;
   recipient?: InputMaybe<StringFilter>;
   resolver?: InputMaybe<StringNullableFilter>;
   schemaId?: InputMaybe<StringFilter>;
@@ -433,7 +441,7 @@ export type AttestationWhereUniqueInput = {
   AND?: InputMaybe<Array<AttestationWhereInput>>;
   NOT?: InputMaybe<Array<AttestationWhereInput>>;
   OR?: InputMaybe<Array<AttestationWhereInput>>;
-  attestation_score?: InputMaybe<AttestationScoreNullableRelationFilter>;
+  attestationScore?: InputMaybe<AttestationScoreNullableRelationFilter>;
   attester?: InputMaybe<StringFilter>;
   blockNumber?: InputMaybe<IntFilter>;
   comment?: InputMaybe<StringNullableFilter>;
@@ -442,8 +450,8 @@ export type AttestationWhereUniqueInput = {
   createdAt?: InputMaybe<DateTimeFilter>;
   data?: InputMaybe<StringFilter>;
   decodedDataJson?: InputMaybe<StringFilter>;
+  forecast?: InputMaybe<StringFilter>;
   id?: InputMaybe<Scalars['Int']['input']>;
-  prediction?: InputMaybe<StringFilter>;
   recipient?: InputMaybe<StringFilter>;
   resolver?: InputMaybe<StringNullableFilter>;
   schemaId?: InputMaybe<StringFilter>;
@@ -633,23 +641,23 @@ export type Close = {
   txHash: Scalars['String']['output'];
 };
 
-export type CollateralBalanceSnapshotType = {
-  __typename?: 'CollateralBalanceSnapshotType';
-  balance: Scalars['String']['output'];
-  index: Scalars['Int']['output'];
-  timestamp: Scalars['DateTimeISO']['output'];
-};
-
-export type CollateralBalanceType = {
-  __typename?: 'CollateralBalanceType';
+export type CollateralBalance = {
+  __typename?: 'CollateralBalance';
   address: Scalars['String']['output'];
   atBlock?: Maybe<Scalars['Int']['output']>;
   balance: Scalars['String']['output'];
   chainId: Scalars['Int']['output'];
 };
 
-export type CollateralTransferType = {
-  __typename?: 'CollateralTransferType';
+export type CollateralBalanceSnapshot = {
+  __typename?: 'CollateralBalanceSnapshot';
+  balance: Scalars['String']['output'];
+  index: Scalars['Int']['output'];
+  timestamp: Scalars['DateTimeISO']['output'];
+};
+
+export type CollateralTransfer = {
+  __typename?: 'CollateralTransfer';
   blockNumber: Scalars['Int']['output'];
   chainId: Scalars['Int']['output'];
   from: Scalars['String']['output'];
@@ -660,11 +668,11 @@ export type CollateralTransferType = {
   value: Scalars['String']['output'];
 };
 
-/** Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag */
+/** Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag */
 export type CollateralTransfersPage = Page & {
   __typename?: 'CollateralTransfersPage';
   hasMore: Scalars['Boolean']['output'];
-  items: Array<CollateralTransferType>;
+  items: Array<CollateralTransfer>;
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1296,7 +1304,7 @@ export type FloatNullableFilter = {
 /**
  * DEPRECATED — kept only as the return type of `accountAccuracy`, which is
  * itself `@deprecated`. The leaderboard-row shape lives on
- * `AccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation
+ * `AccountAccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation
  * counters (`numScored`, `numTimeWeighted`, `sumErrorSquared`,
  * `sumTimeWeightedError`) were always returned as zeros from the resolver
  * even on main, so callers should treat them as non-load-bearing.
@@ -1970,6 +1978,8 @@ export type ProfitRank = {
 /** Protocol-wide stats snapshot — no vault scoping. */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
+  /** Cumulative count of predictions and secondary trades/sales */
+  cumulativeTradeCount: Scalars['Int']['output'];
   cumulativeVolume: Scalars['String']['output'];
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
@@ -1979,8 +1989,6 @@ export type ProtocolStat = {
   periodVolume: Scalars['String']['output'];
   /** Snapshot boundary, aligned to the snapshot interval. */
   timestamp: Scalars['UnixSeconds']['output'];
-  /** Cumulative count of predictions and secondary trades/sales */
-  totalTradeCount: Scalars['Int']['output'];
 };
 
 export type Query = {
@@ -2004,13 +2012,17 @@ export type Query = {
    * ranked set, and `totalParticipants` is the size of the scored-forecaster
    * set.
    */
-  accountAccuracyRank: AccuracyRank;
+  accountAccuracyRank: AccountAccuracyRank;
   /**
    * Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
-   * @deprecated Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal.
+   * @deprecated Use `activityPage` — same data with a server-truth `hasMore` stop signal.
    */
   accountActivity: Array<ActivityItem>;
-  /** Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag. */
+  /**
+   * Deprecated alias for `activityPage` — the `account*` prefix predates the
+   * global-feed mode (added when `address` became optional).
+   * @deprecated Use `activityPage` — same resolver, the name reflects that the resolver also serves the global feed when `address` is omitted.
+   */
   accountActivityPage: ActivityItemsPage;
   /**
    * Time-bucketed collateral balance for a single address — deployed (in open
@@ -2091,7 +2103,14 @@ export type Query = {
    * Page-shaped with server-truth `hasMore`; `totalCount` is populated
    * unconditionally (cheap in-memory derivation).
    */
-  accuracyLeaderboardPage: AccuracyLeaderboardPage;
+  accuracyLeaderboardPage: AccountAccuracyLeaderboardPage;
+  /**
+   * Unified activity feed (predictions + trades merged by timestamp), wrapped
+   * in an `ActivityItemsPage` with a server-truth `hasMore` flag. When
+   * `address` is provided the feed is scoped to that account; otherwise it
+   * returns recent global activity.
+   */
+  activityPage: ActivityItemsPage;
   /** @deprecated Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal. */
   attestations: Array<Attestation>;
   /** Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order. */
@@ -2110,10 +2129,10 @@ export type Query = {
    * @deprecated Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement.
    */
   closes: Array<Close>;
-  collateralBalance: CollateralBalanceType;
-  collateralBalanceHistory: Array<CollateralBalanceSnapshotType>;
+  collateralBalance: CollateralBalance;
+  collateralBalanceHistory: Array<CollateralBalanceSnapshot>;
   /** @deprecated Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal. */
-  collateralTransfers: Array<CollateralTransferType>;
+  collateralTransfers: Array<CollateralTransfer>;
   /** Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args. */
   collateralTransfersPage: CollateralTransfersPage;
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape. */
@@ -2158,7 +2177,11 @@ export type Query = {
   positions: Array<Position>;
   /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. */
   positionsPage: PositionsPage;
-  /** Look up a single prediction by its on-chain prediction ID */
+  /**
+   * Look up a single prediction by its on-chain prediction ID. Pass
+   * `predictionId:` — the legacy `id:` arg is kept (deprecated) so existing
+   * callers keep working through one release.
+   */
   prediction?: Maybe<Prediction>;
   /**
    * Count of escrow predictions involving the given address
@@ -2212,7 +2235,11 @@ export type Query = {
    * `claimants` field.
    */
   referralCodesPage: ReferralCodesPage;
-  /** Look up a single secondary market trade by its trade hash */
+  /**
+   * Look up a single secondary market trade by its trade hash. Pass
+   * `tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing
+   * callers keep working through one release.
+   */
   trade?: Maybe<Trade>;
   /**
    * Count of secondary market trades matching the given filters
@@ -2348,6 +2375,16 @@ export type QueryAccountVolumeArgs = {
 export type QueryAccuracyLeaderboardPageArgs = {
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
+};
+
+
+export type QueryActivityPageArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  type?: InputMaybe<ActivityItemType>;
 };
 
 
@@ -2560,7 +2597,8 @@ export type QueryPositionsPageArgs = {
 
 
 export type QueryPredictionArgs = {
-  id: Scalars['String']['input'];
+  id?: InputMaybe<Scalars['String']['input']>;
+  predictionId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2647,7 +2685,8 @@ export type QueryReferralCodesPageArgs = {
 
 
 export type QueryTradeArgs = {
-  id: Scalars['String']['input'];
+  id?: InputMaybe<Scalars['String']['input']>;
+  tradeHash?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3156,25 +3195,25 @@ export type UserWhereUniqueInput = {
 /** Vault-specific stats snapshot for a single vault address. */
 export type VaultStat = {
   __typename?: 'VaultStat';
+  airdropGains: Scalars['String']['output'];
+  availableAssets: Scalars['String']['output'];
+  balance: Scalars['String']['output'];
+  cumulativePnL: Scalars['String']['output'];
+  deployed: Scalars['String']['output'];
+  deposits: Scalars['String']['output'];
   /** Realized PnL delta over the snapshot interval */
   periodPnL: Scalars['String']['output'];
+  positionsLost: Scalars['Int']['output'];
+  positionsWon: Scalars['Int']['output'];
+  /** Cumulative wUSDe paid by the vault on secondary-market buys */
+  secondaryBought: Scalars['String']['output'];
+  /** Cumulative wUSDe received by the vault on secondary-market sells */
+  secondarySold: Scalars['String']['output'];
   /** Snapshot boundary, aligned to the snapshot interval. */
   timestamp: Scalars['UnixSeconds']['output'];
-  vaultAirdropGains: Scalars['String']['output'];
-  vaultAvailableAssets: Scalars['String']['output'];
-  vaultBalance: Scalars['String']['output'];
-  vaultCumulativePnL: Scalars['String']['output'];
-  vaultDeployed: Scalars['String']['output'];
-  vaultDeposits: Scalars['String']['output'];
-  vaultPositionsLost: Scalars['Int']['output'];
-  vaultPositionsWon: Scalars['Int']['output'];
-  /** Cumulative wUSDe paid by the vault on secondary-market buys */
-  vaultSecondaryBought: Scalars['String']['output'];
-  /** Cumulative wUSDe received by the vault on secondary-market sells */
-  vaultSecondarySold: Scalars['String']['output'];
   /** wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins */
-  vaultUnredeemedClaim: Scalars['String']['output'];
-  vaultWithdrawals: Scalars['String']['output'];
+  unredeemedClaim: Scalars['String']['output'];
+  withdrawals: Scalars['String']['output'];
 };
 
 /** Time-bucketed volume data point for charts (legacy). */

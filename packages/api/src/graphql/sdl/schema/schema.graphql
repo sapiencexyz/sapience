@@ -14,7 +14,7 @@ the scored-forecaster set). Accuracy is lifetime-aggregated — the
 time-weighted error already weights by recency, so there's no window
 filter on this surface.
 """
-type AccuracyRank {
+type AccountAccuracyRank {
   address: String!
   accuracyScore: Float!
   rank: Int
@@ -24,7 +24,7 @@ type AccuracyRank {
 """
 DEPRECATED — kept only as the return type of `accountAccuracy`, which is
 itself `@deprecated`. The leaderboard-row shape lives on
-`AccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation
+`AccountAccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation
 counters (`numScored`, `numTimeWeighted`, `sumErrorSquared`,
 `sumTimeWeightedError`) were always returned as zeros from the resolver
 even on main, so callers should treat them as non-load-bearing.
@@ -134,7 +134,7 @@ type ActivityTrade {
 }
 
 type Attestation {
-  attestation_score(where: AttestationScoreWhereInput): AttestationScore
+  attestationScore(where: AttestationScoreWhereInput): AttestationScore
   attester: String!
   blockNumber: Int!
   comment: String
@@ -144,7 +144,16 @@ type Attestation {
   data: String!
   decodedDataJson: String!
   id: Int!
-  prediction: String!
+
+  """
+  Raw forecast value as recorded on-chain — the `uint256 forecast` field
+  on the EAS attestation schema, returned as a decimal string in D18
+  fixed-point representing a probability in `[0, 1e18]`. For the
+  canonical normalized probability use `Attestation.attestationScore.probabilityFloat`
+  (0–1 float) or `Attestation.attestationScore.probabilityD18`
+  (18-decimal fixed-point string).
+  """
+  forecast: String!
   recipient: String!
   resolver: String
   schemaId: String!
@@ -178,7 +187,7 @@ input AttestationOrderByRelationAggregateInput {
 }
 
 input AttestationOrderByWithRelationInput {
-  attestation_score: AttestationScoreOrderByWithRelationInput
+  attestationScore: AttestationScoreOrderByWithRelationInput
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrderInput
@@ -188,7 +197,7 @@ input AttestationOrderByWithRelationInput {
   data: SortOrder
   decodedDataJson: SortOrder
   id: SortOrder
-  prediction: SortOrder
+  forecast: SortOrder
   recipient: SortOrder
   resolver: SortOrderInput
   schemaId: SortOrder
@@ -211,7 +220,7 @@ enum AttestationScalarFieldEnum {
   data
   decodedDataJson
   id
-  prediction
+  forecast
   recipient
   resolver
   schemaId
@@ -289,7 +298,7 @@ input AttestationWhereInput {
   AND: [AttestationWhereInput!]
   NOT: [AttestationWhereInput!]
   OR: [AttestationWhereInput!]
-  attestation_score: AttestationScoreNullableRelationFilter
+  attestationScore: AttestationScoreNullableRelationFilter
   attester: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
@@ -299,7 +308,7 @@ input AttestationWhereInput {
   data: StringFilter
   decodedDataJson: StringFilter
   id: IntFilter
-  prediction: StringFilter
+  forecast: StringFilter
   recipient: StringFilter
   resolver: StringNullableFilter
   schemaId: StringFilter
@@ -312,7 +321,7 @@ input AttestationWhereUniqueInput {
   AND: [AttestationWhereInput!]
   NOT: [AttestationWhereInput!]
   OR: [AttestationWhereInput!]
-  attestation_score: AttestationScoreNullableRelationFilter
+  attestationScore: AttestationScoreNullableRelationFilter
   attester: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
@@ -322,7 +331,7 @@ input AttestationWhereUniqueInput {
   data: StringFilter
   decodedDataJson: StringFilter
   id: Int
-  prediction: StringFilter
+  forecast: StringFilter
   recipient: StringFilter
   resolver: StringNullableFilter
   schemaId: StringFilter
@@ -467,20 +476,20 @@ type Close {
   txHash: String!
 }
 
-type CollateralBalanceSnapshotType {
+type CollateralBalanceSnapshot {
   balance: String!
   index: Int!
   timestamp: DateTimeISO!
 }
 
-type CollateralBalanceType {
+type CollateralBalance {
   address: String!
   atBlock: Int
   balance: String!
   chainId: Int!
 }
 
-type CollateralTransferType {
+type CollateralTransfer {
   blockNumber: Int!
   chainId: Int!
   from: String!
@@ -983,16 +992,16 @@ One row of the accuracy leaderboard — an address with its lifetime
 accuracy score aggregated across every scored attestation. Parallel
 to `AccountStatsLeaderboardEntry`.
 """
-type AccuracyLeaderboardEntry {
+type AccountAccuracyLeaderboardEntry {
   address: String!
   accuracyScore: Float!
 }
 
 """
-Paginated wrapper around `AccuracyLeaderboardEntry` rows with a server-truth hasMore flag.
+Paginated wrapper around `AccountAccuracyLeaderboardEntry` rows with a server-truth hasMore flag.
 """
-type AccuracyLeaderboardPage implements Page {
-  items: [AccuracyLeaderboardEntry!]!
+type AccountAccuracyLeaderboardPage implements Page {
+  items: [AccountAccuracyLeaderboardEntry!]!
   hasMore: Boolean!
   """Eagerly populated: derived from the in-memory leaderboard array."""
   totalCount: Int
@@ -1547,9 +1556,9 @@ type ActivityItemsPage implements Page {
   totalCount: Int
 }
 
-"""Paginated wrapper around CollateralTransferType rows with a server-truth hasMore flag"""
+"""Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag"""
 type CollateralTransfersPage implements Page {
-  items: [CollateralTransferType!]!
+  items: [CollateralTransfer!]!
   hasMore: Boolean!
   totalCount: Int
 }
@@ -1909,7 +1918,7 @@ type ProtocolStat {
   """
   Cumulative count of predictions and secondary trades/sales
   """
-  totalTradeCount: Int!
+  cumulativeTradeCount: Int!
 
   """
   Trade-count delta over the snapshot interval
@@ -2007,30 +2016,30 @@ type VaultStat {
   Snapshot boundary, aligned to the snapshot interval.
   """
   timestamp: UnixSeconds!
-  vaultBalance: String!
-  vaultAvailableAssets: String!
-  vaultDeployed: String!
-  vaultCumulativePnL: String!
-  vaultPositionsWon: Int!
-  vaultPositionsLost: Int!
-  vaultDeposits: String!
-  vaultWithdrawals: String!
-  vaultAirdropGains: String!
+  balance: String!
+  availableAssets: String!
+  deployed: String!
+  cumulativePnL: String!
+  positionsWon: Int!
+  positionsLost: Int!
+  deposits: String!
+  withdrawals: String!
+  airdropGains: String!
 
   """
   Cumulative wUSDe paid by the vault on secondary-market buys
   """
-  vaultSecondaryBought: String!
+  secondaryBought: String!
 
   """
   Cumulative wUSDe received by the vault on secondary-market sells
   """
-  vaultSecondarySold: String!
+  secondarySold: String!
 
   """
   wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins
   """
-  vaultUnredeemedClaim: String!
+  unredeemedClaim: String!
 
   """
   Realized PnL delta over the snapshot interval
@@ -2046,7 +2055,7 @@ type Query {
   ranked set, and `totalParticipants` is the size of the scored-forecaster
   set.
   """
-  accountAccuracyRank(address: String!): AccuracyRank!
+  accountAccuracyRank(address: String!): AccountAccuracyRank!
 
   """
   Lifetime accuracy score for a single address, or null if no scored
@@ -2068,15 +2077,31 @@ type Query {
     take: Int! = 20
     # Kept as `String` (not `ActivityItemType`) so the deprecated query's
     # variable-coercion contract is unchanged. The replacement
-    # `accountActivityPage(type:)` uses the typed enum.
+    # `activityPage(type:)` uses the typed enum.
     type: String
   ): [ActivityItem!]!
     @deprecated(
-      reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal."
+      reason: "Use `activityPage` — same data with a server-truth `hasMore` stop signal."
     )
 
   """
-  Same as `accountActivity`, but wraps the result in an `ActivityItemsPage` with a server-truth `hasMore` flag.
+  Unified activity feed (predictions + trades merged by timestamp), wrapped
+  in an `ActivityItemsPage` with a server-truth `hasMore` flag. When
+  `address` is provided the feed is scoped to that account; otherwise it
+  returns recent global activity.
+  """
+  activityPage(
+    address: String
+    conditionId: String
+    pickConfigId: String
+    skip: Int! = 0
+    take: Int! = 20
+    type: ActivityItemType
+  ): ActivityItemsPage!
+
+  """
+  Deprecated alias for `activityPage` — the `account*` prefix predates the
+  global-feed mode (added when `address` became optional).
   """
   accountActivityPage(
     address: String
@@ -2086,6 +2111,9 @@ type Query {
     take: Int! = 20
     type: ActivityItemType
   ): ActivityItemsPage!
+    @deprecated(
+      reason: "Use `activityPage` — same resolver, the name reflects that the resolver also serves the global feed when `address` is omitted."
+    )
 
   """
   Per-account stats time series — wallet collateral position, PnL, volume,
@@ -2229,7 +2257,7 @@ type Query {
   accuracyLeaderboardPage(
     take: Int! = 25
     skip: Int! = 0
-  ): AccuracyLeaderboardPage!
+  ): AccountAccuracyLeaderboardPage!
   attestations(
     cursor: AttestationWhereUniqueInput
     distinct: [AttestationScalarFieldEnum!]
@@ -2306,20 +2334,20 @@ type Query {
     address: String!
     atBlock: Int
     chainId: Int!
-  ): CollateralBalanceType!
+  ): CollateralBalance!
   collateralBalanceHistory(
     address: String!
     chainId: Int!
     count: Int! = 12
     intervalHours: Int! = 168
-  ): [CollateralBalanceSnapshotType!]!
+  ): [CollateralBalanceSnapshot!]!
   collateralTransfers(
     address: String!
     chainId: Int!
     excludeProtocol: Boolean = false
     limit: Int! = 100
     offset: Int! = 0
-  ): [CollateralTransferType!]!
+  ): [CollateralTransfer!]!
     @deprecated(
       reason: "Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal."
     )
@@ -2486,9 +2514,17 @@ type Query {
   ): PositionsPage!
 
   """
-  Look up a single prediction by its on-chain prediction ID
+  Look up a single prediction by its on-chain prediction ID. Pass
+  `predictionId:` — the legacy `id:` arg is kept (deprecated) so existing
+  callers keep working through one release.
   """
-  prediction(id: String!): Prediction
+  prediction(
+    predictionId: String
+    id: String
+      @deprecated(
+        reason: "Use `predictionId:` — same value, the new arg name disambiguates it from the `Prediction.id` (Int!) row id surfaced on `predictionsPage` rows."
+      )
+  ): Prediction
 
   """
   Count of escrow predictions involving the given address
@@ -2634,9 +2670,17 @@ type Query {
   ): ReferralCodesPage!
 
   """
-  Look up a single secondary market trade by its trade hash
+  Look up a single secondary market trade by its trade hash. Pass
+  `tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing
+  callers keep working through one release.
   """
-  trade(id: String!): Trade
+  trade(
+    tradeHash: String
+    id: String
+      @deprecated(
+        reason: "Use `tradeHash:` — same value, the new arg name disambiguates it from the `Trade.id` (Int!) row id surfaced on `tradesPage` rows."
+      )
+  ): Trade
 
   """
   Count of secondary market trades matching the given filters

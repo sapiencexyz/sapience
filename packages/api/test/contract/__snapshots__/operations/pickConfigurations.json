@@ -1,301 +1,303 @@
 {
-  "pickConfigurations": [
-    {
-      "id": "0x20cb17daf7f990541269e21c0f079e1ad8ed930bed69b928ee8c8697d9ca805e",
-      "chainId": 13374202,
-      "totalPredictorCollateral": "30000000000000000000",
-      "totalCounterpartyCollateral": "3046929940515863400",
-      "resolved": false,
-      "picks": [
-        {
-          "conditionId": "0x121310966166ded89d3294dcb67522551f835e0289912615c4127bde6063f53b",
-          "conditionResolver": "0xa5ec46b834ac33ec68e30e7ddeedbbbd4f461784",
-          "predictedOutcome": 0,
-          "condition": null
-        },
-        {
-          "conditionId": "0x3f08f9986d8d2e14b3bfe3341a825bb8c80808754e9eade32ef8e32cc99cde58",
-          "conditionResolver": "0xa5ec46b834ac33ec68e30e7ddeedbbbd4f461784",
-          "predictedOutcome": 0,
-          "condition": null
-        }
-      ]
-    },
-    {
-      "id": "0x5e8a88acfacc3d9f08b1cefbd19914d0e5633677c25e214ac1f29bd00ae6d2a6",
-      "chainId": 13374202,
-      "totalPredictorCollateral": "40000000000000000",
-      "totalCounterpartyCollateral": "24384729239586446",
-      "resolved": true,
-      "picks": [
-        {
-          "conditionId": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7c769000000000000000000000000000000000000000000000000000006dec7e24080fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
-          "conditionResolver": "0x7bd534c96b78a5d6c10701714f29ea4f1587b64d",
-          "predictedOutcome": 1,
-          "condition": {
-            "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7c769000000000000000000000000000000000000000000000000000006dec7e24080fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
-            "shortName": "BTC OVER $75,539.06",
-            "optionName": null,
-            "question": "Crypto.BTC/USD OVER $75,539.06",
-            "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $75,539.06 at settlement (Tue, 21 Apr 2026 18:52:25 GMT), YES wins. If the price is exactly $75,539.06 at settlement, OVER wins.",
-            "endTime": 1776797545,
-            "resolver": "0x7bd534c96b78a5d6c10701714f29ea4f1587b64d",
-            "settled": true,
-            "resolvedToYes": false,
-            "nonDecisive": false,
-            "estimatedPrice": null,
-            "category": {
-              "slug": "prices-crypto"
+  "pickConfigurationsPage": {
+    "items": [
+      {
+        "id": "0x20cb17daf7f990541269e21c0f079e1ad8ed930bed69b928ee8c8697d9ca805e",
+        "chainId": 13374202,
+        "totalPredictorCollateral": "30000000000000000000",
+        "totalCounterpartyCollateral": "3046929940515863400",
+        "resolved": false,
+        "picks": [
+          {
+            "conditionId": "0x121310966166ded89d3294dcb67522551f835e0289912615c4127bde6063f53b",
+            "conditionResolver": "0xa5ec46b834ac33ec68e30e7ddeedbbbd4f461784",
+            "predictedOutcome": 0,
+            "condition": null
+          },
+          {
+            "conditionId": "0x3f08f9986d8d2e14b3bfe3341a825bb8c80808754e9eade32ef8e32cc99cde58",
+            "conditionResolver": "0xa5ec46b834ac33ec68e30e7ddeedbbbd4f461784",
+            "predictedOutcome": 0,
+            "condition": null
+          }
+        ]
+      },
+      {
+        "id": "0x5e8a88acfacc3d9f08b1cefbd19914d0e5633677c25e214ac1f29bd00ae6d2a6",
+        "chainId": 13374202,
+        "totalPredictorCollateral": "40000000000000000",
+        "totalCounterpartyCollateral": "24384729239586446",
+        "resolved": true,
+        "picks": [
+          {
+            "conditionId": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7c769000000000000000000000000000000000000000000000000000006dec7e24080fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+            "conditionResolver": "0x7bd534c96b78a5d6c10701714f29ea4f1587b64d",
+            "predictedOutcome": 1,
+            "condition": {
+              "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7c769000000000000000000000000000000000000000000000000000006dec7e24080fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+              "shortName": "BTC OVER $75,539.06",
+              "optionName": null,
+              "question": "Crypto.BTC/USD OVER $75,539.06",
+              "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $75,539.06 at settlement (Tue, 21 Apr 2026 18:52:25 GMT), YES wins. If the price is exactly $75,539.06 at settlement, OVER wins.",
+              "endTime": 1776797545,
+              "resolver": "0x7bd534c96b78a5d6c10701714f29ea4f1587b64d",
+              "settled": true,
+              "resolvedToYes": false,
+              "nonDecisive": false,
+              "estimatedPrice": null,
+              "category": {
+                "slug": "prices-crypto"
+              }
             }
           }
-        }
-      ]
-    },
-    {
-      "id": "0x843a92663f72348034699c510ffdfdbfd0ae05d6a2ffb6ce5458854707be829b",
-      "chainId": 13374202,
-      "totalPredictorCollateral": "10000000000000000",
-      "totalCounterpartyCollateral": "6673752848217776",
-      "resolved": false,
-      "picks": [
-        {
-          "conditionId": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7b13f000000000000000000000000000000000000000000000000000006de665edf80fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
-          "conditionResolver": "0xf56d26c58496a07df4882f52c56e3cadbfb87729",
-          "predictedOutcome": 1,
-          "condition": {
-            "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7b13f000000000000000000000000000000000000000000000000000006de665edf80fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
-            "shortName": "BTC OVER $75,522.7",
-            "optionName": null,
-            "question": "Crypto.BTC/USD OVER $75,522.7",
-            "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $75,522.7 at settlement (Tue, 21 Apr 2026 17:17:51 GMT), YES wins. If the price is exactly $75,522.7 at settlement, OVER wins.",
-            "endTime": 1776791871,
-            "resolver": "0xf56d26c58496a07df4882f52c56e3cadbfb87729",
-            "settled": false,
-            "resolvedToYes": false,
-            "nonDecisive": false,
-            "estimatedPrice": null,
-            "category": {
-              "slug": "prices-crypto"
+        ]
+      },
+      {
+        "id": "0x843a92663f72348034699c510ffdfdbfd0ae05d6a2ffb6ce5458854707be829b",
+        "chainId": 13374202,
+        "totalPredictorCollateral": "10000000000000000",
+        "totalCounterpartyCollateral": "6673752848217776",
+        "resolved": false,
+        "picks": [
+          {
+            "conditionId": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7b13f000000000000000000000000000000000000000000000000000006de665edf80fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+            "conditionResolver": "0xf56d26c58496a07df4882f52c56e3cadbfb87729",
+            "predictedOutcome": 1,
+            "condition": {
+              "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7b13f000000000000000000000000000000000000000000000000000006de665edf80fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+              "shortName": "BTC OVER $75,522.7",
+              "optionName": null,
+              "question": "Crypto.BTC/USD OVER $75,522.7",
+              "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $75,522.7 at settlement (Tue, 21 Apr 2026 17:17:51 GMT), YES wins. If the price is exactly $75,522.7 at settlement, OVER wins.",
+              "endTime": 1776791871,
+              "resolver": "0xf56d26c58496a07df4882f52c56e3cadbfb87729",
+              "settled": false,
+              "resolvedToYes": false,
+              "nonDecisive": false,
+              "estimatedPrice": null,
+              "category": {
+                "slug": "prices-crypto"
+              }
             }
           }
-        }
-      ]
-    },
-    {
-      "id": "0xf17da5138429d9af1deccf6a7ca5f4ce74ddd70e5bb9157a944ed1cd1a429db7",
-      "chainId": 13374202,
-      "totalPredictorCollateral": "2000000000000000000",
-      "totalCounterpartyCollateral": "19452040679394266000",
-      "resolved": false,
-      "picks": [
-        {
-          "conditionId": "0x35d8c42a467d4e485ffba50c5d2d984ed0793f4935319ca923b494798051c8ef",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 1,
-          "condition": {
-            "id": "0x35d8c42a467d4e485ffba50c5d2d984ed0793f4935319ca923b494798051c8ef",
-            "shortName": "↑ $110",
-            "optionName": "↑ $110",
-            "question": "Will WTI Crude Oil (WTI) hit (HIGH) $110 in April?",
-            "description": "This market will resolve to \"Yes\" if, at any point between market creation and the final trading day during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"High\" price equal to or above the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"High\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily high price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
-            "endTime": 1777521600,
-            "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-            "settled": false,
-            "resolvedToYes": false,
-            "nonDecisive": false,
-            "estimatedPrice": 0.295,
-            "category": {
-              "slug": "geopolitics"
+        ]
+      },
+      {
+        "id": "0xf17da5138429d9af1deccf6a7ca5f4ce74ddd70e5bb9157a944ed1cd1a429db7",
+        "chainId": 13374202,
+        "totalPredictorCollateral": "2000000000000000000",
+        "totalCounterpartyCollateral": "19452040679394266000",
+        "resolved": false,
+        "picks": [
+          {
+            "conditionId": "0x35d8c42a467d4e485ffba50c5d2d984ed0793f4935319ca923b494798051c8ef",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 1,
+            "condition": {
+              "id": "0x35d8c42a467d4e485ffba50c5d2d984ed0793f4935319ca923b494798051c8ef",
+              "shortName": "↑ $110",
+              "optionName": "↑ $110",
+              "question": "Will WTI Crude Oil (WTI) hit (HIGH) $110 in April?",
+              "description": "This market will resolve to \"Yes\" if, at any point between market creation and the final trading day during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"High\" price equal to or above the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"High\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily high price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
+              "endTime": 1777521600,
+              "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+              "settled": false,
+              "resolvedToYes": false,
+              "nonDecisive": false,
+              "estimatedPrice": 0.295,
+              "category": {
+                "slug": "geopolitics"
+              }
+            }
+          },
+          {
+            "conditionId": "0x67a8543bf23f52dfe5c908f512ea04e749c9044a6ff1a9fcf32a60b936b79472",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 1,
+            "condition": {
+              "id": "0x67a8543bf23f52dfe5c908f512ea04e749c9044a6ff1a9fcf32a60b936b79472",
+              "shortName": "↓ $70",
+              "optionName": "↓ $70",
+              "question": "Will WTI Crude Oil (WTI) hit (LOW) $70 in April?",
+              "description": "This market will resolve to \"Yes\" if, at any point during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"Low\" price equal to or below the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"Low\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily low price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
+              "endTime": 1777521600,
+              "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+              "settled": false,
+              "resolvedToYes": false,
+              "nonDecisive": false,
+              "estimatedPrice": 0.05,
+              "category": {
+                "slug": "geopolitics"
+              }
             }
           }
-        },
-        {
-          "conditionId": "0x67a8543bf23f52dfe5c908f512ea04e749c9044a6ff1a9fcf32a60b936b79472",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 1,
-          "condition": {
-            "id": "0x67a8543bf23f52dfe5c908f512ea04e749c9044a6ff1a9fcf32a60b936b79472",
-            "shortName": "↓ $70",
-            "optionName": "↓ $70",
-            "question": "Will WTI Crude Oil (WTI) hit (LOW) $70 in April?",
-            "description": "This market will resolve to \"Yes\" if, at any point during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"Low\" price equal to or below the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"Low\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily low price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
-            "endTime": 1777521600,
-            "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-            "settled": false,
-            "resolvedToYes": false,
-            "nonDecisive": false,
-            "estimatedPrice": 0.05,
-            "category": {
-              "slug": "geopolitics"
-            }
+        ]
+      },
+      {
+        "id": "0x182de89c82780a59347d1185ae4328c767c0ac9e367a5e7bc93c5eda4b8f7b49",
+        "chainId": 13374202,
+        "totalPredictorCollateral": "1000000000000000000",
+        "totalCounterpartyCollateral": "45111785275556930000",
+        "resolved": true,
+        "picks": [
+          {
+            "conditionId": "0x54b36f27449bac18ab792efb1fce8e923d6dc190a311cb28aef0926583ae5760",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 0,
+            "condition": null
+          },
+          {
+            "conditionId": "0x628e335a6cbec4b2dbcc89482fe594cb91f273318479e6930542d3cffc02f68f",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 0,
+            "condition": null
           }
-        }
-      ]
-    },
-    {
-      "id": "0x182de89c82780a59347d1185ae4328c767c0ac9e367a5e7bc93c5eda4b8f7b49",
-      "chainId": 13374202,
-      "totalPredictorCollateral": "1000000000000000000",
-      "totalCounterpartyCollateral": "45111785275556930000",
-      "resolved": true,
-      "picks": [
-        {
-          "conditionId": "0x54b36f27449bac18ab792efb1fce8e923d6dc190a311cb28aef0926583ae5760",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 0,
-          "condition": null
-        },
-        {
-          "conditionId": "0x628e335a6cbec4b2dbcc89482fe594cb91f273318479e6930542d3cffc02f68f",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 0,
-          "condition": null
-        }
-      ]
-    },
-    {
-      "id": "0x8300f336ae7e8b91f2074a8637580ffa18fafbc5cf86320720692c39191a7ccb",
-      "chainId": 13374202,
-      "totalPredictorCollateral": "1000000000000000000",
-      "totalCounterpartyCollateral": "34979869443163800000",
-      "resolved": true,
-      "picks": [
-        {
-          "conditionId": "0x1507c50c86fb307e4f1acd9d740b2be66d98773f90d161e94907d8ef2c5699b3",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 1,
-          "condition": null
-        },
-        {
-          "conditionId": "0x39104f7f48f4f379de4162f0cf64c24bf1ccb1f786fd7fafb3fbfb879fffedcc",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 1,
-          "condition": {
-            "id": "0x39104f7f48f4f379de4162f0cf64c24bf1ccb1f786fd7fafb3fbfb879fffedcc",
-            "shortName": "↑ $150",
-            "optionName": "↑ $150",
-            "question": "Will WTI Crude Oil (WTI) hit (HIGH) $150 in April?",
-            "description": "This market will resolve to \"Yes\" if, at any point during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"High\" price equal to or above the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"High\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily high price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
-            "endTime": 1777521600,
-            "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-            "settled": false,
-            "resolvedToYes": false,
-            "nonDecisive": false,
-            "estimatedPrice": 0.0135,
-            "category": {
-              "slug": "geopolitics"
+        ]
+      },
+      {
+        "id": "0x8300f336ae7e8b91f2074a8637580ffa18fafbc5cf86320720692c39191a7ccb",
+        "chainId": 13374202,
+        "totalPredictorCollateral": "1000000000000000000",
+        "totalCounterpartyCollateral": "34979869443163800000",
+        "resolved": true,
+        "picks": [
+          {
+            "conditionId": "0x1507c50c86fb307e4f1acd9d740b2be66d98773f90d161e94907d8ef2c5699b3",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 1,
+            "condition": null
+          },
+          {
+            "conditionId": "0x39104f7f48f4f379de4162f0cf64c24bf1ccb1f786fd7fafb3fbfb879fffedcc",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 1,
+            "condition": {
+              "id": "0x39104f7f48f4f379de4162f0cf64c24bf1ccb1f786fd7fafb3fbfb879fffedcc",
+              "shortName": "↑ $150",
+              "optionName": "↑ $150",
+              "question": "Will WTI Crude Oil (WTI) hit (HIGH) $150 in April?",
+              "description": "This market will resolve to \"Yes\" if, at any point during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"High\" price equal to or above the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"High\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily high price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
+              "endTime": 1777521600,
+              "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+              "settled": false,
+              "resolvedToYes": false,
+              "nonDecisive": false,
+              "estimatedPrice": 0.0135,
+              "category": {
+                "slug": "geopolitics"
+              }
             }
+          },
+          {
+            "conditionId": "0x8183a221622f2d5d2b46da86c80d55a61f43d35829589e03c1efae9d072638c5",
+            "conditionResolver": "0xa5ec46b834ac33ec68e30e7ddeedbbbd4f461784",
+            "predictedOutcome": 1,
+            "condition": null
+          },
+          {
+            "conditionId": "0xfa59099fbda1e0f0058ed3cbd57e939fe90ab6d9b57d53bd488bcadf75c191d4",
+            "conditionResolver": "0xa5ec46b834ac33ec68e30e7ddeedbbbd4f461784",
+            "predictedOutcome": 0,
+            "condition": null
+          },
+          {
+            "conditionId": "0x36e8ca24d2a13435f519f15580d42b45cdbe3bc425fb39a7c2733260357af0fa",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 0,
+            "condition": null
           }
-        },
-        {
-          "conditionId": "0x8183a221622f2d5d2b46da86c80d55a61f43d35829589e03c1efae9d072638c5",
-          "conditionResolver": "0xa5ec46b834ac33ec68e30e7ddeedbbbd4f461784",
-          "predictedOutcome": 1,
-          "condition": null
-        },
-        {
-          "conditionId": "0xfa59099fbda1e0f0058ed3cbd57e939fe90ab6d9b57d53bd488bcadf75c191d4",
-          "conditionResolver": "0xa5ec46b834ac33ec68e30e7ddeedbbbd4f461784",
-          "predictedOutcome": 0,
-          "condition": null
-        },
-        {
-          "conditionId": "0x36e8ca24d2a13435f519f15580d42b45cdbe3bc425fb39a7c2733260357af0fa",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 0,
-          "condition": null
-        }
-      ]
-    },
-    {
-      "id": "0x7e2bef527e93bcdbe854f2e8d2cb0f4a81d8220601a0209933dffe9b3eb80edf",
-      "chainId": 13374202,
-      "totalPredictorCollateral": "10000000000000000000",
-      "totalCounterpartyCollateral": "1437429053071504000",
-      "resolved": false,
-      "picks": [
-        {
-          "conditionId": "0xe443dab97ad8b7f58558cc7a6a3932d156031e962a451e0461e9a4578d78fe84",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 0,
-          "condition": null
-        },
-        {
-          "conditionId": "0xf92a10ba02dd37699ce3179f10a89d5c9c0a120df9a0bcc466411b4430a45522",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 0,
-          "condition": null
-        },
-        {
-          "conditionId": "0x24f38479176af2d71f64161d53bde777aef49ef1c03066510174d43a8d2a43fe",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 0,
-          "condition": null
-        }
-      ]
-    },
-    {
-      "id": "0x5af70e7e09585067aae9311dd2e11b1afc39c50bbb7c769345bb03a7a1e5fe93",
-      "chainId": 13374202,
-      "totalPredictorCollateral": "10000000000000000000",
-      "totalCounterpartyCollateral": "14463832137923855000",
-      "resolved": true,
-      "picks": [
-        {
-          "conditionId": "0xb48f3fbfc6b8ecace56631333514ba40e48b1ac623b9dbac7adf32a0a9c33f53",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 0,
-          "condition": null
-        },
-        {
-          "conditionId": "0x1e8f88b2950c44a7daeb24f4f2ee90b805fe153219dd2a305ab8d2da88a4a227",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 1,
-          "condition": null
-        }
-      ]
-    },
-    {
-      "id": "0x194dc5d37c8842ba5c54c398f01e575117331705a991f6f4799d7559c99a018c",
-      "chainId": 13374202,
-      "totalPredictorCollateral": "5000000000000000000",
-      "totalCounterpartyCollateral": "20506410139972736000",
-      "resolved": false,
-      "picks": [
-        {
-          "conditionId": "0x095cf4c348228fdcdab9d0e86ebbbfb1e7c9b83d8fc1357b4113a76bcd560c97",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 1,
-          "condition": null
-        },
-        {
-          "conditionId": "0x6ff0aea2be61472090f3fb1a452ee0a284ce7f47fb63f69e0051317bb29a5ef5",
-          "conditionResolver": "0xa5ec46b834ac33ec68e30e7ddeedbbbd4f461784",
-          "predictedOutcome": 1,
-          "condition": null
-        }
-      ]
-    },
-    {
-      "id": "0xd237f93ae1b3c6e3c3a2f5de27c6092613cad6bf5c031f2a07149ddd6612ba79",
-      "chainId": 13374202,
-      "totalPredictorCollateral": "75000000000000000000",
-      "totalCounterpartyCollateral": "18555780370101100000",
-      "resolved": true,
-      "picks": [
-        {
-          "conditionId": "0x400035edb2f06b436d7c67662962782f38f4ce3536e12e5897b9023dbc8bb2a3",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 1,
-          "condition": null
-        },
-        {
-          "conditionId": "0xbf2a3a8ede9dbe4bf934c2109366fcad96a1d89288265cb3ff451bc2f7a0a205",
-          "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-          "predictedOutcome": 1,
-          "condition": null
-        }
-      ]
-    }
-  ]
+        ]
+      },
+      {
+        "id": "0x7e2bef527e93bcdbe854f2e8d2cb0f4a81d8220601a0209933dffe9b3eb80edf",
+        "chainId": 13374202,
+        "totalPredictorCollateral": "10000000000000000000",
+        "totalCounterpartyCollateral": "1437429053071504000",
+        "resolved": false,
+        "picks": [
+          {
+            "conditionId": "0xe443dab97ad8b7f58558cc7a6a3932d156031e962a451e0461e9a4578d78fe84",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 0,
+            "condition": null
+          },
+          {
+            "conditionId": "0xf92a10ba02dd37699ce3179f10a89d5c9c0a120df9a0bcc466411b4430a45522",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 0,
+            "condition": null
+          },
+          {
+            "conditionId": "0x24f38479176af2d71f64161d53bde777aef49ef1c03066510174d43a8d2a43fe",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 0,
+            "condition": null
+          }
+        ]
+      },
+      {
+        "id": "0x5af70e7e09585067aae9311dd2e11b1afc39c50bbb7c769345bb03a7a1e5fe93",
+        "chainId": 13374202,
+        "totalPredictorCollateral": "10000000000000000000",
+        "totalCounterpartyCollateral": "14463832137923855000",
+        "resolved": true,
+        "picks": [
+          {
+            "conditionId": "0xb48f3fbfc6b8ecace56631333514ba40e48b1ac623b9dbac7adf32a0a9c33f53",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 0,
+            "condition": null
+          },
+          {
+            "conditionId": "0x1e8f88b2950c44a7daeb24f4f2ee90b805fe153219dd2a305ab8d2da88a4a227",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 1,
+            "condition": null
+          }
+        ]
+      },
+      {
+        "id": "0x194dc5d37c8842ba5c54c398f01e575117331705a991f6f4799d7559c99a018c",
+        "chainId": 13374202,
+        "totalPredictorCollateral": "5000000000000000000",
+        "totalCounterpartyCollateral": "20506410139972736000",
+        "resolved": false,
+        "picks": [
+          {
+            "conditionId": "0x095cf4c348228fdcdab9d0e86ebbbfb1e7c9b83d8fc1357b4113a76bcd560c97",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 1,
+            "condition": null
+          },
+          {
+            "conditionId": "0x6ff0aea2be61472090f3fb1a452ee0a284ce7f47fb63f69e0051317bb29a5ef5",
+            "conditionResolver": "0xa5ec46b834ac33ec68e30e7ddeedbbbd4f461784",
+            "predictedOutcome": 1,
+            "condition": null
+          }
+        ]
+      },
+      {
+        "id": "0xd237f93ae1b3c6e3c3a2f5de27c6092613cad6bf5c031f2a07149ddd6612ba79",
+        "chainId": 13374202,
+        "totalPredictorCollateral": "75000000000000000000",
+        "totalCounterpartyCollateral": "18555780370101100000",
+        "resolved": true,
+        "picks": [
+          {
+            "conditionId": "0x400035edb2f06b436d7c67662962782f38f4ce3536e12e5897b9023dbc8bb2a3",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 1,
+            "condition": null
+          },
+          {
+            "conditionId": "0xbf2a3a8ede9dbe4bf934c2109366fcad96a1d89288265cb3ff451bc2f7a0a205",
+            "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "predictedOutcome": 1,
+            "condition": null
+          }
+        ]
+      }
+    ]
+  }
 }

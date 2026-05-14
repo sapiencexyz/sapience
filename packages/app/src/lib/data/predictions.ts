@@ -4,8 +4,8 @@
 import { getGraphQLEndpoint } from './graphql';
 
 export const PREDICTION_BY_ID_QUERY = `
-  query Prediction($id: String!) {
-    prediction(id: $id) {
+  query Prediction($predictionId: String!) {
+    prediction(predictionId: $predictionId) {
       id
       predictionId
       chainId
@@ -119,7 +119,7 @@ export async function fetchPredictionWithConditions(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       query: PREDICTION_BY_ID_QUERY,
-      variables: { id: predictionId },
+      variables: { predictionId },
     }),
   });
   if (!resp.ok) return { prediction: null, conditions: [] };

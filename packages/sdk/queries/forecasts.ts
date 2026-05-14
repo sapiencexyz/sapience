@@ -9,7 +9,7 @@ interface RawAttestation {
   uid: string;
   attester: string;
   attestedAt: number;
-  prediction: string;
+  forecast: string;
   comment: string;
   conditionId?: string;
 }
@@ -55,7 +55,7 @@ export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
         uid
         attester
         attestedAt
-        prediction
+        forecast
         comment
         conditionId
       }
@@ -96,7 +96,7 @@ export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
         uid
         attester
         attestedAt
-        prediction
+        forecast
         comment
         conditionId
       }
@@ -120,7 +120,7 @@ export const formatAttestationData = (
       0,
       6
     )}...${attestation.attester.slice(-4)}`,
-    value: attestation.prediction,
+    value: attestation.forecast,
     time: formattedTime,
     rawTime: attestation.attestedAt,
     comment: attestation.comment,
@@ -219,7 +219,7 @@ const USER_FORECASTS_QUERY = /* GraphQL */ `
         uid
         attester
         attestedAt
-        prediction
+        forecast
         comment
         conditionId
       }

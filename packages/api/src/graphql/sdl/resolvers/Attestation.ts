@@ -1,7 +1,6 @@
 /**
  * Attestation model resolvers. Relation names match between Prisma
- * and SDL: `condition` (single), `attestation_score` (single, the
- * literal snake_case name carries through from the Prisma column).
+ * and SDL: `condition` (single), `attestationScore` (single).
  *
  * `condition` rides the existing `conditionById` DataLoader — same
  * loader the Pick.condition resolver uses. The loader pre-warms
@@ -40,11 +39,11 @@ export const Attestation: AttestationResolvers = {
     });
   },
 
-  attestation_score: async (parent, args) =>
-    loadRelation(parent as PrismaAttestation, 'attestation_score', {
+  attestationScore: async (parent, args) =>
+    loadRelation(parent as PrismaAttestation, 'attestationScore', {
       parentModel: 'attestation',
       parentWhere: { id: (parent as PrismaAttestation).id },
-      prismaRelationName: 'attestation_score',
+      prismaRelationName: 'attestationScore',
       args,
     }),
 };

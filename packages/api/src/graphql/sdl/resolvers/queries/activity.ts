@@ -254,6 +254,18 @@ export const runAccountActivity = async ({
   };
 };
 
+export const activityPage: NonNullable<QueryResolvers['activityPage']> = async (
+  _parent,
+  args
+) => {
+  return runAccountActivity(args);
+};
+
+/**
+ * Deprecated alias kept for one release while consumers migrate to
+ * `activityPage`. Body is identical — the SDL `@deprecated` reason
+ * directs callers at the new field.
+ */
 export const accountActivityPage: NonNullable<
   QueryResolvers['accountActivityPage']
 > = async (_parent, args) => {

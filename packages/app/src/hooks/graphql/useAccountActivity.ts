@@ -34,7 +34,7 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
     $pickConfigId: String
     $conditionId: String
   ) {
-    accountActivityPage(
+    activityPage(
       address: $address
       take: $take
       skip: $skip
@@ -232,7 +232,7 @@ export function useAccountActivity({
       lastPage.length < pageSize ? undefined : allPages.length * pageSize,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        accountActivityPage: { items: RawActivityItem[] };
+        activityPage: { items: RawActivityItem[] };
       }>(ACCOUNT_ACTIVITY_QUERY, {
         address: account ?? null,
         take: pageSize,
@@ -241,7 +241,7 @@ export function useAccountActivity({
         pickConfigId: pickConfigId ?? null,
         conditionId: conditionId ?? null,
       });
-      return resp?.accountActivityPage?.items ?? [];
+      return resp?.activityPage?.items ?? [];
     },
   });
 

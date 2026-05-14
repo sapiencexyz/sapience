@@ -554,7 +554,7 @@ const VaultsPageContent = () => {
 
   const deployedWei = useMemo(() => {
     const lastStat = vaultStats?.[vaultStats.length - 1];
-    return lastStat?.vaultDeployed ? BigInt(lastStat.vaultDeployed) : 0n;
+    return lastStat?.deployed ? BigInt(lastStat.deployed) : 0n;
   }, [vaultStats]);
 
   // Vault AUM = liquid USDe in the vault + collateral deployed in open positions.
@@ -637,9 +637,7 @@ const VaultsPageContent = () => {
     const totalVaultTvlWei = vaultEntries.reduce((sum, [v, stats]) => {
       const liquid = v?.totalLiquidValue ?? 0n;
       const lastStat = stats?.[stats.length - 1];
-      const deployed = lastStat?.vaultDeployed
-        ? BigInt(lastStat.vaultDeployed)
-        : 0n;
+      const deployed = lastStat?.deployed ? BigInt(lastStat.deployed) : 0n;
       return sum + liquid + deployed;
     }, 0n);
 
@@ -651,10 +649,7 @@ const VaultsPageContent = () => {
       : 0n;
     const vaultAvailableWei = vaultEntries.reduce((sum, [, stats]) => {
       const last = stats?.[stats.length - 1];
-      return (
-        sum +
-        (last?.vaultAvailableAssets ? BigInt(last.vaultAvailableAssets) : 0n)
-      );
+      return sum + (last?.availableAssets ? BigInt(last.availableAssets) : 0n);
     }, 0n);
     const protocolTvlWei = escrowWei + vaultAvailableWei;
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));

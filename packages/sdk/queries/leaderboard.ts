@@ -14,7 +14,7 @@ export interface AccountStatsLeaderboardEntry {
 
 /** Row shape returned by `accuracyLeaderboardPage` — one row of the accuracy
  *  leaderboard with the lifetime time-weighted accuracy score. */
-export type AccuracyLeaderboardEntry = {
+export type AccountAccuracyLeaderboardEntry = {
   address: string;
   accuracyScore: number;
 };
@@ -22,7 +22,7 @@ export type AccuracyLeaderboardEntry = {
 /** Single-address result from `accountAccuracyRank`. `accuracyScore` is always
  *  a number (zero when unscored); `rank` is null for unscored addresses;
  *  `totalParticipants` mirrors `AccountStatsRank`. */
-export interface AccuracyRankResult {
+export interface AccountAccuracyRankResult {
   address: string;
   accuracyScore: number;
   rank: number | null;
@@ -175,10 +175,10 @@ export async function fetchAccountStatsRank(params: {
  */
 export async function fetchAccuracyLeaderboard(
   limit = 25
-): Promise<AccuracyLeaderboardEntry[]> {
+): Promise<AccountAccuracyLeaderboardEntry[]> {
   const data = await graphqlRequest<{
     accuracyLeaderboardPage: {
-      items: AccuracyLeaderboardEntry[];
+      items: AccountAccuracyLeaderboardEntry[];
       hasMore: boolean;
     };
   }>(GET_ACCURACY_LEADERBOARD_PAGE, { take: limit, skip: 0 });
@@ -187,10 +187,10 @@ export async function fetchAccuracyLeaderboard(
 
 export async function fetchAccountAccuracyRank(
   address: string
-): Promise<AccuracyRankResult> {
+): Promise<AccountAccuracyRankResult> {
   const a = address.toLowerCase();
   const data = await graphqlRequest<{
-    accountAccuracyRank: AccuracyRankResult | null;
+    accountAccuracyRank: AccountAccuracyRankResult | null;
   }>(GET_ACCOUNT_ACCURACY_RANK, { address: a });
   const r = data?.accountAccuracyRank;
   if (!r) {

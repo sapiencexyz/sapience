@@ -42,10 +42,10 @@ vi.mock('~/hooks/graphql/useAnalytics', () => ({
   useVaultStats: () => mockUseProtocolStats(),
   getProtocolTvlWei: (
     protocolStat: { escrowBalance?: string } | null,
-    vaultStat: { vaultAvailableAssets?: string } | null
+    vaultStat: { availableAssets?: string } | null
   ) =>
     BigInt(protocolStat?.escrowBalance || '0') +
-    BigInt(vaultStat?.vaultAvailableAssets || '0'),
+    BigInt(vaultStat?.availableAssets || '0'),
 }));
 
 vi.mock('~/lib/context/ConnectDialogContext', () => ({

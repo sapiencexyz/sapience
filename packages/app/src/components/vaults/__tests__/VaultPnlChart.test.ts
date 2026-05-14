@@ -24,8 +24,8 @@ function makeStat({
 
   return {
     timestamp,
-    vaultBalance: tvlWei.toString(),
-    vaultCumulativePnL: (BigInt(pnl) * ONE_WUSDE).toString(),
+    balance: tvlWei.toString(),
+    cumulativePnL: (BigInt(pnl) * ONE_WUSDE).toString(),
   } as VaultStat;
 }
 

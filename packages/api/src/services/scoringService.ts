@@ -1,9 +1,9 @@
 import { OutcomeSide } from '@sapience/sdk/types';
 import prisma from '../core/db';
 import {
-  normalizePredictionToProbability,
+  normalizeForecastToProbability,
   outcomeFromCondition,
-} from './predictionNormalization';
+} from './forecastNormalization';
 
 export async function upsertAttestationScoreFromAttestation(
   attestationId: number
@@ -14,7 +14,7 @@ export async function upsertAttestationScoreFromAttestation(
   });
   if (!att) return;
 
-  const normalized = normalizePredictionToProbability(att.prediction);
+  const normalized = normalizeForecastToProbability(att.forecast);
 
   // Get marketAddress from the condition's resolver field
   const marketAddress = att.condition?.resolver?.toLowerCase() ?? null;
