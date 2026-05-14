@@ -9,14 +9,14 @@ import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 
 const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
   query RecentCounterpartyPredictions(
-    $address: String!
+    $filters: PredictionFilters
     $take: Int
     $skip: Int
     $orderBy: PredictionSortField
     $orderDirection: SortOrder
   ) {
     predictionsPage(
-      address: $address
+      filters: $filters
       take: $take
       skip: $skip
       orderBy: $orderBy
@@ -67,7 +67,7 @@ export function useTradeSettledNotifications() {
       const result = await graphqlRequest<PredictionsQueryResponse>(
         RECENT_PREDICTIONS_QUERY,
         {
-          address: address.toLowerCase(),
+          filters: { address: address.toLowerCase() },
           take: 10,
           skip: 0,
           orderBy: 'CREATED_AT',

@@ -54,8 +54,8 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
       take: $take
       skip: 0
       filters: $filters
-      sortField: endTime
-      sortDirection: asc
+      orderBy: endTime
+      orderDirection: asc
     ) {
       items {
         questionType

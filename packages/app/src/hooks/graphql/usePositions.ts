@@ -167,18 +167,8 @@ const PICK_CONFIG_FRAGMENT = `
 `;
 
 const PREDICTIONS_QUERY = /* GraphQL */ `
-  query Predictions(
-    $address: String!
-    $chainId: Int
-    $take: Int
-    $skip: Int
-  ) {
-    predictionsPage(
-      address: $address
-      chainId: $chainId
-      take: $take
-      skip: $skip
-    ) {
+  query Predictions($filters: PredictionFilters, $take: Int, $skip: Int) {
+    predictionsPage(filters: $filters, take: $take, skip: $skip) {
       items {
         id
         predictionId
@@ -211,8 +201,12 @@ const PREDICTIONS_QUERY = /* GraphQL */ `
 // reads. Keeps server-side query complexity under the 15k limit at take=100;
 // the full PICK_CONFIG_FRAGMENT (with embedded conditions) blew past it.
 const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
-  query PredictionsByCondition($conditionId: String!, $take: Int, $skip: Int) {
-    predictionsPage(conditionId: $conditionId, take: $take, skip: $skip) {
+  query PredictionsByCondition(
+    $filters: PredictionFilters
+    $take: Int
+    $skip: Int
+  ) {
+    predictionsPage(filters: $filters, take: $take, skip: $skip) {
       items {
         id
         predictionId
@@ -237,8 +231,8 @@ const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
 `;
 
 const PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
-  query PredictionsCount($address: String!, $chainId: Int) {
-    predictionsPage(address: $address, chainId: $chainId, take: 1) {
+  query PredictionsCount($filters: PredictionFilters) {
+    predictionsPage(filters: $filters, take: 1) {
       totalCount
     }
   }
@@ -278,20 +272,8 @@ const PREDICTION_QUERY = /* GraphQL */ `
 // positions with no sells), so the client-side `lastPage.length === 0`
 // stop signal is unsafe — use the response's `hasMore` flag instead.
 const POSITION_BALANCES_QUERY = /* GraphQL */ `
-  query Positions(
-    $holder: String!
-    $chainId: Int
-    $settled: Boolean
-    $take: Int
-    $skip: Int
-  ) {
-    positionsPage(
-      holder: $holder
-      chainId: $chainId
-      settled: $settled
-      take: $take
-      skip: $skip
-    ) {
+  query Positions($filters: PositionFilters, $take: Int, $skip: Int) {
+    positionsPage(filters: $filters, take: $take, skip: $skip) {
       hasMore
       items {
         id
@@ -314,17 +296,11 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
 
 const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
   query PositionsByCondition(
-    $conditionId: String!
+    $filters: PositionFilters
     $take: Int
     $skip: Int
-    $settled: Boolean
   ) {
-    positionsPage(
-      conditionId: $conditionId
-      take: $take
-      skip: $skip
-      settled: $settled
-    ) {
+    positionsPage(filters: $filters, take: $take, skip: $skip) {
       hasMore
       items {
         id
@@ -360,7 +336,9 @@ export function usePredictionsCount(address?: string, chainId?: number) {
     queryFn: async () => {
       const resp = await graphqlRequest<{
         predictionsPage: { totalCount: number | null };
-      }>(PREDICTIONS_COUNT_QUERY, { address, chainId: chainId ?? null });
+      }>(PREDICTIONS_COUNT_QUERY, {
+        filters: { address, chainId: chainId ?? null },
+      });
       return resp?.predictionsPage?.totalCount ?? 0;
     },
   });
@@ -390,8 +368,7 @@ export function usePredictions(params: {
       const resp = await graphqlRequest<{
         predictionsPage: { items: Prediction[] };
       }>(PREDICTIONS_QUERY, {
-        address,
-        chainId: chainId ?? null,
+        filters: { address, chainId: chainId ?? null },
         take,
         skip,
       });
@@ -454,9 +431,11 @@ export function usePositionBalances(params: {
       const resp = await graphqlRequest<{
         positionsPage: PositionBalancePage;
       }>(POSITION_BALANCES_QUERY, {
-        holder,
-        chainId: chainId ?? null,
-        settled: settled ?? null,
+        filters: {
+          holder,
+          chainId: chainId ?? null,
+          settled: settled ?? null,
+        },
         take: pageSize,
         skip: pageParam,
       });
@@ -523,10 +502,9 @@ export function usePositionBalancesByConditionId(params: {
       const resp = await graphqlRequest<{
         positionsPage: PositionBalancePage;
       }>(POSITION_BALANCES_BY_CONDITION_QUERY, {
-        conditionId,
+        filters: { conditionId, settled: settled ?? null },
         take: pageSize,
         skip: pageParam,
-        settled: settled ?? null,
       });
       return resp?.positionsPage ?? { items: [], hasMore: false };
     },
@@ -573,7 +551,11 @@ export function usePredictionsByConditionId(params: {
     queryFn: async () => {
       const resp = await graphqlRequest<{
         predictionsPage: { items: Prediction[] };
-      }>(PREDICTIONS_BY_CONDITION_QUERY, { conditionId, take, skip });
+      }>(PREDICTIONS_BY_CONDITION_QUERY, {
+        filters: { conditionId },
+        take,
+        skip,
+      });
       return resp?.predictionsPage?.items ?? [];
     },
   });

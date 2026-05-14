@@ -47,15 +47,15 @@ export const GET_QUESTIONS = /* GraphQL */ `
   query Questions(
     $take: Int!
     $skip: Int!
-    $sortField: QuestionSortField!
-    $sortDirection: SortOrder!
+    $orderBy: QuestionSortField!
+    $orderDirection: SortOrder!
     $filters: QuestionFilters
   ) {
     questionsPage(
       take: $take
       skip: $skip
-      sortField: $sortField
-      sortDirection: $sortDirection
+      orderBy: $orderBy
+      orderDirection: $orderDirection
       filters: $filters
     ) {
       items {
@@ -183,8 +183,8 @@ export async function fetchQuestionsSorted(
   const variables = {
     take: params.take,
     skip: params.skip,
-    sortField: params.sortField,
-    sortDirection: params.sortDirection,
+    orderBy: params.sortField,
+    orderDirection: params.sortDirection,
     filters: {
       chainId: params.chainId ?? null,
       contractAddress: params.contractAddress ?? null,

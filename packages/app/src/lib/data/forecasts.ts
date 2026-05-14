@@ -4,8 +4,8 @@
 import { getGraphQLEndpoint } from './graphql';
 
 export const ATTESTATION_BY_UID_QUERY = `
-  query FindAttestationByUid($uid: String!) {
-    attestationsPage(uid: $uid, take: 1) {
+  query FindAttestationByUid($filters: AttestationFilters) {
+    attestationsPage(filters: $filters, take: 1) {
       items {
         id
         uid
@@ -71,7 +71,7 @@ export async function fetchAttestationByUid(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       query: ATTESTATION_BY_UID_QUERY,
-      variables: { uid },
+      variables: { filters: { uid } },
     }),
   });
   if (!resp.ok) return null;

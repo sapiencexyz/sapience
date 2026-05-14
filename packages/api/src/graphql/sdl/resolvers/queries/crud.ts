@@ -200,6 +200,29 @@ export const runAttestations = async ({
   };
 };
 
+/**
+ * Merge `filters: AttestationFilters` with the deprecated flat arg
+ * shape. `filters` wins on conflicts.
+ */
+const mergeAttestationFilters = (
+  args: QueryAttestationsPageArgs
+): QueryAttestationsPageArgs => {
+  const f = args.filters ?? null;
+  return {
+    take: args.take,
+    skip: args.skip,
+    orderBy: args.orderBy,
+    orderDirection: args.orderDirection,
+    uid: f?.uid ?? args.uid ?? null,
+    attester: f?.attester ?? args.attester ?? null,
+    recipient: f?.recipient ?? args.recipient ?? null,
+    conditionId: f?.conditionId ?? args.conditionId ?? null,
+    schemaId: f?.schemaId ?? args.schemaId ?? null,
+    minTime: f?.minTime ?? args.minTime ?? null,
+    maxTime: f?.maxTime ?? args.maxTime ?? null,
+  };
+};
+
 export const attestationsPage: NonNullable<
   QueryResolvers['attestationsPage']
-> = async (_parent, args) => runAttestations(args);
+> = async (_parent, args) => runAttestations(mergeAttestationFilters(args));

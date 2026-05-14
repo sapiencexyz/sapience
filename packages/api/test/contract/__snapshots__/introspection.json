@@ -973,6 +973,57 @@
         "possibleTypes": null
       },
       {
+        "kind": "INPUT_OBJECT",
+        "name": "ActivityFilters",
+        "description": "Flat filter input for the `accountActivityPage` query. Each field is\noptional; values combine with AND. Omit `address` for a global feed.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "address",
+            "description": "Restrict to a single account's activity (case-insensitive). Omit for a global feed.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Restrict to activity on a single condition.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "pickConfigId",
+            "description": "Restrict to activity tied to a single pick configuration.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "type",
+            "description": "Restrict to just prediction events or just trade events. Omit for both.",
+            "type": {
+              "kind": "ENUM",
+              "name": "ActivityItemType",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "OBJECT",
         "name": "ActivityItem",
         "description": "A single activity entry — either a prediction or a trade, sorted by timestamp",
@@ -1644,6 +1695,87 @@
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "AttestationFilters",
+        "description": "Flat filter input for the `attestationsPage` query. Each field is optional;\nvalues combine with AND.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "uid",
+            "description": "Restrict to a single attestation by UID.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "attester",
+            "description": "Restrict to a single attester address (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "recipient",
+            "description": "Restrict to a single recipient address (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Restrict to attestations on a single condition.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "schemaId",
+            "description": "Restrict to a single EAS schema ID.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "minTime",
+            "description": "Restrict to attestations with `time >= this` (epoch seconds).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "maxTime",
+            "description": "Restrict to attestations with `time <= this` (epoch seconds).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },
@@ -14830,6 +14962,65 @@
         "possibleTypes": null
       },
       {
+        "kind": "INPUT_OBJECT",
+        "name": "PickConfigurationFilters",
+        "description": "Flat filter input for the `pickConfigurationsPage` query. Each field is\noptional; values combine with AND.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "chainId",
+            "description": "Restrict to a single chain.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "resolved",
+            "description": "Restrict to resolved (true) or unresolved (false) pick configurations.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "result",
+            "description": "Restrict to pick configurations with this settlement result.",
+            "type": {
+              "kind": "ENUM",
+              "name": "SettlementResult",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "tokens",
+            "description": "Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request.",
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "OBJECT",
         "name": "PickConfigurationsPage",
         "description": "Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag",
@@ -15157,6 +15348,127 @@
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "PositionFilters",
+        "description": "Flat filter input for the `positionsPage` query. Each field is optional;\nvalues combine with AND. Replaces the flat-arg shape on the resolver; the\nold args remain for one release with `@deprecated` so existing callers can\nmigrate without breaking.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "holder",
+            "description": "Restrict to a single holder address (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "chainId",
+            "description": "Restrict to a single chain.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Restrict to positions tied to a single condition (via the pickConfig join).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "pickConfigId",
+            "description": "Restrict to a single pick configuration.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "result",
+            "description": "Restrict to positions whose pickConfig settled with this result.",
+            "type": {
+              "kind": "ENUM",
+              "name": "SettlementResult",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "settled",
+            "description": "Restrict to settled (true) or unsettled (false) positions.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "holderWon",
+            "description": "Restrict to positions where the holder won (true) or lost (false). Combines side with settlement result.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "collateralMin",
+            "description": "Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "collateralMax",
+            "description": "Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "endsAtMin",
+            "description": "Restrict to positions whose pickConfig `endsAt >= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "endsAtMax",
+            "description": "Restrict to positions whose pickConfig `endsAt <= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },
@@ -15707,6 +16019,67 @@
         "possibleTypes": null
       },
       {
+        "kind": "INPUT_OBJECT",
+        "name": "PredictionFilters",
+        "description": "Flat filter input for the `predictionsPage` query. Each field is optional;\nvalues combine with AND.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "address",
+            "description": "Restrict to predictions where the address is predictor or counterparty (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "chainId",
+            "description": "Restrict to a single chain.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Restrict to predictions on a single condition (via the pickConfig join).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "isLegacy",
+            "description": "Restrict to legacy (true) or non-legacy (false) predictions.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "settled",
+            "description": "Restrict to settled (true) or unsettled (false) predictions.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "ENUM",
         "name": "PredictionSortField",
         "description": "Field to sort predictions by",
@@ -16150,51 +16523,17 @@
           },
           {
             "name": "activityPage",
-            "description": "Unified activity feed (predictions + trades merged by timestamp), wrapped\nin an `ActivityItemsPage` with a server-truth `hasMore` flag. When\n`address` is provided the feed is scoped to that account; otherwise it\nreturns recent global activity.",
+            "description": "Unified activity feed (predictions + trades merged by timestamp), wrapped\nin an `ActivityItemsPage` with a server-truth `hasMore` flag. When\n`address` is provided the feed is scoped to that account; otherwise it\nreturns recent global activity.\n\nFiltering is via `filters: ActivityFilters`. The flat-arg filters\n(`address`, `conditionId`, `pickConfigId`, `type`) are retained for one\nrelease with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.",
             "args": [
               {
-                "name": "address",
+                "name": "filters",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
+                  "kind": "INPUT_OBJECT",
+                  "name": "ActivityFilters",
                   "ofType": null
                 },
                 "defaultValue": null
-              },
-              {
-                "name": "conditionId",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "pickConfigId",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
               },
               {
                 "name": "take",
@@ -16211,14 +16550,18 @@
                 "defaultValue": "20"
               },
               {
-                "name": "type",
+                "name": "skip",
                 "description": null,
                 "type": {
-                  "kind": "ENUM",
-                  "name": "ActivityItemType",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -16235,7 +16578,7 @@
           },
           {
             "name": "accountActivityPage",
-            "description": "Deprecated alias for `activityPage` — the `account*` prefix predates the\nglobal-feed mode (added when `address` became optional).",
+            "description": "Deprecated alias for `activityPage` — the `account*` prefix predates the\nglobal-feed mode (added when `address` became optional). Kept on the\nflat-arg shape; callers wanting the `filters:` input should migrate\nto `activityPage`.",
             "args": [
               {
                 "name": "address",
@@ -16975,44 +17318,14 @@
           },
           {
             "name": "attestationsPage",
-            "description": "Same as `attestations`, but with purpose-built flat filters and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.",
+            "description": "Same as `attestations`, but with a purpose-built `AttestationFilters` input and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.\n\nFiltering is via `filters: AttestationFilters`. The flat-arg filters\n(`uid`, `attester`, `recipient`, `conditionId`, `schemaId`, `minTime`,\n`maxTime`) are retained for one release with `@deprecated` so existing\ncallers can migrate without breaking; new callers should use `filters:`.",
             "args": [
               {
-                "name": "attester",
+                "name": "filters",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "conditionId",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "maxTime",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "UnixSeconds",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "minTime",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "UnixSeconds",
+                  "kind": "INPUT_OBJECT",
+                  "name": "AttestationFilters",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -17033,36 +17346,6 @@
                 "type": {
                   "kind": "ENUM",
                   "name": "SortOrder",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "recipient",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "schemaId",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "uid",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18273,51 +18556,17 @@
           },
           {
             "name": "pickConfigurationsPage",
-            "description": "Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.",
+            "description": "Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.\n\nFiltering is via `filters: PickConfigurationFilters`. The flat-arg\nfilters (`chainId`, `resolved`, `result`, `tokens`) are retained for\none release with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.",
             "args": [
               {
-                "name": "chainId",
+                "name": "filters",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
+                  "kind": "INPUT_OBJECT",
+                  "name": "PickConfigurationFilters",
                   "ofType": null
                 },
                 "defaultValue": null
-              },
-              {
-                "name": "resolved",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Boolean",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "result",
-                "description": null,
-                "type": {
-                  "kind": "ENUM",
-                  "name": "SettlementResult",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
               },
               {
                 "name": "take",
@@ -18334,22 +18583,18 @@
                 "defaultValue": "50"
               },
               {
-                "name": "tokens",
+                "name": "skip",
                 "description": null,
                 "type": {
-                  "kind": "LIST",
+                  "kind": "NON_NULL",
                   "name": null,
                   "ofType": {
-                    "kind": "NON_NULL",
-                    "name": null,
-                    "ofType": {
-                      "kind": "SCALAR",
-                      "name": "String",
-                      "ofType": null
-                    }
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
                   }
                 },
-                "defaultValue": null
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -18624,84 +18869,14 @@
           },
           {
             "name": "positionsPage",
-            "description": "Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.",
+            "description": "Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.\n\nFiltering is via `filters: PositionFilters`. The flat-arg filters\n(`holder`, `chainId`, `conditionId`, …) are retained for one release\nwith `@deprecated` so existing callers can migrate without breaking;\nnew callers should use `filters:`.",
             "args": [
               {
-                "name": "chainId",
+                "name": "filters",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "collateralMax",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "collateralMin",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "conditionId",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "endsAtMax",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "UnixSeconds",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "endsAtMin",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "UnixSeconds",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "holder",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "holderWon",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Boolean",
+                  "kind": "INPUT_OBJECT",
+                  "name": "PositionFilters",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18727,34 +18902,18 @@
                 "defaultValue": null
               },
               {
-                "name": "pickConfigId",
+                "name": "take",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
-              },
-              {
-                "name": "result",
-                "description": null,
-                "type": {
-                  "kind": "ENUM",
-                  "name": "SettlementResult",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "settled",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Boolean",
-                  "ofType": null
-                },
-                "defaultValue": null
+                "defaultValue": "50"
               },
               {
                 "name": "skip",
@@ -18769,20 +18928,6 @@
                   }
                 },
                 "defaultValue": "0"
-              },
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "50"
               }
             ],
             "type": {
@@ -18986,44 +19131,14 @@
           },
           {
             "name": "predictionsPage",
-            "description": "Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.",
+            "description": "Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.\n\nFiltering is via `filters: PredictionFilters`. The flat-arg filters\n(`address`, `chainId`, `conditionId`, `isLegacy`, `settled`) are\nretained for one release with `@deprecated` so existing callers can\nmigrate without breaking; new callers should use `filters:`.",
             "args": [
               {
-                "name": "address",
+                "name": "filters",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "chainId",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "conditionId",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "isLegacy",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Boolean",
+                  "kind": "INPUT_OBJECT",
+                  "name": "PredictionFilters",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -19049,14 +19164,18 @@
                 "defaultValue": null
               },
               {
-                "name": "settled",
+                "name": "take",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "Boolean",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
+                "defaultValue": "50"
               },
               {
                 "name": "skip",
@@ -19071,20 +19190,6 @@
                   }
                 },
                 "defaultValue": "0"
-              },
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "50"
               }
             ],
             "type": {
@@ -19448,7 +19553,7 @@
           },
           {
             "name": "questionsPage",
-            "description": "Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.",
+            "description": "Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.\n\nSorting uses `orderBy` / `orderDirection` to match the convention on\nevery other `*Page` resolver. The original `sortField` / `sortDirection`\nargs are retained for one release with `@deprecated`; new callers\nshould use `orderBy:` / `orderDirection:`.",
             "args": [
               {
                 "name": "filters",
@@ -19461,39 +19566,21 @@
                 "defaultValue": null
               },
               {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
-              },
-              {
-                "name": "sortDirection",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "ENUM",
-                    "name": "SortOrder",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "desc"
-              },
-              {
-                "name": "sortField",
+                "name": "orderBy",
                 "description": null,
                 "type": {
                   "kind": "ENUM",
                   "name": "QuestionSortField",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderDirection",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "SortOrder",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -19511,6 +19598,20 @@
                   }
                 },
                 "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -19765,61 +19866,17 @@
           },
           {
             "name": "tradesPage",
-            "description": "Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.",
+            "description": "Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.\n\nFiltering is via `filters: TradeFilters`. The flat-arg filters\n(`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one\nrelease with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.",
             "args": [
               {
-                "name": "address",
+                "name": "filters",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
+                  "kind": "INPUT_OBJECT",
+                  "name": "TradeFilters",
                   "ofType": null
                 },
                 "defaultValue": null
-              },
-              {
-                "name": "buyer",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "chainId",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "seller",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
               },
               {
                 "name": "take",
@@ -19836,14 +19893,18 @@
                 "defaultValue": "50"
               },
               {
-                "name": "token",
+                "name": "skip",
                 "description": null,
                 "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
                 },
-                "defaultValue": null
+                "defaultValue": "0"
               }
             ],
             "type": {
@@ -21996,6 +22057,67 @@
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "TradeFilters",
+        "description": "Flat filter input for the `tradesPage` query. Each field is optional;\nvalues combine with AND. `address` and (`seller` | `buyer`) are mutually\nexclusive — passing both yields an error.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "address",
+            "description": "Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "seller",
+            "description": "Restrict to a single seller address (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "buyer",
+            "description": "Restrict to a single buyer address (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "token",
+            "description": "Restrict to a single position token address (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "chainId",
+            "description": "Restrict to a single chain.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },

@@ -11,6 +11,7 @@
 
 import type {
   QueryResolvers,
+  QueryActivityPageArgs,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
@@ -254,17 +255,41 @@ export const runAccountActivity = async ({
   };
 };
 
+/**
+ * Merge `filters: ActivityFilters` with the deprecated flat arg shape.
+ * `filters` wins on conflicts. Takes the RequireFields'd resolver shape
+ * (`take`/`skip` non-null because the schema declares defaults).
+ */
+type ActivityPageResolverArgs = QueryActivityPageArgs & {
+  take: number;
+  skip: number;
+};
+
+const mergeActivityFilters = (
+  args: ActivityPageResolverArgs
+): RunAccountActivityArgs => {
+  const f = args.filters ?? null;
+  return {
+    take: args.take,
+    skip: args.skip,
+    address: f?.address ?? args.address ?? null,
+    conditionId: f?.conditionId ?? args.conditionId ?? null,
+    pickConfigId: f?.pickConfigId ?? args.pickConfigId ?? null,
+    type: f?.type ?? args.type ?? null,
+  };
+};
+
 export const activityPage: NonNullable<QueryResolvers['activityPage']> = async (
   _parent,
   args
 ) => {
-  return runAccountActivity(args);
+  return runAccountActivity(mergeActivityFilters(args));
 };
 
 /**
  * Deprecated alias kept for one release while consumers migrate to
- * `activityPage`. Body is identical — the SDL `@deprecated` reason
- * directs callers at the new field.
+ * `activityPage`. Stays on the flat-arg shape — callers wanting the
+ * `filters:` input should migrate to `activityPage` directly.
  */
 export const accountActivityPage: NonNullable<
   QueryResolvers['accountActivityPage']
