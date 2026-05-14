@@ -1,22 +1,12 @@
 /**
- * CollateralTransfersPage field resolvers — lazy `totalCount`.
+ * CollateralTransfersPage field resolvers. `totalCount` is lazy — see
+ * `lazyTotalCount` for the shared `_countWhere` contract.
  */
 
 import type { CollateralTransfersPageResolvers } from '../__generated__/resolvers';
 import prisma from '../../../core/db';
-
-type CollateralTransfersPageParent = {
-  totalCount?: number | null;
-  _countWhere?: NonNullable<
-    Parameters<typeof prisma.collateralTransfer.count>[0]
-  >['where'];
-};
+import { lazyTotalCount } from './pageTotalCount';
 
 export const CollateralTransfersPage: CollateralTransfersPageResolvers = {
-  totalCount: async (parent: unknown) => {
-    const p = parent as CollateralTransfersPageParent;
-    if (typeof p.totalCount === 'number') return p.totalCount;
-    if (!p._countWhere) return null;
-    return prisma.collateralTransfer.count({ where: p._countWhere });
-  },
+  totalCount: lazyTotalCount(prisma.collateralTransfer),
 };
