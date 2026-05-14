@@ -8,6 +8,7 @@ import type { Socket } from 'net';
 import { initSentry } from './instrument';
 import { initializeApolloServer } from '../graphql/startApolloServer';
 import { createLoaders } from '../graphql/sdl/resolvers/loaders';
+import { startInflightDump } from '../runtime/inflightDump';
 import Sentry from './instrument';
 import { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from '../fixtures';
@@ -130,6 +131,13 @@ const startServer = async () => {
 
   const httpServer = createServer(app);
 
+  // Socket-level timeouts. Node defaults (60s headers / 5min request /
+  // 5s keepalive) leave a slowloris vector — these tighten the ceiling
+  // without affecting legitimate clients, whose headers complete in <100ms.
+  httpServer.headersTimeout = 5_000;
+  httpServer.requestTimeout = 20_000;
+  httpServer.keepAliveTimeout = 5_000;
+
   // Create WebSocket server and route upgrades centrally
   const chatWss = createChatWebSocketServer();
 
@@ -183,6 +191,12 @@ const startServer = async () => {
     }
   );
 
+  // Periodic gauge dump — disabled by default (interval <= 0). Opt in via
+  // GRAPHQL_INFLIGHT_DUMP_INTERVAL_MS for benchmarks or low-rate prod monitoring.
+  const stopInflightDump = startInflightDump(
+    config.GRAPHQL_INFLIGHT_DUMP_INTERVAL_MS
+  );
+
   httpServer.listen(PORT, () => {
     log.info({ port: PORT, auctionProxyEnabled }, 'Server listening');
   });
@@ -190,6 +204,7 @@ const startServer = async () => {
   // Graceful shutdown — drain in-flight requests before exiting
   const shutdown = async () => {
     log.info('Shutting down gracefully');
+    stopInflightDump();
     httpServer.close(() => {
       log.info('HTTP server closed');
       prisma.$disconnect().then(() => process.exit(0));

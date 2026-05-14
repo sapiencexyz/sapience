@@ -138,6 +138,24 @@ describe('operationTimingPlugin', () => {
     expect(parsed.errors as number).toBeGreaterThanOrEqual(1);
   });
 
+  it('emits outcome="success" for clean responses and "errors" otherwise', async () => {
+    await apollo.executeOperation(
+      { query: '{ hello }' },
+      { contextValue: stubContext() }
+    );
+    const ok = findLog(logs, '"event":"gql_request"');
+    expect(ok.outcome).toBe('success');
+
+    logs.length = 0;
+
+    await apollo.executeOperation(
+      { query: '{ fail }' },
+      { contextValue: stubContext() }
+    );
+    const failed = findLog(logs, '"event":"gql_request"');
+    expect(failed.outcome).toBe('errors');
+  });
+
   it('falls back to "anonymous" for unnamed queries', async () => {
     await apollo.executeOperation(
       { query: '{ hello }' },
