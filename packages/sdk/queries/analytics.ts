@@ -31,8 +31,8 @@ export interface VaultStat {
 }
 
 export const GET_PROTOCOL_STATS = /* GraphQL */ `
-  query ProtocolStats($fromEpoch: Int, $toEpoch: Int) {
-    protocolStats(fromEpoch: $fromEpoch, toEpoch: $toEpoch) {
+  query ProtocolStats($from: UnixSeconds, $to: UnixSeconds) {
+    protocolStats(from: $from, to: $to) {
       timestamp
       cumulativeVolume
       totalTradeCount
@@ -45,12 +45,12 @@ export const GET_PROTOCOL_STATS = /* GraphQL */ `
 `;
 
 export const GET_VAULT_STATS = /* GraphQL */ `
-  query VaultStats($vaultAddress: String!, $fromEpoch: Int, $toEpoch: Int) {
-    vaultStats(
-      vaultAddress: $vaultAddress
-      fromEpoch: $fromEpoch
-      toEpoch: $toEpoch
-    ) {
+  query VaultStats(
+    $vaultAddress: String!
+    $from: UnixSeconds
+    $to: UnixSeconds
+  ) {
+    vaultStats(vaultAddress: $vaultAddress, from: $from, to: $to) {
       timestamp
       vaultBalance
       vaultAvailableAssets
@@ -76,8 +76,8 @@ export async function fetchProtocolStats(params?: {
   const data = await graphqlRequest<{
     protocolStats: ProtocolStat[];
   }>(GET_PROTOCOL_STATS, {
-    fromEpoch: toEpochOrNull(params?.from),
-    toEpoch: toEpochOrNull(params?.to),
+    from: toEpochOrNull(params?.from),
+    to: toEpochOrNull(params?.to),
   });
   return data?.protocolStats ?? [];
 }
@@ -91,8 +91,8 @@ export async function fetchVaultStats(params: {
     vaultStats: VaultStat[];
   }>(GET_VAULT_STATS, {
     vaultAddress: params.vaultAddress,
-    fromEpoch: toEpochOrNull(params.from),
-    toEpoch: toEpochOrNull(params.to),
+    from: toEpochOrNull(params.from),
+    to: toEpochOrNull(params.to),
   });
   return data?.vaultStats ?? [];
 }

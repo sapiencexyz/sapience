@@ -136,8 +136,8 @@ describe('fetchAccountStatsLeaderboard', () => {
     const [, vars] = mockGraphqlRequest.mock.calls[0];
     expect(vars.filters).toEqual({
       metric: 'NET_PNL',
-      fromEpoch: null,
-      toEpoch: null,
+      from: null,
+      to: null,
     });
     expect(vars.take).toBe(25);
     expect(vars.skip).toBe(0);
@@ -150,8 +150,8 @@ describe('fetchAccountStatsLeaderboard', () => {
     await fetchAccountStatsLeaderboard({ metric: 'VOLUME', from, to });
     const [, vars] = mockGraphqlRequest.mock.calls[0];
     expect(vars.filters.metric).toBe('VOLUME');
-    expect(vars.filters.fromEpoch).toBe(Math.floor(from.getTime() / 1000));
-    expect(vars.filters.toEpoch).toBe(Math.floor(to.getTime() / 1000));
+    expect(vars.filters.from).toBe(Math.floor(from.getTime() / 1000));
+    expect(vars.filters.to).toBe(Math.floor(to.getTime() / 1000));
   });
 
   test('passes ISO strings through Date constructor → epoch seconds', async () => {
@@ -161,10 +161,10 @@ describe('fetchAccountStatsLeaderboard', () => {
       from: '2026-03-15T12:00:00Z',
     });
     const [, vars] = mockGraphqlRequest.mock.calls[0];
-    expect(vars.filters.fromEpoch).toBe(
+    expect(vars.filters.from).toBe(
       Math.floor(new Date('2026-03-15T12:00:00Z').getTime() / 1000)
     );
-    expect(vars.filters.toEpoch).toBeNull();
+    expect(vars.filters.to).toBeNull();
   });
 
   test('passes numeric epoch seconds through unchanged', async () => {
@@ -175,8 +175,8 @@ describe('fetchAccountStatsLeaderboard', () => {
       to: 1_710_000_000,
     });
     const [, vars] = mockGraphqlRequest.mock.calls[0];
-    expect(vars.filters.fromEpoch).toBe(1_700_000_000);
-    expect(vars.filters.toEpoch).toBe(1_710_000_000);
+    expect(vars.filters.from).toBe(1_700_000_000);
+    expect(vars.filters.to).toBe(1_710_000_000);
   });
 
   test('returns the page items array', async () => {
@@ -254,8 +254,8 @@ describe('fetchAccountStatsRank', () => {
     });
     const [, vars] = mockGraphqlRequest.mock.calls[0];
     expect(vars.filters.metric).toBe('VOLUME');
-    expect(vars.filters.fromEpoch).toBe(Math.floor(from.getTime() / 1000));
-    expect(vars.filters.toEpoch).toBe(Math.floor(to.getTime() / 1000));
+    expect(vars.filters.from).toBe(Math.floor(from.getTime() / 1000));
+    expect(vars.filters.to).toBe(Math.floor(to.getTime() / 1000));
   });
 
   test('returns zero-stub when resolver returns null', async () => {

@@ -437,7 +437,7 @@
       {
         "kind": "INPUT_OBJECT",
         "name": "AccountStatsFilters",
-        "description": "Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields\nare optional: omit the input entirely to rank by `NET_PNL` over all time.\n`fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.\nBoth bounds are epoch seconds (inclusive).",
+        "description": "Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields\nare optional: omit the input entirely to rank by `NET_PNL` over all time.\n`from` omitted ⇒ no lower bound (all-time); `to` omitted ⇒ now. Both bounds\nare inclusive.",
         "fields": null,
         "inputFields": [
           {
@@ -451,21 +451,21 @@
             "defaultValue": "NET_PNL"
           },
           {
-            "name": "fromEpoch",
+            "name": "from",
             "description": null,
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "defaultValue": null
           },
           {
-            "name": "toEpoch",
+            "name": "to",
             "description": null,
             "type": {
               "kind": "SCALAR",
-              "name": "Int",
+              "name": "UnixSeconds",
               "ofType": null
             },
             "defaultValue": null
@@ -16003,21 +16003,21 @@
                 "defaultValue": null
               },
               {
-                "name": "fromEpoch",
+                "name": "from",
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "Int",
+                  "name": "UnixSeconds",
                   "ofType": null
                 },
                 "defaultValue": null
               },
               {
-                "name": "toEpoch",
+                "name": "to",
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "Int",
+                  "name": "UnixSeconds",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18791,21 +18791,21 @@
             "description": "Protocol-wide statistics time series at the configured snapshot cadence —\ncumulative volume, trade count, open interest, escrow balance. Window\nwith `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted\nreturns full history.\n\nBar timestamps: closed bars are labelled at *the start* of the interval\nthey represent (capture time minus one interval), so a bar at\n`2026-01-01 00:00` summarizes activity ending `2026-01-02 00:00`. When\n`toEpoch` covers now, a trailing live candle is appended; the live\ncandle's `timestamp` is the *current* interval boundary (not shifted\nback), so callers can distinguish it as `points[points.length - 1]\n.timestamp >= floor(now / interval) * interval`.",
             "args": [
               {
-                "name": "fromEpoch",
+                "name": "from",
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "Int",
+                  "name": "UnixSeconds",
                   "ofType": null
                 },
                 "defaultValue": null
               },
               {
-                "name": "toEpoch",
+                "name": "to",
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "Int",
+                  "name": "UnixSeconds",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -19634,26 +19634,6 @@
             "description": "Vault-specific statistics time series for a single vault address — vault\nbalance, deployed/available collateral, cumulative PnL, deposits,\nwithdrawals, airdrop gains, secondary flows, unredeemed claims. Window\nwith `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted\nreturns full history.\n\nBar timestamps follow the same convention as `protocolStats`: closed\nbars are labelled at the *start* of the interval they represent, and a\ntrailing live candle (anchored to the *current* interval boundary) is\nappended when `toEpoch` covers now.",
             "args": [
               {
-                "name": "fromEpoch",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "toEpoch",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
                 "name": "vaultAddress",
                 "description": null,
                 "type": {
@@ -19664,6 +19644,26 @@
                     "name": "String",
                     "ofType": null
                   }
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "from",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "UnixSeconds",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "to",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "UnixSeconds",
+                  "ofType": null
                 },
                 "defaultValue": null
               }

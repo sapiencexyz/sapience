@@ -99,12 +99,16 @@ export type AccountStat = {
 /**
  * Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields
  * are optional: omit the input entirely to rank by `NET_PNL` over all time.
- * `fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.
- * Both bounds are epoch seconds (inclusive).
+ * `from` omitted ⇒ no lower bound (all-time); `to` omitted ⇒ now. Both bounds
+ * are inclusive.
  */
 export type AccountStatsFilters = {
+  from?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** @deprecated Use `from: UnixSeconds` — same wire format (Int seconds), the new field drops the unit-suffix in favor of carrying the contract on the scalar type. */
   fromEpoch?: InputMaybe<Scalars['Int']['input']>;
   metric?: InputMaybe<AccountStatsMetric>;
+  to?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** @deprecated Use `to: UnixSeconds` — same wire format (Int seconds), the new field drops the unit-suffix in favor of carrying the contract on the scalar type. */
   toEpoch?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -2224,7 +2228,9 @@ export type QueryAccountPredictionCountArgs = {
 
 export type QueryAccountStatsArgs = {
   address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['UnixSeconds']['input']>;
   fromEpoch?: InputMaybe<Scalars['Int']['input']>;
+  to?: InputMaybe<Scalars['UnixSeconds']['input']>;
   toEpoch?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -2507,7 +2513,9 @@ export type QueryPredictionsPageArgs = {
 
 
 export type QueryProtocolStatsArgs = {
+  from?: InputMaybe<Scalars['UnixSeconds']['input']>;
   fromEpoch?: InputMaybe<Scalars['Int']['input']>;
+  to?: InputMaybe<Scalars['UnixSeconds']['input']>;
   toEpoch?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -2605,7 +2613,9 @@ export type QueryUsersArgs = {
 
 
 export type QueryVaultStatsArgs = {
+  from?: InputMaybe<Scalars['UnixSeconds']['input']>;
   fromEpoch?: InputMaybe<Scalars['Int']['input']>;
+  to?: InputMaybe<Scalars['UnixSeconds']['input']>;
   toEpoch?: InputMaybe<Scalars['Int']['input']>;
   vaultAddress: Scalars['String']['input'];
 };

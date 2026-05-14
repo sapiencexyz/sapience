@@ -1718,13 +1718,21 @@ type AccountStatsLeaderboardEntry {
 """
 Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields
 are optional: omit the input entirely to rank by `NET_PNL` over all time.
-`fromEpoch` omitted ⇒ no lower bound (all-time); `toEpoch` omitted ⇒ now.
-Both bounds are epoch seconds (inclusive).
+`from` omitted ⇒ no lower bound (all-time); `to` omitted ⇒ now. Both bounds
+are inclusive.
 """
 input AccountStatsFilters {
   metric: AccountStatsMetric = NET_PNL
+  from: UnixSeconds
+  to: UnixSeconds
   fromEpoch: Int
+    @deprecated(
+      reason: "Use `from: UnixSeconds` — same wire format (Int seconds), the new field drops the unit-suffix in favor of carrying the contract on the scalar type."
+    )
   toEpoch: Int
+    @deprecated(
+      reason: "Use `to: UnixSeconds` — same wire format (Int seconds), the new field drops the unit-suffix in favor of carrying the contract on the scalar type."
+    )
 }
 
 """
@@ -2010,8 +2018,16 @@ type Query {
   """
   accountStats(
     address: String!
+    from: UnixSeconds
+    to: UnixSeconds
     fromEpoch: Int
+      @deprecated(
+        reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."
+      )
     toEpoch: Int
+      @deprecated(
+        reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix."
+      )
   ): [AccountStat!]!
 
   """
@@ -2444,7 +2460,18 @@ type Query {
   back), so callers can distinguish it as `points[points.length - 1]
   .timestamp >= floor(now / interval) * interval`.
   """
-  protocolStats(fromEpoch: Int, toEpoch: Int): [ProtocolStat!]!
+  protocolStats(
+    from: UnixSeconds
+    to: UnixSeconds
+    fromEpoch: Int
+      @deprecated(
+        reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."
+      )
+    toEpoch: Int
+      @deprecated(
+        reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix."
+      )
+  ): [ProtocolStat!]!
 
   """
   Time-bucketed total protocol trading volume across all users. DEPRECATED:
@@ -2580,7 +2607,19 @@ type Query {
   trailing live candle (anchored to the *current* interval boundary) is
   appended when `toEpoch` covers now.
   """
-  vaultStats(fromEpoch: Int, toEpoch: Int, vaultAddress: String!): [VaultStat!]!
+  vaultStats(
+    vaultAddress: String!
+    from: UnixSeconds
+    to: UnixSeconds
+    fromEpoch: Int
+      @deprecated(
+        reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."
+      )
+    toEpoch: Int
+      @deprecated(
+        reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix."
+      )
+  ): [VaultStat!]!
 }
 
 # -----------------------------------------------

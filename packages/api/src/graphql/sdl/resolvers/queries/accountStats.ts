@@ -144,8 +144,8 @@ export const accountStatsLeaderboardPage: NonNullable<
 > = async (_parent, { filters, take, skip }) => {
   const metric = filters?.metric ?? AccountStatsMetric.NetPnl;
   const { fromEpoch: fromResolved, toEpochResolved } = resolveWindow(
-    filters?.fromEpoch,
-    filters?.toEpoch
+    filters?.from ?? filters?.fromEpoch,
+    filters?.to ?? filters?.toEpoch
   );
   const entries = await getMerged(fromResolved, toEpochResolved);
   const ranked = rankedFor(entries, metric);
@@ -194,8 +194,8 @@ export const accountStatsRank: NonNullable<
   const metric = filters?.metric ?? AccountStatsMetric.NetPnl;
   const addressLc = address.toLowerCase();
   const { fromEpoch: fromResolved, toEpochResolved } = resolveWindow(
-    filters?.fromEpoch,
-    filters?.toEpoch
+    filters?.from ?? filters?.fromEpoch,
+    filters?.to ?? filters?.toEpoch
   );
   const entries = await getMerged(fromResolved, toEpochResolved);
   if (entries.length === 0) return emptyStatsRank(addressLc);
@@ -243,26 +243,31 @@ const epochToDate = (epoch: number): Date => new Date(epoch * 1000);
  */
 export const accountStats: NonNullable<QueryResolvers['accountStats']> = async (
   _parent,
-  { address, fromEpoch, toEpoch }
+  { address, from, to, fromEpoch, toEpoch }
 ) => {
   const addr = address.toLowerCase();
 
   const nowEpoch = Math.floor(Date.now() / 1000);
-  const resolvedTo = toEpoch ?? nowEpoch;
+  const resolvedTo = to ?? toEpoch ?? nowEpoch;
   const resolvedFrom =
-    fromEpoch ?? resolvedTo - MAX_DAY_BUCKETS * SECONDS_PER_DAY;
+    from ?? fromEpoch ?? resolvedTo - MAX_DAY_BUCKETS * SECONDS_PER_DAY;
 
-  const from = epochToDate(resolvedFrom);
-  const to = epochToDate(resolvedTo);
+  const fromDate = epochToDate(resolvedFrom);
+  const toDate = epochToDate(resolvedTo);
 
   // Parallel fan-out across the four legacy helpers; each hits a separate
   // `generate_series`-based SQL so contention is low.
   const [volumePoints, pnlPoints, balancePoints, countPoints] =
     await Promise.all([
-      queryAccountVolume(addr, HelperTimeInterval.DAY, from, to),
-      queryAccountPnl(addr, HelperTimeInterval.DAY, from, to),
-      queryAccountBalance(addr, HelperTimeInterval.DAY, from, to),
-      queryAccountPredictionCount(addr, HelperTimeInterval.DAY, from, to),
+      queryAccountVolume(addr, HelperTimeInterval.DAY, fromDate, toDate),
+      queryAccountPnl(addr, HelperTimeInterval.DAY, fromDate, toDate),
+      queryAccountBalance(addr, HelperTimeInterval.DAY, fromDate, toDate),
+      queryAccountPredictionCount(
+        addr,
+        HelperTimeInterval.DAY,
+        fromDate,
+        toDate
+      ),
     ]);
 
   // Build by-timestamp lookups so a sparse helper doesn't drop bars from
