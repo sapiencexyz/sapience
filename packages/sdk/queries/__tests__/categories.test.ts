@@ -11,15 +11,15 @@ beforeEach(() => {
 });
 
 describe('fetchCategories', () => {
-  test('returns categories from valid response', async () => {
-    const categories = [
+  test('returns categories items from valid response', async () => {
+    const items = [
       { id: 1, name: 'Crypto', slug: 'crypto' },
       { id: 2, name: 'Politics', slug: 'politics' },
     ];
-    mockGraphqlRequest.mockResolvedValue({ categories });
+    mockGraphqlRequest.mockResolvedValue({ categoriesPage: { items } });
 
     const result = await fetchCategories();
-    expect(result).toEqual(categories);
+    expect(result).toEqual(items);
   });
 
   test('throws on null response', async () => {
@@ -29,22 +29,24 @@ describe('fetchCategories', () => {
     );
   });
 
-  test('throws when categories is not an array', async () => {
-    mockGraphqlRequest.mockResolvedValue({ categories: 'not-an-array' });
+  test('throws when categoriesPage.items is not an array', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      categoriesPage: { items: 'not-an-array' },
+    });
     await expect(fetchCategories()).rejects.toThrow(
       'Failed to fetch categories: Invalid response structure'
     );
   });
 
-  test('throws when categories field is missing', async () => {
+  test('throws when categoriesPage field is missing', async () => {
     mockGraphqlRequest.mockResolvedValue({});
     await expect(fetchCategories()).rejects.toThrow(
       'Failed to fetch categories: Invalid response structure'
     );
   });
 
-  test('returns empty array when response has empty categories', async () => {
-    mockGraphqlRequest.mockResolvedValue({ categories: [] });
+  test('returns empty array when categoriesPage has no items', async () => {
+    mockGraphqlRequest.mockResolvedValue({ categoriesPage: { items: [] } });
     const result = await fetchCategories();
     expect(result).toEqual([]);
   });
