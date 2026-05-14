@@ -105,15 +105,12 @@ export const useInfiniteForecasts = ({
     queryFn: ({ pageParam }) =>
       fetchForecastsPage(
         { schemaId, attesterAddress, conditionId },
-        { take: pageSize, cursorId: pageParam }
+        { take: pageSize, skip: pageParam }
       ),
-    initialPageParam: undefined as number | undefined,
-    getNextPageParam: (lastPage) => {
-      const list = lastPage.attestations || [];
-      if (list.length < pageSize) return undefined;
-      const last = list[list.length - 1];
-      if (!last) return undefined;
-      return Number(last.id);
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.length * pageSize;
     },
     retry: 3,
     retryDelay: 1000,

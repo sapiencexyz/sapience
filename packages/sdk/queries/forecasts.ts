@@ -64,34 +64,43 @@ export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
 `;
 
 /**
- * Cursor-based pagination uses the deprecated `attestations(cursor:)` form.
- * `attestationsPage` is offset-only and doesn't yet expose a cursor arg,
- * so migrating this path requires a UI refactor (translate `cursorId` to
- * a running `skip` in the caller) — deferred to a follow-up slice. Until
- * then, this still works against the deprecated bare-array query.
+ * Offset-based infinite-scroll query. `attestationsPage` is offset-only,
+ * so consumers translate "next page" into a running `skip`. See
+ * `useInfiniteForecasts` for the caller side.
+ *
+ * Trade-off vs. cursor pagination on a moving table: a new attestation
+ * inserted at the top of the list while the user is mid-scroll will
+ * shift subsequent pages by one row, so the same attestation can
+ * appear on adjacent pages. Acceptable for the forecasts feed (rare
+ * insertion rate at typical session length).
  */
 export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
   query FindAttestationsPaginated(
-    $where: AttestationWhereInput!
-    $take: Int!
-    $cursor: AttestationWhereUniqueInput
-    $skip: Int
-    $orderBy: [AttestationOrderByWithRelationInput!]
+    $schemaId: String!
+    $attester: String
+    $conditionId: String
+    $take: Int! = 10
+    $skip: Int! = 0
   ) {
-    attestations(
-      where: $where
-      orderBy: $orderBy
+    attestationsPage(
+      schemaId: $schemaId
+      attester: $attester
+      conditionId: $conditionId
+      orderBy: TIME
+      orderDirection: desc
       take: $take
-      cursor: $cursor
       skip: $skip
     ) {
-      id
-      uid
-      attester
-      time
-      prediction
-      comment
-      conditionId
+      items {
+        id
+        uid
+        attester
+        time
+        prediction
+        comment
+        conditionId
+      }
+      hasMore
     }
   }
 `;
@@ -134,35 +143,6 @@ function normalizeAttester(attester?: string): string | undefined {
   }
 }
 
-/**
- * @internal Kept for back-compat with `fetchForecastsPage` which still
- * uses the deprecated cursor-based query.
- */
-function buildAttestationFilters(params: FetchForecastsParams) {
-  const {
-    schemaId = DEFAULT_SCHEMA_UID,
-    attesterAddress,
-    conditionId,
-  } = params;
-
-  const normalizedAttesterAddress = normalizeAttester(attesterAddress);
-
-  const filters: Record<string, { equals: string }>[] = [];
-  if (normalizedAttesterAddress) {
-    filters.push({ attester: { equals: normalizedAttesterAddress } });
-  }
-  if (conditionId) {
-    filters.push({ conditionId: { equals: conditionId } });
-  }
-
-  return {
-    where: {
-      schemaId: { equals: schemaId },
-      AND: filters,
-    },
-  };
-}
-
 export async function fetchForecasts(
   params: FetchForecastsParams
 ): Promise<AttestationsQueryResponse> {
@@ -185,31 +165,34 @@ export async function fetchForecasts(
 }
 
 /**
- * Cursor-based infinite-scroll page fetch. Still backed by the
- * deprecated `attestations(cursor:)` query — see the comment on
- * `GET_ATTESTATIONS_PAGINATED_QUERY` above.
+ * Offset-based infinite-scroll page fetch. Returns `{ attestations, hasMore }`
+ * so callers can stop paging on the server-truth flag instead of
+ * `items.length < take`.
  */
 export async function fetchForecastsPage(
   params: FetchForecastsParams,
-  page: { take: number; cursorId?: number }
-): Promise<AttestationsQueryResponse> {
-  const { where } = buildAttestationFilters(params);
+  page: { take: number; skip: number }
+): Promise<AttestationsQueryResponse & { hasMore: boolean }> {
+  const {
+    schemaId = DEFAULT_SCHEMA_UID,
+    attesterAddress,
+    conditionId,
+  } = params;
 
-  const variables: Record<string, unknown> = {
-    where,
+  const data = await graphqlRequest<{
+    attestationsPage: { items: RawAttestation[]; hasMore: boolean };
+  }>(GET_ATTESTATIONS_PAGINATED_QUERY, {
+    schemaId,
+    attester: normalizeAttester(attesterAddress) ?? null,
+    conditionId: conditionId ?? null,
     take: page.take,
-    orderBy: [{ time: 'desc' }],
+    skip: page.skip,
+  });
+
+  return {
+    attestations: data.attestationsPage?.items ?? [],
+    hasMore: data.attestationsPage?.hasMore ?? false,
   };
-
-  if (page.cursorId !== undefined) {
-    variables.cursor = { id: page.cursorId };
-    variables.skip = 1;
-  }
-
-  return await graphqlRequest<AttestationsQueryResponse>(
-    GET_ATTESTATIONS_PAGINATED_QUERY,
-    variables
-  );
 }
 
 const USER_FORECASTS_QUERY = /* GraphQL */ `

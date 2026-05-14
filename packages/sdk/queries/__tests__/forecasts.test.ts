@@ -178,28 +178,35 @@ describe('fetchForecasts', () => {
 // ============================================================================
 
 describe('fetchForecastsPage', () => {
-  test('sends take and orderBy', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
-    await fetchForecastsPage({}, { take: 20 });
+  test('passes through take + skip and hits attestationsPage', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      attestationsPage: { items: [], hasMore: false },
+    });
+    await fetchForecastsPage({}, { take: 20, skip: 40 });
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].take).toBe(20);
-    expect(call[1].orderBy).toEqual([{ time: 'desc' }]);
+    expect(call[1].skip).toBe(40);
+    // GraphQL query string mentions the new `attestationsPage` field.
+    expect(call[0]).toContain('attestationsPage');
   });
 
-  test('includes cursor and skip=1 when cursorId provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
-    await fetchForecastsPage({}, { take: 20, cursorId: 42 });
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].cursor).toEqual({ id: 42 });
-    expect(call[1].skip).toBe(1);
+  test('returns the hasMore flag from the server', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      attestationsPage: { items: [], hasMore: true },
+    });
+    const result = await fetchForecastsPage({}, { take: 20, skip: 0 });
+    expect(result.hasMore).toBe(true);
   });
 
-  test('omits cursor when cursorId not provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
-    await fetchForecastsPage({}, { take: 20 });
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].cursor).toBeUndefined();
-    expect(call[1].skip).toBeUndefined();
+  test('unwraps items into the legacy `attestations` field for back-compat', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      attestationsPage: {
+        items: [{ id: '1' }, { id: '2' }],
+        hasMore: false,
+      },
+    });
+    const result = await fetchForecastsPage({}, { take: 20, skip: 0 });
+    expect(result.attestations).toHaveLength(2);
   });
 });
 
