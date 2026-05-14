@@ -4,25 +4,27 @@
 import { getGraphQLEndpoint } from './graphql';
 
 export const ATTESTATION_BY_UID_QUERY = `
-  query FindAttestationByUid($where: AttestationWhereInput!) {
-    attestations(where: $where, take: 1) {
-      id
-      uid
-      attester
-      time
-      prediction
-      comment
-      conditionId
-      condition {
+  query FindAttestationByUid($uid: String!) {
+    attestationsPage(uid: $uid, take: 1) {
+      items {
         id
-        question
-        shortName
-        endTime
-        settled
-        resolvedToYes
-        resolver
-        category {
-          slug
+        uid
+        attester
+        attestedAt
+        prediction
+        comment
+        conditionId
+        condition {
+          id
+          question
+          shortName
+          endTime
+          settled
+          resolvedToYes
+          resolver
+          category {
+            slug
+          }
         }
       }
     }
@@ -44,7 +46,7 @@ export interface AttestationData {
   id: number;
   uid: string;
   attester: string;
-  time: number;
+  attestedAt: number;
   prediction: string;
   comment?: string | null;
   conditionId?: string | null;
@@ -69,13 +71,11 @@ export async function fetchAttestationByUid(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       query: ATTESTATION_BY_UID_QUERY,
-      variables: {
-        where: { uid: { equals: uid } },
-      },
+      variables: { uid },
     }),
   });
   if (!resp.ok) return null;
   const json = await resp.json();
-  const attestations: AttestationData[] = json?.data?.attestations ?? [];
-  return attestations[0] ?? null;
+  const items: AttestationData[] = json?.data?.attestationsPage?.items ?? [];
+  return items[0] ?? null;
 }

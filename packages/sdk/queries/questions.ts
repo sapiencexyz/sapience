@@ -47,53 +47,72 @@ export const GET_QUESTIONS = /* GraphQL */ `
   query Questions(
     $take: Int!
     $skip: Int!
-    $chainId: Int
     $sortField: QuestionSortField!
     $sortDirection: SortOrder!
-    $search: String
-    $categorySlugs: [String!]
-    $minEndTime: Int
-    $resolutionStatus: ResolutionStatus
-    $minEstimatedPrice: Float
-    $maxEstimatedPrice: Float
-    $minSimilarMarketVolume: Float
-    $maxSimilarMarketVolume: Float
-    $tag: String
-    $similarMarketVolumeWindow: VolumeWindow
+    $filters: QuestionFilters
   ) {
-    questions(
+    questionsPage(
       take: $take
       skip: $skip
-      chainId: $chainId
       sortField: $sortField
       sortDirection: $sortDirection
-      search: $search
-      categorySlugs: $categorySlugs
-      minEndTime: $minEndTime
-      resolutionStatus: $resolutionStatus
-      minEstimatedPrice: $minEstimatedPrice
-      maxEstimatedPrice: $maxEstimatedPrice
-      minSimilarMarketVolume: $minSimilarMarketVolume
-      maxSimilarMarketVolume: $maxSimilarMarketVolume
-      tag: $tag
-      similarMarketVolumeWindow: $similarMarketVolumeWindow
+      filters: $filters
     ) {
-      questionType
-      group {
-        id
-        createdAt
-        name
-        category {
+      items {
+        questionType
+        group {
           id
+          createdAt
           name
-          slug
+          category {
+            id
+            name
+            slug
+          }
+          conditions {
+            id
+            createdAt
+            question
+            shortName
+            optionName
+            endTime
+            public
+            description
+            similarMarkets
+            tags
+            chainId
+            resolver
+            settled
+            resolvedToYes
+            nonDecisive
+            assertionId
+            assertionTimestamp
+            openInterest
+            similarMarketVolume
+            similarMarketImage
+            estimatedPrice
+            similarMarketVolume1h
+            similarMarketVolume4h
+            similarMarketVolume24h
+            similarMarketVolume7d
+            similarMarketVolumeFiltered1h
+            similarMarketVolumeFiltered4h
+            similarMarketVolumeFiltered24h
+            similarMarketVolumeFiltered7d
+            conditionGroupId
+            category {
+              id
+              name
+              slug
+            }
+            displayOrder
+          }
         }
-        conditions {
+        condition {
           id
           createdAt
           question
           shortName
-          optionName
           endTime
           public
           description
@@ -124,43 +143,6 @@ export const GET_QUESTIONS = /* GraphQL */ `
             name
             slug
           }
-          displayOrder
-        }
-      }
-      condition {
-        id
-        createdAt
-        question
-        shortName
-        endTime
-        public
-        description
-        similarMarkets
-        tags
-        chainId
-        resolver
-        settled
-        resolvedToYes
-        nonDecisive
-        assertionId
-        assertionTimestamp
-        openInterest
-        similarMarketVolume
-        similarMarketImage
-        estimatedPrice
-        similarMarketVolume1h
-        similarMarketVolume4h
-        similarMarketVolume24h
-        similarMarketVolume7d
-        similarMarketVolumeFiltered1h
-        similarMarketVolumeFiltered4h
-        similarMarketVolumeFiltered24h
-        similarMarketVolumeFiltered7d
-        conditionGroupId
-        category {
-          id
-          name
-          slug
         }
       }
     }
@@ -171,6 +153,13 @@ export interface FetchQuestionsSortedParams {
   take: number;
   skip: number;
   chainId?: number;
+  /**
+   * On-chain contract address (case-insensitive). When set without `chainId`,
+   * the API defaults the chain to its `DEFAULT_CHAIN_ID`.
+   */
+  contractAddress?: string;
+  /** Same as `contractAddress` but matches any address in the list. */
+  contractAddressIn?: string[];
   sortField: SortField;
   sortDirection: SortDirection;
   search?: string;
@@ -189,26 +178,32 @@ export async function fetchQuestionsSorted(
   params: FetchQuestionsSortedParams
 ): Promise<QuestionType[]> {
   type QuestionsQueryResult = {
-    questions: QuestionType[];
+    questionsPage: { items: QuestionType[] };
   };
   const variables = {
     take: params.take,
     skip: params.skip,
-    chainId: params.chainId ?? null,
     sortField: params.sortField,
     sortDirection: params.sortDirection,
-    search: params.search?.trim() || null,
-    categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
-    minEndTime: params.minEndTime ?? null,
-    resolutionStatus: params.resolutionStatus ?? null,
-    minEstimatedPrice: params.minEstimatedPrice ?? null,
-    maxEstimatedPrice: params.maxEstimatedPrice ?? null,
-    minSimilarMarketVolume: params.minSimilarMarketVolume ?? null,
-    maxSimilarMarketVolume: params.maxSimilarMarketVolume ?? null,
-    tag: params.tag ?? null,
-    similarMarketVolumeWindow: params.similarMarketVolumeWindow
-      ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
-      : null,
+    filters: {
+      chainId: params.chainId ?? null,
+      contractAddress: params.contractAddress ?? null,
+      contractAddressIn: params.contractAddressIn?.length
+        ? params.contractAddressIn
+        : null,
+      search: params.search?.trim() || null,
+      categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
+      minEndTime: params.minEndTime ?? null,
+      resolutionStatus: params.resolutionStatus ?? null,
+      minEstimatedPrice: params.minEstimatedPrice ?? null,
+      maxEstimatedPrice: params.maxEstimatedPrice ?? null,
+      minSimilarMarketVolume: params.minSimilarMarketVolume ?? null,
+      maxSimilarMarketVolume: params.maxSimilarMarketVolume ?? null,
+      tag: params.tag ?? null,
+      similarMarketVolumeWindow: params.similarMarketVolumeWindow
+        ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
+        : null,
+    },
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(
@@ -216,5 +211,5 @@ export async function fetchQuestionsSorted(
     variables
   );
 
-  return data.questions ?? [];
+  return data.questionsPage?.items ?? [];
 }

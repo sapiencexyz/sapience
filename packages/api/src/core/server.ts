@@ -7,6 +7,8 @@ import type { IncomingMessage } from 'http';
 import type { Socket } from 'net';
 import { initSentry } from './instrument';
 import { initializeApolloServer } from '../graphql/startApolloServer';
+import { createLoaders } from '../graphql/sdl/resolvers/loaders';
+import { startInflightDump } from '../runtime/inflightDump';
 import Sentry from './instrument';
 import { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from '../fixtures';
@@ -70,7 +72,14 @@ const startServer = async () => {
     }
   );
 
-  // Add GraphQL endpoint with concurrency limiting and request timeout
+  // Add GraphQL endpoint with concurrency limiting and request timeout.
+  //
+  // Two log lines fire per /graphql request — `http_graphql_request`
+  // here (HTTP layer: status code, prismaQueryCount, IP, requestId) and
+  // `gql_request` in operationTimingPlugin (GraphQL layer: operation
+  // name, rootResolvers, errors, complexity). They're joined by
+  // requestId for end-to-end attribution. The HTTP-layer pino-http
+  // autoLogger ignores /graphql to keep it to exactly these two.
   app.use(
     '/graphql',
     // Per-request timing + query counter + request ID
@@ -112,7 +121,7 @@ const startServer = async () => {
     expressMiddleware(apolloServer, {
       context: async ({ req }) => ({
         prisma,
-        pickConditions: new Map<string, unknown>(),
+        loaders: createLoaders(prisma),
         // pino-http attaches `id` and `log` to req; passed through so the
         // operation-timing plugin can include reqId in the structured log.
         req,
@@ -128,6 +137,26 @@ const startServer = async () => {
   }
 
   const httpServer = createServer(app);
+
+  // Socket-level timeouts.
+  //
+  // Node defaults (60s headers / 5min request / 5s keepalive) leave a
+  // slowloris vector on the slow-body path — tightening headers /
+  // request closes it without affecting legitimate clients, whose
+  // headers complete in <100ms.
+  //
+  // `keepAliveTimeout` is held *above* the typical AWS ALB idle (60s)
+  // so the upstream connection always closes from the LB side first.
+  // If Node closed first, the LB could send a new request onto a
+  // half-closed connection and surface a 502 to the client. Node's
+  // own default (5s) is below the ALB idle and is the exact trigger
+  // for those spurious 502s.
+  //
+  // `headersTimeout` must be > `keepAliveTimeout` (Node enforces
+  // this).
+  httpServer.headersTimeout = 70_000;
+  httpServer.requestTimeout = 20_000;
+  httpServer.keepAliveTimeout = 65_000;
 
   // Create WebSocket server and route upgrades centrally
   const chatWss = createChatWebSocketServer();
@@ -182,6 +211,12 @@ const startServer = async () => {
     }
   );
 
+  // Periodic gauge dump — disabled by default (interval <= 0). Opt in via
+  // GRAPHQL_INFLIGHT_DUMP_INTERVAL_MS for benchmarks or low-rate prod monitoring.
+  const stopInflightDump = startInflightDump(
+    config.GRAPHQL_INFLIGHT_DUMP_INTERVAL_MS
+  );
+
   httpServer.listen(PORT, () => {
     log.info({ port: PORT, auctionProxyEnabled }, 'Server listening');
   });
@@ -189,6 +224,7 @@ const startServer = async () => {
   // Graceful shutdown — drain in-flight requests before exiting
   const shutdown = async () => {
     log.info('Shutting down gracefully');
+    stopInflightDump();
     httpServer.close(() => {
       log.info('HTTP server closed');
       prisma.$disconnect().then(() => process.exit(0));

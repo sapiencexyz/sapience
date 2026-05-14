@@ -215,13 +215,54 @@ export function setupMiddleware(app: Express) {
   );
   app.use(cors(corsOptions));
 
-  // Rate limiting runs before body parsing so rejected requests are cheap
+  // Rate limiting runs before body parsing so rejected requests are cheap.
+  // Custom handler emits a structured `gql_shed` log line and returns a
+  // GraphQL-shaped error body with `extensions.code='IP_RATE_LIMIT'` so
+  // clients (and the load-test harness) can distinguish this layer from
+  // the per-IP and global concurrency layers — see concurrencyLimiter.ts.
   app.use(
     rateLimit({
       windowMs: config.RATE_LIMIT_WINDOW_MS,
       max: config.RATE_LIMIT_MAX_REQUESTS,
       standardHeaders: true,
       legacyHeaders: false,
+      handler: (req, res) => {
+        const reqIdRaw = (req as Request & { id?: string | number }).id;
+        const requestId =
+          typeof reqIdRaw === 'string' || typeof reqIdRaw === 'number'
+            ? String(reqIdRaw)
+            : ((req.headers['x-request-id'] as string) ?? undefined);
+        // Body isn't parsed yet — fall back to the client-supplied
+        // `x-operation-name` header. Trustworthy for our own benchmarks
+        // (we control the client); for adversarial traffic the
+        // server-derived occupant snapshot in the concurrency layers
+        // is the source of truth.
+        const operationName =
+          (req.headers['x-operation-name'] as string | undefined) ||
+          (req.headers['apollographql-client-name'] as string | undefined);
+        log.warn(
+          {
+            event: 'gql_shed',
+            layer: 'ip_rate_limit',
+            extensionsCode: 'IP_RATE_LIMIT',
+            ip: req.ip,
+            path: req.path,
+            requestId,
+            operationName,
+            windowMs: config.RATE_LIMIT_WINDOW_MS,
+            maxRequests: config.RATE_LIMIT_MAX_REQUESTS,
+          },
+          'gql_shed ip_rate_limit'
+        );
+        res.status(429).json({
+          errors: [
+            {
+              message: 'Too many requests. Please retry shortly.',
+              extensions: { code: 'IP_RATE_LIMIT' },
+            },
+          ],
+        });
+      },
     })
   );
 

@@ -31,31 +31,31 @@ describe('fetchQuestionsSorted', () => {
   test('normalizes missing chainId to null', async () => {
     await fetchQuestionsSorted(baseParams);
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].chainId).toBeNull();
+    expect(call[1].filters.chainId).toBeNull();
   });
 
   test('passes provided chainId', async () => {
     await fetchQuestionsSorted({ ...baseParams, chainId: 5064014 });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].chainId).toBe(5064014);
+    expect(call[1].filters.chainId).toBe(5064014);
   });
 
   test('trims search and converts empty to null', async () => {
     await fetchQuestionsSorted({ ...baseParams, search: '  ' });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].search).toBeNull();
+    expect(call[1].filters.search).toBeNull();
   });
 
   test('trims non-empty search', async () => {
     await fetchQuestionsSorted({ ...baseParams, search: '  bitcoin  ' });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].search).toBe('bitcoin');
+    expect(call[1].filters.search).toBe('bitcoin');
   });
 
   test('converts empty categorySlugs to null', async () => {
     await fetchQuestionsSorted({ ...baseParams, categorySlugs: [] });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].categorySlugs).toBeNull();
+    expect(call[1].filters.categorySlugs).toBeNull();
   });
 
   test('passes non-empty categorySlugs', async () => {
@@ -64,16 +64,16 @@ describe('fetchQuestionsSorted', () => {
       categorySlugs: ['crypto', 'politics'],
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].categorySlugs).toEqual(['crypto', 'politics']);
+    expect(call[1].filters.categorySlugs).toEqual(['crypto', 'politics']);
   });
 
   test('normalizes missing optional fields to null', async () => {
     await fetchQuestionsSorted(baseParams);
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].minEndTime).toBeNull();
-    expect(call[1].resolutionStatus).toBeNull();
-    expect(call[1].search).toBeNull();
-    expect(call[1].categorySlugs).toBeNull();
+    expect(call[1].filters.minEndTime).toBeNull();
+    expect(call[1].filters.resolutionStatus).toBeNull();
+    expect(call[1].filters.search).toBeNull();
+    expect(call[1].filters.categorySlugs).toBeNull();
   });
 
   test('passes provided optional fields', async () => {
@@ -83,22 +83,59 @@ describe('fetchQuestionsSorted', () => {
       resolutionStatus: 'unresolved',
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].minEndTime).toBe(1000);
-    expect(call[1].resolutionStatus).toBe('unresolved');
+    expect(call[1].filters.minEndTime).toBe(1000);
+    expect(call[1].filters.resolutionStatus).toBe('unresolved');
+  });
+
+  test('forwards contractAddress as-is (server lowercases)', async () => {
+    await fetchQuestionsSorted({
+      ...baseParams,
+      contractAddress: '0xCAFE',
+    });
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].filters.contractAddress).toBe('0xCAFE');
+    expect(call[1].filters.contractAddressIn).toBeNull();
+  });
+
+  test('forwards contractAddressIn array', async () => {
+    await fetchQuestionsSorted({
+      ...baseParams,
+      contractAddressIn: ['0xAAA', '0xBBB'],
+    });
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].filters.contractAddressIn).toEqual(['0xAAA', '0xBBB']);
+  });
+
+  test('normalizes empty contractAddressIn to null', async () => {
+    await fetchQuestionsSorted({
+      ...baseParams,
+      contractAddressIn: [],
+    });
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].filters.contractAddressIn).toBeNull();
+  });
+
+  test('normalizes missing contract-address fields to null', async () => {
+    await fetchQuestionsSorted(baseParams);
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].filters.contractAddress).toBeNull();
+    expect(call[1].filters.contractAddressIn).toBeNull();
   });
 
   test('returns questions from response', async () => {
     const questions = [
       { questionType: 'condition', condition: { id: '1' }, group: null },
     ];
-    mockGraphqlRequest.mockResolvedValue({ questions });
+    mockGraphqlRequest.mockResolvedValue({
+      questionsPage: { items: questions },
+    });
 
     const result = await fetchQuestionsSorted(baseParams);
     expect(result).toEqual(questions);
   });
 
-  test('returns empty array when questions is null', async () => {
-    mockGraphqlRequest.mockResolvedValue({ questions: null });
+  test('returns empty array when questionsPage is null', async () => {
+    mockGraphqlRequest.mockResolvedValue({ questionsPage: null });
     const result = await fetchQuestionsSorted(baseParams);
     expect(result).toEqual([]);
   });

@@ -44,27 +44,30 @@ const client = new ApolloClient({
 const { data } = await client.query({
   query: gql`
     query Questions {
-      questions(take: 10, sortField: endTime, sortDirection: desc) {
-        questionType
-        predictionCount
-        condition {
-          id
-          endTime
+      questionsPage(take: 10, sortField: endTime, sortDirection: desc) {
+        items {
+          questionType
+          predictionCount
+          condition {
+            id
+            endTime
+          }
+          group {
+            id
+          }
         }
-        group {
-          id
-        }
+        hasMore
       }
     }
   `,
 });
 
-console.log(data.questions);
+console.log(data.questionsPage.items);
 ```
 
 ## Notes
 
 - The API is currently public; please be considerate and cache when possible.
 - Use `slug` (not `id`) when you need a stable, human-friendly identifier — most ID fields on Sapience entities are `Int!` and shift between environments.
-- Pagination args vary by query. The Prisma-backed list queries (`categories`, `conditions`, `conditionGroups`, etc.) accept `cursor`, `distinct`, `orderBy`, `skip`, `take`, `where`. Curated queries (`questions`, leaderboard queries) take a smaller fixed set — check the sandbox before assuming.
-- Some queries are marked `@deprecated` in the schema (`claims`, `closes`, `conditionGroup`, `pickConfiguration`, `tradeCount`, `users`). They still respond, but rely on them at your own risk — read the schema before depending on one.
+- Prefer the `*Page` queries (`questionsPage`, `conditionsPage`, `conditionGroupsPage`, `categoriesPage`, `predictionsPage`, `positionsPage`, etc.) for list reads. They take flat `take`/`skip` args plus a purpose-built filter input, and they return a `{ items, hasMore, totalCount }` envelope you can paginate against without inspecting `items.length`. The bare-array equivalents (`questions`, `conditions`, …) still respond but are `@deprecated` and will be removed.
+- Some queries are marked `@deprecated` in the schema (`claims`, `closes`, `conditionGroup`, `pickConfiguration`, `tradeCount`, `users`, plus the bare-array list queries listed above). They still respond, but rely on them at your own risk — read the schema before depending on one.

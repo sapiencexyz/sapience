@@ -10,9 +10,13 @@
  * the indexer stores them lowercase.
  */
 
-import type { QueryResolvers } from '../../__generated__/resolvers';
+import type {
+  QueryResolvers,
+  QueryTradesArgs,
+} from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import { clampSkip, clampTake } from './pagination';
 
 type Trade = NonNullable<
   Awaited<ReturnType<typeof prisma.secondaryTrade.findUnique>>
@@ -34,11 +38,23 @@ const mapTrade = (r: Trade) => ({
   blockNumber: r.blockNumber,
 });
 
-export const trades: NonNullable<QueryResolvers['trades']> = async (
-  _parent,
-  { take, skip, address, seller, buyer, token, chainId }
-) => {
-  const cappedTake = Math.max(1, Math.min(take, 100));
+export type TradesPageEnvelope = {
+  items: ReturnType<typeof mapTrade>[];
+  hasMore: boolean;
+  _countWhere?: Prisma.SecondaryTradeWhereInput;
+};
+
+export const runTrades = async ({
+  take,
+  skip,
+  address,
+  seller,
+  buyer,
+  token,
+  chainId,
+}: QueryTradesArgs): Promise<TradesPageEnvelope> => {
+  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
+  const skipVal = clampSkip(skip);
   const where: Prisma.SecondaryTradeWhereInput = {};
   if (address && (seller || buyer)) {
     throw new Error(
@@ -54,13 +70,22 @@ export const trades: NonNullable<QueryResolvers['trades']> = async (
   }
   if (token) where.token = token.toLowerCase();
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-  const rows = await prisma.secondaryTrade.findMany({
+  const rawRows = await prisma.secondaryTrade.findMany({
     where,
     orderBy: { executedAt: 'desc' },
-    take: cappedTake,
-    skip,
+    take: cappedTake + 1,
+    skip: skipVal,
   });
-  return rows.map(mapTrade);
+  const hasMore = rawRows.length > cappedTake;
+  const rows = rawRows.slice(0, cappedTake);
+  return { items: rows.map(mapTrade), hasMore, _countWhere: where };
+};
+
+export const tradesPage: NonNullable<QueryResolvers['tradesPage']> = async (
+  _parent,
+  args
+) => {
+  return runTrades(args);
 };
 
 export const trade: NonNullable<QueryResolvers['trade']> = async (
@@ -71,16 +96,4 @@ export const trade: NonNullable<QueryResolvers['trade']> = async (
     where: { tradeHash: id.toLowerCase() },
   });
   return r ? mapTrade(r) : null;
-};
-
-export const tradeCount: NonNullable<QueryResolvers['tradeCount']> = async (
-  _parent,
-  { seller, buyer, token, chainId }
-) => {
-  const where: Prisma.SecondaryTradeWhereInput = {};
-  if (seller) where.seller = seller.toLowerCase();
-  if (buyer) where.buyer = buyer.toLowerCase();
-  if (token) where.token = token.toLowerCase();
-  if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-  return prisma.secondaryTrade.count({ where });
 };

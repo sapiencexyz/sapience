@@ -84,7 +84,7 @@ export async function GET(req: Request) {
         question =
           normalizeText(attestation.condition?.question ?? null, 160) ||
           question;
-        createdTs = attestation.time || createdTs;
+        createdTs = attestation.attestedAt || createdTs;
         if (attestation.condition?.endTime) {
           endTs = attestation.condition.endTime;
         }

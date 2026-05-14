@@ -4,6 +4,7 @@ const mockPrisma = vi.hoisted(() => ({
   position: { findMany: vi.fn(), count: vi.fn() },
   secondaryTrade: { findMany: vi.fn() },
   pick: { findMany: vi.fn() },
+  picks: { findMany: vi.fn(), count: vi.fn() },
   $queryRaw: vi.fn(),
 }));
 
@@ -12,12 +13,14 @@ vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 import type {
   QueryPositionsArgs,
   QueryPositionCountArgs,
+  QueryPickConfigurationsArgs,
 } from '../../__generated__/resolvers';
 import {
   __clearPositionSynthesisCache,
-  positionCount,
   positionsPage,
+  pickConfigurationsPage,
 } from './escrow';
+import { positionCount } from './deprecated/escrow';
 
 // Resolvers in the generated module are typed as the
 // `ResolverFn | ResolverWithResolve` union, which TypeScript can't narrow
@@ -743,6 +746,24 @@ describe('positionsPage resolver — page envelope', () => {
     expect(result._countWhere).toEqual(findManyWhere);
   });
 
+  it('clamps skip at the positions-specific cap of 10_000 (regression: MIGRATION.md flags this as a behavior change)', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositionsPage({ take: 10, skip: 5_000_000, holder: ALICE });
+
+    const findManyArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(findManyArgs.skip).toBe(10_000);
+  });
+
+  it('does not clamp skip when within the positions cap', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositionsPage({ take: 10, skip: 9_500, holder: ALICE });
+
+    const findManyArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(findManyArgs.skip).toBe(9_500);
+  });
+
   it('synthesis cache: second request with same Position.updatedAt skips the trades fetch', async () => {
     const positionRow = makePosition({
       balance: '200',
@@ -806,5 +827,42 @@ describe('positionCount resolver', () => {
       holder: ALICE.toLowerCase(),
       NOT: { balance: '0', pickConfiguration: { resolved: false } },
     });
+  });
+});
+
+type PickConfigurationsPageFn = (
+  parent: unknown,
+  args: QueryPickConfigurationsArgs,
+  ctx: unknown,
+  info: unknown
+) => Promise<{
+  items: unknown[];
+  hasMore: boolean;
+  totalCount: number | null;
+  _countWhere?: unknown;
+}>;
+const pickConfigurationsPageFn =
+  pickConfigurationsPage as unknown as PickConfigurationsPageFn;
+
+describe('pickConfigurationsPage resolver — page envelope', () => {
+  beforeEach(() => {
+    mockPrisma.picks.findMany.mockReset();
+    mockPrisma.picks.count.mockReset();
+  });
+
+  it('returns _countWhere matching the findMany where so totalCount stays lazy', async () => {
+    mockPrisma.picks.findMany.mockResolvedValue([]);
+
+    const result = await pickConfigurationsPageFn(
+      undefined,
+      { take: 10, chainId: 1, resolved: false },
+      undefined,
+      undefined
+    );
+
+    expect(result.totalCount).toBeNull();
+    expect(mockPrisma.picks.count).not.toHaveBeenCalled();
+    const findManyWhere = mockPrisma.picks.findMany.mock.calls[0][0].where;
+    expect(result._countWhere).toEqual(findManyWhere);
   });
 });

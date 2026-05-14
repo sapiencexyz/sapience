@@ -72,9 +72,12 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
     // sharing the same timestamp can shift between pages, causing missed or
     // duplicate results (see commit 31c216402).
     const query = `
-      query ActiveConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!, $orderBy: [ConditionOrderByWithRelationInput!]) {
-        conditions(where: $where, take: $take, skip: $skip, orderBy: $orderBy) {
-          id
+      query ActiveConditions($filters: ConditionFilters!, $take: Int!, $skip: Int!) {
+        conditionsPage(filters: $filters, take: $take, skip: $skip, orderBy: CREATED_AT, orderDirection: asc) {
+          hasMore
+          items {
+            id
+          }
         }
       }
     `;
@@ -85,14 +88,13 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
       body: JSON.stringify({
         query,
         variables: {
-          where: {
-            settled: { equals: false },
-            public: { equals: true },
-            similarMarkets: { isEmpty: false },
+          filters: {
+            settled: false,
+            visibility: 'PUBLIC',
+            hasSimilarMarkets: true,
           },
           take: PAGE_SIZE,
           skip,
-          orderBy: [{ id: 'asc' }],
         },
       }),
     });
@@ -104,9 +106,15 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
     }
 
     const result = (await response.json()) as {
-      data?: { conditions?: Array<{ id: string }> };
+      data?: {
+        conditionsPage?: {
+          hasMore?: boolean | null;
+          items?: Array<{ id: string }>;
+        };
+      };
     };
-    const conditions = result.data?.conditions ?? [];
+    const conditions = result.data?.conditionsPage?.items ?? [];
+    const hasMore = result.data?.conditionsPage?.hasMore ?? false;
 
     for (const c of conditions) {
       if (!seen.has(c.id)) {
@@ -115,7 +123,7 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
       }
     }
 
-    if (conditions.length < PAGE_SIZE) break;
+    if (!hasMore) break;
     skip += PAGE_SIZE;
   }
 

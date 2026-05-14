@@ -144,8 +144,8 @@ export const accountStatsLeaderboardPage: NonNullable<
 > = async (_parent, { filters, take, skip }) => {
   const metric = filters?.metric ?? AccountStatsMetric.NetPnl;
   const { fromEpoch: fromResolved, toEpochResolved } = resolveWindow(
-    filters?.fromEpoch,
-    filters?.toEpoch
+    filters?.from ?? filters?.fromEpoch,
+    filters?.to ?? filters?.toEpoch
   );
   const entries = await getMerged(fromResolved, toEpochResolved);
   const ranked = rankedFor(entries, metric);
@@ -182,20 +182,39 @@ const emptyStatsRank = (
 });
 
 /**
- * `accountStatsRank` — single-address lookup against the same ranked set the
- * leaderboard slices. Reuses `getMerged` + `rankedFor`, so rank and stats
- * here always reconcile with `accountStatsLeaderboardPage` for the same
- * window. Stats are always returned (zero when the address has no activity);
- * `rank` is null when the address is absent from the ranked set.
+ * `runAccountStatsRank` — bare function form, callable from both the live
+ * resolver and the deprecated `accountProfitRank` wrapper. Reuses
+ * `getMerged` + `rankedFor`, so rank and stats here always reconcile with
+ * `accountStatsLeaderboardPage` for the same window. Stats are always
+ * returned (zero when the address has no activity); `rank` is null when
+ * the address is absent from the ranked set.
  */
-export const accountStatsRank: NonNullable<
-  QueryResolvers['accountStatsRank']
-> = async (_parent, { address, filters }) => {
+export const runAccountStatsRank = async ({
+  address,
+  filters,
+}: {
+  address: string;
+  filters?: {
+    metric?: AccountStatsMetric | null;
+    from?: number | null;
+    to?: number | null;
+    fromEpoch?: number | null;
+    toEpoch?: number | null;
+  } | null;
+}): Promise<{
+  address: string;
+  netPnL: string;
+  gains: string;
+  losses: string;
+  volume: string;
+  rank: number | null;
+  totalParticipants: number;
+}> => {
   const metric = filters?.metric ?? AccountStatsMetric.NetPnl;
   const addressLc = address.toLowerCase();
   const { fromEpoch: fromResolved, toEpochResolved } = resolveWindow(
-    filters?.fromEpoch,
-    filters?.toEpoch
+    filters?.from ?? filters?.fromEpoch,
+    filters?.to ?? filters?.toEpoch
   );
   const entries = await getMerged(fromResolved, toEpochResolved);
   if (entries.length === 0) return emptyStatsRank(addressLc);
@@ -208,6 +227,10 @@ export const accountStatsRank: NonNullable<
   const entry = ranked[idx];
   return { ...entry, rank: idx + 1, totalParticipants: ranked.length };
 };
+
+export const accountStatsRank: NonNullable<
+  QueryResolvers['accountStatsRank']
+> = (_parent, args) => runAccountStatsRank(args);
 
 // ─── accountStats (time series fat row) ─────────────────────────────────────
 //
@@ -243,26 +266,31 @@ const epochToDate = (epoch: number): Date => new Date(epoch * 1000);
  */
 export const accountStats: NonNullable<QueryResolvers['accountStats']> = async (
   _parent,
-  { address, fromEpoch, toEpoch }
+  { address, from, to, fromEpoch, toEpoch }
 ) => {
   const addr = address.toLowerCase();
 
   const nowEpoch = Math.floor(Date.now() / 1000);
-  const resolvedTo = toEpoch ?? nowEpoch;
+  const resolvedTo = to ?? toEpoch ?? nowEpoch;
   const resolvedFrom =
-    fromEpoch ?? resolvedTo - MAX_DAY_BUCKETS * SECONDS_PER_DAY;
+    from ?? fromEpoch ?? resolvedTo - MAX_DAY_BUCKETS * SECONDS_PER_DAY;
 
-  const from = epochToDate(resolvedFrom);
-  const to = epochToDate(resolvedTo);
+  const fromDate = epochToDate(resolvedFrom);
+  const toDate = epochToDate(resolvedTo);
 
   // Parallel fan-out across the four legacy helpers; each hits a separate
   // `generate_series`-based SQL so contention is low.
   const [volumePoints, pnlPoints, balancePoints, countPoints] =
     await Promise.all([
-      queryAccountVolume(addr, HelperTimeInterval.DAY, from, to),
-      queryAccountPnl(addr, HelperTimeInterval.DAY, from, to),
-      queryAccountBalance(addr, HelperTimeInterval.DAY, from, to),
-      queryAccountPredictionCount(addr, HelperTimeInterval.DAY, from, to),
+      queryAccountVolume(addr, HelperTimeInterval.DAY, fromDate, toDate),
+      queryAccountPnl(addr, HelperTimeInterval.DAY, fromDate, toDate),
+      queryAccountBalance(addr, HelperTimeInterval.DAY, fromDate, toDate),
+      queryAccountPredictionCount(
+        addr,
+        HelperTimeInterval.DAY,
+        fromDate,
+        toDate
+      ),
     ]);
 
   // Build by-timestamp lookups so a sparse helper doesn't drop bars from

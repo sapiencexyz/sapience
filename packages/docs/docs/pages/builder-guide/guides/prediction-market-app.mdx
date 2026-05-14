@@ -150,15 +150,17 @@ const client = new GraphQLClient('https://api.sapience.xyz/graphql');
 
 const QuestionsQuery = gql`
   query Questions {
-    questions(take: 10, sortField: endTime, sortDirection: desc) {
-      questionType
-      predictionCount
-      condition {
-        id
-        endTime
-      }
-      group {
-        id
+    questionsPage(take: 10, sortField: endTime, sortDirection: desc) {
+      items {
+        questionType
+        predictionCount
+        condition {
+          id
+          endTime
+        }
+        group {
+          id
+        }
       }
     }
   }

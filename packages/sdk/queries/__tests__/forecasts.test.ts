@@ -25,7 +25,7 @@ describe('formatAttestationData', () => {
     id: '42',
     uid: '0xabc123',
     attester: '0x1234567890abcdef1234567890abcdef12345678',
-    time: 1700000000,
+    attestedAt: 1700000000,
     prediction: '75',
     comment: 'I think yes',
     conditionId: 'cond-1',
@@ -132,47 +132,44 @@ describe('generateForecastsQueryKey', () => {
 
 describe('fetchForecasts', () => {
   test('uses default schema UID', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchForecasts({});
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].where.schemaId.equals).toBe(
+    expect(call[1].schemaId).toBe(
       '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49'
     );
   });
 
   test('requests max 100 attestations', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchForecasts({});
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].take).toBe(100);
   });
 
   test('normalizes attester address with EIP-55 checksum', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    const attesterFilter = call[1].where.AND[0];
     // viem getAddress returns EIP-55 checksummed version
-    expect(attesterFilter.attester.equals).toBe(
-      '0x1234567890AbcdEF1234567890aBcdef12345678'
-    );
+    expect(call[1].attester).toBe('0x1234567890AbcdEF1234567890aBcdef12345678');
   });
 
   test('includes conditionId filter when provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchForecasts({ conditionId: 'cond-1' });
     const call = mockGraphqlRequest.mock.calls[0];
-    const condFilter = call[1].where.AND[0];
-    expect(condFilter.conditionId.equals).toBe('cond-1');
+    expect(call[1].conditionId).toBe('cond-1');
   });
 
-  test('returns raw response', async () => {
-    const response = { attestations: [{ id: '1' }] };
-    mockGraphqlRequest.mockResolvedValue(response);
+  test('returns response in legacy `{ attestations }` shape', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      attestationsPage: { items: [{ id: '1' }] },
+    });
     const result = await fetchForecasts({});
-    expect(result).toEqual(response);
+    expect(result).toEqual({ attestations: [{ id: '1' }] });
   });
 });
 
@@ -181,28 +178,35 @@ describe('fetchForecasts', () => {
 // ============================================================================
 
 describe('fetchForecastsPage', () => {
-  test('sends take and orderBy', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
-    await fetchForecastsPage({}, { take: 20 });
+  test('passes through take + skip and hits attestationsPage', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      attestationsPage: { items: [], hasMore: false },
+    });
+    await fetchForecastsPage({}, { take: 20, skip: 40 });
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].take).toBe(20);
-    expect(call[1].orderBy).toEqual([{ time: 'desc' }]);
+    expect(call[1].skip).toBe(40);
+    // GraphQL query string mentions the new `attestationsPage` field.
+    expect(call[0]).toContain('attestationsPage');
   });
 
-  test('includes cursor and skip=1 when cursorId provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
-    await fetchForecastsPage({}, { take: 20, cursorId: 42 });
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].cursor).toEqual({ id: 42 });
-    expect(call[1].skip).toBe(1);
+  test('returns the hasMore flag from the server', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      attestationsPage: { items: [], hasMore: true },
+    });
+    const result = await fetchForecastsPage({}, { take: 20, skip: 0 });
+    expect(result.hasMore).toBe(true);
   });
 
-  test('omits cursor when cursorId not provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
-    await fetchForecastsPage({}, { take: 20 });
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].cursor).toBeUndefined();
-    expect(call[1].skip).toBeUndefined();
+  test('unwraps items into the legacy `attestations` field for back-compat', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      attestationsPage: {
+        items: [{ id: '1' }, { id: '2' }],
+        hasMore: false,
+      },
+    });
+    const result = await fetchForecastsPage({}, { take: 20, skip: 0 });
+    expect(result.attestations).toHaveLength(2);
   });
 });
 
@@ -213,16 +217,18 @@ describe('fetchForecastsPage', () => {
 describe('fetchUserForecasts', () => {
   test('formats attestations through formatAttestationData', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      attestations: [
-        {
-          id: '1',
-          uid: '0xabc',
-          attester: '0x1234567890abcdef1234567890abcdef12345678',
-          time: 1700000000,
-          prediction: '80',
-          comment: 'test',
-        },
-      ],
+      attestationsPage: {
+        items: [
+          {
+            id: '1',
+            uid: '0xabc',
+            attester: '0x1234567890abcdef1234567890abcdef12345678',
+            attestedAt: 1700000000,
+            prediction: '80',
+            comment: 'test',
+          },
+        ],
+      },
     });
 
     const result = await fetchUserForecasts({
@@ -239,7 +245,7 @@ describe('fetchUserForecasts', () => {
   });
 
   test('passes orderBy and orderDirection', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     await fetchUserForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
       take: 10,
@@ -249,13 +255,14 @@ describe('fetchUserForecasts', () => {
     });
 
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].orderBy).toEqual([{ time: 'asc' }]);
+    expect(call[1].orderBy).toBe('ATTESTED_AT');
+    expect(call[1].orderDirection).toBe('asc');
     expect(call[1].take).toBe(10);
     expect(call[1].skip).toBe(5);
   });
 
   test('returns empty array when no attestations', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequest.mockResolvedValue({ attestationsPage: { items: [] } });
     const result = await fetchUserForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
       take: 10,
@@ -267,7 +274,9 @@ describe('fetchUserForecasts', () => {
   });
 
   test('handles null attestations response', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: null });
+    mockGraphqlRequest.mockResolvedValue({
+      attestationsPage: { items: null },
+    });
     const result = await fetchUserForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
       take: 10,

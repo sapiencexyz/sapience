@@ -109,7 +109,7 @@ export function useSetReferralCode(): UseMutationResult<
 }
 
 export type UserReferralsData = {
-  user: {
+  account: {
     address: string;
     refCodeHash: string | null;
     maxReferrals: number;
@@ -119,7 +119,7 @@ export type UserReferralsData = {
 
 const USER_REFERRALS_QUERY = `
   query UserReferrals($wallet: String!) {
-    user(where: { address: $wallet }) {
+    account(address: $wallet) {
       address
       refCodeHash
       maxReferrals

@@ -22,7 +22,7 @@ const leaderboardCache = new TtlCache<
   { attester: string; accuracyScore: number }[]
 >({ ttlMs: 60_000, maxSize: 1 });
 
-const getLeaderboardScores = async (): Promise<
+export const getLeaderboardScores = async (): Promise<
   { attester: string; accuracyScore: number }[]
 > => {
   const cached = leaderboardCache.get('leaderboard');

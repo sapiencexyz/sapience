@@ -119,8 +119,8 @@ export async function fetchAccountStatsLeaderboard(params: {
   }>(GET_ACCOUNT_STATS_LEADERBOARD_PAGE, {
     filters: {
       metric: params.metric,
-      fromEpoch: toEpochOrNull(params.from),
-      toEpoch: toEpochOrNull(params.to),
+      from: toEpochOrNull(params.from),
+      to: toEpochOrNull(params.to),
     },
     take: params.limit ?? 25,
     skip: params.skip ?? 0,
@@ -140,14 +140,14 @@ export async function fetchAccountStatsRank(params: {
   to?: Date | string | number | null;
 }): Promise<AccountStatsRankResult> {
   const addressLc = params.address.toLowerCase();
-  const fromEpoch = toEpochOrNull(params.from);
-  const toEpoch = toEpochOrNull(params.to);
+  const from = toEpochOrNull(params.from);
+  const to = toEpochOrNull(params.to);
   const filters =
-    params.metric !== undefined || fromEpoch !== null || toEpoch !== null
+    params.metric !== undefined || from !== null || to !== null
       ? {
           metric: params.metric,
-          fromEpoch,
-          toEpoch,
+          from,
+          to,
         }
       : null;
   const data = await graphqlRequest<{

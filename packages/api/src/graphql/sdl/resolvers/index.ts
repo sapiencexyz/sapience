@@ -20,20 +20,34 @@ import type { Resolvers } from '../__generated__/resolvers';
 
 import { scalarResolvers } from './scalars';
 
+import { Account } from './Account';
 import { Attestation } from './Attestation';
 import { AttestationScore } from './AttestationScore';
+import { AttestationsPage } from './AttestationsPage';
+import { CategoriesPage } from './CategoriesPage';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
+import { ActivityItemsPage } from './ActivityItemsPage';
+import { CollateralTransfersPage } from './CollateralTransfersPage';
+import { ConditionGroupsPage } from './ConditionGroupsPage';
+import { ConditionsPage } from './ConditionsPage';
 import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
+import { PickConfigurationsPage } from './PickConfigurationsPage';
 import { PositionsPage } from './PositionsPage';
+import { PredictionsPage } from './PredictionsPage';
+import { QuestionsPage } from './QuestionsPage';
 import { ReferralCode } from './ReferralCode';
+import { ReferralCodeClaimantsPage } from './ReferralCodeClaimantsPage';
+import { ReferralCodesPage } from './ReferralCodesPage';
+import { TradesPage } from './TradesPage';
 import { User } from './User';
 
-import { accountActivity } from './queries/activity';
+import { accountActivityPage } from './queries/activity';
+import { accountActivity } from './queries/deprecated/activity';
 import {
   accountStats,
   accountStatsLeaderboardPage,
@@ -48,33 +62,43 @@ import {
 import {
   collateralBalance,
   collateralBalanceHistory,
-  collateralTransfers,
+  collateralTransfersPage,
 } from './queries/collateralBalance';
-import { conditions } from './queries/conditions';
+import { collateralTransfers } from './queries/deprecated/collateralBalance';
+import { conditionsPage } from './queries/conditions';
+import { conditionGroup, conditionGroupsPage } from './queries/conditionGroups';
+import { questionsPage } from './queries/questions';
+import { questions } from './queries/deprecated/questions';
 import {
-  attestations,
+  account,
+  attestationsPage,
   categories,
+  categoriesPage,
   condition,
-  conditionGroup,
-  conditionGroups,
   user,
-  users,
 } from './queries/crud';
+import { attestations, users } from './queries/deprecated/crud';
+import { conditions } from './queries/deprecated/conditions';
+import { conditionGroups } from './queries/deprecated/conditionGroups';
 import {
   claims,
   closes,
   pickConfiguration,
-  pickConfigurations,
-  positionCount,
+  pickConfigurationsPage,
   positionsPage,
   prediction,
-  predictionCount,
-  predictions,
+  predictionsPage,
 } from './queries/escrow';
-import { positions } from './queries/deprecated/escrow';
-import { questions } from './queries/questions';
+import {
+  pickConfigurations,
+  positions,
+  positionCount,
+  predictions,
+  predictionCount,
+} from './queries/deprecated/escrow';
 import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
-import { referralCodes } from './queries/referrals';
+import { accountAccuracy, accountProfitRank } from './queries/deprecated/score';
+import { referralCodesPage } from './queries/referrals';
 import { popularTags } from './queries/tags';
 import {
   accountBalance,
@@ -83,14 +107,17 @@ import {
   accountVolume,
   protocolVolume,
 } from './queries/timeSeries';
-import { trade, tradeCount, trades } from './queries/trade';
+import { trade, tradesPage } from './queries/trade';
+import { trades, tradeCount } from './queries/deprecated/trade';
 import { accountTotalVolume } from './queries/volume';
 
 export const resolvers: Resolvers = {
   ...scalarResolvers,
   Query: {
     // Leaderboards / account scores
+    accountAccuracy,
     accountAccuracyRank,
+    accountProfitRank,
     accuracyLeaderboardPage,
     accountStatsLeaderboardPage,
     accountStatsRank,
@@ -98,6 +125,7 @@ export const resolvers: Resolvers = {
     accountStats,
     // Activity + unified feeds
     accountActivity,
+    accountActivityPage,
     // Analytics
     openInterestByCategory,
     openInterestByTimeToResolution,
@@ -114,47 +142,70 @@ export const resolvers: Resolvers = {
     collateralBalance,
     collateralBalanceHistory,
     collateralTransfers,
+    collateralTransfersPage,
     // Conditions / questions
     conditions,
+    conditionsPage,
     questions,
+    questionsPage,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
     closes,
     pickConfiguration,
     pickConfigurations,
+    pickConfigurationsPage,
     positionCount,
     positions,
     positionsPage,
     prediction,
     predictionCount,
     predictions,
+    predictionsPage,
     // Secondary market trades
     trade,
     tradeCount,
     trades,
+    tradesPage,
     // Referrals
-    referralCodes,
+    referralCodesPage,
     // Tags
     popularTags,
     // CRUD passthroughs
+    account,
     attestations,
+    attestationsPage,
     categories,
+    categoriesPage,
     condition,
     conditionGroup,
     conditionGroups,
+    conditionGroupsPage,
     user,
     users,
   },
+  Account,
+  ActivityItemsPage,
   Attestation,
   AttestationScore,
+  AttestationsPage,
+  CategoriesPage,
   Category,
+  CollateralTransfersPage,
   Condition,
   ConditionGroup,
+  ConditionGroupsPage,
+  ConditionsPage,
   LegacyPosition,
   LegacyPrediction,
   LimitOrder,
   Pick,
+  PickConfigurationsPage,
   PositionsPage,
+  PredictionsPage,
+  QuestionsPage,
   ReferralCode,
+  ReferralCodeClaimantsPage,
+  ReferralCodesPage,
+  TradesPage,
   User,
 };

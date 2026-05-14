@@ -171,34 +171,51 @@ async function gql<T>(
 
 const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
-    $where: ConditionWhereInput
-    $take: Int
-    $skip: Int
+    $filters: ConditionFilters
+    $take: Int!
+    $skip: Int!
   ) {
-    conditions(where: $where, take: $take, skip: $skip) {
-      id
-      endTime
-      chainId
-      resolver
-      description
-      settled
+    conditionsPage(
+      filters: $filters
+      orderBy: endTime
+      orderDirection: asc
+      take: $take
+      skip: $skip
+    ) {
+      items {
+        id
+        endTime
+        chainId
+        resolver
+        description
+        settled
+      }
+      hasMore
     }
   }
 `;
 
 const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
   query PythDebugConditions(
-    $where: ConditionWhereInput
-    $take: Int
-    $skip: Int
+    $filters: ConditionFilters
+    $take: Int!
+    $skip: Int!
   ) {
-    conditions(where: $where, take: $take, skip: $skip) {
-      id
-      endTime
-      chainId
-      resolver
-      question
-      description
+    conditionsPage(
+      filters: $filters
+      orderBy: endTime
+      orderDirection: asc
+      take: $take
+      skip: $skip
+    ) {
+      items {
+        id
+        endTime
+        chainId
+        resolver
+        question
+        description
+      }
     }
   }
 `;
@@ -757,22 +774,21 @@ async function main() {
   const conditions: ConditionRow[] = [];
   for (let skip = 0; conditions.length < args.maxConditions; skip += 50) {
     const take = Math.min(50, args.maxConditions - conditions.length);
-    const data = await gql<{ conditions: ConditionRow[] }>(
-      args.graphqlUrl,
-      CONDITIONS_QUERY,
-      {
-        where: {
-          chainId: { equals: args.chainId },
-          endTime: { lte: nowSec },
-          settled: { equals: false },
-          resolver: { equals: args.conditionResolver, mode: 'insensitive' },
-        },
-        take,
-        skip,
-      }
-    );
-    if (data.conditions.length === 0) break;
-    conditions.push(...data.conditions);
+    const data = await gql<{
+      conditionsPage: { items: ConditionRow[]; hasMore: boolean };
+    }>(args.graphqlUrl, CONDITIONS_QUERY, {
+      filters: {
+        chainId: args.chainId,
+        maxEndTime: nowSec,
+        settled: false,
+        resolver: args.conditionResolver,
+      },
+      take,
+      skip,
+    });
+    if (data.conditionsPage.items.length === 0) break;
+    conditions.push(...data.conditionsPage.items);
+    if (!data.conditionsPage.hasMore) break;
   }
 
   console.log(
@@ -783,21 +799,19 @@ async function main() {
   // If we found none, print a small debug sample to help diagnose DB/indexer mismatch.
   if (conditions.length === 0) {
     try {
-      const dbg = await gql<{ conditions: DebugConditionRow[] }>(
-        args.graphqlUrl,
-        PYTH_DEBUG_CONDITIONS_QUERY,
-        {
-          where: {
-            chainId: { equals: args.chainId },
-            endTime: { lte: nowSec },
-            question: { contains: 'PYTH', mode: 'insensitive' },
-          },
-          take: 10,
-          skip: 0,
-        }
-      );
+      const dbg = await gql<{
+        conditionsPage: { items: DebugConditionRow[] };
+      }>(args.graphqlUrl, PYTH_DEBUG_CONDITIONS_QUERY, {
+        filters: {
+          chainId: args.chainId,
+          maxEndTime: nowSec,
+          search: 'PYTH',
+        },
+        take: 10,
+        skip: 0,
+      });
 
-      const rows = dbg.conditions ?? [];
+      const rows = dbg.conditionsPage?.items ?? [];
       if (rows.length === 0) {
         console.log(
           '[settle:pyth][debug] No ended PYTH:* conditions found either. Check chain-id / indexer coverage.'

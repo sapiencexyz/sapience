@@ -441,8 +441,8 @@ const runFatStats = async (
  */
 export const protocolStats: NonNullable<
   QueryResolvers['protocolStats']
-> = async (_parent, { fromEpoch, toEpoch }) => {
-  const fat = await runFatStats(undefined, fromEpoch, toEpoch);
+> = async (_parent, { from, to, fromEpoch, toEpoch }) => {
+  const fat = await runFatStats(undefined, from ?? fromEpoch, to ?? toEpoch);
   return fat.map(
     (s): ProtocolStat => ({
       timestamp: s.timestamp,
@@ -461,9 +461,9 @@ export const protocolStats: NonNullable<
  */
 export const vaultStats: NonNullable<QueryResolvers['vaultStats']> = async (
   _parent,
-  { vaultAddress, fromEpoch, toEpoch }
+  { vaultAddress, from, to, fromEpoch, toEpoch }
 ) => {
-  const fat = await runFatStats(vaultAddress, fromEpoch, toEpoch);
+  const fat = await runFatStats(vaultAddress, from ?? fromEpoch, to ?? toEpoch);
   return fat.map(
     (s): VaultStat => ({
       timestamp: s.timestamp,

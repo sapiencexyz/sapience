@@ -1,0 +1,17 @@
+/**
+ * Deprecated bare-array form of accountActivity. Replaced by
+ * `accountActivityPage` (returns `{ items, hasMore }` for server-truth
+ * pagination). Logic lives in `runAccountActivity` in the live file.
+ */
+
+import type { QueryResolvers } from '../../../__generated__/resolvers';
+import { logDeprecatedHit } from '../../../../../lib/deprecationTelemetry';
+import { runAccountActivity } from '../activity';
+
+export const accountActivity: NonNullable<
+  QueryResolvers['accountActivity']
+> = async (_parent, args) => {
+  logDeprecatedHit('accountActivity');
+  const { items } = await runAccountActivity(args);
+  return items;
+};

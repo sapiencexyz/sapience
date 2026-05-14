@@ -15,26 +15,45 @@ import type {
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
-import { preloadPickConditions } from '../preloadPickConditions';
+import { clampSkip, clampTake } from './pagination';
 
-const MAX_SKIP = 500;
+/**
+ * Loose args for the shared runner. The deprecated `accountActivity(type:
+ * String)` and the new `accountActivityPage(type: ActivityItemType)` flow
+ * through here; the runner only does string-equality checks, so accepting
+ * `string | null | undefined` works for both (string-valued enum members
+ * widen to `string`).
+ */
+interface RunAccountActivityArgs {
+  address?: string | null;
+  take: number;
+  skip: number;
+  type?: string | null;
+  pickConfigId?: string | null;
+  conditionId?: string | null;
+}
 
-export const accountActivity: NonNullable<
-  QueryResolvers['accountActivity']
-> = async (
-  _parent,
-  { address, take, skip, type, pickConfigId, conditionId },
-  ctx
-) => {
-  const cappedTake = Math.max(1, Math.min(take ?? 20, 100));
-  const cappedSkip = Math.max(0, Math.min(skip ?? 0, MAX_SKIP));
+export const runAccountActivity = async ({
+  address,
+  take,
+  skip,
+  type,
+  pickConfigId,
+  conditionId,
+}: RunAccountActivityArgs): Promise<{
+  items: ResolversParentTypes['ActivityItem'][];
+  hasMore: boolean;
+}> => {
+  const cappedTake = clampTake(take, { defaultTake: 20, maxTake: 100 });
+  const cappedSkip = clampSkip(skip);
   const addr = address?.toLowerCase();
   const pickConfigIdLower = pickConfigId?.toLowerCase();
   const conditionIdLower = conditionId?.toLowerCase();
 
   const includePredictions = !type || type === 'prediction';
   const includeTrades = !type || type === 'trade';
-  const fetchSize = cappedSkip + cappedTake;
+  // Fetch one extra row from each side to detect hasMore via the merged set
+  const fetchSize = cappedSkip + cappedTake + 1;
 
   let scopedPickConfigIds: string[] | null = null;
   if (conditionIdLower) {
@@ -54,7 +73,7 @@ export const accountActivity: NonNullable<
   }
 
   if (scopedPickConfigIds !== null && scopedPickConfigIds.length === 0) {
-    return [];
+    return { items: [], hasMore: false };
   }
 
   const scopedTokens: string[] = [];
@@ -140,13 +159,9 @@ export const accountActivity: NonNullable<
         })
       : [];
 
-  // Pre-load conditions referenced by every Pick on this page (predictions
-  // and trades) into ctx.pickConditions. The Pick.condition resolver reads
-  // the cache and returns rows without per-pick round trips.
-  await preloadPickConditions(ctx, [
-    ...predictions.map((r) => r.pickConfiguration),
-    ...tradePickConfigs,
-  ]);
+  // Pick.condition lookups for this page batch through the request's
+  // `conditionById` DataLoader at field-resolution time, so no eager
+  // pre-load is needed here.
 
   const pickConfigsByToken = new Map<
     string,
@@ -232,5 +247,15 @@ export const accountActivity: NonNullable<
   }
 
   items.sort((a, b) => b.timestamp - a.timestamp);
-  return items.slice(cappedSkip, cappedSkip + cappedTake);
+  const hasMore = items.length > cappedSkip + cappedTake;
+  return {
+    items: items.slice(cappedSkip, cappedSkip + cappedTake),
+    hasMore,
+  };
+};
+
+export const accountActivityPage: NonNullable<
+  QueryResolvers['accountActivityPage']
+> = async (_parent, args) => {
+  return runAccountActivity(args);
 };

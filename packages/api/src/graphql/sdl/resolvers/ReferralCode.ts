@@ -1,22 +1,21 @@
 /**
  * ReferralCode field resolvers.
  *
- * The root `Query.referralCodes` resolver pre-computes claimCount /
+ * The root `Query.referralCodesPage` resolver pre-computes claimCount /
  * totalVolume / totalPositions and attaches them to each parent row, so
  * default field resolvers handle the lookup. The resolvers below cover
  * two things the default can't:
- *   - `claimants(limit, cursor)`: paginated per-claimant breakdown
+ *   - `claimants(take, skip)`: paginated per-claimant breakdown wrapped
+ *     in a `ReferralCodeClaimantsPage`.
  *   - lazy fallback for the three scalar analytics fields when a code
- *     is reached via a path other than `Query.referralCodes` (e.g.
+ *     is reached via a path other than `Query.referralCodesPage` (e.g.
  *     `User.referredByCode`), where the parent is a bare Prisma row.
  */
 
 import type { ReferralCodeResolvers } from '../__generated__/resolvers';
 import prisma from '../../../core/db';
 import { fetchCodeStats } from './queries/referrals';
-
-const DEFAULT_LIMIT = 100;
-const MAX_LIMIT = 500;
+import { clampSkip, clampTake } from './queries/pagination';
 
 type EnrichedParent = {
   id: number;
@@ -24,12 +23,6 @@ type EnrichedParent = {
   totalVolume?: string;
   totalPositions?: number;
 };
-
-function clampLimit(limit: number | null | undefined): number {
-  if (limit == null) return DEFAULT_LIMIT;
-  if (!Number.isFinite(limit) || limit <= 0) return DEFAULT_LIMIT;
-  return Math.min(Math.floor(limit), MAX_LIMIT);
-}
 
 async function lazyStats(parent: EnrichedParent) {
   const map = await fetchCodeStats([parent.id]);
@@ -70,8 +63,12 @@ export const ReferralCode: ReferralCodeResolvers = {
   },
 
   claimants: async (parent, args) => {
-    const limit = clampLimit(args.limit);
-    const cursor = args.cursor ?? null;
+    // Admin analytics surface (`useAdminReferralCodeAnalytics`)
+    // fetches the full claimant list up front; raised caps match
+    // `referralCodesPage` so a code with many redemptions doesn't
+    // silently truncate.
+    const take = clampTake(args.take, { defaultTake: 100, maxTake: 500 });
+    const skip = clampSkip(args.skip, { maxSkip: 10_000 });
     const codeId = (parent as EnrichedParent).id;
 
     const rows = await prisma.$queryRaw<ClaimantBreakdownRow[]>`
@@ -79,9 +76,9 @@ export const ReferralCode: ReferralCodeResolvers = {
         SELECT id, address, "createdAt"
         FROM app_user
         WHERE "referredByCodeId" = ${codeId}
-          AND (${cursor}::int IS NULL OR id > ${cursor}::int)
         ORDER BY id ASC
-        LIMIT ${limit + 1}
+        LIMIT ${take + 1}
+        OFFSET ${skip}
       ),
       sides AS (
         SELECT p2.id AS user_id,
@@ -106,9 +103,8 @@ export const ReferralCode: ReferralCodeResolvers = {
       ORDER BY page.id ASC
     `;
 
-    const hasMore = rows.length > limit;
-    const visible = hasMore ? rows.slice(0, limit) : rows;
-    const nextCursor = hasMore ? visible[visible.length - 1].id : null;
+    const hasMore = rows.length > take;
+    const visible = hasMore ? rows.slice(0, take) : rows;
 
     return {
       items: visible.map((r) => ({
@@ -118,7 +114,11 @@ export const ReferralCode: ReferralCodeResolvers = {
         tradingVolume: r.volume ?? '0',
         positionCount: Number(r.positions ?? 0),
       })),
-      nextCursor,
+      hasMore,
+      // Lazy: emit count only when the ReferralCodeClaimantsPage.totalCount
+      // field resolver runs. We pass the codeId on the parent envelope as
+      // `_codeId` and let the field resolver issue the count.
+      _codeId: codeId,
     };
   },
 };
