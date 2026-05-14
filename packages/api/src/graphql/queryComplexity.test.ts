@@ -74,6 +74,20 @@ const QuestionType = new GraphQLObjectType({
   },
 });
 
+// `*Page` envelope shape — matches the SDL contract for paginated
+// queries: items: [X!]!, hasMore, totalCount. The estimator must
+// recognize the envelope and apply the `take` from the parent field.
+const ItemsPageType = new GraphQLObjectType({
+  name: 'ItemsPage',
+  fields: {
+    items: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ItemType))),
+    },
+    hasMore: { type: new GraphQLNonNull(GraphQLString) },
+    totalCount: { type: GraphQLInt },
+  },
+});
+
 const QueryType = new GraphQLObjectType({
   name: 'Query',
   fields: {
@@ -87,6 +101,13 @@ const QueryType = new GraphQLObjectType({
         take: { type: GraphQLInt },
         first: { type: GraphQLInt },
         limit: { type: GraphQLInt },
+      },
+    },
+    itemsPage: {
+      type: new GraphQLNonNull(ItemsPageType),
+      args: {
+        take: { type: GraphQLInt },
+        skip: { type: GraphQLInt },
       },
     },
     scalar: { type: GraphQLString },
@@ -248,6 +269,88 @@ describe('queryComplexity', () => {
       });
       // items: 1 + (1 * 25) = 26
       expect(complexity).toBe(26);
+    });
+
+    // *Page envelope handling — the fix for the audit finding that
+    // `predictionsPage(take: 100)` priced lower than `predictions(take: 100)`
+    // because the *Page field isn't itself a list.
+    describe('*Page envelope recognition', () => {
+      it('treats `*Page` return type as a list of `take` rows', () => {
+        const query = parse(`{ itemsPage(take: 50) { items { id } } }`);
+        const complexity = getComplexity({
+          schema: testSchema,
+          query,
+          estimators: [
+            listMultiplierEstimator({ defaultListSize: 10 }),
+            simpleEstimator({ defaultComplexity: 1 }),
+          ],
+        });
+        // itemsPage selection set: items (which itself is a list of
+        // ItemType, default 10) → 1 + 1*10 = 11. hasMore/totalCount
+        // would be smaller. Selection set picks max = 11.
+        // itemsPage applies the envelope multiplier: 1 + 11 * 50 = 551.
+        expect(complexity).toBe(551);
+      });
+
+      it('uses default listSize when *Page take arg is missing', () => {
+        const query = parse(`{ itemsPage { items { id } } }`);
+        const complexity = getComplexity({
+          schema: testSchema,
+          query,
+          estimators: [
+            listMultiplierEstimator({ defaultListSize: 10 }),
+            simpleEstimator({ defaultComplexity: 1 }),
+          ],
+        });
+        // Both the inner items list and the outer envelope fall back
+        // to the default listSize of 10.
+        // items: 1 + 1*10 = 11. itemsPage: 1 + 11*10 = 111.
+        expect(complexity).toBe(111);
+      });
+
+      it('caps *Page envelope at maxListSize', () => {
+        const query = parse(`{ itemsPage(take: 5000) { items { id } } }`);
+        const complexity = getComplexity({
+          schema: testSchema,
+          query,
+          estimators: [
+            listMultiplierEstimator({ defaultListSize: 10, maxListSize: 100 }),
+            simpleEstimator({ defaultComplexity: 1 }),
+          ],
+        });
+        // take=5000 caps at 100. items default 10 (already <= maxListSize).
+        // items: 1 + 1*10 = 11. itemsPage: 1 + 11*100 = 1101.
+        expect(complexity).toBe(1101);
+      });
+
+      it('paginated `*Page` and bare-array list with the same take price equivalently', () => {
+        // Same selection set, same take — switching to the *Page
+        // wrapper should not change the cost order of magnitude.
+        const bareQuery = parse(`{ items(take: 50) { id name } }`);
+        const pageQuery = parse(
+          `{ itemsPage(take: 50) { items { id name } } }`
+        );
+        const ests = [
+          listMultiplierEstimator({ defaultListSize: 10 }),
+          simpleEstimator({ defaultComplexity: 1 }),
+        ];
+        const bareCost = getComplexity({
+          schema: testSchema,
+          query: bareQuery,
+          estimators: ests,
+        });
+        const pageCost = getComplexity({
+          schema: testSchema,
+          query: pageQuery,
+          estimators: ests,
+        });
+        // Both are in the same order of magnitude. *Page is somewhat
+        // higher because the inner `items` list also applies the
+        // default-10 multiplier; that's the safe bias direction
+        // (over-price the envelope, not under-price it).
+        expect(pageCost).toBeGreaterThanOrEqual(bareCost);
+        expect(pageCost).toBeLessThan(bareCost * 20);
+      });
     });
   });
 
