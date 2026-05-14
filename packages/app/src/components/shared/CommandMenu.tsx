@@ -49,14 +49,13 @@ const PAGES = [
 
 /** Lightweight query — only fetches the fields the command palette needs */
 const SEARCH_QUESTIONS = /* GraphQL */ `
-  query CommandMenuSearch($take: Int!, $chainId: Int, $search: String) {
+  query CommandMenuSearch($take: Int!, $filters: QuestionFilters) {
     questionsPage(
       take: $take
       skip: 0
-      chainId: $chainId
+      filters: $filters
       sortField: endTime
       sortDirection: asc
-      search: $search
     ) {
       items {
         questionType
@@ -128,8 +127,10 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort
         // client-side to prefer future markets over expired ones
         take: MAX_RESULTS * 3,
-        chainId: DEFAULT_CHAIN_ID,
-        search: search?.trim() || null,
+        filters: {
+          chainId: DEFAULT_CHAIN_ID,
+          search: search?.trim() || null,
+        },
       });
 
       const nowSec = Math.floor(Date.now() / 1000);

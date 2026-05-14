@@ -18944,109 +18944,11 @@
             "description": "Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.",
             "args": [
               {
-                "name": "categorySlugs",
+                "name": "filters",
                 "description": null,
                 "type": {
-                  "kind": "LIST",
-                  "name": null,
-                  "ofType": {
-                    "kind": "NON_NULL",
-                    "name": null,
-                    "ofType": {
-                      "kind": "SCALAR",
-                      "name": "String",
-                      "ofType": null
-                    }
-                  }
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "chainId",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "maxEstimatedPrice",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Float",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "maxSimilarMarketVolume",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Float",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "minEndTime",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Int",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "minEstimatedPrice",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Float",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "minSimilarMarketVolume",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Float",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "resolutionStatus",
-                "description": null,
-                "type": {
-                  "kind": "ENUM",
-                  "name": "ResolutionStatus",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "search",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "similarMarketVolumeWindow",
-                "description": null,
-                "type": {
-                  "kind": "ENUM",
-                  "name": "VolumeWindow",
+                  "kind": "INPUT_OBJECT",
+                  "name": "QuestionFilters",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -19085,16 +18987,6 @@
                 "type": {
                   "kind": "ENUM",
                   "name": "QuestionSortField",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "tag",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -19739,6 +19631,135 @@
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "QuestionFilters",
+        "description": "Flat filter input for the `questionsPage` query. Each field is optional;\nvalues combine with AND. Mirrors the inline-arg shape that the deprecated\n`questions(...)` resolver kept.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "chainId",
+            "description": "Restrict to a single chain.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "search",
+            "description": "Free-text search across the group/condition's `name`, `question`, `shortName`, and `tags` (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "categorySlugs",
+            "description": "Restrict to questions whose category slug is in this set.",
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "tag",
+            "description": "Single-tag filter (case-sensitive against the condition's `tags` array).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "minEndTime",
+            "description": "Restrict to conditions with `endTime >= this` (epoch seconds).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "resolutionStatus",
+            "description": "Resolution-status filter; defaults to `all` when omitted.",
+            "type": {
+              "kind": "ENUM",
+              "name": "ResolutionStatus",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "minEstimatedPrice",
+            "description": "Restrict to conditions with `estimatedPrice >= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Float",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "maxEstimatedPrice",
+            "description": "Restrict to conditions with `estimatedPrice <= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Float",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "minSimilarMarketVolume",
+            "description": "Restrict to conditions with similar-market volume `>= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Float",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "maxSimilarMarketVolume",
+            "description": "Restrict to conditions with similar-market volume `<= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Float",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "similarMarketVolumeWindow",
+            "description": "Window the similar-market-volume filter and sort look at. When omitted,\nthe all-time `similarMarketVolume` column is used.",
+            "type": {
+              "kind": "ENUM",
+              "name": "VolumeWindow",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },

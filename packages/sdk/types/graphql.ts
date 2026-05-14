@@ -2498,20 +2498,10 @@ export type QueryQuestionsArgs = {
 
 
 export type QueryQuestionsPageArgs = {
-  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
-  maxSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
-  minEndTime?: InputMaybe<Scalars['Int']['input']>;
-  minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
-  minSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
-  resolutionStatus?: InputMaybe<ResolutionStatus>;
-  search?: InputMaybe<Scalars['String']['input']>;
-  similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
+  filters?: InputMaybe<QuestionFilters>;
   skip?: Scalars['Int']['input'];
   sortDirection?: SortOrder;
   sortField?: InputMaybe<QuestionSortField>;
-  tag?: InputMaybe<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
 };
 
@@ -2590,6 +2580,39 @@ export type Question = {
   group?: Maybe<ConditionGroup>;
   predictionCount?: Maybe<Scalars['Int']['output']>;
   questionType: QuestionItemType;
+};
+
+/**
+ * Flat filter input for the `questionsPage` query. Each field is optional;
+ * values combine with AND. Mirrors the inline-arg shape that the deprecated
+ * `questions(...)` resolver kept.
+ */
+export type QuestionFilters = {
+  /** Restrict to questions whose category slug is in this set. */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to a single chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to conditions with `estimatedPrice <= this`. */
+  maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  /** Restrict to conditions with similar-market volume `<= this`. */
+  maxSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
+  /** Restrict to conditions with `endTime >= this` (epoch seconds). */
+  minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to conditions with `estimatedPrice >= this`. */
+  minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  /** Restrict to conditions with similar-market volume `>= this`. */
+  minSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
+  /** Resolution-status filter; defaults to `all` when omitted. */
+  resolutionStatus?: InputMaybe<ResolutionStatus>;
+  /** Free-text search across the group/condition's `name`, `question`, `shortName`, and `tags` (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Window the similar-market-volume filter and sort look at. When omitted,
+   * the all-time `similarMarketVolume` column is used.
+   */
+  similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
+  /** Single-tag filter (case-sensitive against the condition's `tags` array). */
+  tag?: InputMaybe<Scalars['String']['input']>;
 };
 
 /** Whether a question is a group of related conditions or a single condition */

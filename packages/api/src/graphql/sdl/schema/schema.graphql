@@ -2444,20 +2444,10 @@ type Query {
   Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
   """
   questionsPage(
-    categorySlugs: [String!]
-    chainId: Int
-    maxEstimatedPrice: Float
-    maxSimilarMarketVolume: Float
-    minEndTime: Int
-    minEstimatedPrice: Float
-    minSimilarMarketVolume: Float
-    resolutionStatus: ResolutionStatus
-    search: String
-    similarMarketVolumeWindow: VolumeWindow
+    filters: QuestionFilters
     skip: Int! = 0
     sortDirection: SortOrder! = desc
     sortField: QuestionSortField
-    tag: String
     take: Int! = 50
   ): QuestionsPage!
 
@@ -2686,6 +2676,39 @@ enum QuestionSortField {
   openInterest
   predictionCount
   similarMarketVolume
+}
+
+"""
+Flat filter input for the `questionsPage` query. Each field is optional;
+values combine with AND. Mirrors the inline-arg shape that the deprecated
+`questions(...)` resolver kept.
+"""
+input QuestionFilters {
+  """Restrict to a single chain."""
+  chainId: Int
+  """Free-text search across the group/condition's `name`, `question`, `shortName`, and `tags` (case-insensitive)."""
+  search: String
+  """Restrict to questions whose category slug is in this set."""
+  categorySlugs: [String!]
+  """Single-tag filter (case-sensitive against the condition's `tags` array)."""
+  tag: String
+  """Restrict to conditions with `endTime >= this` (epoch seconds)."""
+  minEndTime: Int
+  """Resolution-status filter; defaults to `all` when omitted."""
+  resolutionStatus: ResolutionStatus
+  """Restrict to conditions with `estimatedPrice >= this`."""
+  minEstimatedPrice: Float
+  """Restrict to conditions with `estimatedPrice <= this`."""
+  maxEstimatedPrice: Float
+  """Restrict to conditions with similar-market volume `>= this`."""
+  minSimilarMarketVolume: Float
+  """Restrict to conditions with similar-market volume `<= this`."""
+  maxSimilarMarketVolume: Float
+  """
+  Window the similar-market-volume filter and sort look at. When omitted,
+  the all-time `similarMarketVolume` column is used.
+  """
+  similarMarketVolumeWindow: VolumeWindow
 }
 
 """

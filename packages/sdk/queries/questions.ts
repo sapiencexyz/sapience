@@ -47,36 +47,16 @@ export const GET_QUESTIONS = /* GraphQL */ `
   query Questions(
     $take: Int!
     $skip: Int!
-    $chainId: Int
     $sortField: QuestionSortField!
     $sortDirection: SortOrder!
-    $search: String
-    $categorySlugs: [String!]
-    $minEndTime: Int
-    $resolutionStatus: ResolutionStatus
-    $minEstimatedPrice: Float
-    $maxEstimatedPrice: Float
-    $minSimilarMarketVolume: Float
-    $maxSimilarMarketVolume: Float
-    $tag: String
-    $similarMarketVolumeWindow: VolumeWindow
+    $filters: QuestionFilters
   ) {
     questionsPage(
       take: $take
       skip: $skip
-      chainId: $chainId
       sortField: $sortField
       sortDirection: $sortDirection
-      search: $search
-      categorySlugs: $categorySlugs
-      minEndTime: $minEndTime
-      resolutionStatus: $resolutionStatus
-      minEstimatedPrice: $minEstimatedPrice
-      maxEstimatedPrice: $maxEstimatedPrice
-      minSimilarMarketVolume: $minSimilarMarketVolume
-      maxSimilarMarketVolume: $maxSimilarMarketVolume
-      tag: $tag
-      similarMarketVolumeWindow: $similarMarketVolumeWindow
+      filters: $filters
     ) {
       items {
         questionType
@@ -196,21 +176,23 @@ export async function fetchQuestionsSorted(
   const variables = {
     take: params.take,
     skip: params.skip,
-    chainId: params.chainId ?? null,
     sortField: params.sortField,
     sortDirection: params.sortDirection,
-    search: params.search?.trim() || null,
-    categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
-    minEndTime: params.minEndTime ?? null,
-    resolutionStatus: params.resolutionStatus ?? null,
-    minEstimatedPrice: params.minEstimatedPrice ?? null,
-    maxEstimatedPrice: params.maxEstimatedPrice ?? null,
-    minSimilarMarketVolume: params.minSimilarMarketVolume ?? null,
-    maxSimilarMarketVolume: params.maxSimilarMarketVolume ?? null,
-    tag: params.tag ?? null,
-    similarMarketVolumeWindow: params.similarMarketVolumeWindow
-      ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
-      : null,
+    filters: {
+      chainId: params.chainId ?? null,
+      search: params.search?.trim() || null,
+      categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
+      minEndTime: params.minEndTime ?? null,
+      resolutionStatus: params.resolutionStatus ?? null,
+      minEstimatedPrice: params.minEstimatedPrice ?? null,
+      maxEstimatedPrice: params.maxEstimatedPrice ?? null,
+      minSimilarMarketVolume: params.minSimilarMarketVolume ?? null,
+      maxSimilarMarketVolume: params.maxSimilarMarketVolume ?? null,
+      tag: params.tag ?? null,
+      similarMarketVolumeWindow: params.similarMarketVolumeWindow
+        ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
+        : null,
+    },
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(

@@ -654,5 +654,22 @@ export const runQuestions = async (
 export const questionsPage: NonNullable<
   QueryResolvers['questionsPage']
 > = async (_parent, args) => {
-  return runQuestions(args);
+  const { filters, sortField, sortDirection, take, skip } = args;
+  return runQuestions({
+    take,
+    skip,
+    sortField,
+    sortDirection,
+    chainId: filters?.chainId ?? null,
+    search: filters?.search ?? null,
+    categorySlugs: filters?.categorySlugs ?? null,
+    tag: filters?.tag ?? null,
+    minEndTime: filters?.minEndTime ?? null,
+    resolutionStatus: filters?.resolutionStatus ?? null,
+    minEstimatedPrice: filters?.minEstimatedPrice ?? null,
+    maxEstimatedPrice: filters?.maxEstimatedPrice ?? null,
+    minSimilarMarketVolume: filters?.minSimilarMarketVolume ?? null,
+    maxSimilarMarketVolume: filters?.maxSimilarMarketVolume ?? null,
+    similarMarketVolumeWindow: filters?.similarMarketVolumeWindow ?? null,
+  });
 };
