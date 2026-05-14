@@ -52,12 +52,12 @@ beforeEach(() => {
   for (const v of Object.values(mockPrisma)) v.count.mockReset();
 });
 
-const call = (resolver: { totalCount: unknown }, parent: object) =>
+const call = (resolver: { totalCount?: unknown }, parent: object) =>
   (resolver.totalCount as (p: unknown) => Promise<number | null>)(parent);
 
 type LazyCase = {
   name: string;
-  resolver: { totalCount: unknown };
+  resolver: { totalCount?: unknown };
   mock: { count: ReturnType<typeof vi.fn> };
 };
 
