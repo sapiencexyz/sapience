@@ -206,7 +206,7 @@ export type ActivityItem = {
   /** Unix seconds timestamp for sorting. */
   timestamp: Scalars['UnixSeconds']['output'];
   trade?: Maybe<ActivityTrade>;
-  type: ActivityItemType;
+  type: Scalars['String']['output'];
 };
 
 /**
@@ -268,7 +268,7 @@ export type Attestation = {
   resolver?: Maybe<Scalars['String']['output']>;
   schemaId: Scalars['String']['output'];
   /** @deprecated Use `attestedAt` — same value, name follows the `*At` event-timestamp convention. */
-  time: Scalars['UnixSeconds']['output'];
+  time: Scalars['Int']['output'];
   transactionHash: Scalars['String']['output'];
   uid: Scalars['String']['output'];
 };
@@ -2267,7 +2267,7 @@ export type QueryAccountActivityArgs = {
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
-  type?: InputMaybe<ActivityItemType>;
+  type?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2526,8 +2526,8 @@ export type QueryPositionsArgs = {
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
-  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  endsAtMax?: InputMaybe<Scalars['Int']['input']>;
+  endsAtMin?: InputMaybe<Scalars['Int']['input']>;
   holder?: InputMaybe<Scalars['String']['input']>;
   holderWon?: InputMaybe<Scalars['Boolean']['input']>;
   orderBy?: InputMaybe<PositionSortField>;

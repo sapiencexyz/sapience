@@ -1025,8 +1025,8 @@
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
-                "kind": "ENUM",
-                "name": "ActivityItemType",
+                "kind": "SCALAR",
+                "name": "String",
                 "ofType": null
               }
             },
@@ -1602,7 +1602,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "UnixSeconds",
+                "name": "Int",
                 "ofType": null
               }
             },
@@ -16121,8 +16121,8 @@
                 "name": "type",
                 "description": null,
                 "type": {
-                  "kind": "ENUM",
-                  "name": "ActivityItemType",
+                  "kind": "SCALAR",
+                  "name": "String",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18403,7 +18403,7 @@
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "UnixSeconds",
+                  "name": "Int",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -18413,7 +18413,7 @@
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
-                  "name": "UnixSeconds",
+                  "name": "Int",
                   "ofType": null
                 },
                 "defaultValue": null

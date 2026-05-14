@@ -97,7 +97,11 @@ type ActivityItem {
   """Unix seconds timestamp for sorting."""
   timestamp: UnixSeconds!
   trade: ActivityTrade
-  type: ActivityItemType!
+  # Wire values are the lowercase enum names ("prediction" / "trade"). Kept as
+  # `String!` (not `ActivityItemType!`) because this field is reachable from
+  # the deprecated `accountActivity` path; tightening it to the enum would
+  # break typed clients without a wire-format change.
+  type: String!
 }
 
 """
@@ -152,7 +156,10 @@ type Attestation {
   """
   attestedAt: UnixSeconds!
 
-  time: UnixSeconds!
+  # Kept as `Int!` (not `UnixSeconds!`) so the deprecated field's wire type
+  # signature is unchanged. The replacement `attestedAt` carries the
+  # `UnixSeconds` scalar on the modern surface.
+  time: Int!
     @deprecated(
       reason: "Use `attestedAt` — same value, name follows the `*At` event-timestamp convention."
     )
@@ -2059,7 +2066,10 @@ type Query {
     pickConfigId: String
     skip: Int! = 0
     take: Int! = 20
-    type: ActivityItemType
+    # Kept as `String` (not `ActivityItemType`) so the deprecated query's
+    # variable-coercion contract is unchanged. The replacement
+    # `accountActivityPage(type:)` uses the typed enum.
+    type: String
   ): [ActivityItem!]!
     @deprecated(
       reason: "Use `accountActivityPage` — same data with a server-truth `hasMore` stop signal."
@@ -2435,8 +2445,11 @@ type Query {
     collateralMax: String
     collateralMin: String
     conditionId: String
-    endsAtMax: UnixSeconds
-    endsAtMin: UnixSeconds
+    # Kept as `Int` (not `UnixSeconds`) so the deprecated query's
+    # variable-coercion contract is unchanged. The replacement
+    # `positionsPage(endsAtMax:, endsAtMin:)` uses the typed scalar.
+    endsAtMax: Int
+    endsAtMin: Int
     holder: String
     holderWon: Boolean
     orderBy: PositionSortField

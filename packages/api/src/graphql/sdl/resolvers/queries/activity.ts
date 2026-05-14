@@ -11,12 +11,27 @@
 
 import type {
   QueryResolvers,
-  QueryAccountActivityArgs,
   ResolversParentTypes,
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 import { clampSkip, clampTake } from './pagination';
+
+/**
+ * Loose args for the shared runner. The deprecated `accountActivity(type:
+ * String)` and the new `accountActivityPage(type: ActivityItemType)` flow
+ * through here; the runner only does string-equality checks, so accepting
+ * `string | null | undefined` works for both (string-valued enum members
+ * widen to `string`).
+ */
+interface RunAccountActivityArgs {
+  address?: string | null;
+  take: number;
+  skip: number;
+  type?: string | null;
+  pickConfigId?: string | null;
+  conditionId?: string | null;
+}
 
 export const runAccountActivity = async ({
   address,
@@ -25,7 +40,7 @@ export const runAccountActivity = async ({
   type,
   pickConfigId,
   conditionId,
-}: QueryAccountActivityArgs): Promise<{
+}: RunAccountActivityArgs): Promise<{
   items: ResolversParentTypes['ActivityItem'][];
   hasMore: boolean;
 }> => {
