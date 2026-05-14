@@ -92,18 +92,28 @@ export const categories: NonNullable<QueryResolvers['categories']> = async (
 export const condition: NonNullable<QueryResolvers['condition']> = async (
   _parent,
   { where }
-) =>
-  prisma.condition.findUnique({
+) => {
+  logDeprecatedHit('condition');
+  return prisma.condition.findUnique({
     where: asPrismaArgs<Prisma.ConditionWhereUniqueInput>(where),
   });
+};
 
 export const user: NonNullable<QueryResolvers['user']> = async (
   _parent,
   { where }
-) =>
-  prisma.user.findUnique({
+) => {
+  logDeprecatedHit('user');
+  return prisma.user.findUnique({
     where: asPrismaArgs<Prisma.UserWhereUniqueInput>(where),
   });
+};
+
+export const account: NonNullable<QueryResolvers['account']> = async (
+  _parent,
+  { address },
+  ctx
+) => ctx.loaders.userByAddress.load(address);
 
 export const categoriesPage: NonNullable<
   QueryResolvers['categoriesPage']

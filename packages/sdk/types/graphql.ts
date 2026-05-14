@@ -21,6 +21,37 @@ export type Scalars = {
 };
 
 /**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type Account = {
+  __typename?: 'Account';
+  /** Canonical Ethereum wallet address. */
+  address: Scalars['String']['output'];
+  /** When this account first appeared in the database. */
+  createdAt: Scalars['DateTimeISO']['output'];
+  /**
+   * Maximum number of referrals this account's code allows. Default is 0,
+   * so codes are not usable until explicitly configured.
+   */
+  maxReferrals: Scalars['Int']['output'];
+  /**
+   * keccak256(utf8(trimmed_lowercase_code)) of the user's referral code, if
+   * they own one. 0x-prefixed hex.
+   */
+  refCodeHash?: Maybe<Scalars['String']['output']>;
+  /** Accounts referred by this account (via this account's referral code). */
+  referrals: Array<Account>;
+  /** The account that referred this one (via their referral code), if any. */
+  referredBy?: Maybe<Account>;
+  /** The referral code this account was referred by, if any. */
+  referredByCode?: Maybe<ReferralCode>;
+};
+
+/**
  * One row of the per-account stats time series — wallet collateral
  * position, settlement PnL, trade volume, and prediction outcome counts
  * at a single snapshot boundary. Mirrors the fat-row pattern used by
@@ -1887,6 +1918,12 @@ export type ProtocolStat = {
 export type Query = {
   __typename?: 'Query';
   /**
+   * Look up a single account by canonical wallet address. Replacement for
+   * `user(where:)` — accepts a flat `address: String!` arg instead of the
+   * Prisma-shaped `UserWhereUniqueInput`.
+   */
+  account?: Maybe<Account>;
+  /**
    * Accuracy rank and lifetime score for a single address. Mirrors
    * `accountStatsRank`'s shape: stats fields are always populated (zero for
    * unscored addresses), `rank` is null when the address is absent from the
@@ -1999,6 +2036,7 @@ export type Query = {
   collateralTransfers: Array<CollateralTransferType>;
   /** Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args. */
   collateralTransfersPage: CollateralTransfersPage;
+  /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape. */
   condition?: Maybe<Condition>;
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape. */
   conditionGroup?: Maybe<ConditionGroup>;
@@ -2108,8 +2146,9 @@ export type Query = {
   trades: Array<Trade>;
   /** Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag. */
   tradesPage: TradesPage;
+  /** @deprecated Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains. */
   user?: Maybe<User>;
-  /** @deprecated Unused; will be removed. No live consumers — user lookups go through `user(address:)` or `referralCodesPage`. */
+  /** @deprecated Unused; will be removed. No live consumers — account lookups go through `account(address:)` or `referralCodesPage`. */
   users: Array<User>;
   /**
    * Vault-specific statistics time series for a single vault address — vault
@@ -2124,6 +2163,11 @@ export type Query = {
    * appended when `toEpoch` covers now.
    */
   vaultStats: Array<VaultStat>;
+};
+
+
+export type QueryAccountArgs = {
+  address: Scalars['String']['input'];
 };
 
 

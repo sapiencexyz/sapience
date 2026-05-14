@@ -56,6 +56,7 @@ const config: CodegenConfig = {
         // etc.) are missing — those are filled by field resolvers at
         // runtime.
         mappers: {
+          Account: '../../../../generated/prisma#User as PrismaUserRow',
           Attestation:
             '../../../../generated/prisma#Attestation as PrismaAttestationRow',
           AttestationScore:

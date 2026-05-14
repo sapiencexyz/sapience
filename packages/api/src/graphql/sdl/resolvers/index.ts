@@ -20,6 +20,7 @@ import type { Resolvers } from '../__generated__/resolvers';
 
 import { scalarResolvers } from './scalars';
 
+import { Account } from './Account';
 import { Attestation } from './Attestation';
 import { AttestationScore } from './AttestationScore';
 import { AttestationsPage } from './AttestationsPage';
@@ -69,6 +70,7 @@ import { conditionGroup, conditionGroupsPage } from './queries/conditionGroups';
 import { questionsPage } from './queries/questions';
 import { questions } from './queries/deprecated/questions';
 import {
+  account,
   attestationsPage,
   categories,
   categoriesPage,
@@ -166,6 +168,7 @@ export const resolvers: Resolvers = {
     // Tags
     popularTags,
     // CRUD passthroughs
+    account,
     attestations,
     attestationsPage,
     categories,
@@ -177,6 +180,7 @@ export const resolvers: Resolvers = {
     user,
     users,
   },
+  Account,
   ActivityItemsPage,
   Attestation,
   AttestationScore,

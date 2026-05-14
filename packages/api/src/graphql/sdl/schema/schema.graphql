@@ -22,6 +22,42 @@ type AccuracyRank {
 }
 
 """
+Address-keyed account record. The thin replacement for the Prisma-leaked
+`User` type — exposes only the fields the public API actually needs (today,
+that's referral-graph data). When address-keyed metadata that doesn't fit
+elsewhere shows up (display name, avatar, settings), it can grow here
+without renaming.
+"""
+type Account {
+  """Canonical Ethereum wallet address."""
+  address: String!
+
+  """When this account first appeared in the database."""
+  createdAt: DateTimeISO!
+
+  """
+  keccak256(utf8(trimmed_lowercase_code)) of the user's referral code, if
+  they own one. 0x-prefixed hex.
+  """
+  refCodeHash: String
+
+  """
+  Maximum number of referrals this account's code allows. Default is 0,
+  so codes are not usable until explicitly configured.
+  """
+  maxReferrals: Int!
+
+  """The account that referred this one (via their referral code), if any."""
+  referredBy: Account
+
+  """The referral code this account was referred by, if any."""
+  referredByCode: ReferralCode
+
+  """Accounts referred by this account (via this account's referral code)."""
+  referrals: [Account!]!
+}
+
+"""
 A single activity entry — either a prediction or a trade, sorted by timestamp
 """
 type ActivityItem {
@@ -2184,7 +2220,16 @@ type Query {
     take: Int! = 100
     skip: Int! = 0
   ): CollateralTransfersPage!
+  """
+  Look up a single account by canonical wallet address. Replacement for
+  `user(where:)` — accepts a flat `address: String!` arg instead of the
+  Prisma-shaped `UserWhereUniqueInput`.
+  """
+  account(address: String!): Account
   condition(where: ConditionWhereUniqueInput!): Condition
+    @deprecated(
+      reason: "Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape."
+    )
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
     @deprecated(
       reason: "Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape."
@@ -2502,6 +2547,9 @@ type Query {
     token: String
   ): TradesPage!
   user(where: UserWhereUniqueInput!): User
+    @deprecated(
+      reason: "Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains."
+    )
   users(
     cursor: UserWhereUniqueInput
     distinct: [UserScalarFieldEnum!]
@@ -2511,7 +2559,7 @@ type Query {
     where: UserWhereInput
   ): [User!]!
     @deprecated(
-      reason: "Unused; will be removed. No live consumers — user lookups go through `user(address:)` or `referralCodesPage`."
+      reason: "Unused; will be removed. No live consumers — account lookups go through `account(address:)` or `referralCodesPage`."
     )
 
   """

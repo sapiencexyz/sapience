@@ -114,6 +114,125 @@
     "types": [
       {
         "kind": "OBJECT",
+        "name": "Account",
+        "description": "Address-keyed account record. The thin replacement for the Prisma-leaked\n`User` type — exposes only the fields the public API actually needs (today,\nthat's referral-graph data). When address-keyed metadata that doesn't fit\nelsewhere shows up (display name, avatar, settings), it can grow here\nwithout renaming.",
+        "fields": [
+          {
+            "name": "address",
+            "description": "Canonical Ethereum wallet address.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "createdAt",
+            "description": "When this account first appeared in the database.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "DateTimeISO",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "refCodeHash",
+            "description": "keccak256(utf8(trimmed_lowercase_code)) of the user's referral code, if\nthey own one. 0x-prefixed hex.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "maxReferrals",
+            "description": "Maximum number of referrals this account's code allows. Default is 0,\nso codes are not usable until explicitly configured.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "referredBy",
+            "description": "The account that referred this one (via their referral code), if any.",
+            "args": [],
+            "type": {
+              "kind": "OBJECT",
+              "name": "Account",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "referredByCode",
+            "description": "The referral code this account was referred by, if any.",
+            "args": [],
+            "type": {
+              "kind": "OBJECT",
+              "name": "ReferralCode",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "referrals",
+            "description": "Accounts referred by this account (via this account's referral code).",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "Account",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "AccountStat",
         "description": "One row of the per-account stats time series — wallet collateral\nposition, settlement PnL, trade volume, and prediction outcome counts\nat a single snapshot boundary. Mirrors the fat-row pattern used by\n`ProtocolStat` / `VaultStat`: per-bucket deltas use the `period…`\nprefix, cumulative-through-bucket values use the `cumulative…` prefix.\nWei amounts are 18-decimal decimal strings; counts are integers.\n\nToday this is assembled on-demand from the same SQL helpers that back\nthe deprecated `accountBalance` / `accountPnl` / `accountPredictionCount` /\n`accountVolume` resolvers, projected to a fixed daily cadence. A\nfollow-up will introduce a real per-account snapshot table and swap\nthe resolver to read from it — the wire shape is the destination, so\nclients are forward-compatible across that swap.",
         "fields": [
@@ -17247,6 +17366,33 @@
             "deprecationReason": null
           },
           {
+            "name": "account",
+            "description": "Look up a single account by canonical wallet address. Replacement for\n`user(where:)` — accepts a flat `address: String!` arg instead of the\nPrisma-shaped `UserWhereUniqueInput`.",
+            "args": [
+              {
+                "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "OBJECT",
+              "name": "Account",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "condition",
             "description": null,
             "args": [
@@ -17270,8 +17416,8 @@
               "name": "Condition",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape."
           },
           {
             "name": "conditionGroup",
@@ -19379,8 +19525,8 @@
               "name": "User",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains."
           },
           {
             "name": "users",
@@ -19481,7 +19627,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Unused; will be removed. No live consumers — user lookups go through `user(address:)` or `referralCodesPage`."
+            "deprecationReason": "Unused; will be removed. No live consumers — account lookups go through `account(address:)` or `referralCodesPage`."
           },
           {
             "name": "vaultStats",
