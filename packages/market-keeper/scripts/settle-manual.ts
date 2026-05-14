@@ -140,7 +140,10 @@ interface GraphQLResponse<T> {
 }
 
 interface ConditionsQueryResponse {
-  conditions: SapienceCondition[];
+  conditionsPage: {
+    items: SapienceCondition[];
+    hasMore: boolean;
+  };
 }
 
 interface SettlementCandidate {
@@ -231,30 +234,26 @@ const CONDITIONS_PAGE_SIZE = 30;
 
 const UNRESOLVED_CONDITIONS_QUERY = `
 query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
-  conditions(
-    where: {
-      AND: [
-        { settled: { equals: false } }
-        { resolver: { equals: $resolver, mode: insensitive } }
-        # Explicit public filter: the conditions resolver defaults to
-        # public = true unless the query already filters on public, which
-        # would silently exclude privated conditions that still have
-        # engagement to settle. Match both values.
-        { OR: [{ public: { equals: true } }, { public: { equals: false } }] }
-        {
-          OR: [
-            { openInterest: { gt: "0" } }
-            { attestations: { some: {} } }
-          ]
-        }
-      ]
+  conditionsPage(
+    filters: {
+      settled: false
+      resolver: $resolver
+      # Pick up both public and private — the deprecated resolver's
+      # implicit public=true filter would silently exclude privated
+      # conditions that still have engagement to settle.
+      visibility: ALL
+      engagement: ANY
     }
-    orderBy: { endTime: asc }
+    orderBy: endTime
+    orderDirection: asc
     take: $take
     skip: $skip
   ) {
-    id
-    question
+    items {
+      id
+      question
+    }
+    hasMore
   }
 }
 `;
@@ -266,7 +265,7 @@ async function fetchConditionsPage(
   resolver: string,
   take: number,
   skip: number
-): Promise<SapienceCondition[]> {
+): Promise<{ items: SapienceCondition[]; hasMore: boolean }> {
   const response = await fetchWithRetry(apiUrl, {
     method: 'POST',
     headers: {
@@ -315,7 +314,7 @@ async function fetchConditionsPage(
     );
   }
 
-  return result.data?.conditions ?? [];
+  return result.data?.conditionsPage ?? { items: [], hasMore: false };
 }
 
 async function fetchUnresolvedConditions(
@@ -331,20 +330,17 @@ async function fetchUnresolvedConditions(
     const page = await fetchConditionsPage(
       apiUrl,
       resolver,
-      CONDITIONS_PAGE_SIZE + 1,
+      CONDITIONS_PAGE_SIZE,
       skip
     );
 
-    const hasMore = page.length > CONDITIONS_PAGE_SIZE;
-    const pageConditions = hasMore ? page.slice(0, CONDITIONS_PAGE_SIZE) : page;
+    allConditions.push(...page.items);
 
-    allConditions.push(...pageConditions);
-
-    if (pageConditions.length > 0) {
+    if (page.items.length > 0) {
       console.log(`  Fetched ${allConditions.length} conditions so far...`);
     }
 
-    if (!hasMore) break;
+    if (!page.hasMore) break;
 
     skip += CONDITIONS_PAGE_SIZE;
   }

@@ -237,17 +237,26 @@ Examples:
 
 const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
-    $where: ConditionWhereInput
-    $take: Int
-    $skip: Int
+    $filters: ConditionFilters
+    $take: Int!
+    $skip: Int!
   ) {
-    conditions(where: $where, take: $take, skip: $skip) {
-      id
-      endTime
-      chainId
-      resolver
-      description
-      settled
+    conditionsPage(
+      filters: $filters
+      orderBy: endTime
+      orderDirection: asc
+      take: $take
+      skip: $skip
+    ) {
+      items {
+        id
+        endTime
+        chainId
+        resolver
+        description
+        settled
+      }
+      hasMore
     }
   }
 `;
@@ -545,25 +554,21 @@ async function main() {
 
   for (let skip = 0; conditions.length < MAX_CONDITIONS; skip += 50) {
     const take = Math.min(50, MAX_CONDITIONS - conditions.length);
-    const data = await gql<{ conditions: ConditionRow[] }>(
-      sapienceApiUrl,
-      CONDITIONS_QUERY,
-      {
-        where: {
-          chainId: { equals: CHAIN_ID },
-          endTime: { lte: nowSec },
-          settled: { equals: false },
-          resolver: {
-            equals: PYTH_RESOLVER_ADDRESS,
-            mode: 'insensitive',
-          },
-        },
-        take,
-        skip,
-      }
-    );
-    if (data.conditions.length === 0) break;
-    conditions.push(...data.conditions);
+    const data = await gql<{
+      conditionsPage: { items: ConditionRow[]; hasMore: boolean };
+    }>(sapienceApiUrl, CONDITIONS_QUERY, {
+      filters: {
+        chainId: CHAIN_ID,
+        maxEndTime: nowSec,
+        settled: false,
+        resolver: PYTH_RESOLVER_ADDRESS,
+      },
+      take,
+      skip,
+    });
+    if (data.conditionsPage.items.length === 0) break;
+    conditions.push(...data.conditionsPage.items);
+    if (!data.conditionsPage.hasMore) break;
   }
 
   console.log(
