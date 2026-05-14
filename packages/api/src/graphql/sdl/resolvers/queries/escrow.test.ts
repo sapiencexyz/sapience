@@ -746,6 +746,24 @@ describe('positionsPage resolver — page envelope', () => {
     expect(result._countWhere).toEqual(findManyWhere);
   });
 
+  it('clamps skip at the positions-specific cap of 10_000 (regression: MIGRATION.md flags this as a behavior change)', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositionsPage({ take: 10, skip: 5_000_000, holder: ALICE });
+
+    const findManyArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(findManyArgs.skip).toBe(10_000);
+  });
+
+  it('does not clamp skip when within the positions cap', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositionsPage({ take: 10, skip: 9_500, holder: ALICE });
+
+    const findManyArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(findManyArgs.skip).toBe(9_500);
+  });
+
   it('synthesis cache: second request with same Position.updatedAt skips the trades fetch', async () => {
     const positionRow = makePosition({
       balance: '200',
