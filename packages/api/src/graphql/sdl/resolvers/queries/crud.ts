@@ -1,17 +1,15 @@
 /**
- * The 7 CRUD passthroughs that typegraphql-prisma auto-generated on
- * the deployed stack (FindMany for Attestation/Category/ConditionGroup/
- * User, FindUnique for Condition/ConditionGroup/User).
+ * Live CRUD-style queries that share a TtlCache with their deprecated
+ * passthroughs:
  *
- * SDL-first hand-rolls them; each accepts the full Prisma-style
- * where/orderBy/cursor/take/skip/distinct surface and passes through.
- * The generated codegen types for these args come from the SDL blocks
- * we seeded from the deployed schema (*WhereInput, *OrderByWithRelation
- * Input, *ScalarFieldEnum, etc.), so the wire contract stays byte-
- * identical for these queries.
+ *   - `categories` (deprecated, but stays here so it shares the
+ *     `categoriesCache` with `categoriesPage`)
+ *   - `categoriesPage` (live)
  *
- * We don't list `conditions` here — it has a custom default-public
- * filter (resolvers/queries/conditions.ts).
+ * Plus the live point-lookups (`condition(where:)`, `user(where:)`) and
+ * the paginated `attestationsPage` runner. The other typegraphql-prisma-
+ * style passthroughs that don't share state with a live path live in
+ * `./deprecated/crud.ts`.
  */
 
 import type {
@@ -22,6 +20,7 @@ import type {
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
+import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { clampSkip, clampTake } from './pagination';
 
 /**
@@ -51,31 +50,11 @@ export const __clearCategoriesCache = () => categoriesCache.clear();
  */
 const asPrismaArgs = <T>(value: unknown): T => value as T;
 
-export const attestations: NonNullable<QueryResolvers['attestations']> = async (
-  _parent,
-  { where, orderBy, cursor, take, skip, distinct }
-) =>
-  prisma.attestation.findMany({
-    where: asPrismaArgs<Prisma.AttestationWhereInput | undefined>(
-      where ?? undefined
-    ),
-    orderBy: asPrismaArgs<
-      Prisma.AttestationOrderByWithRelationInput[] | undefined
-    >(orderBy ?? undefined),
-    cursor: asPrismaArgs<Prisma.AttestationWhereUniqueInput | undefined>(
-      cursor ?? undefined
-    ),
-    take: take ?? undefined,
-    skip: skip ?? undefined,
-    distinct: asPrismaArgs<Prisma.AttestationScalarFieldEnum[] | undefined>(
-      distinct ?? undefined
-    ),
-  });
-
 export const categories: NonNullable<QueryResolvers['categories']> = async (
   _parent,
   { where, orderBy, cursor, take, skip, distinct }
 ) => {
+  logDeprecatedHit('categories');
   const isNoArgsCall =
     where == null &&
     orderBy == null &&
@@ -214,22 +193,3 @@ export const runAttestations = async ({
 export const attestationsPage: NonNullable<
   QueryResolvers['attestationsPage']
 > = async (_parent, args) => runAttestations(args);
-
-export const users: NonNullable<QueryResolvers['users']> = async (
-  _parent,
-  { where, orderBy, cursor, take, skip, distinct }
-) =>
-  prisma.user.findMany({
-    where: asPrismaArgs<Prisma.UserWhereInput | undefined>(where ?? undefined),
-    orderBy: asPrismaArgs<Prisma.UserOrderByWithRelationInput[] | undefined>(
-      orderBy ?? undefined
-    ),
-    cursor: asPrismaArgs<Prisma.UserWhereUniqueInput | undefined>(
-      cursor ?? undefined
-    ),
-    take: take ?? undefined,
-    skip: skip ?? undefined,
-    distinct: asPrismaArgs<Prisma.UserScalarFieldEnum[] | undefined>(
-      distinct ?? undefined
-    ),
-  });

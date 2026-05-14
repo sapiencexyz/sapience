@@ -78,36 +78,6 @@ const mapPrediction = (
   pickConfig: r.pickConfiguration ? mapPickConfig(r.pickConfiguration) : null,
 });
 
-export const predictionCount: NonNullable<
-  QueryResolvers['predictionCount']
-> = async (_parent, { address, chainId }) => {
-  logDeprecatedHit('predictionCount');
-  const addr = address.toLowerCase();
-  const where: Prisma.PredictionWhereInput = {
-    OR: [{ predictor: addr }, { counterparty: addr }],
-  };
-  if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-  return prisma.prediction.count({ where });
-};
-
-export const positionCount: NonNullable<
-  QueryResolvers['positionCount']
-> = async (_parent, { holder, settled, chainId }) => {
-  logDeprecatedHit('positionCount');
-  // Mirror the visibility rule applied in `positions`: drop zero-balance
-  // unresolved rows (off-platform transfers/burns) so the count matches the
-  // set of underlying positions surfaced to clients.
-  const where: Prisma.PositionWhereInput = {
-    holder: holder.toLowerCase(),
-    NOT: { balance: '0', pickConfiguration: { resolved: false } },
-  };
-  if (settled !== undefined && settled !== null) {
-    where.pickConfiguration = { resolved: settled };
-  }
-  if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-  return prisma.position.count({ where });
-};
-
 export type PredictionsPageEnvelope = {
   items: ResolversParentTypes['Prediction'][];
   hasMore: boolean;

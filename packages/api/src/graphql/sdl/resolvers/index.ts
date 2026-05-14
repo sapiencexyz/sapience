@@ -69,14 +69,13 @@ import { conditionGroup, conditionGroupsPage } from './queries/conditionGroups';
 import { questionsPage } from './queries/questions';
 import { questions } from './queries/deprecated/questions';
 import {
-  attestations,
   attestationsPage,
   categories,
   categoriesPage,
   condition,
   user,
-  users,
 } from './queries/crud';
+import { attestations, users } from './queries/deprecated/crud';
 import { conditions } from './queries/deprecated/conditions';
 import { conditionGroups } from './queries/deprecated/conditionGroups';
 import {
@@ -84,16 +83,16 @@ import {
   closes,
   pickConfiguration,
   pickConfigurationsPage,
-  positionCount,
   positionsPage,
   prediction,
-  predictionCount,
   predictionsPage,
 } from './queries/escrow';
 import {
   pickConfigurations,
   positions,
+  positionCount,
   predictions,
+  predictionCount,
 } from './queries/deprecated/escrow';
 import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
 import { referralCodesPage } from './queries/referrals';

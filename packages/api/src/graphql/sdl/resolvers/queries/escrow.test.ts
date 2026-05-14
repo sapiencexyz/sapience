@@ -17,10 +17,10 @@ import type {
 } from '../../__generated__/resolvers';
 import {
   __clearPositionSynthesisCache,
-  positionCount,
   positionsPage,
   pickConfigurationsPage,
 } from './escrow';
+import { positionCount } from './deprecated/escrow';
 
 // Resolvers in the generated module are typed as the
 // `ResolverFn | ResolverWithResolve` union, which TypeScript can't narrow
