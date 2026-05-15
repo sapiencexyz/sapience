@@ -219,7 +219,7 @@ function PredictionActivityRow({
             </div>
             <div className="flex flex-col gap-1">
               <span
-                className={`inline-flex items-center gap-1.5 text-sm font-mono ${predictorWon ? 'text-green-400' : 'text-brand-white'}`}
+                className={`inline-flex items-center gap-1.5 text-sm font-mono ${predictorWon ? 'text-yes' : 'text-brand-white'}`}
               >
                 <EnsAvatar
                   address={prediction.predictor}
@@ -237,7 +237,7 @@ function PredictionActivityRow({
                 </span>
               </span>
               <span
-                className={`inline-flex items-center gap-1.5 text-sm font-mono ${counterpartyWon ? 'text-green-400' : 'text-brand-white'}`}
+                className={`inline-flex items-center gap-1.5 text-sm font-mono ${counterpartyWon ? 'text-yes' : 'text-brand-white'}`}
               >
                 <EnsAvatar
                   address={prediction.counterparty}
@@ -293,11 +293,11 @@ function PredictionActivityRow({
                 Pending
               </span>
             ) : predictorWon ? (
-              <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
+              <span className="whitespace-nowrap tabular-nums font-mono uppercase text-yes cursor-default">
                 Predictor won
               </span>
             ) : counterpartyWon ? (
-              <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
+              <span className="whitespace-nowrap tabular-nums font-mono uppercase text-yes cursor-default">
                 Counterparty won
               </span>
             ) : (
