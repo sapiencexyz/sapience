@@ -660,6 +660,14 @@ const applyCollateralRangeFilter = async (
  * Pre-query matching Position IDs via raw SQL with `CAST(... AS DECIMAL)`,
  * then constrain the main findMany via `id IN (…)`.
  *
+ * Permissive semantics: `(balance >= min) OR pickConfig.resolved = true`.
+ * Resolved positions stay visible regardless of remaining balance —
+ * claimed winners (balance=0, resolved=true) carry meaningful
+ * settlement PnL and shouldn't be silently dropped by a balance bound.
+ * Matches the existing `positionCount` baseline visibility rule
+ * (`NOT (balance='0' AND resolved=false)`) so count and list semantics
+ * agree on resolved-row visibility.
+ *
  * Returns `null` to signal "no positions match — short-circuit to an
  * empty page" so callers can avoid the downstream findMany/synthesis
  * work.
@@ -678,15 +686,27 @@ const applyBalanceMinFilter = async (
   // holder, the conditionId / pickConfigId paths already narrow the
   // working set via the main where, so the unscoped variant only
   // runs when the caller has explicitly opened a broader query.
+  //
+  // The LEFT JOIN to `Picks` lets the `pc.resolved = true` branch of
+  // the OR contribute — a Position whose pickConfig is resolved stays
+  // in the result set even if its balance is below the bound.
   const rows = holderLower
     ? await prisma.$queryRaw<IdRow[]>`
-        SELECT id FROM "Position"
-        WHERE holder = ${holderLower}
-          AND CAST(balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
+        SELECT p.id FROM "Position" p
+        LEFT JOIN "Picks" pc ON pc.id = p."pickConfigId"
+        WHERE p.holder = ${holderLower}
+          AND (
+            CAST(p.balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
+            OR pc.resolved = true
+          )
       `
     : await prisma.$queryRaw<IdRow[]>`
-        SELECT id FROM "Position"
-        WHERE CAST(balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
+        SELECT p.id FROM "Position" p
+        LEFT JOIN "Picks" pc ON pc.id = p."pickConfigId"
+        WHERE (
+          CAST(p.balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
+          OR pc.resolved = true
+        )
       `;
   if (rows.length === 0) return null;
   const matchingIds = rows.map((r) => r.id);

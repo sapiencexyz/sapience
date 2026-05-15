@@ -920,11 +920,10 @@ describe('positions resolver — balanceMin filter', () => {
     });
   });
 
-  it('empty pre-query result → empty page (e.g. claimed-winner-only holder under balanceMin > 0)', async () => {
-    // Strict semantics: a holder whose only positions are resolved
-    // zero-balance rows (claimed winners) gets no matching IDs back
-    // from the pre-query, and the resolver short-circuits to an empty
-    // page without running findMany / synthesis.
+  it('empty pre-query result → empty page (no findMany or trades fetch)', async () => {
+    // When the pre-query returns no IDs (holder has no positions
+    // matching the bound OR resolved), the resolver short-circuits
+    // to an empty page without paying for findMany / synthesis.
     mockPrisma.$queryRaw.mockResolvedValue([]);
 
     const result = await callPositions({ balanceMin: '1' });
@@ -932,6 +931,36 @@ describe('positions resolver — balanceMin filter', () => {
     expect(result).toHaveLength(0);
     expect(mockPrisma.position.findMany).not.toHaveBeenCalled();
     expect(mockPrisma.secondaryTrade.findMany).not.toHaveBeenCalled();
+  });
+
+  it('permissive: claimed winner (resolved, balance=0) stays visible under balanceMin > 0', async () => {
+    // The pre-query SQL is `(balance >= min) OR pc.resolved = true`,
+    // so resolved zero-balance rows pass through. The synthesizer
+    // then emits a single OPEN row for the resolved position
+    // (disposal loop is skipped for resolved positions regardless of
+    // the bound; OPEN row emits because `isResolved` is true).
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 1 }]);
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({
+        balance: '0',
+        pickConfiguration: makePickConfig({
+          resolved: true,
+          result: 'PREDICTOR_WINS',
+          resolvedAt: TS_SELL,
+          predictions: [makePrediction()],
+        }),
+      }),
+    ]);
+
+    const result = await callPositions({ balanceMin: '1' });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: '1',
+      balance: '0',
+      userCollateral: '100',
+      totalPayout: '200',
+    });
   });
 
   it('synthesis suppresses CLOSED rows even if findMany returns a zero-balance row', async () => {

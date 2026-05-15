@@ -1997,22 +1997,28 @@ export type Position = {
  */
 export type PositionFilters = {
   /**
-   * Restrict to positions whose current on-chain token `balance` is `>= this`
-   * (wei, as a decimal string — values exceed JS Number precision). Compared
-   * numerically against `Position.balance`, which is stored as a VarChar of
-   * the wei integer.
+   * Lower bound on `Position.balance` (wei, decimal string — values
+   * exceed JS Number precision). Compared numerically against the raw
+   * `Position.balance` column, which is stored as a VarChar of the wei
+   * integer.
    *
-   * Practical use: pass `"1"` to exclude raw zero-balance rows AND suppress
-   * the synthesized per-sell CLOSED rows (the `balance: "0"` event rows that
-   * record realized PnL from secondary-market sells on unresolved positions).
-   * Pagination and `totalCount` honor the same filter so they stay
-   * consistent.
+   * Permissive semantics: keeps a row when `balance >= balanceMin` **OR**
+   * the pickConfig is resolved. Claimed winners (zero-balance, resolved)
+   * remain visible regardless of the bound — they carry meaningful
+   * settlement PnL and shouldn't be silently dropped by a numeric filter.
+   * Matches the existing `positionCount` baseline visibility rule so
+   * count and list semantics agree on resolved-row visibility.
    *
-   * This is a strict numeric filter on the raw `Position.balance` column.
-   * Resolved zero-balance rows (claimed winners whose payout has been
-   * redeemed) are also excluded when `balanceMin > 0`. If you need the
-   * "currently held OR resolved-winner" set, do not pass `balanceMin` — use
-   * a `settled`/`result` filter to scope the resolved rows separately.
+   * When `balanceMin > 0`, also suppresses synthesized per-sell CLOSED
+   * rows (the `balance: "0"` event rows recording realized PnL from
+   * secondary-market sells on unresolved positions) — those carry
+   * `balance: "0"` so any positive lower bound excludes them. Pagination
+   * and `totalCount` honor the same filter so they stay consistent.
+   *
+   * Practical use: pass `"1"` to exclude raw zero-balance unresolved
+   * rows AND the synthetic CLOSED rows; pair with `settled: false` to
+   * scope to "open positions only" (suppresses the resolved-keepalive
+   * branch of the OR — `settled` narrows both branches).
    */
   balanceMin?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */

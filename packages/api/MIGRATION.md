@@ -12,13 +12,15 @@ New optional `balanceMin: String` arg on `positionsPage`, `positionCount`, and t
 
 When set to a positive value, the resolver:
 
-1. Pre-queries matching `Position` IDs via raw SQL with `CAST(balance AS DECIMAL) >= <minVal>` (Prisma's native `gte` would lex-compare the VarChar column — `"10" < "9"` — so the cast is required).
+1. Pre-queries matching `Position` IDs via raw SQL with `(CAST(balance AS DECIMAL) >= <minVal>) OR pickConfig.resolved = true` (Prisma's native `gte` would lex-compare the VarChar column — `"10" < "9"` — so the cast is required; the OR-`resolved` branch is the permissive keepalive, see below).
 2. Constrains the main `findMany` via `id IN (…)`.
-3. Skips emission of synthesized per-sell **CLOSED** rows in the synthesis layer — those carry `balance: "0"` so any positive lower bound excludes them.
+3. Skips emission of synthesized per-sell **CLOSED** rows in the synthesis layer — those carry `balance: "0"` so any positive lower bound would exclude them, and they're only emitted from unresolved positions in the first place.
 
-### Semantics
+### Semantics — permissive
 
-Strict numeric filter on the raw `Position.balance` column. Resolved zero-balance rows (claimed winners whose payout has been redeemed) are **also excluded** when `balanceMin > 0` — they don't pass the numeric comparison. If you need the "currently held OR resolved-winner" set, don't pass `balanceMin`; use a `settled`/`result` filter to scope resolved rows separately.
+`balance >= min` **OR** `pickConfig.resolved = true`. Resolved zero-balance rows (claimed winners whose payout has been redeemed) stay visible regardless of the bound. They carry meaningful settlement PnL (cost basis, payout, final outcome) that the FE typically wants on a position-list view; silently dropping them under a numeric filter would surprise callers. Matches the existing `positionCount` baseline visibility rule (`NOT (balance='0' AND resolved=false)`) so count and list semantics agree.
+
+To scope to **open positions only** (exclude both zero-balance unresolved AND all resolved rows), combine `balanceMin: "1"` with `settled: false` — `settled` narrows both branches of the OR, so the resolved-keepalive branch is implicitly disabled.
 
 `PositionsPage.totalCount` reflects the same `id IN (…)` filter via the lazy `_countWhere` plumbing, so pagination stays consistent under the bound.
 

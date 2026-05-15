@@ -86,12 +86,21 @@ export const positionCount: NonNullable<
   // the baseline visibility rule (drop balance=0 unresolved rows that
   // the holder has transferred / burned off-platform).
   if (balanceMinWei > 0n) {
+    // Permissive: `balance >= min OR resolved = true`. Mirrors
+    // `applyBalanceMinFilter` in the list resolver so the count and
+    // the list agree under the same bound. The optional `settled`
+    // filter narrows BOTH branches of the OR — passing `settled:false`
+    // implicitly disables the resolved-keepalive branch, which is the
+    // correct interpretation (caller asked for unsettled only).
     const rows = await prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*)::bigint AS count
       FROM "Position" p
       LEFT JOIN "Picks" pc ON pc.id = p."pickConfigId"
       WHERE p.holder = ${holderLower}
-        AND CAST(p.balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
+        AND (
+          CAST(p.balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
+          OR pc.resolved = true
+        )
         ${chainId !== undefined && chainId !== null ? Prisma.sql`AND p."chainId" = ${chainId}` : Prisma.empty}
         ${settled !== undefined && settled !== null ? Prisma.sql`AND pc.resolved = ${settled}` : Prisma.empty}
     `;
