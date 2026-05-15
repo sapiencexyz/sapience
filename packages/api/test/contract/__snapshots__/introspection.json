@@ -15555,11 +15555,11 @@
             "defaultValue": null
           },
           {
-            "name": "positiveBalanceOnly",
-            "description": "When true, hides zero-balance UNRESOLVED rows and skips emission of\nsynthesized per-sell CLOSED rows (the `balance: \"0\"` event rows\nrecording realized PnL from secondary-market sells on unresolved\npositions). Zero-balance RESOLVED rows — claimed winners with their\nsettlement payout — remain visible, matching the existing\n`positionCount` visibility rule. The OPEN row for partially-sold\npositions is also returned. `totalCount` reflects the same filter, so\npagination stays consistent under the flag.",
+            "name": "balanceMin",
+            "description": "Restrict to positions whose current on-chain token `balance` is `>= this`\n(wei, as a decimal string — values exceed JS Number precision). Compared\nnumerically against `Position.balance`, which is stored as a VarChar of\nthe wei integer.\n\nPractical use: pass `\"1\"` to exclude raw zero-balance rows AND suppress\nthe synthesized per-sell CLOSED rows (the `balance: \"0\"` event rows that\nrecord realized PnL from secondary-market sells on unresolved positions).\nPagination and `totalCount` honor the same filter so they stay\nconsistent.\n\nThis is a strict numeric filter on the raw `Position.balance` column.\nResolved zero-balance rows (claimed winners whose payout has been\nredeemed) are also excluded when `balanceMin > 0`. If you need the\n\"currently held OR resolved-winner\" set, do not pass `balanceMin` — use\na `settled`/`result` filter to scope the resolved rows separately.",
             "type": {
               "kind": "SCALAR",
-              "name": "Boolean",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
@@ -18821,6 +18821,16 @@
             "description": "Count of token positions for a given holder",
             "args": [
               {
+                "name": "balanceMin",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
                 "name": "chainId",
                 "description": null,
                 "type": {
@@ -18841,16 +18851,6 @@
                     "name": "String",
                     "ofType": null
                   }
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "positiveBalanceOnly",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Boolean",
-                  "ofType": null
                 },
                 "defaultValue": null
               },
@@ -18881,6 +18881,16 @@
             "name": "positions",
             "description": "Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status",
             "args": [
+              {
+                "name": "balanceMin",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
               {
                 "name": "chainId",
                 "description": null,
@@ -18987,16 +18997,6 @@
                 "type": {
                   "kind": "SCALAR",
                   "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "positiveBalanceOnly",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "Boolean",
                   "ofType": null
                 },
                 "defaultValue": null

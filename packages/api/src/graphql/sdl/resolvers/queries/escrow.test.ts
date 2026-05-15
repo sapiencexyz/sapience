@@ -829,34 +829,50 @@ describe('positionCount resolver', () => {
     });
   });
 
-  it('positiveBalanceOnly=true: adds permissive (balance!=0 OR resolved) clause', async () => {
-    mockPrisma.position.count.mockResolvedValue(1);
+  it('balanceMin > 0: counts via raw SQL (Prisma can’t cast VarChar balance numerically)', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([{ count: 4n }]);
 
-    await positionCountFn(
+    const result = await positionCountFn(
       undefined,
-      { holder: ALICE, positiveBalanceOnly: true },
+      { holder: ALICE, balanceMin: '1' },
       undefined,
       undefined
     );
 
+    expect(result).toBe(4);
+    // Prisma's `count()` must NOT be used when balanceMin > 0 — the
+    // raw SQL path is the source of truth.
+    expect(mockPrisma.position.count).not.toHaveBeenCalled();
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it('balanceMin = "0" or unparseable: falls back to the Prisma count path', async () => {
+    mockPrisma.position.count.mockResolvedValue(7);
+
+    const result = await positionCountFn(
+      undefined,
+      { holder: ALICE, balanceMin: '0' },
+      undefined,
+      undefined
+    );
+
+    expect(result).toBe(7);
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
     const callArgs = mockPrisma.position.count.mock.calls[0][0];
     expect(callArgs.where).toMatchObject({
       holder: ALICE.toLowerCase(),
-      AND: {
-        OR: [
-          { balance: { not: '0' } },
-          { pickConfiguration: { resolved: true } },
-        ],
-      },
+      NOT: { balance: '0', pickConfiguration: { resolved: false } },
     });
   });
 });
 
-describe('positions resolver — positiveBalanceOnly filter', () => {
-  it('partial sale: emits OPEN row only, suppresses CLOSED rows', async () => {
-    // Without the flag this fixture emits one CLOSED + one OPEN row
-    // (see "partial secondary sale" test). With the flag, only the OPEN
-    // row should survive.
+describe('positions resolver — balanceMin filter', () => {
+  it('partial sale: balanceMin = "1" emits OPEN row only, suppresses CLOSED rows', async () => {
+    // Without the filter this fixture emits one CLOSED + one OPEN row
+    // (see "partial secondary sale" test). With balanceMin > 0, the
+    // synthesizer skips CLOSED-row emission because their `balance: "0"`
+    // falls below the bound.
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 1 }]);
     mockPrisma.position.findMany.mockResolvedValue([
       makePosition({
         balance: '100',
@@ -876,7 +892,7 @@ describe('positions resolver — positiveBalanceOnly filter', () => {
       }),
     ]);
 
-    const result = await callPositions({ positiveBalanceOnly: true });
+    const result = await callPositions({ balanceMin: '1' });
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -886,30 +902,44 @@ describe('positions resolver — positiveBalanceOnly filter', () => {
     });
   });
 
-  it('runPositions issues the permissive (balance!=0 OR resolved) where clause', async () => {
-    // The flag adds a permissive AND-wrapped OR so claimed winners
-    // (zero-balance, resolved) remain visible while zero-balance
-    // unresolved rows are excluded before synthesis.
+  it('runPositions: balanceMin > 0 runs a raw-SQL pre-query and constrains findMany via id IN (…)', async () => {
+    // Position.balance is VarChar; Prisma's `gte` is lexicographic and
+    // would mis-order numerically (e.g. "10" < "9"). The resolver pre-
+    // queries matching IDs with CAST(... AS DECIMAL) and then narrows
+    // findMany by `id`.
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 11 }, { id: 22 }]);
     mockPrisma.position.findMany.mockResolvedValue([]);
 
-    await callPositions({ positiveBalanceOnly: true });
+    await callPositions({ balanceMin: '500000000000000000' });
 
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
     const findManyWhere = mockPrisma.position.findMany.mock.calls[0][0].where;
     expect(findManyWhere).toMatchObject({
       holder: ALICE.toLowerCase(),
-      AND: {
-        OR: [
-          { balance: { not: '0' } },
-          { pickConfiguration: { resolved: true } },
-        ],
-      },
+      id: { in: [11, 22] },
     });
   });
 
+  it('empty pre-query result → empty page (e.g. claimed-winner-only holder under balanceMin > 0)', async () => {
+    // Strict semantics: a holder whose only positions are resolved
+    // zero-balance rows (claimed winners) gets no matching IDs back
+    // from the pre-query, and the resolver short-circuits to an empty
+    // page without running findMany / synthesis.
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+
+    const result = await callPositions({ balanceMin: '1' });
+
+    expect(result).toHaveLength(0);
+    expect(mockPrisma.position.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.secondaryTrade.findMany).not.toHaveBeenCalled();
+  });
+
   it('synthesis suppresses CLOSED rows even if findMany returns a zero-balance row', async () => {
-    // Defense-in-depth: the Prisma where filter normally excludes
-    // zero-balance rows, but if a fixture/test forces one through,
-    // synthesis must still suppress its disposal-emission loop.
+    // Defense-in-depth: the pre-query normally excludes zero-balance
+    // rows, but if a fixture/test forces one through, the synthesis
+    // gate (`balanceMinWei > 0n` skips disposal emission) must still
+    // suppress the CLOSED rows.
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 1 }]);
     mockPrisma.position.findMany.mockResolvedValue([
       makePosition({
         balance: '0',
@@ -929,70 +959,41 @@ describe('positions resolver — positiveBalanceOnly filter', () => {
       }),
     ]);
 
-    const result = await callPositions({ positiveBalanceOnly: true });
+    const result = await callPositions({ balanceMin: '1' });
 
     expect(result).toHaveLength(0);
   });
 
-  it('resolved zero-balance position (claimed winner): still emits its OPEN row under the flag', async () => {
-    // Permissive semantics keep claimed winners visible — their
-    // settlement payout / cost basis is meaningful history. Matches
-    // the existing `positionCount` baseline visibility rule.
-    mockPrisma.position.findMany.mockResolvedValue([
-      makePosition({
-        balance: '0',
-        pickConfiguration: makePickConfig({
-          resolved: true,
-          result: 'PREDICTOR_WINS',
-          resolvedAt: TS_SELL,
-          predictions: [makePrediction()],
-        }),
-      }),
-    ]);
-
-    const result = await callPositions({ positiveBalanceOnly: true });
-
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      id: '1',
-      balance: '0',
-      // Resolved-position OPEN row carries the cost basis / payout.
-      userCollateral: '100',
-      totalPayout: '200',
-    });
-  });
-
-  it('positionsPage _countWhere reflects the filter so totalCount stays consistent', async () => {
+  it('positionsPage _countWhere mirrors the findMany where (id IN …) so totalCount stays consistent', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 42 }]);
     mockPrisma.position.findMany.mockResolvedValue([]);
 
     const result = await positionsPageFn(
       undefined,
-      { take: 50, skip: 0, holder: ALICE, positiveBalanceOnly: true },
+      { take: 50, skip: 0, holder: ALICE, balanceMin: '1' },
       undefined,
       undefined
     );
 
-    // _countWhere must mirror the findMany where so PositionsPage.totalCount
-    // returns the filtered count, not the unfiltered count.
     expect(result._countWhere).toMatchObject({
-      AND: {
-        OR: [
-          { balance: { not: '0' } },
-          { pickConfiguration: { resolved: true } },
-        ],
-      },
+      holder: ALICE.toLowerCase(),
+      id: { in: [42] },
     });
   });
 
-  it('synthesis cache: flipping the flag invalidates the entry', async () => {
+  it('synthesis cache: balanceMin bound is part of the cache key', async () => {
+    // The synthesizer's disposal-emission gate flips on `balanceMinWei
+    // > 0n`, so a cached entry computed without the bound would serve
+    // the wrong row set when the same Position.updatedAt is requested
+    // with the bound on. The cache key includes a `0n` vs `>0n` bucket
+    // — flipping between them must trigger a fresh trades fetch.
     const positionRow = makePosition({
       balance: '200',
       pickConfiguration: makePickConfig({
         predictions: [makePrediction()],
       }),
     });
-    // Trade history that would normally produce a CLOSED row, so the
-    // two cache entries (flag on / flag off) have different row counts.
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 1 }]);
     mockPrisma.position.findMany.mockResolvedValue([positionRow]);
     mockPrisma.secondaryTrade.findMany.mockResolvedValue([
       makeTrade({
@@ -1005,16 +1006,15 @@ describe('positions resolver — positiveBalanceOnly filter', () => {
       }),
     ]);
 
-    const withoutFlag = await callPositions({ positiveBalanceOnly: false });
+    // First call: no balanceMin, full CLOSED + OPEN synthesis cached.
+    const withoutMin = await callPositions({});
     expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
 
-    const withFlag = await callPositions({ positiveBalanceOnly: true });
-    // Different cache key → second trades fetch fires.
+    // Second call: balanceMin > 0, different cache bucket → fresh fetch.
+    const withMin = await callPositions({ balanceMin: '1' });
     expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(2);
 
-    // And the row sets differ — flag-off emits CLOSED + OPEN, flag-on
-    // emits OPEN only.
-    expect(withoutFlag.length).toBeGreaterThan(withFlag.length);
+    expect(withoutMin.length).toBeGreaterThan(withMin.length);
   });
 });
 

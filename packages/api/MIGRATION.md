@@ -4,31 +4,37 @@ A running log of API changes that downstream services should adopt. Entries are 
 
 ---
 
-## `positiveBalanceOnly` — server-side balance filter on positions queries
+## `balanceMin` — server-side balance filter on positions queries
 
 ### TL;DR
 
-New optional `positiveBalanceOnly: Boolean` arg on `positionsPage`, `positionCount`, and the deprecated `positions` query — also a field on `PositionFilters` (the preferred path post-#1719). Defaults to `false`/omitted; existing callers are unaffected.
+New optional `balanceMin: String` arg on `positionsPage`, `positionCount`, and the deprecated `positions` query — also a field on `PositionFilters` (the preferred path post-#1719). Decimal-string wei value (e.g. `"1"`, `"1000000000000000000"` for 1 ETH). Defaults to omitted; existing callers are unaffected.
 
-When set to `true`, the resolver:
+When set to a positive value, the resolver:
 
-1. Filters raw `Position` rows at the Prisma layer to exclude zero-balance unresolved rows.
-2. Skips emission of synthesized per-sell **CLOSED** rows — the `balance: "0"` event rows recording realized PnL from secondary-market sells on unresolved positions.
+1. Pre-queries matching `Position` IDs via raw SQL with `CAST(balance AS DECIMAL) >= <minVal>` (Prisma's native `gte` would lex-compare the VarChar column — `"10" < "9"` — so the cast is required).
+2. Constrains the main `findMany` via `id IN (…)`.
+3. Skips emission of synthesized per-sell **CLOSED** rows in the synthesis layer — those carry `balance: "0"` so any positive lower bound excludes them.
 
-Zero-balance **resolved** rows (claimed winners whose payout has been redeemed) stay visible — this matches the existing `positionCount` baseline visibility rule, so count and list semantics agree under the flag. The OPEN row for partially-sold positions is returned as usual. `PositionsPage.totalCount` reflects the same Prisma filter so pagination stays consistent under the flag.
+### Semantics
+
+Strict numeric filter on the raw `Position.balance` column. Resolved zero-balance rows (claimed winners whose payout has been redeemed) are **also excluded** when `balanceMin > 0` — they don't pass the numeric comparison. If you need the "currently held OR resolved-winner" set, don't pass `balanceMin`; use a `settled`/`result` filter to scope resolved rows separately.
+
+`PositionsPage.totalCount` reflects the same `id IN (…)` filter via the lazy `_countWhere` plumbing, so pagination stays consistent under the bound.
+
+### Why a `String`, not a `Number`
+
+`Position.balance` is wei (no decimals on-chain). 1 ETH = `10**18` wei = exceeds JS `Number.MAX_SAFE_INTEGER` (`2**53`) by 5 orders of magnitude. The codebase uses `String` for every wei-scale arg (see `collateralMin`/`collateralMax` on the same `PositionFilters` input); `balanceMin` follows the same convention.
 
 ### When to use it
 
-UI surfaces that show "currently open positions" — anywhere a zero-balance unresolved row would otherwise be filtered client-side. Server-side filtering keeps `skip`/`take` pagination and `totalCount` accurate.
+UI surfaces that show "currently held positions" — anywhere a zero-balance unresolved row would otherwise be filtered client-side. Server-side filtering keeps `skip`/`take` pagination and `totalCount` accurate; client-side filtering after fetch silently breaks both.
 
 ### Usage — preferred (`filters:` input)
 
 ```graphql
 query OpenPositions($holder: String!) {
-  positionsPage(
-    filters: { holder: $holder, positiveBalanceOnly: true }
-    take: 50
-  ) {
+  positionsPage(filters: { holder: $holder, balanceMin: "1" }, take: 50) {
     hasMore
     totalCount
     items {
@@ -46,7 +52,7 @@ query OpenPositions($holder: String!) {
 
 ```graphql
 query OpenPositions($holder: String!) {
-  positionsPage(holder: $holder, positiveBalanceOnly: true, take: 50) {
+  positionsPage(holder: $holder, balanceMin: "1", take: 50) {
     hasMore
     items {
       id
@@ -56,9 +62,9 @@ query OpenPositions($holder: String!) {
 }
 ```
 
-### `positionCount` under the flag
+### `positionCount` under the bound
 
-`positionCount(holder, positiveBalanceOnly: true)` returns the same number as `positionsPage(filters: { holder, positiveBalanceOnly: true }, take: 1).totalCount`. Both apply the same permissive `(balance != '0' OR pickConfig.resolved = true)` predicate. Prefer the `*Page.totalCount` shape.
+`positionCount(holder, balanceMin: "1")` returns the same number as `positionsPage(filters: { holder, balanceMin: "1" }, take: 1).totalCount`. The count goes through a raw SQL path when `balanceMin > 0` (Prisma can't cast the VarChar column), but applies the same predicate as the list query. Prefer the `*Page.totalCount` shape on new callers; `positionCount` remains for one release alongside the flat-arg deprecations.
 
 ---
 

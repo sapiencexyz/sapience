@@ -382,14 +382,17 @@ const positionSynthesisCacheKey = (
     holder: string;
     updatedAt: Date;
   },
-  positiveBalanceOnly: boolean
+  balanceMinWei: bigint
 ) =>
-  // The flag changes synthesizer output (suppresses CLOSED rows), so it
-  // must be part of the cache key — otherwise a request with the flag
-  // off can serve a flag-on entry (or vice versa) under the same
-  // updatedAt and return the wrong row set.
+  // `balanceMinWei` changes synthesizer output (suppresses CLOSED rows
+  // whose `balance: "0"` would fall below the bound), so it must be
+  // part of the cache key — otherwise a request with one bound can
+  // serve another's entry under the same updatedAt and return the
+  // wrong row set. Bucketed as `0` vs `>0` since the synthesis
+  // decision is binary (emit or skip CLOSED rows); finer bucketing
+  // isn't needed today.
   `${r.chainId}:${r.tokenAddress}:${r.holder}:${r.updatedAt.getTime()}:${
-    positiveBalanceOnly ? 'p' : 'a'
+    balanceMinWei > 0n ? 'p' : 'a'
   }`;
 
 /** Test-only: clear synthesis cache between test cases. */
@@ -417,9 +420,32 @@ type NormalizedPositionsArgs = {
   holderWon: boolean | null | undefined;
   collateralMin: string | null | undefined;
   collateralMax: string | null | undefined;
-  positiveBalanceOnly: boolean;
+  /**
+   * Minimum on-chain token balance the row must carry (wei, bigint).
+   * `0n` means no filter. Synthesized CLOSED rows (whose `balance: "0"`
+   * is below any positive lower bound) are also gated on this — see
+   * `synthesizePositionRow`.
+   */
+  balanceMinWei: bigint;
   orderField: 'createdAt' | 'updatedAt';
   orderDirection: 'asc' | 'desc';
+};
+
+/**
+ * Parse the SDL `balanceMin: String` arg into a bigint. Unparseable
+ * or negative inputs collapse to `0n` (no filter) — same lenient
+ * treatment as the `collateralMin`/`collateralMax` filter args, where
+ * a malformed string would otherwise propagate a runtime exception
+ * through every resolver invocation on the path.
+ */
+const parseBalanceMin = (raw: string | null | undefined): bigint => {
+  if (!raw) return 0n;
+  try {
+    const v = BigInt(raw);
+    return v > 0n ? v : 0n;
+  } catch {
+    return 0n;
+  }
 };
 
 const normalizePositionsArgs = (
@@ -447,7 +473,11 @@ const normalizePositionsArgs = (
   holderWon: args.holderWon,
   collateralMin: args.collateralMin,
   collateralMax: args.collateralMax,
-  positiveBalanceOnly: args.positiveBalanceOnly ?? false,
+  // `balanceMin` is a decimal-string wei value (can exceed JS Number
+  // precision). Parse here so downstream code works with bigint; an
+  // unparseable input becomes 0n (no filter) rather than throwing —
+  // matches the lenient null/undefined semantics of the other filters.
+  balanceMinWei: parseBalanceMin(args.balanceMin),
   // PositionSortField SDL enum values are CREATED_AT / UPDATED_AT; map
   // to the Prisma column name for orderBy.
   orderField: args.orderBy === 'CREATED_AT' ? 'createdAt' : 'updatedAt',
@@ -497,7 +527,6 @@ const buildPositionsWhere = (
     endsAtMin,
     endsAtMax,
     holderWon,
-    positiveBalanceOnly,
   } = args;
 
   if (!holderLower && !conditionId && !pickConfigIdLower) return null;
@@ -509,21 +538,10 @@ const buildPositionsWhere = (
     where.pickConfigId = { in: conditionPickConfigIds };
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (pickConfigIdLower && !conditionId) where.pickConfigId = pickConfigIdLower;
-  // Permissive: keep rows where balance > 0 OR the pickConfig is
-  // resolved. Resolved zero-balance rows are claimed winners — their
-  // settlement PnL is meaningful history and should stay visible.
-  // Matches the existing `positionCount` baseline visibility rule so
-  // count and list semantics line up under the flag. Layered via
-  // `where.AND` so it coexists with the `where.OR` clause that the
-  // `holderWon` branch may add later in this function.
-  if (positiveBalanceOnly) {
-    where.AND = {
-      OR: [
-        { balance: { not: '0' } },
-        { pickConfiguration: { resolved: true } },
-      ],
-    };
-  }
+  // `balanceMin` isn't applied here — it requires a numeric comparison
+  // against the VarChar `balance` column, which Prisma can't express
+  // (its `gte` is lexicographic). `applyBalanceMinFilter` runs a raw
+  // SQL pre-query and constrains the main findMany via `id IN (…)`.
 
   if (settled !== undefined && settled !== null) {
     where.pickConfiguration = {
@@ -635,6 +653,61 @@ const applyCollateralRangeFilter = async (
   return where;
 };
 
+/**
+ * Numeric lower-bound filter on `Position.balance`. The column is
+ * stored as a VarChar of the wei integer (values exceed JS Number
+ * precision), so Prisma's native `gte` would lex-compare (`'10' < '9'`).
+ * Pre-query matching Position IDs via raw SQL with `CAST(... AS DECIMAL)`,
+ * then constrain the main findMany via `id IN (…)`.
+ *
+ * Returns `null` to signal "no positions match — short-circuit to an
+ * empty page" so callers can avoid the downstream findMany/synthesis
+ * work.
+ */
+const applyBalanceMinFilter = async (
+  where: Prisma.PositionWhereInput,
+  holderLower: string | undefined,
+  balanceMinWei: bigint
+): Promise<Prisma.PositionWhereInput | null> => {
+  if (balanceMinWei <= 0n) return where;
+  interface IdRow {
+    id: number;
+  }
+  // Scope by holder when present to keep the scan bounded — typical
+  // holders carry well under a thousand Position rows. Without a
+  // holder, the conditionId / pickConfigId paths already narrow the
+  // working set via the main where, so the unscoped variant only
+  // runs when the caller has explicitly opened a broader query.
+  const rows = holderLower
+    ? await prisma.$queryRaw<IdRow[]>`
+        SELECT id FROM "Position"
+        WHERE holder = ${holderLower}
+          AND CAST(balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
+      `
+    : await prisma.$queryRaw<IdRow[]>`
+        SELECT id FROM "Position"
+        WHERE CAST(balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
+      `;
+  if (rows.length === 0) return null;
+  const matchingIds = rows.map((r) => r.id);
+  // Intersect with any existing `id` constraint (none today, but be
+  // defensive in case a future filter sets one).
+  if (
+    where.id &&
+    typeof where.id === 'object' &&
+    'in' in where.id &&
+    Array.isArray(where.id.in)
+  ) {
+    const existing = where.id.in as number[];
+    const filtered = matchingIds.filter((id) => existing.includes(id));
+    if (filtered.length === 0) return null;
+    where.id = { in: filtered };
+  } else {
+    where.id = { in: matchingIds };
+  }
+  return where;
+};
+
 type PositionRow = Prisma.PositionGetPayload<{
   include: {
     pickConfiguration: {
@@ -667,7 +740,7 @@ const positionKey = (chainId: number, token: string, holder: string) =>
 const synthesizePositionRow = (
   r: PositionRow,
   trades: readonly TradeRow[],
-  positiveBalanceOnly: boolean
+  balanceMinWei: bigint
 ): PositionShape[] => {
   const pc = r.pickConfiguration;
   let totalPayout = 0n;
@@ -764,9 +837,10 @@ const synthesizePositionRow = (
 
   // Emit one synthetic row per sell (only meaningful for unresolved
   // pickConfigs — once settled, the existing PnL flow takes over).
-  // `positiveBalanceOnly` suppresses these zero-balance event rows so
-  // the UI can show only currently-held positions.
-  if (!isResolved && !positiveBalanceOnly) {
+  // CLOSED rows carry `balance: '0'`, so any positive `balanceMinWei`
+  // bound would exclude them; gate emission accordingly so the UI can
+  // show only currently-held positions when it asks for it.
+  if (!isResolved && balanceMinWei === 0n) {
     for (const d of disposalRows) {
       out.push({
         id: `${r.id}-sell-${d.tradeHash}`,
@@ -820,13 +894,13 @@ const synthesizePositionRow = (
  */
 const synthesizePositionsPage = async (
   rows: PositionRow[],
-  positiveBalanceOnly: boolean
+  balanceMinWei: bigint
 ): Promise<PositionShape[]> => {
   const cachedByRow = new Map<PositionRow, PositionShape[]>();
   const missedRows: PositionRow[] = [];
   for (const r of rows) {
     const cached = positionSynthesisCache.get(
-      positionSynthesisCacheKey(r, positiveBalanceOnly)
+      positionSynthesisCacheKey(r, balanceMinWei)
     );
     if (cached) cachedByRow.set(r, cached);
     else missedRows.push(r);
@@ -880,10 +954,10 @@ const synthesizePositionsPage = async (
     const synthesized = synthesizePositionRow(
       r,
       tradesByPos.get(k) ?? [],
-      positiveBalanceOnly
+      balanceMinWei
     );
     positionSynthesisCache.set(
-      positionSynthesisCacheKey(r, positiveBalanceOnly),
+      positionSynthesisCacheKey(r, balanceMinWei),
       synthesized
     );
     out.push(...synthesized);
@@ -942,6 +1016,16 @@ export const runPositions = async (
     where = next;
   }
 
+  if (norm.balanceMinWei > 0n) {
+    const next = await applyBalanceMinFilter(
+      where,
+      norm.holderLower,
+      norm.balanceMinWei
+    );
+    if (next === null) return EMPTY_POSITIONS_PAGE;
+    where = next;
+  }
+
   // The PickConfiguration → Prediction relation is many-to-many in spirit:
   // any user who has predicted on this market shows up here. We only need
   // the rows where the holder is a counterparty to compute their cost
@@ -985,10 +1069,7 @@ export const runPositions = async (
   const hasMore = rawRows.length > norm.cappedTake;
   const rows = rawRows.slice(0, norm.cappedTake);
 
-  const synthesized = await synthesizePositionsPage(
-    rows,
-    norm.positiveBalanceOnly
-  );
+  const synthesized = await synthesizePositionsPage(rows, norm.balanceMinWei);
   const sorted = sortSynthesizedRows(
     synthesized,
     norm.orderField,
@@ -1021,8 +1102,7 @@ const mergePositionFilters = (
     collateralMax: f?.collateralMax ?? args.collateralMax ?? null,
     endsAtMin: f?.endsAtMin ?? args.endsAtMin ?? null,
     endsAtMax: f?.endsAtMax ?? args.endsAtMax ?? null,
-    positiveBalanceOnly:
-      f?.positiveBalanceOnly ?? args.positiveBalanceOnly ?? null,
+    balanceMin: f?.balanceMin ?? args.balanceMin ?? null,
   };
 };
 

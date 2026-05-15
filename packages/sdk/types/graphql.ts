@@ -1996,6 +1996,25 @@ export type Position = {
  * migrate without breaking.
  */
 export type PositionFilters = {
+  /**
+   * Restrict to positions whose current on-chain token `balance` is `>= this`
+   * (wei, as a decimal string — values exceed JS Number precision). Compared
+   * numerically against `Position.balance`, which is stored as a VarChar of
+   * the wei integer.
+   *
+   * Practical use: pass `"1"` to exclude raw zero-balance rows AND suppress
+   * the synthesized per-sell CLOSED rows (the `balance: "0"` event rows that
+   * record realized PnL from secondary-market sells on unresolved positions).
+   * Pagination and `totalCount` honor the same filter so they stay
+   * consistent.
+   *
+   * This is a strict numeric filter on the raw `Position.balance` column.
+   * Resolved zero-balance rows (claimed winners whose payout has been
+   * redeemed) are also excluded when `balanceMin > 0`. If you need the
+   * "currently held OR resolved-winner" set, do not pass `balanceMin` — use
+   * a `settled`/`result` filter to scope the resolved rows separately.
+   */
+  balanceMin?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei). */
@@ -2014,17 +2033,6 @@ export type PositionFilters = {
   holderWon?: InputMaybe<Scalars['Boolean']['input']>;
   /** Restrict to a single pick configuration. */
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
-  /**
-   * When true, hides zero-balance UNRESOLVED rows and skips emission of
-   * synthesized per-sell CLOSED rows (the `balance: "0"` event rows
-   * recording realized PnL from secondary-market sells on unresolved
-   * positions). Zero-balance RESOLVED rows — claimed winners with their
-   * settlement payout — remain visible, matching the existing
-   * `positionCount` visibility rule. The OPEN row for partially-sold
-   * positions is also returned. `totalCount` reflects the same filter, so
-   * pagination stays consistent under the flag.
-   */
-  positiveBalanceOnly?: InputMaybe<Scalars['Boolean']['input']>;
   /** Restrict to positions whose pickConfig settled with this result. */
   result?: InputMaybe<SettlementResult>;
   /** Restrict to settled (true) or unsettled (false) positions. */
@@ -2804,14 +2812,15 @@ export type QueryPickConfigurationsPageArgs = {
 
 
 export type QueryPositionCountArgs = {
+  balanceMin?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   holder: Scalars['String']['input'];
-  positiveBalanceOnly?: InputMaybe<Scalars['Boolean']['input']>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
 export type QueryPositionsArgs = {
+  balanceMin?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;
@@ -2823,7 +2832,6 @@ export type QueryPositionsArgs = {
   orderBy?: InputMaybe<PositionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
-  positiveBalanceOnly?: InputMaybe<Scalars['Boolean']['input']>;
   result?: InputMaybe<SettlementResult>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];
@@ -2832,6 +2840,7 @@ export type QueryPositionsArgs = {
 
 
 export type QueryPositionsPageArgs = {
+  balanceMin?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;
@@ -2844,7 +2853,6 @@ export type QueryPositionsPageArgs = {
   orderBy?: InputMaybe<PositionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
-  positiveBalanceOnly?: InputMaybe<Scalars['Boolean']['input']>;
   result?: InputMaybe<SettlementResult>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];

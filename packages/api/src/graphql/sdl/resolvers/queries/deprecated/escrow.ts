@@ -16,7 +16,7 @@
  *   cleanup PR can gate deletion on call-count telemetry.
  */
 
-import type { Prisma } from '../../../../../../generated/prisma';
+import { Prisma } from '../../../../../../generated/prisma';
 import type { QueryResolvers } from '../../../__generated__/resolvers';
 import prisma from '../../../../../core/db';
 import { logDeprecatedHit } from '../../../../../lib/deprecationTelemetry';
@@ -62,31 +62,52 @@ export const predictionCount: NonNullable<
 
 export const positionCount: NonNullable<
   QueryResolvers['positionCount']
-> = async (_parent, { holder, settled, chainId, positiveBalanceOnly }) => {
+> = async (_parent, { holder, settled, chainId, balanceMin }) => {
   logDeprecatedHit('positionCount');
-  // Mirror the visibility rule applied in `positions`: drop zero-balance
-  // unresolved rows (off-platform transfers/burns) so the count matches the
-  // set of underlying positions surfaced to clients.
+  const holderLower = holder.toLowerCase();
+  // `balanceMin` is a decimal-string wei value (can exceed JS Number
+  // precision). Unparseable / non-positive inputs collapse to 0n (no
+  // filter) — lenient treatment matches the resolver.
+  let balanceMinWei = 0n;
+  if (balanceMin) {
+    try {
+      const v = BigInt(balanceMin);
+      if (v > 0n) balanceMinWei = v;
+    } catch {
+      /* noop — treat as 0n */
+    }
+  }
+
+  // `Position.balance` is VarChar; Prisma can't natively cast it to
+  // numeric. When `balanceMin > 0` we count via a raw SQL query that
+  // applies the same filters as the Prisma path, so the deprecated
+  // `positionCount(balanceMin:)` matches `positionsPage(...).totalCount`
+  // exactly. Otherwise fall through to the standard Prisma count with
+  // the baseline visibility rule (drop balance=0 unresolved rows that
+  // the holder has transferred / burned off-platform).
+  if (balanceMinWei > 0n) {
+    const rows = await prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*)::bigint AS count
+      FROM "Position" p
+      LEFT JOIN "Picks" pc ON pc.id = p."pickConfigId"
+      WHERE p.holder = ${holderLower}
+        AND CAST(p.balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
+        ${chainId !== undefined && chainId !== null ? Prisma.sql`AND p."chainId" = ${chainId}` : Prisma.empty}
+        ${settled !== undefined && settled !== null ? Prisma.sql`AND pc.resolved = ${settled}` : Prisma.empty}
+    `;
+    return Number(rows[0]?.count ?? 0n);
+  }
+
   const where: Prisma.PositionWhereInput = {
-    holder: holder.toLowerCase(),
+    holder: holderLower,
+    // Drop zero-balance unresolved rows (off-platform transfers/burns)
+    // so the count matches the set of underlying positions surfaced to
+    // clients in the corresponding list query.
     NOT: { balance: '0', pickConfiguration: { resolved: false } },
   };
   if (settled !== undefined && settled !== null) {
     where.pickConfiguration = { resolved: settled };
   }
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-  // Permissive: same OR clause as `runPositions` so count and list
-  // semantics agree. Note this is a no-op on top of the baseline `NOT`
-  // above (which already excludes balance=0 unresolved rows) — kept
-  // explicit so the flag's effect is greppable in this file and so the
-  // semantics don't drift if the baseline rule changes.
-  if (positiveBalanceOnly) {
-    where.AND = {
-      OR: [
-        { balance: { not: '0' } },
-        { pickConfiguration: { resolved: true } },
-      ],
-    };
-  }
   return prisma.position.count({ where });
 };
