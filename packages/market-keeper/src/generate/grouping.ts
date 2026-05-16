@@ -106,6 +106,36 @@ function computeNegRiskBucketMetadata(markets: PolymarketMarket[]): {
     : { negRisk: false };
 }
 
+function negRiskBasketIdsByTitle(
+  groups: Array<{ title: string; markets: PolymarketMarket[] }>
+): Map<string, Set<string>> {
+  const idsByTitle = new Map<string, Set<string>>();
+  for (const group of groups) {
+    for (const market of group.markets) {
+      if (!isNegRiskMarket(market)) continue;
+      const id = getNegRiskMarketId(market);
+      if (!id) continue;
+      const ids = idsByTitle.get(group.title) ?? new Set<string>();
+      ids.add(id);
+      idsByTitle.set(group.title, ids);
+    }
+  }
+  return idsByTitle;
+}
+
+function conditionGroupTitleForMarket(
+  title: string,
+  market: PolymarketMarket,
+  idsByTitle: Map<string, Set<string>>
+): string {
+  const id = getNegRiskMarketId(market);
+  const conflictingBasketCount = idsByTitle.get(title)?.size ?? 0;
+  if (isNegRiskMarket(market) && id && conflictingBasketCount > 1) {
+    return `${title} (${id})`;
+  }
+  return title;
+}
+
 export function transformToSapienceCondition(
   market: PolymarketMarket,
   groupTitle?: string,
@@ -240,19 +270,7 @@ export async function groupMarkets(
     (m) => !existingIds.has(m.conditionId)
   );
 
-  const negRiskByTitle = new Map<
-    string,
-    { negRisk: boolean; negRiskMarketId?: string }
-  >();
-  const marketsByTitle = new Map<string, PolymarketMarket[]>();
-  for (const group of filteredGroups) {
-    const bucket = marketsByTitle.get(group.title) ?? [];
-    bucket.push(...group.markets);
-    marketsByTitle.set(group.title, bucket);
-  }
-  for (const [title, bucket] of marketsByTitle) {
-    negRiskByTitle.set(title, computeNegRiskBucketMetadata(bucket));
-  }
+  const negRiskBasketIds = negRiskBasketIdsByTitle(filteredGroups);
 
   // Transform single-market groups to SapienceConditionGroup[]
   const conditionGroups: SapienceConditionGroup[] = [];
@@ -262,12 +280,15 @@ export async function groupMarkets(
     const enrichment = enrichments.get(market.conditionId);
     const eventSlug = market.events?.[0]?.slug;
     const marketTags = eventSlug ? (eventTagMap.get(eventSlug) ?? []) : [];
-    const negRiskMetadata = negRiskByTitle.get(group.title) ?? {
-      negRisk: false,
-    };
+    const conditionGroupTitle = conditionGroupTitleForMarket(
+      group.title,
+      market,
+      negRiskBasketIds
+    );
+    const negRiskMetadata = computeNegRiskBucketMetadata(group.markets);
     const condition = transformToSapienceCondition(
       market,
-      group.title,
+      conditionGroupTitle,
       enrichment,
       marketTags,
       endTimeMap.get(market.conditionId),
@@ -283,7 +304,7 @@ export async function groupMarkets(
 
     const groupUrl = getPolymarketUrl(market);
     conditionGroups.push({
-      title: group.title,
+      title: conditionGroupTitle,
       description: groupDescription,
       categorySlug: condition.categorySlug,
       similarMarkets: groupUrl ? [groupUrl] : [],
@@ -458,7 +479,8 @@ export function computeMetadataUpdates(
     ];
     for (const key of keys) {
       const newVal = fresh[key];
-      if (newVal === undefined || newVal === null) continue;
+      if (newVal === undefined) continue;
+      if (newVal === null && key !== 'negRiskMarketId') continue;
       const oldVal = existing[key];
       if (!fieldsEqual(oldVal, newVal)) {
         // Dynamic assignment — `fields` and `old` share the SyncableFields
@@ -515,20 +537,6 @@ export function computeGroupMetadataUpdates(
 ): GroupMetadataUpdate[] {
   const updates: GroupMetadataUpdate[] = [];
   const seenGroupIds = new Set<number>();
-  const negRiskByTitle = new Map<
-    string,
-    { negRisk: boolean; negRiskMarketId?: string }
-  >();
-  const marketsByTitle = new Map<string, PolymarketMarket[]>();
-  for (const group of groups) {
-    const bucket = marketsByTitle.get(group.title) ?? [];
-    bucket.push(...group.markets);
-    marketsByTitle.set(group.title, bucket);
-  }
-  for (const [title, bucket] of marketsByTitle) {
-    negRiskByTitle.set(title, computeNegRiskBucketMetadata(bucket));
-  }
-
   for (const group of groups) {
     const market = group.markets[0];
     if (!market) continue;
@@ -546,7 +554,7 @@ export function computeGroupMetadataUpdates(
 
     const freshSimilarMarkets = [freshUrl];
     const oldSimilarMarkets = existing.conditionGroupSimilarMarkets;
-    const freshNegRisk = negRiskByTitle.get(group.title) ?? { negRisk: false };
+    const freshNegRisk = computeNegRiskBucketMetadata(group.markets);
 
     const fields: GroupSyncableFields = {};
     const old: GroupSyncableFields = {};

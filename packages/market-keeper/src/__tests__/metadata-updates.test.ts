@@ -218,6 +218,30 @@ describe('computeMetadataUpdates', () => {
     });
   });
 
+  it('clears stale negRiskMarketId when Polymarket no longer reports negRisk', () => {
+    const market = makeMarket({
+      conditionId: '0xstaleneg',
+      events: [{ title: 'NBA champion', slug: 'nba-champion' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xstaleneg',
+        existingFromMarket(market, {
+          negRisk: true,
+          negRiskMarketId: 'stale-basket',
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(1);
+    expect(metadataUpdates[0].fields.negRisk).toBe(false);
+    expect(metadataUpdates[0].fields.negRiskMarketId).toBeNull();
+    expect(metadataUpdates[0].old.negRiskMarketId).toBe('stale-basket');
+  });
+
   it('detects similarMarkets URL change when event slug changes', () => {
     const market = makeMarket({
       conditionId: '0xslug',
@@ -751,7 +775,7 @@ describe('groupMarkets new-condition routing', () => {
     ).toBe(true);
   });
 
-  it('does not mark a title bucket as negRisk when siblings disagree on negRiskMarketId', async () => {
+  it('segments same-title negRisk markets by negRiskMarketId instead of downgrading them', async () => {
     const markets = [
       makeMarket({
         conditionId: '0xa',
@@ -784,15 +808,28 @@ describe('groupMarkets new-condition routing', () => {
     mockCheckExisting.mockResolvedValue(new Map());
 
     const result = await groupMarkets(markets, API_URL);
-    const groups = result.groups.filter((g) => g.title === 'NBA champion');
+    const groups = result.groups.filter((g) =>
+      g.title.startsWith('NBA champion')
+    );
 
     expect(groups).toHaveLength(2);
-    expect(groups.every((g) => g.negRisk === false)).toBe(true);
-    expect(groups.every((g) => g.negRiskMarketId === undefined)).toBe(true);
+    expect(groups.map((g) => g.title).sort()).toEqual([
+      'NBA champion (basket-a)',
+      'NBA champion (basket-b)',
+    ]);
+    expect(groups.map((g) => g.negRiskMarketId).sort()).toEqual([
+      'basket-a',
+      'basket-b',
+    ]);
+    expect(groups.every((g) => g.negRisk === true)).toBe(true);
     expect(
       groups
         .flatMap((g) => g.conditions)
-        .every((c) => c.negRisk === false && c.negRiskMarketId === undefined)
+        .map((c) => c.negRiskMarketId)
+        .sort()
+    ).toEqual(['basket-a', 'basket-b']);
+    expect(
+      groups.flatMap((g) => g.conditions).every((c) => c.negRisk === true)
     ).toBe(true);
   });
 
