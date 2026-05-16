@@ -29,6 +29,18 @@ import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { isPriceSubCategory } from '~/lib/utils/categoryMatcher';
 
 // ---------------------------------------------------------------------------
+// Layout helpers
+// ---------------------------------------------------------------------------
+
+export function getCardGridViewportStyle(
+  useCardGrid: boolean
+): React.CSSProperties | undefined {
+  if (!useCardGrid) return undefined;
+
+  return { minHeight: 'calc(100dvh - var(--page-top-offset, 0px))' };
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 

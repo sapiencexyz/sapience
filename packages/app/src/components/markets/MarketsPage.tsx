@@ -20,6 +20,7 @@ import QuestionsGrid from '~/components/markets/polymarket/QuestionsGrid';
 import SortControls from '~/components/markets/polymarket/SortControls';
 import TagBar from '~/components/markets/TagBar';
 import type { FilterState } from '~/components/markets/TableFilters';
+import { getCardGridViewportStyle } from '~/components/markets/market-helpers';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import { usePopularTags } from '~/hooks/graphql/usePopularTags';
 import {
@@ -303,11 +304,7 @@ const MarketsPage = () => {
         className={
           useCardGrid ? 'flex-1 min-w-0 max-w-full flex flex-col' : 'contents'
         }
-        style={
-          useCardGrid
-            ? { height: 'calc(100dvh - var(--page-top-offset, 0px))' }
-            : undefined
-        }
+        style={getCardGridViewportStyle(useCardGrid)}
       >
         {useCardGrid && (
           <div className="px-3 lg:px-4 pt-1 pb-2">
