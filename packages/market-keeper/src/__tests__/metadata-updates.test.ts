@@ -104,7 +104,11 @@ function existingFromMarket(
     tags: [],
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
+    negRisk: false,
+    negRiskMarketId: null,
     groupName: eventTitle,
+    conditionGroupNegRisk: false,
+    conditionGroupNegRiskMarketId: null,
     ...overrides,
   };
 }
@@ -715,6 +719,81 @@ describe('groupMarkets new-condition routing', () => {
     );
     expect(new Set(conditionCategories).size).toBe(1);
     expect(conditionCategories[0]).toBe(categories[0]);
+  });
+
+  it('marks event siblings as a negRisk group only when they share one negRiskMarketId', async () => {
+    const events = [
+      {
+        id: 'event-1',
+        title: 'NBA champion',
+        slug: 'nba-champion',
+        negRisk: true,
+        negRiskMarketId: 'basket-123',
+      },
+    ];
+    const markets = [
+      makeMarket({ conditionId: '0xa', question: 'Will Celtics win?', events }),
+      makeMarket({ conditionId: '0xb', question: 'Will Knicks win?', events }),
+    ];
+
+    mockCheckExisting.mockResolvedValue(new Map());
+
+    const result = await groupMarkets(markets, API_URL);
+    const groups = result.groups.filter((g) => g.title === 'NBA champion');
+
+    expect(groups).toHaveLength(2);
+    expect(groups.every((g) => g.negRisk === true)).toBe(true);
+    expect(groups.every((g) => g.negRiskMarketId === 'basket-123')).toBe(true);
+    expect(
+      groups
+        .flatMap((g) => g.conditions)
+        .every((c) => c.negRisk === true && c.negRiskMarketId === 'basket-123')
+    ).toBe(true);
+  });
+
+  it('does not mark a title bucket as negRisk when siblings disagree on negRiskMarketId', async () => {
+    const markets = [
+      makeMarket({
+        conditionId: '0xa',
+        question: 'Will Celtics win?',
+        events: [
+          {
+            id: 'event-1',
+            title: 'NBA champion',
+            slug: 'nba-champion',
+            negRisk: true,
+            negRiskMarketId: 'basket-a',
+          },
+        ],
+      }),
+      makeMarket({
+        conditionId: '0xb',
+        question: 'Will Knicks win?',
+        events: [
+          {
+            id: 'event-1',
+            title: 'NBA champion',
+            slug: 'nba-champion',
+            negRisk: true,
+            negRiskMarketId: 'basket-b',
+          },
+        ],
+      }),
+    ];
+
+    mockCheckExisting.mockResolvedValue(new Map());
+
+    const result = await groupMarkets(markets, API_URL);
+    const groups = result.groups.filter((g) => g.title === 'NBA champion');
+
+    expect(groups).toHaveLength(2);
+    expect(groups.every((g) => g.negRisk === false)).toBe(true);
+    expect(groups.every((g) => g.negRiskMarketId === undefined)).toBe(true);
+    expect(
+      groups
+        .flatMap((g) => g.conditions)
+        .every((c) => c.negRisk === false && c.negRiskMarketId === undefined)
+    ).toBe(true);
   });
 
   it('leaves a single-condition group alone (no siblings to vote against)', async () => {

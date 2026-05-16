@@ -17,8 +17,12 @@ export interface ExistingCondition {
   similarMarketVolume?: number;
   similarMarketImage?: string;
   groupName?: string;
+  negRisk?: boolean;
+  negRiskMarketId?: string | null;
   conditionGroupId?: number;
   conditionGroupSimilarMarkets?: string[];
+  conditionGroupNegRisk?: boolean;
+  conditionGroupNegRiskMarketId?: string | null;
 }
 
 /**
@@ -51,10 +55,14 @@ export async function checkExistingConditions(
             tags
             similarMarketVolume
             similarMarketImage
+            negRisk
+            negRiskMarketId
             conditionGroup {
               id
               name
               similarMarkets
+              negRisk
+              negRiskMarketId
             }
           }
         }
@@ -96,10 +104,15 @@ export async function checkExistingConditions(
           tags: condition.tags ?? undefined,
           similarMarketVolume: condition.similarMarketVolume ?? undefined,
           similarMarketImage: condition.similarMarketImage ?? undefined,
+          negRisk: condition.negRisk ?? undefined,
+          negRiskMarketId: condition.negRiskMarketId ?? undefined,
           groupName: condition.conditionGroup?.name ?? undefined,
           conditionGroupId: condition.conditionGroup?.id ?? undefined,
           conditionGroupSimilarMarkets:
             condition.conditionGroup?.similarMarkets ?? undefined,
+          conditionGroupNegRisk: condition.conditionGroup?.negRisk ?? undefined,
+          conditionGroupNegRiskMarketId:
+            condition.conditionGroup?.negRiskMarketId ?? undefined,
         });
       }
     }

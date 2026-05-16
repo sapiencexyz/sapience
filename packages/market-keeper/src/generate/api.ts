@@ -53,6 +53,8 @@ export async function submitConditionGroup(
         name: group.title, // API uses 'name' field
         categorySlug: group.categorySlug,
         similarMarkets: group.similarMarkets,
+        negRisk: group.negRisk,
+        negRiskMarketId: group.negRiskMarketId,
       }),
     });
 
@@ -114,6 +116,8 @@ export async function submitCondition(
         estimatedPrice: condition.estimatedPrice,
         similarMarketVolume: condition.similarMarketVolume,
         similarMarketImage: condition.similarMarketImage,
+        negRisk: condition.negRisk,
+        negRiskMarketId: condition.negRiskMarketId,
       }),
     });
 
@@ -609,6 +613,8 @@ export async function submitToAPI(
     estimatedPrice: condition.estimatedPrice,
     similarMarketVolume: condition.similarMarketVolume,
     similarMarketImage: condition.similarMarketImage,
+    negRisk: condition.negRisk,
+    negRiskMarketId: condition.negRiskMarketId,
   }));
 
   // Split into batches that fit within the API body size limit

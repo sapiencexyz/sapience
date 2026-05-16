@@ -182,6 +182,10 @@ model Condition {
   resolver         String          @db.VarChar
   /// YES probability from Polymarket (0.0–1.0), null for non-Polymarket
   estimatedPrice   Float?
+  /// True when this condition is a child of a Polymarket negative-risk basket
+  negRisk          Boolean         @default(false)
+  /// Polymarket negative-risk basket identifier; all children in a negRisk group must match
+  negRiskMarketId  String?         @db.VarChar
 
   // Time-bucketed Polymarket volume (USD), computed from Polymarket Data API trades.
   // DB columns were originally named volume*; we keep them mapped to avoid DB migrations.
@@ -238,6 +242,10 @@ model ConditionGroup {
   categoryId     Int?
   category       Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   similarMarkets String[]    @default([])
+  /// True when every child condition belongs to the same Polymarket negative-risk basket
+  negRisk        Boolean     @default(false)
+  /// Shared Polymarket negative-risk basket identifier for this group
+  negRiskMarketId String?    @db.VarChar
   condition      Condition[]
 
   // Denormalized aggregates maintained by trigger on condition table

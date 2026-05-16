@@ -37,11 +37,20 @@ router.get('/', async (_req: Request, res: Response) => {
 // POST /admin/conditionGroups - create a group
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { name, categoryId, categorySlug, similarMarkets } = req.body as {
+    const {
+      name,
+      categoryId,
+      categorySlug,
+      similarMarkets,
+      negRisk,
+      negRiskMarketId,
+    } = req.body as {
       name?: string;
       categoryId?: number;
       categorySlug?: string;
       similarMarkets?: string[];
+      negRisk?: boolean;
+      negRiskMarketId?: string;
     };
 
     if (!name || !name.trim()) {
@@ -52,6 +61,12 @@ router.post('/', async (req: Request, res: Response) => {
       return res
         .status(400)
         .json({ message: 'Either categoryId or categorySlug is required' });
+    }
+
+    if (negRisk === true && !negRiskMarketId?.trim()) {
+      return res
+        .status(400)
+        .json({ message: 'negRiskMarketId is required when negRisk is true' });
     }
 
     let resolvedCategoryId: number;
@@ -75,6 +90,8 @@ router.post('/', async (req: Request, res: Response) => {
           name: name.trim(),
           categoryId: resolvedCategoryId,
           ...(Array.isArray(similarMarkets) ? { similarMarkets } : {}),
+          negRisk: negRisk === true,
+          negRiskMarketId: negRisk === true ? negRiskMarketId?.trim() : null,
         },
         include: { category: true, condition: true },
       });
@@ -108,11 +125,20 @@ router.put('/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid id format' });
     }
 
-    const { name, categoryId, categorySlug, similarMarkets } = req.body as {
+    const {
+      name,
+      categoryId,
+      categorySlug,
+      similarMarkets,
+      negRisk,
+      negRiskMarketId,
+    } = req.body as {
       name?: string;
       categoryId?: number | null;
       categorySlug?: string | null;
       similarMarkets?: string[];
+      negRisk?: boolean;
+      negRiskMarketId?: string | null;
     };
 
     const existing = await prisma.conditionGroup.findUnique({
@@ -140,6 +166,33 @@ router.put('/:id', async (req: Request, res: Response) => {
       resolvedCategoryId = category.id;
     }
 
+    if (negRisk === true && !negRiskMarketId?.trim()) {
+      return res
+        .status(400)
+        .json({ message: 'negRiskMarketId is required when negRisk is true' });
+    }
+
+    if (negRisk === true) {
+      const children = await prisma.condition.findMany({
+        where: { conditionGroupId: groupId },
+        select: { id: true, negRisk: true, negRiskMarketId: true },
+      });
+      const mismatched = children.filter(
+        (condition) =>
+          condition.negRisk !== true ||
+          condition.negRiskMarketId !== negRiskMarketId?.trim()
+      );
+      if (mismatched.length > 0) {
+        return res.status(400).json({
+          message:
+            `Cannot mark group as negRisk; existing child conditions do not match ` +
+            `negRiskMarketId ${negRiskMarketId?.trim()}: ${mismatched
+              .map((condition) => condition.id)
+              .join(', ')}`,
+        });
+      }
+    }
+
     try {
       const group = await prisma.conditionGroup.update({
         where: { id: groupId },
@@ -151,6 +204,12 @@ router.put('/:id', async (req: Request, res: Response) => {
             ? { categoryId: resolvedCategoryId }
             : {}),
           ...(Array.isArray(similarMarkets) ? { similarMarkets } : {}),
+          ...(negRisk === true
+            ? { negRisk: true, negRiskMarketId: negRiskMarketId?.trim() }
+            : {}),
+          ...(negRisk === false
+            ? { negRisk: false, negRiskMarketId: null }
+            : {}),
         },
         include: {
           category: true,
@@ -207,7 +266,7 @@ router.put('/:id/conditions', async (req: Request, res: Response) => {
     // Validate all condition IDs exist
     const validConditions = await prisma.condition.findMany({
       where: { id: { in: conditionIds } },
-      select: { id: true },
+      select: { id: true, negRisk: true, negRiskMarketId: true },
     });
     const validIds = new Set(validConditions.map((c) => c.id));
     const invalidIds = conditionIds.filter((cid) => !validIds.has(cid));
@@ -215,6 +274,22 @@ router.put('/:id/conditions', async (req: Request, res: Response) => {
       return res.status(400).json({
         message: `Invalid condition IDs: ${invalidIds.join(', ')}`,
       });
+    }
+
+    if (existing.negRisk) {
+      const mismatched = validConditions.filter(
+        (c) =>
+          c.negRisk !== true ||
+          !c.negRiskMarketId ||
+          c.negRiskMarketId !== existing.negRiskMarketId
+      );
+      if (mismatched.length > 0) {
+        return res.status(400).json({
+          message:
+            `Cannot add non-matching negRisk conditions to negRisk group. ` +
+            `Expected negRiskMarketId ${existing.negRiskMarketId}; mismatched: ${mismatched.map((c) => c.id).join(', ')}`,
+        });
+      }
     }
 
     try {

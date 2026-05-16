@@ -195,6 +195,29 @@ describe('conditions routes', () => {
       expect(createCall.data.conditionGroupId).toBe(42);
     });
 
+    it('stores negRisk metadata when provided', async () => {
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ negRisk: true, negRiskMarketId: 'basket-a' }));
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.condition.create.mock.calls[0][0];
+      expect(createCall.data.negRisk).toBe(true);
+      expect(createCall.data.negRiskMarketId).toBe('basket-a');
+    });
+
+    it('rejects negRisk conditions without a negRiskMarketId', async () => {
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ negRisk: true }));
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/negRiskMarketId/i);
+      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
+    });
+
     it('stores similarMarketVolume when provided', async () => {
       mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
 

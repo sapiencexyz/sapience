@@ -26,6 +26,23 @@ function normalizeTags(tags: unknown): string[] {
     .map((t) => t.charAt(0).toUpperCase() + t.slice(1));
 }
 
+function getGroupNegRiskMetadata(
+  items: Array<{ negRisk?: boolean; negRiskMarketId?: string | null }>
+): { negRisk: boolean; negRiskMarketId?: string } {
+  if (items.length === 0) return { negRisk: false };
+  const firstId = items[0].negRiskMarketId?.trim();
+  const allSameNegRiskBasket =
+    !!firstId &&
+    items.every(
+      (item) =>
+        item.negRisk === true && item.negRiskMarketId?.trim() === firstId
+    );
+
+  return allSameNegRiskBasket
+    ? { negRisk: true, negRiskMarketId: firstId }
+    : { negRisk: false };
+}
+
 // GET route removed in favor of GraphQL. Use GraphQL `conditions` query for reads.
 
 interface BatchCreateConditionInput {
@@ -44,6 +61,8 @@ interface BatchCreateConditionInput {
   estimatedPrice?: number;
   similarMarketVolume?: number;
   similarMarketImage?: string;
+  negRisk?: boolean;
+  negRiskMarketId?: string;
 }
 
 // POST /admin/conditions/batch-create - batch create conditions (with auto group creation)
@@ -83,6 +102,11 @@ router.post('/batch-create', async (req: Request, res: Response) => {
           message: `Invalid resolver for ${item.conditionHash}`,
         });
       }
+      if (item.negRisk === true && !item.negRiskMarketId?.trim()) {
+        return res.status(400).json({
+          message: `negRiskMarketId is required for negRisk condition ${item.conditionHash}`,
+        });
+      }
       const endTimeInt = parseInt(String(item.endTime), 10);
       if (Number.isNaN(endTimeInt)) {
         return res.status(400).json({
@@ -113,22 +137,53 @@ router.post('/batch-create', async (req: Request, res: Response) => {
             where: { name: { in: uniqueGroupNames } },
           })
         : [];
-    const groupByName = new Map(existingGroups.map((g) => [g.name, g.id]));
+    const groupByName = new Map(existingGroups.map((g) => [g.name, g]));
+    const groupIdByName = new Map(existingGroups.map((g) => [g.name, g.id]));
+
+    for (const name of uniqueGroupNames) {
+      const groupItems = items.filter((i) => i.groupName?.trim() === name);
+      const existingGroup = groupByName.get(name);
+      if (existingGroup?.negRisk) {
+        const mismatched = groupItems.filter(
+          (item) =>
+            item.negRisk !== true ||
+            item.negRiskMarketId?.trim() !== existingGroup.negRiskMarketId
+        );
+        if (mismatched.length > 0) {
+          return res.status(400).json({
+            message:
+              `Cannot add non-matching negRisk conditions to negRisk group ${name}. ` +
+              `Expected negRiskMarketId ${existingGroup.negRiskMarketId}; mismatched: ${mismatched
+                .map((item) => item.conditionHash)
+                .join(', ')}`,
+          });
+        }
+      }
+    }
 
     // Create missing groups
     const failedGroups: string[] = [];
     for (const name of uniqueGroupNames) {
-      if (!groupByName.has(name)) {
+      if (!groupIdByName.has(name)) {
         // Find categoryId from the first condition that references this group
-        const firstItem = items.find((i) => i.groupName?.trim() === name);
+        const groupItems = items.filter((i) => i.groupName?.trim() === name);
+        const firstItem = groupItems[0];
+        const groupNegRisk = getGroupNegRiskMetadata(groupItems);
         const categoryId = firstItem?.categorySlug
           ? (categoryBySlug.get(firstItem.categorySlug) ?? null)
           : null;
         try {
           const group = await prisma.conditionGroup.create({
-            data: { name, categoryId },
+            data: {
+              name,
+              categoryId,
+              negRisk: groupNegRisk.negRisk,
+              negRiskMarketId: groupNegRisk.negRisk
+                ? groupNegRisk.negRiskMarketId
+                : null,
+            },
           });
-          groupByName.set(name, group.id);
+          groupIdByName.set(name, group.id);
         } catch (e: unknown) {
           const message = e instanceof Error ? e.message : String(e);
           if (message.includes('Unique constraint')) {
@@ -136,7 +191,7 @@ router.post('/batch-create', async (req: Request, res: Response) => {
             const existing = await prisma.conditionGroup.findFirst({
               where: { name },
             });
-            if (existing) groupByName.set(name, existing.id);
+            if (existing) groupIdByName.set(name, existing.id);
           } else {
             log.error(
               `[BatchCreate] Failed to create group "${name}": ${message}`
@@ -157,7 +212,7 @@ router.post('/batch-create', async (req: Request, res: Response) => {
         ? (categoryBySlug.get(item.categorySlug) ?? null)
         : null;
       const groupId = item.groupName?.trim()
-        ? (groupByName.get(item.groupName.trim()) ?? null)
+        ? (groupIdByName.get(item.groupName.trim()) ?? null)
         : null;
 
       try {
@@ -195,6 +250,9 @@ router.post('/batch-create', async (req: Request, res: Response) => {
             conditionGroupId: groupId ?? undefined,
             displayOrder: groupId ? 0 : undefined,
             resolver: item.resolver.toLowerCase(),
+            negRisk: item.negRisk === true,
+            negRiskMarketId:
+              item.negRisk === true ? item.negRiskMarketId?.trim() : undefined,
           },
         });
         created++;
@@ -242,6 +300,8 @@ router.post('/', async (req: Request, res: Response) => {
       estimatedPrice,
       similarMarketVolume,
       similarMarketImage,
+      negRisk,
+      negRiskMarketId,
     } = req.body as {
       conditionHash?: string;
       question?: string;
@@ -260,6 +320,8 @@ router.post('/', async (req: Request, res: Response) => {
       estimatedPrice?: number;
       similarMarketVolume?: number;
       similarMarketImage?: string;
+      negRisk?: boolean;
+      negRiskMarketId?: string;
     };
 
     // conditionHash is required (must be 0x-prefixed 32-byte hex)
@@ -305,6 +367,11 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Find or create condition group if groupName is provided
     let resolvedGroupId: number | null = null;
+    let resolvedGroup: {
+      id: number;
+      negRisk: boolean;
+      negRiskMarketId: string | null;
+    } | null = null;
     if (groupName && groupName.trim()) {
       let group = await prisma.conditionGroup.findFirst({
         where: { name: groupName.trim() },
@@ -315,9 +382,12 @@ router.post('/', async (req: Request, res: Response) => {
           data: {
             name: groupName.trim(),
             categoryId: resolvedCategoryId ?? undefined,
+            negRisk: negRisk === true,
+            negRiskMarketId: negRisk === true ? negRiskMarketId?.trim() : null,
           },
         });
       }
+      resolvedGroup = group;
       resolvedGroupId = group.id;
     }
 
@@ -353,6 +423,24 @@ router.post('/', async (req: Request, res: Response) => {
       return res
         .status(400)
         .json({ message: 'tags must be an array of strings' });
+    }
+
+    if (negRisk === true && !negRiskMarketId?.trim()) {
+      return res
+        .status(400)
+        .json({ message: 'negRiskMarketId is required when negRisk is true' });
+    }
+
+    if (
+      resolvedGroup?.negRisk &&
+      (negRisk !== true ||
+        negRiskMarketId?.trim() !== resolvedGroup.negRiskMarketId)
+    ) {
+      return res.status(400).json({
+        message:
+          `Cannot add non-matching condition to negRisk group ${resolvedGroup.id}. ` +
+          `Expected negRiskMarketId ${resolvedGroup.negRiskMarketId}`,
+      });
     }
 
     const id = conditionHash;
@@ -395,6 +483,9 @@ router.post('/', async (req: Request, res: Response) => {
           conditionGroupId: resolvedGroupId ?? undefined,
           displayOrder: resolvedGroupId ? 0 : undefined,
           resolver: resolver.toLowerCase(),
+          negRisk: negRisk === true,
+          negRiskMarketId:
+            negRisk === true ? negRiskMarketId?.trim() : undefined,
         },
         include: { category: true, conditionGroup: true },
       });
@@ -800,6 +891,8 @@ router.put('/:id', async (req: Request, res: Response) => {
       estimatedPrice,
       similarMarketVolume,
       similarMarketImage,
+      negRisk,
+      negRiskMarketId,
     } = req.body as {
       question?: string;
       shortName?: string;
@@ -816,6 +909,8 @@ router.put('/:id', async (req: Request, res: Response) => {
       estimatedPrice?: number;
       similarMarketVolume?: number;
       similarMarketImage?: string;
+      negRisk?: boolean;
+      negRiskMarketId?: string | null;
     };
 
     const existing = await prisma.condition.findUnique({ where: { id } });
@@ -860,6 +955,11 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     // Find or create condition group if groupName is provided
     let resolvedGroupId: number | undefined;
+    let targetGroup: {
+      id: number;
+      negRisk: boolean;
+      negRiskMarketId: string | null;
+    } | null = null;
     if (groupName && groupName.trim()) {
       let group = await prisma.conditionGroup.findFirst({
         where: { name: groupName.trim() },
@@ -871,10 +971,17 @@ router.put('/:id', async (req: Request, res: Response) => {
           data: {
             name: groupName.trim(),
             categoryId: categoryForGroup ?? undefined,
+            negRisk: negRisk === true,
+            negRiskMarketId: negRisk === true ? negRiskMarketId?.trim() : null,
           },
         });
       }
+      targetGroup = group;
       resolvedGroupId = group.id;
+    } else if (existing.conditionGroupId) {
+      targetGroup = await prisma.conditionGroup.findUnique({
+        where: { id: existing.conditionGroupId },
+      });
     }
 
     try {
@@ -897,6 +1004,30 @@ router.put('/:id', async (req: Request, res: Response) => {
         return res
           .status(400)
           .json({ message: 'tags must be an array of strings' });
+      }
+
+      if (negRisk === true && !negRiskMarketId?.trim()) {
+        return res.status(400).json({
+          message: 'negRiskMarketId is required when negRisk is true',
+        });
+      }
+
+      if (targetGroup?.negRisk) {
+        const effectiveNegRisk = negRisk ?? existing.negRisk;
+        const effectiveNegRiskMarketId =
+          negRisk === false
+            ? null
+            : (negRiskMarketId?.trim() ?? existing.negRiskMarketId);
+        if (
+          effectiveNegRisk !== true ||
+          effectiveNegRiskMarketId !== targetGroup.negRiskMarketId
+        ) {
+          return res.status(400).json({
+            message:
+              `Cannot add non-matching condition to negRisk group ${targetGroup.id}. ` +
+              `Expected negRiskMarketId ${targetGroup.negRiskMarketId}`,
+          });
+        }
       }
 
       const condition = await prisma.condition.update({
@@ -947,6 +1078,12 @@ router.put('/:id', async (req: Request, res: Response) => {
           ...(typeof similarMarketImage === 'string' &&
           isHttpUrl(similarMarketImage)
             ? { similarMarketImage }
+            : {}),
+          ...(negRisk === true
+            ? { negRisk: true, negRiskMarketId: negRiskMarketId?.trim() }
+            : {}),
+          ...(negRisk === false
+            ? { negRisk: false, negRiskMarketId: null }
             : {}),
           // Extend endTime if a new forward value was provided
           ...(newEndTime !== undefined ? { endTime: newEndTime } : {}),

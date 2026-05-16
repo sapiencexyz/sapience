@@ -28,6 +28,8 @@ export interface SapienceCondition {
   similarMarketVolume?: number; // USD total trading volume from Polymarket
   similarMarketImage?: string; // Image URL from Polymarket
   endTimeOverride?: number; // LLM-determined endTime (unix seconds, no buffer)
+  negRisk?: boolean; // True when this condition belongs to a Polymarket negative-risk basket
+  negRiskMarketId?: string; // Polymarket negative-risk basket identifier
 }
 
 export interface SapienceConditionGroup {
@@ -36,6 +38,8 @@ export interface SapienceConditionGroup {
   description: string;
   similarMarkets: string[];
   tags: string[];
+  negRisk?: boolean;
+  negRiskMarketId?: string;
   conditions: SapienceCondition[];
 }
 
@@ -58,6 +62,8 @@ export interface SyncableFields {
   similarMarketVolume?: number;
   similarMarketImage?: string;
   groupName?: string;
+  negRisk?: boolean;
+  negRiskMarketId?: string | null;
 }
 
 export interface MetadataUpdate {
@@ -73,6 +79,8 @@ export interface MetadataUpdate {
  */
 export interface GroupSyncableFields {
   similarMarkets?: string[];
+  negRisk?: boolean;
+  negRiskMarketId?: string | null;
 }
 
 export interface GroupMetadataUpdate {

@@ -12,6 +12,7 @@ import type {
   SapienceCategorySlug,
   MetadataUpdate,
   SyncableFields,
+  GroupSyncableFields,
   GroupMetadataUpdate,
 } from '../types';
 import {
@@ -73,12 +74,47 @@ export function computeGroupCategory(
   return majorityCategory;
 }
 
+function getNegRiskMarketId(market: PolymarketMarket): string | undefined {
+  const raw =
+    market.negRiskMarketId ??
+    market.negRiskMarketID ??
+    market.neg_risk_market_id ??
+    market.events?.[0]?.negRiskMarketId ??
+    market.events?.[0]?.negRiskMarketID ??
+    market.events?.[0]?.neg_risk_market_id;
+  if (raw === undefined || raw === null) return undefined;
+  const id = String(raw).trim();
+  return id.length > 0 ? id : undefined;
+}
+
+function isNegRiskMarket(market: PolymarketMarket): boolean {
+  return market.negRisk === true || market.events?.[0]?.negRisk === true;
+}
+
+function computeNegRiskBucketMetadata(markets: PolymarketMarket[]): {
+  negRisk: boolean;
+  negRiskMarketId?: string;
+} {
+  if (markets.length === 0) return { negRisk: false };
+  const ids = markets.map(getNegRiskMarketId);
+  const firstId = ids[0];
+  const sameBasket = !!firstId && ids.every((id) => id === firstId);
+  const allNegRisk = markets.every(isNegRiskMarket);
+
+  return allNegRisk && sameBasket
+    ? { negRisk: true, negRiskMarketId: firstId }
+    : { negRisk: false };
+}
+
 export function transformToSapienceCondition(
   market: PolymarketMarket,
   groupTitle?: string,
   enrichment?: MarketEnrichmentOutput,
   tags: string[] = [],
-  endTimeOverride?: number
+  endTimeOverride?: number,
+  negRiskMetadata: { negRisk: boolean; negRiskMarketId?: string } = {
+    negRisk: false,
+  }
 ): SapienceCondition {
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
@@ -105,6 +141,8 @@ export function transformToSapienceCondition(
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
     endTimeOverride,
+    negRisk: negRiskMetadata.negRisk,
+    negRiskMarketId: negRiskMetadata.negRiskMarketId,
   };
 }
 
@@ -202,6 +240,20 @@ export async function groupMarkets(
     (m) => !existingIds.has(m.conditionId)
   );
 
+  const negRiskByTitle = new Map<
+    string,
+    { negRisk: boolean; negRiskMarketId?: string }
+  >();
+  const marketsByTitle = new Map<string, PolymarketMarket[]>();
+  for (const group of filteredGroups) {
+    const bucket = marketsByTitle.get(group.title) ?? [];
+    bucket.push(...group.markets);
+    marketsByTitle.set(group.title, bucket);
+  }
+  for (const [title, bucket] of marketsByTitle) {
+    negRiskByTitle.set(title, computeNegRiskBucketMetadata(bucket));
+  }
+
   // Transform single-market groups to SapienceConditionGroup[]
   const conditionGroups: SapienceConditionGroup[] = [];
 
@@ -210,12 +262,16 @@ export async function groupMarkets(
     const enrichment = enrichments.get(market.conditionId);
     const eventSlug = market.events?.[0]?.slug;
     const marketTags = eventSlug ? (eventTagMap.get(eventSlug) ?? []) : [];
+    const negRiskMetadata = negRiskByTitle.get(group.title) ?? {
+      negRisk: false,
+    };
     const condition = transformToSapienceCondition(
       market,
       group.title,
       enrichment,
       marketTags,
-      endTimeMap.get(market.conditionId)
+      endTimeMap.get(market.conditionId),
+      negRiskMetadata
     );
 
     // Use event description if available, otherwise use market's description
@@ -232,6 +288,8 @@ export async function groupMarkets(
       categorySlug: condition.categorySlug,
       similarMarkets: groupUrl ? [groupUrl] : [],
       tags: marketTags,
+      negRisk: negRiskMetadata.negRisk,
+      negRiskMarketId: negRiskMetadata.negRiskMarketId,
       conditions: [condition],
     });
   }
@@ -245,7 +303,8 @@ export async function groupMarkets(
       undefined,
       enrichments.get(m.conditionId),
       mTags,
-      endTimeMap.get(m.conditionId)
+      endTimeMap.get(m.conditionId),
+      computeNegRiskBucketMetadata([m])
     );
   });
 
@@ -376,6 +435,9 @@ export function computeMetadataUpdates(
       ? (eventTagMap.get(groupInfo.eventSlug) ?? [])
       : [];
     const fresh = freshMetadataFor(market, groupInfo?.title, tagsForMarket);
+    const negRiskMetadata = computeNegRiskBucketMetadata([market]);
+    fresh.negRisk = negRiskMetadata.negRisk;
+    fresh.negRiskMarketId = negRiskMetadata.negRiskMarketId ?? null;
 
     const fields: SyncableFields = {};
     const old: SyncableFields = {};
@@ -391,6 +453,8 @@ export function computeMetadataUpdates(
       'similarMarketVolume',
       'similarMarketImage',
       'groupName',
+      'negRisk',
+      'negRiskMarketId',
     ];
     for (const key of keys) {
       const newVal = fresh[key];
@@ -451,6 +515,19 @@ export function computeGroupMetadataUpdates(
 ): GroupMetadataUpdate[] {
   const updates: GroupMetadataUpdate[] = [];
   const seenGroupIds = new Set<number>();
+  const negRiskByTitle = new Map<
+    string,
+    { negRisk: boolean; negRiskMarketId?: string }
+  >();
+  const marketsByTitle = new Map<string, PolymarketMarket[]>();
+  for (const group of groups) {
+    const bucket = marketsByTitle.get(group.title) ?? [];
+    bucket.push(...group.markets);
+    marketsByTitle.set(group.title, bucket);
+  }
+  for (const [title, bucket] of marketsByTitle) {
+    negRiskByTitle.set(title, computeNegRiskBucketMetadata(bucket));
+  }
 
   for (const group of groups) {
     const market = group.markets[0];
@@ -469,12 +546,34 @@ export function computeGroupMetadataUpdates(
 
     const freshSimilarMarkets = [freshUrl];
     const oldSimilarMarkets = existing.conditionGroupSimilarMarkets;
+    const freshNegRisk = negRiskByTitle.get(group.title) ?? { negRisk: false };
+
+    const fields: GroupSyncableFields = {};
+    const old: GroupSyncableFields = {};
 
     if (!fieldsEqual(oldSimilarMarkets, freshSimilarMarkets)) {
+      fields.similarMarkets = freshSimilarMarkets;
+      old.similarMarkets = oldSimilarMarkets;
+    }
+
+    if (existing.conditionGroupNegRisk !== freshNegRisk.negRisk) {
+      fields.negRisk = freshNegRisk.negRisk;
+      old.negRisk = existing.conditionGroupNegRisk;
+    }
+
+    const freshNegRiskMarketId = freshNegRisk.negRisk
+      ? freshNegRisk.negRiskMarketId
+      : null;
+    if (existing.conditionGroupNegRiskMarketId !== freshNegRiskMarketId) {
+      fields.negRiskMarketId = freshNegRiskMarketId ?? null;
+      old.negRiskMarketId = existing.conditionGroupNegRiskMarketId ?? null;
+    }
+
+    if (Object.keys(fields).length > 0) {
       updates.push({
         groupId: existing.conditionGroupId,
-        fields: { similarMarkets: freshSimilarMarkets },
-        old: { similarMarkets: oldSimilarMarkets },
+        fields,
+        old,
       });
     }
   }

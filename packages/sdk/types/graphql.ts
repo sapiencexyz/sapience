@@ -735,6 +735,10 @@ export type Condition = {
   /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket */
   estimatedPrice?: Maybe<Scalars['Float']['output']>;
   id: Scalars['String']['output'];
+  /** True when this condition is a child of a Polymarket negative-risk basket */
+  negRisk: Scalars['Boolean']['output'];
+  /** Polymarket negative-risk basket identifier */
+  negRiskMarketId?: Maybe<Scalars['String']['output']>;
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
   optionName?: Maybe<Scalars['String']['output']>;
@@ -890,6 +894,10 @@ export type ConditionGroup = {
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
   name: Scalars['String']['output'];
+  /** True when every child condition belongs to the same Polymarket negative-risk basket */
+  negRisk: Scalars['Boolean']['output'];
+  /** Shared Polymarket negative-risk basket identifier for this group */
+  negRiskMarketId?: Maybe<Scalars['String']['output']>;
   similarMarkets: Array<Scalars['String']['output']>;
 };
 
