@@ -1511,6 +1511,10 @@ Prefer non-null for fields that are guaranteed by domain model.
 
 Be cautious with fields that are derived, cross-chain, asynchronously indexed, or backfilled.
 
+### Derived field complexity
+
+Derived convenience fields (e.g. `Trade.conditions`, `Position.conditions`) must be costed equivalently to their underlying chain in the complexity estimator. A naive field-count cost lets clients smuggle expensive joins through the shortcut path. If a derived field traverses an unbounded list, do not expose it — keep clients on the explicit chain so the estimator sees the work.
+
 ### Versioning
 
 Recommended migration path:

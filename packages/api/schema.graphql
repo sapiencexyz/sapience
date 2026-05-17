@@ -320,9 +320,19 @@ input AttestationWhereUniqueInput {
 }
 
 """
+0x-prefixed lowercase 20-byte Ethereum address. Mixed-case checksum input is accepted and normalized to lowercase.
+"""
+scalar Address
+
+"""
 The `BigInt` scalar type represents non-fractional signed whole numeric values.
 """
 scalar BigInt
+
+"""
+0x-prefixed lowercase 32-byte hex value. Used for transaction hashes, EAS UIDs, and other 32-byte on-chain identifiers.
+"""
+scalar Bytes32
 
 input BigIntFilter {
   equals: BigInt
@@ -842,6 +852,11 @@ input DateTimeFilter {
   not: NestedDateTimeFilter
   notIn: [DateTimeISO!]
 }
+
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
+"""
+scalar DateTime
 
 """
 A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
@@ -1827,6 +1842,51 @@ input AccountStatsFilters {
 }
 
 """
+Relay-style identifiable object. Types that implement `Node` carry a
+globally unique opaque `id` and are refetchable through the root
+`node(id:)` / `nodes(ids:)` fields. Domain identifiers (predictionId,
+hash, uid, address) remain on the entity as separate fields; `id` is a
+second identity layer used for cache normalization and polymorphic
+refetch.
+"""
+interface Node {
+  """
+  Opaque, globally unique identifier. Clients should treat this as a
+  refetch token only — do not parse, mint, or compare it to domain ids.
+  Stable for the lifetime of the entity it identifies.
+  """
+  id: ID!
+}
+
+"""
+Cursor-based pagination metadata for Relay-style connections. Sits
+alongside the legacy `Page` interface (offset/skip-based pagination)
+during the API redesign; new connection types use `PageInfo`, existing
+`*Page` types keep `Page`.
+"""
+type PageInfo {
+  """True if more rows exist after `endCursor` in the current ordering."""
+  hasNextPage: Boolean!
+
+  """True if more rows exist before `startCursor` in the current ordering."""
+  hasPreviousPage: Boolean!
+
+  """Cursor of the first edge in the page, or null when the page is empty."""
+  startCursor: String
+
+  """Cursor of the last edge in the page, or null when the page is empty."""
+  endCursor: String
+}
+
+"""
+Sort order shared across every `orderBy` input on the redesigned surface.
+"""
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+"""
 Shared shape for `*Page` paginated wrappers. Concrete types add their own
 strongly-typed `items` field; `hasMore` and `totalCount` live here so generic
 clients can read them across page types.
@@ -2198,6 +2258,23 @@ input ActivityFilters {
 }
 
 type Query {
+  """
+  Refetch any `Node`-implementing entity by its opaque global id. Returns
+  `null` when the id is malformed, the type is not registered, or the
+  underlying entity has been deleted. Domain-id lookups (e.g.
+  `predictionByOnchainId`, `tradeByHash`) remain the preferred entry point
+  for new traffic; `node(id:)` exists so Relay-style clients can refetch
+  cached entities polymorphically without knowing their concrete type.
+  """
+  node(id: ID!): Node
+
+  """
+  Batched form of `node(id:)`. Preserves input order; each element is
+  resolved independently and may be null. Useful for client caches that
+  refresh many entities in one round trip.
+  """
+  nodes(ids: [ID!]!): [Node]!
+
   """
   Accuracy rank and lifetime score for a single address. Mirrors
   `accountStatsRank`'s shape: stats fields are always populated (zero for
