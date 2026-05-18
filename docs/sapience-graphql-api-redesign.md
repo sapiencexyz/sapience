@@ -418,12 +418,7 @@ type Query {
 
   vault(id: ID!): Vault
   vaultByAddress(address: Address!): Vault
-  vaults(
-    first: Int
-    after: String
-    filter: VaultFilter
-    orderBy: VaultOrder
-  ): VaultConnection!
+  vaults(first: Int, after: String, filter: VaultFilter): VaultConnection!
 
   leaderboard(
     metric: LeaderboardMetric!
@@ -649,12 +644,7 @@ type Query {
 
   vault(id: ID!): Vault
   vaultByAddress(address: Address!): Vault
-  vaults(
-    first: Int
-    after: String
-    filter: VaultFilter
-    orderBy: VaultOrder
-  ): VaultConnection!
+  vaults(first: Int, after: String, filter: VaultFilter): VaultConnection!
 
   leaderboard(
     metric: LeaderboardMetric!
@@ -1611,16 +1601,6 @@ input VaultFilter {
   address: AddressFilter
 }
 
-input VaultOrder {
-  field: VaultOrderField!
-  direction: OrderDirection! = DESC
-}
-
-enum VaultOrderField {
-  CREATED_AT
-  TOTAL_ASSETS
-}
-
 input AccountStatsFilter {
   timestamp: DateTimeFilter
 }
@@ -1790,6 +1770,6 @@ Numbering is section-prefixed: **D**eferred (`D#`), **P**er-entity (`P#`), **R**
 
 - **R6. Sort shape (singular vs array)** — Singular `orderBy: <Entity>Order` (matching GitHub's `IssueOrder` precedent), not the array shape originally drafted. Multi-key tiebreakers can be added later non-breakingly via a `then: <Entity>Order` field on the order input if real demand surfaces.
 - **R7. Filter convention** — Operator-pattern (Prisma-style) for single-value scalars (`AddressFilter`, `IDFilter`, `BigIntFilter`, `IntFilter`, `DecimalFilter`, `DateTimeFilter`, `StringFilter`). No `BooleanFilter` — Booleans stay flat per the principles. Multi-value membership filters and full-text search stay flat. See principles section for details. Position-specific corollary: the filter on `Position` uses `size: DecimalFilter` and `collateralAmount: DecimalFilter` to match the type's field names (the PR 1730 column-aligned names `balance` / `collateral` are not used on the wire — `size` is the renamed `balance` column, and `collateral` on the type is the `CollateralToken` reference).
-- **R8. `Vault` root access** — Vault is a Node, so it gets `vault(id:)`, `vaultByAddress(address:)`, and `vaults(...)` root fields — matching the prediction/trade/forecast pattern. The previous nesting under `protocol.vault(address)` is removed; Vault is independent and shouldn't sit behind a Protocol grouping.
+- **R8. `Vault` root access + no top-level sort** — Vault is a Node, so it gets `vault(id:)`, `vaultByAddress(address:)`, and `vaults(...)` root fields — matching the prediction/trade/forecast pattern. The previous nesting under `protocol.vault(address)` is removed; Vault is independent and shouldn't sit behind a Protocol grouping. Structurally, a Vault is "an address with an attached time series" — parallel to `Account` for stats purposes (`Vault.stats: VaultStatsConnection!` mirrors `Account.stats: AccountStatsConnection!`). There is no `Vault` table in Prisma; vaults come from static config (`getConfiguredVaults(chainId)`). So `vaults(...)` has no `orderBy:` arg and there is no `VaultOrder` / `VaultOrderField` — the entity has no indexed column to sort on. The field description should document that rows return in registration order. This is the one Connection in the schema without an `orderBy:` arg; that's a deliberate consequence of P1 ("the order-field enum lists fields the entity's indexes actually support"), not an oversight.
 - **R9. Stat-row connections over non-Node types** — `ProtocolStat`, `VaultStat`, `AccountStat`, and `CollateralBalanceSnapshot` stay as Connection members without implementing `Node`. They are time-bucketed values, not addressable entities; refetching a stat row by ID is meaningless because the row is uniquely identified by `(entity, timestamp)` already reachable via the parent + filter. Cursors on these connections encode timestamp position. The type-level descriptions in the SDL document this.
 - **R10. `UnixSeconds` scalar** — Declared explicitly. Used for timestamps that come directly from chain storage (uint256 seconds) where round-tripping to `DateTime` loses precision. Indexed / derived timestamps continue to use `DateTime`.
