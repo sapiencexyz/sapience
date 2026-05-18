@@ -258,8 +258,8 @@ Scalar fields on `<Entity>Filter` use operator-pattern inputs:
 input PositionFilter {
   account: AddressFilter
   conditionId: IDFilter
-  balance: BigIntFilter
-  collateral: BigIntFilter
+  size: DecimalFilter
+  collateralAmount: DecimalFilter
   createdAt: DateTimeFilter
   settled: Boolean
 }
@@ -280,7 +280,7 @@ input BigIntFilter {
 }
 ```
 
-A parallel input exists for each scalar (`IntFilter`, `StringFilter`, `DateTimeFilter`, `BooleanFilter`, `AddressFilter`, plus parameterized `EnumFilter<T>` per enum where filtering is useful).
+A parallel input exists for each filterable scalar (`IntFilter`, `DecimalFilter`, `StringFilter`, `DateTimeFilter`, `AddressFilter`, plus parameterized `EnumFilter<T>` per enum where filtering is useful). There is no `BooleanFilter` — see the next rule.
 
 Rules:
 
@@ -538,6 +538,17 @@ input StringFilter {
   in: [String!]
   notIn: [String!]
   not: String
+}
+
+input DecimalFilter {
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  lt: Decimal
+  lte: Decimal
+  in: [Decimal!]
+  notIn: [Decimal!]
+  not: Decimal
 }
 
 type PageInfo {
@@ -936,9 +947,12 @@ type Forecast implements Node {
   forecaster: Account!
   schemaId: Bytes32!
 
+  # Forecasts attach to a single Condition (the EAS subject). Group /
+  # pickConfiguration membership is reachable via `condition.conditionGroup`
+  # and `condition.pickConfigurations`. Nullable because the Prisma column
+  # is nullable today — schemas that aren't condition-keyed produce
+  # forecasts without a Condition link.
   condition: Condition
-  conditionGroup: ConditionGroup
-  pickConfiguration: PickConfiguration
 
   forecastScore: Decimal
 
@@ -969,8 +983,15 @@ type Position implements Node {
   pickConfiguration: PickConfiguration!
   conditions: [Condition!]!
 
+  # `size` is the raw token balance (renamed from the underlying
+  # `Position.balance` column). `collateral` is the token reference;
+  # `collateralAmount` is the derived collateral amount this position
+  # represents — both are non-null because `balance` is non-null in
+  # the data model.
+  size: Decimal!
   collateral: CollateralToken!
-  size: Decimal
+  collateralAmount: Decimal!
+
   averagePrice: Decimal
   realizedPnl: Decimal
   unrealizedPnl: Decimal
@@ -1454,7 +1475,6 @@ enum PredictionOrderField {
 input ForecastFilter {
   forecaster: AddressFilter
   conditionId: IDFilter
-  pickConfigurationId: IDFilter
   createdAt: DateTimeFilter
 }
 
@@ -1511,8 +1531,8 @@ input PositionFilter {
   conditionId: IDFilter
   conditionGroupId: IDFilter
   pickConfigurationId: IDFilter
-  balance: BigIntFilter
-  collateral: BigIntFilter
+  size: DecimalFilter
+  collateralAmount: DecimalFilter
   settled: Boolean
   createdAt: DateTimeFilter
 }
@@ -1754,7 +1774,7 @@ Numbering is section-prefixed: **D**eferred (`D#`), **P**er-entity (`P#`), **R**
 
 ### Resolved — locked direction, doc updated
 
-- **R1. `Forecast.subject` naming** — The EAS "subject" (recipient) on a forecast attestation is the conditionId it targets; that link is already typed as `condition: Condition` on `Forecast`. The redundant `subject: Address` field is dropped from the SDL. Forecasts target a single `Condition` (not a `ConditionGroup`), so `ForecastFilter.conditionGroupId` is also dropped.
+- **R1. `Forecast` shape — single Condition link only.** The EAS "subject" (recipient) on a forecast attestation is the conditionId it targets; that link is already typed as `condition: Condition` on `Forecast`. The redundant `subject: Address` field is dropped from the SDL. The Prisma `Attestation` model carries exactly one graph link (`conditionId → Condition`); there is no `conditionGroupId` or `pickConfigurationId` column, and the resolver doesn't synthesize them. Accordingly: the aspirational `conditionGroup: ConditionGroup` and `pickConfiguration: PickConfiguration` fields are dropped from `Forecast`, and `ForecastFilter.conditionGroupId` / `pickConfigurationId` are dropped from the filter. Group / pickConfig membership is reachable via `condition.conditionGroup` and `condition.pickConfigurations`. `Forecast.condition` stays nullable because the Prisma column is nullable; tightening to non-null requires a data audit (parallel to R2 for counterparty).
 - **R2. `Prediction.counterparty` nullability** — Ship non-null (`counterparty: Account!`). Prisma schema declares the column non-null (`counterparty String @db.VarChar` in `prisma/schema.prisma`); every indexer write path (`predictionMarketEscrowIndexer.ts:706, 743`) sets it from the on-chain event payload, which is itself a non-null `0x${string}`. No backfill or schema migration needed.
 - **R3. `Question` union vs. nullable pair** — Modeled as `union ConditionOrConditionGroup = Condition | ConditionGroup`, exposed as `Question.source: ConditionOrConditionGroup!`. Schema enforces "exactly one of," eliminating the both-null / both-set bug class. The `questionType: QuestionType` enum is removed — `__typename` on the union member subsumes it. Name follows GitHub's `IssueOrPullRequest` precedent: literal, no abbreviation, no parallel concept ("Market", "Source") introduced.
 - **R4. Collateral field and type naming** — Type is `CollateralToken` (was `CollateralAsset`); field is `collateral: CollateralToken!` on every type that exposes it (`Prediction`, `Position`, `Trade`, `CollateralBalance`, `CollateralBalanceSnapshot`, `CollateralTransfer`). The full `CollateralToken` record carries `{ symbol, address, decimals, chainId }`, so the field name doesn't need to disambiguate between address and ticker — both live inside.
@@ -1769,7 +1789,7 @@ Numbering is section-prefixed: **D**eferred (`D#`), **P**er-entity (`P#`), **R**
   **Follow-up cleanup (separate PR to staging, not this doc PR):** the indexer's `mapSettlementResult` retains a `case 3 → 'NON_DECISIVE'` branch unreachable from current contract behavior; the Prisma `SettlementResult` enum still lists `NON_DECISIVE`. Both are vestigial. Cleanup can either drop them outright (after confirming no live rows carry the value) or leave a tombstone on the Prisma side and remove only the indexer branch.
 
 - **R6. Sort shape (singular vs array)** — Singular `orderBy: <Entity>Order` (matching GitHub's `IssueOrder` precedent), not the array shape originally drafted. Multi-key tiebreakers can be added later non-breakingly via a `then: <Entity>Order` field on the order input if real demand surfaces.
-- **R7. Filter convention** — Operator-pattern (Prisma-style) for single-value scalars (`AddressFilter`, `IDFilter`, `BigIntFilter`, `IntFilter`, `DateTimeFilter`, `StringFilter`). Multi-value membership filters and full-text search stay flat. See principles section for details.
+- **R7. Filter convention** — Operator-pattern (Prisma-style) for single-value scalars (`AddressFilter`, `IDFilter`, `BigIntFilter`, `IntFilter`, `DecimalFilter`, `DateTimeFilter`, `StringFilter`). No `BooleanFilter` — Booleans stay flat per the principles. Multi-value membership filters and full-text search stay flat. See principles section for details. Position-specific corollary: the filter on `Position` uses `size: DecimalFilter` and `collateralAmount: DecimalFilter` to match the type's field names (the PR 1730 column-aligned names `balance` / `collateral` are not used on the wire — `size` is the renamed `balance` column, and `collateral` on the type is the `CollateralToken` reference).
 - **R8. `Vault` root access** — Vault is a Node, so it gets `vault(id:)`, `vaultByAddress(address:)`, and `vaults(...)` root fields — matching the prediction/trade/forecast pattern. The previous nesting under `protocol.vault(address)` is removed; Vault is independent and shouldn't sit behind a Protocol grouping.
 - **R9. Stat-row connections over non-Node types** — `ProtocolStat`, `VaultStat`, `AccountStat`, and `CollateralBalanceSnapshot` stay as Connection members without implementing `Node`. They are time-bucketed values, not addressable entities; refetching a stat row by ID is meaningless because the row is uniquely identified by `(entity, timestamp)` already reachable via the parent + filter. Cursors on these connections encode timestamp position. The type-level descriptions in the SDL document this.
 - **R10. `UnixSeconds` scalar** — Declared explicitly. Used for timestamps that come directly from chain storage (uint256 seconds) where round-tripping to `DateTime` loses precision. Indexed / derived timestamps continue to use `DateTime`.
