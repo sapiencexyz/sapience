@@ -629,7 +629,6 @@ type Question {
 
   title: String!
   description: String
-  status: QuestionStatus!
   category: Category
   tags: [String!]!
 
@@ -665,13 +664,6 @@ type Question {
   createdAt: DateTime!
   updatedAt: DateTime
   resolvesAt: DateTime
-}
-
-enum QuestionStatus {
-  ACTIVE
-  RESOLVED
-  CANCELLED
-  ARCHIVED
 }
 
 union ConditionOrConditionGroup = Condition | ConditionGroup
@@ -718,7 +710,19 @@ type Condition implements Node {
   databaseId: Int!
   title: String!
   description: String
-  status: ConditionStatus!
+
+  # Resolution state. Three Booleans match the underlying on-chain
+  # state machine: `settled` flips true when the resolver returns,
+  # `resolvedToYes` is only meaningful when `settled` is true, and
+  # `nonDecisive` marks tie/void outcomes (which the protocol collapses
+  # to COUNTERPARTY_WINS at the Prediction layer). Question-level views
+  # derive their state from these Booleans on the underlying Condition;
+  # there's no separate `ConditionStatus` enum because today's data
+  # model has no other states (no `CANCELLED`, no `ARCHIVED`).
+  settled: Boolean!
+  resolvedToYes: Boolean!
+  nonDecisive: Boolean!
+  settledAt: UnixSeconds
 
   conditionGroup: ConditionGroup
   question: Question!
@@ -751,13 +755,6 @@ type Condition implements Node {
   createdAt: DateTime!
   updatedAt: DateTime
   resolvesAt: DateTime
-}
-
-enum ConditionStatus {
-  ACTIVE
-  RESOLVED
-  CANCELLED
-  ARCHIVED
 }
 
 type PickConfiguration implements Node {
@@ -804,25 +801,23 @@ type Prediction implements Node {
   predictionId: BigInt!
 
   predictor: Account!
-  counterparty: Account
+  counterparty: Account!
   pickConfiguration: PickConfiguration!
   conditions: [Condition!]!
 
   collateral: CollateralToken!
   collateralAmount: Decimal!
 
-  status: PredictionStatus!
+  # Settlement state. `settled` flips true when the on-chain prediction
+  # is resolved; `result` carries the outcome. No separate
+  # `PredictionStatus` enum — today's data model has no `CANCELLED`
+  # state, so a derived status enum would just be sugar on the Boolean.
+  settled: Boolean!
   result: PredictionResult!
   payout: Decimal
 
   createdAt: DateTime!
   settledAt: DateTime
-}
-
-enum PredictionStatus {
-  OPEN
-  SETTLED
-  CANCELLED
 }
 
 enum PredictionResult {
@@ -1241,7 +1236,6 @@ input QuestionFilter {
   search: String
   categoryIds: [ID!]
   tags: [String!]
-  status: [QuestionStatus!]
 }
 
 input QuestionOrder {
@@ -1262,7 +1256,9 @@ input ConditionFilter {
   conditionGroupId: ID
   categoryIds: [ID!]
   tags: [String!]
-  status: [ConditionStatus!]
+  settled: Boolean
+  resolvedToYes: Boolean
+  nonDecisive: Boolean
 }
 
 input ConditionOrder {
@@ -1301,7 +1297,7 @@ input PredictionFilter {
   conditionId: ID
   conditionGroupId: ID
   pickConfigurationId: ID
-  status: [PredictionStatus!]
+  settled: Boolean
   createdAfter: DateTime
   createdBefore: DateTime
 }
@@ -1623,16 +1619,12 @@ Questions that lock public wire format must be resolved before the per-entity PR
 5. **`Question` union vs. nullable pair** — RESOLVED. Modeled as `union ConditionOrConditionGroup = Condition | ConditionGroup`, exposed as `Question.source: ConditionOrConditionGroup!`. Schema enforces "exactly one of," eliminating the both-null / both-set bug class. The `questionType: QuestionType` enum is removed — `__typename` on the union member subsumes it. Name follows GitHub's `IssueOrPullRequest` precedent: literal, no abbreviation, no parallel concept ("Market", "Source") introduced.
 6. **Collateral field and type naming** — RESOLVED. Type is `CollateralToken` (was `CollateralAsset`); field is `collateral: CollateralToken!` on every type that exposes it (`Prediction`, `Position`, `Trade`, `CollateralBalance`, `CollateralBalanceSnapshot`, `CollateralTransfer`). The full `CollateralToken` record carries `{ symbol, address, decimals, chainId }`, so the field name doesn't need to disambiguate between address and ticker — both live inside.
 
-### Still open
+7. **Status enums — RESOLVED.** The audit revealed that the doc's status enums were aspirational, not migrations from existing wire fields. Once we accept that the data model has only the states it has, every proposed `*Status` enum collapses to either a Boolean (which we already have) or a derivation clients can do themselves. So:
 
-7. **Status enums — audit done, design call needed.** The audit revealed that the doc's status enums were aspirational, not migrations from existing String fields. Findings + remaining design questions:
+   - **`ConditionStatus` enum — dropped.** No synthetic status. `Condition` directly exposes the three Booleans that carry its actual state: `settled: Boolean!`, `resolvedToYes: Boolean!`, `nonDecisive: Boolean!`, plus `settledAt: UnixSeconds`. Clients render `ACTIVE`/`RESOLVED`/`TIE`/etc. however they want from these. `ConditionFilter.status` replaced with flat Boolean filters (`settled`, `resolvedToYes`, `nonDecisive`).
+   - **`ConditionGroupStatus` enum — dropped.** ConditionGroup has no status field today and isn't getting one. If any UI needs a group-level state, it derives from child Conditions.
+   - **`PredictionStatus` enum — dropped.** Was sugar on the existing `settled` Boolean (`OPEN = !settled`, `SETTLED = settled`); no `CANCELLED` state exists in the data model. `Prediction` directly exposes `settled: Boolean!` + `result: PredictionResult!`. `PredictionFilter.status` replaced with `settled: Boolean`.
+   - **`QuestionStatus` enum — dropped.** Question wraps either Condition or ConditionGroup via the `source` union; clients read state through `... on Condition { settled, resolvedToYes, nonDecisive }`. No view-level status field needed.
+   - **`PredictionResult` enum values — finalized as** `{ UNRESOLVED, PREDICTOR_WINS, COUNTERPARTY_WINS }`. Contract collapses non-decisive outcomes to `COUNTERPARTY_WINS` at the resolution layer (`PredictionMarketEscrow.sol:_evaluatePick`, comment at L1262–1267: "SettlementResult has no DRAW variant ... counterparties bear no prediction risk on void/tie outcomes"). Made `Prediction.result` non-null.
 
-   **ConditionGroup — RESOLVED inside this open question.** No `status` field today, no `status` field going forward. `ConditionGroupStatus` enum dropped; `ConditionGroup.status` field dropped; `ConditionGroupFilter.status` dropped. Group-level state is derivable client-side from child Condition state if any UI needs it.
-
-   **Prediction `result` — RESOLVED inside this open question.** Public enum is `enum PredictionResult { UNRESOLVED, PREDICTOR_WINS, COUNTERPARTY_WINS }`. The Prisma `SettlementResult` enum has a fourth value `NON_DECISIVE`, but the contract collapses non-decisive outcomes to `COUNTERPARTY_WINS` at the resolution layer (`PredictionMarketEscrow.sol:_evaluatePick` and the rationale comment at L1262–1267: "non-decisive outcomes are treated as counterparty wins ... SettlementResult has no DRAW variant"). The indexer's `mapSettlementResult` retains a `case 3 → 'NON_DECISIVE'` branch that is unreachable from current contract behavior — vestigial code, future cleanup. Any historical rows carrying `NON_DECISIVE` from an earlier protocol version can be folded to `COUNTERPARTY_WINS` on the fly in the resolver; no backfill required.
-
-   **Condition `status` — still open.** No `status` field today; state is three Booleans (`settled`, `resolvedToYes`, `nonDecisive`). The proposed `enum ConditionStatus { ACTIVE, RESOLVED, CANCELLED, ARCHIVED }` contains values (`CANCELLED`, `ARCHIVED`) that nothing in the data model produces. Open: drop those values and derive `status` from the Booleans (`ACTIVE`/`RESOLVED`, with `nonDecisive` either folded into `RESOLVED` or surfaced as a distinct state), or add columns to support `CANCELLED` / `ARCHIVED` if there's a real product need?
-
-   **Prediction `status` vs. `settled` — still open.** Proposed `enum PredictionStatus { OPEN, SETTLED, CANCELLED }` is mostly sugar on the existing `settled` Boolean (`OPEN = !settled`, `SETTLED = settled`). `CANCELLED` has no source in the data model today. Open: drop `CANCELLED` and let `status` be a derived two-state enum, or define what produces a cancelled prediction (admin override? on-chain unwind path?) and add the column.
-
-   **`Question.status` derivation — still open.** Since `Question` wraps either a `Condition` or a `ConditionGroup`, and `ConditionGroup` has no status, the `Question.status` field needs an explicit derivation rule. Plausible: when source is a Condition, mirror its status; when source is a ConditionGroup, compute from children (all child Conditions resolved → `RESOLVED`, any unresolved → `ACTIVE`, etc.). Open: define the rule formally, or drop `Question.status` and let clients derive whatever view-state they need themselves.
+   **Follow-up cleanup (separate PR to staging, not this doc PR):** the indexer's `mapSettlementResult` retains a `case 3 → 'NON_DECISIVE'` branch unreachable from current contract behavior; the Prisma `SettlementResult` enum still lists `NON_DECISIVE`. Both are vestigial. Cleanup can either drop them outright (after confirming no live rows carry the value) or leave a tombstone on the Prisma side and remove only the indexer branch.
