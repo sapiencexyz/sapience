@@ -118,6 +118,19 @@ position.conditions
 
 where `conditions` is a derived convenience field.
 
+### Vault model
+
+A vault is a strategy-level construct that wraps an on-chain holder address. The address takes positions, makes trades, and holds collateral exactly like a user `Account` does — what makes it a vault is the share accounting on top (deposits/withdrawals mint/burn shares, NAV per share, strategy class).
+
+The public API splits this cleanly:
+
+- `Vault implements Node` carries the strategy-level identity: `address`, `chainId`, `kind` (`PROTOCOL` / `PYTH` / `SINGLE_LEG` / `STRATEGY_B`), `collateral`, plus a `stats` time series.
+- `Vault.account: Account!` is the on-chain holder. All market activity — `trades`, `positions`, `predictions`, `collateralBalance` — is reached through `vault.account`, not duplicated on `Vault`. The address is the canonical identity: `vault.account.address == vault.address`.
+
+This mirrors how `Prediction.predictor: Account!` works — a durable entity _has_ an account; it doesn't _become_ one. Clients querying "the vault's recent trades" traverse `vault.account.trades(...)`; vault-specific share / flow / PnL state lives on `VaultStat` snapshots.
+
+The legacy `ProtocolStat` carried ~15 `vault*`-prefixed fields (`vaultBalance`, `vaultDeployed`, `vaultDeposits`, `vaultWithdrawals`, `vaultCumulativePnL`, `vaultAirdropGains`, `vaultUnredeemedClaim`, `vaultAvailableAssets`, `vaultPositionsWon/Lost`, `vaultSecondaryBought/Sold`, plus `totalAssets` / `totalShares`). Those migrate to per-snapshot fields on `VaultStat`, keyed by vault — see the SDL and migration map below.
+
 ### Collateral
 
 Collateral is currently always wUSDe.
@@ -1049,20 +1062,43 @@ type Protocol {
   openInterestByCategory: [CategoryOpenInterest!]!
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 
-  # Vault is a top-level Node; access via root `vault(id:)`,
-  # `vaultByAddress(address:)`, or `vaults(...)`.
+  # Vault is a top-level Node, not a child of Protocol — access via root
+  # `vault(id:)`, `vaultByAddress(address:)`, or `vaults(...)`. The
+  # vault-prefixed fields the legacy `ProtocolStat` carried
+  # (`vaultBalance`, `vaultDeployed`, etc.) live on `VaultStat`; this
+  # `ProtocolStat` covers protocol-level totals only.
 }
 
 type Vault implements Node {
   id: ID!
   address: Address!
+  chainId: Int!
+  kind: VaultKind!
   collateral: CollateralToken!
+
+  # The on-chain holder. All market activity — trades, positions,
+  # predictions, collateralBalance — is reached through this Account, not
+  # duplicated on Vault. By construction `vault.account.address ==
+  # vault.address`; the field exists so clients can traverse without a
+  # second round-trip. See "Vault model" in Core Domain Decisions.
+  account: Account!
+
   stats(
     first: Int
     after: String
     filter: VaultStatsFilter
     orderBy: VaultStatsOrder
   ): VaultStatsConnection!
+}
+
+# Strategy class for a deployed vault. Mirrors `ConfiguredVault.kind` in
+# the indexer's `vaultConfig`. Addition-only after first ship — adding a
+# member is non-breaking, removing one isn't.
+enum VaultKind {
+  PROTOCOL
+  PYTH
+  SINGLE_LEG
+  STRATEGY_B
 }
 
 type Category implements Node {
@@ -1320,8 +1356,51 @@ type ProtocolStat {
 type VaultStat {
   timestamp: DateTime!
   vault: Vault!
+
+  # Share accounting — ERC4626-shaped. `totalAssets` is the vault's NAV
+  # in `vault.collateral`; `totalShares` is the outstanding LP-share
+  # supply at this snapshot. NAV per share is `totalAssets / totalShares`
+  # when both are present.
   totalAssets: Decimal
   totalShares: Decimal
+
+  # Capital state split. `balance` is the vault's holder-account
+  # `collateralBalance` at the snapshot; `deployed` is the slice tied up
+  # in open positions; `availableAssets` is idle wUSDe usable for new
+  # positions or withdrawals. These three reconcile against NAV per
+  # vault-specific accounting rules.
+  balance: Decimal
+  deployed: Decimal
+  availableAssets: Decimal
+
+  # LP flows (cumulative through this snapshot). Distinct from
+  # `collateralTransfers`: deposits/withdrawals mint or burn vault
+  # shares, while a raw collateral transfer in/out of `vault.account`
+  # doesn't.
+  deposits: Decimal
+  withdrawals: Decimal
+
+  # PnL accruals. `cumulativePnL` is net realized + unrealized from
+  # market activity through this snapshot; `airdropGains` is external
+  # accruals (e.g. point-program payouts) that didn't come from market
+  # PnL and are reported separately so APY math doesn't double-count.
+  cumulativePnL: Decimal
+  airdropGains: Decimal
+
+  # Secondary-market flows (cumulative through this snapshot).
+  # `secondaryBought` is wUSDe paid by the vault to buy positions on the
+  # secondary market; `secondarySold` is wUSDe received from selling.
+  secondaryBought: Decimal
+  secondarySold: Decimal
+
+  # `unredeemedClaim` is wUSDe earmarked for the vault from resolved
+  # predictions whose winnings haven't been pulled back on-chain yet —
+  # included in NAV, excluded from `availableAssets` and `balance`.
+  unredeemedClaim: Decimal
+
+  # Settlement outcome counts (cumulative through this snapshot).
+  positionsWon: Int
+  positionsLost: Int
 }
 
 type AccountStat {
@@ -1572,6 +1651,15 @@ enum VaultStatsOrderField {
 
 input VaultFilter {
   address: AddressFilter
+  chainId: IntFilter
+  kind: VaultKindFilter
+}
+
+input VaultKindFilter {
+  equals: VaultKind
+  in: [VaultKind!]
+  notIn: [VaultKind!]
+  not: VaultKind
 }
 
 input AccountStatsFilter {
@@ -1618,9 +1706,10 @@ input LeaderboardFilter {
 | `collateralBalance(address, chainId, atBlock)`                                                    | `collateralBalance(account, chainId, atBlock)` or `account(address).collateralBalance(...)` |
 | `collateralBalanceHistory(address, chainId, count, intervalSeconds)`                              | `collateralBalanceHistory(account, chainId, first, after, intervalSeconds)`                 |
 | `collateralTransfersPage(address, chainId, excludeProtocol, orderBy, orderDirection, take, skip)` | `collateralTransfers(...)`                                                                  |
-| `protocolStats(from, to)`                                                                         | `protocol.stats(filter: { timestamp: { gte, lte } })`                                       |
+| `protocolStats(from, to)`                                                                         | `protocol.stats(filter: { timestamp: { gte, lte } })` (protocol-level fields only)          |
 | `openInterestByCategory`                                                                          | `protocol.openInterestByCategory`                                                           |
 | `openInterestByTimeToResolution`                                                                  | `protocol.openInterestByTimeToResolution`                                                   |
+| `protocolStats(vaultAddress).vault*` fields                                                       | `vaultByAddress(address).stats(filter: { timestamp: { gte, lte } })` (per-vault snapshots)  |
 | `vaultStats(vaultAddress, from, to)`                                                              | `vaultByAddress(address).stats(filter: { timestamp: { gte, lte } })`                        |
 | `categoriesPage(take, skip)`                                                                      | `categories(...)`                                                                           |
 | `popularTags`                                                                                     | `popularTags(...)`                                                                          |
