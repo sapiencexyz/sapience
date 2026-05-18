@@ -1545,3 +1545,101 @@ These should be resolved before implementation:
 8. Do public clients need `last` / `before`, or is forward pagination enough?
 9. Should `Question` expose `condition` and `conditionGroup` as nullable fields, or should it be modeled as a union?
 10. Should `collateralAsset` be a scalar enum-like object for wUSDe today, or fully backed by an asset table/type?
+
+---
+
+## Implementation Tasklist
+
+Scope: steps 1–2 of the migration lifecycle (add new shape additively + mark old fields `@deprecated`). Frontend client migration (step 3), external migration guide (step 4), and removal of deprecated fields (step 5) are tracked elsewhere.
+
+Streams are designed to be **fully independent** after PR 1 lands. Each per-stream PR only references types introduced in PR 1 or in earlier PRs of the same stream. Cross-stream convenience connections (e.g., `Account.trades`, `Condition.forecasts`, `Question.predictions`) are deferred to the joint convergence PRs at the end.
+
+### Sequence
+
+| #   | Title                                                                                                                  | Stream | Depends on     | Status                                                                 |
+| --- | ---------------------------------------------------------------------------------------------------------------------- | ------ | -------------- | ---------------------------------------------------------------------- |
+| 1   | Foundation — `Node`, `PageInfo`, scalars, `OrderDirection`, `node(id:)`, `nodes(ids:)`, opaque global IDs              | —      | —              | In review ([#1728](https://github.com/sapiencexyz/sapience/pull/1728)) |
+| 2   | Conditions + ConditionGroups + Questions — Relay-shaped entities + connections; deprecate `*Page` siblings             | A      | #1             | Started                                                                |
+| 3   | PickConfigurations + Trades + Positions — Relay-shaped entities + connections; `tradeByHash`                           | A      | #1, #2         | Started                                                                |
+| 4   | Predictions + Forecasts — new entity surface + `predictionByOnchainId` + `forecastByUid` (Attestation rename surface)  | B      | #1             | Not started                                                            |
+| 5   | Collateral + Protocol + Vault + Categories + popularTags                                                               | B      | #1             | Not started                                                            |
+| 6a  | Account + cross-entity convenience connections (`Account.predictions`, `Condition.forecasts`, `Question.trades`, etc.) | Joint  | #2, #3, #4, #5 | Not started                                                            |
+| 6b  | Activity (union over `Prediction` \| `Trade` \| `Forecast`) + Leaderboard                                              | Joint  | #2, #3, #4, #5 | Not started                                                            |
+
+### Parallelism
+
+```
+                       PR 1 (Foundation)
+                       /              \
+         Stream A     /                \    Stream B
+         PR 2 ─→ PR 3                    PR 4 ─→ PR 5
+                       \              /
+                        \            /
+                       PR 6a + PR 6b (joint)
+```
+
+### Per-PR scope notes
+
+**PR 2 — Conditions + ConditionGroups + Questions**
+
+- Add `implements Node` to `Condition` and `ConditionGroup`; register both with the global ID registry from PR 1.
+- Expose existing primary keys as `databaseId` (`ConditionGroup.databaseId: Int!`).
+- Add `condition(id: ID!)` and `conditionGroup(id: ID!)` root queries that resolve via opaque global ID.
+- Thicken `Question`: add `id` (synthetic view ID), `title`, `description`, `status`, `category`, `tags`, `openInterest`, `volume`, `createdAt`, `updatedAt`, `resolvesAt` per the SDL draft.
+- Add Relay-shaped `questions(first:after:filter:orderBy:)`, `conditions(...)`, `conditionGroups(...)` connections alongside existing `questionsPage` / `conditionsPage` / `conditionGroupsPage`; mark the `*Page` resolvers `@deprecated`.
+- Reuse existing `*Filters` inputs and sort enums from the Section A/B work where shape matches; add `*Order` / `OrderDirection` wrappers per the new convention.
+- **No cross-stream connections in this PR.** `Condition.predictions`, `Condition.forecasts`, `Question.trades` etc. are deferred to PR 6a.
+
+**PR 3 — PickConfigurations + Trades + Positions**
+
+- Add `implements Node` and `databaseId` to `PickConfiguration`, `Trade`, `Position`.
+- Add root queries: `pickConfiguration(id:)`, `pickConfigurations(...)`, `trade(id:)`, `tradeByHash(hash:)`, `trades(...)`, `position(id:)`, `positions(...)`.
+- `Pick.condition`, `Trade.conditions`, `Position.conditions` resolve via the `Condition` type from PR 2 (in-stream dependency, fine).
+- Mark old `tradesPage`, `positionsPage`, `pickConfigurationsPage`, and `trade(tradeHash:)` `@deprecated`.
+
+**PR 4 — Predictions + Forecasts (Attestation rename surface)**
+
+- Add `implements Node` to `Prediction`. Add new `Forecast` type (back-ends to existing `Attestation` table; reuses the column-level rename groundwork from #1718).
+- Root queries: `prediction(id:)`, `predictionByOnchainId(predictionId:)`, `predictions(...)`, `forecast(id:)`, `forecastByUid(uid:)`, `forecasts(...)`.
+- Mark `attestationsPage` `@deprecated` pointing at `forecasts`.
+- No `Account.predictions` / `Account.forecasts` connections in this PR.
+
+**PR 5 — Collateral + Protocol + Vault + Categories + popularTags**
+
+- `CollateralBalance`, `CollateralBalanceSnapshot`, `CollateralTransfer` types and root queries (`collateralBalance`, `collateralBalanceHistory`, `collateralTransfers`).
+- `Protocol` namespace type with `stats`, `openInterestByCategory`, `openInterestByTimeToResolution`, `vault(address:)`.
+- `Vault` (`implements Node`) with `stats` connection.
+- `Category` (`implements Node`) + `categories(...)` + `popularTags(...)`.
+- Mark old `protocolStats`, `openInterestByCategory`, `openInterestByTimeToResolution`, `vaultStats`, `categoriesPage` `@deprecated`.
+
+**PR 6a — Account + cross-entity convenience connections**
+
+- `Account implements Node` with all child connections (`predictions`, `trades`, `forecasts`, `positions`, `stats`, `rank`, `collateralBalance`).
+- Wire up the deferred convenience connections on entities from PRs 2–5: `Condition.predictions`, `Condition.trades`, `Condition.forecasts`; `Question.predictions`, `Question.trades`, `Question.forecasts`; `PickConfiguration.predictions`, `PickConfiguration.trades`, `PickConfiguration.positions`; `ConditionGroup.predictions`, `ConditionGroup.trades`, `ConditionGroup.forecasts`.
+- Mark `accountStats`, `accountStatsRank`, `accountStatsLeaderboardPage`, `accountAccuracyRank` `@deprecated`.
+
+**PR 6b — Activity + Leaderboard**
+
+- `ActivityItem` (does not implement `Node`), `ActivitySubject` union (`Prediction | Trade | Forecast`), `activity(...)` root query.
+- Top-level `leaderboard(metric: LeaderboardMetric!, filter:)` query.
+- Mark `activityPage`, `accuracyLeaderboardPage` `@deprecated`.
+
+### Prerequisites and audit notes
+
+Before starting per-entity PRs, confirm the following so we don't duplicate already-shipped work:
+
+- Section A renames (PR [#1718](https://github.com/sapiencexyz/sapience/pull/1718)) already shipped: `Attestation.forecast` column, `forecastScore`, `accountAccuracy*` types, `Collateral*` type-name drops, `accountActivityPage` → `activityPage` alias.
+- Section B polish (PRs [#1719](https://github.com/sapiencexyz/sapience/pull/1719), [#1720](https://github.com/sapiencexyz/sapience/pull/1720)) already shipped: `filters: <Input>` on every `*Page`, `orderBy`/`orderDirection` normalized across all paginated resolvers, `lazyTotalCount` factory, sort enums on previously-fixed-sort resolvers.
+- PR [#1721](https://github.com/sapiencexyz/sapience/pull/1721) moved `referralCodesPage` to REST. The Migration Map row for `referralCodesPage` is obsolete and can be removed.
+- PR [#1727](https://github.com/sapiencexyz/sapience/pull/1727) adds `negRisk` metadata to `ConditionGroup` — coordinate landing order with PR 2 to avoid SDL collisions.
+- PR [#1722](https://github.com/sapiencexyz/sapience/pull/1722) adds `balanceMin` filter on positions queries — affects PR 3's `PositionFilter`.
+
+### Open questions (gate before PR 2 starts)
+
+The 10 open questions above are the design-decision gates. The ones that block PR 2 specifically:
+
+- **Q1** (`Question.id` synthetic vs omitted) — blocks PR 2.
+- **Q5** (which statuses exist for `Condition`, `ConditionGroup`) — blocks PR 2 status enums.
+- **Q6** (which sort fields are index-backed) — informs PR 2 `*OrderField` enums.
+- **Q7** (`totalCount` on all connections vs only cheap ones) — affects every PR's connection types; should be decided once and applied uniformly.
+- **Q9** (`Question.condition`/`conditionGroup` as nullable fields vs union) — blocks PR 2 `Question` SDL.
