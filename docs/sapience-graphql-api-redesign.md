@@ -244,6 +244,85 @@ attestationScore
 
 except in internal code or low-level docs explaining the EAS backing model.
 
+### 6. One filter convention, one sort convention
+
+The current schema mixes flat `<field>Min` / `<field>Max` args, operator-pattern `<field>Filter` input objects, top-level filter args on the root field (`positionsPage(address, owner, settled, ...)`), and consolidated `filters:` input objects. New types should pick one convention and hold it.
+
+#### Filters
+
+Every list / connection field accepts a single `filter: <Entity>Filter` input.
+
+Scalar fields on `<Entity>Filter` use operator-pattern inputs:
+
+```graphql
+input PositionFilter {
+  account: AddressFilter
+  conditionId: IDFilter
+  balance: BigIntFilter
+  collateral: BigIntFilter
+  createdAt: DateTimeFilter
+  settled: Boolean
+}
+```
+
+The operator inputs themselves are the Prisma-style set:
+
+```graphql
+input BigIntFilter {
+  equals: BigInt
+  gt: BigInt
+  gte: BigInt
+  lt: BigInt
+  lte: BigInt
+  in: [BigInt!]
+  notIn: [BigInt!]
+  not: BigInt
+}
+```
+
+A parallel input exists for each scalar (`IntFilter`, `StringFilter`, `DateTimeFilter`, `BooleanFilter`, `AddressFilter`, plus parameterized `EnumFilter<T>` per enum where filtering is useful).
+
+Rules:
+
+- **Strict semantics, no implicit OR.** `{ balance: { gte: "1" } }` means `balance >= 1`, full stop. Clients that want richer composition issue separate queries or rely on the server to add an explicit `OR` shape later if real demand surfaces.
+- **Unsupported operators on a specific field reject** with a clear error, not silently no-op. If a field can only be filtered by `equals` (e.g., a hashed identifier), the resolver rejects `gt`/`lt` rather than returning empty or full results.
+- **Forbid flat `<field>Min` / `<field>Max` on new types.** Existing flat args get `@deprecated` with a one-release migration cycle. See PR 1730 (positions `balance` / `collateral`) for the reference migration shape.
+- **Booleans stay flat.** `settled: Boolean` rather than `settled: BooleanFilter` — there is no `gt true` and the operator pattern adds noise without benefit.
+
+The SDL draft elsewhere in this document predates the operator-pattern convention and still shows flat fields like `conditionId: ID` and `createdAfter: DateTime`. Those examples will be normalized to operator-pattern as per-entity PRs land — the draft is illustrative of shape, not the final filter input definitions.
+
+#### Sort
+
+Replace the today-pattern of `orderBy: <FieldEnum>, orderDirection: ASC|DESC` with a single multi-key argument:
+
+```graphql
+predictions(
+  first: Int
+  after: String
+  filter: PredictionFilter
+  orderBy: [PredictionOrder!]
+): PredictionConnection!
+
+input PredictionOrder {
+  field: PredictionOrderField!
+  direction: OrderDirection!
+}
+
+enum PredictionOrderField {
+  CREATED_AT
+  SETTLED_AT
+  COLLATERAL
+  PAYOUT
+}
+```
+
+Rules:
+
+- **Array shape unlocks multi-key sort.** `[{field: ENDS_AT, direction: ASC}, {field: VOLUME, direction: DESC}]` is a single sort key with a tie-breaker.
+- **Each entity declares its own `<Entity>OrderField` enum** listing the fields the entity's indexes actually support. This answers open question #6 (which sort fields are supported) at the SDL level: if a field isn't in the enum, you can't sort by it.
+- **Adding a sort field is non-breaking; removing one is.** Treat the order-field enum like every other public enum — addition-only after first ship.
+- **Default order belongs in the resolver, not the schema.** Document the default in the field description ("orders by `CREATED_AT DESC` when `orderBy` is omitted") rather than encoding it as a default argument that drifts.
+
 ---
 
 ## Target Query Surface
@@ -541,10 +620,12 @@ type Account implements Node {
 
 type Question {
   id: ID!
-  questionType: QuestionType!
 
-  condition: Condition
-  conditionGroup: ConditionGroup
+  # Exactly one of Condition | ConditionGroup. Resolved as a union
+  # (open question #9) so the schema enforces mutual exclusion and
+  # clients can't silently observe a both-null or both-set state.
+  # Union name is TBD — see open question #9 for the options.
+  source: QuestionSourceTBD!
 
   title: String!
   description: String
@@ -584,11 +665,6 @@ type Question {
   createdAt: DateTime!
   updatedAt: DateTime
   resolvesAt: DateTime
-}
-
-enum QuestionType {
-  CONDITION
-  GROUP
 }
 
 enum QuestionStatus {
@@ -766,7 +842,6 @@ type Forecast implements Node {
   uid: Bytes32!
 
   forecaster: Account!
-  subject: Address
   schemaId: Bytes32!
 
   condition: Condition
@@ -1251,12 +1326,10 @@ enum PredictionOrderField {
 }
 
 input ForecastFilter {
-  account: Address
-  conditionId: ID
-  conditionGroupId: ID
-  pickConfigurationId: ID
-  createdAfter: DateTime
-  createdBefore: DateTime
+  forecaster: AddressFilter
+  conditionId: IDFilter
+  pickConfigurationId: IDFilter
+  createdAt: DateTimeFilter
 }
 
 input ForecastOrder {
@@ -1537,15 +1610,35 @@ type Query {
 
 ## Open Questions
 
-These should be resolved before implementation:
+Questions that lock public wire format must be resolved before the per-entity PR that ships the affected type. Additive-only questions can be deferred — adding a field, query, or arg later is non-breaking; removing or reshaping one is.
 
-1. Should `Question.id` be exposed publicly as a synthetic stable view ID, or should it be omitted to avoid implying canonical identity?
-2. Should `ActivityItem.id` be exposed as a synthetic ID, or should activity feed items rely only on cursor identity?
-3. Should `Forecast.subject` use EAS language, or should it be named more product-semantically?
-4. Should `Prediction.counterparty` be nullable in all cases?
-5. Which exact statuses exist today for `Condition`, `ConditionGroup`, and `Prediction`?
-6. Which sort fields are actually supported efficiently by indexes today?
-7. Should `totalCount` be available on all connections, or only where it is cheap?
-8. Do public clients need `last` / `before`, or is forward pagination enough?
-9. Should `Question` expose `condition` and `conditionGroup` as nullable fields, or should it be modeled as a union?
-10. Should `collateralAsset` be a scalar enum-like object for wUSDe today, or fully backed by an asset table/type?
+### Deferred — safe to ship later
+
+1. **`Question.id` synthetic ID** — Underlying `Condition` / `ConditionGroup` already carry Node IDs; clients can key on those. Add a synthetic `Question.id` later if a concrete UI need surfaces. Adding a field is non-breaking; committing to a format prematurely locks it forever.
+2. **`ActivityItem.id` synthetic ID** — Same logic. Each `ActivityItem` embeds a Prediction / Trade / Forecast that already has a Node ID; cursor handles in-page identity. Skip until a use case appears.
+3. **`totalCount` per-connection** — Per-connection call. Add where the count is cheap (covered index, materialized aggregate); omit where it's a table scan. Adding later is non-breaking.
+4. **`last` / `before` reverse pagination** — Forward is a strict subset; reverse is purely additive. Ship forward-only; revisit if clients need reverse traversal.
+
+### Per-entity — resolve at each PR
+
+6. **Sort fields by entity** — Now answered structurally: each entity declares its own `<Entity>OrderField` enum listing the fields its indexes support (see "One filter convention, one sort convention" above). Per-entity PRs decide their enum members based on actual index coverage; the SDL enforces the answer.
+
+### Resolved — locked direction, doc updated
+
+3. **`Forecast.subject` naming** — RESOLVED. The EAS "subject" (recipient) on a forecast attestation is the conditionId it targets; that link is already typed as `condition: Condition` on `Forecast`. The redundant `subject: Address` field is dropped from the SDL. Forecasts target a single `Condition` (not a `ConditionGroup`), so `ForecastFilter.conditionGroupId` is also dropped.
+4. **`Prediction.counterparty` nullability** — DECISION: ship non-null (`counterparty: Account!`). Prerequisite: data audit confirming no rows in production have a null counterparty (orphaned indexer rows, mid-settlement intermediate states). If any null rows exist, either backfill or fix the indexer before flipping the field to non-null — GraphQL surfaces a null on a non-null field as a query-level error, which would break list queries silently for affected accounts.
+5. **`Question` union vs. nullable pair** — RESOLVED on the shape: union. Schema enforces "exactly one of `Condition` | `ConditionGroup`," eliminating the both-null / both-set bug class. The `questionType: QuestionType` enum is removed (`__typename` on the union member subsumes it). Union name is still open — see "Still open" below.
+
+### Still open
+
+5. **Status enum audit** — Need an audit of what status values exist today on `Condition`, `ConditionGroup`, and `Prediction` across the Prisma schema, resolvers, and any String-typed status fields currently on the wire. Output: a canonical `<Entity>Status` enum per entity, with a deprecation plan for any existing String fields. Blocks the first per-entity PR for any of those three types. Investigation pending.
+   9b. **`Question` union name** — Candidates under consideration:
+   - `Market` — cleanest, but introduces a domain term not yet used elsewhere in the schema; risk of collision if "market" later means something narrower (orderbook-backed market, secondary market, etc.).
+   - `QuestionMarket` — explicit prefix, no collision risk, slight redundancy.
+   - `QuestionSource` — emphasizes "the underlying data source for this Question view"; reads well, no domain-term capture.
+   - `QuestionSubject` — mirrors the existing `ActivitySubject` union pattern; potential confusion since we just dropped "subject" as EAS jargon from `Forecast`.
+6. **`collateralAsset` field naming** — The type shape is settled (`type CollateralAsset { symbol, address, decimals, chainId }` — a full asset record, not a scalar). What's open is whether the field `Prediction.collateralAsset: CollateralAsset!` is the clearest name, or whether one of these reads better:
+   - `collateral: CollateralAsset!` — shortest; field name is the role, type is the shape.
+   - `collateralToken: CollateralAsset!` — explicit that it's an ERC-20 token, not a generic asset class.
+   - Rename type to `CollateralToken` and field to `collateral: CollateralToken!` — same idea, expressed through the type name instead of the field name.
+     Note: this is field-naming polish, not a wire-shape question — once chosen, every type that exposes collateral (`Prediction`, `Position`, `Trade`, `CollateralBalance`, `CollateralTransfer`) uses the same convention.
