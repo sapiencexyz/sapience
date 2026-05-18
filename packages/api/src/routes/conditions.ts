@@ -36,23 +36,24 @@ function normalizeNegRiskMarketId(value: unknown): string | null {
  * Group-level basket invariant.
  *
  * Conditions don't store negRisk metadata; the only persisted truth is
- * `condition_group.negRiskMarketId`. So when an incoming request claims
- * its condition belongs to a basket (via the payload's `negRiskMarketId`),
- * we enforce consistency at the group boundary:
+ * `condition_group.negRiskMarketId`. So when an incoming request *enters*
+ * a group, we enforce consistency at the boundary:
  *
- *   - If the group already has a basket id, every incoming condition for
- *     that group must declare the same id (or omit it and accept it).
- *   - If the group has no basket id but the incoming conditions all share
- *     one, the new-group create path can promote it onto the group.
+ *   - Group has no basket id → anything goes.
+ *   - Group has a basket id → the payload MUST declare the same id.
+ *     Silently admitting a non-basket condition would let an unrelated
+ *     market drift into a mutually-exclusive basket and corrupt the
+ *     invariant that backs settlement.
+ *
+ * This guards admission only; conditions already linked to the group are
+ * grandfathered (a routine metadata edit shouldn't have to restate the
+ * basket id every time).
  */
 function basketsAgree(
   groupBasket: string | null,
   payloadBasket: string | null
 ): boolean {
-  // Group has no basket → anything goes.
   if (!groupBasket) return true;
-  // Group has a basket → payload, if present, must match.
-  if (payloadBasket === null) return true;
   return payloadBasket === groupBasket;
 }
 
@@ -1062,7 +1063,10 @@ router.put('/:id', async (req: Request, res: Response) => {
         .json({ message: 'negRiskMarketId is required when negRisk is true' });
     }
 
-    // Find or create condition group if groupName is provided
+    // Find or create condition group if groupName is provided. We only need
+    // the group row for new assignments — the basket invariant guards
+    // admission, not continuing membership, so conditions already linked
+    // to a group don't need a re-load on routine metadata edits.
     let resolvedGroupId: number | undefined;
     let targetGroup: {
       id: number;
@@ -1085,10 +1089,6 @@ router.put('/:id', async (req: Request, res: Response) => {
       }
       targetGroup = group;
       resolvedGroupId = group.id;
-    } else if (existing.conditionGroupId) {
-      targetGroup = await prisma.conditionGroup.findUnique({
-        where: { id: existing.conditionGroupId },
-      });
     }
 
     try {
