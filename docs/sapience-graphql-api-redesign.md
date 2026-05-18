@@ -284,7 +284,7 @@ A parallel input exists for each filterable scalar (`IntFilter`, `DecimalFilter`
 
 Rules:
 
-- **Strict semantics, no implicit OR.** `{ balance: { gte: "1" } }` means `balance >= 1`, full stop. Clients that want richer composition issue separate queries or rely on the server to add an explicit `OR` shape later if real demand surfaces.
+- **Strict semantics, no implicit OR.** `{ size: { gte: "1" } }` means `size >= 1`, full stop. Clients that want richer composition issue separate queries or rely on the server to add an explicit `OR` shape later if real demand surfaces.
 - **Unsupported operators on a specific field reject** with a clear error, not silently no-op. If a field can only be filtered by `equals` (e.g., a hashed identifier), the resolver rejects `gt`/`lt` rather than returning empty or full results.
 - **Forbid flat `<field>Min` / `<field>Max` on new types.** Existing flat args get `@deprecated` with a one-release migration cycle. See PR 1730 (positions `balance` / `collateral`) for the reference migration shape.
 - **Booleans stay flat.** `settled: Boolean` rather than `settled: BooleanFilter` — there is no `gt true` and the operator pattern adds noise without benefit.
@@ -683,6 +683,7 @@ type Query {
 type Account implements Node {
   id: ID!
   address: Address!
+  createdAt: DateTime!
 
   stats(
     first: Int
@@ -692,6 +693,9 @@ type Account implements Node {
   ): AccountStatsConnection!
   rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRank
 
+  # Predictions where this account is either the predictor OR the
+  # counterparty. The two roles are symmetric; clients that need to
+  # disambiguate read `predictor` / `counterparty` on each row.
   predictions(
     first: Int
     after: String
@@ -929,7 +933,10 @@ type Prediction implements Node {
   payout: Decimal!
 
   createdAt: DateTime!
-  settledAt: DateTime
+  # `UnixSeconds` rather than `DateTime` — this comes from chain
+  # storage (uint256 seconds) like `Condition.settledAt`, not from the
+  # indexer's row-write clock.
+  settledAt: UnixSeconds
 }
 
 enum PredictionResult {
@@ -965,11 +972,14 @@ type Trade implements Node {
   pickConfiguration: PickConfiguration!
   conditions: [Condition!]!
 
+  # All trade economics columns (`collateral`, `tokenAmount`, `price`)
+  # are non-null in the `SecondaryTrade` indexer model — every row
+  # carries them.
   collateral: CollateralToken!
-  collateralAmount: Decimal
+  collateralAmount: Decimal!
 
-  price: Decimal
-  quantity: Decimal
+  price: Decimal!
+  quantity: Decimal!
 
   createdAt: DateTime!
 }
@@ -1008,7 +1018,10 @@ type Activity {
   # available via `__typename` — no separate `activityType` enum field
   # because it would duplicate what the union already encodes.
   source: ActivitySource!
-  account: Account
+  # The actor on the wrapped row: `predictor` for a Prediction,
+  # `account` for a Trade, `forecaster` for a Forecast. Always present
+  # — every union member has a non-null actor account.
+  account: Account!
   createdAt: DateTime!
 }
 
@@ -1039,7 +1052,8 @@ type CollateralBalance {
   atBlock: BigInt
 }
 
-# Not a Node — see R9. Cursors over `collateralBalanceHistory` encode
+# Not a Node — stat rows are time-bucketed values, not addressable
+# entities. Cursors over `collateralBalanceHistory` encode
 # (block, timestamp) position. Unlike other stat types, this one is
 # bucketed at read time via `intervalSeconds:` on the root field — the
 # only exception in the schema; see the field description for why.
@@ -1348,7 +1362,6 @@ type CategoryEdge {
 # do not implement Node and cannot be refetched via `node(id:)`.
 # Connection cursors over these types encode timestamp position;
 # clients re-query with a `timestamp: DateTimeFilter` to traverse.
-# See open question R9.
 
 type ProtocolStat {
   timestamp: DateTime!
@@ -1449,6 +1462,11 @@ enum ConditionGroupOrderField {
   VOLUME
 }
 
+# `account` matches Predictions where the address appears in either
+# role — predictor OR counterparty. The two roles are symmetric:
+# both sides post collateral and both are `Account` values. Clients
+# that need to disambiguate filter on the resolved type's `predictor`
+# / `counterparty` fields client-side.
 input PredictionFilter {
   account: AddressFilter
   conditionId: IDFilter
@@ -1531,7 +1549,6 @@ input PositionFilter {
   pickConfigurationId: IDFilter
   size: DecimalFilter
   collateralAmount: DecimalFilter
-  settled: Boolean
   createdAt: DateTimeFilter
 }
 
@@ -1747,7 +1764,7 @@ type Query {
 
 Questions that lock public wire format must be resolved before the per-entity PR that ships the affected type. Additive-only questions can be deferred — adding a field, query, or arg later is non-breaking; removing or reshaping one is.
 
-Numbering is section-prefixed: **D**eferred (`D#`), **P**er-entity (`P#`), **R**esolved (`R#`). Stable across edits — cross-references in the body of this document use these prefixes.
+Numbering is section-prefixed: **D**eferred (`D#`), **P**er-entity (`P#`). Stable across edits — cross-references in the body of this document use these prefixes. Resolved items have been folded into the SDL and principles above and removed from this list; consult `git log` on this file for prior decisions.
 
 ### Deferred — safe to ship later
 
@@ -1759,25 +1776,3 @@ Numbering is section-prefixed: **D**eferred (`D#`), **P**er-entity (`P#`), **R**
 ### Per-entity — resolve at each PR
 
 - **P1. Sort fields by entity** — Each entity declares its own `<Entity>OrderField` enum listing the fields its indexes support (see "One filter convention, one sort convention" above). Per-entity PRs decide their enum members based on actual index coverage; the SDL enforces the answer.
-
-### Resolved — locked direction, doc updated
-
-- **R1. `Forecast` shape — single Condition link only.** The EAS "subject" (recipient) on a forecast attestation is the conditionId it targets; that link is already typed as `condition: Condition` on `Forecast`. The redundant `subject: Address` field is dropped from the SDL. The Prisma `Attestation` model carries exactly one graph link (`conditionId → Condition`); there is no `conditionGroupId` or `pickConfigurationId` column, and the resolver doesn't synthesize them. Accordingly: the aspirational `conditionGroup: ConditionGroup` and `pickConfiguration: PickConfiguration` fields are dropped from `Forecast`, and `ForecastFilter.conditionGroupId` / `pickConfigurationId` are dropped from the filter. Group / pickConfig membership is reachable via `condition.conditionGroup` and `condition.pickConfigurations`. `Forecast.condition` stays nullable because the Prisma column is nullable; tightening to non-null requires a data audit (parallel to R2 for counterparty).
-- **R2. `Prediction.counterparty` nullability** — Ship non-null (`counterparty: Account!`). Prisma schema declares the column non-null (`counterparty String @db.VarChar` in `prisma/schema.prisma`); every indexer write path (`predictionMarketEscrowIndexer.ts:706, 743`) sets it from the on-chain event payload, which is itself a non-null `0x${string}`. No backfill or schema migration needed.
-- **R3. `Question` union vs. nullable pair** — Modeled as `union ConditionOrConditionGroup = Condition | ConditionGroup`, exposed as `Question.source: ConditionOrConditionGroup!`. Schema enforces "exactly one of," eliminating the both-null / both-set bug class. The `questionType: QuestionType` enum is removed — `__typename` on the union member subsumes it. Name follows GitHub's `IssueOrPullRequest` precedent: literal, no abbreviation, no parallel concept ("Market", "Source") introduced.
-- **R4. Collateral field and type naming** — Type is `CollateralToken` (was `CollateralAsset`); field is `collateral: CollateralToken!` on every type that exposes it (`Prediction`, `Position`, `Trade`, `CollateralBalance`, `CollateralBalanceSnapshot`, `CollateralTransfer`). The full `CollateralToken` record carries `{ symbol, address, decimals, chainId }`, so the field name doesn't need to disambiguate between address and ticker — both live inside.
-- **R5. Status enums** — The audit revealed that the doc's status enums were aspirational, not migrations from existing wire fields. Once we accept that the data model has only the states it has, every proposed `*Status` enum collapses to either a Boolean (which we already have) or a derivation clients can do themselves. So:
-
-  - **`ConditionStatus` enum — dropped.** No synthetic status. `Condition` directly exposes the three Booleans that carry its actual state: `settled: Boolean!`, `resolvedToYes: Boolean!`, `nonDecisive: Boolean!`, plus `settledAt: UnixSeconds`. Clients render `ACTIVE`/`RESOLVED`/`TIE`/etc. however they want from these. `ConditionFilter.status` replaced with flat Boolean filters (`settled`, `resolvedToYes`, `nonDecisive`).
-  - **`ConditionGroupStatus` enum — dropped.** ConditionGroup has no status field today and isn't getting one. If any UI needs a group-level state, it derives from child Conditions.
-  - **`PredictionStatus` enum — dropped.** Was sugar on the existing `settled` Boolean (`OPEN = !settled`, `SETTLED = settled`); no `CANCELLED` state exists in the data model. `Prediction` directly exposes `settled: Boolean!` + `result: PredictionResult!`. `PredictionFilter.status` replaced with `settled: Boolean`.
-  - **`QuestionStatus` enum — dropped.** Question wraps either Condition or ConditionGroup via the `source` union; clients read state through `... on Condition { settled, resolvedToYes, nonDecisive }`. No view-level status field needed.
-  - **`PredictionResult` enum values — finalized as** `{ UNRESOLVED, PREDICTOR_WINS, COUNTERPARTY_WINS }`. Contract collapses non-decisive outcomes to `COUNTERPARTY_WINS` at the resolution layer (`PredictionMarketEscrow.sol:_evaluatePick`, comment at L1262–1267: "SettlementResult has no DRAW variant ... counterparties bear no prediction risk on void/tie outcomes"). Made `Prediction.result` non-null.
-
-  **Follow-up cleanup (separate PR to staging, not this doc PR):** the indexer's `mapSettlementResult` retains a `case 3 → 'NON_DECISIVE'` branch unreachable from current contract behavior; the Prisma `SettlementResult` enum still lists `NON_DECISIVE`. Both are vestigial. Cleanup can either drop them outright (after confirming no live rows carry the value) or leave a tombstone on the Prisma side and remove only the indexer branch.
-
-- **R6. Sort shape (singular vs array)** — Singular `orderBy: <Entity>Order` (matching GitHub's `IssueOrder` precedent), not the array shape originally drafted. Multi-key tiebreakers can be added later non-breakingly via a `then: <Entity>Order` field on the order input if real demand surfaces.
-- **R7. Filter convention** — Operator-pattern (Prisma-style) for single-value scalars (`AddressFilter`, `IDFilter`, `BigIntFilter`, `IntFilter`, `DecimalFilter`, `DateTimeFilter`, `StringFilter`). No `BooleanFilter` — Booleans stay flat per the principles. Multi-value membership filters and full-text search stay flat. See principles section for details. Position-specific corollary: the filter on `Position` uses `size: DecimalFilter` and `collateralAmount: DecimalFilter` to match the type's field names (the PR 1730 column-aligned names `balance` / `collateral` are not used on the wire — `size` is the renamed `balance` column, and `collateral` on the type is the `CollateralToken` reference).
-- **R8. `Vault` root access + no top-level sort** — Vault is a Node, so it gets `vault(id:)`, `vaultByAddress(address:)`, and `vaults(...)` root fields — matching the prediction/trade/forecast pattern. The previous nesting under `protocol.vault(address)` is removed; Vault is independent and shouldn't sit behind a Protocol grouping. Structurally, a Vault is "an address with an attached time series" — parallel to `Account` for stats purposes (`Vault.stats: VaultStatsConnection!` mirrors `Account.stats: AccountStatsConnection!`). There is no `Vault` table in Prisma; vaults come from static config (`getConfiguredVaults(chainId)`). So `vaults(...)` has no `orderBy:` arg and there is no `VaultOrder` / `VaultOrderField` — the entity has no indexed column to sort on. The field description should document that rows return in registration order. This is the one Connection in the schema without an `orderBy:` arg; that's a deliberate consequence of P1 ("the order-field enum lists fields the entity's indexes actually support"), not an oversight.
-- **R9. Stat-row connections over non-Node types** — `ProtocolStat`, `VaultStat`, `AccountStat`, and `CollateralBalanceSnapshot` stay as Connection members without implementing `Node`. They are time-bucketed values, not addressable entities; refetching a stat row by ID is meaningless because the row is uniquely identified by `(entity, timestamp)` already reachable via the parent + filter. Cursors on these connections encode timestamp position. The type-level descriptions in the SDL document this.
-- **R10. `UnixSeconds` scalar** — Declared explicitly. Used for timestamps that come directly from chain storage (uint256 seconds) where round-tripping to `DateTime` loses precision. Indexed / derived timestamps continue to use `DateTime`.
