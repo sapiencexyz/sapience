@@ -322,7 +322,7 @@ Rules:
 
 - **Each entity declares its own `<Entity>OrderField` enum** listing the fields the entity's indexes actually support. This answers open question P1 (which sort fields are supported per entity) structurally — if a field isn't in the enum, you can't sort by it.
 - **Adding a sort field is non-breaking; removing one is.** Treat the order-field enum like every other public enum — addition-only after first ship.
-- **Default order belongs in the resolver, not the schema.** Document the default in the field description ("orders by `CREATED_AT DESC` when `orderBy` is omitted") rather than encoding it as a default argument that drifts.
+- **Default order belongs in the resolver, not the schema.** Both `field` and `direction` on `<Entity>Order` are non-null with no schema-level defaults — clients either supply both or omit `orderBy` entirely. When omitted, the resolver picks; the field description documents the choice ("orders by `CREATED_AT DESC` when `orderBy` is omitted"). Matches GitHub / Shopify / Linear convention.
 - **Multi-key sort path is open.** If real demand surfaces, add a `then: <Entity>Order` field to the order input for tie-breakers — purely additive, non-breaking. Until then, the single-key shape is simpler for clients and resolvers alike.
 
 ---
@@ -1374,7 +1374,7 @@ input AccountFilter {
 
 input AccountOrder {
   field: AccountOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum AccountOrderField {
@@ -1389,7 +1389,7 @@ input QuestionFilter {
 
 input QuestionOrder {
   field: QuestionOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum QuestionOrderField {
@@ -1412,7 +1412,7 @@ input ConditionFilter {
 
 input ConditionOrder {
   field: ConditionOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum ConditionOrderField {
@@ -1431,7 +1431,7 @@ input ConditionGroupFilter {
 
 input ConditionGroupOrder {
   field: ConditionGroupOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum ConditionGroupOrderField {
@@ -1452,7 +1452,7 @@ input PredictionFilter {
 
 input PredictionOrder {
   field: PredictionOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum PredictionOrderField {
@@ -1470,7 +1470,7 @@ input ForecastFilter {
 
 input ForecastOrder {
   field: ForecastOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum ForecastOrderField {
@@ -1488,7 +1488,7 @@ input TradeFilter {
 
 input TradeOrder {
   field: TradeOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum TradeOrderField {
@@ -1509,7 +1509,7 @@ input ActivityFilter {
 
 input ActivityOrder {
   field: ActivityOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum ActivityOrderField {
@@ -1529,7 +1529,7 @@ input PositionFilter {
 
 input PositionOrder {
   field: PositionOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum PositionOrderField {
@@ -1547,7 +1547,7 @@ input PickConfigurationFilter {
 
 input PickConfigurationOrder {
   field: PickConfigurationOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum PickConfigurationOrderField {
@@ -1563,7 +1563,7 @@ input CollateralTransferFilter {
 
 input CollateralTransferOrder {
   field: CollateralTransferOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum CollateralTransferOrderField {
@@ -1577,7 +1577,7 @@ input ProtocolStatsFilter {
 
 input ProtocolStatsOrder {
   field: ProtocolStatsOrderField!
-  direction: OrderDirection! = ASC
+  direction: OrderDirection!
 }
 
 enum ProtocolStatsOrderField {
@@ -1590,7 +1590,7 @@ input VaultStatsFilter {
 
 input VaultStatsOrder {
   field: VaultStatsOrderField!
-  direction: OrderDirection! = ASC
+  direction: OrderDirection!
 }
 
 enum VaultStatsOrderField {
@@ -1607,7 +1607,7 @@ input AccountStatsFilter {
 
 input AccountStatsOrder {
   field: AccountStatsOrderField!
-  direction: OrderDirection! = ASC
+  direction: OrderDirection!
 }
 
 enum AccountStatsOrderField {
