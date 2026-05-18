@@ -39,6 +39,7 @@ import type {
   QueryPositionsPageArgs,
   QueryPredictionsArgs,
   QueryPredictionsPageArgs,
+  BigIntFilter,
   Prediction,
   ResolversParentTypes,
   SettlementResult,
@@ -49,6 +50,160 @@ import { mapPickConfig } from '../pickConfigHelpers';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { clampSkip, clampTake } from './pagination';
+
+/**
+ * Parsed `BigIntFilter` (operator-pattern numeric filter input). All
+ * operators combine with AND. Only the supported subset is represented
+ * here; unsupported operators (`in`, `notIn`, `not`) are rejected at
+ * parse time so they never reach SQL generation.
+ */
+type ParsedBigIntFilter = {
+  equals?: bigint;
+  gt?: bigint;
+  gte?: bigint;
+  lt?: bigint;
+  lte?: bigint;
+};
+
+const BIGINT_FILTER_SUPPORTED_OPS = [
+  'equals',
+  'gt',
+  'gte',
+  'lt',
+  'lte',
+] as const;
+const BIGINT_FILTER_UNSUPPORTED_OPS = ['in', 'notIn', 'not'] as const;
+
+/**
+ * Parse a GraphQL `BigIntFilter` input into a `ParsedBigIntFilter`.
+ * Returns `null` when the filter is unset or has no narrowing operator.
+ * Throws on unsupported operators (`in`/`notIn`/`not`) and on values
+ * that don't coerce to bigint — invalid input is a programming error
+ * and shouldn't silently degrade.
+ *
+ * `fieldName` is interpolated into error messages so the client knows
+ * which input was rejected (e.g. `balance.gte`, `collateral.lte`).
+ */
+const parseBigIntFilter = (
+  raw: BigIntFilter | null | undefined,
+  fieldName: string
+): ParsedBigIntFilter | null => {
+  if (!raw) return null;
+  for (const op of BIGINT_FILTER_UNSUPPORTED_OPS) {
+    if (raw[op] != null) {
+      throw new Error(
+        `${fieldName}: \`${op}\` is not supported. Use \`equals\`, \`gt\`, \`gte\`, \`lt\`, or \`lte\`.`
+      );
+    }
+  }
+  const out: ParsedBigIntFilter = {};
+  for (const op of BIGINT_FILTER_SUPPORTED_OPS) {
+    const v = raw[op];
+    if (v == null) continue;
+    try {
+      out[op] = BigInt(v as string | number | bigint);
+    } catch {
+      throw new Error(
+        `${fieldName}.${op}: expected an integer value; got ${String(v)}`
+      );
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
+};
+
+/**
+ * Build a `ParsedBigIntFilter` from the deprecated flat
+ * `<field>Min` / `<field>Max` string args. Returns `null` when both
+ * are empty/null. Malformed strings are silently ignored (lenient
+ * legacy semantics — these args are on their way out).
+ */
+const flatRangeToFilter = (
+  min: string | null | undefined,
+  max: string | null | undefined
+): ParsedBigIntFilter | null => {
+  if (!min && !max) return null;
+  const out: ParsedBigIntFilter = {};
+  if (min) {
+    try {
+      out.gte = BigInt(min);
+    } catch {
+      /* malformed — ignore */
+    }
+  }
+  if (max) {
+    try {
+      out.lte = BigInt(max);
+    } catch {
+      /* malformed — ignore */
+    }
+  }
+  return out.gte !== undefined || out.lte !== undefined ? out : null;
+};
+
+/**
+ * Evaluate a parsed filter against a value in JS. Used for filtering
+ * synthesized rows that don't reach SQL (per-sell CLOSED rows with
+ * `balance: '0'`).
+ */
+const evalBigIntFilter = (
+  filter: ParsedBigIntFilter | null,
+  value: bigint
+): boolean => {
+  if (!filter) return true;
+  if (filter.equals !== undefined && value !== filter.equals) return false;
+  if (filter.gt !== undefined && !(value > filter.gt)) return false;
+  if (filter.gte !== undefined && !(value >= filter.gte)) return false;
+  if (filter.lt !== undefined && !(value < filter.lt)) return false;
+  if (filter.lte !== undefined && !(value <= filter.lte)) return false;
+  return true;
+};
+
+/**
+ * Render a parsed filter to a list of SQL fragments comparing the
+ * given column expression against decimal-cast wei literals. Returns
+ * an empty list when the filter has no narrowing operator. Callers
+ * `AND` the fragments into the surrounding WHERE.
+ */
+const renderBigIntFilterToSql = (
+  filter: ParsedBigIntFilter,
+  columnExpr: Prisma.Sql
+): Prisma.Sql[] => {
+  const parts: Prisma.Sql[] = [];
+  if (filter.equals !== undefined) {
+    parts.push(
+      Prisma.sql`${columnExpr} = ${filter.equals.toString()}::DECIMAL`
+    );
+  }
+  if (filter.gt !== undefined) {
+    parts.push(Prisma.sql`${columnExpr} > ${filter.gt.toString()}::DECIMAL`);
+  }
+  if (filter.gte !== undefined) {
+    parts.push(Prisma.sql`${columnExpr} >= ${filter.gte.toString()}::DECIMAL`);
+  }
+  if (filter.lt !== undefined) {
+    parts.push(Prisma.sql`${columnExpr} < ${filter.lt.toString()}::DECIMAL`);
+  }
+  if (filter.lte !== undefined) {
+    parts.push(Prisma.sql`${columnExpr} <= ${filter.lte.toString()}::DECIMAL`);
+  }
+  return parts;
+};
+
+/**
+ * Stable JSON key for a parsed filter — used in cache keys where the
+ * filter discriminates output (synthesized CLOSED rows depend on
+ * whether `0n` satisfies the filter, and balance filters can also
+ * suppress otherwise-valid synthesized rows).
+ */
+const filterCacheKey = (filter: ParsedBigIntFilter | null): string => {
+  if (!filter) return '-';
+  return BIGINT_FILTER_SUPPORTED_OPS.map((op) => {
+    const v = filter[op];
+    return v === undefined ? '' : `${op}:${v.toString()}`;
+  })
+    .filter(Boolean)
+    .join(',');
+};
 
 type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
@@ -382,18 +537,14 @@ const positionSynthesisCacheKey = (
     holder: string;
     updatedAt: Date;
   },
-  balanceMinWei: bigint
+  balanceFilter: ParsedBigIntFilter | null
 ) =>
-  // `balanceMinWei` changes synthesizer output (suppresses CLOSED rows
-  // whose `balance: "0"` would fall below the bound), so it must be
-  // part of the cache key — otherwise a request with one bound can
-  // serve another's entry under the same updatedAt and return the
-  // wrong row set. Bucketed as `0` vs `>0` since the synthesis
-  // decision is binary (emit or skip CLOSED rows); finer bucketing
-  // isn't needed today.
-  `${r.chainId}:${r.tokenAddress}:${r.holder}:${r.updatedAt.getTime()}:${
-    balanceMinWei > 0n ? 'p' : 'a'
-  }`;
+  // The balance filter changes synthesizer output (CLOSED rows carry
+  // `balance: "0"` and are emitted iff `0n` satisfies the filter), so
+  // it must be part of the cache key — otherwise a request with one
+  // filter can serve another's entry under the same updatedAt and
+  // return the wrong row set.
+  `${r.chainId}:${r.tokenAddress}:${r.holder}:${r.updatedAt.getTime()}:${filterCacheKey(balanceFilter)}`;
 
 /** Test-only: clear synthesis cache between test cases. */
 export const __clearPositionSynthesisCache = () =>
@@ -404,6 +555,19 @@ export type PositionsPageEnvelope = {
   hasMore: boolean;
   totalCount: number | null;
   _countWhere?: Prisma.PositionWhereInput;
+};
+
+/**
+ * Extended args for `runPositions` — superset of the deprecated bare
+ * `positions(...)` args. The operator-pattern filter inputs
+ * (`balance: BigIntFilter`, `collateral: BigIntFilter`) live only on
+ * `positionsPage(filters: PositionFilters)` and aren't exposed on the
+ * deprecated `positions` query; this internal type carries them
+ * through `mergePositionFilters` → `runPositions` → `normalizePositionsArgs`.
+ */
+export type RunPositionsArgs = QueryPositionsArgs & {
+  balance?: BigIntFilter | null;
+  collateral?: BigIntFilter | null;
 };
 
 type NormalizedPositionsArgs = {
@@ -418,38 +582,34 @@ type NormalizedPositionsArgs = {
   endsAtMin: number | null | undefined;
   endsAtMax: number | null | undefined;
   holderWon: boolean | null | undefined;
-  collateralMin: string | null | undefined;
-  collateralMax: string | null | undefined;
+  collateralFilter: ParsedBigIntFilter | null;
   /**
-   * Minimum on-chain token balance the row must carry (wei, bigint).
-   * `0n` means no filter. Synthesized CLOSED rows (whose `balance: "0"`
-   * is below any positive lower bound) are also gated on this — see
-   * `synthesizePositionRow`.
+   * Strict numeric filter on `Position.balance` (wei). `null` means no
+   * filter — every row matches on this axis. Synthesized CLOSED rows
+   * (whose `balance: "0"` event values are constructed in-memory) are
+   * filtered against this in `synthesizePositionRow`.
    */
-  balanceMinWei: bigint;
+  balanceFilter: ParsedBigIntFilter | null;
   orderField: 'createdAt' | 'updatedAt';
   orderDirection: 'asc' | 'desc';
 };
 
 /**
- * Parse the SDL `balanceMin: String` arg into a bigint. Unparseable
- * or negative inputs collapse to `0n` (no filter) — same lenient
- * treatment as the `collateralMin`/`collateralMax` filter args, where
- * a malformed string would otherwise propagate a runtime exception
- * through every resolver invocation on the path.
+ * Resolve the effective collateral filter: prefer the operator-pattern
+ * `collateral: BigIntFilter` when present; fall back to the deprecated
+ * flat `collateralMin`/`collateralMax` strings otherwise. The two
+ * cannot meaningfully be merged — callers should use one or the other.
  */
-const parseBalanceMin = (raw: string | null | undefined): bigint => {
-  if (!raw) return 0n;
-  try {
-    const v = BigInt(raw);
-    return v > 0n ? v : 0n;
-  } catch {
-    return 0n;
-  }
+const resolveCollateralFilter = (
+  args: RunPositionsArgs
+): ParsedBigIntFilter | null => {
+  const parsed = parseBigIntFilter(args.collateral ?? null, 'collateral');
+  if (parsed) return parsed;
+  return flatRangeToFilter(args.collateralMin, args.collateralMax);
 };
 
 const normalizePositionsArgs = (
-  args: QueryPositionsArgs
+  args: RunPositionsArgs
 ): NormalizedPositionsArgs => ({
   cappedTake: clampTake(args.take, { defaultTake: 50, maxTake: 100 }),
   // Positions uses a 10_000 ceiling rather than the shared
@@ -471,13 +631,12 @@ const normalizePositionsArgs = (
   endsAtMin: args.endsAtMin,
   endsAtMax: args.endsAtMax,
   holderWon: args.holderWon,
-  collateralMin: args.collateralMin,
-  collateralMax: args.collateralMax,
-  // `balanceMin` is a decimal-string wei value (can exceed JS Number
-  // precision). Parse here so downstream code works with bigint; an
-  // unparseable input becomes 0n (no filter) rather than throwing —
-  // matches the lenient null/undefined semantics of the other filters.
-  balanceMinWei: parseBalanceMin(args.balanceMin),
+  collateralFilter: resolveCollateralFilter(args),
+  // `balance: BigIntFilter` is the operator-pattern numeric filter.
+  // Strict semantics — see `applyBalanceFilter`. Unsupported operators
+  // throw; supported operators (equals/gt/gte/lt/lte) flow through to
+  // raw SQL with a DECIMAL cast on the VarChar `Position.balance`.
+  balanceFilter: parseBigIntFilter(args.balance ?? null, 'balance'),
   // PositionSortField SDL enum values are CREATED_AT / UPDATED_AT; map
   // to the Prisma column name for orderBy.
   orderField: args.orderBy === 'CREATED_AT' ? 'createdAt' : 'updatedAt',
@@ -538,9 +697,9 @@ const buildPositionsWhere = (
     where.pickConfigId = { in: conditionPickConfigIds };
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (pickConfigIdLower && !conditionId) where.pickConfigId = pickConfigIdLower;
-  // `balanceMin` isn't applied here — it requires a numeric comparison
+  // `balance` isn't applied here — it requires a numeric comparison
   // against the VarChar `balance` column, which Prisma can't express
-  // (its `gte` is lexicographic). `applyBalanceMinFilter` runs a raw
+  // (its `gte` is lexicographic). `applyBalanceFilter` runs a raw
   // SQL pre-query and constrains the main findMany via `id IN (…)`.
 
   if (settled !== undefined && settled !== null) {
@@ -600,21 +759,33 @@ const buildPositionsWhere = (
 };
 
 /**
- * Pre-query pickConfigIds where the holder's collateral is in
- * [collateralMin, collateralMax] via a raw UNION grouped by side
- * (predictor vs counterparty). Returns the intersected pickConfigId
- * filter to merge into the where, or `null` to signal "no matching
- * configs — return empty page".
+ * Pre-query pickConfigIds where the holder's collateral on the
+ * pickConfig satisfies every operator on the filter. Groups raw
+ * `Prediction` rows by `pickConfigId` and side (predictor vs
+ * counterparty) via a UNION; each branch sums the holder's collateral
+ * on that side and applies the operator(s) in the `HAVING` clause.
+ * Returns the intersected pickConfigId filter to merge into the where,
+ * or `null` to signal "no matching configs — return empty page".
  */
-const applyCollateralRangeFilter = async (
+const applyCollateralFilter = async (
   where: Prisma.PositionWhereInput,
   holderLower: string,
-  collateralMin: string | null | undefined,
-  collateralMax: string | null | undefined
+  filter: ParsedBigIntFilter
 ): Promise<Prisma.PositionWhereInput | null> => {
-  if (!collateralMin && !collateralMax) return where;
-  const minVal = collateralMin ? BigInt(collateralMin) : 0n;
-  const maxVal = collateralMax ? BigInt(collateralMax) : null;
+  const predictorConditions = renderBigIntFilterToSql(
+    filter,
+    Prisma.sql`SUM(CAST("predictorCollateral" AS DECIMAL))`
+  );
+  const counterpartyConditions = renderBigIntFilterToSql(
+    filter,
+    Prisma.sql`SUM(CAST("counterpartyCollateral" AS DECIMAL))`
+  );
+  // `renderBigIntFilterToSql` only returns empty when the parsed filter
+  // has no operators; the caller short-circuits on a null filter, so a
+  // non-null filter here always produces at least one fragment.
+  if (predictorConditions.length === 0) return where;
+  const predictorHaving = Prisma.join(predictorConditions, ' AND ');
+  const counterpartyHaving = Prisma.join(counterpartyConditions, ' AND ');
   interface PickConfigRow {
     pickConfigId: string;
     is_predictor: boolean;
@@ -624,15 +795,13 @@ const applyCollateralRangeFilter = async (
     FROM "Prediction"
     WHERE predictor = ${holderLower} AND "pickConfigId" IS NOT NULL
     GROUP BY "pickConfigId"
-    HAVING SUM(CAST("predictorCollateral" AS DECIMAL)) >= ${minVal.toString()}::DECIMAL
-      ${maxVal !== null ? Prisma.sql`AND SUM(CAST("predictorCollateral" AS DECIMAL)) <= ${maxVal.toString()}::DECIMAL` : Prisma.empty}
+    HAVING ${predictorHaving}
     UNION
     SELECT "pickConfigId", false AS is_predictor
     FROM "Prediction"
     WHERE counterparty = ${holderLower} AND "pickConfigId" IS NOT NULL
     GROUP BY "pickConfigId"
-    HAVING SUM(CAST("counterpartyCollateral" AS DECIMAL)) >= ${minVal.toString()}::DECIMAL
-      ${maxVal !== null ? Prisma.sql`AND SUM(CAST("counterpartyCollateral" AS DECIMAL)) <= ${maxVal.toString()}::DECIMAL` : Prisma.empty}
+    HAVING ${counterpartyHaving}
   `;
   if (matchingConfigs.length === 0) return null;
   const validPickConfigIds = matchingConfigs.map((r) => r.pickConfigId);
@@ -654,30 +823,36 @@ const applyCollateralRangeFilter = async (
 };
 
 /**
- * Numeric lower-bound filter on `Position.balance`. The column is
- * stored as a VarChar of the wei integer (values exceed JS Number
- * precision), so Prisma's native `gte` would lex-compare (`'10' < '9'`).
- * Pre-query matching Position IDs via raw SQL with `CAST(... AS DECIMAL)`,
- * then constrain the main findMany via `id IN (…)`.
+ * Strict operator-pattern numeric filter on `Position.balance`. The
+ * column is stored as a VarChar of the wei integer (values exceed JS
+ * Number precision), so Prisma's native comparators are lexicographic
+ * (`'10' < '9'`). Pre-query matching Position IDs via raw SQL with
+ * `CAST(... AS DECIMAL)`, then constrain the main findMany via
+ * `id IN (…)`.
  *
- * Permissive semantics: `(balance >= min) OR pickConfig.resolved = true`.
- * Resolved positions stay visible regardless of remaining balance —
- * claimed winners (balance=0, resolved=true) carry meaningful
- * settlement PnL and shouldn't be silently dropped by a balance bound.
- * Matches the existing `positionCount` baseline visibility rule
- * (`NOT (balance='0' AND resolved=false)`) so count and list semantics
- * agree on resolved-row visibility.
+ * Strict semantics — the row is kept iff its balance satisfies every
+ * operator. To include claimed winners (resolved, zero-balance) in
+ * the same result set, omit the filter or compose with `settled: true`
+ * as a separate query — there is no implicit OR.
  *
  * Returns `null` to signal "no positions match — short-circuit to an
  * empty page" so callers can avoid the downstream findMany/synthesis
  * work.
  */
-const applyBalanceMinFilter = async (
+const applyBalanceFilter = async (
   where: Prisma.PositionWhereInput,
   holderLower: string | undefined,
-  balanceMinWei: bigint
+  filter: ParsedBigIntFilter
 ): Promise<Prisma.PositionWhereInput | null> => {
-  if (balanceMinWei <= 0n) return where;
+  const conditions = renderBigIntFilterToSql(
+    filter,
+    Prisma.sql`CAST(p.balance AS DECIMAL)`
+  );
+  // No-op filter (parsed but every operator was undefined) — return
+  // the where unchanged. Callers should already have short-circuited
+  // on a null parsed filter; this guard is defense in depth.
+  if (conditions.length === 0) return where;
+  const balanceWhere = Prisma.join(conditions, ' AND ');
   interface IdRow {
     id: number;
   }
@@ -686,27 +861,15 @@ const applyBalanceMinFilter = async (
   // holder, the conditionId / pickConfigId paths already narrow the
   // working set via the main where, so the unscoped variant only
   // runs when the caller has explicitly opened a broader query.
-  //
-  // The LEFT JOIN to `Picks` lets the `pc.resolved = true` branch of
-  // the OR contribute — a Position whose pickConfig is resolved stays
-  // in the result set even if its balance is below the bound.
   const rows = holderLower
     ? await prisma.$queryRaw<IdRow[]>`
         SELECT p.id FROM "Position" p
-        LEFT JOIN "Picks" pc ON pc.id = p."pickConfigId"
         WHERE p.holder = ${holderLower}
-          AND (
-            CAST(p.balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
-            OR pc.resolved = true
-          )
+          AND ${balanceWhere}
       `
     : await prisma.$queryRaw<IdRow[]>`
         SELECT p.id FROM "Position" p
-        LEFT JOIN "Picks" pc ON pc.id = p."pickConfigId"
-        WHERE (
-          CAST(p.balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
-          OR pc.resolved = true
-        )
+        WHERE ${balanceWhere}
       `;
   if (rows.length === 0) return null;
   const matchingIds = rows.map((r) => r.id);
@@ -760,7 +923,7 @@ const positionKey = (chainId: number, token: string, holder: string) =>
 const synthesizePositionRow = (
   r: PositionRow,
   trades: readonly TradeRow[],
-  balanceMinWei: bigint
+  balanceFilter: ParsedBigIntFilter | null
 ): PositionShape[] => {
   const pc = r.pickConfiguration;
   let totalPayout = 0n;
@@ -857,10 +1020,10 @@ const synthesizePositionRow = (
 
   // Emit one synthetic row per sell (only meaningful for unresolved
   // pickConfigs — once settled, the existing PnL flow takes over).
-  // CLOSED rows carry `balance: '0'`, so any positive `balanceMinWei`
-  // bound would exclude them; gate emission accordingly so the UI can
-  // show only currently-held positions when it asks for it.
-  if (!isResolved && balanceMinWei === 0n) {
+  // CLOSED rows carry `balance: '0'`; emit iff `0n` satisfies the
+  // balance filter (strict semantics — `{ gte: "1" }` suppresses them,
+  // `{ equals: "0" }` or no filter keeps them).
+  if (!isResolved && evalBigIntFilter(balanceFilter, 0n)) {
     for (const d of disposalRows) {
       out.push({
         id: `${r.id}-sell-${d.tradeHash}`,
@@ -914,13 +1077,13 @@ const synthesizePositionRow = (
  */
 const synthesizePositionsPage = async (
   rows: PositionRow[],
-  balanceMinWei: bigint
+  balanceFilter: ParsedBigIntFilter | null
 ): Promise<PositionShape[]> => {
   const cachedByRow = new Map<PositionRow, PositionShape[]>();
   const missedRows: PositionRow[] = [];
   for (const r of rows) {
     const cached = positionSynthesisCache.get(
-      positionSynthesisCacheKey(r, balanceMinWei)
+      positionSynthesisCacheKey(r, balanceFilter)
     );
     if (cached) cachedByRow.set(r, cached);
     else missedRows.push(r);
@@ -974,10 +1137,10 @@ const synthesizePositionsPage = async (
     const synthesized = synthesizePositionRow(
       r,
       tradesByPos.get(k) ?? [],
-      balanceMinWei
+      balanceFilter
     );
     positionSynthesisCache.set(
-      positionSynthesisCacheKey(r, balanceMinWei),
+      positionSynthesisCacheKey(r, balanceFilter),
       synthesized
     );
     out.push(...synthesized);
@@ -1010,7 +1173,7 @@ const EMPTY_POSITIONS_PAGE: PositionsPageEnvelope = {
 };
 
 export const runPositions = async (
-  args: QueryPositionsArgs
+  args: RunPositionsArgs
 ): Promise<PositionsPageEnvelope> => {
   const norm = normalizePositionsArgs(args);
 
@@ -1025,22 +1188,21 @@ export const runPositions = async (
   let where = buildPositionsWhere(norm, conditionPickConfigIds);
   if (where === null) return EMPTY_POSITIONS_PAGE;
 
-  if (norm.holderLower && (norm.collateralMin || norm.collateralMax)) {
-    const next = await applyCollateralRangeFilter(
+  if (norm.holderLower && norm.collateralFilter) {
+    const next = await applyCollateralFilter(
       where,
       norm.holderLower,
-      norm.collateralMin,
-      norm.collateralMax
+      norm.collateralFilter
     );
     if (next === null) return EMPTY_POSITIONS_PAGE;
     where = next;
   }
 
-  if (norm.balanceMinWei > 0n) {
-    const next = await applyBalanceMinFilter(
+  if (norm.balanceFilter) {
+    const next = await applyBalanceFilter(
       where,
       norm.holderLower,
-      norm.balanceMinWei
+      norm.balanceFilter
     );
     if (next === null) return EMPTY_POSITIONS_PAGE;
     where = next;
@@ -1089,7 +1251,7 @@ export const runPositions = async (
   const hasMore = rawRows.length > norm.cappedTake;
   const rows = rawRows.slice(0, norm.cappedTake);
 
-  const synthesized = await synthesizePositionsPage(rows, norm.balanceMinWei);
+  const synthesized = await synthesizePositionsPage(rows, norm.balanceFilter);
   const sorted = sortSynthesizedRows(
     synthesized,
     norm.orderField,
@@ -1104,7 +1266,7 @@ export const runPositions = async (
  */
 const mergePositionFilters = (
   args: QueryPositionsPageArgs
-): QueryPositionsArgs => {
+): RunPositionsArgs => {
   const f = args.filters ?? null;
   return {
     take: args.take,
@@ -1118,11 +1280,12 @@ const mergePositionFilters = (
     result: f?.result ?? args.result ?? null,
     settled: f?.settled ?? args.settled ?? null,
     holderWon: f?.holderWon ?? args.holderWon ?? null,
+    collateral: f?.collateral ?? null,
     collateralMin: f?.collateralMin ?? args.collateralMin ?? null,
     collateralMax: f?.collateralMax ?? args.collateralMax ?? null,
     endsAtMin: f?.endsAtMin ?? args.endsAtMin ?? null,
     endsAtMax: f?.endsAtMax ?? args.endsAtMax ?? null,
-    balanceMin: f?.balanceMin ?? args.balanceMin ?? null,
+    balance: f?.balance ?? null,
   };
 };
 

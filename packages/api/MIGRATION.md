@@ -4,39 +4,49 @@ A running log of API changes that downstream services should adopt. Entries are 
 
 ---
 
-## `balanceMin` — server-side balance filter on positions queries
+## `PositionFilters.balance` / `PositionFilters.collateral` — operator-pattern numeric filters on positions queries
 
 ### TL;DR
 
-New optional `balanceMin: String` arg on `positionsPage`, `positionCount`, and the deprecated `positions` query — also a field on `PositionFilters` (the preferred path post-#1719). Decimal-string wei value (e.g. `"1"`, `"1000000000000000000"` for 1 ETH). Defaults to omitted; existing callers are unaffected.
+Two new optional fields on `PositionFilters`:
 
-When set to a positive value, the resolver:
+- **`balance: BigIntFilter`** — strict numeric filter on `Position.balance` (wei). Supported operators: `equals`, `gt`, `gte`, `lt`, `lte`. New.
+- **`collateral: BigIntFilter`** — same shape, on the holder's collateral on the pickConfig. Replaces the flat `collateralMin: String` / `collateralMax: String` pair.
 
-1. Pre-queries matching `Position` IDs via raw SQL with `(CAST(balance AS DECIMAL) >= <minVal>) OR pickConfig.resolved = true` (Prisma's native `gte` would lex-compare the VarChar column — `"10" < "9"` — so the cast is required; the OR-`resolved` branch is the permissive keepalive, see below).
-2. Constrains the main `findMany` via `id IN (…)`.
-3. Skips emission of synthesized per-sell **CLOSED** rows in the synthesis layer — those carry `balance: "0"` so any positive lower bound would exclude them, and they're only emitted from unresolved positions in the first place.
+The flat `collateralMin` / `collateralMax` args are now `@deprecated`. They keep working for one release; migrate at your convenience.
 
-### Semantics — permissive
+`BigIntFilter` is the existing Prisma-style filter input (`{ equals, gt, gte, lt, lte, in, notIn, not }`); we wire up the common comparators and reject `in` / `notIn` / `not` at the resolver with a clear error message. They are accepted by the input type only because the surface is shared with Prisma CRUD inputs; treat them as "not yet supported" until a use case lands.
 
-`balance >= min` **OR** `pickConfig.resolved = true`. Resolved zero-balance rows (claimed winners whose payout has been redeemed) stay visible regardless of the bound. They carry meaningful settlement PnL (cost basis, payout, final outcome) that the FE typically wants on a position-list view; silently dropping them under a numeric filter would surprise callers. Matches the existing `positionCount` baseline visibility rule (`NOT (balance='0' AND resolved=false)`) so count and list semantics agree.
+### Why the operator pattern, not flat `<field>Min` / `<field>Max`
 
-To scope to **open positions only** (exclude both zero-balance unresolved AND all resolved rows), combine `balanceMin: "1"` with `settled: false` — `settled` narrows both branches of the OR, so the resolved-keepalive branch is implicitly disabled.
+- Composable. `{ balance: { gte: "1", lte: "1000000000000000000" } }` is one filter object; the flat form would need `balanceMin: "1", balanceMax: "1000…"` plus per-operator naming bikeshed.
+- Extensible. Adding `gt` / `lt` / `equals` doesn't grow the arg surface combinatorially.
+- Matches the Prisma / Hasura / Linear convention. Most modern GraphQL APIs surface comparator-style filter inputs this way.
 
-`PositionsPage.totalCount` reflects the same `id IN (…)` filter via the lazy `_countWhere` plumbing, so pagination stays consistent under the bound.
+`endsAtMin` / `endsAtMax` (on `PredictionFilters`) and other flat `<field>Min/Max` pairs across the schema follow the same migration path in a separate PR.
 
-### Why a `String`, not a `Number`
+### Strict semantics — no implicit OR
 
-`Position.balance` is wei (no decimals on-chain). 1 ETH = `10**18` wei = exceeds JS `Number.MAX_SAFE_INTEGER` (`2**53`) by 5 orders of magnitude. The codebase uses `String` for every wei-scale arg (see `collateralMin`/`collateralMax` on the same `PositionFilters` input); `balanceMin` follows the same convention.
+A row is kept iff its balance satisfies **every** operator on the filter. There is no permissive "OR resolved" magic — `{ balance: { gte: "1" } }` excludes claimed winners (resolved, zero-balance) because their raw balance fails the predicate. This is a deliberate departure from the implicit-OR semantic that the unshipped `balanceMin` arg carried during PR review.
 
-### When to use it
+To get "open positions + recently-claimed winners" in one result set, either:
 
-UI surfaces that show "currently held positions" — anywhere a zero-balance unresolved row would otherwise be filtered client-side. Server-side filtering keeps `skip`/`take` pagination and `totalCount` accurate; client-side filtering after fetch silently breaks both.
+- **Omit the balance filter entirely** and let the FE display the full set, or
+- **Issue two queries** — one with `balance: { gte: "1" }` for open positions, one with `settled: true` for resolved winners — and merge client-side.
 
-### Usage — preferred (`filters:` input)
+Synthesized per-sell CLOSED rows (the `balance: "0"` event rows recording realized PnL from secondary-market sells) follow the same strict rule: they're emitted iff `0` satisfies the filter (so `{ equals: "0" }` keeps them, `{ gte: "1" }` suppresses them).
+
+`PositionsPage.totalCount` honors the same filter via the lazy `_countWhere` plumbing, so pagination stays consistent.
+
+### Why `BigIntFilter` (and not `StringFilter`)
+
+`Position.balance` is wei. 1 ETH = `10**18` wei = exceeds JS `Number.MAX_SAFE_INTEGER` (`2**53`) by 5 orders of magnitude. The `BigInt` scalar (graphql-scalars `BigIntResolver`) accepts string / number / bigint on the wire and parses to a JS `bigint` at the resolver. The values round-trip safely at every layer.
+
+### Usage — preferred
 
 ```graphql
 query OpenPositions($holder: String!) {
-  positionsPage(filters: { holder: $holder, balanceMin: "1" }, take: 50) {
+  positionsPage(filters: { holder: $holder, balance: { gte: "1" } }, take: 50) {
     hasMore
     totalCount
     items {
@@ -50,12 +60,17 @@ query OpenPositions($holder: String!) {
 }
 ```
 
-### Usage — deprecated flat-arg form
+Combine operators on the same filter for a range:
 
 ```graphql
-query OpenPositions($holder: String!) {
-  positionsPage(holder: $holder, balanceMin: "1", take: 50) {
-    hasMore
+query DustyPositions($holder: String!) {
+  positionsPage(
+    filters: {
+      holder: $holder
+      balance: { gte: "1", lte: "1000000000000000000" } # 1 wei to 1 ETH
+    }
+    take: 50
+  ) {
     items {
       id
       balance
@@ -64,9 +79,31 @@ query OpenPositions($holder: String!) {
 }
 ```
 
-### `positionCount` under the bound
+### Migration: `collateralMin` / `collateralMax` → `collateral: { ... }`
 
-`positionCount(holder, balanceMin: "1")` returns the same number as `positionsPage(filters: { holder, balanceMin: "1" }, take: 1).totalCount`. The count goes through a raw SQL path when `balanceMin > 0` (Prisma can't cast the VarChar column), but applies the same predicate as the list query. Prefer the `*Page.totalCount` shape on new callers; `positionCount` remains for one release alongside the flat-arg deprecations.
+**Before** (still works for one release with `@deprecated` notices):
+
+```graphql
+positionsPage(
+  filters: { holder: $holder, collateralMin: "100", collateralMax: "1000" }
+  take: 50
+) { items { id } }
+```
+
+**After**:
+
+```graphql
+positionsPage(
+  filters: { holder: $holder, collateral: { gte: "100", lte: "1000" } }
+  take: 50
+) { items { id } }
+```
+
+When both shapes are set on the same input, the new `collateral` filter wins; the deprecated flat args are ignored.
+
+### `positionCount` — no balance filter
+
+`positionCount` no longer accepts a balance bound. Use `positionsPage(filters: { balance: ... }, take: 1).totalCount` instead — same count, lazy, and consistent with the list query.
 
 ---
 

@@ -12,6 +12,7 @@ vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
 import type {
   QueryPositionsArgs,
+  QueryPositionsPageArgs,
   QueryPositionCountArgs,
   QueryPickConfigurationsArgs,
 } from '../../__generated__/resolvers';
@@ -29,7 +30,7 @@ import { positionCount } from './deprecated/escrow';
 // tests.
 type PositionsPageFn = (
   parent: unknown,
-  args: QueryPositionsArgs,
+  args: QueryPositionsPageArgs,
   ctx: unknown,
   info: unknown
 ) => Promise<{
@@ -160,7 +161,7 @@ type PositionRowShape = {
 // array directly) keep working — the synthetic-row + WAC logic is the
 // same regardless of which Page/non-Page entry point is used.
 const callPositions = async (
-  args: Partial<QueryPositionsArgs> = {}
+  args: Partial<QueryPositionsPageArgs> = {}
 ): Promise<PositionRowShape[]> => {
   const result = await positionsPageFn(
     undefined,
@@ -828,50 +829,15 @@ describe('positionCount resolver', () => {
       NOT: { balance: '0', pickConfiguration: { resolved: false } },
     });
   });
-
-  it('balanceMin > 0: counts via raw SQL (Prisma can’t cast VarChar balance numerically)', async () => {
-    mockPrisma.$queryRaw.mockResolvedValue([{ count: 4n }]);
-
-    const result = await positionCountFn(
-      undefined,
-      { holder: ALICE, balanceMin: '1' },
-      undefined,
-      undefined
-    );
-
-    expect(result).toBe(4);
-    // Prisma's `count()` must NOT be used when balanceMin > 0 — the
-    // raw SQL path is the source of truth.
-    expect(mockPrisma.position.count).not.toHaveBeenCalled();
-    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
-  });
-
-  it('balanceMin = "0" or unparseable: falls back to the Prisma count path', async () => {
-    mockPrisma.position.count.mockResolvedValue(7);
-
-    const result = await positionCountFn(
-      undefined,
-      { holder: ALICE, balanceMin: '0' },
-      undefined,
-      undefined
-    );
-
-    expect(result).toBe(7);
-    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
-    const callArgs = mockPrisma.position.count.mock.calls[0][0];
-    expect(callArgs.where).toMatchObject({
-      holder: ALICE.toLowerCase(),
-      NOT: { balance: '0', pickConfiguration: { resolved: false } },
-    });
-  });
 });
 
-describe('positions resolver — balanceMin filter', () => {
-  it('partial sale: balanceMin = "1" emits OPEN row only, suppresses CLOSED rows', async () => {
-    // Without the filter this fixture emits one CLOSED + one OPEN row
-    // (see "partial secondary sale" test). With balanceMin > 0, the
-    // synthesizer skips CLOSED-row emission because their `balance: "0"`
-    // falls below the bound.
+describe('positions resolver — balance: BigIntFilter (operator-pattern)', () => {
+  it('partial sale: `balance: { gte: "1" }` keeps OPEN row, suppresses synthesized CLOSED rows', async () => {
+    // Without a balance filter this fixture emits one CLOSED + one OPEN
+    // row (see "partial secondary sale" test). With `gte: "1"`, the
+    // synthesizer's CLOSED rows (balance="0") don't satisfy the
+    // operator and are skipped; the OPEN row's balance is 100 and
+    // passes through unchanged.
     mockPrisma.$queryRaw.mockResolvedValue([{ id: 1 }]);
     mockPrisma.position.findMany.mockResolvedValue([
       makePosition({
@@ -892,7 +858,9 @@ describe('positions resolver — balanceMin filter', () => {
       }),
     ]);
 
-    const result = await callPositions({ balanceMin: '1' });
+    const result = await callPositions({
+      filters: { balance: { gte: 1n } },
+    });
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -902,15 +870,17 @@ describe('positions resolver — balanceMin filter', () => {
     });
   });
 
-  it('runPositions: balanceMin > 0 runs a raw-SQL pre-query and constrains findMany via id IN (…)', async () => {
-    // Position.balance is VarChar; Prisma's `gte` is lexicographic and
-    // would mis-order numerically (e.g. "10" < "9"). The resolver pre-
-    // queries matching IDs with CAST(... AS DECIMAL) and then narrows
-    // findMany by `id`.
+  it('runs a raw-SQL pre-query (CAST balance AS DECIMAL) and constrains findMany via id IN (…)', async () => {
+    // Position.balance is VarChar; Prisma's native `gte` is
+    // lexicographic and would mis-order numerically (e.g. "10" < "9").
+    // The resolver pre-queries matching IDs with CAST(... AS DECIMAL)
+    // and then narrows findMany by `id`.
     mockPrisma.$queryRaw.mockResolvedValue([{ id: 11 }, { id: 22 }]);
     mockPrisma.position.findMany.mockResolvedValue([]);
 
-    await callPositions({ balanceMin: '500000000000000000' });
+    await callPositions({
+      filters: { balance: { gte: 500000000000000000n } },
+    });
 
     expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
     const findManyWhere = mockPrisma.position.findMany.mock.calls[0][0].where;
@@ -921,53 +891,38 @@ describe('positions resolver — balanceMin filter', () => {
   });
 
   it('empty pre-query result → empty page (no findMany or trades fetch)', async () => {
-    // When the pre-query returns no IDs (holder has no positions
-    // matching the bound OR resolved), the resolver short-circuits
-    // to an empty page without paying for findMany / synthesis.
+    // When the pre-query returns no IDs the resolver short-circuits to
+    // an empty page without paying for findMany / synthesis.
     mockPrisma.$queryRaw.mockResolvedValue([]);
 
-    const result = await callPositions({ balanceMin: '1' });
+    const result = await callPositions({
+      filters: { balance: { gte: 1n } },
+    });
 
     expect(result).toHaveLength(0);
     expect(mockPrisma.position.findMany).not.toHaveBeenCalled();
     expect(mockPrisma.secondaryTrade.findMany).not.toHaveBeenCalled();
   });
 
-  it('permissive: claimed winner (resolved, balance=0) stays visible under balanceMin > 0', async () => {
-    // The pre-query SQL is `(balance >= min) OR pc.resolved = true`,
-    // so resolved zero-balance rows pass through. The synthesizer
-    // then emits a single OPEN row for the resolved position
-    // (disposal loop is skipped for resolved positions regardless of
-    // the bound; OPEN row emits because `isResolved` is true).
-    mockPrisma.$queryRaw.mockResolvedValue([{ id: 1 }]);
-    mockPrisma.position.findMany.mockResolvedValue([
-      makePosition({
-        balance: '0',
-        pickConfiguration: makePickConfig({
-          resolved: true,
-          result: 'PREDICTOR_WINS',
-          resolvedAt: TS_SELL,
-          predictions: [makePrediction()],
-        }),
-      }),
-    ]);
+  it('strict: claimed winner (resolved, balance=0) is excluded by `balance: { gte: "1" }`', async () => {
+    // Strict semantics — there is no permissive OR. The raw `0`
+    // balance fails the `gte: "1"` operator, so the pre-query SQL
+    // returns no IDs for this fixture and the page is empty. Callers
+    // who want claimed winners alongside open positions must omit
+    // the balance filter (or query `settled: true` separately).
+    mockPrisma.$queryRaw.mockResolvedValue([]);
 
-    const result = await callPositions({ balanceMin: '1' });
-
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      id: '1',
-      balance: '0',
-      userCollateral: '100',
-      totalPayout: '200',
+    const result = await callPositions({
+      filters: { balance: { gte: 1n } },
     });
+
+    expect(result).toHaveLength(0);
   });
 
-  it('synthesis suppresses CLOSED rows even if findMany returns a zero-balance row', async () => {
-    // Defense-in-depth: the pre-query normally excludes zero-balance
-    // rows, but if a fixture/test forces one through, the synthesis
-    // gate (`balanceMinWei > 0n` skips disposal emission) must still
-    // suppress the CLOSED rows.
+  it('`balance: { equals: "0" }` keeps synthesized CLOSED rows (zero satisfies equals=0)', async () => {
+    // Strict semantics flow into the synthesizer: a CLOSED row carries
+    // balance="0" and is emitted iff `0n` satisfies the filter. `equals: "0"`
+    // does — so CLOSED rows survive — while `gte: "1"` does not.
     mockPrisma.$queryRaw.mockResolvedValue([{ id: 1 }]);
     mockPrisma.position.findMany.mockResolvedValue([
       makePosition({
@@ -988,9 +943,42 @@ describe('positions resolver — balanceMin filter', () => {
       }),
     ]);
 
-    const result = await callPositions({ balanceMin: '1' });
+    const result = await callPositions({
+      filters: { balance: { equals: 0n } },
+    });
 
-    expect(result).toHaveLength(0);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ balance: '0' });
+  });
+
+  it('`balance: { gte: "1", lte: "1000" }` ANDs operators in the same SQL HAVING', async () => {
+    // Multiple operators on the same BigIntFilter combine with AND. The
+    // raw SQL pre-query renders both fragments joined by AND.
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 7 }]);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({
+      filters: { balance: { gte: 1n, lte: 1000n } },
+    });
+
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    // We don't introspect the SQL string here (Prisma.sql is opaque to
+    // the mock); the round-trip through findMany.id confirms the
+    // pre-query produced the expected narrowing.
+    const findManyWhere = mockPrisma.position.findMany.mock.calls[0][0].where;
+    expect(findManyWhere).toMatchObject({ id: { in: [7] } });
+  });
+
+  it('unsupported operators on `balance` (`in`, `notIn`, `not`) throw with a clear message', async () => {
+    await expect(
+      callPositions({ filters: { balance: { in: [1n] } } })
+    ).rejects.toThrow(/balance:.*in.*not supported/);
+    await expect(
+      callPositions({ filters: { balance: { notIn: [1n] } } })
+    ).rejects.toThrow(/balance:.*notIn.*not supported/);
+    await expect(
+      callPositions({ filters: { balance: { not: { equals: 0n } } } })
+    ).rejects.toThrow(/balance:.*not.*not supported/);
   });
 
   it('positionsPage _countWhere mirrors the findMany where (id IN …) so totalCount stays consistent', async () => {
@@ -999,7 +987,12 @@ describe('positions resolver — balanceMin filter', () => {
 
     const result = await positionsPageFn(
       undefined,
-      { take: 50, skip: 0, holder: ALICE, balanceMin: '1' },
+      {
+        take: 50,
+        skip: 0,
+        holder: ALICE,
+        filters: { balance: { gte: 1n } },
+      },
       undefined,
       undefined
     );
@@ -1010,12 +1003,11 @@ describe('positions resolver — balanceMin filter', () => {
     });
   });
 
-  it('synthesis cache: balanceMin bound is part of the cache key', async () => {
-    // The synthesizer's disposal-emission gate flips on `balanceMinWei
-    // > 0n`, so a cached entry computed without the bound would serve
-    // the wrong row set when the same Position.updatedAt is requested
-    // with the bound on. The cache key includes a `0n` vs `>0n` bucket
-    // — flipping between them must trigger a fresh trades fetch.
+  it('synthesis cache: the parsed balance filter is part of the cache key', async () => {
+    // The synthesizer's disposal-emission gate evaluates the filter
+    // against `0n`, so swapping filters flips the cached row set. The
+    // cache key must encode the filter — otherwise two requests with
+    // different filters on the same Position.updatedAt would collide.
     const positionRow = makePosition({
       balance: '200',
       pickConfiguration: makePickConfig({
@@ -1035,15 +1027,75 @@ describe('positions resolver — balanceMin filter', () => {
       }),
     ]);
 
-    // First call: no balanceMin, full CLOSED + OPEN synthesis cached.
-    const withoutMin = await callPositions({});
+    // First call: no filter — full CLOSED + OPEN synthesis cached.
+    const withoutFilter = await callPositions({});
     expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
 
-    // Second call: balanceMin > 0, different cache bucket → fresh fetch.
-    const withMin = await callPositions({ balanceMin: '1' });
+    // Second call: `gte: "1"` — different cache bucket → fresh fetch.
+    const withFilter = await callPositions({
+      filters: { balance: { gte: 1n } },
+    });
     expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(2);
 
-    expect(withoutMin.length).toBeGreaterThan(withMin.length);
+    expect(withoutFilter.length).toBeGreaterThan(withFilter.length);
+  });
+});
+
+describe('positions resolver — collateral: BigIntFilter (operator-pattern)', () => {
+  it('`collateral: { gte: "X" }` pre-queries pickConfigIds via raw UNION', async () => {
+    // Mirror of the existing collateralMin path but via the operator
+    // surface. The pre-query UNIONs predictor + counterparty branches
+    // and applies the operator(s) in HAVING.
+    mockPrisma.$queryRaw.mockResolvedValueOnce([
+      { pickConfigId: PC_ID, is_predictor: true },
+    ]);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({
+      filters: { collateral: { gte: 50n } },
+    });
+
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    const findManyWhere = mockPrisma.position.findMany.mock.calls[0][0].where;
+    expect(findManyWhere).toMatchObject({
+      holder: ALICE.toLowerCase(),
+      pickConfigId: { in: [PC_ID] },
+    });
+  });
+
+  it('unsupported operators on `collateral` (`in`, `notIn`, `not`) throw with a clear message', async () => {
+    await expect(
+      callPositions({ filters: { collateral: { in: [1n] } } })
+    ).rejects.toThrow(/collateral:.*in.*not supported/);
+  });
+
+  it('deprecated flat `collateralMin`/`Max` still work (legacy path)', async () => {
+    // The deprecated flat args remain functional for one release.
+    // They map to `{ gte, lte }` internally and use the same SQL path.
+    mockPrisma.$queryRaw.mockResolvedValueOnce([
+      { pickConfigId: PC_ID, is_predictor: true },
+    ]);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({ collateralMin: '50', collateralMax: '500' });
+
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it('operator-pattern `collateral` wins over the deprecated flat args when both are set', async () => {
+    // Mixed input — the new shape takes precedence; flat args ignored.
+    mockPrisma.$queryRaw.mockResolvedValueOnce([
+      { pickConfigId: PC_ID, is_predictor: true },
+    ]);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await callPositions({
+      filters: { collateral: { gte: 50n } },
+      collateralMin: '999999',
+      collateralMax: '999999',
+    });
+
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
   });
 });
 

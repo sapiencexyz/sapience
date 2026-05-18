@@ -1997,35 +1997,46 @@ export type Position = {
  */
 export type PositionFilters = {
   /**
-   * Lower bound on `Position.balance` (wei, decimal string — values
-   * exceed JS Number precision). Compared numerically against the raw
-   * `Position.balance` column, which is stored as a VarChar of the wei
-   * integer.
+   * Numeric range filter on `Position.balance` (wei). Strict semantics:
+   * a row is kept iff its raw balance satisfies every operator on this
+   * filter. Compared numerically against the VarChar `Position.balance`
+   * column via a raw SQL cast (Prisma's native comparisons are
+   * lexicographic on VarChar — `'10' < '9'`).
    *
-   * Permissive semantics: keeps a row when `balance >= balanceMin` **OR**
-   * the pickConfig is resolved. Claimed winners (zero-balance, resolved)
-   * remain visible regardless of the bound — they carry meaningful
-   * settlement PnL and shouldn't be silently dropped by a numeric filter.
-   * Matches the existing `positionCount` baseline visibility rule so
-   * count and list semantics agree on resolved-row visibility.
+   * Supported operators: `equals`, `gt`, `gte`, `lt`, `lte`. Multiple
+   * operators combine with AND (e.g. `{ gte: "1", lte: "1000" }` is an
+   * inclusive range). Unsupported operators (`in`, `notIn`, `not`) raise
+   * an error.
    *
-   * When `balanceMin > 0`, also suppresses synthesized per-sell CLOSED
-   * rows (the `balance: "0"` event rows recording realized PnL from
-   * secondary-market sells on unresolved positions) — those carry
-   * `balance: "0"` so any positive lower bound excludes them. Pagination
-   * and `totalCount` honor the same filter so they stay consistent.
+   * Also applies to synthesized per-sell CLOSED rows (the `balance: "0"`
+   * event rows recording realized PnL from secondary-market sells) —
+   * they're emitted iff `0` satisfies the filter. Pagination and
+   * `totalCount` honor the same filter so they stay consistent.
    *
-   * Practical use: pass `"1"` to exclude raw zero-balance unresolved
-   * rows AND the synthetic CLOSED rows; pair with `settled: false` to
-   * scope to "open positions only" (suppresses the resolved-keepalive
-   * branch of the OR — `settled` narrows both branches).
+   * Composition: `{ balance: { gte: "1" } }` returns rows with positive
+   * balance only. To include claimed winners (resolved, zero-balance) in
+   * the same result set, omit the filter or compose with `settled: true`
+   * as a separate query — there is no implicit OR.
    */
-  balanceMin?: InputMaybe<Scalars['String']['input']>;
+  balance?: InputMaybe<BigIntFilter>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  /** Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei). */
+  /**
+   * Numeric range filter on the holder's total collateral on the
+   * pickConfig (wei). Supported operators: `equals`, `gt`, `gte`, `lt`,
+   * `lte`. Multiple operators on the same filter combine with AND.
+   * Unsupported operators (`in`, `notIn`, `not`) raise an error.
+   */
+  collateral?: InputMaybe<BigIntFilter>;
+  /**
+   * Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei).
+   * @deprecated Use `collateral: { lte: ... }` operator filter instead.
+   */
   collateralMax?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei). */
+  /**
+   * Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei).
+   * @deprecated Use `collateral: { gte: ... }` operator filter instead.
+   */
   collateralMin?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to positions tied to a single condition (via the pickConfig join). */
   conditionId?: InputMaybe<Scalars['String']['input']>;
@@ -2818,7 +2829,6 @@ export type QueryPickConfigurationsPageArgs = {
 
 
 export type QueryPositionCountArgs = {
-  balanceMin?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   holder: Scalars['String']['input'];
   settled?: InputMaybe<Scalars['Boolean']['input']>;
@@ -2826,7 +2836,6 @@ export type QueryPositionCountArgs = {
 
 
 export type QueryPositionsArgs = {
-  balanceMin?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;
@@ -2846,7 +2855,6 @@ export type QueryPositionsArgs = {
 
 
 export type QueryPositionsPageArgs = {
-  balanceMin?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;

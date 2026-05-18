@@ -62,51 +62,9 @@ export const predictionCount: NonNullable<
 
 export const positionCount: NonNullable<
   QueryResolvers['positionCount']
-> = async (_parent, { holder, settled, chainId, balanceMin }) => {
+> = async (_parent, { holder, settled, chainId }) => {
   logDeprecatedHit('positionCount');
   const holderLower = holder.toLowerCase();
-  // `balanceMin` is a decimal-string wei value (can exceed JS Number
-  // precision). Unparseable / non-positive inputs collapse to 0n (no
-  // filter) — lenient treatment matches the resolver.
-  let balanceMinWei = 0n;
-  if (balanceMin) {
-    try {
-      const v = BigInt(balanceMin);
-      if (v > 0n) balanceMinWei = v;
-    } catch {
-      /* noop — treat as 0n */
-    }
-  }
-
-  // `Position.balance` is VarChar; Prisma can't natively cast it to
-  // numeric. When `balanceMin > 0` we count via a raw SQL query that
-  // applies the same filters as the Prisma path, so the deprecated
-  // `positionCount(balanceMin:)` matches `positionsPage(...).totalCount`
-  // exactly. Otherwise fall through to the standard Prisma count with
-  // the baseline visibility rule (drop balance=0 unresolved rows that
-  // the holder has transferred / burned off-platform).
-  if (balanceMinWei > 0n) {
-    // Permissive: `balance >= min OR resolved = true`. Mirrors
-    // `applyBalanceMinFilter` in the list resolver so the count and
-    // the list agree under the same bound. The optional `settled`
-    // filter narrows BOTH branches of the OR — passing `settled:false`
-    // implicitly disables the resolved-keepalive branch, which is the
-    // correct interpretation (caller asked for unsettled only).
-    const rows = await prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*)::bigint AS count
-      FROM "Position" p
-      LEFT JOIN "Picks" pc ON pc.id = p."pickConfigId"
-      WHERE p.holder = ${holderLower}
-        AND (
-          CAST(p.balance AS DECIMAL) >= ${balanceMinWei.toString()}::DECIMAL
-          OR pc.resolved = true
-        )
-        ${chainId !== undefined && chainId !== null ? Prisma.sql`AND p."chainId" = ${chainId}` : Prisma.empty}
-        ${settled !== undefined && settled !== null ? Prisma.sql`AND pc.resolved = ${settled}` : Prisma.empty}
-    `;
-    return Number(rows[0]?.count ?? 0n);
-  }
-
   const where: Prisma.PositionWhereInput = {
     holder: holderLower,
     // Drop zero-balance unresolved rows (off-platform transfers/burns)

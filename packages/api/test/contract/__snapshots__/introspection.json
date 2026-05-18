@@ -15515,21 +15515,11 @@
             "defaultValue": null
           },
           {
-            "name": "collateralMin",
-            "description": "Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei).",
+            "name": "collateral",
+            "description": "Numeric range filter on the holder's total collateral on the\npickConfig (wei). Supported operators: `equals`, `gt`, `gte`, `lt`,\n`lte`. Multiple operators on the same filter combine with AND.\nUnsupported operators (`in`, `notIn`, `not`) raise an error.",
             "type": {
-              "kind": "SCALAR",
-              "name": "String",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "collateralMax",
-            "description": "Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei).",
-            "type": {
-              "kind": "SCALAR",
-              "name": "String",
+              "kind": "INPUT_OBJECT",
+              "name": "BigIntFilter",
               "ofType": null
             },
             "defaultValue": null
@@ -15555,11 +15545,11 @@
             "defaultValue": null
           },
           {
-            "name": "balanceMin",
-            "description": "Lower bound on `Position.balance` (wei, decimal string — values\nexceed JS Number precision). Compared numerically against the raw\n`Position.balance` column, which is stored as a VarChar of the wei\ninteger.\n\nPermissive semantics: keeps a row when `balance >= balanceMin` **OR**\nthe pickConfig is resolved. Claimed winners (zero-balance, resolved)\nremain visible regardless of the bound — they carry meaningful\nsettlement PnL and shouldn't be silently dropped by a numeric filter.\nMatches the existing `positionCount` baseline visibility rule so\ncount and list semantics agree on resolved-row visibility.\n\nWhen `balanceMin > 0`, also suppresses synthesized per-sell CLOSED\nrows (the `balance: \"0\"` event rows recording realized PnL from\nsecondary-market sells on unresolved positions) — those carry\n`balance: \"0\"` so any positive lower bound excludes them. Pagination\nand `totalCount` honor the same filter so they stay consistent.\n\nPractical use: pass `\"1\"` to exclude raw zero-balance unresolved\nrows AND the synthetic CLOSED rows; pair with `settled: false` to\nscope to \"open positions only\" (suppresses the resolved-keepalive\nbranch of the OR — `settled` narrows both branches).",
+            "name": "balance",
+            "description": "Numeric range filter on `Position.balance` (wei). Strict semantics:\na row is kept iff its raw balance satisfies every operator on this\nfilter. Compared numerically against the VarChar `Position.balance`\ncolumn via a raw SQL cast (Prisma's native comparisons are\nlexicographic on VarChar — `'10' < '9'`).\n\nSupported operators: `equals`, `gt`, `gte`, `lt`, `lte`. Multiple\noperators combine with AND (e.g. `{ gte: \"1\", lte: \"1000\" }` is an\ninclusive range). Unsupported operators (`in`, `notIn`, `not`) raise\nan error.\n\nAlso applies to synthesized per-sell CLOSED rows (the `balance: \"0\"`\nevent rows recording realized PnL from secondary-market sells) —\nthey're emitted iff `0` satisfies the filter. Pagination and\n`totalCount` honor the same filter so they stay consistent.\n\nComposition: `{ balance: { gte: \"1\" } }` returns rows with positive\nbalance only. To include claimed winners (resolved, zero-balance) in\nthe same result set, omit the filter or compose with `settled: true`\nas a separate query — there is no implicit OR.",
             "type": {
-              "kind": "SCALAR",
-              "name": "String",
+              "kind": "INPUT_OBJECT",
+              "name": "BigIntFilter",
               "ofType": null
             },
             "defaultValue": null
@@ -18821,16 +18811,6 @@
             "description": "Count of token positions for a given holder",
             "args": [
               {
-                "name": "balanceMin",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
                 "name": "chainId",
                 "description": null,
                 "type": {
@@ -18881,16 +18861,6 @@
             "name": "positions",
             "description": "Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status",
             "args": [
-              {
-                "name": "balanceMin",
-                "description": null,
-                "type": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
               {
                 "name": "chainId",
                 "description": null,

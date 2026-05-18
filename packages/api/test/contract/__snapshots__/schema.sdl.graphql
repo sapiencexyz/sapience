@@ -2044,14 +2044,22 @@ input PositionFilters {
   holderWon: Boolean
 
   """
+  Numeric range filter on the holder's total collateral on the
+  pickConfig (wei). Supported operators: `equals`, `gt`, `gte`, `lt`,
+  `lte`. Multiple operators on the same filter combine with AND.
+  Unsupported operators (`in`, `notIn`, `not`) raise an error.
+  """
+  collateral: BigIntFilter
+
+  """
   Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei).
   """
-  collateralMin: String
+  collateralMin: String @deprecated(reason: "Use `collateral: { gte: ... }` operator filter instead.")
 
   """
   Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei).
   """
-  collateralMax: String
+  collateralMax: String @deprecated(reason: "Use `collateral: { lte: ... }` operator filter instead.")
 
   """Restrict to positions whose pickConfig `endsAt >= this`."""
   endsAtMin: UnixSeconds
@@ -2060,30 +2068,28 @@ input PositionFilters {
   endsAtMax: UnixSeconds
 
   """
-  Lower bound on `Position.balance` (wei, decimal string — values
-  exceed JS Number precision). Compared numerically against the raw
-  `Position.balance` column, which is stored as a VarChar of the wei
-  integer.
+  Numeric range filter on `Position.balance` (wei). Strict semantics:
+  a row is kept iff its raw balance satisfies every operator on this
+  filter. Compared numerically against the VarChar `Position.balance`
+  column via a raw SQL cast (Prisma's native comparisons are
+  lexicographic on VarChar — `'10' < '9'`).
   
-  Permissive semantics: keeps a row when `balance >= balanceMin` **OR**
-  the pickConfig is resolved. Claimed winners (zero-balance, resolved)
-  remain visible regardless of the bound — they carry meaningful
-  settlement PnL and shouldn't be silently dropped by a numeric filter.
-  Matches the existing `positionCount` baseline visibility rule so
-  count and list semantics agree on resolved-row visibility.
+  Supported operators: `equals`, `gt`, `gte`, `lt`, `lte`. Multiple
+  operators combine with AND (e.g. `{ gte: "1", lte: "1000" }` is an
+  inclusive range). Unsupported operators (`in`, `notIn`, `not`) raise
+  an error.
   
-  When `balanceMin > 0`, also suppresses synthesized per-sell CLOSED
-  rows (the `balance: "0"` event rows recording realized PnL from
-  secondary-market sells on unresolved positions) — those carry
-  `balance: "0"` so any positive lower bound excludes them. Pagination
-  and `totalCount` honor the same filter so they stay consistent.
+  Also applies to synthesized per-sell CLOSED rows (the `balance: "0"`
+  event rows recording realized PnL from secondary-market sells) —
+  they're emitted iff `0` satisfies the filter. Pagination and
+  `totalCount` honor the same filter so they stay consistent.
   
-  Practical use: pass `"1"` to exclude raw zero-balance unresolved
-  rows AND the synthetic CLOSED rows; pair with `settled: false` to
-  scope to "open positions only" (suppresses the resolved-keepalive
-  branch of the OR — `settled` narrows both branches).
+  Composition: `{ balance: { gte: "1" } }` returns rows with positive
+  balance only. To include claimed winners (resolved, zero-balance) in
+  the same result set, omit the filter or compose with `settled: true`
+  as a separate query — there is no implicit OR.
   """
-  balanceMin: String
+  balance: BigIntFilter
 }
 
 """
@@ -2454,12 +2460,12 @@ type Query {
   popularTags: [String!]!
 
   """Count of token positions for a given holder"""
-  positionCount(balanceMin: String, chainId: Int, holder: String!, settled: Boolean): Int! @deprecated(reason: "Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.")
+  positionCount(chainId: Int, holder: String!, settled: Boolean): Int! @deprecated(reason: "Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.")
 
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(balanceMin: String, chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.")
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.")
 
   """
   Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
@@ -2469,7 +2475,7 @@ type Query {
   with `@deprecated` so existing callers can migrate without breaking;
   new callers should use `filters:`.
   """
-  positionsPage(filters: PositionFilters, orderBy: PositionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, balanceMin: String @deprecated(reason: "Use `filters: { balanceMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), collateralMax: String @deprecated(reason: "Use `filters: { collateralMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), collateralMin: String @deprecated(reason: "Use `filters: { collateralMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), conditionId: String @deprecated(reason: "Use `filters: { conditionId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), endsAtMax: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), endsAtMin: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), holder: String @deprecated(reason: "Use `filters: { holder: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), holderWon: Boolean @deprecated(reason: "Use `filters: { holderWon: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), pickConfigId: String @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), result: SettlementResult @deprecated(reason: "Use `filters: { result: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), settled: Boolean @deprecated(reason: "Use `filters: { settled: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers.")): PositionsPage!
+  positionsPage(filters: PositionFilters, orderBy: PositionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), collateralMax: String @deprecated(reason: "Use `filters: { collateralMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), collateralMin: String @deprecated(reason: "Use `filters: { collateralMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), conditionId: String @deprecated(reason: "Use `filters: { conditionId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), endsAtMax: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), endsAtMin: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), holder: String @deprecated(reason: "Use `filters: { holder: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), holderWon: Boolean @deprecated(reason: "Use `filters: { holderWon: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), pickConfigId: String @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), result: SettlementResult @deprecated(reason: "Use `filters: { result: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), settled: Boolean @deprecated(reason: "Use `filters: { settled: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers.")): PositionsPage!
 
   """
   Look up a single prediction by its on-chain prediction ID. Pass
