@@ -120,7 +120,7 @@ The basket invariant is enforced by the API, with the keeper as a well-behaved c
 - **First condition decides.** The first condition assigned to a group stamps its basket id onto the group (null or otherwise). Every subsequent admission has to match exactly — strict equality, including null. A basket condition trying to join a non-basket group is just as wrong as the reverse.
 - The keeper stamps a fresh group's `negRiskMarketId` only when every market in that group is flagged `negRisk: true` **and** shares the same basket id. If any market disagrees, the group is sent with no basket id and the API derives `negRisk: false`.
 - The admin REST routes (`/admin/conditions`, `/admin/conditionGroups`) reject any new condition admission whose payload `negRiskMarketId` doesn't equal the group's stored value. Continuing membership is grandfathered: a metadata-only edit on an already-linked condition doesn't have to restate the basket id.
-- Same-event-title markets coming from **different** baskets are no longer auto-segmented into suffixed group names. They land naturally under the shared title; whichever basket reaches the API first wins the group, and the others surface as 400s the operator can triage. The keeper logs these distinctly in `submitToAPI`:
+- Same-event-title markets coming from **different** baskets land under the shared title; whichever basket reaches the API first wins the group, and the others surface as 400s the operator can triage. The keeper logs these distinctly in `submitToAPI`:
 
   ```
   … Batch N unable to add to existing negRisk group: Cannot add non-matching negRisk conditions to negRisk group NBA champion. Expected negRiskMarketId basket-a; mismatched: 0xabc…
