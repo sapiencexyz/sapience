@@ -285,11 +285,9 @@ describe('queryComplexity', () => {
             simpleEstimator({ defaultComplexity: 1 }),
           ],
         });
-        // itemsPage selection set: items (which itself is a list of
-        // ItemType, default 10) → 1 + 1*10 = 11. hasMore/totalCount
-        // would be smaller. Selection set picks max = 11.
-        // itemsPage applies the envelope multiplier: 1 + 11 * 50 = 551.
-        expect(complexity).toBe(551);
+        // items is the *Page passthrough: 1 + 1 = 2.
+        // itemsPage applies the envelope multiplier: 1 + 2 * 50 = 101.
+        expect(complexity).toBe(101);
       });
 
       it('uses default listSize when *Page take arg is missing', () => {
@@ -302,10 +300,10 @@ describe('queryComplexity', () => {
             simpleEstimator({ defaultComplexity: 1 }),
           ],
         });
-        // Both the inner items list and the outer envelope fall back
-        // to the default listSize of 10.
-        // items: 1 + 1*10 = 11. itemsPage: 1 + 11*10 = 111.
-        expect(complexity).toBe(111);
+        // items passthrough: 1 + 1 = 2.
+        // itemsPage envelope falls back to default listSize of 10:
+        // 1 + 2 * 10 = 21.
+        expect(complexity).toBe(21);
       });
 
       it('caps *Page envelope at maxListSize', () => {
@@ -318,14 +316,15 @@ describe('queryComplexity', () => {
             simpleEstimator({ defaultComplexity: 1 }),
           ],
         });
-        // take=5000 caps at 100. items default 10 (already <= maxListSize).
-        // items: 1 + 1*10 = 11. itemsPage: 1 + 11*100 = 1101.
-        expect(complexity).toBe(1101);
+        // take=5000 caps at 100. items passthrough: 1 + 1 = 2.
+        // itemsPage: 1 + 2 * 100 = 201.
+        expect(complexity).toBe(201);
       });
 
       it('paginated `*Page` and bare-array list with the same take price equivalently', () => {
         // Same selection set, same take — switching to the *Page
-        // wrapper should not change the cost order of magnitude.
+        // wrapper should price identically (modulo the envelope's
+        // own field-cost contribution).
         const bareQuery = parse(`{ items(take: 50) { id name } }`);
         const pageQuery = parse(
           `{ itemsPage(take: 50) { items { id name } } }`
@@ -344,12 +343,47 @@ describe('queryComplexity', () => {
           query: pageQuery,
           estimators: ests,
         });
-        // Both are in the same order of magnitude. *Page is somewhat
-        // higher because the inner `items` list also applies the
-        // default-10 multiplier; that's the safe bias direction
-        // (over-price the envelope, not under-price it).
+        // bare: 1 + 2 * 50 = 101.
+        // page: items passthrough = 1 + 2 = 3. envelope = 1 + 3 * 50 = 151.
+        // The +50 difference is the envelope's per-row "1" contribution
+        // (items still pays a base cost of 1) — same order of magnitude.
         expect(pageCost).toBeGreaterThanOrEqual(bareCost);
-        expect(pageCost).toBeLessThan(bareCost * 20);
+        expect(pageCost - bareCost).toBeLessThanOrEqual(100);
+      });
+
+      it('regression: `questionsPage` fat selection stays under the 15k cap', () => {
+        // The frontend's GET_QUESTIONS query hit 82,762 before the
+        // double-count fix. Reconstruct a comparable fat selection on
+        // the simplified test schema and verify the new pricing is
+        // bounded by `take` rather than `take * defaultListSize`.
+        const query = parse(`{
+          itemsPage(take: 50) {
+            items {
+              id
+              name
+              value
+              children {
+                id
+                name
+                value
+              }
+            }
+          }
+        }`);
+        const complexity = getComplexity({
+          schema: testSchema,
+          query,
+          estimators: [
+            listMultiplierEstimator({ defaultListSize: 10, maxListSize: 100 }),
+            simpleEstimator({ defaultComplexity: 1 }),
+          ],
+        });
+        // children (real list, default 10): 1 + 3*10 = 31.
+        // items passthrough: 1 + (1 + 1 + 1 + 31) = 35.
+        // itemsPage: 1 + 35 * 50 = 1751.
+        // Pre-fix this same shape would be 1 + (1 + (3 + 31)*10) * 50 = 17051.
+        expect(complexity).toBe(1751);
+        expect(complexity).toBeLessThan(15000);
       });
     });
   });

@@ -5,7 +5,7 @@
  * `first` / `limit`) so cost analysis reflects "how many rows the
  * resolver will materialize", not just the depth of the selection set.
  *
- * Two cases are recognized:
+ * Three cases are recognized:
  *
  * 1. Direct list fields — `predictions: [Prediction!]!`. The deprecated
  *    bare-array shape. Take comes from the field's own args.
@@ -19,12 +19,22 @@
  *    named return type ends in `Page` (and exposes an `items: [X!]!`
  *    field, matching the SDL contract test) as a list of `take` rows
  *    so the two shapes price equivalently.
+ *
+ * 3. The `items` field *inside* a `*Page` envelope — passthrough. The
+ *    envelope above already applied the `take` multiplier, so treating
+ *    `items` as a normal list would double-count: `take * defaultListSize`
+ *    rows instead of `take`. A paginated query with a fat selection set
+ *    would price 10× higher than the equivalent deprecated bare-array
+ *    (see PR — `questionsPage(take: 20)` was hitting ~83k, well past
+ *    the 15k cap). Returning `childComplexity` here lets the envelope's
+ *    multiplier stand alone.
  */
 import {
   isListType,
   getNullableType,
   getNamedType,
   GraphQLObjectType,
+  GraphQLCompositeType,
 } from 'graphql';
 import type { ComplexityEstimator } from '../queryComplexity.js';
 
@@ -47,6 +57,22 @@ const fieldReturnsPageEnvelope = (field: {
   return isListType(getNullableType(items.type));
 };
 
+const isItemsFieldOfPageEnvelope = (
+  fieldName: string,
+  parentType: GraphQLCompositeType
+): boolean => {
+  if (fieldName !== 'items') return false;
+  if (!(parentType instanceof GraphQLObjectType)) return false;
+  // The `Page` interface itself has `items: [Node!]!` but is never the
+  // concrete return type of a query field — only concrete `*Page`
+  // objects implement it. Excluding the interface name keeps us aligned
+  // with `fieldReturnsPageEnvelope` above.
+  if (parentType.name === 'Page' || !parentType.name.endsWith('Page')) {
+    return false;
+  }
+  return true;
+};
+
 export function listMultiplierEstimator(
   options?: ListMultiplierEstimatorOptions
 ): ComplexityEstimator {
@@ -54,7 +80,7 @@ export function listMultiplierEstimator(
   const maxListSize = options?.maxListSize ?? 1000;
 
   return (args) => {
-    const { field, args: fieldArgs, childComplexity } = args;
+    const { field, args: fieldArgs, childComplexity, type, node } = args;
 
     const isListField = isListType(getNullableType(field.type));
     const isPageEnvelope = !isListField && fieldReturnsPageEnvelope(field);
@@ -62,6 +88,12 @@ export function listMultiplierEstimator(
     if (!isListField && !isPageEnvelope) {
       // Not a list or *Page envelope, let other estimators handle.
       return undefined;
+    }
+
+    // The `items` field inside a *Page envelope is a passthrough —
+    // multiplying here on top of the envelope's `take` would double-count.
+    if (isListField && isItemsFieldOfPageEnvelope(node.name.value, type)) {
+      return 1 + childComplexity;
     }
 
     // Read the list size from the field's own args. *Page fields keep
