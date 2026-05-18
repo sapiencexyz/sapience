@@ -606,7 +606,7 @@ type Query {
     first: Int
     after: String
     filter: LeaderboardFilter
-  ): AccountLeaderboardConnection!
+  ): AccountRankingConnection!
 
   collateralBalance(
     account: Address!
@@ -644,7 +644,7 @@ type Account implements Node {
     filter: AccountStatsFilter
     orderBy: AccountStatsOrder
   ): AccountStatsConnection!
-  rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRank
+  rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRanking
 
   # Predictions where this account is either the predictor OR the
   # counterparty. The two roles are symmetric; clients that need to
@@ -1117,9 +1117,21 @@ type TimeToResolutionBucket {
   openInterest: Decimal!
 }
 
-type AccountRank {
+# One row of an ordered leaderboard for a given `LeaderboardMetric`.
+# Used both as the leaf type of `leaderboard(...)` and as the return of
+# `Account.rank(metric:)` — a rank IS a position within an ordered list,
+# there's no second concept.
+#
+# `value` is unit-polymorphic: signed wUSDe for `PNL`, positive wUSDe for
+# `VOLUME`, a ratio for `ROI`, and a raw time-weighted Brier-derived
+# score for `ACCURACY` (no natural unit; magnitude scales with forecast
+# lead time — see `scoringService.computeAccuracyScore`). Clients must
+# carry the metric from the query context to format `value` correctly.
+# The connection envelope (`AccountRankingConnection.metric`) echoes it
+# for self-describing payloads; for the single-value `Account.rank`
+# return, the caller passed `metric` as the field arg.
+type AccountRanking {
   account: Account!
-  metric: LeaderboardMetric!
   rank: Int!
   value: Decimal!
 }
@@ -1129,12 +1141,6 @@ enum LeaderboardMetric {
   PNL
   VOLUME
   ROI
-}
-
-type AccountLeaderboardEntry {
-  account: Account!
-  rank: Int!
-  value: Decimal!
 }
 
 # Connections
@@ -1315,14 +1321,22 @@ type AccountStatsEdge {
   cursor: String!
 }
 
-type AccountLeaderboardConnection {
-  edges: [AccountLeaderboardEdge!]!
-  nodes: [AccountLeaderboardEntry!]!
+# `metric` lives on the envelope rather than on every leaf row: the
+# connection is scoped by the queried metric (constant for the whole
+# page), and rows carry an opaque `value: Decimal` whose unit depends
+# on that metric. Echoing it once at the envelope makes the payload
+# self-describing without per-row repetition. This is the one
+# exception in the schema where a connection carries domain metadata
+# alongside `pageInfo`.
+type AccountRankingConnection {
+  edges: [AccountRankingEdge!]!
+  nodes: [AccountRanking!]!
   pageInfo: PageInfo!
+  metric: LeaderboardMetric!
 }
 
-type AccountLeaderboardEdge {
-  node: AccountLeaderboardEntry!
+type AccountRankingEdge {
+  node: AccountRanking!
   cursor: String!
 }
 
