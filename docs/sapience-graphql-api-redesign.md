@@ -35,7 +35,7 @@ These are canonical graph entities and should generally implement `Node`:
 These are product views, not canonical database-backed entities:
 
 - `Question`
-- `ActivityItem`
+- `Activity`
 
 ### Question model
 
@@ -64,7 +64,7 @@ question:group:456
 
 ### Activity model
 
-`ActivityItem` is a derived aggregate feed item over:
+`Activity` is a derived aggregate feed item over:
 
 - `Prediction`
 - `Trade`
@@ -129,7 +129,7 @@ where `conditions` is a derived convenience field.
 
 Collateral is currently always wUSDe.
 
-However, because the model is technically multi-collateral aware, public types should expose a `collateralAsset` field for forward compatibility.
+However, because the model is technically multi-collateral aware, public types should expose a `collateral: CollateralToken!` field for forward compatibility.
 
 Recommended documentation language:
 
@@ -186,7 +186,7 @@ No canonical:
 
 ```graphql
 question(id:)
-activityItem(id:)
+activity(id:)
 ```
 
 unless those views become durable records later.
@@ -243,6 +243,87 @@ attestationScore
 ```
 
 except in internal code or low-level docs explaining the EAS backing model.
+
+### 6. One filter convention, one sort convention
+
+The current schema mixes flat `<field>Min` / `<field>Max` args, operator-pattern `<field>Filter` input objects, top-level filter args on the root field (`positionsPage(address, owner, settled, ...)`), and consolidated `filters:` input objects. New types should pick one convention and hold it.
+
+#### Filters
+
+Every list / connection field accepts a single `filter: <Entity>Filter` input.
+
+Scalar fields on `<Entity>Filter` use operator-pattern inputs:
+
+```graphql
+input PositionFilter {
+  account: AddressFilter
+  conditionId: IDFilter
+  size: DecimalFilter
+  collateralAmount: DecimalFilter
+  createdAt: DateTimeFilter
+}
+```
+
+The operator inputs themselves are the Prisma-style set:
+
+```graphql
+input BigIntFilter {
+  equals: BigInt
+  gt: BigInt
+  gte: BigInt
+  lt: BigInt
+  lte: BigInt
+  in: [BigInt!]
+  notIn: [BigInt!]
+  not: BigInt
+}
+```
+
+A parallel input exists for each filterable scalar (`IntFilter`, `DecimalFilter`, `StringFilter`, `DateTimeFilter`, `AddressFilter`, plus parameterized `EnumFilter<T>` per enum where filtering is useful). There is no `BooleanFilter` — see the next rule.
+
+Rules:
+
+- **Strict semantics, no implicit OR.** `{ size: { gte: "1" } }` means `size >= 1`, full stop. Clients that want richer composition issue separate queries or rely on the server to add an explicit `OR` shape later if real demand surfaces.
+- **Unsupported operators on a specific field reject** with a clear error, not silently no-op. If a field can only be filtered by `equals` (e.g., a hashed identifier), the resolver rejects `gt`/`lt` rather than returning empty or full results.
+- **Forbid flat `<field>Min` / `<field>Max` on new types.** Existing flat args get `@deprecated` with a one-release migration cycle. See PR 1730 (positions `balance` / `collateral`) for the reference migration shape.
+- **Booleans stay flat.** Use `<field>: Boolean` rather than a `BooleanFilter` wrapper — there is no `gt true` and the operator pattern adds noise without benefit. For tri-state fields that need an "unset" third value, prefer a nullable enum and filter via `<field>: { isNull }` rather than a Boolean — that's the pattern `Condition.outcome` / `Prediction.result` use in place of the older `settled: Boolean!`.
+- **Null filtering goes through `isNull`.** `{ outcome: { isNull: true } }` matches unsettled conditions; `{ isNull: false }` matches settled. Available on every operator input including the enum filters. Rejected on non-nullable columns per the unsupported-operator rule.
+
+The SDL draft below has been normalized to operator-pattern. Multi-value membership filters (`categoryIds: [ID!]`, `tags: [String!]`, `activityTypes: [ActivityType!]`) intentionally stay flat — the operator pattern is for single-value scalar comparisons; "is any of" is a different beast. Full-text `search: String` also stays flat — it isn't a field filter.
+
+#### Sort
+
+Replace the today-pattern of `orderBy: <FieldEnum>, orderDirection: ASC|DESC` with a single `orderBy: <Entity>Order` input bundling both:
+
+```graphql
+predictions(
+  first: Int
+  after: String
+  filter: PredictionFilter
+  orderBy: PredictionOrder
+): PredictionConnection!
+
+input PredictionOrder {
+  field: PredictionOrderField!
+  direction: OrderDirection!
+}
+
+enum PredictionOrderField {
+  CREATED_AT
+  SETTLED_AT
+  COLLATERAL_AMOUNT
+  PAYOUT
+}
+```
+
+This matches GitHub's `IssueOrder` / `RepositoryOrder` precedent — the same precedent we followed on `ConditionOrConditionGroup`. Singular orderBy is the dominant convention for hand-designed public GraphQL APIs (GitHub, Linear, Shopify); the array shape is mostly an ORM-generation artifact (Hasura, Prisma).
+
+Rules:
+
+- **Each entity declares its own `<Entity>OrderField` enum** listing the fields the entity's indexes actually support. This answers open question P1 (which sort fields are supported per entity) structurally — if a field isn't in the enum, you can't sort by it.
+- **Adding a sort field is non-breaking; removing one is.** Treat the order-field enum like every other public enum — addition-only after first ship.
+- **Default order belongs in the resolver, not the schema.** Both `field` and `direction` on `<Entity>Order` are non-null with no schema-level defaults — clients either supply both or omit `orderBy` entirely. When omitted, the resolver picks; the field description documents the choice ("orders by `CREATED_AT DESC` when `orderBy` is omitted"). Matches GitHub / Shopify / Linear convention.
+- **Multi-key sort path is open.** If real demand surfaces, add a `then: <Entity>Order` field to the order input for tie-breakers — purely additive, non-breaking. Until then, the single-key shape is simpler for clients and resolvers alike.
 
 ---
 
@@ -335,6 +416,17 @@ type Query {
     orderBy: PickConfigurationOrder
   ): PickConfigurationConnection!
 
+  vault(id: ID!): Vault
+  vaultByAddress(address: Address!): Vault
+  vaults(first: Int, after: String, filter: VaultFilter): VaultConnection!
+
+  leaderboard(
+    metric: LeaderboardMetric!
+    first: Int
+    after: String
+    filter: LeaderboardFilter
+  ): AccountLeaderboardConnection!
+
   collateralBalance(
     account: Address!
     chainId: Int!
@@ -374,8 +466,125 @@ scalar Bytes32
 scalar DateTime
 scalar Decimal
 
+# Unix seconds (uint256 in contract storage). Used for timestamps that
+# come directly from chain state, where round-tripping to DateTime would
+# require server-side conversion and lose precision. Indexed / derived
+# timestamps use `DateTime`.
+scalar UnixSeconds
+
 interface Node {
   id: ID!
+}
+
+# Operator-pattern filter inputs. Used on per-field filter members in
+# `<Entity>Filter` types. Operators an entity doesn't support reject
+# at the resolver with a clear error rather than silently no-op. See
+# "One filter convention, one sort convention" in the principles.
+#
+# `isNull: Boolean` is supported on every operator input: `{ isNull:
+# true }` matches rows where the underlying column is null, `false`
+# matches non-null. Rejected on non-nullable columns (e.g.,
+# `Account.address`) per the unsupported-operator rule. This is how
+# clients filter "settled vs unsettled" now that the redesign uses
+# nullable outcome/result enums in place of `settled: Boolean` —
+# `{ outcome: { isNull: true } }` for unsettled, `false` for settled.
+
+input AddressFilter {
+  equals: Address
+  in: [Address!]
+  notIn: [Address!]
+  not: Address
+  isNull: Boolean
+}
+
+input IDFilter {
+  equals: ID
+  in: [ID!]
+  notIn: [ID!]
+  not: ID
+  isNull: Boolean
+}
+
+input BigIntFilter {
+  equals: BigInt
+  gt: BigInt
+  gte: BigInt
+  lt: BigInt
+  lte: BigInt
+  in: [BigInt!]
+  notIn: [BigInt!]
+  not: BigInt
+  isNull: Boolean
+}
+
+input IntFilter {
+  equals: Int
+  gt: Int
+  gte: Int
+  lt: Int
+  lte: Int
+  in: [Int!]
+  notIn: [Int!]
+  not: Int
+  isNull: Boolean
+}
+
+input DateTimeFilter {
+  equals: DateTime
+  gt: DateTime
+  gte: DateTime
+  lt: DateTime
+  lte: DateTime
+  in: [DateTime!]
+  notIn: [DateTime!]
+  isNull: Boolean
+}
+
+input StringFilter {
+  equals: String
+  contains: String
+  startsWith: String
+  endsWith: String
+  in: [String!]
+  notIn: [String!]
+  not: String
+  isNull: Boolean
+}
+
+input DecimalFilter {
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  lt: Decimal
+  lte: Decimal
+  in: [Decimal!]
+  notIn: [Decimal!]
+  not: Decimal
+  isNull: Boolean
+}
+
+# Enum filters use the same operator shape — one input per enum type
+# (GraphQL has no input-type generics). Only enums where filtering is
+# a real client need get one; today that's `ConditionOutcome` (forecast
+# / question filtering by resolution status) and `PredictionResult`
+# (settled-vs-unsettled via `isNull`, plus "predictor won" /
+# "counterparty won" feeds). Add more as demand surfaces — it's
+# purely additive.
+
+input ConditionOutcomeFilter {
+  equals: ConditionOutcome
+  in: [ConditionOutcome!]
+  notIn: [ConditionOutcome!]
+  not: ConditionOutcome
+  isNull: Boolean
+}
+
+input PredictionResultFilter {
+  equals: PredictionResult
+  in: [PredictionResult!]
+  notIn: [PredictionResult!]
+  not: PredictionResult
+  isNull: Boolean
 }
 
 type PageInfo {
@@ -474,6 +683,17 @@ type Query {
     orderBy: PickConfigurationOrder
   ): PickConfigurationConnection!
 
+  vault(id: ID!): Vault
+  vaultByAddress(address: Address!): Vault
+  vaults(first: Int, after: String, filter: VaultFilter): VaultConnection!
+
+  leaderboard(
+    metric: LeaderboardMetric!
+    first: Int
+    after: String
+    filter: LeaderboardFilter
+  ): AccountLeaderboardConnection!
+
   collateralBalance(
     account: Address!
     chainId: Int!
@@ -502,6 +722,7 @@ type Query {
 type Account implements Node {
   id: ID!
   address: Address!
+  createdAt: DateTime!
 
   stats(
     first: Int
@@ -511,6 +732,14 @@ type Account implements Node {
   ): AccountStatsConnection!
   rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRank
 
+  # Predictions where this account is either the predictor OR the
+  # counterparty. The two roles are symmetric; clients that need to
+  # disambiguate read `predictor` / `counterparty` on each row. This
+  # field is the OR-across-roles feed. The root `predictions(filter:)`
+  # exposes `predictor` and `counterparty` as separate `AddressFilter`s
+  # with strict AND semantics — use that to ask "rows where X is
+  # predictor and Y is counterparty," use this to ask "all of X's
+  # predictions."
   predictions(
     first: Int
     after: String
@@ -540,15 +769,19 @@ type Account implements Node {
 }
 
 type Question {
-  id: ID!
-  questionType: QuestionType!
+  # No synthetic `id` field yet — Question is a derived view, not a
+  # durable entity. Clients key on the underlying `Condition` /
+  # `ConditionGroup` Node IDs reachable through `source`. See
+  # open question D1.
 
-  condition: Condition
-  conditionGroup: ConditionGroup
+  # Exactly one of Condition | ConditionGroup. Modeled as a union so
+  # the schema enforces mutual exclusion and clients can't silently
+  # observe a both-null or both-set state. `__typename` on the union
+  # member subsumes the old `questionType` enum.
+  source: ConditionOrConditionGroup!
 
   title: String!
   description: String
-  status: QuestionStatus!
   category: Category
   tags: [String!]!
 
@@ -586,24 +819,13 @@ type Question {
   resolvesAt: DateTime
 }
 
-enum QuestionType {
-  CONDITION
-  GROUP
-}
-
-enum QuestionStatus {
-  ACTIVE
-  RESOLVED
-  CANCELLED
-  ARCHIVED
-}
+union ConditionOrConditionGroup = Condition | ConditionGroup
 
 type ConditionGroup implements Node {
   id: ID!
   databaseId: Int!
   title: String!
   description: String
-  status: ConditionGroupStatus!
 
   question: Question!
   conditions(
@@ -636,19 +858,24 @@ type ConditionGroup implements Node {
   updatedAt: DateTime
 }
 
-enum ConditionGroupStatus {
-  ACTIVE
-  RESOLVED
-  CANCELLED
-  ARCHIVED
-}
-
 type Condition implements Node {
   id: ID!
   databaseId: Int!
   title: String!
   description: String
-  status: ConditionStatus!
+
+  # Resolution state. `outcome` is null until the on-chain resolver
+  # returns, then carries the resolved value: `YES` / `NO` for decisive
+  # resolutions, `NON_DECISIVE` for ties/voids (which the protocol
+  # collapses to `COUNTERPARTY_WINS` at the Prediction layer).
+  # `settledAt` is null in lockstep with `outcome`. No separate
+  # `settled: Boolean` field — `outcome != null` is the boundary, and
+  # clients filter "settled / unsettled" via `outcome: { isNull }`.
+  # No separate `ConditionStatus` enum either: today's data model has
+  # no other lifecycle states (no `CANCELLED`, no `ARCHIVED`), so the
+  # outcome enum carries the entire public state.
+  outcome: ConditionOutcome
+  settledAt: UnixSeconds
 
   conditionGroup: ConditionGroup
   question: Question!
@@ -657,6 +884,7 @@ type Condition implements Node {
     first: Int
     after: String
     filter: PickConfigurationFilter
+    orderBy: PickConfigurationOrder
   ): PickConfigurationConnection!
 
   predictions(
@@ -680,14 +908,16 @@ type Condition implements Node {
 
   createdAt: DateTime!
   updatedAt: DateTime
+  # Off-chain metadata sourced from Polymarket's market API (not chain
+  # storage), so `DateTime` rather than `UnixSeconds` is the right
+  # scalar here.
   resolvesAt: DateTime
 }
 
-enum ConditionStatus {
-  ACTIVE
-  RESOLVED
-  CANCELLED
-  ARCHIVED
+enum ConditionOutcome {
+  YES
+  NO
+  NON_DECISIVE
 }
 
 type PickConfiguration implements Node {
@@ -734,31 +964,35 @@ type Prediction implements Node {
   predictionId: BigInt!
 
   predictor: Account!
-  counterparty: Account
+  counterparty: Account!
   pickConfiguration: PickConfiguration!
   conditions: [Condition!]!
 
-  collateralAsset: CollateralAsset!
+  collateral: CollateralToken!
   collateralAmount: Decimal!
 
-  status: PredictionStatus!
+  # Settlement state. `result` is null until the on-chain prediction is
+  # resolved, then carries the outcome. `payout` and `settledAt` are
+  # null in lockstep with `result`. No separate `settled: Boolean` —
+  # `result != null` is the boundary; clients filter "settled /
+  # unsettled" via `result: { isNull }`. No separate `PredictionStatus`
+  # enum: today's data model has no `CANCELLED` state, so a lifecycle
+  # enum would just duplicate the result-null boundary. `payout` is
+  # derived from the prize pool (`predictorCollateral +
+  # counterpartyCollateral`) and the resolved `result`.
   result: PredictionResult
   payout: Decimal
 
   createdAt: DateTime!
-  settledAt: DateTime
-}
-
-enum PredictionStatus {
-  OPEN
-  SETTLED
-  CANCELLED
+  # `UnixSeconds` rather than `DateTime` — this comes from chain
+  # storage (uint256 seconds) like `Condition.settledAt`, not from the
+  # indexer's row-write clock.
+  settledAt: UnixSeconds
 }
 
 enum PredictionResult {
-  WON
-  LOST
-  PUSH
+  PREDICTOR_WINS
+  COUNTERPARTY_WINS
 }
 
 type Forecast implements Node {
@@ -766,12 +1000,16 @@ type Forecast implements Node {
   uid: Bytes32!
 
   forecaster: Account!
-  subject: Address
   schemaId: Bytes32!
 
-  condition: Condition
-  conditionGroup: ConditionGroup
-  pickConfiguration: PickConfiguration
+  # Forecasts attach to a single Condition (the EAS subject). Group /
+  # pickConfiguration membership is reachable via `condition.conditionGroup`
+  # and `condition.pickConfigurations`. Non-null on the public surface:
+  # forecasts without a condition link aren't a supported product
+  # surface, and any back-end nullability in the Prisma column should
+  # be normalized away at the resolver (filtered out or rejected at
+  # write time) rather than surfaced through the wire format.
+  condition: Condition!
 
   forecastScore: Decimal
 
@@ -786,11 +1024,14 @@ type Trade implements Node {
   pickConfiguration: PickConfiguration!
   conditions: [Condition!]!
 
-  collateralAsset: CollateralAsset!
-  collateralAmount: Decimal
+  # All trade economics columns (`collateral`, `tokenAmount`, `price`)
+  # are non-null in the `SecondaryTrade` indexer model — every row
+  # carries them.
+  collateral: CollateralToken!
+  collateralAmount: Decimal!
 
-  price: Decimal
-  quantity: Decimal
+  price: Decimal!
+  quantity: Decimal!
 
   createdAt: DateTime!
 }
@@ -802,8 +1043,15 @@ type Position implements Node {
   pickConfiguration: PickConfiguration!
   conditions: [Condition!]!
 
-  collateralAsset: CollateralAsset!
-  size: Decimal
+  # `size` is the raw token balance (renamed from the underlying
+  # `Position.balance` column). `collateral` is the token reference;
+  # `collateralAmount` is the derived collateral amount this position
+  # represents — both are non-null because `balance` is non-null in
+  # the data model.
+  size: Decimal!
+  collateral: CollateralToken!
+  collateralAmount: Decimal!
+
   averagePrice: Decimal
   realizedPnl: Decimal
   unrealizedPnl: Decimal
@@ -812,23 +1060,36 @@ type Position implements Node {
   updatedAt: DateTime
 }
 
-type ActivityItem {
-  id: ID!
-  activityType: ActivityType!
-  subject: ActivitySubject!
-  account: Account
+type Activity {
+  # No synthetic `id` field yet — Activity is a derived feed row, not a
+  # durable entity. The wrapped `source` already carries a Node ID;
+  # in-page identity is handled by the connection cursor. See open
+  # question D2.
+
+  # The underlying entity this activity row wraps. Concrete type is
+  # available via `__typename` — no separate `activityType` enum field
+  # because it would duplicate what the union already encodes.
+  source: ActivitySource!
+  # The actor on the wrapped row: `predictor` for a Prediction,
+  # `account` for a Trade, `forecaster` for a Forecast. Always present
+  # — every union member has a non-null actor account.
+  account: Account!
   createdAt: DateTime!
 }
 
-union ActivitySubject = Prediction | Trade | Forecast
+union ActivitySource = Prediction | Trade | Forecast
 
+# Retained for use in ActivityFilter (filtering an interleaved feed by
+# member type is a real use case — clients ask "only my forecasts" or
+# "only trades"). On the wire of an Activity row itself, prefer
+# `__typename` on `source`.
 enum ActivityType {
   PREDICTION
   TRADE
   FORECAST
 }
 
-type CollateralAsset {
+type CollateralToken {
   symbol: String!
   address: Address!
   decimals: Int!
@@ -838,15 +1099,20 @@ type CollateralAsset {
 type CollateralBalance {
   account: Account!
   chainId: Int!
-  asset: CollateralAsset!
+  collateral: CollateralToken!
   amount: Decimal!
   atBlock: BigInt
 }
 
+# Not a Node — stat rows are time-bucketed values, not addressable
+# entities. Cursors over `collateralBalanceHistory` encode
+# (block, timestamp) position. Unlike other stat types, this one is
+# bucketed at read time via `intervalSeconds:` on the root field — the
+# only exception in the schema; see the field description for why.
 type CollateralBalanceSnapshot {
   account: Account!
   chainId: Int!
-  asset: CollateralAsset!
+  collateral: CollateralToken!
   amount: Decimal!
   blockNumber: BigInt!
   timestamp: DateTime!
@@ -856,7 +1122,7 @@ type CollateralTransfer implements Node {
   id: ID!
   account: Account!
   chainId: Int!
-  asset: CollateralAsset!
+  collateral: CollateralToken!
   amount: Decimal!
   transactionHash: Bytes32!
   createdAt: DateTime!
@@ -871,12 +1137,15 @@ type Protocol {
   ): ProtocolStatsConnection!
   openInterestByCategory: [CategoryOpenInterest!]!
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
-  vault(address: Address!): Vault
+
+  # Vault is a top-level Node; access via root `vault(id:)`,
+  # `vaultByAddress(address:)`, or `vaults(...)`.
 }
 
 type Vault implements Node {
   id: ID!
   address: Address!
+  collateral: CollateralToken!
   stats(
     first: Int
     after: String
@@ -1009,13 +1278,13 @@ type TradeEdge {
 
 type ActivityConnection {
   edges: [ActivityEdge!]!
-  nodes: [ActivityItem!]!
+  nodes: [Activity!]!
   pageInfo: PageInfo!
   totalCount: Int
 }
 
 type ActivityEdge {
-  node: ActivityItem!
+  node: Activity!
   cursor: String!
 }
 
@@ -1091,6 +1360,18 @@ type VaultStatsEdge {
   cursor: String!
 }
 
+type VaultConnection {
+  edges: [VaultEdge!]!
+  nodes: [Vault!]!
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type VaultEdge {
+  node: Vault!
+  cursor: String!
+}
+
 type AccountStatsConnection {
   edges: [AccountStatsEdge!]!
   nodes: [AccountStat!]!
@@ -1128,6 +1409,11 @@ type CategoryEdge {
 }
 
 # Stats Types
+#
+# Stat rows are time-bucketed values, not addressable entities — they
+# do not implement Node and cannot be refetched via `node(id:)`.
+# Connection cursors over these types encode timestamp position;
+# clients re-query with a `timestamp: DateTimeFilter` to traverse.
 
 type ProtocolStat {
   timestamp: DateTime!
@@ -1161,7 +1447,7 @@ input AccountFilter {
 
 input AccountOrder {
   field: AccountOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum AccountOrderField {
@@ -1172,12 +1458,11 @@ input QuestionFilter {
   search: String
   categoryIds: [ID!]
   tags: [String!]
-  status: [QuestionStatus!]
 }
 
 input QuestionOrder {
   field: QuestionOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum QuestionOrderField {
@@ -1190,15 +1475,15 @@ enum QuestionOrderField {
 
 input ConditionFilter {
   search: String
-  conditionGroupId: ID
+  conditionGroupId: IDFilter
   categoryIds: [ID!]
   tags: [String!]
-  status: [ConditionStatus!]
+  outcome: ConditionOutcomeFilter
 }
 
 input ConditionOrder {
   field: ConditionOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum ConditionOrderField {
@@ -1213,12 +1498,11 @@ input ConditionGroupFilter {
   search: String
   categoryIds: [ID!]
   tags: [String!]
-  status: [ConditionGroupStatus!]
 }
 
 input ConditionGroupOrder {
   field: ConditionGroupOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum ConditionGroupOrderField {
@@ -1228,19 +1512,28 @@ enum ConditionGroupOrderField {
   VOLUME
 }
 
+# `predictor` and `counterparty` filter the two sides of a Prediction
+# independently. Strict AND semantics — passing both matches rows
+# where the named addresses occupy *those specific* roles (a rare
+# query, but legal). To match Predictions where an address appears in
+# *either* role, traverse `account(address: ...).predictions` — that
+# feed carries OR-across-roles semantics by virtue of the account
+# being implicit. Splitting here keeps the root field aligned with
+# "no implicit OR" while leaving the symmetric feed reachable on the
+# Account type.
 input PredictionFilter {
-  account: Address
-  conditionId: ID
-  conditionGroupId: ID
-  pickConfigurationId: ID
-  status: [PredictionStatus!]
-  createdAfter: DateTime
-  createdBefore: DateTime
+  predictor: AddressFilter
+  counterparty: AddressFilter
+  conditionId: IDFilter
+  conditionGroupId: IDFilter
+  pickConfigurationId: IDFilter
+  result: PredictionResultFilter
+  createdAt: DateTimeFilter
 }
 
 input PredictionOrder {
   field: PredictionOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum PredictionOrderField {
@@ -1251,17 +1544,14 @@ enum PredictionOrderField {
 }
 
 input ForecastFilter {
-  account: Address
-  conditionId: ID
-  conditionGroupId: ID
-  pickConfigurationId: ID
-  createdAfter: DateTime
-  createdBefore: DateTime
+  forecaster: AddressFilter
+  conditionId: IDFilter
+  createdAt: DateTimeFilter
 }
 
 input ForecastOrder {
   field: ForecastOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum ForecastOrderField {
@@ -1270,17 +1560,16 @@ enum ForecastOrderField {
 }
 
 input TradeFilter {
-  account: Address
-  conditionId: ID
-  conditionGroupId: ID
-  pickConfigurationId: ID
-  createdAfter: DateTime
-  createdBefore: DateTime
+  account: AddressFilter
+  conditionId: IDFilter
+  conditionGroupId: IDFilter
+  pickConfigurationId: IDFilter
+  createdAt: DateTimeFilter
 }
 
 input TradeOrder {
   field: TradeOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum TradeOrderField {
@@ -1291,18 +1580,17 @@ enum TradeOrderField {
 }
 
 input ActivityFilter {
-  account: Address
+  account: AddressFilter
   activityTypes: [ActivityType!]
-  conditionId: ID
-  conditionGroupId: ID
-  pickConfigurationId: ID
-  createdAfter: DateTime
-  createdBefore: DateTime
+  conditionId: IDFilter
+  conditionGroupId: IDFilter
+  pickConfigurationId: IDFilter
+  createdAt: DateTimeFilter
 }
 
 input ActivityOrder {
   field: ActivityOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum ActivityOrderField {
@@ -1310,15 +1598,18 @@ enum ActivityOrderField {
 }
 
 input PositionFilter {
-  account: Address
-  conditionId: ID
-  conditionGroupId: ID
-  pickConfigurationId: ID
+  account: AddressFilter
+  conditionId: IDFilter
+  conditionGroupId: IDFilter
+  pickConfigurationId: IDFilter
+  size: DecimalFilter
+  collateralAmount: DecimalFilter
+  createdAt: DateTimeFilter
 }
 
 input PositionOrder {
   field: PositionOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum PositionOrderField {
@@ -1330,13 +1621,13 @@ enum PositionOrderField {
 }
 
 input PickConfigurationFilter {
-  conditionId: ID
-  conditionGroupId: ID
+  conditionId: IDFilter
+  conditionGroupId: IDFilter
 }
 
 input PickConfigurationOrder {
   field: PickConfigurationOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum PickConfigurationOrderField {
@@ -1344,16 +1635,15 @@ enum PickConfigurationOrderField {
 }
 
 input CollateralTransferFilter {
-  account: Address
-  chainId: Int
+  account: AddressFilter
+  chainId: IntFilter
   excludeProtocol: Boolean
-  createdAfter: DateTime
-  createdBefore: DateTime
+  createdAt: DateTimeFilter
 }
 
 input CollateralTransferOrder {
   field: CollateralTransferOrderField!
-  direction: OrderDirection! = DESC
+  direction: OrderDirection!
 }
 
 enum CollateralTransferOrderField {
@@ -1362,14 +1652,12 @@ enum CollateralTransferOrderField {
 }
 
 input ProtocolStatsFilter {
-  from: DateTime
-  to: DateTime
-  interval: StatsInterval
+  timestamp: DateTimeFilter
 }
 
 input ProtocolStatsOrder {
   field: ProtocolStatsOrderField!
-  direction: OrderDirection! = ASC
+  direction: OrderDirection!
 }
 
 enum ProtocolStatsOrderField {
@@ -1377,45 +1665,37 @@ enum ProtocolStatsOrderField {
 }
 
 input VaultStatsFilter {
-  from: DateTime
-  to: DateTime
-  interval: StatsInterval
+  timestamp: DateTimeFilter
 }
 
 input VaultStatsOrder {
   field: VaultStatsOrderField!
-  direction: OrderDirection! = ASC
+  direction: OrderDirection!
 }
 
 enum VaultStatsOrderField {
   TIMESTAMP
 }
 
+input VaultFilter {
+  address: AddressFilter
+}
+
 input AccountStatsFilter {
-  from: DateTime
-  to: DateTime
-  interval: StatsInterval
+  timestamp: DateTimeFilter
 }
 
 input AccountStatsOrder {
   field: AccountStatsOrderField!
-  direction: OrderDirection! = ASC
+  direction: OrderDirection!
 }
 
 enum AccountStatsOrderField {
   TIMESTAMP
 }
 
-enum StatsInterval {
-  HOUR
-  DAY
-  WEEK
-  MONTH
-}
-
 input LeaderboardFilter {
-  from: DateTime
-  to: DateTime
+  timestamp: DateTimeFilter
 }
 ```
 
@@ -1426,7 +1706,7 @@ input LeaderboardFilter {
 | Current Resolver                                                                                  | Target API                                                                                  |
 | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `account(address)`                                                                                | `account(address)`                                                                          |
-| `accountStats(address, from, to)`                                                                 | `account(address).stats(filter: { from, to })`                                              |
+| `accountStats(address, from, to)`                                                                 | `account(address).stats(filter: { timestamp: { gte, lte } })`                               |
 | `accountStatsRank(address, filters)`                                                              | `account(address).rank(metric: ..., filter: ...)`                                           |
 | `accountStatsLeaderboardPage(filters, take, skip)`                                                | `leaderboard(metric: ..., ...)`                                                             |
 | `accountAccuracyRank(address)`                                                                    | `account(address).rank(metric: ACCURACY)`                                                   |
@@ -1445,10 +1725,10 @@ input LeaderboardFilter {
 | `collateralBalance(address, chainId, atBlock)`                                                    | `collateralBalance(account, chainId, atBlock)` or `account(address).collateralBalance(...)` |
 | `collateralBalanceHistory(address, chainId, count, intervalSeconds)`                              | `collateralBalanceHistory(account, chainId, first, after, intervalSeconds)`                 |
 | `collateralTransfersPage(address, chainId, excludeProtocol, orderBy, orderDirection, take, skip)` | `collateralTransfers(...)`                                                                  |
-| `protocolStats(from, to)`                                                                         | `protocol.stats(filter: { from, to })`                                                      |
+| `protocolStats(from, to)`                                                                         | `protocol.stats(filter: { timestamp: { gte, lte } })`                                       |
 | `openInterestByCategory`                                                                          | `protocol.openInterestByCategory`                                                           |
 | `openInterestByTimeToResolution`                                                                  | `protocol.openInterestByTimeToResolution`                                                   |
-| `vaultStats(vaultAddress, from, to)`                                                              | `protocol.vault(address).stats(filter: { from, to })`                                       |
+| `vaultStats(vaultAddress, from, to)`                                                              | `vaultByAddress(address).stats(filter: { timestamp: { gte, lte } })`                        |
 | `categoriesPage(take, skip)`                                                                      | `categories(...)`                                                                           |
 | `popularTags`                                                                                     | `popularTags(...)`                                                                          |
 
@@ -1511,6 +1791,10 @@ Prefer non-null for fields that are guaranteed by domain model.
 
 Be cautious with fields that are derived, cross-chain, asynchronously indexed, or backfilled.
 
+### Derived field complexity
+
+Derived convenience fields (e.g. `Trade.conditions`, `Position.conditions`) must be costed equivalently to their underlying chain in the complexity estimator. A naive field-count cost lets clients smuggle expensive joins through the shortcut path. If a derived field traverses an unbounded list, do not expose it — keep clients on the explicit chain so the estimator sees the work.
+
 ### Versioning
 
 Recommended migration path:
@@ -1533,113 +1817,17 @@ type Query {
 
 ## Open Questions
 
-These should be resolved before implementation:
+Questions that lock public wire format must be resolved before the per-entity PR that ships the affected type. Additive-only questions can be deferred — adding a field, query, or arg later is non-breaking; removing or reshaping one is.
 
-1. Should `Question.id` be exposed publicly as a synthetic stable view ID, or should it be omitted to avoid implying canonical identity?
-2. Should `ActivityItem.id` be exposed as a synthetic ID, or should activity feed items rely only on cursor identity?
-3. Should `Forecast.subject` use EAS language, or should it be named more product-semantically?
-4. Should `Prediction.counterparty` be nullable in all cases?
-5. Which exact statuses exist today for `Condition`, `ConditionGroup`, and `Prediction`?
-6. Which sort fields are actually supported efficiently by indexes today?
-7. Should `totalCount` be available on all connections, or only where it is cheap?
-8. Do public clients need `last` / `before`, or is forward pagination enough?
-9. Should `Question` expose `condition` and `conditionGroup` as nullable fields, or should it be modeled as a union?
-10. Should `collateralAsset` be a scalar enum-like object for wUSDe today, or fully backed by an asset table/type?
+Numbering is section-prefixed: **D**eferred (`D#`), **P**er-entity (`P#`). Stable across edits — cross-references in the body of this document use these prefixes. Resolved items have been folded into the SDL and principles above and removed from this list; consult `git log` on this file for prior decisions.
 
----
+### Deferred — safe to ship later
 
-## Implementation Tasklist
+- **D1. `Question.id` synthetic ID** — Underlying `Condition` / `ConditionGroup` already carry Node IDs; clients can key on those. Add a synthetic `Question.id` later if a concrete UI need surfaces. Adding a field is non-breaking; committing to a format prematurely locks it forever.
+- **D2. `Activity.id` synthetic ID** — Same logic. Each `Activity` row embeds a Prediction / Trade / Forecast that already has a Node ID; cursor handles in-page identity. Skip until a use case appears.
+- **D3. `totalCount` per-connection** — Per-connection call. Add where the count is cheap (covered index, materialized aggregate); omit where it's a table scan. Adding later is non-breaking.
+- **D4. `last` / `before` reverse pagination** — Forward is a strict subset; reverse is purely additive. Ship forward-only; revisit if clients need reverse traversal.
 
-Scope: steps 1–2 of the migration lifecycle (add new shape additively + mark old fields `@deprecated`). Frontend client migration (step 3), external migration guide (step 4), and removal of deprecated fields (step 5) are tracked elsewhere.
+### Per-entity — resolve at each PR
 
-Streams are designed to be **fully independent** after PR 1 lands. Each per-stream PR only references types introduced in PR 1 or in earlier PRs of the same stream. Cross-stream convenience connections (e.g., `Account.trades`, `Condition.forecasts`, `Question.predictions`) are deferred to the joint convergence PRs at the end.
-
-### Sequence
-
-| #   | Title                                                                                                                  | Stream | Depends on     | Status                                                                 |
-| --- | ---------------------------------------------------------------------------------------------------------------------- | ------ | -------------- | ---------------------------------------------------------------------- |
-| 1   | Foundation — `Node`, `PageInfo`, scalars, `OrderDirection`, `node(id:)`, `nodes(ids:)`, opaque global IDs              | —      | —              | In review ([#1728](https://github.com/sapiencexyz/sapience/pull/1728)) |
-| 2   | Conditions + ConditionGroups + Questions — Relay-shaped entities + connections; deprecate `*Page` siblings             | A      | #1             | Started                                                                |
-| 3   | PickConfigurations + Trades + Positions — Relay-shaped entities + connections; `tradeByHash`                           | A      | #1, #2         | Started                                                                |
-| 4   | Predictions + Forecasts — new entity surface + `predictionByOnchainId` + `forecastByUid` (Attestation rename surface)  | B      | #1             | Not started                                                            |
-| 5   | Collateral + Protocol + Vault + Categories + popularTags                                                               | B      | #1             | Not started                                                            |
-| 6a  | Account + cross-entity convenience connections (`Account.predictions`, `Condition.forecasts`, `Question.trades`, etc.) | Joint  | #2, #3, #4, #5 | Not started                                                            |
-| 6b  | Activity (union over `Prediction` \| `Trade` \| `Forecast`) + Leaderboard                                              | Joint  | #2, #3, #4, #5 | Not started                                                            |
-
-### Parallelism
-
-```
-                       PR 1 (Foundation)
-                       /              \
-         Stream A     /                \    Stream B
-         PR 2 ─→ PR 3                    PR 4 ─→ PR 5
-                       \              /
-                        \            /
-                       PR 6a + PR 6b (joint)
-```
-
-### Per-PR scope notes
-
-**PR 2 — Conditions + ConditionGroups + Questions**
-
-- Add `implements Node` to `Condition` and `ConditionGroup`; register both with the global ID registry from PR 1.
-- Expose existing primary keys as `databaseId` (`ConditionGroup.databaseId: Int!`).
-- Add `condition(id: ID!)` and `conditionGroup(id: ID!)` root queries that resolve via opaque global ID.
-- Thicken `Question`: add `id` (synthetic view ID), `title`, `description`, `status`, `category`, `tags`, `openInterest`, `volume`, `createdAt`, `updatedAt`, `resolvesAt` per the SDL draft.
-- Add Relay-shaped `questions(first:after:filter:orderBy:)`, `conditions(...)`, `conditionGroups(...)` connections alongside existing `questionsPage` / `conditionsPage` / `conditionGroupsPage`; mark the `*Page` resolvers `@deprecated`.
-- Reuse existing `*Filters` inputs and sort enums from the Section A/B work where shape matches; add `*Order` / `OrderDirection` wrappers per the new convention.
-- **No cross-stream connections in this PR.** `Condition.predictions`, `Condition.forecasts`, `Question.trades` etc. are deferred to PR 6a.
-
-**PR 3 — PickConfigurations + Trades + Positions**
-
-- Add `implements Node` and `databaseId` to `PickConfiguration`, `Trade`, `Position`.
-- Add root queries: `pickConfiguration(id:)`, `pickConfigurations(...)`, `trade(id:)`, `tradeByHash(hash:)`, `trades(...)`, `position(id:)`, `positions(...)`.
-- `Pick.condition`, `Trade.conditions`, `Position.conditions` resolve via the `Condition` type from PR 2 (in-stream dependency, fine).
-- Mark old `tradesPage`, `positionsPage`, `pickConfigurationsPage`, and `trade(tradeHash:)` `@deprecated`.
-
-**PR 4 — Predictions + Forecasts (Attestation rename surface)**
-
-- Add `implements Node` to `Prediction`. Add new `Forecast` type (back-ends to existing `Attestation` table; reuses the column-level rename groundwork from #1718).
-- Root queries: `prediction(id:)`, `predictionByOnchainId(predictionId:)`, `predictions(...)`, `forecast(id:)`, `forecastByUid(uid:)`, `forecasts(...)`.
-- Mark `attestationsPage` `@deprecated` pointing at `forecasts`.
-- No `Account.predictions` / `Account.forecasts` connections in this PR.
-
-**PR 5 — Collateral + Protocol + Vault + Categories + popularTags**
-
-- `CollateralBalance`, `CollateralBalanceSnapshot`, `CollateralTransfer` types and root queries (`collateralBalance`, `collateralBalanceHistory`, `collateralTransfers`).
-- `Protocol` namespace type with `stats`, `openInterestByCategory`, `openInterestByTimeToResolution`, `vault(address:)`.
-- `Vault` (`implements Node`) with `stats` connection.
-- `Category` (`implements Node`) + `categories(...)` + `popularTags(...)`.
-- Mark old `protocolStats`, `openInterestByCategory`, `openInterestByTimeToResolution`, `vaultStats`, `categoriesPage` `@deprecated`.
-
-**PR 6a — Account + cross-entity convenience connections**
-
-- `Account implements Node` with all child connections (`predictions`, `trades`, `forecasts`, `positions`, `stats`, `rank`, `collateralBalance`).
-- Wire up the deferred convenience connections on entities from PRs 2–5: `Condition.predictions`, `Condition.trades`, `Condition.forecasts`; `Question.predictions`, `Question.trades`, `Question.forecasts`; `PickConfiguration.predictions`, `PickConfiguration.trades`, `PickConfiguration.positions`; `ConditionGroup.predictions`, `ConditionGroup.trades`, `ConditionGroup.forecasts`.
-- Mark `accountStats`, `accountStatsRank`, `accountStatsLeaderboardPage`, `accountAccuracyRank` `@deprecated`.
-
-**PR 6b — Activity + Leaderboard**
-
-- `ActivityItem` (does not implement `Node`), `ActivitySubject` union (`Prediction | Trade | Forecast`), `activity(...)` root query.
-- Top-level `leaderboard(metric: LeaderboardMetric!, filter:)` query.
-- Mark `activityPage`, `accuracyLeaderboardPage` `@deprecated`.
-
-### Prerequisites and audit notes
-
-Before starting per-entity PRs, confirm the following so we don't duplicate already-shipped work:
-
-- Section A renames (PR [#1718](https://github.com/sapiencexyz/sapience/pull/1718)) already shipped: `Attestation.forecast` column, `forecastScore`, `accountAccuracy*` types, `Collateral*` type-name drops, `accountActivityPage` → `activityPage` alias.
-- Section B polish (PRs [#1719](https://github.com/sapiencexyz/sapience/pull/1719), [#1720](https://github.com/sapiencexyz/sapience/pull/1720)) already shipped: `filters: <Input>` on every `*Page`, `orderBy`/`orderDirection` normalized across all paginated resolvers, `lazyTotalCount` factory, sort enums on previously-fixed-sort resolvers.
-- PR [#1721](https://github.com/sapiencexyz/sapience/pull/1721) moved `referralCodesPage` to REST. The Migration Map row for `referralCodesPage` is obsolete and can be removed.
-- PR [#1727](https://github.com/sapiencexyz/sapience/pull/1727) adds `negRisk` metadata to `ConditionGroup` — coordinate landing order with PR 2 to avoid SDL collisions.
-- PR [#1722](https://github.com/sapiencexyz/sapience/pull/1722) adds `balanceMin` filter on positions queries — affects PR 3's `PositionFilter`.
-
-### Open questions (gate before PR 2 starts)
-
-The 10 open questions above are the design-decision gates. The ones that block PR 2 specifically:
-
-- **Q1** (`Question.id` synthetic vs omitted) — blocks PR 2.
-- **Q5** (which statuses exist for `Condition`, `ConditionGroup`) — blocks PR 2 status enums.
-- **Q6** (which sort fields are index-backed) — informs PR 2 `*OrderField` enums.
-- **Q7** (`totalCount` on all connections vs only cheap ones) — affects every PR's connection types; should be decided once and applied uniformly.
-- **Q9** (`Question.condition`/`conditionGroup` as nullable fields vs union) — blocks PR 2 `Question` SDL.
+- **P1. Sort fields by entity** — Each entity declares its own `<Entity>OrderField` enum listing the fields its indexes support (see "One filter convention, one sort convention" above). Per-entity PRs decide their enum members based on actual index coverage; the SDL enforces the answer.

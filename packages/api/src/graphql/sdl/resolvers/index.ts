@@ -103,6 +103,7 @@ import {
   accountVolume,
   protocolVolume,
 } from './queries/timeSeries';
+import { node, nodes } from './queries/node';
 import { trade, tradesPage } from './queries/trade';
 import { trades, tradeCount } from './queries/deprecated/trade';
 import { accountTotalVolume } from './queries/volume';
@@ -110,6 +111,9 @@ import { accountTotalVolume } from './queries/volume';
 export const resolvers: Resolvers = {
   ...scalarResolvers,
   Query: {
+    // Relay polymorphic refetch
+    node,
+    nodes,
     // Leaderboards / account scores
     accountAccuracy,
     accountAccuracyRank,
