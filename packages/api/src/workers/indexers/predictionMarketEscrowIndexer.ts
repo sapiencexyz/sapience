@@ -135,10 +135,24 @@ interface PositionsBurnedEvent {
   refCode: `0x${string}`;
 }
 
-// Map settlement result number to enum value
+/**
+ * Map the on-chain `SettlementResult` uint8 to the Prisma enum.
+ *
+ * Current protocol contracts emit only three values for predictions:
+ * 0 = UNRESOLVED, 1 = PREDICTOR_WINS, 2 = COUNTERPARTY_WINS. Non-decisive
+ * outcomes (ties, voids) are collapsed to COUNTERPARTY_WINS at the
+ * resolution layer — see `PredictionMarketEscrow._evaluatePick` and the
+ * rationale comment at PredictionMarketEscrow.sol:L1262-L1267
+ * ("SettlementResult has no DRAW variant ... counterparties bear no
+ * prediction risk on void/tie outcomes").
+ *
+ * The Prisma `SettlementResult` enum still lists `NON_DECISIVE` for
+ * historical rows written by an earlier protocol version; the schema-
+ * level removal is out of scope here (needs a backfill migration).
+ */
 function mapSettlementResult(
   result: number
-): 'UNRESOLVED' | 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' | 'NON_DECISIVE' {
+): 'UNRESOLVED' | 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' {
   switch (result) {
     case 0:
       return 'UNRESOLVED';
@@ -146,9 +160,11 @@ function mapSettlementResult(
       return 'PREDICTOR_WINS';
     case 2:
       return 'COUNTERPARTY_WINS';
-    case 3:
-      return 'NON_DECISIVE';
     default:
+      logger.warn(
+        { settlementResult: result },
+        'Unexpected settlement result value. Current contracts emit only 0/1/2 for predictions (non-decisive collapses to COUNTERPARTY_WINS at the resolution layer). Recording as UNRESOLVED.'
+      );
       return 'UNRESOLVED';
   }
 }
