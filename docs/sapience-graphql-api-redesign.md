@@ -53,14 +53,7 @@ condition(id: ID!)
 conditionGroup(id: ID!)
 ```
 
-A `Question` may still expose a synthetic `id` for UI rendering, caching, and list keys, but that ID should be treated as a view ID rather than a canonical graph entity ID.
-
-Example synthetic IDs:
-
-```text
-question:condition:123
-question:group:456
-```
+A synthetic `Question.id` is deferred (see D1). Clients that need a stable list key today should use the underlying `Condition` / `ConditionGroup` Node ID reachable through `Question.source`. If a future UI need forces a synthetic ID, the format is unfixed — committing to a wire shape prematurely locks it forever.
 
 ### Activity model
 
@@ -329,131 +322,33 @@ Rules:
 
 ## Target Query Surface
 
-```graphql
-type Query {
-  node(id: ID!): Node
-  nodes(ids: [ID!]!): [Node]!
+Prose orientation to the top-level `Query` shape. The full SDL below is the canonical source — argument lists, filters, and order inputs live there.
 
-  account(address: Address!): Account
-  accounts(
-    first: Int
-    after: String
-    filter: AccountFilter
-    orderBy: AccountOrder
-  ): AccountConnection!
+**Polymorphic Relay refetch.** `node(id:)` and `nodes(ids:)` return any durable entity by opaque global ID.
 
-  condition(id: ID!): Condition
-  conditionGroup(id: ID!): ConditionGroup
+**Direct lookup by Node ID** for every durable type: `condition`, `conditionGroup`, `prediction`, `trade`, `forecast`, `position`, `pickConfiguration`, `vault`, `account`.
 
-  questions(
-    first: Int
-    after: String
-    filter: QuestionFilter
-    orderBy: QuestionOrder
-  ): QuestionConnection!
+**Domain-identifier lookup** where the public identifier is the on-chain or external anchor:
 
-  conditions(
-    first: Int
-    after: String
-    filter: ConditionFilter
-    orderBy: ConditionOrder
-  ): ConditionConnection!
+- `predictionByOnchainId(predictionId: BigInt!)`
+- `tradeByHash(hash: Bytes32!)`
+- `forecastByUid(uid: Bytes32!)`
+- `vaultByAddress(address: Address!)`
+- `account(address: Address!)` — Account's domain identifier _is_ its address, so there's no separate `accountByAddress`.
 
-  conditionGroups(
-    first: Int
-    after: String
-    filter: ConditionGroupFilter
-    orderBy: ConditionGroupOrder
-  ): ConditionGroupConnection!
+**Relay-shaped connections** for each durable entity: `accounts`, `conditions`, `conditionGroups`, `predictions`, `trades`, `forecasts`, `positions`, `pickConfigurations`, `vaults`. Each takes `first` / `after` / `filter: <Entity>Filter` / `orderBy: <Entity>Order`.
 
-  prediction(id: ID!): Prediction
-  predictionByOnchainId(predictionId: BigInt!): Prediction
-  predictions(
-    first: Int
-    after: String
-    filter: PredictionFilter
-    orderBy: PredictionOrder
-  ): PredictionConnection!
+**Derived-view feeds** — list access only, no canonical `(id:)` lookup (see "Derived aggregate views"):
 
-  trade(id: ID!): Trade
-  tradeByHash(hash: Bytes32!): Trade
-  trades(
-    first: Int
-    after: String
-    filter: TradeFilter
-    orderBy: TradeOrder
-  ): TradeConnection!
+- `questions` — interleaved `Condition` / `ConditionGroup` feed.
+- `activity` — interleaved `Prediction` / `Trade` / `Forecast` feed.
 
-  forecast(id: ID!): Forecast
-  forecastByUid(uid: Bytes32!): Forecast
-  forecasts(
-    first: Int
-    after: String
-    filter: ForecastFilter
-    orderBy: ForecastOrder
-  ): ForecastConnection!
+**Cross-cutting and namespace fields:**
 
-  activity(
-    first: Int
-    after: String
-    filter: ActivityFilter
-    orderBy: ActivityOrder
-  ): ActivityConnection!
-
-  position(id: ID!): Position
-  positions(
-    first: Int
-    after: String
-    filter: PositionFilter
-    orderBy: PositionOrder
-  ): PositionConnection!
-
-  pickConfiguration(id: ID!): PickConfiguration
-  pickConfigurations(
-    first: Int
-    after: String
-    filter: PickConfigurationFilter
-    orderBy: PickConfigurationOrder
-  ): PickConfigurationConnection!
-
-  vault(id: ID!): Vault
-  vaultByAddress(address: Address!): Vault
-  vaults(first: Int, after: String, filter: VaultFilter): VaultConnection!
-
-  leaderboard(
-    metric: LeaderboardMetric!
-    first: Int
-    after: String
-    filter: LeaderboardFilter
-  ): AccountLeaderboardConnection!
-
-  collateralBalance(
-    account: Address!
-    chainId: Int!
-    atBlock: BigInt
-  ): CollateralBalance!
-
-  collateralBalanceHistory(
-    account: Address!
-    chainId: Int!
-    first: Int
-    after: String
-    intervalSeconds: Int!
-  ): CollateralBalanceSnapshotConnection!
-
-  collateralTransfers(
-    first: Int
-    after: String
-    filter: CollateralTransferFilter
-    orderBy: CollateralTransferOrder
-  ): CollateralTransferConnection!
-
-  protocol: Protocol!
-
-  categories(first: Int, after: String): CategoryConnection!
-  popularTags(first: Int = 50): [String!]!
-}
-```
+- `leaderboard(metric: LeaderboardMetric!, filter:)` — ranked `Account` feed.
+- `collateralBalance` / `collateralBalanceHistory` / `collateralTransfers`.
+- `protocol` — namespace for protocol-wide stats and aggregates.
+- `categories` / `popularTags` — taxonomy.
 
 ---
 
@@ -587,6 +482,12 @@ input PredictionResultFilter {
   isNull: Boolean
 }
 
+# Relay-spec `PageInfo`. `hasPreviousPage` is mandatory to keep the
+# type spec-compatible, but reverse pagination via `last` / `before`
+# is deferred (see D4) — under forward-only pagination
+# (`first` / `after`), `hasPreviousPage` is always `false`. The field
+# becomes meaningful once `last` / `before` ships; until then clients
+# should not infer reverse-traversal capability from its presence.
 type PageInfo {
   hasNextPage: Boolean!
   hasPreviousPage: Boolean!
@@ -990,6 +891,16 @@ type Prediction implements Node {
   settledAt: UnixSeconds
 }
 
+# Result is binary at the payout layer — every settled prediction
+# resolves to one of these two values. Non-decisive `Condition`
+# outcomes (`Condition.outcome = NON_DECISIVE`) resolve their owning
+# predictions to `COUNTERPARTY_WINS` per protocol rules; to distinguish
+# "counterparty won decisively" from "counterparty won because the
+# condition voided," inspect `prediction.conditions[].outcome` directly.
+# Server-side rollups like `AccountStat.predictionsNonDecisive` already
+# do this join. There is intentionally no `NON_DECISIVE` value here —
+# adding one would imply a third payout path that the protocol doesn't
+# implement.
 enum PredictionResult {
   PREDICTOR_WINS
   COUNTERPARTY_WINS
@@ -1196,7 +1107,6 @@ type AccountConnection {
   edges: [AccountEdge!]!
   nodes: [Account!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type AccountEdge {
@@ -1208,7 +1118,6 @@ type QuestionConnection {
   edges: [QuestionEdge!]!
   nodes: [Question!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type QuestionEdge {
@@ -1220,7 +1129,6 @@ type ConditionConnection {
   edges: [ConditionEdge!]!
   nodes: [Condition!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type ConditionEdge {
@@ -1232,7 +1140,6 @@ type ConditionGroupConnection {
   edges: [ConditionGroupEdge!]!
   nodes: [ConditionGroup!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type ConditionGroupEdge {
@@ -1244,7 +1151,6 @@ type PredictionConnection {
   edges: [PredictionEdge!]!
   nodes: [Prediction!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type PredictionEdge {
@@ -1256,7 +1162,6 @@ type ForecastConnection {
   edges: [ForecastEdge!]!
   nodes: [Forecast!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type ForecastEdge {
@@ -1268,7 +1173,6 @@ type TradeConnection {
   edges: [TradeEdge!]!
   nodes: [Trade!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type TradeEdge {
@@ -1280,7 +1184,6 @@ type ActivityConnection {
   edges: [ActivityEdge!]!
   nodes: [Activity!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type ActivityEdge {
@@ -1292,7 +1195,6 @@ type PositionConnection {
   edges: [PositionEdge!]!
   nodes: [Position!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type PositionEdge {
@@ -1304,7 +1206,6 @@ type PickConfigurationConnection {
   edges: [PickConfigurationEdge!]!
   nodes: [PickConfiguration!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type PickConfigurationEdge {
@@ -1316,7 +1217,6 @@ type CollateralBalanceSnapshotConnection {
   edges: [CollateralBalanceSnapshotEdge!]!
   nodes: [CollateralBalanceSnapshot!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type CollateralBalanceSnapshotEdge {
@@ -1328,7 +1228,6 @@ type CollateralTransferConnection {
   edges: [CollateralTransferEdge!]!
   nodes: [CollateralTransfer!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type CollateralTransferEdge {
@@ -1340,7 +1239,6 @@ type ProtocolStatsConnection {
   edges: [ProtocolStatsEdge!]!
   nodes: [ProtocolStat!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type ProtocolStatsEdge {
@@ -1352,7 +1250,6 @@ type VaultStatsConnection {
   edges: [VaultStatsEdge!]!
   nodes: [VaultStat!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type VaultStatsEdge {
@@ -1364,7 +1261,6 @@ type VaultConnection {
   edges: [VaultEdge!]!
   nodes: [Vault!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type VaultEdge {
@@ -1376,7 +1272,6 @@ type AccountStatsConnection {
   edges: [AccountStatsEdge!]!
   nodes: [AccountStat!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type AccountStatsEdge {
@@ -1388,7 +1283,6 @@ type AccountLeaderboardConnection {
   edges: [AccountLeaderboardEdge!]!
   nodes: [AccountLeaderboardEntry!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type AccountLeaderboardEdge {
@@ -1400,7 +1294,6 @@ type CategoryConnection {
   edges: [CategoryEdge!]!
   nodes: [Category!]!
   pageInfo: PageInfo!
-  totalCount: Int
 }
 
 type CategoryEdge {
@@ -1840,7 +1733,7 @@ Numbering is section-prefixed: **D**eferred (`D#`), **P**er-entity (`P#`). Stabl
 
 - **D1. `Question.id` synthetic ID** — Underlying `Condition` / `ConditionGroup` already carry Node IDs; clients can key on those. Add a synthetic `Question.id` later if a concrete UI need surfaces. Adding a field is non-breaking; committing to a format prematurely locks it forever.
 - **D2. `Activity.id` synthetic ID** — Same logic. Each `Activity` row embeds a Prediction / Trade / Forecast that already has a Node ID; cursor handles in-page identity. Skip until a use case appears.
-- **D3. `totalCount` per-connection** — Per-connection call. Add where the count is cheap (covered index, materialized aggregate); omit where it's a table scan. Adding later is non-breaking.
+- **D3. `totalCount` per-connection** — Default is **omit** — the SDL connection types ship without `totalCount` and per-entity PRs add it on a case-by-case basis where the count is cheap (covered index, materialized aggregate). A `totalCount: Int!` field on a row-scanning query is a footgun; addition is non-breaking, so default-off is safer than default-on.
 - **D4. `last` / `before` reverse pagination** — Forward is a strict subset; reverse is purely additive. Ship forward-only; revisit if clients need reverse traversal.
 
 ### Per-entity — resolve at each PR
