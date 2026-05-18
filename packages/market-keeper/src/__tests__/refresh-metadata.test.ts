@@ -74,25 +74,31 @@ function makeMarket(
 }
 
 describe('fetchAllExistingConditions', () => {
-  it('sends a where clause that filters to public + unsettled + non-empty similarMarkets', async () => {
-    fetchQueue.push(() => jsonResponse({ data: { conditions: [] } }));
+  it('sends filters for public + unsettled + non-empty similarMarkets via conditionsPage', async () => {
+    fetchQueue.push(() =>
+      jsonResponse({
+        data: { conditionsPage: { hasMore: false, items: [] } },
+      })
+    );
 
     await fetchAllExistingConditions('https://api.example.com');
 
     expect(fetchCalls).toHaveLength(1);
     const body = JSON.parse(fetchCalls[0].init!.body as string);
-    expect(body.variables.where).toEqual({
-      public: { equals: true },
-      settled: { equals: false },
-      similarMarkets: { isEmpty: false },
+    expect(body.variables.filters).toEqual({
+      visibility: 'PUBLIC',
+      settled: false,
+      hasSimilarMarkets: true,
     });
-    expect(body.variables.orderBy).toEqual([{ id: 'asc' }]);
+    expect(body.variables.take).toBe(100);
+    expect(body.variables.skip).toBe(0);
+    expect(body.query).toContain('conditionsPage');
     expect(fetchCalls[0].url.endsWith('/graphql')).toBe(true);
   });
 
-  it('paginates with deterministic orderBy until a page returns < pageSize', async () => {
-    // Two full pages of 100 then an empty short page — same shape
-    // refresh-volume's fetchActiveConditionIds uses.
+  it('paginates via hasMore + take/skip until the page envelope says we are done', async () => {
+    // Two full pages of 100 with hasMore=true, then a short page with
+    // hasMore=false — same envelope contract the resolver implements.
     const page1 = Array.from({ length: 100 }, (_, i) => ({
       id: `0x${(i + 1).toString().padStart(3, '0')}`,
       endTime: 1700000000,
@@ -111,9 +117,21 @@ describe('fetchAllExistingConditions', () => {
       },
     ];
 
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page1 } }));
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page2 } }));
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page3 } }));
+    fetchQueue.push(() =>
+      jsonResponse({
+        data: { conditionsPage: { hasMore: true, items: page1 } },
+      })
+    );
+    fetchQueue.push(() =>
+      jsonResponse({
+        data: { conditionsPage: { hasMore: true, items: page2 } },
+      })
+    );
+    fetchQueue.push(() =>
+      jsonResponse({
+        data: { conditionsPage: { hasMore: false, items: page3 } },
+      })
+    );
 
     const result = await fetchAllExistingConditions('https://api.example.com');
 
@@ -134,25 +152,28 @@ describe('fetchAllExistingConditions', () => {
     fetchQueue.push(() =>
       jsonResponse({
         data: {
-          conditions: [
-            {
-              id: '0xabc',
-              endTime: 1700000000,
-              question: 'Will X happen?',
-              shortName: 'X?',
-              optionName: 'Yes side',
-              description: 'A description',
-              similarMarkets: ['https://polymarket.com/event/foo#bar'],
-              tags: ['crypto', 'btc'],
-              similarMarketVolume: 1234,
-              similarMarketImage: 'https://img.example/x.png',
-              conditionGroup: {
-                id: 7,
-                name: 'Group Name',
+          conditionsPage: {
+            hasMore: false,
+            items: [
+              {
+                id: '0xabc',
+                endTime: 1700000000,
+                question: 'Will X happen?',
+                shortName: 'X?',
+                optionName: 'Yes side',
+                description: 'A description',
                 similarMarkets: ['https://polymarket.com/event/foo#bar'],
+                tags: ['crypto', 'btc'],
+                similarMarketVolume: 1234,
+                similarMarketImage: 'https://img.example/x.png',
+                conditionGroup: {
+                  id: 7,
+                  name: 'Group Name',
+                  similarMarkets: ['https://polymarket.com/event/foo#bar'],
+                },
               },
-            },
-          ],
+            ],
+          },
         },
       })
     );
