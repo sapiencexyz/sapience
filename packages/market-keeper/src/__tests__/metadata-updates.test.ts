@@ -819,7 +819,12 @@ describe('groupMarkets new-condition routing', () => {
     ).toBe(true);
   });
 
-  it('segments same-title negRisk markets by negRiskMarketId instead of downgrading them', async () => {
+  it('sends same-title markets from different baskets under one title; API decides what survives', async () => {
+    // The keeper no longer suffix-segments title collisions. Both
+    // single-market groups share the raw event title and carry their own
+    // basket ids; the API's strict basket invariant rejects whichever
+    // arrives second when the basket ids disagree, surfaced as a 400 in
+    // the batch-create response so operators see the conflict.
     const markets = [
       makeMarket({
         conditionId: '0xa',
@@ -852,15 +857,10 @@ describe('groupMarkets new-condition routing', () => {
     mockCheckExisting.mockResolvedValue(new Map());
 
     const result = await groupMarkets(markets, API_URL);
-    const groups = result.groups.filter((g) =>
-      g.title.startsWith('NBA champion')
-    );
+    const groups = result.groups.filter((g) => g.title === 'NBA champion');
 
     expect(groups).toHaveLength(2);
-    expect(groups.map((g) => g.title).sort()).toEqual([
-      'NBA champion (basket-a)',
-      'NBA champion (basket-b)',
-    ]);
+    expect(groups.every((g) => g.title === 'NBA champion')).toBe(true);
     expect(groups.map((g) => g.negRiskMarketId).sort()).toEqual([
       'basket-a',
       'basket-b',

@@ -114,42 +114,6 @@ function sharedNegRiskMarketId(
   return allNegRisk && sameBasket ? firstId : undefined;
 }
 
-function negRiskBasketIdsByTitle(
-  groups: Array<{ title: string; markets: PolymarketMarket[] }>
-): Map<string, Set<string>> {
-  const idsByTitle = new Map<string, Set<string>>();
-  for (const group of groups) {
-    for (const market of group.markets) {
-      if (!isNegRiskMarket(market)) continue;
-      const id = getNegRiskMarketId(market);
-      if (!id) continue;
-      const ids = idsByTitle.get(group.title) ?? new Set<string>();
-      ids.add(id);
-      idsByTitle.set(group.title, ids);
-    }
-  }
-  return idsByTitle;
-}
-
-// Segmentation today only fires when both baskets show up in the same sync
-// run; a later basket landing alone keeps the unsuffixed title and is then
-// rejected by the API invariant against the already-persisted group. Operators
-// see this via the [BatchCreate] warn log and can rename the existing group
-// to free the name. A follow-up could query existing group baskets up front
-// so segmentation persists across runs.
-function conditionGroupTitleForMarket(
-  title: string,
-  market: PolymarketMarket,
-  idsByTitle: Map<string, Set<string>>
-): string {
-  const id = getNegRiskMarketId(market);
-  const conflictingBasketCount = idsByTitle.get(title)?.size ?? 0;
-  if (isNegRiskMarket(market) && id && conflictingBasketCount > 1) {
-    return `${title} (${id})`;
-  }
-  return title;
-}
-
 export function transformToSapienceCondition(
   market: PolymarketMarket,
   groupTitle?: string,
@@ -282,8 +246,6 @@ export async function groupMarkets(
     (m) => !existingIds.has(m.conditionId)
   );
 
-  const negRiskBasketIds = negRiskBasketIdsByTitle(filteredGroups);
-
   // Transform single-market groups to SapienceConditionGroup[]
   const conditionGroups: SapienceConditionGroup[] = [];
 
@@ -292,11 +254,12 @@ export async function groupMarkets(
     const enrichment = enrichments.get(market.conditionId);
     const eventSlug = market.events?.[0]?.slug;
     const marketTags = eventSlug ? (eventTagMap.get(eventSlug) ?? []) : [];
-    const conditionGroupTitle = conditionGroupTitleForMarket(
-      group.title,
-      market,
-      negRiskBasketIds
-    );
+    // Use the raw event title — no basket-id suffixing. If two same-title
+    // markets come from different baskets, the API's strict basket
+    // invariant rejects whichever one arrives second, surfaced as an
+    // operator-visible 400 from batch-create. Auto-segmenting masked the
+    // underlying data problem; let it surface.
+    const conditionGroupTitle = group.title;
     const groupNegRiskMarketId = sharedNegRiskMarketId(group.markets);
     const condition = transformToSapienceCondition(
       market,

@@ -115,23 +115,18 @@ Polymarket also publishes **negative-risk baskets**: a set of mutually-exclusive
 
 Only `condition_group.negRiskMarketId` is persisted in the DB; `ConditionGroup.negRisk` is a GraphQL-derived boolean (`true` iff `negRiskMarketId` is non-null). One column, no chance of the flag and the id drifting apart.
 
-The keeper enforces basketing when forming groups:
+The basket invariant is enforced by the API, with the keeper as a well-behaved client:
 
-- The keeper stamps a group's `negRiskMarketId` only when every market in it is flagged `negRisk: true` **and** shares the same basket id. If any market disagrees (or the basket id is missing on any sibling), the group is created without a basket id and the API derives `negRisk: false`.
-- When two same-event-title markets in the same sync run come from **different** baskets (e.g. one is `basket-a`, another `basket-b`), the keeper splits them into separate groups and appends the basket id to the title: `"NBA champion (basket-a)"`, `"NBA champion (basket-b)"`. This keeps each basket addressable as its own unit.
-- The admin REST routes (`/admin/conditions`, `/admin/conditionGroups`) reject any new condition admission to a basket group unless the request payload carries a matching `negRiskMarketId`. Conditions that simply omit the basket id are also rejected — only an exact match gets in. Continuing membership is grandfathered: a metadata-only edit on an already-linked condition doesn't have to restate the basket id.
+- **First condition decides.** The first condition assigned to a group stamps its basket id onto the group (null or otherwise). Every subsequent admission has to match exactly — strict equality, including null. A basket condition trying to join a non-basket group is just as wrong as the reverse.
+- The keeper stamps a fresh group's `negRiskMarketId` only when every market in that group is flagged `negRisk: true` **and** shares the same basket id. If any market disagrees, the group is sent with no basket id and the API derives `negRisk: false`.
+- The admin REST routes (`/admin/conditions`, `/admin/conditionGroups`) reject any new condition admission whose payload `negRiskMarketId` doesn't equal the group's stored value. Continuing membership is grandfathered: a metadata-only edit on an already-linked condition doesn't have to restate the basket id.
+- Same-event-title markets coming from **different** baskets are no longer auto-segmented into suffixed group names. They land naturally under the shared title; whichever basket reaches the API first wins the group, and the others surface as 400s the operator can triage. The keeper logs these distinctly in `submitToAPI`:
+
+  ```
+  … Batch N unable to add to existing negRisk group: Cannot add non-matching negRisk conditions to negRisk group NBA champion. Expected negRiskMarketId basket-a; mismatched: 0xabc…
+  ```
 
 A group's basket id is a **one-way ratchet** on the keeper: it can flip `null → 'basket-x'` when fresh Polymarket markets agree on a basket id, but the keeper will never auto-clear it. Demoting silently would dissolve the basket invariant, so when fresh markets disagree on basketing the keeper logs `[Metadata] refused to demote group <id> ("<title>") from negRisk: …` and emits no update. Recovery for that case is a deliberate admin REST edit (`PUT /admin/conditionGroups/:id` with `negRiskMarketId: null`) if Polymarket truly retired the basket.
-
-### Known limitation: late basket arrivals
-
-The basket-segmentation suffix is only applied when both baskets appear in the **same** sync run. If `basket-a` is already persisted as a plain `"NBA champion"` group and `basket-b` shows up alone in a later run, the keeper sends it through as `"NBA champion"` and the API rejects it as a basket mismatch. The keeper surfaces that distinctly in its batch-submit logs:
-
-```
-… Batch N unable to add to existing negRisk group: Cannot add non-matching negRisk conditions to negRisk group NBA champion. Expected negRiskMarketId basket-a; mismatched: 0xabc…
-```
-
-Recovery is currently manual (rename the existing group to free the basket-suffixed slot, then the next sync creates a fresh basket-suffixed group for `basket-b`).
 
 ---
 

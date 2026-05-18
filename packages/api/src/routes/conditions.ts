@@ -36,16 +36,13 @@ function normalizeNegRiskMarketId(value: unknown): string | null {
  * Group-level basket invariant.
  *
  * Conditions don't store negRisk metadata; the only persisted truth is
- * `condition_group.negRiskMarketId`. So when an incoming request *enters*
- * a group, we enforce consistency at the boundary:
+ * `condition_group.negRiskMarketId`. The first condition assigned to a
+ * group decides that id (null or otherwise); every subsequent admission
+ * has to match exactly — null included. There's no asymmetric "anything
+ * goes" relaxation: a basket condition trying to slip into a non-basket
+ * group is just as wrong as the reverse.
  *
- *   - Group has no basket id → anything goes.
- *   - Group has a basket id → the payload MUST declare the same id.
- *     Silently admitting a non-basket condition would let an unrelated
- *     market drift into a mutually-exclusive basket and corrupt the
- *     invariant that backs settlement.
- *
- * This guards admission only; conditions already linked to the group are
+ * Guards admission only. Conditions already linked to the group are
  * grandfathered (a routine metadata edit shouldn't have to restate the
  * basket id every time).
  */
@@ -53,26 +50,7 @@ function basketsAgree(
   groupBasket: string | null,
   payloadBasket: string | null
 ): boolean {
-  if (!groupBasket) return true;
   return payloadBasket === groupBasket;
-}
-
-/**
- * Derive the basket id a freshly-created group should adopt from the
- * payload-side claims of every condition that names it. We only promote a
- * basket id onto a new group when every claimant agrees on it; any
- * disagreement (or any missing claim) leaves the group basket-less.
- */
-function unanimousPayloadBasket(
-  items: Array<{ negRisk?: boolean; negRiskMarketId?: string | null }>
-): string | null {
-  if (items.length === 0) return null;
-  const firstId = normalizeNegRiskMarketId(items[0].negRiskMarketId);
-  if (!firstId) return null;
-  const allSame = items.every(
-    (item) => normalizeNegRiskMarketId(item.negRiskMarketId) === firstId
-  );
-  return allSame ? firstId : null;
 }
 
 // GET route removed in favor of GraphQL. Use GraphQL `conditions` query for reads.
@@ -175,78 +153,122 @@ router.post('/batch-create', async (req: Request, res: Response) => {
     const groupByName = new Map(existingGroups.map((g) => [g.name, g]));
     const groupIdByName = new Map(existingGroups.map((g) => [g.name, g.id]));
 
+    // For groups that already exist in the DB, every incoming item must
+    // match the stored basket id exactly (null included). Reject the batch
+    // up front so we don't half-apply.
     for (const name of uniqueGroupNames) {
       const groupItems = items.filter((i) => i.groupName?.trim() === name);
       const existingGroup = groupByName.get(name);
-      if (existingGroup?.negRiskMarketId) {
-        const mismatched = groupItems.filter(
-          (item) =>
-            !basketsAgree(
-              existingGroup.negRiskMarketId,
-              normalizeNegRiskMarketId(item.negRiskMarketId)
-            )
+      if (!existingGroup) continue;
+      const mismatched = groupItems.filter(
+        (item) =>
+          !basketsAgree(
+            existingGroup.negRiskMarketId,
+            normalizeNegRiskMarketId(item.negRiskMarketId)
+          )
+      );
+      if (mismatched.length > 0) {
+        log.warn(
+          `[BatchCreate] rejected ${mismatched.length} condition(s) for ` +
+            `group "${name}" (basket=${existingGroup.negRiskMarketId ?? 'none'}): ` +
+            mismatched
+              .map(
+                (item) =>
+                  `${item.conditionHash}=${item.negRiskMarketId ?? 'none'}`
+              )
+              .join(', ')
         );
-        if (mismatched.length > 0) {
-          // Operator-visible signal: market-keeper's title-suffix segmentation
-          // only fires when both baskets appear in the same sync run. A later
-          // basket landing alone hits this rejection and the keeper drops the
-          // condition silently on every subsequent run — log loudly so it can
-          // be reconciled (e.g. by renaming the existing group manually).
-          log.warn(
-            `[BatchCreate] rejected ${mismatched.length} negRisk condition(s) ` +
-              `for group "${name}" (existing basket ${existingGroup.negRiskMarketId}): ` +
-              mismatched
-                .map(
-                  (item) =>
-                    `${item.conditionHash}=${item.negRiskMarketId ?? 'none'}`
-                )
-                .join(', ')
-          );
-          return res.status(400).json({
-            message:
-              `Cannot add non-matching negRisk conditions to negRisk group ${name}. ` +
-              `Expected negRiskMarketId ${existingGroup.negRiskMarketId}; mismatched: ${mismatched
-                .map((item) => item.conditionHash)
-                .join(', ')}`,
-          });
-        }
+        return res.status(400).json({
+          message:
+            `Cannot add non-matching negRisk conditions to negRisk group ${name}. ` +
+            `Expected negRiskMarketId ${existingGroup.negRiskMarketId ?? 'null'}; ` +
+            `mismatched: ${mismatched.map((item) => item.conditionHash).join(', ')}`,
+        });
       }
     }
 
-    // Create missing groups
+    // Create missing groups. Leader-takes-all: the first item in the batch
+    // that names a new group stamps its basket id (or null) onto the group,
+    // and every other item in the same batch+group is then validated against
+    // that stamp the same way an existing-group admission would be.
     const failedGroups: string[] = [];
     for (const name of uniqueGroupNames) {
-      if (!groupIdByName.has(name)) {
-        // Find categoryId from the first condition that references this group
-        const groupItems = items.filter((i) => i.groupName?.trim() === name);
-        const firstItem = groupItems[0];
-        const groupBasket = unanimousPayloadBasket(groupItems);
-        const categoryId = firstItem?.categorySlug
-          ? (categoryBySlug.get(firstItem.categorySlug) ?? null)
-          : null;
-        try {
-          const group = await prisma.conditionGroup.create({
-            data: {
-              name,
-              categoryId,
-              negRiskMarketId: groupBasket,
-            },
+      if (groupIdByName.has(name)) continue;
+      const groupItems = items.filter((i) => i.groupName?.trim() === name);
+      const firstItem = groupItems[0];
+      const leaderBasket = normalizeNegRiskMarketId(firstItem?.negRiskMarketId);
+      const mismatched = groupItems
+        .slice(1)
+        .filter(
+          (item) =>
+            !basketsAgree(
+              leaderBasket,
+              normalizeNegRiskMarketId(item.negRiskMarketId)
+            )
+        );
+      if (mismatched.length > 0) {
+        log.warn(
+          `[BatchCreate] rejected ${mismatched.length} condition(s) for new ` +
+            `group "${name}" (leader basket=${leaderBasket ?? 'none'}): ` +
+            mismatched
+              .map(
+                (item) =>
+                  `${item.conditionHash}=${item.negRiskMarketId ?? 'none'}`
+              )
+              .join(', ')
+        );
+        return res.status(400).json({
+          message:
+            `Cannot add non-matching negRisk conditions to negRisk group ${name}. ` +
+            `Expected negRiskMarketId ${leaderBasket ?? 'null'}; ` +
+            `mismatched: ${mismatched.map((item) => item.conditionHash).join(', ')}`,
+        });
+      }
+      const categoryId = firstItem?.categorySlug
+        ? (categoryBySlug.get(firstItem.categorySlug) ?? null)
+        : null;
+      try {
+        const group = await prisma.conditionGroup.create({
+          data: {
+            name,
+            categoryId,
+            negRiskMarketId: leaderBasket,
+          },
+        });
+        groupIdByName.set(name, group.id);
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (message.includes('Unique constraint')) {
+          // Race: another request created it. Re-check against the now-existing
+          // group's basket id since our leader-stamp didn't end up winning.
+          const existing = await prisma.conditionGroup.findFirst({
+            where: { name },
           });
-          groupIdByName.set(name, group.id);
-        } catch (e: unknown) {
-          const message = e instanceof Error ? e.message : String(e);
-          if (message.includes('Unique constraint')) {
-            // Race condition: another request created it
-            const existing = await prisma.conditionGroup.findFirst({
-              where: { name },
-            });
-            if (existing) groupIdByName.set(name, existing.id);
-          } else {
-            log.error(
-              `[BatchCreate] Failed to create group "${name}": ${message}`
+          if (existing) {
+            const raceMismatched = groupItems.filter(
+              (item) =>
+                !basketsAgree(
+                  existing.negRiskMarketId,
+                  normalizeNegRiskMarketId(item.negRiskMarketId)
+                )
             );
-            failedGroups.push(name);
+            if (raceMismatched.length > 0) {
+              return res.status(400).json({
+                message:
+                  `Cannot add non-matching negRisk conditions to negRisk group ${name}. ` +
+                  `Expected negRiskMarketId ${existing.negRiskMarketId ?? 'null'}; ` +
+                  `mismatched: ${raceMismatched
+                    .map((item) => item.conditionHash)
+                    .join(', ')}`,
+              });
+            }
+            groupIdByName.set(name, existing.id);
           }
+        } else {
+          log.error(
+            `[BatchCreate] Failed to create group "${name}": ${message}`
+          );
+          failedGroups.push(name);
         }
       }
     }
@@ -478,13 +500,13 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     if (
-      resolvedGroup?.negRiskMarketId &&
+      resolvedGroup &&
       !basketsAgree(resolvedGroup.negRiskMarketId, normalizedNegRiskMarketId)
     ) {
       return res.status(400).json({
         message:
           `Cannot add non-matching condition to negRisk group ${resolvedGroup.id}. ` +
-          `Expected negRiskMarketId ${resolvedGroup.negRiskMarketId}`,
+          `Expected negRiskMarketId ${resolvedGroup.negRiskMarketId ?? 'null'}`,
       });
     }
 
@@ -798,13 +820,13 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
       const groupName = u.fields.groupName?.trim();
       if (!groupName) continue;
       const group = existingGroupsByName.get(groupName);
-      if (!group?.negRiskMarketId) continue;
+      if (!group) continue;
       const payloadBasket = normalizeNegRiskMarketId(u.fields.negRiskMarketId);
       if (!basketsAgree(group.negRiskMarketId, payloadBasket)) {
         return res.status(400).json({
           message:
             `Cannot add non-matching condition ${u.id} to negRisk group ${group.id}. ` +
-            `Expected negRiskMarketId ${group.negRiskMarketId}`,
+            `Expected negRiskMarketId ${group.negRiskMarketId ?? 'null'}`,
         });
       }
     }
@@ -812,18 +834,36 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
     if (uniqueGroupNames.length > 0) {
       for (const name of uniqueGroupNames) {
         if (groupByName.has(name)) continue;
-        const incomingForGroup = updates
-          .filter((u) => u.fields.groupName?.trim() === name)
-          .map((u) => ({
-            negRisk: u.fields.negRisk,
-            negRiskMarketId: u.fields.negRiskMarketId,
-          }));
-        const basket = unanimousPayloadBasket(incomingForGroup);
+        const incomingForGroup = updates.filter(
+          (u) => u.fields.groupName?.trim() === name
+        );
+        // Leader-takes-all: first update stamps the new group's basket id,
+        // every other update for that group has to match.
+        const leaderBasket = normalizeNegRiskMarketId(
+          incomingForGroup[0]?.fields.negRiskMarketId
+        );
+        const mismatched = incomingForGroup
+          .slice(1)
+          .filter(
+            (u) =>
+              !basketsAgree(
+                leaderBasket,
+                normalizeNegRiskMarketId(u.fields.negRiskMarketId)
+              )
+          );
+        if (mismatched.length > 0) {
+          return res.status(400).json({
+            message:
+              `Cannot add non-matching condition${mismatched.length > 1 ? 's' : ''} to negRisk group ${name}. ` +
+              `Expected negRiskMarketId ${leaderBasket ?? 'null'}; ` +
+              `mismatched: ${mismatched.map((u) => u.id).join(', ')}`,
+          });
+        }
         try {
           const group = await prisma.conditionGroup.create({
             data: {
               name,
-              negRiskMarketId: basket,
+              negRiskMarketId: leaderBasket,
             },
           });
           groupByName.set(name, {
@@ -1114,13 +1154,13 @@ router.put('/:id', async (req: Request, res: Response) => {
       }
 
       if (
-        targetGroup?.negRiskMarketId &&
+        targetGroup &&
         !basketsAgree(targetGroup.negRiskMarketId, normalizedNegRiskMarketId)
       ) {
         return res.status(400).json({
           message:
             `Cannot add non-matching condition to negRisk group ${targetGroup.id}. ` +
-            `Expected negRiskMarketId ${targetGroup.negRiskMarketId}`,
+            `Expected negRiskMarketId ${targetGroup.negRiskMarketId ?? 'null'}`,
         });
       }
 
