@@ -278,7 +278,7 @@ Rules:
 
 - **Strict semantics, no implicit OR.** `{ size: { gte: "1" } }` means `size >= 1`, full stop. Clients that want richer composition issue separate queries or rely on the server to add an explicit `OR` shape later if real demand surfaces.
 - **Unsupported operators on a specific field reject** with a clear error, not silently no-op. If a field can only be filtered by `equals` (e.g., a hashed identifier), the resolver rejects `gt`/`lt` rather than returning empty or full results.
-- **Forbid flat `<field>Min` / `<field>Max` on new types.** Existing flat args get `@deprecated` with a one-release migration cycle. See PR 1730 (positions `balance` / `collateral`) for the reference migration shape.
+- **Forbid flat `<field>Min` / `<field>Max` on new types.** Existing flat args get `@deprecated` with a one-release migration cycle. PR 1730 was the legacy-surface bridge attempt; the target shape is the operator-pattern filter in this doc.
 - **Booleans stay flat.** Use `<field>: Boolean` rather than a `BooleanFilter` wrapper — there is no `gt true` and the operator pattern adds noise without benefit. For tri-state fields that need an "unset" third value, prefer a nullable enum and filter via `<field>: { isNull }` rather than a Boolean — that's the pattern `Condition.outcome` / `Prediction.result` use in place of the older `settled: Boolean!`.
 - **Null filtering goes through `isNull`.** `{ outcome: { isNull: true } }` matches unsettled conditions; `{ isNull: false }` matches settled. Available on every operator input including the enum filters. Rejected on non-nullable columns per the unsupported-operator rule.
 
@@ -326,7 +326,7 @@ Prose orientation to the top-level `Query` shape. The full SDL below is the cano
 
 **Polymorphic Relay refetch.** `node(id:)` and `nodes(ids:)` return any durable entity by opaque global ID.
 
-**Direct lookup by Node ID** for every durable type: `condition`, `conditionGroup`, `prediction`, `trade`, `forecast`, `position`, `pickConfiguration`, `vault`, `account`.
+**Direct lookup by Node ID** for every durable type except `Account`: `condition`, `conditionGroup`, `prediction`, `trade`, `forecast`, `position`, `pickConfiguration`, `vault`. `Account` is fetched by address (`account(address: Address!)`), or polymorphically via `node(id:)`.
 
 **Domain-identifier lookup** where the public identifier is the on-chain or external anchor:
 
@@ -1705,13 +1705,17 @@ Two in-flight PRs targeting the legacy `positionsPage` filter shape were closed 
 
 ### Versioning
 
-Recommended migration path:
+Every existing surface that doesn't conform to this plan **must** go through the deprecation cycle below before it can be removed or changed in a breaking way. This applies to renames, type changes, dropped filter options, and removed queries — not just deletions. The redesign is large and incremental; every client (Sapience frontend, external developers, indexers) must always have a one-release window to migrate off any surface this doc supersedes.
 
-1. Add new fields alongside existing fields.
-2. Mark old fields deprecated with `@deprecated`.
-3. Update frontend clients.
-4. Publish external migration guide.
-5. Remove deprecated fields only in a major API version.
+Required migration path:
+
+1. Add the new shape alongside the existing field / type / query — additive only, no behavior change to the existing surface.
+2. Mark the existing surface `@deprecated` with a reason pointing at the new shape.
+3. Update Sapience frontend clients to the new shape.
+4. Publish the migration in `packages/api/MIGRATION.md` so external integrators can act.
+5. Remove the deprecated surface only after step 4 has been live for at least one release, and only in a release explicitly designated as breaking.
+
+A breaking change that skips steps 1–4 is a bug, not an oversight — flag it in code review even when the deprecated surface "looks dead." Servers don't see clients that haven't migrated yet.
 
 Example:
 
