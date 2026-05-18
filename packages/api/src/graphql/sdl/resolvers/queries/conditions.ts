@@ -147,7 +147,9 @@ export const conditionsPage: NonNullable<
   { filters, orderBy, orderDirection, take, skip }: QueryConditionsPageArgs
 ) => {
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
-  const skipVal = clampSkip(skip);
+  // Opts out of MAX_SKIP=1000 so the keeper's bulk refresh-metadata loop
+  // can read past row 1000. Switch to cursor pagination to remove this.
+  const skipVal = clampSkip(skip, { maxSkip: Number.POSITIVE_INFINITY });
   const where = buildConditionsWhereFromFilters(filters);
   const direction = orderDirection === 'asc' ? 'asc' : 'desc';
   const orderField = ORDER_FIELD_MAP[orderBy ?? 'CREATED_AT'] ?? 'createdAt';

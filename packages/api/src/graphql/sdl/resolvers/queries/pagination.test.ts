@@ -81,6 +81,14 @@ describe('clampSkip', () => {
     expect(clampSkip(9_999_999, { maxSkip: 10_000 })).toBe(10_000);
   });
 
+  it('removes the ceiling when maxSkip is Infinity (conditionsPage opt-out)', () => {
+    // conditionsPage passes maxSkip: Infinity so the keeper's bulk
+    // refresh-metadata loop can read past the default MAX_SKIP=1000.
+    expect(clampSkip(9_999_999, { maxSkip: Number.POSITIVE_INFINITY })).toBe(
+      9_999_999
+    );
+  });
+
   it('floors fractional input', () => {
     expect(clampSkip(50.9)).toBe(50);
   });

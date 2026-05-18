@@ -68,6 +68,22 @@ describe('conditionsPage — pagination envelope', () => {
     expect(result.hasMore).toBe(false);
     expect(result.items).toHaveLength(1);
   });
+
+  it('passes skip through unclamped past the global MAX_SKIP', async () => {
+    // conditionsPage opts out of the MAX_SKIP=1000 default so the keeper's
+    // bulk refresh-metadata loop can read past row 1000 with offset
+    // pagination. Cursor pagination is the longer-term answer; until then
+    // this resolver must not silently re-window high skip values.
+    await callPage({ skip: 5000 });
+    const args = mockPrisma.condition.findMany.mock.calls[0][0];
+    expect(args.skip).toBe(5000);
+  });
+
+  it('still floors negative skip to 0', async () => {
+    await callPage({ skip: -50 });
+    const args = mockPrisma.condition.findMany.mock.calls[0][0];
+    expect(args.skip).toBe(0);
+  });
 });
 
 describe('conditionsPage — orderBy mapping', () => {
