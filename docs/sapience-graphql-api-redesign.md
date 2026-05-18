@@ -1626,7 +1626,7 @@ input LeaderboardFilter {
 | Current Resolver                                                                                  | Target API                                                                                  |
 | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `account(address)`                                                                                | `account(address)`                                                                          |
-| `accountStats(address, from, to)`                                                                 | `account(address).stats(filter: { from, to })`                                              |
+| `accountStats(address, from, to)`                                                                 | `account(address).stats(filter: { timestamp: { gte, lte } })`                               |
 | `accountStatsRank(address, filters)`                                                              | `account(address).rank(metric: ..., filter: ...)`                                           |
 | `accountStatsLeaderboardPage(filters, take, skip)`                                                | `leaderboard(metric: ..., ...)`                                                             |
 | `accountAccuracyRank(address)`                                                                    | `account(address).rank(metric: ACCURACY)`                                                   |
@@ -1645,7 +1645,7 @@ input LeaderboardFilter {
 | `collateralBalance(address, chainId, atBlock)`                                                    | `collateralBalance(account, chainId, atBlock)` or `account(address).collateralBalance(...)` |
 | `collateralBalanceHistory(address, chainId, count, intervalSeconds)`                              | `collateralBalanceHistory(account, chainId, first, after, intervalSeconds)`                 |
 | `collateralTransfersPage(address, chainId, excludeProtocol, orderBy, orderDirection, take, skip)` | `collateralTransfers(...)`                                                                  |
-| `protocolStats(from, to)`                                                                         | `protocol.stats(filter: { from, to })`                                                      |
+| `protocolStats(from, to)`                                                                         | `protocol.stats(filter: { timestamp: { gte, lte } })`                                       |
 | `openInterestByCategory`                                                                          | `protocol.openInterestByCategory`                                                           |
 | `openInterestByTimeToResolution`                                                                  | `protocol.openInterestByTimeToResolution`                                                   |
 | `vaultStats(vaultAddress, from, to)`                                                              | `vaultByAddress(address).stats(filter: { timestamp: { gte, lte } })`                        |
