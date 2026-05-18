@@ -88,7 +88,14 @@ function getNegRiskMarketId(market: PolymarketMarket): string | undefined {
 }
 
 function isNegRiskMarket(market: PolymarketMarket): boolean {
-  return market.negRisk === true || market.events?.[0]?.negRisk === true;
+  // Treat any neg-risk basket id as a strong signal too: Polymarket has shipped
+  // the flag and the id under slightly different field names over time, and we
+  // do not want a casing mismatch to silently downgrade a basket to non-negRisk.
+  return (
+    market.negRisk === true ||
+    market.events?.[0]?.negRisk === true ||
+    getNegRiskMarketId(market) !== undefined
+  );
 }
 
 function computeNegRiskBucketMetadata(markets: PolymarketMarket[]): {
@@ -123,6 +130,12 @@ function negRiskBasketIdsByTitle(
   return idsByTitle;
 }
 
+// Segmentation today only fires when both baskets show up in the same sync
+// run; a later basket landing alone keeps the unsuffixed title and is then
+// rejected by the API invariant against the already-persisted group. Operators
+// see this via the [BatchCreate] warn log and can rename the existing group
+// to free the name. A follow-up could query existing group baskets up front
+// so segmentation persists across runs.
 function conditionGroupTitleForMarket(
   title: string,
   market: PolymarketMarket,
@@ -480,6 +493,9 @@ export function computeMetadataUpdates(
     for (const key of keys) {
       const newVal = fresh[key];
       if (newVal === undefined) continue;
+      // negRiskMarketId is the only field where `null` is a real signal: it
+      // means "Polymarket no longer reports a basket id, actively clear ours."
+      // For every other field, null means "unchanged" and is skipped.
       if (newVal === null && key !== 'negRiskMarketId') continue;
       const oldVal = existing[key];
       if (!fieldsEqual(oldVal, newVal)) {

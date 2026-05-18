@@ -107,6 +107,22 @@ Short names are generated from pattern rules first, with an LLM as a fallback fo
 
 For full details on the enrichment system, see [market-enrichment.md](./market-enrichment.md).
 
+## Step 8: Grouping & Negative-Risk Baskets
+
+Markets that come from the same Polymarket event are listed under one **condition group** on Sapience, keyed by event title.
+
+Polymarket also publishes **negative-risk baskets**: a set of mutually-exclusive binary markets (e.g. "NBA champion: Celtics?", "NBA champion: Knicks?", …) where exactly one resolves YES and the rest resolve NO. The basket is one logical question and its children must stay tied to the same basket id (`negRiskMarketId`).
+
+The keeper enforces this when forming groups:
+
+- A group is marked **negRisk** only when every market in it is flagged `negRisk: true` **and** shares the same `negRiskMarketId`. If any market disagrees, the group falls back to a plain group with `negRisk: false`.
+- When two same-event-title markets in the same sync run come from **different** baskets (e.g. one is `basket-a`, another `basket-b`), the keeper splits them into separate groups and appends the basket id to the title: `"NBA champion (basket-a)"`, `"NBA champion (basket-b)"`. This keeps each basket addressable as its own unit.
+- The admin REST routes (`/admin/conditions`, `/admin/conditionGroups`) refuse to add a condition with a mismatched `negRiskMarketId` to an existing negRisk group, so the invariant survives manual edits and partial syncs.
+
+### Known limitation: late basket arrivals
+
+The basket-segmentation suffix is only applied when both baskets appear in the **same** sync run. If `basket-a` is already persisted as a plain `"NBA champion"` group and `basket-b` shows up alone in a later run, the keeper sends it through as `"NBA champion"`, the API rejects it as a basket mismatch, and the new market is dropped. Look for `[BatchCreate] rejected ... negRisk condition(s)` in the keeper logs — recovery is currently manual (rename the existing group, then let the next sync create a fresh basket-suffixed group).
+
 ---
 
 Have ideas on how we should change the curation criteria? Come discuss it in our [Discord](https://discord.gg/sapience) or submit a pull request.

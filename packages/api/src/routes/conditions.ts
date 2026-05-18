@@ -156,6 +156,21 @@ router.post('/batch-create', async (req: Request, res: Response) => {
             item.negRiskMarketId?.trim() !== existingGroup.negRiskMarketId
         );
         if (mismatched.length > 0) {
+          // Operator-visible signal: market-keeper's title-suffix segmentation
+          // only fires when both baskets appear in the same sync run. A later
+          // basket landing alone hits this rejection and the keeper drops the
+          // condition silently on every subsequent run — log loudly so it can
+          // be reconciled (e.g. by renaming the existing group manually).
+          log.warn(
+            `[BatchCreate] rejected ${mismatched.length} negRisk condition(s) ` +
+              `for group "${name}" (existing basket ${existingGroup.negRiskMarketId}): ` +
+              mismatched
+                .map(
+                  (item) =>
+                    `${item.conditionHash}=${item.negRiskMarketId ?? 'none'}`
+                )
+                .join(', ')
+          );
           return res.status(400).json({
             message:
               `Cannot add non-matching negRisk conditions to negRisk group ${name}. ` +
@@ -728,9 +743,10 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
       }
     }
 
-    // Batch-resolve groupNames: find or create all referenced groups upfront.
-    // New groups inherit negRisk metadata only when every incoming child for
-    // that name is in the same Polymarket neg-risk basket.
+    // Resolve all referenced groups: load existing matches by name and decide
+    // negRisk metadata for groups we will create. New groups inherit negRisk
+    // metadata only when every incoming child for that name is in the same
+    // Polymarket neg-risk basket.
     const existingConditions = await prisma.condition.findMany({
       where: { id: { in: updates.map((u) => u.id) } },
       select: { id: true, negRisk: true, negRiskMarketId: true },
@@ -745,9 +761,6 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
       ])
     );
 
-    // Batch-resolve groupNames: find or create all referenced groups upfront.
-    // New groups inherit negRisk metadata only when every incoming child for
-    // that name is in the same Polymarket neg-risk basket.
     const uniqueGroupNames = [
       ...new Set(
         updates.map((u) => u.fields.groupName?.trim()).filter(Boolean)
@@ -758,86 +771,90 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
       string,
       { id: number; negRisk: boolean; negRiskMarketId: string | null }
     >();
+    const existingGroupsByName = new Map<
+      string,
+      { id: number; negRisk: boolean; negRiskMarketId: string | null }
+    >();
     if (uniqueGroupNames.length > 0) {
       const existing = await prisma.conditionGroup.findMany({
         where: { name: { in: uniqueGroupNames } },
       });
       for (const g of existing) {
-        groupByName.set(g.name, {
+        const summary = {
           id: g.id,
           negRisk: g.negRisk,
           negRiskMarketId: g.negRiskMarketId,
-        });
-      }
-
-      for (const name of uniqueGroupNames) {
-        if (!groupByName.has(name)) {
-          const incomingForGroup = updates
-            .filter((u) => u.fields.groupName?.trim() === name)
-            .map((u) => {
-              const existingCondition = existingConditionById.get(u.id);
-              return {
-                negRisk: u.fields.negRisk ?? existingCondition?.negRisk,
-                negRiskMarketId:
-                  u.fields.negRisk === true ||
-                  u.fields.negRiskMarketId !== undefined
-                    ? normalizeNegRiskMarketId(u.fields.negRiskMarketId)
-                    : existingCondition?.negRiskMarketId,
-              };
-            });
-          const negRiskMetadata = getGroupNegRiskMetadata(incomingForGroup);
-          try {
-            const group = await prisma.conditionGroup.create({
-              data: {
-                name,
-                negRisk: negRiskMetadata.negRisk,
-                negRiskMarketId: negRiskMetadata.negRiskMarketId ?? null,
-              },
-            });
-            groupByName.set(name, {
-              id: group.id,
-              negRisk: group.negRisk,
-              negRiskMarketId: group.negRiskMarketId,
-            });
-          } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : String(e);
-            if (msg.includes('Unique constraint')) {
-              const found = await prisma.conditionGroup.findFirst({
-                where: { name },
-              });
-              if (found) {
-                groupByName.set(name, {
-                  id: found.id,
-                  negRisk: found.negRisk,
-                  negRiskMarketId: found.negRiskMarketId,
-                });
-              }
-            }
-          }
-        }
+        };
+        groupByName.set(g.name, summary);
+        existingGroupsByName.set(g.name, summary);
       }
     }
+
+    // Validate basket invariants against any *already-persisted* groups before
+    // creating new ones, otherwise a mid-batch reject would orphan empty rows.
+    const candidateForUpdate = (u: (typeof updates)[number]) => {
+      const existingCondition = existingConditionById.get(u.id);
+      const negRisk = u.fields.negRisk ?? existingCondition?.negRisk ?? false;
+      const negRiskMarketId =
+        u.fields.negRisk === true || u.fields.negRiskMarketId !== undefined
+          ? normalizeNegRiskMarketId(u.fields.negRiskMarketId)
+          : (existingCondition?.negRiskMarketId ?? null);
+      return { negRisk, negRiskMarketId };
+    };
 
     for (const u of updates) {
       const groupName = u.fields.groupName?.trim();
       if (!groupName) continue;
-      const group = groupByName.get(groupName);
+      const group = existingGroupsByName.get(groupName);
       if (!group?.negRisk) continue;
-      const candidateNegRiskMarketId =
-        u.fields.negRisk === true || u.fields.negRiskMarketId !== undefined
-          ? normalizeNegRiskMarketId(u.fields.negRiskMarketId)
-          : existingConditionById.get(u.id)?.negRiskMarketId;
-      const candidateNegRisk =
-        u.fields.negRisk ?? existingConditionById.get(u.id)?.negRisk ?? false;
+      const candidate = candidateForUpdate(u);
       if (
-        candidateNegRisk !== true ||
-        candidateNegRiskMarketId !== group.negRiskMarketId
+        candidate.negRisk !== true ||
+        candidate.negRiskMarketId !== group.negRiskMarketId
       ) {
         return res.status(400).json({
           message:
             `Cannot add non-matching condition ${u.id} to negRisk group ${group.id}. ` +
             `Expected negRiskMarketId ${group.negRiskMarketId}`,
         });
+      }
+    }
+
+    if (uniqueGroupNames.length > 0) {
+      for (const name of uniqueGroupNames) {
+        if (groupByName.has(name)) continue;
+        const incomingForGroup = updates
+          .filter((u) => u.fields.groupName?.trim() === name)
+          .map(candidateForUpdate);
+        const negRiskMetadata = getGroupNegRiskMetadata(incomingForGroup);
+        try {
+          const group = await prisma.conditionGroup.create({
+            data: {
+              name,
+              negRisk: negRiskMetadata.negRisk,
+              negRiskMarketId: negRiskMetadata.negRiskMarketId ?? null,
+            },
+          });
+          groupByName.set(name, {
+            id: group.id,
+            negRisk: group.negRisk,
+            negRiskMarketId: group.negRiskMarketId,
+          });
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (msg.includes('Unique constraint')) {
+            const found = await prisma.conditionGroup.findFirst({
+              where: { name },
+            });
+            if (found) {
+              groupByName.set(name, {
+                id: found.id,
+                negRisk: found.negRisk,
+                negRiskMarketId: found.negRiskMarketId,
+              });
+            }
+          }
+        }
       }
     }
 
@@ -1116,12 +1133,6 @@ router.put('/:id', async (req: Request, res: Response) => {
         return res
           .status(400)
           .json({ message: 'tags must be an array of strings' });
-      }
-
-      if (negRisk === true && !negRiskMarketId?.trim()) {
-        return res.status(400).json({
-          message: 'negRiskMarketId is required when negRisk is true',
-        });
       }
 
       if (targetGroup?.negRisk) {
