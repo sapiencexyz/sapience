@@ -8,7 +8,6 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useAdminApi } from '~/hooks/useAdminApi';
 
 export type AdminReferralCodeRow = {
@@ -52,11 +51,24 @@ export type UpdateAdminReferralCodeInput = {
 
 const ADMIN_CODES_QUERY_KEY = ['admin', 'referralCodes'] as const;
 
-// useAdminApi.base ends in `/admin`; mutations stay there. Reads now go to
-// GraphQL, so we strip the suffix to derive the API root for fetch URLs.
+// `useAdminApi.base` ends in `/admin`; mutations stay there. Reads hit the
+// public `/referrals/codes` REST surface, so we strip the suffix to derive
+// the API root.
 function useApiBaseUrl(): string {
   const adminApi = useAdminApi();
   return useMemo(() => adminApi.base.replace(/\/admin$/, ''), [adminApi.base]);
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  const data = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    message?: string;
+  } & Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(data?.error || data?.message || 'Request failed');
+  }
+  return data as T;
 }
 
 function useReferralAdminMutate() {
@@ -92,84 +104,17 @@ function useReferralAdminMutate() {
   );
 }
 
-// Reads use public GraphQL intentionally. Referral analytics are public because
-// codes only affect attribution; create/update/delete mutations remain signed
-// admin REST requests.
-const REFERRAL_CODES_QUERY = `
-  query AdminReferralCodes($take: Int!, $skip: Int!) {
-    referralCodesPage(take: $take, skip: $skip) {
-      items {
-        id
-        maxClaims
-        isActive
-        expiresAt
-        createdBy
-        creatorType
-        createdAt
-        claimCount
-        totalVolume
-        totalPositions
-      }
-      hasMore
-    }
-  }
-`;
-
-// Server caps `take` at 500 per page and `skip` at 10_000. We
-// auto-paginate so the admin UI doesn't silently truncate at 500
-// codes; MAX_PAGES (= maxSkip / PAGE_SIZE) is the safety net that
-// matches the server cap so we don't loop fetching the same window.
-const PAGE_SIZE = 500;
-const MAX_PAGES = 20;
-
-type ReferralCodesPageResponse = {
-  referralCodesPage: {
-    items: AdminReferralCodeRow[];
-    hasMore: boolean;
-  };
-};
-
-const REFERRAL_CODE_ANALYTICS_QUERY = `
-  query AdminReferralCodeAnalytics($id: Int!, $claimantsLimit: Int!) {
-    referralCodesPage(id: $id, take: 1) {
-      items {
-        id
-        claimCount
-        totalVolume
-        totalPositions
-        claimants(take: $claimantsLimit) {
-          items {
-            address
-            tradingVolume
-            positionCount
-          }
-          hasMore
-        }
-      }
-    }
-  }
-`;
-
 export function useAdminReferralCodes(): UseQueryResult<
   AdminReferralCodeRow[]
 > {
+  const apiBaseUrl = useApiBaseUrl();
   return useQuery<AdminReferralCodeRow[]>({
     queryKey: ADMIN_CODES_QUERY_KEY,
     queryFn: async () => {
-      const all: AdminReferralCodeRow[] = [];
-      for (let page = 0; page < MAX_PAGES; page += 1) {
-        const data: ReferralCodesPageResponse =
-          await graphqlRequest<ReferralCodesPageResponse>(
-            REFERRAL_CODES_QUERY,
-            { take: PAGE_SIZE, skip: page * PAGE_SIZE }
-          );
-        all.push(...data.referralCodesPage.items);
-        if (!data.referralCodesPage.hasMore) return all;
-      }
-      console.warn(
-        `useAdminReferralCodes: stopped at MAX_PAGES (${MAX_PAGES}); results may be truncated`
+      const data = await fetchJson<{ items: AdminReferralCodeRow[] }>(
+        `${apiBaseUrl}/referrals/codes`
       );
-      return all;
+      return data.items;
     },
   });
 }
@@ -177,38 +122,11 @@ export function useAdminReferralCodes(): UseQueryResult<
 export function useAdminReferralCodeAnalytics(
   id: number | undefined
 ): UseQueryResult<AdminReferralAnalytics> {
+  const apiBaseUrl = useApiBaseUrl();
   return useQuery<AdminReferralAnalytics>({
     queryKey: ['admin', 'referralCodeAnalytics', id],
-    queryFn: async () => {
-      const data = await graphqlRequest<{
-        referralCodesPage: {
-          items: Array<{
-            id: number;
-            claimCount: number;
-            totalVolume: string;
-            totalPositions: number;
-            claimants: {
-              items: Array<{
-                address: string;
-                tradingVolume: string;
-                positionCount: number;
-              }>;
-            };
-          }>;
-        };
-      }>(REFERRAL_CODE_ANALYTICS_QUERY, { id, claimantsLimit: 500 });
-      const code = data.referralCodesPage.items[0];
-      if (!code) {
-        throw new Error('Referral code not found');
-      }
-      return {
-        id: code.id,
-        claimCount: code.claimCount,
-        totalVolume: code.totalVolume,
-        totalPositions: code.totalPositions,
-        claimants: code.claimants.items,
-      };
-    },
+    queryFn: () =>
+      fetchJson<AdminReferralAnalytics>(`${apiBaseUrl}/referrals/codes/${id}`),
     enabled: typeof id === 'number',
   });
 }

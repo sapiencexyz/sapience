@@ -384,6 +384,183 @@ router.post('/claim', async (req: Request, res: Response) => {
   }
 });
 
+// GET /referrals/codes - public listing of referral codes with aggregate
+// analytics (claim count, total volume, total position count). The admin tools
+// in `packages/app` are the only consumer; reads are public because referral
+// codes are attribution hints, not authorization credentials. Mutations remain
+// admin-signed below.
+//
+// We cap at MAX_CODES_PER_RESPONSE rows in a single response so a runaway
+// table can't return an unbounded payload. The admin UI does not paginate.
+const MAX_CODES_PER_RESPONSE = 10_000;
+const MAX_CLAIMANTS_PER_RESPONSE = 10_000;
+
+type CodeStats = {
+  claimCount: number;
+  totalVolume: string;
+  totalPositions: number;
+};
+
+type CodeStatsRow = {
+  id: number;
+  claim_count: bigint | number;
+  total_volume: string | null;
+  total_positions: bigint | number;
+};
+
+async function fetchCodeStats(ids: number[]): Promise<Map<number, CodeStats>> {
+  const result = new Map<number, CodeStats>();
+  if (ids.length === 0) return result;
+
+  const rows = await prisma.$queryRaw<CodeStatsRow[]>`
+    WITH claimants AS (
+      SELECT id, address, "referredByCodeId"
+      FROM app_user
+      WHERE "referredByCodeId" = ANY(${ids}::int[])
+    ),
+    sides AS (
+      SELECT c."referredByCodeId" AS code_id,
+             CAST(COALESCE(p."predictorCollateral", '0') AS NUMERIC) AS vol
+      FROM claimants c
+      JOIN "position" p ON LOWER(p."predictor") = LOWER(c.address)
+      UNION ALL
+      SELECT c."referredByCodeId" AS code_id,
+             CAST(COALESCE(p."counterpartyCollateral", '0') AS NUMERIC) AS vol
+      FROM claimants c
+      JOIN "position" p ON LOWER(p."counterparty") = LOWER(c.address)
+    )
+    SELECT
+      ids.id::INT AS id,
+      COALESCE((SELECT COUNT(*) FROM claimants c2 WHERE c2."referredByCodeId" = ids.id), 0)::BIGINT AS claim_count,
+      COALESCE(SUM(s.vol), 0)::TEXT AS total_volume,
+      COUNT(s.vol)::BIGINT AS total_positions
+    FROM unnest(${ids}::int[]) AS ids(id)
+    LEFT JOIN sides s ON s.code_id = ids.id
+    GROUP BY ids.id
+  `;
+
+  for (const row of rows) {
+    result.set(row.id, {
+      claimCount: Number(row.claim_count ?? 0),
+      totalVolume: row.total_volume ?? '0',
+      totalPositions: Number(row.total_positions ?? 0),
+    });
+  }
+  return result;
+}
+
+type ClaimantBreakdownRow = {
+  address: string;
+  volume: string | null;
+  positions: bigint | number;
+};
+
+type Claimant = {
+  address: string;
+  tradingVolume: string;
+  positionCount: number;
+};
+
+async function fetchClaimants(
+  codeId: number,
+  limit: number
+): Promise<Claimant[]> {
+  const rows = await prisma.$queryRaw<ClaimantBreakdownRow[]>`
+    WITH page AS (
+      SELECT id, address
+      FROM app_user
+      WHERE "referredByCodeId" = ${codeId}
+      ORDER BY id ASC
+      LIMIT ${limit}
+    ),
+    sides AS (
+      SELECT p2.id AS user_id,
+             CAST(COALESCE(pos."predictorCollateral", '0') AS NUMERIC) AS vol
+      FROM page p2
+      JOIN "position" pos ON LOWER(pos."predictor") = LOWER(p2.address)
+      UNION ALL
+      SELECT p2.id AS user_id,
+             CAST(COALESCE(pos."counterpartyCollateral", '0') AS NUMERIC) AS vol
+      FROM page p2
+      JOIN "position" pos ON LOWER(pos."counterparty") = LOWER(p2.address)
+    )
+    SELECT
+      page.address AS address,
+      COALESCE(SUM(s.vol), 0)::TEXT AS volume,
+      COUNT(s.vol)::BIGINT AS positions
+    FROM page
+    LEFT JOIN sides s ON s.user_id = page.id
+    GROUP BY page.id, page.address
+    ORDER BY page.id ASC
+  `;
+
+  return rows.map((r) => ({
+    address: r.address,
+    tradingVolume: r.volume ?? '0',
+    positionCount: Number(r.positions ?? 0),
+  }));
+}
+
+router.get('/codes', async (_req: Request, res: Response) => {
+  try {
+    const codes = await prisma.referralCode.findMany({
+      orderBy: { id: 'desc' },
+      take: MAX_CODES_PER_RESPONSE,
+    });
+    const statsMap = await fetchCodeStats(codes.map((c) => c.id));
+    const items = codes.map((c) => {
+      const stats = statsMap.get(c.id) ?? {
+        claimCount: 0,
+        totalVolume: '0',
+        totalPositions: 0,
+      };
+      return {
+        id: c.id,
+        maxClaims: c.maxClaims,
+        isActive: c.isActive,
+        expiresAt: c.expiresAt,
+        createdBy: c.createdBy,
+        creatorType: c.creatorType,
+        createdAt: c.createdAt,
+        ...stats,
+      };
+    });
+    return res.status(200).json({ items });
+  } catch (e) {
+    log.error({ err: e }, 'Error listing referral codes');
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// GET /referrals/codes/:id - analytics for one code with the full claimant
+// breakdown. Combined into a single response so the admin analytics dialog
+// is one fetch.
+router.get('/codes/:id', async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) {
+    return res.status(400).json({ message: 'Invalid id' });
+  }
+  try {
+    const code = await prisma.referralCode.findUnique({ where: { id } });
+    if (!code) {
+      return res.status(404).json({ message: 'Referral code not found' });
+    }
+    const [statsMap, claimants] = await Promise.all([
+      fetchCodeStats([id]),
+      fetchClaimants(id, MAX_CLAIMANTS_PER_RESPONSE),
+    ]);
+    const stats = statsMap.get(id) ?? {
+      claimCount: 0,
+      totalVolume: '0',
+      totalPositions: 0,
+    };
+    return res.status(200).json({ id, ...stats, claimants });
+  } catch (e) {
+    log.error({ err: e }, 'Error reading referral code analytics');
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
 // =============================================================================
 // Admin Routes (protected by adminAuth middleware)
 // =============================================================================

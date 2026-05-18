@@ -14,7 +14,6 @@
  *   - CategoriesPage: no `_countWhere`, always counts the full table
  *   - QuestionsPage / ActivityItemsPage: raw-SQL union, totalCount is
  *     always null when not eagerly populated
- *   - ReferralCodeClaimantsPage: keyed on `_codeId`, not `_countWhere`
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -27,9 +26,7 @@ const mockPrisma = vi.hoisted(() => ({
   picks: { count: vi.fn() },
   position: { count: vi.fn() },
   prediction: { count: vi.fn() },
-  referralCode: { count: vi.fn() },
   secondaryTrade: { count: vi.fn() },
-  user: { count: vi.fn() },
 }));
 
 vi.mock('../../../core/db', () => ({ default: mockPrisma }));
@@ -41,12 +38,10 @@ import { ConditionsPage } from './ConditionsPage';
 import { PickConfigurationsPage } from './PickConfigurationsPage';
 import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
-import { ReferralCodesPage } from './ReferralCodesPage';
 import { TradesPage } from './TradesPage';
 import { CategoriesPage } from './CategoriesPage';
 import { QuestionsPage } from './QuestionsPage';
 import { ActivityItemsPage } from './ActivityItemsPage';
-import { ReferralCodeClaimantsPage } from './ReferralCodeClaimantsPage';
 
 beforeEach(() => {
   for (const v of Object.values(mockPrisma)) v.count.mockReset();
@@ -92,11 +87,6 @@ const lazyPageResolvers: LazyCase[] = [
     name: 'PredictionsPage',
     resolver: PredictionsPage,
     mock: mockPrisma.prediction,
-  },
-  {
-    name: 'ReferralCodesPage',
-    resolver: ReferralCodesPage,
-    mock: mockPrisma.referralCode,
   },
   { name: 'TradesPage', resolver: TradesPage, mock: mockPrisma.secondaryTrade },
 ];
@@ -164,27 +154,5 @@ describe('ActivityItemsPage.totalCount — always null when not eager', () => {
 
   it('returns null otherwise (mixed-source feed, no count path)', async () => {
     expect(await call(ActivityItemsPage, {})).toBeNull();
-  });
-});
-
-describe('ReferralCodeClaimantsPage.totalCount — _codeId-scoped count', () => {
-  it('returns the eager value when present', async () => {
-    const out = await call(ReferralCodeClaimantsPage, { totalCount: 9 });
-    expect(out).toBe(9);
-    expect(mockPrisma.user.count).not.toHaveBeenCalled();
-  });
-
-  it('returns null when no _codeId is set', async () => {
-    expect(await call(ReferralCodeClaimantsPage, {})).toBeNull();
-    expect(mockPrisma.user.count).not.toHaveBeenCalled();
-  });
-
-  it('counts users where referredByCodeId matches _codeId', async () => {
-    mockPrisma.user.count.mockResolvedValue(5);
-    const out = await call(ReferralCodeClaimantsPage, { _codeId: 42 });
-    expect(out).toBe(5);
-    expect(mockPrisma.user.count).toHaveBeenCalledWith({
-      where: { referredByCodeId: 42 },
-    });
   });
 });
