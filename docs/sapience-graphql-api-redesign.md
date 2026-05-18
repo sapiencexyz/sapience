@@ -1795,6 +1795,21 @@ Be cautious with fields that are derived, cross-chain, asynchronously indexed, o
 
 Derived convenience fields (e.g. `Trade.conditions`, `Position.conditions`) must be costed equivalently to their underlying chain in the complexity estimator. A naive field-count cost lets clients smuggle expensive joins through the shortcut path. If a derived field traverses an unbounded list, do not expose it — keep clients on the explicit chain so the estimator sees the work.
 
+### Connection envelope complexity
+
+The `listMultiplierEstimator` already multiplies `childComplexity` by the list-size arg (`take` / `first`) on the envelope field and _also_ multiplies the inner list field (`items` on `*Page`, `nodes` / `edges` on `*Connection`) by `defaultListSize`. The result is a 10x over-count on every envelope query — a `*Page(take: 15) { items { ... } }` selection scores `1 + (1 + leaf * defaultListSize) * 15` instead of `1 + leaf * 15`, large enough to push reasonable FE queries past the default 15k budget.
+
+#1722 carried a fix for the `*Page` case (detect envelope by name suffix, pass child through unmultiplied for the inner `items` field). That PR was closed alongside #1730 because the flat `balanceMin` filter it introduced is forbidden under the operator-pattern convention, but the estimator fix needs to be re-applied for `*Connection` envelopes when they land in the per-entity migration — same mechanism, different name suffix, plus the dual `nodes` / `edges` shape (both inner list fields, both need the pass-through).
+
+### Position filter — operator pattern supersedes #1722 / #1730
+
+Two in-flight PRs targeting the legacy `positionsPage` filter shape were closed in favor of the operator-pattern surface on `PositionFilter` above:
+
+- **#1722** added `balanceMin: String` (flat `<field>Min` arg) with a permissive `OR pickConfig.resolved = true` keepalive.
+- **#1730** redesigned #1722's surface into operator-pattern `balance: BigIntFilter` and `collateral: BigIntFilter` on the legacy field names, deprecating the flat `collateralMin` / `collateralMax` args.
+
+`PositionFilter.size: DecimalFilter` and `PositionFilter.collateralAmount: DecimalFilter` cover the same query needs under the redesign's naming and convention: strict semantics, no implicit OR (the keepalive from #1722 doesn't carry forward), and renamed to match `size` / `collateralAmount` rather than `balance` / `collateral` to avoid two FE migrations in quick succession (`balance` → operator filter now, then `balance` → `size` later). Lands as part of the per-entity Position migration; until then, FE that needs balance filtering composes on the existing `*Page` surface or accepts the complexity budget hit.
+
 ### Versioning
 
 Recommended migration path:
