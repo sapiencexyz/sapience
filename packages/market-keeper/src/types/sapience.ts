@@ -62,8 +62,6 @@ export interface SyncableFields {
   similarMarketVolume?: number;
   similarMarketImage?: string;
   groupName?: string;
-  negRisk?: boolean;
-  negRiskMarketId?: string | null;
 }
 
 export interface MetadataUpdate {

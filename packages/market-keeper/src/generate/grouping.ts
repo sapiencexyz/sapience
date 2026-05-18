@@ -469,15 +469,15 @@ export function computeMetadataUpdates(
       ? (eventTagMap.get(groupInfo.eventSlug) ?? [])
       : [];
     const fresh = freshMetadataFor(market, groupInfo?.title, tagsForMarket);
-    const negRiskMetadata = computeNegRiskBucketMetadata([market]);
-    fresh.negRisk = negRiskMetadata.negRisk;
-    fresh.negRiskMarketId = negRiskMetadata.negRiskMarketId ?? null;
 
     const fields: SyncableFields = {};
     const old: SyncableFields = {};
 
     // Iterate every syncable key. Undefined/null on the fresh side means
     // "we don't own this value right now" → skip, never blank out DB state.
+    // Per-condition negRisk fields are not GraphQL-exposed, so the keeper
+    // does not drift-detect them here — only the ConditionGroup.negRisk
+    // bucket flag is tracked, in computeGroupMetadataUpdates below.
     const keys: (keyof SyncableFields)[] = [
       'question',
       'optionName',
@@ -487,16 +487,10 @@ export function computeMetadataUpdates(
       'similarMarketVolume',
       'similarMarketImage',
       'groupName',
-      'negRisk',
-      'negRiskMarketId',
     ];
     for (const key of keys) {
       const newVal = fresh[key];
-      if (newVal === undefined) continue;
-      // negRiskMarketId is the only field where `null` is a real signal: it
-      // means "Polymarket no longer reports a basket id, actively clear ours."
-      // For every other field, null means "unchanged" and is skipped.
-      if (newVal === null && key !== 'negRiskMarketId') continue;
+      if (newVal === undefined || newVal === null) continue;
       const oldVal = existing[key];
       if (!fieldsEqual(oldVal, newVal)) {
         // Dynamic assignment — `fields` and `old` share the SyncableFields
@@ -583,14 +577,15 @@ export function computeGroupMetadataUpdates(
     if (existing.conditionGroupNegRisk !== freshNegRisk.negRisk) {
       fields.negRisk = freshNegRisk.negRisk;
       old.negRisk = existing.conditionGroupNegRisk;
-    }
-
-    const freshNegRiskMarketId = freshNegRisk.negRisk
-      ? freshNegRisk.negRiskMarketId
-      : null;
-    if (existing.conditionGroupNegRiskMarketId !== freshNegRiskMarketId) {
-      fields.negRiskMarketId = freshNegRiskMarketId ?? null;
-      old.negRiskMarketId = existing.conditionGroupNegRiskMarketId ?? null;
+      // negRiskMarketId is intentionally not drift-tracked: it lives only in
+      // the DB and admin-only REST routes. We still send the fresh basket id
+      // alongside the flag so the API can keep the pair in sync — see PUT
+      // /admin/conditionGroups/:id.
+      if (freshNegRisk.negRisk && freshNegRisk.negRiskMarketId) {
+        fields.negRiskMarketId = freshNegRisk.negRiskMarketId;
+      } else if (!freshNegRisk.negRisk) {
+        fields.negRiskMarketId = null;
+      }
     }
 
     if (Object.keys(fields).length > 0) {

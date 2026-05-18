@@ -104,11 +104,8 @@ function existingFromMarket(
     tags: [],
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
-    negRisk: false,
-    negRiskMarketId: null,
     groupName: eventTitle,
     conditionGroupNegRisk: false,
-    conditionGroupNegRiskMarketId: null,
     ...overrides,
   };
 }
@@ -216,30 +213,6 @@ describe('computeMetadataUpdates', () => {
     expect(metadataUpdates[0].old).toEqual({
       groupName: 'Ethereum Price Targets',
     });
-  });
-
-  it('clears stale negRiskMarketId when Polymarket no longer reports negRisk', () => {
-    const market = makeMarket({
-      conditionId: '0xstaleneg',
-      events: [{ title: 'NBA champion', slug: 'nba-champion' }],
-    });
-
-    const existing = new Map([
-      [
-        '0xstaleneg',
-        existingFromMarket(market, {
-          negRisk: true,
-          negRiskMarketId: 'stale-basket',
-        }),
-      ],
-    ]);
-
-    const { metadataUpdates } = runDiff([market], existing);
-
-    expect(metadataUpdates).toHaveLength(1);
-    expect(metadataUpdates[0].fields.negRisk).toBe(false);
-    expect(metadataUpdates[0].fields.negRiskMarketId).toBeNull();
-    expect(metadataUpdates[0].old.negRiskMarketId).toBe('stale-basket');
   });
 
   it('detects similarMarkets URL change when event slug changes', () => {
@@ -525,6 +498,62 @@ describe('computeMetadataUpdates', () => {
 });
 
 describe('computeGroupMetadataUpdates', () => {
+  it('flips ConditionGroup.negRisk to true when fresh markets share a basket', () => {
+    const market = makeMarket({
+      conditionId: '0xbasket',
+      events: [
+        {
+          title: 'NBA champion',
+          slug: 'nba-champion',
+          negRisk: true,
+          negRiskMarketId: 'basket-a',
+        },
+      ],
+    });
+
+    const existing = new Map([
+      [
+        '0xbasket',
+        existingFromMarket(market, {
+          conditionGroupId: 7,
+          conditionGroupNegRisk: false,
+        }),
+      ],
+    ]);
+
+    const { groupMetadataUpdates } = runDiff([market], existing);
+
+    expect(groupMetadataUpdates).toHaveLength(1);
+    expect(groupMetadataUpdates[0].groupId).toBe(7);
+    expect(groupMetadataUpdates[0].fields.negRisk).toBe(true);
+    expect(groupMetadataUpdates[0].fields.negRiskMarketId).toBe('basket-a');
+    expect(groupMetadataUpdates[0].old.negRisk).toBe(false);
+  });
+
+  it('flips ConditionGroup.negRisk to false and clears the basket id when fresh markets no longer agree', () => {
+    const market = makeMarket({
+      conditionId: '0xnobasket',
+      events: [{ title: 'NBA champion', slug: 'nba-champion' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xnobasket',
+        existingFromMarket(market, {
+          conditionGroupId: 9,
+          conditionGroupNegRisk: true,
+        }),
+      ],
+    ]);
+
+    const { groupMetadataUpdates } = runDiff([market], existing);
+
+    expect(groupMetadataUpdates).toHaveLength(1);
+    expect(groupMetadataUpdates[0].groupId).toBe(9);
+    expect(groupMetadataUpdates[0].fields.negRisk).toBe(false);
+    expect(groupMetadataUpdates[0].fields.negRiskMarketId).toBeNull();
+  });
+
   it('detects stored group URL using the broken polymarket.com#slug format', () => {
     const market = makeMarket({
       conditionId: '0xfmt',
