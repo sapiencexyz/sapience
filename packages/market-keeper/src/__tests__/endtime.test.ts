@@ -108,7 +108,7 @@ describe('parseEndTimeResponse', () => {
   });
 
   it('returns null endTime for UNKNOWN', () => {
-    const content = `${id1},UNKNOWN\n${id2},2026-05-15T23:59:59Z`;
+    const content = `${id1},UNKNOWN\n${id2},2099-05-15T23:59:59Z`;
     const results = parseEndTimeResponse(content, markets);
 
     expect(results).toHaveLength(2);
@@ -135,7 +135,7 @@ describe('parseEndTimeResponse', () => {
   });
 
   it('handles invalid dates gracefully', () => {
-    const content = `${id1},not-a-date\n${id2},2026-05-15T23:59:59Z`;
+    const content = `${id1},not-a-date\n${id2},2099-05-15T23:59:59Z`;
     const results = parseEndTimeResponse(content, markets);
 
     const validResults = results.filter((r) => r.endTime !== null);
@@ -758,11 +758,7 @@ describe('extractEndTime', () => {
   describe('tier 4month2 — non-crypto "in [Month]" markets', () => {
     it('resolves "in April?" to last day of April', () => {
       const out = { tier: '' };
-      const ts = extractEndTime(
-        'Will Elon post 50+ tweets in April?',
-        '',
-        out
-      );
+      const ts = extractEndTime('Will Elon post 50+ tweets in April?', '', out);
       expect(out.tier).toBe('4month2');
       const d = new Date(ts! * 1000);
       expect(d.getUTCMonth()).toBe(3); // April = 3 (0-indexed)
@@ -826,9 +822,7 @@ describe('extractEndTime', () => {
     });
 
     it('does not match "last week" or "next week"', () => {
-      expect(
-        extractEndTime('What happened last week?', '')
-      ).toBeNull();
+      expect(extractEndTime('What happened last week?', '')).toBeNull();
     });
   });
 

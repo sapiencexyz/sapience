@@ -483,6 +483,14 @@ type Condition {
   """YES probability from Polymarket (0.0–1.0), null for non-Polymarket"""
   estimatedPrice: Float
   id: String!
+
+  """
+  True when this condition is a child of a Polymarket negative-risk basket
+  """
+  negRisk: Boolean!
+
+  """Polymarket negative-risk basket identifier"""
+  negRiskMarketId: String
   nonDecisive: Boolean!
   openInterest: String!
   optionName: String
@@ -528,6 +536,14 @@ type ConditionGroup {
   createdAt: DateTimeISO!
   id: Int!
   name: String!
+
+  """
+  True when every child condition belongs to the same Polymarket negative-risk basket
+  """
+  negRisk: Boolean!
+
+  """Shared Polymarket negative-risk basket identifier for this group"""
+  negRiskMarketId: String
   similarMarkets: [String!]!
 }
 
