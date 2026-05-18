@@ -129,7 +129,7 @@ where `conditions` is a derived convenience field.
 
 Collateral is currently always wUSDe.
 
-However, because the model is technically multi-collateral aware, public types should expose a `collateralAsset` field for forward compatibility.
+However, because the model is technically multi-collateral aware, public types should expose a `collateral: CollateralToken!` field for forward compatibility.
 
 Recommended documentation language:
 
@@ -621,11 +621,11 @@ type Account implements Node {
 type Question {
   id: ID!
 
-  # Exactly one of Condition | ConditionGroup. Resolved as a union
-  # (open question #9) so the schema enforces mutual exclusion and
-  # clients can't silently observe a both-null or both-set state.
-  # Union name is TBD — see open question #9 for the options.
-  source: QuestionSourceTBD!
+  # Exactly one of Condition | ConditionGroup. Modeled as a union so
+  # the schema enforces mutual exclusion and clients can't silently
+  # observe a both-null or both-set state. `__typename` on the union
+  # member subsumes the old `questionType` enum.
+  source: ConditionOrConditionGroup!
 
   title: String!
   description: String
@@ -673,6 +673,8 @@ enum QuestionStatus {
   CANCELLED
   ARCHIVED
 }
+
+union ConditionOrConditionGroup = Condition | ConditionGroup
 
 type ConditionGroup implements Node {
   id: ID!
@@ -814,7 +816,7 @@ type Prediction implements Node {
   pickConfiguration: PickConfiguration!
   conditions: [Condition!]!
 
-  collateralAsset: CollateralAsset!
+  collateral: CollateralToken!
   collateralAmount: Decimal!
 
   status: PredictionStatus!
@@ -861,7 +863,7 @@ type Trade implements Node {
   pickConfiguration: PickConfiguration!
   conditions: [Condition!]!
 
-  collateralAsset: CollateralAsset!
+  collateral: CollateralToken!
   collateralAmount: Decimal
 
   price: Decimal
@@ -877,7 +879,7 @@ type Position implements Node {
   pickConfiguration: PickConfiguration!
   conditions: [Condition!]!
 
-  collateralAsset: CollateralAsset!
+  collateral: CollateralToken!
   size: Decimal
   averagePrice: Decimal
   realizedPnl: Decimal
@@ -903,7 +905,7 @@ enum ActivityType {
   FORECAST
 }
 
-type CollateralAsset {
+type CollateralToken {
   symbol: String!
   address: Address!
   decimals: Int!
@@ -913,7 +915,7 @@ type CollateralAsset {
 type CollateralBalance {
   account: Account!
   chainId: Int!
-  asset: CollateralAsset!
+  collateral: CollateralToken!
   amount: Decimal!
   atBlock: BigInt
 }
@@ -921,7 +923,7 @@ type CollateralBalance {
 type CollateralBalanceSnapshot {
   account: Account!
   chainId: Int!
-  asset: CollateralAsset!
+  collateral: CollateralToken!
   amount: Decimal!
   blockNumber: BigInt!
   timestamp: DateTime!
@@ -931,7 +933,7 @@ type CollateralTransfer implements Node {
   id: ID!
   account: Account!
   chainId: Int!
-  asset: CollateralAsset!
+  collateral: CollateralToken!
   amount: Decimal!
   transactionHash: Bytes32!
   createdAt: DateTime!
@@ -1627,18 +1629,9 @@ Questions that lock public wire format must be resolved before the per-entity PR
 
 3. **`Forecast.subject` naming** — RESOLVED. The EAS "subject" (recipient) on a forecast attestation is the conditionId it targets; that link is already typed as `condition: Condition` on `Forecast`. The redundant `subject: Address` field is dropped from the SDL. Forecasts target a single `Condition` (not a `ConditionGroup`), so `ForecastFilter.conditionGroupId` is also dropped.
 4. **`Prediction.counterparty` nullability** — DECISION: ship non-null (`counterparty: Account!`). Prerequisite: data audit confirming no rows in production have a null counterparty (orphaned indexer rows, mid-settlement intermediate states). If any null rows exist, either backfill or fix the indexer before flipping the field to non-null — GraphQL surfaces a null on a non-null field as a query-level error, which would break list queries silently for affected accounts.
-5. **`Question` union vs. nullable pair** — RESOLVED on the shape: union. Schema enforces "exactly one of `Condition` | `ConditionGroup`," eliminating the both-null / both-set bug class. The `questionType: QuestionType` enum is removed (`__typename` on the union member subsumes it). Union name is still open — see "Still open" below.
+5. **`Question` union vs. nullable pair** — RESOLVED. Modeled as `union ConditionOrConditionGroup = Condition | ConditionGroup`, exposed as `Question.source: ConditionOrConditionGroup!`. Schema enforces "exactly one of," eliminating the both-null / both-set bug class. The `questionType: QuestionType` enum is removed — `__typename` on the union member subsumes it. Name follows GitHub's `IssueOrPullRequest` precedent: literal, no abbreviation, no parallel concept ("Market", "Source") introduced.
+6. **Collateral field and type naming** — RESOLVED. Type is `CollateralToken` (was `CollateralAsset`); field is `collateral: CollateralToken!` on every type that exposes it (`Prediction`, `Position`, `Trade`, `CollateralBalance`, `CollateralBalanceSnapshot`, `CollateralTransfer`). The full `CollateralToken` record carries `{ symbol, address, decimals, chainId }`, so the field name doesn't need to disambiguate between address and ticker — both live inside.
 
 ### Still open
 
-5. **Status enum audit** — Need an audit of what status values exist today on `Condition`, `ConditionGroup`, and `Prediction` across the Prisma schema, resolvers, and any String-typed status fields currently on the wire. Output: a canonical `<Entity>Status` enum per entity, with a deprecation plan for any existing String fields. Blocks the first per-entity PR for any of those three types. Investigation pending.
-   9b. **`Question` union name** — Candidates under consideration:
-   - `Market` — cleanest, but introduces a domain term not yet used elsewhere in the schema; risk of collision if "market" later means something narrower (orderbook-backed market, secondary market, etc.).
-   - `QuestionMarket` — explicit prefix, no collision risk, slight redundancy.
-   - `QuestionSource` — emphasizes "the underlying data source for this Question view"; reads well, no domain-term capture.
-   - `QuestionSubject` — mirrors the existing `ActivitySubject` union pattern; potential confusion since we just dropped "subject" as EAS jargon from `Forecast`.
-6. **`collateralAsset` field naming** — The type shape is settled (`type CollateralAsset { symbol, address, decimals, chainId }` — a full asset record, not a scalar). What's open is whether the field `Prediction.collateralAsset: CollateralAsset!` is the clearest name, or whether one of these reads better:
-   - `collateral: CollateralAsset!` — shortest; field name is the role, type is the shape.
-   - `collateralToken: CollateralAsset!` — explicit that it's an ERC-20 token, not a generic asset class.
-   - Rename type to `CollateralToken` and field to `collateral: CollateralToken!` — same idea, expressed through the type name instead of the field name.
-     Note: this is field-naming polish, not a wire-shape question — once chosen, every type that exposes collateral (`Prediction`, `Position`, `Trade`, `CollateralBalance`, `CollateralTransfer`) uses the same convention.
+7. **Status enum audit** — Need an audit of what status values exist today on `Condition`, `ConditionGroup`, and `Prediction` across the Prisma schema, resolvers, and any String-typed status fields currently on the wire. Output: a canonical `<Entity>Status` enum per entity, with a deprecation plan for any existing String fields. Blocks the first per-entity PR for any of those three types. Investigation pending.
