@@ -35,7 +35,7 @@ These are canonical graph entities and should generally implement `Node`:
 These are product views, not canonical database-backed entities:
 
 - `Question`
-- `ActivityItem`
+- `Activity`
 
 ### Question model
 
@@ -64,7 +64,7 @@ question:group:456
 
 ### Activity model
 
-`ActivityItem` is a derived aggregate feed item over:
+`Activity` is a derived aggregate feed item over:
 
 - `Prediction`
 - `Trade`
@@ -186,7 +186,7 @@ No canonical:
 
 ```graphql
 question(id:)
-activityItem(id:)
+activity(id:)
 ```
 
 unless those views become durable records later.
@@ -876,16 +876,22 @@ type Position implements Node {
   updatedAt: DateTime
 }
 
-type ActivityItem {
+type Activity {
   id: ID!
-  activityType: ActivityType!
-  subject: ActivitySubject!
+  # The underlying entity this activity row wraps. Concrete type is
+  # available via `__typename` — no separate `activityType` enum field
+  # because it would duplicate what the union already encodes.
+  source: ActivitySource!
   account: Account
   createdAt: DateTime!
 }
 
-union ActivitySubject = Prediction | Trade | Forecast
+union ActivitySource = Prediction | Trade | Forecast
 
+# Retained for use in ActivityFilter (filtering an interleaved feed by
+# member type is a real use case — clients ask "only my forecasts" or
+# "only trades"). On the wire of an Activity row itself, prefer
+# `__typename` on `source`.
 enum ActivityType {
   PREDICTION
   TRADE
@@ -1073,13 +1079,13 @@ type TradeEdge {
 
 type ActivityConnection {
   edges: [ActivityEdge!]!
-  nodes: [ActivityItem!]!
+  nodes: [Activity!]!
   pageInfo: PageInfo!
   totalCount: Int
 }
 
 type ActivityEdge {
-  node: ActivityItem!
+  node: Activity!
   cursor: String!
 }
 
@@ -1604,7 +1610,7 @@ Questions that lock public wire format must be resolved before the per-entity PR
 ### Deferred — safe to ship later
 
 1. **`Question.id` synthetic ID** — Underlying `Condition` / `ConditionGroup` already carry Node IDs; clients can key on those. Add a synthetic `Question.id` later if a concrete UI need surfaces. Adding a field is non-breaking; committing to a format prematurely locks it forever.
-2. **`ActivityItem.id` synthetic ID** — Same logic. Each `ActivityItem` embeds a Prediction / Trade / Forecast that already has a Node ID; cursor handles in-page identity. Skip until a use case appears.
+2. **`Activity.id` synthetic ID** — Same logic. Each `Activity` row embeds a Prediction / Trade / Forecast that already has a Node ID; cursor handles in-page identity. Skip until a use case appears.
 3. **`totalCount` per-connection** — Per-connection call. Add where the count is cheap (covered index, materialized aggregate); omit where it's a table scan. Adding later is non-breaking.
 4. **`last` / `before` reverse pagination** — Forward is a strict subset; reverse is purely additive. Ship forward-only; revisit if clients need reverse traversal.
 
