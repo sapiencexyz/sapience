@@ -523,6 +523,8 @@ input DateTimeFilter {
   gte: DateTime
   lt: DateTime
   lte: DateTime
+  in: [DateTime!]
+  notIn: [DateTime!]
 }
 
 input StringFilter {
@@ -858,6 +860,9 @@ type Condition implements Node {
 
   createdAt: DateTime!
   updatedAt: DateTime
+  # Off-chain metadata sourced from Polymarket's market API (not chain
+  # storage), so `DateTime` rather than `UnixSeconds` is the right
+  # scalar here.
   resolvesAt: DateTime
 }
 
@@ -916,9 +921,12 @@ type Prediction implements Node {
   # is resolved; `result` carries the outcome. No separate
   # `PredictionStatus` enum — today's data model has no `CANCELLED`
   # state, so a derived status enum would just be sugar on the Boolean.
+  # `payout` is non-null: it's derived from the prize pool
+  # (`predictorCollateral + counterpartyCollateral`) and the `result`,
+  # both of which are non-null on every Prediction row.
   settled: Boolean!
   result: PredictionResult!
-  payout: Decimal
+  payout: Decimal!
 
   createdAt: DateTime!
   settledAt: DateTime
