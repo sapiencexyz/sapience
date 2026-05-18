@@ -681,7 +681,6 @@ type ConditionGroup implements Node {
   databaseId: Int!
   title: String!
   description: String
-  status: ConditionGroupStatus!
 
   question: Question!
   conditions(
@@ -712,13 +711,6 @@ type ConditionGroup implements Node {
 
   createdAt: DateTime!
   updatedAt: DateTime
-}
-
-enum ConditionGroupStatus {
-  ACTIVE
-  RESOLVED
-  CANCELLED
-  ARCHIVED
 }
 
 type Condition implements Node {
@@ -820,7 +812,7 @@ type Prediction implements Node {
   collateralAmount: Decimal!
 
   status: PredictionStatus!
-  result: PredictionResult
+  result: PredictionResult!
   payout: Decimal
 
   createdAt: DateTime!
@@ -834,9 +826,9 @@ enum PredictionStatus {
 }
 
 enum PredictionResult {
-  WON
-  LOST
-  PUSH
+  UNRESOLVED
+  PREDICTOR_WINS
+  COUNTERPARTY_WINS
 }
 
 type Forecast implements Node {
@@ -1290,7 +1282,6 @@ input ConditionGroupFilter {
   search: String
   categoryIds: [ID!]
   tags: [String!]
-  status: [ConditionGroupStatus!]
 }
 
 input ConditionGroupOrder {
@@ -1628,10 +1619,20 @@ Questions that lock public wire format must be resolved before the per-entity PR
 ### Resolved — locked direction, doc updated
 
 3. **`Forecast.subject` naming** — RESOLVED. The EAS "subject" (recipient) on a forecast attestation is the conditionId it targets; that link is already typed as `condition: Condition` on `Forecast`. The redundant `subject: Address` field is dropped from the SDL. Forecasts target a single `Condition` (not a `ConditionGroup`), so `ForecastFilter.conditionGroupId` is also dropped.
-4. **`Prediction.counterparty` nullability** — DECISION: ship non-null (`counterparty: Account!`). Prerequisite: data audit confirming no rows in production have a null counterparty (orphaned indexer rows, mid-settlement intermediate states). If any null rows exist, either backfill or fix the indexer before flipping the field to non-null — GraphQL surfaces a null on a non-null field as a query-level error, which would break list queries silently for affected accounts.
+4. **`Prediction.counterparty` nullability** — RESOLVED. Ship non-null (`counterparty: Account!`). Prisma schema declares the column non-null (`counterparty String @db.VarChar` in `prisma/schema.prisma`); every indexer write path (`predictionMarketEscrowIndexer.ts:706, 743`) sets it from the on-chain event payload, which is itself a non-null `0x${string}`. No backfill or schema migration needed.
 5. **`Question` union vs. nullable pair** — RESOLVED. Modeled as `union ConditionOrConditionGroup = Condition | ConditionGroup`, exposed as `Question.source: ConditionOrConditionGroup!`. Schema enforces "exactly one of," eliminating the both-null / both-set bug class. The `questionType: QuestionType` enum is removed — `__typename` on the union member subsumes it. Name follows GitHub's `IssueOrPullRequest` precedent: literal, no abbreviation, no parallel concept ("Market", "Source") introduced.
 6. **Collateral field and type naming** — RESOLVED. Type is `CollateralToken` (was `CollateralAsset`); field is `collateral: CollateralToken!` on every type that exposes it (`Prediction`, `Position`, `Trade`, `CollateralBalance`, `CollateralBalanceSnapshot`, `CollateralTransfer`). The full `CollateralToken` record carries `{ symbol, address, decimals, chainId }`, so the field name doesn't need to disambiguate between address and ticker — both live inside.
 
 ### Still open
 
-7. **Status enum audit** — Need an audit of what status values exist today on `Condition`, `ConditionGroup`, and `Prediction` across the Prisma schema, resolvers, and any String-typed status fields currently on the wire. Output: a canonical `<Entity>Status` enum per entity, with a deprecation plan for any existing String fields. Blocks the first per-entity PR for any of those three types. Investigation pending.
+7. **Status enums — audit done, design call needed.** The audit revealed that the doc's status enums were aspirational, not migrations from existing String fields. Findings + remaining design questions:
+
+   **ConditionGroup — RESOLVED inside this open question.** No `status` field today, no `status` field going forward. `ConditionGroupStatus` enum dropped; `ConditionGroup.status` field dropped; `ConditionGroupFilter.status` dropped. Group-level state is derivable client-side from child Condition state if any UI needs it.
+
+   **Prediction `result` — RESOLVED inside this open question.** Public enum is `enum PredictionResult { UNRESOLVED, PREDICTOR_WINS, COUNTERPARTY_WINS }`. The Prisma `SettlementResult` enum has a fourth value `NON_DECISIVE`, but the contract collapses non-decisive outcomes to `COUNTERPARTY_WINS` at the resolution layer (`PredictionMarketEscrow.sol:_evaluatePick` and the rationale comment at L1262–1267: "non-decisive outcomes are treated as counterparty wins ... SettlementResult has no DRAW variant"). The indexer's `mapSettlementResult` retains a `case 3 → 'NON_DECISIVE'` branch that is unreachable from current contract behavior — vestigial code, future cleanup. Any historical rows carrying `NON_DECISIVE` from an earlier protocol version can be folded to `COUNTERPARTY_WINS` on the fly in the resolver; no backfill required.
+
+   **Condition `status` — still open.** No `status` field today; state is three Booleans (`settled`, `resolvedToYes`, `nonDecisive`). The proposed `enum ConditionStatus { ACTIVE, RESOLVED, CANCELLED, ARCHIVED }` contains values (`CANCELLED`, `ARCHIVED`) that nothing in the data model produces. Open: drop those values and derive `status` from the Booleans (`ACTIVE`/`RESOLVED`, with `nonDecisive` either folded into `RESOLVED` or surfaced as a distinct state), or add columns to support `CANCELLED` / `ARCHIVED` if there's a real product need?
+
+   **Prediction `status` vs. `settled` — still open.** Proposed `enum PredictionStatus { OPEN, SETTLED, CANCELLED }` is mostly sugar on the existing `settled` Boolean (`OPEN = !settled`, `SETTLED = settled`). `CANCELLED` has no source in the data model today. Open: drop `CANCELLED` and let `status` be a derived two-state enum, or define what produces a cancelled prediction (admin override? on-chain unwind path?) and add the column.
+
+   **`Question.status` derivation — still open.** Since `Question` wraps either a `Condition` or a `ConditionGroup`, and `ConditionGroup` has no status, the `Question.status` field needs an explicit derivation rule. Plausible: when source is a Condition, mirror its status; when source is a ConditionGroup, compute from children (all child Conditions resolved → `RESOLVED`, any unresolved → `ACTIVE`, etc.). Open: define the rule formally, or drop `Question.status` and let clients derive whatever view-state they need themselves.
