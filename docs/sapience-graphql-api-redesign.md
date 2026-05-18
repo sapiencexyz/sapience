@@ -1432,7 +1432,6 @@ enum CollateralTransferOrderField {
 input ProtocolStatsFilter {
   from: DateTime
   to: DateTime
-  interval: StatsInterval
 }
 
 input ProtocolStatsOrder {
@@ -1447,7 +1446,6 @@ enum ProtocolStatsOrderField {
 input VaultStatsFilter {
   from: DateTime
   to: DateTime
-  interval: StatsInterval
 }
 
 input VaultStatsOrder {
@@ -1462,7 +1460,6 @@ enum VaultStatsOrderField {
 input AccountStatsFilter {
   from: DateTime
   to: DateTime
-  interval: StatsInterval
 }
 
 input AccountStatsOrder {
@@ -1472,13 +1469,6 @@ input AccountStatsOrder {
 
 enum AccountStatsOrderField {
   TIMESTAMP
-}
-
-enum StatsInterval {
-  HOUR
-  DAY
-  WEEK
-  MONTH
 }
 
 input LeaderboardFilter {
