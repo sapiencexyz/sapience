@@ -100,9 +100,6 @@ describe('SDL contract: *Page types', () => {
       if (def.kind !== Kind.OBJECT_TYPE_DEFINITION) continue;
       const typeName = def.name.value;
       if (!typeName.endsWith('Page')) continue;
-      // Allowed exception: types that mark themselves as cursor-based
-      // pagination (current `ReferralCodesPage` / `ReferralCodeClaimantsPage`
-      // shape with `nextCursor`). They'll standardize in a follow-up.
       if (typeName === 'Page') continue;
       const implementsPage =
         def.interfaces?.some((i) => i.name.value === 'Page') ?? false;

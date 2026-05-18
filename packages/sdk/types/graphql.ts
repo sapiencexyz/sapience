@@ -2446,17 +2446,6 @@ export type Query = {
    */
   questionsPage: QuestionsPage;
   /**
-   * Public referral analytics. Referral codes are attribution hints, not
-   * authorization credentials: using someone else's code credits that referrer's
-   * volume/claims, but does not grant access to funds or admin capabilities.
-   *
-   * Returns paginated referral codes with claim count and aggregate trading volume /
-   * position count baked in. Pass `id` to filter to a single code (e.g. for the
-   * analytics dialog). Per-claimant breakdown is available via the nested
-   * `claimants` field.
-   */
-  referralCodesPage: ReferralCodesPage;
-  /**
    * Look up a single secondary market trade by its trade hash. Pass
    * `tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing
    * callers keep working through one release.
@@ -2486,7 +2475,7 @@ export type Query = {
   tradesPage: TradesPage;
   /** @deprecated Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains. */
   user?: Maybe<User>;
-  /** @deprecated Unused; will be removed. No live consumers — account lookups go through `account(address:)` or `referralCodesPage`. */
+  /** @deprecated Unused; will be removed. No live consumers — account lookups go through `account(address:)`. */
   users: Array<User>;
   /**
    * Vault-specific statistics time series for a single vault address — vault
@@ -2922,13 +2911,6 @@ export type QueryQuestionsPageArgs = {
 };
 
 
-export type QueryReferralCodesPageArgs = {
-  id?: InputMaybe<Scalars['Int']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-};
-
-
 export type QueryTradeArgs = {
   id?: InputMaybe<Scalars['String']['input']>;
   tradeHash?: InputMaybe<Scalars['String']['input']>;
@@ -3075,23 +3057,17 @@ export type QuestionsPage = Page & {
 };
 
 /**
- * Public referral code metadata and analytics. This intentionally includes creator,
- * claim counts, aggregate volume/position stats, and claimant breakdowns.
+ * Public referral code metadata. Exposed via `User.referredByCode` /
+ * `Account.referredByCode` so clients can render an account's referrer.
  *
- * Referral codes are low-security attribution hints: using someone else's code only
- * credits that referrer; it does not grant access to funds or privileged actions.
- *
- * `codeHash` is intentionally omitted from GraphQL because public clients should
- * not need it, and referral-code identity in this API is the integer `id`.
- * Credentialed create/update REST paths may still return hashes to the caller that
- * created or administers the code.
+ * Referral codes are low-security attribution hints: using someone else's code
+ * only credits that referrer; it does not grant access to funds or privileged
+ * actions. `codeHash` is intentionally omitted from GraphQL — public clients
+ * identify codes by integer `id`. Aggregate analytics (claim count, volume,
+ * claimants) live on the public REST endpoint `GET /referrals/codes`.
  */
 export type ReferralCode = {
   __typename?: 'ReferralCode';
-  /** Total number of users who have claimed this code, across all pages. */
-  claimCount: Scalars['Int']['output'];
-  /** Paginated per-claimant breakdown with trading volume + position count. */
-  claimants: ReferralCodeClaimantsPage;
   createdAt: Scalars['DateTimeISO']['output'];
   createdBy: Scalars['String']['output'];
   creatorType: Scalars['String']['output'];
@@ -3099,53 +3075,7 @@ export type ReferralCode = {
   id: Scalars['Int']['output'];
   isActive: Scalars['Boolean']['output'];
   maxClaims: Scalars['Int']['output'];
-  /**
-   * Total position count across every claimant. A position with both predictor
-   * and counterparty in the claimant set is counted twice, matching the
-   * per-side semantics.
-   */
-  totalPositions: Scalars['Int']['output'];
-  /**
-   * Sum of trading volume across every claimant's positions (predictor +
-   * counterparty sides), as a stringified bigint. Aggregated server-side.
-   */
-  totalVolume: Scalars['String']['output'];
   updatedAt: Scalars['DateTimeISO']['output'];
-};
-
-
-/**
- * Public referral code metadata and analytics. This intentionally includes creator,
- * claim counts, aggregate volume/position stats, and claimant breakdowns.
- *
- * Referral codes are low-security attribution hints: using someone else's code only
- * credits that referrer; it does not grant access to funds or privileged actions.
- *
- * `codeHash` is intentionally omitted from GraphQL because public clients should
- * not need it, and referral-code identity in this API is the integer `id`.
- * Credentialed create/update REST paths may still return hashes to the caller that
- * created or administers the code.
- */
-export type ReferralCodeClaimantsArgs = {
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-};
-
-export type ReferralCodeClaimant = {
-  __typename?: 'ReferralCodeClaimant';
-  address: Scalars['String']['output'];
-  claimedAt: Scalars['DateTimeISO']['output'];
-  id: Scalars['Int']['output'];
-  positionCount: Scalars['Int']['output'];
-  tradingVolume: Scalars['String']['output'];
-};
-
-/** Paginated wrapper around ReferralCodeClaimant rows with a server-truth hasMore flag */
-export type ReferralCodeClaimantsPage = Page & {
-  __typename?: 'ReferralCodeClaimantsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<ReferralCodeClaimant>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type ReferralCodeNullableRelationFilter = {
@@ -3176,14 +3106,6 @@ export type ReferralCodeWhereInput = {
   isActive?: InputMaybe<BoolFilter>;
   maxClaims?: InputMaybe<IntFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
-};
-
-/** Paginated wrapper around ReferralCode rows with a server-truth hasMore flag */
-export type ReferralCodesPage = Page & {
-  __typename?: 'ReferralCodesPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<ReferralCode>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Filter questions by their resolution status */
