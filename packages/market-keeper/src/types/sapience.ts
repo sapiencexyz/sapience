@@ -38,7 +38,10 @@ export interface SapienceConditionGroup {
   description: string;
   similarMarkets: string[];
   tags: string[];
-  negRisk?: boolean;
+  // Polymarket negative-risk basket identifier. When set, every child
+  // condition is part of the same mutually-exclusive basket. The API
+  // derives `ConditionGroup.negRisk` from this being non-null; the
+  // keeper sends only the id.
   negRiskMarketId?: string;
   conditions: SapienceCondition[];
 }
@@ -74,10 +77,13 @@ export interface MetadataUpdate {
  * Fields on a ConditionGroup that the generate cron is allowed to keep in sync
  * with fresh Polymarket data. Intentionally narrow: name is excluded because
  * group names have a unique constraint, and category is LLM-derived.
+ *
+ * `negRiskMarketId` carries the basket id. The API derives
+ * `ConditionGroup.negRisk` from this column being non-null, so the keeper
+ * doesn't need a separate boolean field in the payload.
  */
 export interface GroupSyncableFields {
   similarMarkets?: string[];
-  negRisk?: boolean;
   negRiskMarketId?: string | null;
 }
 

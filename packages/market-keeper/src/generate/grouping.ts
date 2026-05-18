@@ -98,19 +98,20 @@ function isNegRiskMarket(market: PolymarketMarket): boolean {
   );
 }
 
-function computeNegRiskBucketMetadata(markets: PolymarketMarket[]): {
-  negRisk: boolean;
-  negRiskMarketId?: string;
-} {
-  if (markets.length === 0) return { negRisk: false };
+/**
+ * Resolve the shared Polymarket negative-risk basket id for a set of
+ * sibling markets. We only stamp a basket id when every market agrees:
+ * mixed groups stay basket-less so the API derives `negRisk: false`.
+ */
+function sharedNegRiskMarketId(
+  markets: PolymarketMarket[]
+): string | undefined {
+  if (markets.length === 0) return undefined;
   const ids = markets.map(getNegRiskMarketId);
   const firstId = ids[0];
   const sameBasket = !!firstId && ids.every((id) => id === firstId);
   const allNegRisk = markets.every(isNegRiskMarket);
-
-  return allNegRisk && sameBasket
-    ? { negRisk: true, negRiskMarketId: firstId }
-    : { negRisk: false };
+  return allNegRisk && sameBasket ? firstId : undefined;
 }
 
 function negRiskBasketIdsByTitle(
@@ -155,9 +156,7 @@ export function transformToSapienceCondition(
   enrichment?: MarketEnrichmentOutput,
   tags: string[] = [],
   endTimeOverride?: number,
-  negRiskMetadata: { negRisk: boolean; negRiskMarketId?: string } = {
-    negRisk: false,
-  }
+  negRiskMarketId?: string
 ): SapienceCondition {
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
@@ -184,8 +183,8 @@ export function transformToSapienceCondition(
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
     endTimeOverride,
-    negRisk: negRiskMetadata.negRisk,
-    negRiskMarketId: negRiskMetadata.negRiskMarketId,
+    negRisk: negRiskMarketId !== undefined,
+    negRiskMarketId,
   };
 }
 
@@ -298,14 +297,14 @@ export async function groupMarkets(
       market,
       negRiskBasketIds
     );
-    const negRiskMetadata = computeNegRiskBucketMetadata(group.markets);
+    const groupNegRiskMarketId = sharedNegRiskMarketId(group.markets);
     const condition = transformToSapienceCondition(
       market,
       conditionGroupTitle,
       enrichment,
       marketTags,
       endTimeMap.get(market.conditionId),
-      negRiskMetadata
+      groupNegRiskMarketId
     );
 
     // Use event description if available, otherwise use market's description
@@ -322,8 +321,7 @@ export async function groupMarkets(
       categorySlug: condition.categorySlug,
       similarMarkets: groupUrl ? [groupUrl] : [],
       tags: marketTags,
-      negRisk: negRiskMetadata.negRisk,
-      negRiskMarketId: negRiskMetadata.negRiskMarketId,
+      negRiskMarketId: groupNegRiskMarketId,
       conditions: [condition],
     });
   }
@@ -338,7 +336,7 @@ export async function groupMarkets(
       enrichments.get(m.conditionId),
       mTags,
       endTimeMap.get(m.conditionId),
-      computeNegRiskBucketMetadata([m])
+      sharedNegRiskMarketId([m])
     );
   });
 
@@ -564,7 +562,7 @@ export function computeGroupMetadataUpdates(
 
     const freshSimilarMarkets = [freshUrl];
     const oldSimilarMarkets = existing.conditionGroupSimilarMarkets;
-    const freshNegRisk = computeNegRiskBucketMetadata(group.markets);
+    const freshNegRiskMarketId = sharedNegRiskMarketId(group.markets);
 
     const fields: GroupSyncableFields = {};
     const old: GroupSyncableFields = {};
@@ -577,20 +575,19 @@ export function computeGroupMetadataUpdates(
     // negRisk on an existing group is a one-way ratchet: we only ever flip
     // false → true. A demotion back to non-negRisk would silently dissolve a
     // basket's invariant — if fresh markets disagree on basketing, that's a
-    // data problem to surface to operators, not auto-correct. The companion
-    // negRiskMarketId is intentionally not drift-tracked (it lives only in
-    // the DB and admin-only REST routes), but we send the fresh basket id
-    // alongside the flag transition so the API keeps the pair in sync — see
-    // PUT /admin/conditionGroups/:id.
-    if (existing.conditionGroupNegRisk === false && freshNegRisk.negRisk) {
-      fields.negRisk = true;
-      old.negRisk = false;
-      if (freshNegRisk.negRiskMarketId) {
-        fields.negRiskMarketId = freshNegRisk.negRiskMarketId;
-      }
+    // data problem to surface to operators, not auto-correct. The boolean
+    // itself lives in GraphQL as a derived field; the keeper writes
+    // `negRiskMarketId` directly via PUT /admin/conditionGroups/:id and the
+    // API computes the boolean from it being non-null.
+    if (
+      existing.conditionGroupNegRisk === false &&
+      freshNegRiskMarketId !== undefined
+    ) {
+      fields.negRiskMarketId = freshNegRiskMarketId;
+      old.negRiskMarketId = null;
     } else if (
       existing.conditionGroupNegRisk === true &&
-      !freshNegRisk.negRisk
+      freshNegRiskMarketId === undefined
     ) {
       console.error(
         `[Metadata] refused to demote group ${existing.conditionGroupId} ` +

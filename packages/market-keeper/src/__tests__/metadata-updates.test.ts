@@ -498,7 +498,7 @@ describe('computeMetadataUpdates', () => {
 });
 
 describe('computeGroupMetadataUpdates', () => {
-  it('flips ConditionGroup.negRisk to true when fresh markets share a basket', () => {
+  it('stamps ConditionGroup.negRiskMarketId when fresh markets share a basket', () => {
     const market = makeMarket({
       conditionId: '0xbasket',
       events: [
@@ -525,9 +525,8 @@ describe('computeGroupMetadataUpdates', () => {
 
     expect(groupMetadataUpdates).toHaveLength(1);
     expect(groupMetadataUpdates[0].groupId).toBe(7);
-    expect(groupMetadataUpdates[0].fields.negRisk).toBe(true);
     expect(groupMetadataUpdates[0].fields.negRiskMarketId).toBe('basket-a');
-    expect(groupMetadataUpdates[0].old.negRisk).toBe(false);
+    expect(groupMetadataUpdates[0].old.negRiskMarketId).toBeNull();
   });
 
   it('refuses to demote ConditionGroup.negRisk from true to false; logs an error instead', () => {
@@ -812,7 +811,6 @@ describe('groupMarkets new-condition routing', () => {
     const groups = result.groups.filter((g) => g.title === 'NBA champion');
 
     expect(groups).toHaveLength(2);
-    expect(groups.every((g) => g.negRisk === true)).toBe(true);
     expect(groups.every((g) => g.negRiskMarketId === 'basket-123')).toBe(true);
     expect(
       groups
@@ -867,7 +865,6 @@ describe('groupMarkets new-condition routing', () => {
       'basket-a',
       'basket-b',
     ]);
-    expect(groups.every((g) => g.negRisk === true)).toBe(true);
     expect(
       groups
         .flatMap((g) => g.conditions)

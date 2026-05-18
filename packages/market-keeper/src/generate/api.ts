@@ -53,7 +53,6 @@ export async function submitConditionGroup(
         name: group.title, // API uses 'name' field
         categorySlug: group.categorySlug,
         similarMarkets: group.similarMarkets,
-        negRisk: group.negRisk,
         negRiskMarketId: group.negRiskMarketId,
       }),
     });
