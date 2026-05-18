@@ -128,17 +128,6 @@ The basket invariant is enforced by the API, with the keeper as a well-behaved c
 
 A group's basket id is a **one-way ratchet** on the keeper: it can flip `null → 'basket-x'` when fresh Polymarket markets agree on a basket id, but the keeper will never auto-clear it. Demoting silently would dissolve the basket invariant, so when fresh markets disagree on basketing the keeper logs `[Metadata] refused to demote group <id> ("<title>") from negRisk: …` and emits no update. Recovery for that case is a deliberate admin REST edit (`PUT /admin/conditionGroups/:id` with `negRiskMarketId: null`) if Polymarket truly retired the basket.
 
-### Pre-deploy backfill
-
-When the strict basket invariant was first introduced, every existing `condition_group` had `negRiskMarketId=NULL` (the column was new) so the keeper's next sync would 400 any batch containing a basket condition for a previously-existing group. The one-off `packages/api/scripts/backfillConditionGroupBaskets.ts` populates the column from Polymarket before the new code goes live:
-
-```
-pnpm --filter @sapience/api exec tsx scripts/backfillConditionGroupBaskets.ts            # dry-run
-pnpm --filter @sapience/api exec tsx scripts/backfillConditionGroupBaskets.ts --apply    # commit
-```
-
-Run on staging first; review the conflict log; run on prod; then deploy. The script is idempotent and self-skips groups that already carry a basket id.
-
 ---
 
 Have ideas on how we should change the curation criteria? Come discuss it in our [Discord](https://discord.gg/sapience) or submit a pull request.
