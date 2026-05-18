@@ -119,9 +119,17 @@ The keeper enforces this when forming groups:
 - When two same-event-title markets in the same sync run come from **different** baskets (e.g. one is `basket-a`, another `basket-b`), the keeper splits them into separate groups and appends the basket id to the title: `"NBA champion (basket-a)"`, `"NBA champion (basket-b)"`. This keeps each basket addressable as its own unit.
 - The admin REST routes (`/admin/conditions`, `/admin/conditionGroups`) refuse to add a condition with a mismatched `negRiskMarketId` to an existing negRisk group, so the invariant survives manual edits and partial syncs.
 
+`ConditionGroup.negRisk` is a **one-way ratchet** on the keeper: it can flip `false → true` when fresh Polymarket markets agree on a basket id, but the keeper will never auto-demote `true → false`. Demoting silently would dissolve the basket invariant, so the keeper logs `[Metadata] refused to demote group <id> ("<title>") from negRisk: …` and leaves the flag alone. Recovery for that case is an admin REST edit if it turns out Polymarket truly retired the basket.
+
 ### Known limitation: late basket arrivals
 
-The basket-segmentation suffix is only applied when both baskets appear in the **same** sync run. If `basket-a` is already persisted as a plain `"NBA champion"` group and `basket-b` shows up alone in a later run, the keeper sends it through as `"NBA champion"`, the API rejects it as a basket mismatch, and the new market is dropped. Look for `[BatchCreate] rejected ... negRisk condition(s)` in the keeper logs — recovery is currently manual (rename the existing group, then let the next sync create a fresh basket-suffixed group).
+The basket-segmentation suffix is only applied when both baskets appear in the **same** sync run. If `basket-a` is already persisted as a plain `"NBA champion"` group and `basket-b` shows up alone in a later run, the keeper sends it through as `"NBA champion"` and the API rejects it as a basket mismatch. The keeper surfaces that distinctly in its batch-submit logs:
+
+```
+… Batch N unable to add to existing negRisk group: Cannot add non-matching negRisk conditions to negRisk group NBA champion. Expected negRiskMarketId basket-a; mismatched: 0xabc…
+```
+
+Recovery is currently manual (rename the existing group to free the basket-suffixed slot, then the next sync creates a fresh basket-suffixed group for `basket-b`).
 
 ---
 

@@ -530,28 +530,45 @@ describe('computeGroupMetadataUpdates', () => {
     expect(groupMetadataUpdates[0].old.negRisk).toBe(false);
   });
 
-  it('flips ConditionGroup.negRisk to false and clears the basket id when fresh markets no longer agree', () => {
-    const market = makeMarket({
-      conditionId: '0xnobasket',
-      events: [{ title: 'NBA champion', slug: 'nba-champion' }],
-    });
+  it('refuses to demote ConditionGroup.negRisk from true to false; logs an error instead', () => {
+    const errors: string[] = [];
+    const errSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation((...args: unknown[]) => {
+        errors.push(args.map(String).join(' '));
+      });
+    try {
+      const market = makeMarket({
+        conditionId: '0xnobasket',
+        slug: 'nba-champion-celtics',
+        events: [{ title: 'NBA champion', slug: 'nba-champion' }],
+      });
 
-    const existing = new Map([
-      [
-        '0xnobasket',
-        existingFromMarket(market, {
-          conditionGroupId: 9,
-          conditionGroupNegRisk: true,
-        }),
-      ],
-    ]);
+      const existing = new Map([
+        [
+          '0xnobasket',
+          existingFromMarket(market, {
+            conditionGroupId: 9,
+            conditionGroupNegRisk: true,
+            // Pre-set the group URL so the diff has nothing else to emit.
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com/event/nba-champion#nba-champion-celtics',
+            ],
+          }),
+        ],
+      ]);
 
-    const { groupMetadataUpdates } = runDiff([market], existing);
+      const { groupMetadataUpdates } = runDiff([market], existing);
 
-    expect(groupMetadataUpdates).toHaveLength(1);
-    expect(groupMetadataUpdates[0].groupId).toBe(9);
-    expect(groupMetadataUpdates[0].fields.negRisk).toBe(false);
-    expect(groupMetadataUpdates[0].fields.negRiskMarketId).toBeNull();
+      expect(groupMetadataUpdates).toHaveLength(0);
+      expect(
+        errors.some((msg) =>
+          /refused to demote group 9.*from negRisk/i.test(msg)
+        )
+      ).toBe(true);
+    } finally {
+      errSpy.mockRestore();
+    }
   });
 
   it('detects stored group URL using the broken polymarket.com#slug format', () => {

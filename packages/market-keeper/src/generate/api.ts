@@ -663,9 +663,30 @@ export async function submitToAPI(
           const errorData = await response
             .json()
             .catch(() => ({ message: 'Unknown error' }));
-          console.error(
-            `${label} Batch ${batchNum} failed: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
-          );
+          const message =
+            (errorData as { message?: string }).message || response.statusText;
+          // Surface basket-id mismatches separately: the API rejects them with
+          // a 400 carrying the "non-matching negRisk conditions" phrase, and
+          // these are the cases operators want to triage (the keeper would
+          // otherwise drop the new condition on every subsequent sync).
+          if (
+            response.status === 400 &&
+            /non-matching negRisk/i.test(message)
+          ) {
+            console.error(
+              `${label} Batch ${batchNum} unable to add to existing negRisk ` +
+                `group: ${message}. Conditions: ${batch
+                  .map(
+                    (c) =>
+                      `${c.conditionHash} (group=${c.groupName ?? 'none'}, negRiskMarketId=${c.negRiskMarketId ?? 'none'})`
+                  )
+                  .join('; ')}`
+            );
+          } else {
+            console.error(
+              `${label} Batch ${batchNum} failed: HTTP ${response.status}: ${message}`
+            );
+          }
           totalFailed += batch.length;
         }
       } catch (error) {

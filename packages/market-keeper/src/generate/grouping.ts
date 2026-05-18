@@ -574,18 +574,32 @@ export function computeGroupMetadataUpdates(
       old.similarMarkets = oldSimilarMarkets;
     }
 
-    if (existing.conditionGroupNegRisk !== freshNegRisk.negRisk) {
-      fields.negRisk = freshNegRisk.negRisk;
-      old.negRisk = existing.conditionGroupNegRisk;
-      // negRiskMarketId is intentionally not drift-tracked: it lives only in
-      // the DB and admin-only REST routes. We still send the fresh basket id
-      // alongside the flag so the API can keep the pair in sync — see PUT
-      // /admin/conditionGroups/:id.
-      if (freshNegRisk.negRisk && freshNegRisk.negRiskMarketId) {
+    // negRisk on an existing group is a one-way ratchet: we only ever flip
+    // false → true. A demotion back to non-negRisk would silently dissolve a
+    // basket's invariant — if fresh markets disagree on basketing, that's a
+    // data problem to surface to operators, not auto-correct. The companion
+    // negRiskMarketId is intentionally not drift-tracked (it lives only in
+    // the DB and admin-only REST routes), but we send the fresh basket id
+    // alongside the flag transition so the API keeps the pair in sync — see
+    // PUT /admin/conditionGroups/:id.
+    if (existing.conditionGroupNegRisk === false && freshNegRisk.negRisk) {
+      fields.negRisk = true;
+      old.negRisk = false;
+      if (freshNegRisk.negRiskMarketId) {
         fields.negRiskMarketId = freshNegRisk.negRiskMarketId;
-      } else if (!freshNegRisk.negRisk) {
-        fields.negRiskMarketId = null;
       }
+    } else if (
+      existing.conditionGroupNegRisk === true &&
+      !freshNegRisk.negRisk
+    ) {
+      console.error(
+        `[Metadata] refused to demote group ${existing.conditionGroupId} ` +
+          `("${group.title}") from negRisk: fresh Polymarket markets disagree on ` +
+          `basket id (or are missing it). Conditions: ` +
+          group.markets
+            .map((m) => `${m.conditionId}=${getNegRiskMarketId(m) ?? 'none'}`)
+            .join(', ')
+      );
     }
 
     if (Object.keys(fields).length > 0) {
