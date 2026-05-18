@@ -289,18 +289,18 @@ Rules:
 - **Forbid flat `<field>Min` / `<field>Max` on new types.** Existing flat args get `@deprecated` with a one-release migration cycle. See PR 1730 (positions `balance` / `collateral`) for the reference migration shape.
 - **Booleans stay flat.** `settled: Boolean` rather than `settled: BooleanFilter` — there is no `gt true` and the operator pattern adds noise without benefit.
 
-The SDL draft elsewhere in this document predates the operator-pattern convention and still shows flat fields like `conditionId: ID` and `createdAfter: DateTime`. Those examples will be normalized to operator-pattern as per-entity PRs land — the draft is illustrative of shape, not the final filter input definitions.
+The SDL draft below has been normalized to operator-pattern. Multi-value membership filters (`categoryIds: [ID!]`, `tags: [String!]`, `activityTypes: [ActivityType!]`) intentionally stay flat — the operator pattern is for single-value scalar comparisons; "is any of" is a different beast. Full-text `search: String` also stays flat — it isn't a field filter.
 
 #### Sort
 
-Replace the today-pattern of `orderBy: <FieldEnum>, orderDirection: ASC|DESC` with a single multi-key argument:
+Replace the today-pattern of `orderBy: <FieldEnum>, orderDirection: ASC|DESC` with a single `orderBy: <Entity>Order` input bundling both:
 
 ```graphql
 predictions(
   first: Int
   after: String
   filter: PredictionFilter
-  orderBy: [PredictionOrder!]
+  orderBy: PredictionOrder
 ): PredictionConnection!
 
 input PredictionOrder {
@@ -311,17 +311,19 @@ input PredictionOrder {
 enum PredictionOrderField {
   CREATED_AT
   SETTLED_AT
-  COLLATERAL
+  COLLATERAL_AMOUNT
   PAYOUT
 }
 ```
 
+This matches GitHub's `IssueOrder` / `RepositoryOrder` precedent — the same precedent we followed on `ConditionOrConditionGroup`. Singular orderBy is the dominant convention for hand-designed public GraphQL APIs (GitHub, Linear, Shopify); the array shape is mostly an ORM-generation artifact (Hasura, Prisma).
+
 Rules:
 
-- **Array shape unlocks multi-key sort.** `[{field: ENDS_AT, direction: ASC}, {field: VOLUME, direction: DESC}]` is a single sort key with a tie-breaker.
-- **Each entity declares its own `<Entity>OrderField` enum** listing the fields the entity's indexes actually support. This answers open question #6 (which sort fields are supported) at the SDL level: if a field isn't in the enum, you can't sort by it.
+- **Each entity declares its own `<Entity>OrderField` enum** listing the fields the entity's indexes actually support. This answers open question P1 (which sort fields are supported per entity) structurally — if a field isn't in the enum, you can't sort by it.
 - **Adding a sort field is non-breaking; removing one is.** Treat the order-field enum like every other public enum — addition-only after first ship.
 - **Default order belongs in the resolver, not the schema.** Document the default in the field description ("orders by `CREATED_AT DESC` when `orderBy` is omitted") rather than encoding it as a default argument that drifts.
+- **Multi-key sort path is open.** If real demand surfaces, add a `then: <Entity>Order` field to the order input for tie-breakers — purely additive, non-breaking. Until then, the single-key shape is simpler for clients and resolvers alike.
 
 ---
 
@@ -414,6 +416,22 @@ type Query {
     orderBy: PickConfigurationOrder
   ): PickConfigurationConnection!
 
+  vault(id: ID!): Vault
+  vaultByAddress(address: Address!): Vault
+  vaults(
+    first: Int
+    after: String
+    filter: VaultFilter
+    orderBy: VaultOrder
+  ): VaultConnection!
+
+  leaderboard(
+    metric: LeaderboardMetric!
+    first: Int
+    after: String
+    filter: LeaderboardFilter
+  ): AccountLeaderboardConnection!
+
   collateralBalance(
     account: Address!
     chainId: Int!
@@ -453,8 +471,73 @@ scalar Bytes32
 scalar DateTime
 scalar Decimal
 
+# Unix seconds (uint256 in contract storage). Used for timestamps that
+# come directly from chain state, where round-tripping to DateTime would
+# require server-side conversion and lose precision. Indexed / derived
+# timestamps use `DateTime`.
+scalar UnixSeconds
+
 interface Node {
   id: ID!
+}
+
+# Operator-pattern filter inputs. Used on per-field filter members in
+# `<Entity>Filter` types. Operators an entity doesn't support reject
+# at the resolver with a clear error rather than silently no-op. See
+# "One filter convention, one sort convention" in the principles.
+
+input AddressFilter {
+  equals: Address
+  in: [Address!]
+  notIn: [Address!]
+  not: Address
+}
+
+input IDFilter {
+  equals: ID
+  in: [ID!]
+  notIn: [ID!]
+  not: ID
+}
+
+input BigIntFilter {
+  equals: BigInt
+  gt: BigInt
+  gte: BigInt
+  lt: BigInt
+  lte: BigInt
+  in: [BigInt!]
+  notIn: [BigInt!]
+  not: BigInt
+}
+
+input IntFilter {
+  equals: Int
+  gt: Int
+  gte: Int
+  lt: Int
+  lte: Int
+  in: [Int!]
+  notIn: [Int!]
+  not: Int
+}
+
+input DateTimeFilter {
+  equals: DateTime
+  gt: DateTime
+  gte: DateTime
+  lt: DateTime
+  lte: DateTime
+}
+
+input StringFilter {
+  equals: String
+  contains: String
+  startsWith: String
+  endsWith: String
+  in: [String!]
+  notIn: [String!]
+  not: String
 }
 
 type PageInfo {
@@ -553,6 +636,22 @@ type Query {
     orderBy: PickConfigurationOrder
   ): PickConfigurationConnection!
 
+  vault(id: ID!): Vault
+  vaultByAddress(address: Address!): Vault
+  vaults(
+    first: Int
+    after: String
+    filter: VaultFilter
+    orderBy: VaultOrder
+  ): VaultConnection!
+
+  leaderboard(
+    metric: LeaderboardMetric!
+    first: Int
+    after: String
+    filter: LeaderboardFilter
+  ): AccountLeaderboardConnection!
+
   collateralBalance(
     account: Address!
     chainId: Int!
@@ -619,7 +718,10 @@ type Account implements Node {
 }
 
 type Question {
-  id: ID!
+  # No synthetic `id` field yet — Question is a derived view, not a
+  # durable entity. Clients key on the underlying `Condition` /
+  # `ConditionGroup` Node IDs reachable through `source`. See
+  # open question D1.
 
   # Exactly one of Condition | ConditionGroup. Modeled as a union so
   # the schema enforces mutual exclusion and clients can't silently
@@ -731,6 +833,7 @@ type Condition implements Node {
     first: Int
     after: String
     filter: PickConfigurationFilter
+    orderBy: PickConfigurationOrder
   ): PickConfigurationConnection!
 
   predictions(
@@ -877,7 +980,11 @@ type Position implements Node {
 }
 
 type Activity {
-  id: ID!
+  # No synthetic `id` field yet — Activity is a derived feed row, not a
+  # durable entity. The wrapped `source` already carries a Node ID;
+  # in-page identity is handled by the connection cursor. See open
+  # question D2.
+
   # The underlying entity this activity row wraps. Concrete type is
   # available via `__typename` — no separate `activityType` enum field
   # because it would duplicate what the union already encodes.
@@ -913,6 +1020,10 @@ type CollateralBalance {
   atBlock: BigInt
 }
 
+# Not a Node — see R9. Cursors over `collateralBalanceHistory` encode
+# (block, timestamp) position. Unlike other stat types, this one is
+# bucketed at read time via `intervalSeconds:` on the root field — the
+# only exception in the schema; see the field description for why.
 type CollateralBalanceSnapshot {
   account: Account!
   chainId: Int!
@@ -941,12 +1052,15 @@ type Protocol {
   ): ProtocolStatsConnection!
   openInterestByCategory: [CategoryOpenInterest!]!
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
-  vault(address: Address!): Vault
+
+  # Vault is a top-level Node; access via root `vault(id:)`,
+  # `vaultByAddress(address:)`, or `vaults(...)`.
 }
 
 type Vault implements Node {
   id: ID!
   address: Address!
+  collateral: CollateralToken!
   stats(
     first: Int
     after: String
@@ -1161,6 +1275,18 @@ type VaultStatsEdge {
   cursor: String!
 }
 
+type VaultConnection {
+  edges: [VaultEdge!]!
+  nodes: [Vault!]!
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type VaultEdge {
+  node: Vault!
+  cursor: String!
+}
+
 type AccountStatsConnection {
   edges: [AccountStatsEdge!]!
   nodes: [AccountStat!]!
@@ -1198,6 +1324,12 @@ type CategoryEdge {
 }
 
 # Stats Types
+#
+# Stat rows are time-bucketed values, not addressable entities — they
+# do not implement Node and cannot be refetched via `node(id:)`.
+# Connection cursors over these types encode timestamp position;
+# clients re-query with a `timestamp: DateTimeFilter` to traverse.
+# See open question R9.
 
 type ProtocolStat {
   timestamp: DateTime!
@@ -1259,7 +1391,7 @@ enum QuestionOrderField {
 
 input ConditionFilter {
   search: String
-  conditionGroupId: ID
+  conditionGroupId: IDFilter
   categoryIds: [ID!]
   tags: [String!]
   settled: Boolean
@@ -1299,13 +1431,12 @@ enum ConditionGroupOrderField {
 }
 
 input PredictionFilter {
-  account: Address
-  conditionId: ID
-  conditionGroupId: ID
-  pickConfigurationId: ID
+  account: AddressFilter
+  conditionId: IDFilter
+  conditionGroupId: IDFilter
+  pickConfigurationId: IDFilter
   settled: Boolean
-  createdAfter: DateTime
-  createdBefore: DateTime
+  createdAt: DateTimeFilter
 }
 
 input PredictionOrder {
@@ -1338,12 +1469,11 @@ enum ForecastOrderField {
 }
 
 input TradeFilter {
-  account: Address
-  conditionId: ID
-  conditionGroupId: ID
-  pickConfigurationId: ID
-  createdAfter: DateTime
-  createdBefore: DateTime
+  account: AddressFilter
+  conditionId: IDFilter
+  conditionGroupId: IDFilter
+  pickConfigurationId: IDFilter
+  createdAt: DateTimeFilter
 }
 
 input TradeOrder {
@@ -1359,13 +1489,12 @@ enum TradeOrderField {
 }
 
 input ActivityFilter {
-  account: Address
+  account: AddressFilter
   activityTypes: [ActivityType!]
-  conditionId: ID
-  conditionGroupId: ID
-  pickConfigurationId: ID
-  createdAfter: DateTime
-  createdBefore: DateTime
+  conditionId: IDFilter
+  conditionGroupId: IDFilter
+  pickConfigurationId: IDFilter
+  createdAt: DateTimeFilter
 }
 
 input ActivityOrder {
@@ -1378,10 +1507,14 @@ enum ActivityOrderField {
 }
 
 input PositionFilter {
-  account: Address
-  conditionId: ID
-  conditionGroupId: ID
-  pickConfigurationId: ID
+  account: AddressFilter
+  conditionId: IDFilter
+  conditionGroupId: IDFilter
+  pickConfigurationId: IDFilter
+  balance: BigIntFilter
+  collateral: BigIntFilter
+  settled: Boolean
+  createdAt: DateTimeFilter
 }
 
 input PositionOrder {
@@ -1398,8 +1531,8 @@ enum PositionOrderField {
 }
 
 input PickConfigurationFilter {
-  conditionId: ID
-  conditionGroupId: ID
+  conditionId: IDFilter
+  conditionGroupId: IDFilter
 }
 
 input PickConfigurationOrder {
@@ -1412,11 +1545,10 @@ enum PickConfigurationOrderField {
 }
 
 input CollateralTransferFilter {
-  account: Address
-  chainId: Int
+  account: AddressFilter
+  chainId: IntFilter
   excludeProtocol: Boolean
-  createdAfter: DateTime
-  createdBefore: DateTime
+  createdAt: DateTimeFilter
 }
 
 input CollateralTransferOrder {
@@ -1430,8 +1562,7 @@ enum CollateralTransferOrderField {
 }
 
 input ProtocolStatsFilter {
-  from: DateTime
-  to: DateTime
+  timestamp: DateTimeFilter
 }
 
 input ProtocolStatsOrder {
@@ -1444,8 +1575,7 @@ enum ProtocolStatsOrderField {
 }
 
 input VaultStatsFilter {
-  from: DateTime
-  to: DateTime
+  timestamp: DateTimeFilter
 }
 
 input VaultStatsOrder {
@@ -1457,9 +1587,22 @@ enum VaultStatsOrderField {
   TIMESTAMP
 }
 
+input VaultFilter {
+  address: AddressFilter
+}
+
+input VaultOrder {
+  field: VaultOrderField!
+  direction: OrderDirection! = DESC
+}
+
+enum VaultOrderField {
+  CREATED_AT
+  TOTAL_ASSETS
+}
+
 input AccountStatsFilter {
-  from: DateTime
-  to: DateTime
+  timestamp: DateTimeFilter
 }
 
 input AccountStatsOrder {
@@ -1472,8 +1615,7 @@ enum AccountStatsOrderField {
 }
 
 input LeaderboardFilter {
-  from: DateTime
-  to: DateTime
+  timestamp: DateTimeFilter
 }
 ```
 
@@ -1506,7 +1648,7 @@ input LeaderboardFilter {
 | `protocolStats(from, to)`                                                                         | `protocol.stats(filter: { from, to })`                                                      |
 | `openInterestByCategory`                                                                          | `protocol.openInterestByCategory`                                                           |
 | `openInterestByTimeToResolution`                                                                  | `protocol.openInterestByTimeToResolution`                                                   |
-| `vaultStats(vaultAddress, from, to)`                                                              | `protocol.vault(address).stats(filter: { from, to })`                                       |
+| `vaultStats(vaultAddress, from, to)`                                                              | `vaultByAddress(address).stats(filter: { timestamp: { gte, lte } })`                        |
 | `categoriesPage(take, skip)`                                                                      | `categories(...)`                                                                           |
 | `popularTags`                                                                                     | `popularTags(...)`                                                                          |
 
@@ -1597,30 +1739,37 @@ type Query {
 
 Questions that lock public wire format must be resolved before the per-entity PR that ships the affected type. Additive-only questions can be deferred — adding a field, query, or arg later is non-breaking; removing or reshaping one is.
 
+Numbering is section-prefixed: **D**eferred (`D#`), **P**er-entity (`P#`), **R**esolved (`R#`). Stable across edits — cross-references in the body of this document use these prefixes.
+
 ### Deferred — safe to ship later
 
-1. **`Question.id` synthetic ID** — Underlying `Condition` / `ConditionGroup` already carry Node IDs; clients can key on those. Add a synthetic `Question.id` later if a concrete UI need surfaces. Adding a field is non-breaking; committing to a format prematurely locks it forever.
-2. **`Activity.id` synthetic ID** — Same logic. Each `Activity` row embeds a Prediction / Trade / Forecast that already has a Node ID; cursor handles in-page identity. Skip until a use case appears.
-3. **`totalCount` per-connection** — Per-connection call. Add where the count is cheap (covered index, materialized aggregate); omit where it's a table scan. Adding later is non-breaking.
-4. **`last` / `before` reverse pagination** — Forward is a strict subset; reverse is purely additive. Ship forward-only; revisit if clients need reverse traversal.
+- **D1. `Question.id` synthetic ID** — Underlying `Condition` / `ConditionGroup` already carry Node IDs; clients can key on those. Add a synthetic `Question.id` later if a concrete UI need surfaces. Adding a field is non-breaking; committing to a format prematurely locks it forever.
+- **D2. `Activity.id` synthetic ID** — Same logic. Each `Activity` row embeds a Prediction / Trade / Forecast that already has a Node ID; cursor handles in-page identity. Skip until a use case appears.
+- **D3. `totalCount` per-connection** — Per-connection call. Add where the count is cheap (covered index, materialized aggregate); omit where it's a table scan. Adding later is non-breaking.
+- **D4. `last` / `before` reverse pagination** — Forward is a strict subset; reverse is purely additive. Ship forward-only; revisit if clients need reverse traversal.
 
 ### Per-entity — resolve at each PR
 
-6. **Sort fields by entity** — Now answered structurally: each entity declares its own `<Entity>OrderField` enum listing the fields its indexes support (see "One filter convention, one sort convention" above). Per-entity PRs decide their enum members based on actual index coverage; the SDL enforces the answer.
+- **P1. Sort fields by entity** — Each entity declares its own `<Entity>OrderField` enum listing the fields its indexes support (see "One filter convention, one sort convention" above). Per-entity PRs decide their enum members based on actual index coverage; the SDL enforces the answer.
 
 ### Resolved — locked direction, doc updated
 
-3. **`Forecast.subject` naming** — RESOLVED. The EAS "subject" (recipient) on a forecast attestation is the conditionId it targets; that link is already typed as `condition: Condition` on `Forecast`. The redundant `subject: Address` field is dropped from the SDL. Forecasts target a single `Condition` (not a `ConditionGroup`), so `ForecastFilter.conditionGroupId` is also dropped.
-4. **`Prediction.counterparty` nullability** — RESOLVED. Ship non-null (`counterparty: Account!`). Prisma schema declares the column non-null (`counterparty String @db.VarChar` in `prisma/schema.prisma`); every indexer write path (`predictionMarketEscrowIndexer.ts:706, 743`) sets it from the on-chain event payload, which is itself a non-null `0x${string}`. No backfill or schema migration needed.
-5. **`Question` union vs. nullable pair** — RESOLVED. Modeled as `union ConditionOrConditionGroup = Condition | ConditionGroup`, exposed as `Question.source: ConditionOrConditionGroup!`. Schema enforces "exactly one of," eliminating the both-null / both-set bug class. The `questionType: QuestionType` enum is removed — `__typename` on the union member subsumes it. Name follows GitHub's `IssueOrPullRequest` precedent: literal, no abbreviation, no parallel concept ("Market", "Source") introduced.
-6. **Collateral field and type naming** — RESOLVED. Type is `CollateralToken` (was `CollateralAsset`); field is `collateral: CollateralToken!` on every type that exposes it (`Prediction`, `Position`, `Trade`, `CollateralBalance`, `CollateralBalanceSnapshot`, `CollateralTransfer`). The full `CollateralToken` record carries `{ symbol, address, decimals, chainId }`, so the field name doesn't need to disambiguate between address and ticker — both live inside.
+- **R1. `Forecast.subject` naming** — The EAS "subject" (recipient) on a forecast attestation is the conditionId it targets; that link is already typed as `condition: Condition` on `Forecast`. The redundant `subject: Address` field is dropped from the SDL. Forecasts target a single `Condition` (not a `ConditionGroup`), so `ForecastFilter.conditionGroupId` is also dropped.
+- **R2. `Prediction.counterparty` nullability** — Ship non-null (`counterparty: Account!`). Prisma schema declares the column non-null (`counterparty String @db.VarChar` in `prisma/schema.prisma`); every indexer write path (`predictionMarketEscrowIndexer.ts:706, 743`) sets it from the on-chain event payload, which is itself a non-null `0x${string}`. No backfill or schema migration needed.
+- **R3. `Question` union vs. nullable pair** — Modeled as `union ConditionOrConditionGroup = Condition | ConditionGroup`, exposed as `Question.source: ConditionOrConditionGroup!`. Schema enforces "exactly one of," eliminating the both-null / both-set bug class. The `questionType: QuestionType` enum is removed — `__typename` on the union member subsumes it. Name follows GitHub's `IssueOrPullRequest` precedent: literal, no abbreviation, no parallel concept ("Market", "Source") introduced.
+- **R4. Collateral field and type naming** — Type is `CollateralToken` (was `CollateralAsset`); field is `collateral: CollateralToken!` on every type that exposes it (`Prediction`, `Position`, `Trade`, `CollateralBalance`, `CollateralBalanceSnapshot`, `CollateralTransfer`). The full `CollateralToken` record carries `{ symbol, address, decimals, chainId }`, so the field name doesn't need to disambiguate between address and ticker — both live inside.
+- **R5. Status enums** — The audit revealed that the doc's status enums were aspirational, not migrations from existing wire fields. Once we accept that the data model has only the states it has, every proposed `*Status` enum collapses to either a Boolean (which we already have) or a derivation clients can do themselves. So:
 
-7. **Status enums — RESOLVED.** The audit revealed that the doc's status enums were aspirational, not migrations from existing wire fields. Once we accept that the data model has only the states it has, every proposed `*Status` enum collapses to either a Boolean (which we already have) or a derivation clients can do themselves. So:
+  - **`ConditionStatus` enum — dropped.** No synthetic status. `Condition` directly exposes the three Booleans that carry its actual state: `settled: Boolean!`, `resolvedToYes: Boolean!`, `nonDecisive: Boolean!`, plus `settledAt: UnixSeconds`. Clients render `ACTIVE`/`RESOLVED`/`TIE`/etc. however they want from these. `ConditionFilter.status` replaced with flat Boolean filters (`settled`, `resolvedToYes`, `nonDecisive`).
+  - **`ConditionGroupStatus` enum — dropped.** ConditionGroup has no status field today and isn't getting one. If any UI needs a group-level state, it derives from child Conditions.
+  - **`PredictionStatus` enum — dropped.** Was sugar on the existing `settled` Boolean (`OPEN = !settled`, `SETTLED = settled`); no `CANCELLED` state exists in the data model. `Prediction` directly exposes `settled: Boolean!` + `result: PredictionResult!`. `PredictionFilter.status` replaced with `settled: Boolean`.
+  - **`QuestionStatus` enum — dropped.** Question wraps either Condition or ConditionGroup via the `source` union; clients read state through `... on Condition { settled, resolvedToYes, nonDecisive }`. No view-level status field needed.
+  - **`PredictionResult` enum values — finalized as** `{ UNRESOLVED, PREDICTOR_WINS, COUNTERPARTY_WINS }`. Contract collapses non-decisive outcomes to `COUNTERPARTY_WINS` at the resolution layer (`PredictionMarketEscrow.sol:_evaluatePick`, comment at L1262–1267: "SettlementResult has no DRAW variant ... counterparties bear no prediction risk on void/tie outcomes"). Made `Prediction.result` non-null.
 
-   - **`ConditionStatus` enum — dropped.** No synthetic status. `Condition` directly exposes the three Booleans that carry its actual state: `settled: Boolean!`, `resolvedToYes: Boolean!`, `nonDecisive: Boolean!`, plus `settledAt: UnixSeconds`. Clients render `ACTIVE`/`RESOLVED`/`TIE`/etc. however they want from these. `ConditionFilter.status` replaced with flat Boolean filters (`settled`, `resolvedToYes`, `nonDecisive`).
-   - **`ConditionGroupStatus` enum — dropped.** ConditionGroup has no status field today and isn't getting one. If any UI needs a group-level state, it derives from child Conditions.
-   - **`PredictionStatus` enum — dropped.** Was sugar on the existing `settled` Boolean (`OPEN = !settled`, `SETTLED = settled`); no `CANCELLED` state exists in the data model. `Prediction` directly exposes `settled: Boolean!` + `result: PredictionResult!`. `PredictionFilter.status` replaced with `settled: Boolean`.
-   - **`QuestionStatus` enum — dropped.** Question wraps either Condition or ConditionGroup via the `source` union; clients read state through `... on Condition { settled, resolvedToYes, nonDecisive }`. No view-level status field needed.
-   - **`PredictionResult` enum values — finalized as** `{ UNRESOLVED, PREDICTOR_WINS, COUNTERPARTY_WINS }`. Contract collapses non-decisive outcomes to `COUNTERPARTY_WINS` at the resolution layer (`PredictionMarketEscrow.sol:_evaluatePick`, comment at L1262–1267: "SettlementResult has no DRAW variant ... counterparties bear no prediction risk on void/tie outcomes"). Made `Prediction.result` non-null.
+  **Follow-up cleanup (separate PR to staging, not this doc PR):** the indexer's `mapSettlementResult` retains a `case 3 → 'NON_DECISIVE'` branch unreachable from current contract behavior; the Prisma `SettlementResult` enum still lists `NON_DECISIVE`. Both are vestigial. Cleanup can either drop them outright (after confirming no live rows carry the value) or leave a tombstone on the Prisma side and remove only the indexer branch.
 
-   **Follow-up cleanup (separate PR to staging, not this doc PR):** the indexer's `mapSettlementResult` retains a `case 3 → 'NON_DECISIVE'` branch unreachable from current contract behavior; the Prisma `SettlementResult` enum still lists `NON_DECISIVE`. Both are vestigial. Cleanup can either drop them outright (after confirming no live rows carry the value) or leave a tombstone on the Prisma side and remove only the indexer branch.
+- **R6. Sort shape (singular vs array)** — Singular `orderBy: <Entity>Order` (matching GitHub's `IssueOrder` precedent), not the array shape originally drafted. Multi-key tiebreakers can be added later non-breakingly via a `then: <Entity>Order` field on the order input if real demand surfaces.
+- **R7. Filter convention** — Operator-pattern (Prisma-style) for single-value scalars (`AddressFilter`, `IDFilter`, `BigIntFilter`, `IntFilter`, `DateTimeFilter`, `StringFilter`). Multi-value membership filters and full-text search stay flat. See principles section for details.
+- **R8. `Vault` root access** — Vault is a Node, so it gets `vault(id:)`, `vaultByAddress(address:)`, and `vaults(...)` root fields — matching the prediction/trade/forecast pattern. The previous nesting under `protocol.vault(address)` is removed; Vault is independent and shouldn't sit behind a Protocol grouping.
+- **R9. Stat-row connections over non-Node types** — `ProtocolStat`, `VaultStat`, `AccountStat`, and `CollateralBalanceSnapshot` stay as Connection members without implementing `Node`. They are time-bucketed values, not addressable entities; refetching a stat row by ID is meaningless because the row is uniquely identified by `(entity, timestamp)` already reachable via the parent + filter. Cursors on these connections encode timestamp position. The type-level descriptions in the SDL document this.
+- **R10. `UnixSeconds` scalar** — Declared explicitly. Used for timestamps that come directly from chain storage (uint256 seconds) where round-tripping to `DateTime` loses precision. Indexed / derived timestamps continue to use `DateTime`.
