@@ -113,13 +113,15 @@ Markets that come from the same Polymarket event are listed under one **conditio
 
 Polymarket also publishes **negative-risk baskets**: a set of mutually-exclusive binary markets (e.g. "NBA champion: Celtics?", "NBA champion: Knicks?", …) where exactly one resolves YES and the rest resolve NO. The basket is one logical question and its children must stay tied to the same basket id (`negRiskMarketId`).
 
-The keeper enforces this when forming groups:
+Only `condition_group.negRiskMarketId` is persisted in the DB; `ConditionGroup.negRisk` is a GraphQL-derived boolean (`true` iff `negRiskMarketId` is non-null). One column, no chance of the flag and the id drifting apart.
 
-- A group is marked **negRisk** only when every market in it is flagged `negRisk: true` **and** shares the same `negRiskMarketId`. If any market disagrees, the group falls back to a plain group with `negRisk: false`.
+The keeper enforces basketing when forming groups:
+
+- The keeper stamps a group's `negRiskMarketId` only when every market in it is flagged `negRisk: true` **and** shares the same basket id. If any market disagrees (or the basket id is missing on any sibling), the group is created without a basket id and the API derives `negRisk: false`.
 - When two same-event-title markets in the same sync run come from **different** baskets (e.g. one is `basket-a`, another `basket-b`), the keeper splits them into separate groups and appends the basket id to the title: `"NBA champion (basket-a)"`, `"NBA champion (basket-b)"`. This keeps each basket addressable as its own unit.
-- The admin REST routes (`/admin/conditions`, `/admin/conditionGroups`) refuse to add a condition with a mismatched `negRiskMarketId` to an existing negRisk group, so the invariant survives manual edits and partial syncs.
+- The admin REST routes (`/admin/conditions`, `/admin/conditionGroups`) reject any new condition admission to a basket group unless the request payload carries a matching `negRiskMarketId`. Conditions that simply omit the basket id are also rejected — only an exact match gets in. Continuing membership is grandfathered: a metadata-only edit on an already-linked condition doesn't have to restate the basket id.
 
-`ConditionGroup.negRisk` is a **one-way ratchet** on the keeper: it can flip `false → true` when fresh Polymarket markets agree on a basket id, but the keeper will never auto-demote `true → false`. Demoting silently would dissolve the basket invariant, so the keeper logs `[Metadata] refused to demote group <id> ("<title>") from negRisk: …` and leaves the flag alone. Recovery for that case is an admin REST edit if it turns out Polymarket truly retired the basket.
+A group's basket id is a **one-way ratchet** on the keeper: it can flip `null → 'basket-x'` when fresh Polymarket markets agree on a basket id, but the keeper will never auto-clear it. Demoting silently would dissolve the basket invariant, so when fresh markets disagree on basketing the keeper logs `[Metadata] refused to demote group <id> ("<title>") from negRisk: …` and emits no update. Recovery for that case is a deliberate admin REST edit (`PUT /admin/conditionGroups/:id` with `negRiskMarketId: null`) if Polymarket truly retired the basket.
 
 ### Known limitation: late basket arrivals
 
