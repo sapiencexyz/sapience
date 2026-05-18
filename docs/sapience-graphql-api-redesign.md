@@ -261,7 +261,6 @@ input PositionFilter {
   size: DecimalFilter
   collateralAmount: DecimalFilter
   createdAt: DateTimeFilter
-  settled: Boolean
 }
 ```
 
@@ -287,7 +286,8 @@ Rules:
 - **Strict semantics, no implicit OR.** `{ size: { gte: "1" } }` means `size >= 1`, full stop. Clients that want richer composition issue separate queries or rely on the server to add an explicit `OR` shape later if real demand surfaces.
 - **Unsupported operators on a specific field reject** with a clear error, not silently no-op. If a field can only be filtered by `equals` (e.g., a hashed identifier), the resolver rejects `gt`/`lt` rather than returning empty or full results.
 - **Forbid flat `<field>Min` / `<field>Max` on new types.** Existing flat args get `@deprecated` with a one-release migration cycle. See PR 1730 (positions `balance` / `collateral`) for the reference migration shape.
-- **Booleans stay flat.** `settled: Boolean` rather than `settled: BooleanFilter` — there is no `gt true` and the operator pattern adds noise without benefit.
+- **Booleans stay flat.** Use `<field>: Boolean` rather than a `BooleanFilter` wrapper — there is no `gt true` and the operator pattern adds noise without benefit. For tri-state fields that need an "unset" third value, prefer a nullable enum and filter via `<field>: { isNull }` rather than a Boolean — that's the pattern `Condition.outcome` / `Prediction.result` use in place of the older `settled: Boolean!`.
+- **Null filtering goes through `isNull`.** `{ outcome: { isNull: true } }` matches unsettled conditions; `{ isNull: false }` matches settled. Available on every operator input including the enum filters. Rejected on non-nullable columns per the unsupported-operator rule.
 
 The SDL draft below has been normalized to operator-pattern. Multi-value membership filters (`categoryIds: [ID!]`, `tags: [String!]`, `activityTypes: [ActivityType!]`) intentionally stay flat — the operator pattern is for single-value scalar comparisons; "is any of" is a different beast. Full-text `search: String` also stays flat — it isn't a field filter.
 
@@ -480,12 +480,21 @@ interface Node {
 # `<Entity>Filter` types. Operators an entity doesn't support reject
 # at the resolver with a clear error rather than silently no-op. See
 # "One filter convention, one sort convention" in the principles.
+#
+# `isNull: Boolean` is supported on every operator input: `{ isNull:
+# true }` matches rows where the underlying column is null, `false`
+# matches non-null. Rejected on non-nullable columns (e.g.,
+# `Account.address`) per the unsupported-operator rule. This is how
+# clients filter "settled vs unsettled" now that the redesign uses
+# nullable outcome/result enums in place of `settled: Boolean` —
+# `{ outcome: { isNull: true } }` for unsettled, `false` for settled.
 
 input AddressFilter {
   equals: Address
   in: [Address!]
   notIn: [Address!]
   not: Address
+  isNull: Boolean
 }
 
 input IDFilter {
@@ -493,6 +502,7 @@ input IDFilter {
   in: [ID!]
   notIn: [ID!]
   not: ID
+  isNull: Boolean
 }
 
 input BigIntFilter {
@@ -504,6 +514,7 @@ input BigIntFilter {
   in: [BigInt!]
   notIn: [BigInt!]
   not: BigInt
+  isNull: Boolean
 }
 
 input IntFilter {
@@ -515,6 +526,7 @@ input IntFilter {
   in: [Int!]
   notIn: [Int!]
   not: Int
+  isNull: Boolean
 }
 
 input DateTimeFilter {
@@ -525,6 +537,7 @@ input DateTimeFilter {
   lte: DateTime
   in: [DateTime!]
   notIn: [DateTime!]
+  isNull: Boolean
 }
 
 input StringFilter {
@@ -535,6 +548,7 @@ input StringFilter {
   in: [String!]
   notIn: [String!]
   not: String
+  isNull: Boolean
 }
 
 input DecimalFilter {
@@ -546,6 +560,31 @@ input DecimalFilter {
   in: [Decimal!]
   notIn: [Decimal!]
   not: Decimal
+  isNull: Boolean
+}
+
+# Enum filters use the same operator shape — one input per enum type
+# (GraphQL has no input-type generics). Only enums where filtering is
+# a real client need get one; today that's `ConditionOutcome` (forecast
+# / question filtering by resolution status) and `PredictionResult`
+# (settled-vs-unsettled via `isNull`, plus "predictor won" /
+# "counterparty won" feeds). Add more as demand surfaces — it's
+# purely additive.
+
+input ConditionOutcomeFilter {
+  equals: ConditionOutcome
+  in: [ConditionOutcome!]
+  notIn: [ConditionOutcome!]
+  not: ConditionOutcome
+  isNull: Boolean
+}
+
+input PredictionResultFilter {
+  equals: PredictionResult
+  in: [PredictionResult!]
+  notIn: [PredictionResult!]
+  not: PredictionResult
+  isNull: Boolean
 }
 
 type PageInfo {
@@ -695,7 +734,12 @@ type Account implements Node {
 
   # Predictions where this account is either the predictor OR the
   # counterparty. The two roles are symmetric; clients that need to
-  # disambiguate read `predictor` / `counterparty` on each row.
+  # disambiguate read `predictor` / `counterparty` on each row. This
+  # field is the OR-across-roles feed. The root `predictions(filter:)`
+  # exposes `predictor` and `counterparty` as separate `AddressFilter`s
+  # with strict AND semantics — use that to ask "rows where X is
+  # predictor and Y is counterparty," use this to ask "all of X's
+  # predictions."
   predictions(
     first: Int
     after: String
@@ -820,17 +864,17 @@ type Condition implements Node {
   title: String!
   description: String
 
-  # Resolution state. Three Booleans match the underlying on-chain
-  # state machine: `settled` flips true when the resolver returns,
-  # `resolvedToYes` is only meaningful when `settled` is true, and
-  # `nonDecisive` marks tie/void outcomes (which the protocol collapses
-  # to COUNTERPARTY_WINS at the Prediction layer). Question-level views
-  # derive their state from these Booleans on the underlying Condition;
-  # there's no separate `ConditionStatus` enum because today's data
-  # model has no other states (no `CANCELLED`, no `ARCHIVED`).
-  settled: Boolean!
-  resolvedToYes: Boolean!
-  nonDecisive: Boolean!
+  # Resolution state. `outcome` is null until the on-chain resolver
+  # returns, then carries the resolved value: `YES` / `NO` for decisive
+  # resolutions, `NON_DECISIVE` for ties/voids (which the protocol
+  # collapses to `COUNTERPARTY_WINS` at the Prediction layer).
+  # `settledAt` is null in lockstep with `outcome`. No separate
+  # `settled: Boolean` field — `outcome != null` is the boundary, and
+  # clients filter "settled / unsettled" via `outcome: { isNull }`.
+  # No separate `ConditionStatus` enum either: today's data model has
+  # no other lifecycle states (no `CANCELLED`, no `ARCHIVED`), so the
+  # outcome enum carries the entire public state.
+  outcome: ConditionOutcome
   settledAt: UnixSeconds
 
   conditionGroup: ConditionGroup
@@ -868,6 +912,12 @@ type Condition implements Node {
   # storage), so `DateTime` rather than `UnixSeconds` is the right
   # scalar here.
   resolvesAt: DateTime
+}
+
+enum ConditionOutcome {
+  YES
+  NO
+  NON_DECISIVE
 }
 
 type PickConfiguration implements Node {
@@ -921,16 +971,17 @@ type Prediction implements Node {
   collateral: CollateralToken!
   collateralAmount: Decimal!
 
-  # Settlement state. `settled` flips true when the on-chain prediction
-  # is resolved; `result` carries the outcome. No separate
-  # `PredictionStatus` enum — today's data model has no `CANCELLED`
-  # state, so a derived status enum would just be sugar on the Boolean.
-  # `payout` is non-null: it's derived from the prize pool
-  # (`predictorCollateral + counterpartyCollateral`) and the `result`,
-  # both of which are non-null on every Prediction row.
-  settled: Boolean!
-  result: PredictionResult!
-  payout: Decimal!
+  # Settlement state. `result` is null until the on-chain prediction is
+  # resolved, then carries the outcome. `payout` and `settledAt` are
+  # null in lockstep with `result`. No separate `settled: Boolean` —
+  # `result != null` is the boundary; clients filter "settled /
+  # unsettled" via `result: { isNull }`. No separate `PredictionStatus`
+  # enum: today's data model has no `CANCELLED` state, so a lifecycle
+  # enum would just duplicate the result-null boundary. `payout` is
+  # derived from the prize pool (`predictorCollateral +
+  # counterpartyCollateral`) and the resolved `result`.
+  result: PredictionResult
+  payout: Decimal
 
   createdAt: DateTime!
   # `UnixSeconds` rather than `DateTime` — this comes from chain
@@ -940,7 +991,6 @@ type Prediction implements Node {
 }
 
 enum PredictionResult {
-  UNRESOLVED
   PREDICTOR_WINS
   COUNTERPARTY_WINS
 }
@@ -954,10 +1004,12 @@ type Forecast implements Node {
 
   # Forecasts attach to a single Condition (the EAS subject). Group /
   # pickConfiguration membership is reachable via `condition.conditionGroup`
-  # and `condition.pickConfigurations`. Nullable because the Prisma column
-  # is nullable today — schemas that aren't condition-keyed produce
-  # forecasts without a Condition link.
-  condition: Condition
+  # and `condition.pickConfigurations`. Non-null on the public surface:
+  # forecasts without a condition link aren't a supported product
+  # surface, and any back-end nullability in the Prisma column should
+  # be normalized away at the resolver (filtered out or rejected at
+  # write time) rather than surfaced through the wire format.
+  condition: Condition!
 
   forecastScore: Decimal
 
@@ -1426,9 +1478,7 @@ input ConditionFilter {
   conditionGroupId: IDFilter
   categoryIds: [ID!]
   tags: [String!]
-  settled: Boolean
-  resolvedToYes: Boolean
-  nonDecisive: Boolean
+  outcome: ConditionOutcomeFilter
 }
 
 input ConditionOrder {
@@ -1462,17 +1512,22 @@ enum ConditionGroupOrderField {
   VOLUME
 }
 
-# `account` matches Predictions where the address appears in either
-# role — predictor OR counterparty. The two roles are symmetric:
-# both sides post collateral and both are `Account` values. Clients
-# that need to disambiguate filter on the resolved type's `predictor`
-# / `counterparty` fields client-side.
+# `predictor` and `counterparty` filter the two sides of a Prediction
+# independently. Strict AND semantics — passing both matches rows
+# where the named addresses occupy *those specific* roles (a rare
+# query, but legal). To match Predictions where an address appears in
+# *either* role, traverse `account(address: ...).predictions` — that
+# feed carries OR-across-roles semantics by virtue of the account
+# being implicit. Splitting here keeps the root field aligned with
+# "no implicit OR" while leaving the symmetric feed reachable on the
+# Account type.
 input PredictionFilter {
-  account: AddressFilter
+  predictor: AddressFilter
+  counterparty: AddressFilter
   conditionId: IDFilter
   conditionGroupId: IDFilter
   pickConfigurationId: IDFilter
-  settled: Boolean
+  result: PredictionResultFilter
   createdAt: DateTimeFilter
 }
 
