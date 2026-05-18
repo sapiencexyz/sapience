@@ -507,12 +507,12 @@ describe('PredictionMarketEscrowIndexer', () => {
       expect(update.data.result).toBe('COUNTERPARTY_WINS');
     });
 
-    it('should settle with NON_DECISIVE for result=3', async () => {
+    it('should settle with UNRESOLVED for result=3 (no longer emitted; contract collapses non-decisive to COUNTERPARTY_WINS)', async () => {
       const indexer = setupSettledTest(3);
       await indexer.indexBlocks('test', [50]);
 
       const update = mockPrisma.prediction.updateMany.mock.calls[0][0];
-      expect(update.data.result).toBe('NON_DECISIVE');
+      expect(update.data.result).toBe('UNRESOLVED');
     });
 
     it('should settle with UNRESOLVED for unknown result values', async () => {

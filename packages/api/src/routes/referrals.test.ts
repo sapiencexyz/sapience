@@ -20,6 +20,7 @@ const mockPrisma = {
     findUnique: vi.fn(),
     upsert: vi.fn(),
   },
+  $queryRaw: vi.fn(),
 };
 
 vi.mock('../core/db', () => ({ default: mockPrisma }));
@@ -495,5 +496,201 @@ describe('POST /referrals/claim', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ allowed: true });
     expect(res.body.sponsorTxHash).toBeUndefined();
+  });
+});
+
+describe('GET /referrals/codes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns an empty list and skips the stats query when there are no codes', async () => {
+    mockPrisma.referralCode.findMany.mockResolvedValue([]);
+
+    const res = await request(app).get('/referrals/codes');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ items: [] });
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
+  });
+
+  it('orders by id desc and merges per-code stats into each row', async () => {
+    mockPrisma.referralCode.findMany.mockResolvedValue([
+      {
+        id: 2,
+        maxClaims: 10,
+        isActive: true,
+        expiresAt: null,
+        createdBy: '0xa',
+        creatorType: 'admin',
+        createdAt: new Date('2026-04-20T00:00:00.000Z'),
+      },
+      {
+        id: 1,
+        maxClaims: 5,
+        isActive: false,
+        expiresAt: 1735689600,
+        createdBy: '0xb',
+        creatorType: 'user',
+        createdAt: new Date('2026-04-19T00:00:00.000Z'),
+      },
+    ]);
+    mockPrisma.$queryRaw.mockResolvedValue([
+      { id: 2, claim_count: 3n, total_volume: '1000', total_positions: 4n },
+      { id: 1, claim_count: 0n, total_volume: '0', total_positions: 0n },
+    ]);
+
+    const res = await request(app).get('/referrals/codes');
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.referralCode.findMany).toHaveBeenCalledWith({
+      orderBy: { id: 'desc' },
+      take: 10_000,
+    });
+    expect(res.body.items).toEqual([
+      {
+        id: 2,
+        maxClaims: 10,
+        isActive: true,
+        expiresAt: null,
+        createdBy: '0xa',
+        creatorType: 'admin',
+        createdAt: '2026-04-20T00:00:00.000Z',
+        claimCount: 3,
+        totalVolume: '1000',
+        totalPositions: 4,
+      },
+      {
+        id: 1,
+        maxClaims: 5,
+        isActive: false,
+        expiresAt: 1735689600,
+        createdBy: '0xb',
+        creatorType: 'user',
+        createdAt: '2026-04-19T00:00:00.000Z',
+        claimCount: 0,
+        totalVolume: '0',
+        totalPositions: 0,
+      },
+    ]);
+  });
+
+  it('falls back to zero stats for codes the aggregation does not return', async () => {
+    mockPrisma.referralCode.findMany.mockResolvedValue([
+      {
+        id: 1,
+        maxClaims: 5,
+        isActive: true,
+        expiresAt: null,
+        createdBy: '0xa',
+        creatorType: 'admin',
+        createdAt: new Date('2026-04-20T00:00:00.000Z'),
+      },
+    ]);
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+
+    const res = await request(app).get('/referrals/codes');
+
+    expect(res.status).toBe(200);
+    expect(res.body.items[0]).toMatchObject({
+      claimCount: 0,
+      totalVolume: '0',
+      totalPositions: 0,
+    });
+  });
+
+  it('does not expose codeHash even though the prisma row carries it', async () => {
+    mockPrisma.referralCode.findMany.mockResolvedValue([
+      {
+        id: 1,
+        codeHash: '0xleak',
+        maxClaims: 5,
+        isActive: true,
+        expiresAt: null,
+        createdBy: '0xa',
+        creatorType: 'admin',
+        createdAt: new Date('2026-04-20T00:00:00.000Z'),
+      },
+    ]);
+    mockPrisma.$queryRaw.mockResolvedValue([
+      { id: 1, claim_count: 0n, total_volume: '0', total_positions: 0n },
+    ]);
+
+    const res = await request(app).get('/referrals/codes');
+
+    expect(JSON.stringify(res.body)).not.toContain('0xleak');
+  });
+});
+
+describe('GET /referrals/codes/:id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 400 for a non-numeric id', async () => {
+    const res = await request(app).get('/referrals/codes/abc');
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/invalid/i);
+  });
+
+  it('returns 404 when the code does not exist', async () => {
+    mockPrisma.referralCode.findUnique.mockResolvedValue(null);
+
+    const res = await request(app).get('/referrals/codes/999');
+
+    expect(res.status).toBe(404);
+    expect(res.body.message).toMatch(/not found/i);
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
+  });
+
+  it('returns stats plus the claimant breakdown for an existing code', async () => {
+    mockPrisma.referralCode.findUnique.mockResolvedValue({
+      id: 7,
+      createdBy: '0xa',
+      creatorType: 'admin',
+    });
+    // First $queryRaw call is fetchCodeStats; second is fetchClaimants.
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([
+        { id: 7, claim_count: 2n, total_volume: '500', total_positions: 3n },
+      ])
+      .mockResolvedValueOnce([
+        { address: '0xclaimant1', volume: '300', positions: 2n },
+        { address: '0xclaimant2', volume: '200', positions: 1n },
+      ]);
+
+    const res = await request(app).get('/referrals/codes/7');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      id: 7,
+      claimCount: 2,
+      totalVolume: '500',
+      totalPositions: 3,
+      claimants: [
+        { address: '0xclaimant1', tradingVolume: '300', positionCount: 2 },
+        { address: '0xclaimant2', tradingVolume: '200', positionCount: 1 },
+      ],
+    });
+    expect(mockPrisma.referralCode.findUnique).toHaveBeenCalledWith({
+      where: { id: 7 },
+    });
+  });
+
+  it('falls back to zero stats and empty claimants when the aggregations return nothing', async () => {
+    mockPrisma.referralCode.findUnique.mockResolvedValue({ id: 7 });
+    mockPrisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const res = await request(app).get('/referrals/codes/7');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      id: 7,
+      claimCount: 0,
+      totalVolume: '0',
+      totalPositions: 0,
+      claimants: [],
+    });
   });
 });
