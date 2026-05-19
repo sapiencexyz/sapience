@@ -88,6 +88,41 @@ const ItemsPageType = new GraphQLObjectType({
   },
 });
 
+// `*Connection` envelope shape — Relay-style sibling of `*Page` with two
+// inner list fields (`nodes`, `edges`) and `first` instead of `take`.
+const PageInfoType = new GraphQLObjectType({
+  name: 'PageInfo',
+  fields: {
+    hasNextPage: { type: new GraphQLNonNull(GraphQLString) },
+    hasPreviousPage: { type: new GraphQLNonNull(GraphQLString) },
+    startCursor: { type: GraphQLString },
+    endCursor: { type: GraphQLString },
+  },
+});
+
+const ItemEdgeType = new GraphQLObjectType({
+  name: 'ItemEdge',
+  fields: {
+    node: { type: new GraphQLNonNull(ItemType) },
+    cursor: { type: new GraphQLNonNull(GraphQLString) },
+  },
+});
+
+const ItemsConnectionType = new GraphQLObjectType({
+  name: 'ItemsConnection',
+  fields: {
+    nodes: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ItemType))),
+    },
+    edges: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(ItemEdgeType))
+      ),
+    },
+    pageInfo: { type: new GraphQLNonNull(PageInfoType) },
+  },
+});
+
 const QueryType = new GraphQLObjectType({
   name: 'Query',
   fields: {
@@ -108,6 +143,13 @@ const QueryType = new GraphQLObjectType({
       args: {
         take: { type: GraphQLInt },
         skip: { type: GraphQLInt },
+      },
+    },
+    itemsConnection: {
+      type: new GraphQLNonNull(ItemsConnectionType),
+      args: {
+        first: { type: GraphQLInt },
+        after: { type: GraphQLString },
       },
     },
     scalar: { type: GraphQLString },
@@ -349,6 +391,102 @@ describe('queryComplexity', () => {
         // (items still pays a base cost of 1) — same order of magnitude.
         expect(pageCost).toBeGreaterThanOrEqual(bareCost);
         expect(pageCost - bareCost).toBeLessThanOrEqual(100);
+      });
+
+      it('regression (Connection): fat `nodes` selection stays bounded by `first`', () => {
+        // Doc §1859 calls out that *Connection envelopes need the same
+        // pass-through as *Page. Without the fix, this query would price
+        // as `1 + (1 + (3 + 31)*10) * 50 = 17051` and trip the 15k cap.
+        const query = parse(`{
+          itemsConnection(first: 50) {
+            nodes {
+              id
+              name
+              value
+              children {
+                id
+                name
+                value
+              }
+            }
+          }
+        }`);
+        const complexity = getComplexity({
+          schema: testSchema,
+          query,
+          estimators: [
+            listMultiplierEstimator({ defaultListSize: 10, maxListSize: 100 }),
+            simpleEstimator({ defaultComplexity: 1 }),
+          ],
+        });
+        // children (real list, default 10): 1 + 3*10 = 31.
+        // nodes passthrough: 1 + (1 + 1 + 1 + 31) = 35.
+        // itemsConnection: 1 + 35 * 50 = 1751.
+        expect(complexity).toBe(1751);
+        expect(complexity).toBeLessThan(15000);
+      });
+
+      it('treats `*Connection` return type as a list of `first` rows via `nodes`', () => {
+        const query = parse(`{ itemsConnection(first: 50) { nodes { id } } }`);
+        const complexity = getComplexity({
+          schema: testSchema,
+          query,
+          estimators: [
+            listMultiplierEstimator({ defaultListSize: 10 }),
+            simpleEstimator({ defaultComplexity: 1 }),
+          ],
+        });
+        // nodes passthrough: 1 + 1 = 2.
+        // itemsConnection envelope: 1 + 2 * 50 = 101.
+        expect(complexity).toBe(101);
+      });
+
+      it('treats `*Connection` return type as a list of `first` rows via `edges`', () => {
+        const query = parse(
+          `{ itemsConnection(first: 50) { edges { node { id } } } }`
+        );
+        const complexity = getComplexity({
+          schema: testSchema,
+          query,
+          estimators: [
+            listMultiplierEstimator({ defaultListSize: 10 }),
+            simpleEstimator({ defaultComplexity: 1 }),
+          ],
+        });
+        // edges passthrough: 1 + (1 /* node */ + 1 /* id */) = 3.
+        // itemsConnection envelope: 1 + 3 * 50 = 151.
+        expect(complexity).toBe(151);
+      });
+
+      it('uses default listSize when *Connection `first` arg is missing', () => {
+        const query = parse(`{ itemsConnection { nodes { id } } }`);
+        const complexity = getComplexity({
+          schema: testSchema,
+          query,
+          estimators: [
+            listMultiplierEstimator({ defaultListSize: 10 }),
+            simpleEstimator({ defaultComplexity: 1 }),
+          ],
+        });
+        // nodes passthrough: 1 + 1 = 2. envelope falls back to 10: 1 + 2*10 = 21.
+        expect(complexity).toBe(21);
+      });
+
+      it('caps *Connection envelope at maxListSize', () => {
+        const query = parse(
+          `{ itemsConnection(first: 5000) { nodes { id } } }`
+        );
+        const complexity = getComplexity({
+          schema: testSchema,
+          query,
+          estimators: [
+            listMultiplierEstimator({ defaultListSize: 10, maxListSize: 100 }),
+            simpleEstimator({ defaultComplexity: 1 }),
+          ],
+        });
+        // first=5000 caps at 100. nodes passthrough: 1 + 1 = 2.
+        // itemsConnection: 1 + 2 * 100 = 201.
+        expect(complexity).toBe(201);
       });
 
       it('regression: `questionsConnection` fat selection stays under the 15k cap', () => {

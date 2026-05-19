@@ -3246,7 +3246,7 @@ export type QueryTradeArgs = {
 
 
 export type QueryTradeByHashArgs = {
-  hash: Scalars['String']['input'];
+  hash: Scalars['Bytes32']['input'];
 };
 
 

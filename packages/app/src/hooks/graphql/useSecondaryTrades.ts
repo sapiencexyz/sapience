@@ -82,7 +82,7 @@ const ALL_TRADES_QUERY = /* GraphQL */ `
 `;
 
 const TRADE_QUERY = /* GraphQL */ `
-  query Trade($tradeHash: String!) {
+  query Trade($tradeHash: Bytes32!) {
     tradeByHash(hash: $tradeHash) {
       id
       tradeHash

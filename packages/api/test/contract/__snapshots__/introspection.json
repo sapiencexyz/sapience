@@ -11722,7 +11722,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead."
+            "deprecationReason": "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsConnection` instead."
           },
           {
             "name": "predictor",
@@ -12529,7 +12529,7 @@
               "ofType": null
             },
             "isDeprecated": true,
-            "deprecationReason": "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead."
+            "deprecationReason": "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsConnection` instead."
           },
           {
             "name": "positionId",
@@ -15589,22 +15589,12 @@
           },
           {
             "kind": "OBJECT",
-            "name": "PositionsPage",
-            "ofType": null
-          },
-          {
-            "kind": "OBJECT",
             "name": "PredictionsPage",
             "ofType": null
           },
           {
             "kind": "OBJECT",
-            "name": "PickConfigurationsPage",
-            "ofType": null
-          },
-          {
-            "kind": "OBJECT",
-            "name": "TradesPage",
+            "name": "PositionsPage",
             "ofType": null
           },
           {
@@ -16060,17 +16050,135 @@
         "possibleTypes": null
       },
       {
+        "kind": "OBJECT",
+        "name": "PickConfigurationConnection",
+        "description": "Relay-shaped connection over `PickConfiguration` rows.",
+        "fields": [
+          {
+            "name": "edges",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "PickConfigurationEdge",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "nodes",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "PickConfiguration",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pageInfo",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "PickConfigurationEdge",
+        "description": "Cursor-bearing edge for `PickConfigurationConnection`.",
+        "fields": [
+          {
+            "name": "node",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PickConfiguration",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cursor",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "INPUT_OBJECT",
-        "name": "PickConfigurationFilters",
-        "description": "Flat filter input for the `pickConfigurationsPage` query. Each field is\noptional; values combine with AND.",
+        "name": "PickConfigurationFilter",
+        "description": "Filter input for the `pickConfigurationsConnection` query. Scalar fields use\noperator-pattern inputs; values combine with AND.",
         "fields": null,
         "inputFields": [
           {
             "name": "chainId",
-            "description": "Restrict to a single chain.",
+            "description": "Filter by chain ID, e.g. `{ equals: 13374202 }`.",
             "type": {
-              "kind": "SCALAR",
-              "name": "Int",
+              "kind": "INPUT_OBJECT",
+              "name": "IntFilter",
               "ofType": null
             },
             "defaultValue": null
@@ -16087,10 +16195,10 @@
           },
           {
             "name": "result",
-            "description": "Restrict to pick configurations with this settlement result.",
+            "description": "Filter by settlement result, e.g. `{ equals: PREDICTOR_WINS }`.",
             "type": {
-              "kind": "ENUM",
-              "name": "SettlementResult",
+              "kind": "INPUT_OBJECT",
+              "name": "SettlementResultFilter",
               "ofType": null
             },
             "defaultValue": null
@@ -16119,9 +16227,48 @@
         "possibleTypes": null
       },
       {
+        "kind": "INPUT_OBJECT",
+        "name": "PickConfigurationOrder",
+        "description": "Order input for the Relay-shaped `pickConfigurationsConnection`.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "PickConfigurationOrderField",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "OrderDirection",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "ENUM",
-        "name": "PickConfigurationSortField",
-        "description": "Sort fields for the `pickConfigurationsPage` query.",
+        "name": "PickConfigurationOrderField",
+        "description": "Sort fields for the Relay-shaped `pickConfigurationsConnection`.",
         "fields": null,
         "inputFields": null,
         "interfaces": null,
@@ -16145,75 +16292,6 @@
             "deprecationReason": null
           }
         ],
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "PickConfigurationsPage",
-        "description": "Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag",
-        "fields": [
-          {
-            "name": "items",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "PickConfiguration",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalCount",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [
-          {
-            "kind": "INTERFACE",
-            "name": "Page",
-            "ofType": null
-          }
-        ],
-        "enumValues": null,
         "possibleTypes": null
       },
       {
@@ -16479,9 +16557,228 @@
         "possibleTypes": null
       },
       {
+        "kind": "OBJECT",
+        "name": "PositionConnection",
+        "description": "Relay-shaped connection over `Position` rows.",
+        "fields": [
+          {
+            "name": "edges",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "PositionEdge",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "nodes",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "Position",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pageInfo",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "PositionEdge",
+        "description": "Cursor-bearing edge for `PositionConnection`.",
+        "fields": [
+          {
+            "name": "node",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "Position",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cursor",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "PositionFilter",
+        "description": "Filter input for the Relay-shaped `positionsConnection` query. Combines with AND.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "holder",
+            "description": "Restrict to a single holder address (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "chainId",
+            "description": "Restrict to a single chain.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Restrict to positions tied to a single condition (via the pickConfig join).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "pickConfigId",
+            "description": "Restrict to a single pick configuration.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "result",
+            "description": "Restrict to positions whose pickConfig settled with this result.",
+            "type": {
+              "kind": "ENUM",
+              "name": "SettlementResult",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "settled",
+            "description": "Restrict to settled (true) or unsettled (false) positions.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "holderWon",
+            "description": "Restrict to positions where holder won/lost the settled pickConfig.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "collateral",
+            "description": "Filter by holder collateral on the pickConfig, e.g. `{ gte: \"1000000000000000000\" }`.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "BigIntFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "endsAt",
+            "description": "Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "IntFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "INPUT_OBJECT",
         "name": "PositionFilters",
-        "description": "Flat filter input for the `positionsPage` query. Each field is optional;\nvalues combine with AND. Replaces the flat-arg shape on the resolver; the\nold args remain for one release with `@deprecated` so existing callers can\nmigrate without breaking.",
+        "description": "Flat filter input for the deprecated `positionsPage` query. Each field is\noptional; values combine with AND. New callers should use the operator-pattern\n`PositionFilter` on `positionsConnection`.",
         "fields": null,
         "inputFields": [
           {
@@ -16597,6 +16894,68 @@
         ],
         "interfaces": null,
         "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "PositionOrder",
+        "description": "Order input for the Relay-shaped `positionsConnection`.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "PositionOrderField",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "OrderDirection",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "PositionOrderField",
+        "description": "Sort fields for the Relay-shaped `positionsConnection`.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "CREATED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "UPDATED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
         "possibleTypes": null
       },
       {
@@ -17148,7 +17507,7 @@
       {
         "kind": "INPUT_OBJECT",
         "name": "PredictionFilters",
-        "description": "Flat filter input for the `predictionsPage` query. Each field is optional;\nvalues combine with AND.",
+        "description": null,
         "fields": null,
         "inputFields": [
           {
@@ -19678,7 +20037,7 @@
               "ofType": null
             },
             "isDeprecated": true,
-            "deprecationReason": "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsPage` for list lookups."
+            "deprecationReason": "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsConnection` for list lookups."
           },
           {
             "name": "pickConfigurations",
@@ -19779,18 +20138,38 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal."
+            "deprecationReason": "Use `pickConfigurationsConnection` — Relay-shaped cursor pagination over the same data."
           },
           {
-            "name": "pickConfigurationsPage",
-            "description": "Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.\n\nFiltering is via `filters: PickConfigurationFilters`. The flat-arg\nfilters (`chainId`, `resolved`, `result`, `tokens`) are retained for\none release with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.\n\nSorting via `orderBy: PickConfigurationSortField` + `orderDirection: SortOrder`.\nDefaults to `CREATED_AT` / `desc` when omitted.",
+            "name": "pickConfigurationsConnection",
+            "description": "Relay-shaped connection over pick configurations.",
             "args": [
               {
-                "name": "filters",
+                "name": "first",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "after",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filter",
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "PickConfigurationFilters",
+                  "name": "PickConfigurationFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -19799,49 +20178,11 @@
                 "name": "orderBy",
                 "description": null,
                 "type": {
-                  "kind": "ENUM",
-                  "name": "PickConfigurationSortField",
+                  "kind": "INPUT_OBJECT",
+                  "name": "PickConfigurationOrder",
                   "ofType": null
                 },
                 "defaultValue": null
-              },
-              {
-                "name": "orderDirection",
-                "description": null,
-                "type": {
-                  "kind": "ENUM",
-                  "name": "SortOrder",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "50"
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
               }
             ],
             "type": {
@@ -19849,7 +20190,7 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "PickConfigurationsPage",
+                "name": "PickConfigurationConnection",
                 "ofType": null
               }
             },
@@ -19929,7 +20270,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed."
+            "deprecationReason": "Use `positionsConnection` — Relay-shaped cursor pagination over the same data."
           },
           {
             "name": "positions",
@@ -20112,11 +20453,11 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check."
+            "deprecationReason": "Use `positionsConnection` — Relay-shaped cursor pagination over the same data."
           },
           {
             "name": "positionsPage",
-            "description": "Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.\n\nFiltering is via `filters: PositionFilters`. The flat-arg filters\n(`holder`, `chainId`, `conditionId`, …) are retained for one release\nwith `@deprecated` so existing callers can migrate without breaking;\nnew callers should use `filters:`.",
+            "description": "Deprecated page wrapper retained for main/backward compatibility. New callers should use `positionsConnection(first:, after:, filter:, orderBy:)`.",
             "args": [
               {
                 "name": "filters",
@@ -20183,6 +20524,63 @@
               "ofType": {
                 "kind": "OBJECT",
                 "name": "PositionsPage",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `positionsConnection` instead."
+          },
+          {
+            "name": "positionsConnection",
+            "description": "Relay-shaped connection over token positions.",
+            "args": [
+              {
+                "name": "first",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "after",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filter",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "PositionFilter",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderBy",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "PositionOrder",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PositionConnection",
                 "ofType": null
               }
             },
@@ -20933,7 +21331,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `tradesPage(...).totalCount` — same number, available alongside the page payload, no extra query needed."
+            "deprecationReason": "Use `tradesConnection` — Relay-shaped cursor pagination over the same data."
           },
           {
             "name": "trades",
@@ -21036,18 +21434,65 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `tradesPage` — same data with a server-truth `hasMore` stop signal."
+            "deprecationReason": "Use `tradesConnection` — Relay-shaped cursor pagination over the same data."
           },
           {
-            "name": "tradesPage",
-            "description": "Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.\n\nFiltering is via `filters: TradeFilters`. The flat-arg filters\n(`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one\nrelease with `@deprecated` so existing callers can migrate without\nbreaking; new callers should use `filters:`.\n\nSorting via `orderBy: TradeSortField` + `orderDirection: SortOrder`.\nDefaults to `EXECUTED_AT` / `desc` when omitted.",
+            "name": "tradeByHash",
+            "description": "Look up a single secondary market trade by its trade hash.",
             "args": [
               {
-                "name": "filters",
+                "name": "hash",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Bytes32",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "OBJECT",
+              "name": "Trade",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "tradesConnection",
+            "description": "Relay-shaped connection over secondary market trades.",
+            "args": [
+              {
+                "name": "first",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "after",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filter",
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "TradeFilters",
+                  "name": "TradeFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -21056,49 +21501,11 @@
                 "name": "orderBy",
                 "description": null,
                 "type": {
-                  "kind": "ENUM",
-                  "name": "TradeSortField",
+                  "kind": "INPUT_OBJECT",
+                  "name": "TradeOrder",
                   "ofType": null
                 },
                 "defaultValue": null
-              },
-              {
-                "name": "orderDirection",
-                "description": null,
-                "type": {
-                  "kind": "ENUM",
-                  "name": "SortOrder",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "50"
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
               }
             ],
             "type": {
@@ -21106,7 +21513,7 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "TradesPage",
+                "name": "TradeConnection",
                 "ofType": null
               }
             },
@@ -22599,6 +23006,73 @@
         "possibleTypes": null
       },
       {
+        "kind": "INPUT_OBJECT",
+        "name": "SettlementResultFilter",
+        "description": null,
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "equals",
+            "description": null,
+            "type": {
+              "kind": "ENUM",
+              "name": "SettlementResult",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "in",
+            "description": null,
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "SettlementResult",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "not",
+            "description": null,
+            "type": {
+              "kind": "ENUM",
+              "name": "SettlementResult",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "notIn",
+            "description": null,
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "SettlementResult",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "ENUM",
         "name": "SortOrder",
         "description": null,
@@ -23371,9 +23845,127 @@
         "possibleTypes": null
       },
       {
+        "kind": "OBJECT",
+        "name": "TradeConnection",
+        "description": "Relay-shaped connection over `Trade` rows.",
+        "fields": [
+          {
+            "name": "edges",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "TradeEdge",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "nodes",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "Trade",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pageInfo",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "TradeEdge",
+        "description": "Cursor-bearing edge for `TradeConnection`.",
+        "fields": [
+          {
+            "name": "node",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "Trade",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cursor",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "INPUT_OBJECT",
-        "name": "TradeFilters",
-        "description": "Flat filter input for the `tradesPage` query. Each field is optional;\nvalues combine with AND. `address` and (`seller` | `buyer`) are mutually\nexclusive — passing both yields an error.",
+        "name": "TradeFilter",
+        "description": "Filter input for the Relay-shaped `tradesConnection` query. Combines with AND.",
         "fields": null,
         "inputFields": [
           {
@@ -23427,21 +24019,11 @@
             "defaultValue": null
           },
           {
-            "name": "executedAtMin",
-            "description": "Restrict to trades with `executedAt >= this` (epoch seconds, inclusive).",
+            "name": "executedAt",
+            "description": "Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.",
             "type": {
-              "kind": "SCALAR",
-              "name": "UnixSeconds",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "executedAtMax",
-            "description": "Restrict to trades with `executedAt <= this` (epoch seconds, inclusive).",
-            "type": {
-              "kind": "SCALAR",
-              "name": "UnixSeconds",
+              "kind": "INPUT_OBJECT",
+              "name": "IntFilter",
               "ofType": null
             },
             "defaultValue": null
@@ -23452,9 +24034,48 @@
         "possibleTypes": null
       },
       {
+        "kind": "INPUT_OBJECT",
+        "name": "TradeOrder",
+        "description": "Order input for the Relay-shaped `tradesConnection`.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "TradeOrderField",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "OrderDirection",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "ENUM",
-        "name": "TradeSortField",
-        "description": "Sort fields for the `tradesPage` query.",
+        "name": "TradeOrderField",
+        "description": "Sort fields for the Relay-shaped `tradesConnection`.",
         "fields": null,
         "inputFields": null,
         "interfaces": null,
@@ -23472,75 +24093,6 @@
             "deprecationReason": null
           }
         ],
-        "possibleTypes": null
-      },
-      {
-        "kind": "OBJECT",
-        "name": "TradesPage",
-        "description": "Paginated wrapper around Trade rows with a server-truth hasMore flag",
-        "fields": [
-          {
-            "name": "items",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "Trade",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalCount",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [
-          {
-            "kind": "INTERFACE",
-            "name": "Page",
-            "ofType": null
-          }
-        ],
-        "enumValues": null,
         "possibleTypes": null
       },
       {

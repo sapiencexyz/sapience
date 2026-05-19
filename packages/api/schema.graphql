@@ -3018,7 +3018,7 @@ type Query {
   trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]! @deprecated(reason: "Use `tradesConnection` — Relay-shaped cursor pagination over the same data.")
 
   """Look up a single secondary market trade by its trade hash."""
-  tradeByHash(hash: String!): Trade
+  tradeByHash(hash: Bytes32!): Trade
 
   """Relay-shaped connection over secondary market trades."""
   tradesConnection(first: Int, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!

@@ -3522,7 +3522,7 @@ type Query {
 
 
   """Look up a single secondary market trade by its trade hash."""
-  tradeByHash(hash: String!): Trade
+  tradeByHash(hash: Bytes32!): Trade
 
   """Relay-shaped connection over secondary market trades."""
   tradesConnection(
