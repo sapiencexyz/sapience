@@ -330,8 +330,8 @@ const ForecastsTable = ({
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
       const query = /* GraphQL */ `
-        query ConditionsByIds($filters: ConditionFilters!) {
-          conditionsPage(filters: $filters, take: 100) {
+        query ConditionsByIds($filters: ConditionFilter!) {
+          conditionsConnection(filter: $filters, first: 100) {
             items {
               id
               question

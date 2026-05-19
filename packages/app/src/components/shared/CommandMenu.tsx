@@ -49,15 +49,15 @@ const PAGES = [
 
 /** Lightweight query — only fetches the fields the command palette needs */
 const SEARCH_QUESTIONS = /* GraphQL */ `
-  query CommandMenuSearch($take: Int!, $filters: QuestionFilters) {
-    questionsPage(
-      take: $take
+  query CommandMenuSearch($take: Int!, $filters: QuestionFilter) {
+    questionsConnection(
+      first: $take
       skip: 0
-      filters: $filters
-      orderBy: endTime
-      orderDirection: asc
+      filter: $filters
+      orderBy: { field: RESOLVES_AT, direction: ASC }
     ) {
-      items {
+      hasMore
+      nodes {
         questionType
         group {
           id
@@ -122,7 +122,7 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
     queryKey: ['commandMenuSearch', search],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        questionsPage: { items: QuestionResult[] };
+        questionsConnection: { nodes: QuestionResult[] };
       }>(SEARCH_QUESTIONS, {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort
         // client-side to prefer future markets over expired ones
@@ -134,7 +134,7 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
       });
 
       const nowSec = Math.floor(Date.now() / 1000);
-      return (data.questionsPage?.items ?? [])
+      return (data.questionsConnection?.nodes ?? [])
         .flatMap((q) => {
           if (q.questionType === 'condition' && q.condition) {
             return [q.condition];

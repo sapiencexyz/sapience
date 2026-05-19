@@ -113,7 +113,7 @@ export const account: NonNullable<QueryResolvers['account']> = async (
   _parent,
   { address },
   ctx
-) => ctx.loaders.userByAddress.load(address);
+) => ctx.loaders!.userByAddress.load(address);
 
 export const categoriesPage: NonNullable<
   QueryResolvers['categoriesPage']

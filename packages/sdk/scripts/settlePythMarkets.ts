@@ -171,18 +171,18 @@ async function gql<T>(
 
 const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
-    $filters: ConditionFilters
+    $filters: ConditionFilter
     $take: Int!
     $skip: Int!
   ) {
-    conditionsPage(
-      filters: $filters
-      orderBy: endTime
-      orderDirection: asc
-      take: $take
+    conditionsConnection(
+      filter: $filters
+      orderBy: { field: RESOLVES_AT, direction: ASC }
+      first: $take
       skip: $skip
     ) {
-      items {
+      hasMore
+      nodes {
         id
         endTime
         chainId
@@ -197,18 +197,18 @@ const CONDITIONS_QUERY = /* GraphQL */ `
 
 const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
   query PythDebugConditions(
-    $filters: ConditionFilters
+    $filters: ConditionFilter
     $take: Int!
     $skip: Int!
   ) {
-    conditionsPage(
-      filters: $filters
-      orderBy: endTime
-      orderDirection: asc
-      take: $take
+    conditionsConnection(
+      filter: $filters
+      orderBy: { field: RESOLVES_AT, direction: ASC }
+      first: $take
       skip: $skip
     ) {
-      items {
+      hasMore
+      nodes {
         id
         endTime
         chainId
@@ -775,7 +775,7 @@ async function main() {
   for (let skip = 0; conditions.length < args.maxConditions; skip += 50) {
     const take = Math.min(50, args.maxConditions - conditions.length);
     const data = await gql<{
-      conditionsPage: { items: ConditionRow[]; hasMore: boolean };
+      conditionsConnection: { nodes: ConditionRow[]; hasMore: boolean };
     }>(args.graphqlUrl, CONDITIONS_QUERY, {
       filters: {
         chainId: args.chainId,
@@ -786,9 +786,9 @@ async function main() {
       take,
       skip,
     });
-    if (data.conditionsPage.items.length === 0) break;
-    conditions.push(...data.conditionsPage.items);
-    if (!data.conditionsPage.hasMore) break;
+    if (data.conditionsConnection.nodes.length === 0) break;
+    conditions.push(...data.conditionsConnection.nodes);
+    if (!data.conditionsConnection.hasMore) break;
   }
 
   console.log(
@@ -800,18 +800,18 @@ async function main() {
   if (conditions.length === 0) {
     try {
       const dbg = await gql<{
-        conditionsPage: { items: DebugConditionRow[] };
+        conditionsConnection: { nodes: DebugConditionRow[] };
       }>(args.graphqlUrl, PYTH_DEBUG_CONDITIONS_QUERY, {
         filters: {
           chainId: args.chainId,
           maxEndTime: nowSec,
           search: 'PYTH',
         },
-        take: 10,
+        first: 10,
         skip: 0,
       });
 
-      const rows = dbg.conditionsPage?.items ?? [];
+      const rows = dbg.conditionsConnection?.nodes ?? [];
       if (rows.length === 0) {
         console.log(
           '[settle:pyth][debug] No ended PYTH:* conditions found either. Check chain-id / indexer coverage.'

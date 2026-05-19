@@ -1498,39 +1498,15 @@ type PickConfigurationsPage implements Page {
   totalCount: Int
 }
 
-"""
-Paginated wrapper around Condition rows with a server-truth hasMore flag
-"""
-type ConditionsPage implements Page {
-  items: [Condition!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""
-Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag
-"""
-type ConditionGroupsPage implements Page {
-  items: [ConditionGroup!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""
-Paginated wrapper around Question rows with a server-truth hasMore flag
-"""
-type QuestionsPage implements Page {
-  items: [Question!]!
-  hasMore: Boolean!
-
-  """
-  May be null: the underlying union/aggregation can't produce a stable total cheaply.
-  """
-  totalCount: Int
-}
-
 """Relay-shaped connection over `Condition` rows."""
 type ConditionConnection {
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
+  items: [Condition!]!
+
+  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  hasMore: Boolean!
   edges: [ConditionEdge!]!
   nodes: [Condition!]!
   pageInfo: PageInfo!
@@ -1544,6 +1520,13 @@ type ConditionEdge {
 
 """Relay-shaped connection over `ConditionGroup` rows."""
 type ConditionGroupConnection {
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
+  items: [ConditionGroup!]!
+
+  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  hasMore: Boolean!
   edges: [ConditionGroupEdge!]!
   nodes: [ConditionGroup!]!
   pageInfo: PageInfo!
@@ -1561,6 +1544,13 @@ intentionally omitted — the underlying SQL UNION over `condition_group`
 and ungrouped `condition` rows cannot produce a single COUNT cheaply.
 """
 type QuestionConnection {
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
+  items: [Question!]!
+
+  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  hasMore: Boolean!
   edges: [QuestionEdge!]!
   nodes: [Question!]!
   pageInfo: PageInfo!
@@ -1625,7 +1615,7 @@ enum AttestationSortField {
   CREATED_AT
 }
 
-"""Sort fields for the `conditionsPage` query"""
+"""Legacy offset sort fields retained only for generated compatibility."""
 enum ConditionSortField {
   CREATED_AT
   END_TIME
@@ -1633,7 +1623,9 @@ enum ConditionSortField {
   PREDICTION_COUNT
 }
 
-"""Sort fields for the `conditionGroupsPage` query."""
+"""
+Legacy condition-group offset sort fields retained only for generated compatibility.
+"""
 enum ConditionGroupSortField {
   CREATED_AT
   MAX_END_TIME
@@ -1741,7 +1733,7 @@ enum CollateralTransferSortField {
   TIMESTAMP
 }
 
-"""Visibility filter for the `conditionsPage` query"""
+"""Legacy condition visibility filter."""
 enum ConditionVisibility {
   PUBLIC
   PRIVATE
@@ -1761,11 +1753,7 @@ enum ConditionEngagement {
   ANY
 }
 
-"""
-Flat filter input for the `conditionsPage` query. Each field is optional;
-values combine with AND. Replaces the Prisma-derived `ConditionWhereInput`
-for client-facing access.
-"""
+"""Legacy flat filter input for removed offset-page condition access."""
 input ConditionFilters {
   """Restrict to these condition IDs (case-insensitive)."""
   ids: [String!]
@@ -1846,8 +1834,7 @@ input ConditionFilters {
 }
 
 """
-Flat filter input for the `conditionGroupsPage` query. Each field is optional;
-values combine with AND.
+Legacy flat filter input for removed offset-page condition group access.
 """
 input ConditionGroupFilters {
   """Restrict to these condition group IDs."""
@@ -1884,10 +1871,47 @@ input ConditionGroupFilters {
 """
 Filter input for the Relay-shaped `conditions` connection. Combines
 with AND. Public-only — non-public conditions are out of scope here;
-the deprecated `conditionsPage` retains the `visibility` switch for
-admin paths.
+admin paths need an explicit replacement surface if private-condition
+visibility is still required.
 """
 input ConditionFilter {
+  """Restrict to these condition IDs (case-insensitive)."""
+  ids: [ID!]
+
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.
+  """
+  chainId: Int
+
+  """
+  Match the on-chain contract address stored in the DB `resolver` column (case-insensitive).
+  """
+  contractAddress: String
+
+  """
+  Match any on-chain contract address stored in the DB `resolver` column (case-insensitive).
+  """
+  contractAddressIn: [String!]
+
+  """
+  Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups.
+  """
+  visibility: ConditionVisibility
+
+  """Restrict to settled (true) or unsettled (false) conditions."""
+  settled: Boolean
+
+  """
+  Restrict to conditions resolved YES (true) or NO (false). Implies settled=true.
+  """
+  resolvedToYes: Boolean
+
+  """Restrict to conditions that have a non-empty similarMarkets array."""
+  hasSimilarMarkets: Boolean
+
+  """Engagement status based on open interest or attestations."""
+  engagement: ConditionEngagement
+
   """
   Free-text search across `question`, `shortName`, and `description` (case-insensitive).
   """
@@ -1900,6 +1924,9 @@ input ConditionFilter {
 
   """Restrict to conditions whose category id is in this set."""
   categoryIds: [ID!]
+
+  """Restrict to conditions whose category slug is in this set."""
+  categorySlugs: [String!]
 
   """Restrict to conditions tagged with any of these values."""
   tags: [String!]
@@ -1924,14 +1951,29 @@ input ConditionFilter {
 """
 Filter input for the Relay-shaped `conditionGroups` connection. Combines
 with AND. Returns only groups with at least one public condition; the
-deprecated `conditionGroupsPage` retains finer-grained switches.
+admin-only finer-grained switches need an explicit replacement surface if still required.
 """
 input ConditionGroupFilter {
+  """Restrict to these condition group IDs."""
+  ids: [ID!]
+
+  """Restrict to groups that have at least one condition on this chain."""
+  chainId: Int
+
+  """When true, require at least one public condition on the group."""
+  publicOnly: Boolean
+
+  """When true, allow groups with no conditions. Defaults false."""
+  includeEmpty: Boolean
+
   """Free-text search across the group's `name` (case-insensitive)."""
   search: String
 
   """Restrict to groups whose category id is in this set."""
   categoryIds: [ID!]
+
+  """Restrict to groups whose category slug is in this set."""
+  categorySlugs: [String!]
 
   """Restrict to groups whose conditions carry any of these tags."""
   tags: [String!]
@@ -1939,13 +1981,44 @@ input ConditionGroupFilter {
 
 """
 Filter input for the Relay-shaped `questions` connection. Combines
-with AND. Intentionally minimal — `categoryIds`, multi-tag, and
-`outcome` filters require runner changes to the underlying SQL UNION
-and are deferred to a follow-up. They will land as additive,
-non-breaking SDL extensions. For outcome-based filtering today, use
-`conditions(filter: {outcome:})`.
+with AND. For outcome-based filtering today, use
+`conditions(filter: { outcome: ... })`.
 """
 input QuestionFilter {
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.
+  """
+  chainId: Int
+
+  """
+  Match the on-chain contract address that owns the underlying condition (case-insensitive).
+  """
+  contractAddress: String
+
+  """
+  Match any on-chain contract address that owns the underlying condition (case-insensitive).
+  """
+  contractAddressIn: [String!]
+
+  """Restrict to questions whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """Resolution-status filter; defaults to all when omitted."""
+  resolutionStatus: ResolutionStatus
+
+  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  estimatedPrice: FloatFilter
+
+  """
+  Filter by all-time or windowed similar-market volume, e.g. `{ gte: 10000 }`.
+  """
+  similarMarketVolume: FloatFilter
+
+  """
+  Window the similar-market-volume filter and sort look at. When omitted, the all-time column is used.
+  """
+  similarMarketVolumeWindow: VolumeWindow
+
   """
   Free-text search across the wrapped Condition/Group's title and description (case-insensitive).
   """
@@ -1961,12 +2034,6 @@ input QuestionFilter {
 
   """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
   resolvesAt: IntFilter
-
-  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
-  estimatedPrice: FloatFilter
-
-  """Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`."""
-  similarMarketVolume: FloatFilter
 }
 
 """
@@ -2732,49 +2799,31 @@ type Query {
   """
   Deprecated bare-array form. Retained unchanged for the one-release
   deprecation window so pinned clients keep working. New callers
-  should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`
-  (Relay-shaped) or `conditionGroupsPage(filters:)` (offset-paginated).
+  should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`.
   """
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
 
   """
   Relay-shaped connection over `ConditionGroup` rows. Forward-only
   cursor pagination via `first` / `after`. Replaces the deprecated
-  bare `conditionGroups(where:)` and the offset-paginated
-  `conditionGroupsPage`. `totalCount` is omitted per design-doc D3
+  bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
   (default-off, add per-PR where cheap).
   """
-  conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder): ConditionGroupConnection!
-
-  """
-  Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
-  
-  Sorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.
-  Defaults to `CREATED_AT` / `desc` when omitted.
-  """
-  conditionGroupsPage(filters: ConditionGroupFilters, orderBy: ConditionGroupSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0): ConditionGroupsPage! @deprecated(reason: "Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
+  conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): ConditionGroupConnection!
 
   """
   Deprecated bare-array form. Retained unchanged for the one-release
   deprecation window. New callers should use
-  `conditionsConnection(first:, after:, filter:, orderBy:)` (Relay-shaped)
-  or `conditionsPage(filters:)` (offset-paginated).
+  `conditionsConnection(first:, after:, filter:, orderBy:)`.
   """
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
 
   """
   Relay-shaped connection over `Condition` rows. Forward-only cursor
   pagination via `first` / `after`. Replaces the deprecated bare
-  `conditions(where:)` and the offset-paginated `conditionsPage`.
-  Public conditions only — admin-style visibility switches live on the
-  deprecated `conditionsPage` for the migration window.
+  `conditions(where:)`. Public conditions only.
   """
-  conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder): ConditionConnection!
-
-  """
-  Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input.
-  """
-  conditionsPage(filters: ConditionFilters, orderBy: ConditionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0): ConditionsPage! @deprecated(reason: "Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data. Admin-only filters (`visibility`, `engagement`) remain on this resolver during the migration window.")
+  conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): ConditionConnection!
 
   """Look up a single pick configuration by ID"""
   pickConfiguration(id: String!): PickConfiguration @deprecated(reason: "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsPage` for list lookups.")
@@ -2879,30 +2928,18 @@ type Query {
   """
   Deprecated bare-array form. Retained unchanged for the one-release
   deprecation window so pinned clients keep working. New callers
-  should use `questionsConnection(first:, after:, filter:, orderBy:)`
-  (Relay-shaped) or `questionsPage(filters:)` (offset-paginated).
+  should use `questionsConnection(first:, after:, filter:, orderBy:)`.
   """
   questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]! @deprecated(reason: "Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed.")
 
   """
   Relay-shaped connection over `Question` rows — the interleaved
   Condition / ConditionGroup feed. Forward-only cursor pagination via
-  `first` / `after`. Replaces the deprecated bare `questions(...)` and
-  the offset-paginated `questionsPage`. `totalCount` is omitted on
+  `first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on
   `QuestionConnection` because the underlying SQL UNION cannot produce
   a single COUNT cheaply.
   """
-  questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder): QuestionConnection!
-
-  """
-  Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
-  
-  Sorting uses `orderBy` / `orderDirection` to match the convention on
-  every other `*Page` resolver. The original `sortField` / `sortDirection`
-  args are retained for one release with `@deprecated`; new callers
-  should use `orderBy:` / `orderDirection:`.
-  """
-  questionsPage(filters: QuestionFilters, orderBy: QuestionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, sortDirection: SortOrder! = desc @deprecated(reason: "Use `orderDirection:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`)."), sortField: QuestionSortField @deprecated(reason: "Use `orderBy:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`).")): QuestionsPage! @deprecated(reason: "Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved Condition / ConditionGroup feed.")
+  questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): QuestionConnection!
 
   """
   Look up a single secondary market trade by its trade hash. Pass
@@ -3094,8 +3131,7 @@ enum QuestionSortField {
 }
 
 """
-Flat filter input for the `questionsPage` query. Each field is optional;
-values combine with AND. Mirrors the inline-arg shape that the deprecated
+Legacy flat filter input mirroring the inline-arg shape that the deprecated
 `questions(...)` resolver kept.
 """
 input QuestionFilters {

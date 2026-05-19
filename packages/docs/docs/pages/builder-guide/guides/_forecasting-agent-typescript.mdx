@@ -40,9 +40,9 @@ async function fetchRandomCondition() {
   const nowSec = Math.floor(Date.now() / 1000);
   const query = gql`
     query Conditions($nowSec: Int!) {
-      conditionsPage(
+      conditionsConnection(
         filters: { visibility: PUBLIC, minEndTime: $nowSec }
-        take: 50
+        first: 50
       ) {
         items {
           id
@@ -53,10 +53,10 @@ async function fetchRandomCondition() {
       }
     }
   `;
-  const { conditionsPage } = await graphqlRequest<{
-    conditionsPage: { items: any[] };
+  const { conditionsConnection } = await graphqlRequest<{
+    conditionsConnection: { nodes: any[] };
   }>(query, { nowSec });
-  const conditions = conditionsPage.items;
+  const conditions = conditionsConnection.nodes;
 
   if (conditions.length === 0) {
     throw new Error('No active conditions found');
