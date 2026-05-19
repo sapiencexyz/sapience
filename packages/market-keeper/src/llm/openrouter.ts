@@ -54,6 +54,12 @@ interface LLMLogOptions {
   };
   finishReason?: string;
   citations?: string[];
+  /**
+   * When zero citations were extracted, the raw OpenRouter response keys
+   * (top-level + message-level) are stamped into the log so we can spot
+   * citations hiding under a name our parser doesn't probe yet.
+   */
+  responseShapeDiagnostic?: { topKeys: string[]; messageKeys: string[] };
   parsedResults?: Array<{
     question: string;
     raw: string;
@@ -72,10 +78,12 @@ function logLLMResponse(
   response: string,
   opts: LLMLogOptions
 ): void {
-  // Skip logging in production
-  if (process.env.NODE_ENV === 'production') {
-    return;
-  }
+  // NOTE: NODE_ENV=production gate intentionally removed for now so the
+  // backfill (and the daily generate) write full prompt + raw response +
+  // citations + per-market parsed status to `llm-markets.log`. Re-add the
+  // gate once we're done iterating on the Sonar prompt — this file grows
+  // ~10KB per Sonar call, fine for a one-shot backfill but unwanted noise
+  // for a long-running daemon.
 
   const timestamp = new Date().toISOString();
 
@@ -85,7 +93,9 @@ function logLLMResponse(
 
   const citationsSection = opts.citations?.length
     ? `\nCitations:\n${opts.citations.map((c) => `  - ${c}`).join('\n')}`
-    : '';
+    : opts.responseShapeDiagnostic
+      ? `\nCitations: (none — Sonar may not have searched)\nResponse top-level keys: ${opts.responseShapeDiagnostic.topKeys.join(', ') || '(none)'}\nMessage keys: ${opts.responseShapeDiagnostic.messageKeys.join(', ') || '(none)'}`
+      : '';
 
   const parsedSection = opts.parsedResults?.length
     ? `\nParsed results:\n${opts.parsedResults
@@ -809,7 +819,6 @@ export function parseEndTimeResponse(
   const validIds = markets.map((m) => m.conditionId);
   const results: EndTimeOutput[] = [];
   const foundIds = new Set<string>();
-  const now = Math.floor(Date.now() / 1000);
 
   // First pass: collect parsed entries — try JSON array first, fall back to CSV.
   const parsedEntries: Array<{
@@ -829,7 +838,7 @@ export function parseEndTimeResponse(
   for (const { id, dateStr, rawConfidence } of parsedEntries) {
     if (!marketMap.has(id)) continue;
 
-    const endTime = parseEndTimeValue(dateStr, now);
+    const endTime = parseEndTimeValue(dateStr);
     const confidence = normalizeConfidence(rawConfidence, endTime);
     console.log(
       `[LLM:endTime]   "${marketMap.get(id)!.question}" -> ${dateStr} (${endTime === null ? 'null' : endTime}, ${confidence})`
@@ -846,7 +855,7 @@ export function parseEndTimeResponse(
   for (const { id, dateStr, rawConfidence } of unmatchedIds) {
     const matchedId = findClosestConditionId(id, missingMarketIds);
     if (matchedId && !foundIds.has(matchedId)) {
-      const endTime = parseEndTimeValue(dateStr, now);
+      const endTime = parseEndTimeValue(dateStr);
       const confidence = normalizeConfidence(rawConfidence, endTime);
       console.log(
         `[LLM:endTime]   "${marketMap.get(matchedId)!.question}" -> ${dateStr} (${endTime === null ? 'null' : endTime}, ${confidence}) (fuzzy)`
@@ -964,9 +973,12 @@ function normalizeConfidence(
 }
 
 /**
- * Parse a date string into a unix timestamp, or null if invalid/past/UNKNOWN
+ * Parse a date string into a unix timestamp, or null on invalid/UNKNOWN.
+ * Past dates are accepted — Sonar's prompt explicitly returns the time the
+ * outcome BECAME KNOWN, which is in the past for already-resolved events
+ * (and that's the right answer for endTime, not a near-future placeholder).
  */
-function parseEndTimeValue(dateStr: string, now: number): number | null {
+function parseEndTimeValue(dateStr: string): number | null {
   const trimmed = dateStr.trim().toUpperCase();
   if (trimmed === 'UNKNOWN' || trimmed === '') return null;
 
@@ -976,13 +988,7 @@ function parseEndTimeValue(dateStr: string, now: number): number | null {
     return null;
   }
 
-  const timestamp = Math.floor(date.getTime() / 1000);
-  if (timestamp <= now) {
-    console.warn(`[LLM:endTime] Past date rejected: ${dateStr}`);
-    return null;
-  }
-
-  return timestamp;
+  return Math.floor(date.getTime() / 1000);
 }
 
 /**
@@ -1020,6 +1026,19 @@ export async function callOpenRouterForEndTime(
         // creative one — we want maximally deterministic JSON output.
         temperature: 0.0,
         max_tokens: 10000,
+        // Force Sonar to actually use web search with a wider context
+        // window. Without this, basic `perplexity/sonar` defaults to
+        // minimal search and frequently answers from training data only —
+        // visible as zero citations + "best guess" EOD timestamps. The
+        // `web_search_options` block is Perplexity's documented API; the
+        // top-level `return_citations` is preserved for older API shapes
+        // some OpenRouter routes still emit.
+        // Docs: https://docs.perplexity.ai/api-reference/chat-completions
+        web_search_options: {
+          search_context_size: 'high',
+        },
+        return_citations: true,
+        return_related_questions: false,
       }),
       signal: AbortSignal.timeout(LLM_ENDTIME_TIMEOUT_MS),
     },
@@ -1053,19 +1072,91 @@ export async function callOpenRouterForEndTime(
     `[LLM:endTime] Raw response (${content.length} chars, finish_reason: ${finishReason}):\n${content}`
   );
 
+  // Surface citations to stdout so Railway logs capture them (the file
+  // logger writes them too, but only the local llm-markets.log file).
+  // Different routes put citations under different keys — try every
+  // known location. If all yield zero, Sonar likely didn't search.
+  const citations: string[] = [];
+  if (Array.isArray(data.citations)) {
+    citations.push(...(data.citations as string[]));
+  }
+  const msg = data.choices?.[0]?.message;
+  if (msg && Array.isArray(msg.citations)) {
+    citations.push(...(msg.citations as string[]));
+  }
+  // OpenAI-compat shape: `message.annotations` is an array of
+  // `{ type: 'url_citation', url_citation: { url, title, ... } }`. This
+  // is where OpenRouter actually exposes Perplexity citations on the
+  // openai-compat route (we found the `annotations` key empirically).
+  if (msg && Array.isArray(msg.annotations)) {
+    for (const a of msg.annotations as Array<{
+      type?: string;
+      url_citation?: { url?: string };
+      url?: string;
+    }>) {
+      const url = a?.url_citation?.url ?? a?.url;
+      if (typeof url === 'string') citations.push(url);
+    }
+  }
+  // Newer direct-Perplexity API returns search_results: [{url, ...}]
+  if (Array.isArray(data.search_results)) {
+    for (const r of data.search_results as Array<{ url?: string }>) {
+      if (r && typeof r.url === 'string') citations.push(r.url);
+    }
+  }
+  // OpenRouter routes can fall back to a non-search provider; surface
+  // which one actually served us so a zero-citation result is easy to
+  // debug.
+  if (typeof data.provider === 'string') {
+    console.log(`[LLM:endTime] OpenRouter provider: ${data.provider}`);
+  }
+  const topKeys = Object.keys(data).filter((k) => k !== 'choices');
+  const msgKeys = msg ? Object.keys(msg).filter((k) => k !== 'content') : [];
+  if (citations.length > 0) {
+    console.log(`[LLM:endTime] Citations (${citations.length}):`);
+    for (const c of citations) console.log(`  - ${c}`);
+  } else {
+    console.log(
+      `[LLM:endTime] WARN: zero citations — Sonar may not have performed a web search.`
+    );
+    console.log(
+      `[LLM:endTime]   response top-level keys: ${topKeys.join(', ') || '(none)'}`
+    );
+    console.log(
+      `[LLM:endTime]   message keys: ${msgKeys.join(', ') || '(none)'}`
+    );
+  }
+
   const results = parseEndTimeResponse(content, markets);
   console.log(`[LLM:endTime] Parsed ${results.length} endTime results`);
 
-  // Per-market logging: drive off parsed results (JSON-aware) rather than
-  // re-parsing the raw text. Status reflects how the parser classified each
-  // entry, not the literal CSV split that the previous version assumed.
+  // Per-market parsed-status dump to stdout. Same info as logLLMResponse's
+  // file output, also visible in Railway logs so prompt debugging doesn't
+  // require local reproduction.
   const parsedEndTimeSet = new Map(results.map((r) => [r.conditionId, r]));
+  for (const m of markets) {
+    const r = parsedEndTimeSet.get(m.conditionId);
+    if (!r) {
+      console.log(`[LLM:endTime]   [MISSING]  "${m.question.slice(0, 80)}"`);
+    } else if (r.endTime === null) {
+      console.log(
+        `[LLM:endTime]   [UNKNOWN]  "${m.question.slice(0, 80)}" -> null (${r.confidence})`
+      );
+    } else {
+      console.log(
+        `[LLM:endTime]   [OK]       "${m.question.slice(0, 80)}" -> ${new Date(r.endTime * 1000).toISOString()} (${r.confidence})`
+      );
+    }
+  }
+
   logLLMResponse('endTime', markets, content, {
     model,
     prompt,
     usage: data.usage,
     finishReason,
-    citations: data.citations ?? [],
+    citations,
+    responseShapeDiagnostic:
+      citations.length === 0 ? { topKeys, messageKeys: msgKeys } : undefined,
     parsedResults: markets.map((m) => {
       const result = parsedEndTimeSet.get(m.conditionId);
       let status: 'ok' | 'unknown' | 'rejected-past' | 'missing';

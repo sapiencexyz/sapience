@@ -156,14 +156,18 @@ describe('parseEndTimeResponse', () => {
     expect(results[0].conditionId).toBe(id1);
   });
 
-  it('rejects past dates', () => {
-    const content = `${id1},2020-01-01T00:00:00Z`;
+  it('accepts past dates (already-resolved events return when the outcome became known)', () => {
+    // Sonar's prompt explicitly returns the past resolution timestamp for
+    // events that have already happened — that's the right answer for
+    // endTime, not a near-future placeholder. The parser must let it through.
+    const pastDate = '2020-01-01T00:00:00Z';
+    const content = `${id1},${pastDate}`;
     const results = parseEndTimeResponse(content, markets);
 
     const result = results.find((r) => r.conditionId === id1);
-    if (result) {
-      expect(result.endTime).toBeNull();
-    }
+    expect(result?.endTime).toBe(
+      Math.floor(new Date(pastDate).getTime() / 1000)
+    );
   });
 
   it('handles empty response', () => {

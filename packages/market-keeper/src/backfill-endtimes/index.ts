@@ -71,10 +71,10 @@ function showHelp(): void {
   console.log(`
 Usage: tsx scripts/backfill-endtimes.ts [options]
 
-Re-runs the LLM-primary endtime pipeline against every unsettled
-Polymarket-sourced condition in the Sapience DB and writes back any
-endTime that changed by more than --threshold-seconds. Default is
-dry-run; pass --execute to actually write.
+Re-runs the LLM-primary endtime pipeline against every unsettled,
+public, Polymarket-sourced condition. Writes back any endTime that
+changed by more than --threshold-seconds. Default is dry-run; pass
+--execute to actually write.
 
 Options:
   --execute               Submit changes (default: dry-run, prints only)
@@ -119,55 +119,73 @@ async function fetchUnsettledPmConditions(
   let zeroGrowthStreak = 0;
 
   while (true) {
+    // Uses the legacy `conditions` query (Prisma-style where/orderBy)
+    // rather than `conditionsPage`, because staging's API is on the
+    // pre-`conditionsPage` schema. Pagination is take/skip with no
+    // server-truth `hasMore` — we stop when a page returns < PAGE_SIZE.
     const query = `
-      query BackfillCandidates($filters: ConditionFilters!, $take: Int!, $skip: Int!) {
-        conditionsPage(filters: $filters, take: $take, skip: $skip, orderBy: CREATED_AT, orderDirection: asc) {
-          hasMore
-          items {
-            id
-            question
-            description
-            endTime
-          }
+      query BackfillCandidates($where: ConditionWhereInput!, $orderBy: [ConditionOrderByWithRelationInput!], $take: Int!, $skip: Int!) {
+        conditions(where: $where, orderBy: $orderBy, take: $take, skip: $skip) {
+          id
+          question
+          description
+          endTime
         }
       }
     `;
+    const variables = {
+      where: {
+        public: { equals: true },
+        settled: { equals: false },
+        similarMarkets: { isEmpty: false },
+      },
+      orderBy: [{ id: 'asc' }],
+      take: PAGE_SIZE,
+      skip,
+    };
+    // Log the exact request variables on the first page so 0-result runs
+    // are diagnosable from the script output alone.
+    if (skip === 0) {
+      log(
+        `[Backfill]   GraphQL variables: ${JSON.stringify(variables, null, 2)}`
+      );
+    }
     const response = await fetchWithRetry(graphqlUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        variables: {
-          filters: {
-            settled: false,
-            visibility: 'PUBLIC',
-            hasSimilarMarkets: true,
-          },
-          take: PAGE_SIZE,
-          skip,
-        },
-      }),
+      body: JSON.stringify({ query, variables }),
     });
     if (!response.ok) {
+      const body = await response.text().catch(() => '(unreadable body)');
       throw new Error(
-        `GraphQL conditionsPage failed: HTTP ${response.status} ${response.statusText}`
+        `GraphQL conditions failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
       );
     }
+    // GraphQL returns 200 with `errors: [...]` for query errors (unknown
+    // field, bad arg, etc.) — those don't trip the !response.ok branch.
+    // Inspect the parsed body for `errors` and surface them.
     const result = (await response.json()) as {
       data?: {
-        conditionsPage?: {
-          hasMore?: boolean | null;
-          items?: Array<{
-            id: string;
-            question: string;
-            description: string | null;
-            endTime: number;
-          }>;
-        };
+        conditions?: Array<{
+          id: string;
+          question: string;
+          description: string | null;
+          endTime: number;
+        }>;
       };
+      errors?: Array<{ message: string; path?: unknown }>;
     };
-    const items = result.data?.conditionsPage?.items ?? [];
-    const hasMore = result.data?.conditionsPage?.hasMore ?? false;
+    if (result.errors && result.errors.length > 0) {
+      throw new Error(
+        `GraphQL conditions returned errors: ${JSON.stringify(result.errors, null, 2)}`
+      );
+    }
+    const items = result.data?.conditions ?? [];
+    // Legacy `conditions` has no `hasMore`; stop on a short page.
+    const hasMore = items.length === PAGE_SIZE;
+    log(
+      `[Backfill]   page (skip=${skip}): fetched ${items.length} (cumulative ${out.length + items.length})`
+    );
     for (const c of items) {
       if (seen.has(c.id)) continue;
       seen.add(c.id);
@@ -180,12 +198,12 @@ async function fetchUnsettledPmConditions(
       if (maxResults !== null && out.length >= maxResults) return out;
     }
     // Safety: same infinite-loop guard as refresh-imminent-tag — break out
-    // if hasMore=true keeps lying while the result set stops growing.
+    // if a full page keeps coming back but adds zero unique rows.
     if (out.length === lastSize) {
       zeroGrowthStreak++;
       if (zeroGrowthStreak >= 3) {
         logError(
-          `[Backfill] WARN: 3 consecutive pages added 0 unique rows (hasMore=${hasMore}, skip=${skip}); aborting pagination to avoid an infinite loop`
+          `[Backfill] WARN: 3 consecutive pages added 0 unique rows (skip=${skip}); aborting pagination to avoid an infinite loop`
         );
         break;
       }

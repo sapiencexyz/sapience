@@ -111,15 +111,18 @@ async function fetchAllUnsettledConditions(
   while (true) {
     pageCount++;
     const pageStart = Date.now();
+    // Uses the legacy `conditions` query because staging's API removed
+    // `conditionsPage` in PR #1744. The new shape is `conditionsConnection`
+    // (Relay-style); legacy `conditions` is still available and simpler
+    // for take/skip pagination. We sort by `createdAt desc` so a --limit
+    // sample biases toward newest markets (most likely to match today/
+    // tomorrow's date). No server-truth `hasMore` — stop on short page.
     const query = `
-      query ImminentTagCandidates($filters: ConditionFilters!, $take: Int!, $skip: Int!) {
-        conditionsPage(filters: $filters, take: $take, skip: $skip, orderBy: CREATED_AT, orderDirection: desc) {
-          hasMore
-          items {
-            id
-            question
-            tags
-          }
+      query ImminentTagCandidates($where: ConditionWhereInput!, $orderBy: [ConditionOrderByWithRelationInput!], $take: Int!, $skip: Int!) {
+        conditions(where: $where, orderBy: $orderBy, take: $take, skip: $skip) {
+          id
+          question
+          tags
         }
       }
     `;
@@ -129,30 +132,36 @@ async function fetchAllUnsettledConditions(
       body: JSON.stringify({
         query,
         variables: {
-          filters: {
-            settled: false,
-            visibility: 'PUBLIC',
+          where: {
+            public: { equals: true },
+            settled: { equals: false },
           },
+          orderBy: [{ createdAt: 'desc' }],
           take: PAGE_SIZE,
           skip,
         },
       }),
     });
     if (!response.ok) {
+      const body = await response.text().catch(() => '(unreadable body)');
       throw new Error(
-        `GraphQL conditionsPage failed: HTTP ${response.status} ${response.statusText}`
+        `GraphQL conditions failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
       );
     }
     const result = (await response.json()) as {
       data?: {
-        conditionsPage?: {
-          hasMore?: boolean | null;
-          items?: Array<{ id: string; question: string; tags: string[] }>;
-        };
+        conditions?: Array<{ id: string; question: string; tags: string[] }>;
       };
+      errors?: Array<{ message: string }>;
     };
-    const items = result.data?.conditionsPage?.items ?? [];
-    const hasMore = result.data?.conditionsPage?.hasMore ?? false;
+    if (result.errors && result.errors.length > 0) {
+      throw new Error(
+        `GraphQL conditions returned errors: ${JSON.stringify(result.errors, null, 2)}`
+      );
+    }
+    const items = result.data?.conditions ?? [];
+    // Legacy `conditions` has no `hasMore` — stop when a page is short.
+    const hasMore = items.length === PAGE_SIZE;
     for (const c of items) {
       if (seen.has(c.id)) continue;
       seen.add(c.id);
