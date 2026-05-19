@@ -243,7 +243,7 @@ const CONDITIONS_QUERY = /* GraphQL */ `
   ) {
     conditionsPage(
       filters: $filters
-      orderBy: endTime
+      orderBy: END_TIME
       orderDirection: asc
       take: $take
       skip: $skip
