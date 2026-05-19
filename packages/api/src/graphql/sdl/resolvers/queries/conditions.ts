@@ -222,6 +222,35 @@ const buildIdFilterClause = (
   return { [column]: clause } as Where;
 };
 
+type ScalarRangeFilter = {
+  equals?: number | null;
+  gt?: number | null;
+  gte?: number | null;
+  lt?: number | null;
+  lte?: number | null;
+  in?: number[] | null;
+  notIn?: number[] | null;
+  not?: number | null;
+};
+
+const buildScalarRangeClause = (
+  filter: ScalarRangeFilter | null | undefined,
+  column: string
+): Where | null => {
+  if (!filter) return null;
+  const clause: Record<string, unknown> = {};
+  if (filter.equals != null) clause.equals = filter.equals;
+  if (filter.gt != null) clause.gt = filter.gt;
+  if (filter.gte != null) clause.gte = filter.gte;
+  if (filter.lt != null) clause.lt = filter.lt;
+  if (filter.lte != null) clause.lte = filter.lte;
+  if (filter.in && filter.in.length > 0) clause.in = filter.in;
+  if (filter.notIn && filter.notIn.length > 0) clause.notIn = filter.notIn;
+  if (filter.not != null) clause.not = filter.not;
+  if (Object.keys(clause).length === 0) return null;
+  return { [column]: clause } as Where;
+};
+
 /**
  * Translate `ConditionOutcomeFilter` into a Prisma where clause keyed
  * off the underlying `settled` / `resolvedToYes` / `nonDecisive`
@@ -294,6 +323,26 @@ const buildConditionsConnectionWhere = (
     'conditionGroupId'
   );
   if (groupClause) and.push(groupClause);
+  const rangeFilter = filter as ConditionFilter & {
+    resolvesAt?: ScalarRangeFilter | null;
+    estimatedPrice?: ScalarRangeFilter | null;
+    similarMarketVolume?: ScalarRangeFilter | null;
+  };
+  const resolvesAtClause = buildScalarRangeClause(
+    rangeFilter.resolvesAt,
+    'endTime'
+  );
+  if (resolvesAtClause) and.push(resolvesAtClause);
+  const estimatedPriceClause = buildScalarRangeClause(
+    rangeFilter.estimatedPrice,
+    'estimatedPrice'
+  );
+  if (estimatedPriceClause) and.push(estimatedPriceClause);
+  const similarMarketVolumeClause = buildScalarRangeClause(
+    rangeFilter.similarMarketVolume,
+    'similarMarketVolume'
+  );
+  if (similarMarketVolumeClause) and.push(similarMarketVolumeClause);
   const outcomeClause = buildOutcomeFilterClause(filter.outcome);
   if (outcomeClause) and.push(outcomeClause);
 

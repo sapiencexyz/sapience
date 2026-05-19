@@ -66,6 +66,27 @@ type SortedItemRow = {
   group_id: number | null;
   condition_id: string | null;
   prediction_count: bigint;
+  sort_value: number | string;
+  end_time: number;
+};
+
+type QuestionCursor = {
+  sortValue: string;
+  endTime: number;
+  itemType: string;
+  groupId: number;
+  conditionId: string;
+};
+
+type ScalarRangeFilter = {
+  equals?: number | null;
+  gt?: number | null;
+  gte?: number | null;
+  lt?: number | null;
+  lte?: number | null;
+  in?: number[] | null;
+  notIn?: number[] | null;
+  not?: number | null;
 };
 
 const volumeColumnFragments = {
@@ -162,6 +183,7 @@ export interface RunQuestionsInput {
   contractAddress?: string | null;
   contractAddressIn?: string[] | null;
   minEndTime?: number | null;
+  maxEndTime?: number | null;
   resolutionStatus?: ResolutionStatus | null;
   minEstimatedPrice?: number | null;
   maxEstimatedPrice?: number | null;
@@ -170,6 +192,7 @@ export interface RunQuestionsInput {
   similarMarketVolumeWindow?: VolumeWindow | null;
   sortField?: QuestionSortField | null;
   sortDirection?: SortOrder | null;
+  afterCursor?: QuestionCursor | null;
 }
 
 interface NormalizedArgs {
@@ -182,6 +205,7 @@ interface NormalizedArgs {
   contractAddress: string | null;
   contractAddressIn: string[] | null;
   minEndTime: number | null | undefined;
+  maxEndTime: number | null | undefined;
   resolutionStatus: ResolutionStatus | null | undefined;
   minEstimatedPrice: number | null | undefined;
   maxEstimatedPrice: number | null | undefined;
@@ -189,6 +213,7 @@ interface NormalizedArgs {
   maxSimilarMarketVolume: number | null | undefined;
   sortField: string;
   sortDirectionRaw: 'ASC' | 'DESC';
+  afterCursor: QuestionCursor | null;
   volumeKey: VolumeKey;
   useWindowedSimilarMarketVolume: boolean;
   /**
@@ -235,6 +260,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
     args.minEstimatedPrice != null ||
     args.maxEstimatedPrice != null ||
     args.minEndTime != null ||
+    args.maxEndTime != null ||
     args.minSimilarMarketVolume != null ||
     args.maxSimilarMarketVolume != null;
 
@@ -248,6 +274,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
     contractAddress,
     contractAddressIn,
     minEndTime: args.minEndTime,
+    maxEndTime: args.maxEndTime,
     resolutionStatus: args.resolutionStatus,
     minEstimatedPrice: args.minEstimatedPrice,
     maxEstimatedPrice: args.maxEstimatedPrice,
@@ -255,6 +282,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
     maxSimilarMarketVolume: args.maxSimilarMarketVolume,
     sortField,
     sortDirectionRaw: args.sortDirection === 'asc' ? 'ASC' : 'DESC',
+    afterCursor: args.afterCursor ?? null,
     volumeKey,
     useWindowedSimilarMarketVolume,
     requiresConditionJoin:
@@ -327,10 +355,17 @@ const buildConditionFilterFragments = (
     return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
   })();
 
-  const endTimeFilter =
-    n.minEndTime != null
-      ? Prisma.sql`AND c."endTime" >= ${n.minEndTime}`
-      : Prisma.empty;
+  const endTimeFilter = (() => {
+    const parts: Prisma.Sql[] = [];
+    if (n.minEndTime != null) {
+      parts.push(Prisma.sql`c."endTime" >= ${n.minEndTime}`);
+    }
+    if (n.maxEndTime != null) {
+      parts.push(Prisma.sql`c."endTime" <= ${n.maxEndTime}`);
+    }
+    if (parts.length === 0) return Prisma.empty;
+    return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
+  })();
 
   const chainIdFilter =
     n.chainId != null
@@ -518,12 +553,75 @@ const buildSearchFragments = (n: NormalizedArgs): SearchFragments => {
   };
 };
 
+const cursorIdentity = (row: SortedItemRow) => ({
+  groupId: row.group_id ?? 0,
+  conditionId: row.condition_id ?? '',
+  itemType: row.item_type,
+  endTime: Number(row.end_time ?? 0),
+});
+
+const encodeQuestionCursor = (row: SortedItemRow): string => {
+  const identity = cursorIdentity(row);
+  return encodeCursor({
+    k: String(row.sort_value),
+    id: JSON.stringify(identity),
+  });
+};
+
+const decodeQuestionCursor = (cursor: string | null | undefined) => {
+  if (!cursor) return null;
+  const payload = decodeCursor(cursor);
+  if (!payload) return null;
+  try {
+    const parsed = JSON.parse(payload.id) as Partial<QuestionCursor>;
+    const groupId = Number(parsed.groupId);
+    const endTime = Number(parsed.endTime);
+    const itemType = String(parsed.itemType ?? '');
+    const conditionId = String(parsed.conditionId ?? '');
+    if (!itemType || !Number.isFinite(groupId) || !Number.isFinite(endTime)) {
+      return null;
+    }
+    return {
+      sortValue: payload.k,
+      itemType,
+      groupId,
+      conditionId,
+      endTime,
+    } satisfies QuestionCursor;
+  } catch {
+    return null;
+  }
+};
+
+const buildQuestionCursorWhere = (n: NormalizedArgs): Prisma.Sql => {
+  const c = n.afterCursor;
+  if (!c) return Prisma.empty;
+  const sortCmp = n.sortDirectionRaw === 'ASC' ? '>' : '<';
+  const sortValue = Number(c.sortValue);
+  const normalizedSortValue = Number.isFinite(sortValue)
+    ? sortValue
+    : c.sortValue;
+  return Prisma.sql`
+    WHERE (
+      sort_value ${Prisma.raw(sortCmp)} ${normalizedSortValue}
+      OR (sort_value = ${normalizedSortValue} AND end_time > ${c.endTime})
+      OR (sort_value = ${normalizedSortValue} AND end_time = ${c.endTime} AND item_type > ${c.itemType})
+      OR (sort_value = ${normalizedSortValue} AND end_time = ${c.endTime} AND item_type = ${c.itemType} AND COALESCE(group_id, 0) > ${c.groupId})
+      OR (sort_value = ${normalizedSortValue} AND end_time = ${c.endTime} AND item_type = ${c.itemType} AND COALESCE(group_id, 0) = ${c.groupId} AND COALESCE(condition_id, '') > ${c.conditionId})
+    )
+  `;
+};
+
 const fetchSortedItems = async (
   n: NormalizedArgs
 ): Promise<SortedItemRow[]> => {
   const filters = buildConditionFilterFragments(n);
   const sort = buildSortFragments(n, filters);
   const search = buildSearchFragments(n);
+  const cursorWhere = buildQuestionCursorWhere(n);
+  const offsetClause = n.afterCursor
+    ? Prisma.empty
+    : Prisma.sql`OFFSET ${n.skip}`;
 
   return prisma.$queryRaw<SortedItemRow[]>`
     WITH combined AS (
@@ -561,15 +659,16 @@ const fetchSortedItems = async (
         ${search.condCategory}
         ${search.condTag}
     )
-    SELECT item_type, group_id, condition_id, prediction_count
+    SELECT item_type, group_id, condition_id, prediction_count, sort_value, end_time
     FROM combined
+    ${cursorWhere}
     ORDER BY sort_value ${Prisma.raw(n.sortDirectionRaw)},
              end_time ASC,
              item_type ASC,
              COALESCE(group_id, 0) ASC,
              COALESCE(condition_id, '') ASC
     LIMIT ${n.take + 1}
-    OFFSET ${n.skip}
+    ${offsetClause}
   `;
 };
 
@@ -638,6 +737,16 @@ const buildConditionWhere = (n: NormalizedArgs): Prisma.ConditionWhereInput => {
     ...resolvedPrismaFilter,
     ...(n.minEndTime !== null && n.minEndTime !== undefined
       ? { endTime: { gte: n.minEndTime } }
+      : {}),
+    ...(n.maxEndTime !== null && n.maxEndTime !== undefined
+      ? {
+          endTime: {
+            ...((n.minEndTime !== null && n.minEndTime !== undefined
+              ? { gte: n.minEndTime }
+              : {}) as object),
+            lte: n.maxEndTime,
+          },
+        }
       : {}),
     ...(Object.keys(estimatedPriceFilter).length > 0
       ? { estimatedPrice: estimatedPriceFilter }
@@ -733,40 +842,38 @@ const hydrateItems = async (
   return result;
 };
 
-export const runQuestions = async (
+const runQuestionsPageData = async (
   args: RunQuestionsInput
-): Promise<{ items: QuestionReturn[]; hasMore: boolean }> => {
+): Promise<{
+  items: QuestionReturn[];
+  hasMore: boolean;
+  pageItems: SortedItemRow[];
+}> => {
   const n = normalizeArgs(args);
   const sortedItems = await fetchSortedItems(n);
   const hasMore = sortedItems.length > n.take;
   const pageItems = sortedItems.slice(0, n.take);
-  if (pageItems.length === 0) return { items: [], hasMore };
+  if (pageItems.length === 0) return { items: [], hasMore, pageItems };
 
   const items = await hydrateItems(pageItems, buildConditionWhere(n));
+  return { items, hasMore, pageItems };
+};
+
+export const runQuestions = async (
+  args: RunQuestionsInput
+): Promise<{ items: QuestionReturn[]; hasMore: boolean }> => {
+  const { items, hasMore } = await runQuestionsPageData(args);
   return { items, hasMore };
 };
 
 // ---------------------------------------------------------------------
 // Relay-shaped `questions` connection (PR 2)
 // ---------------------------------------------------------------------
-//
-// The new connection wraps the existing offset-based `runQuestions`
-// runner — questions is a UNION over `condition_group` and ungrouped
-// `condition`, so real keyset cursor pagination across both sides is
-// non-trivial and deferred to a follow-up. The cursor here is an opaque
-// handle around the offset, which preserves the Relay-shaped wire
-// format and lets clients migrate now; the perf-win-via-keyset comes
-// later without an SDL change.
+// `questionsConnection` uses the same SQL UNION as `questionsPage`, but
+// passes a decoded ordering tuple after the first page so pagination is
+// keyset-based rather than OFFSET-based.
 
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-
-const offsetFromCursor = (cursor: string | null | undefined): number => {
-  if (!cursor) return 0;
-  const payload = decodeCursor(cursor);
-  if (!payload) return 0;
-  const parsed = Number(payload.id);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-};
 
 /**
  * Map the public `QuestionOrderField` enum to the internal
@@ -803,11 +910,17 @@ const mapOrderField = (
   }
 };
 
+const rangeMin = (filter: ScalarRangeFilter | null | undefined) =>
+  filter?.gte ?? filter?.gt ?? filter?.equals ?? null;
+
+const rangeMax = (filter: ScalarRangeFilter | null | undefined) =>
+  filter?.lte ?? filter?.lt ?? filter?.equals ?? null;
+
 export const questionsConnection: NonNullable<
   QueryResolvers['questionsConnection']
 > = async (_parent, { first, after, filter, orderBy }) => {
   const take = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
-  const skip = offsetFromCursor(after);
+  const afterCursor = decodeQuestionCursor(after);
 
   const mapped = orderBy?.field
     ? mapOrderField(orderBy.field)
@@ -818,30 +931,37 @@ export const questionsConnection: NonNullable<
       : orderBy?.direction === OrderDirection.Desc
         ? SortOrder.Desc
         : null;
+  const operatorFilter = filter as typeof filter & {
+    resolvesAt?: ScalarRangeFilter | null;
+    estimatedPrice?: ScalarRangeFilter | null;
+    similarMarketVolume?: ScalarRangeFilter | null;
+  };
 
-  const { items, hasMore } = await runQuestions({
+  const { items, hasMore, pageItems } = await runQuestionsPageData({
     take,
-    skip,
+    skip: 0,
     search: filter?.search ?? null,
     categorySlugs: null,
     tag: filter?.tag ?? null,
     chainId: null,
     contractAddress: null,
     contractAddressIn: null,
-    minEndTime: null,
+    minEndTime: rangeMin(operatorFilter?.resolvesAt),
+    maxEndTime: rangeMax(operatorFilter?.resolvesAt),
     resolutionStatus: null,
-    minEstimatedPrice: null,
-    maxEstimatedPrice: null,
-    minSimilarMarketVolume: null,
-    maxSimilarMarketVolume: null,
+    minEstimatedPrice: rangeMin(operatorFilter?.estimatedPrice),
+    maxEstimatedPrice: rangeMax(operatorFilter?.estimatedPrice),
+    minSimilarMarketVolume: rangeMin(operatorFilter?.similarMarketVolume),
+    maxSimilarMarketVolume: rangeMax(operatorFilter?.similarMarketVolume),
     similarMarketVolumeWindow: mapped.volumeWindow,
     sortField: mapped.sortField,
     sortDirection,
+    afterCursor,
   });
 
   const edges = items.map((item, idx) => ({
     node: item,
-    cursor: encodeCursor({ k: '', id: String(skip + idx + 1) }),
+    cursor: encodeQuestionCursor(pageItems[idx]),
   }));
 
   return {
@@ -849,7 +969,7 @@ export const questionsConnection: NonNullable<
     nodes: items,
     pageInfo: {
       hasNextPage: hasMore,
-      hasPreviousPage: skip > 0,
+      hasPreviousPage: afterCursor != null,
       startCursor: edges[0]?.cursor ?? null,
       endCursor: edges[edges.length - 1]?.cursor ?? null,
     },
@@ -887,6 +1007,7 @@ export const questionsPage: NonNullable<
     categorySlugs: filters?.categorySlugs ?? null,
     tag: filters?.tag ?? null,
     minEndTime: filters?.minEndTime ?? null,
+    maxEndTime: null,
     resolutionStatus: filters?.resolutionStatus ?? null,
     minEstimatedPrice: filters?.minEstimatedPrice ?? null,
     maxEstimatedPrice: filters?.maxEstimatedPrice ?? null,
