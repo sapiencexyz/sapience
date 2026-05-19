@@ -28,6 +28,9 @@ const TIMESTAMP_FIELD_NAMES = new Set<string>([
 ]);
 
 const stabilizeValue = (key: string | undefined, value: unknown): unknown => {
+  if (typeof value === 'string' && /cursor$/i.test(key ?? '')) {
+    return '<CURSOR>';
+  }
   if (typeof value === 'string' && ISO_DATE_RE.test(value)) {
     return '<ISO_TIMESTAMP>';
   }

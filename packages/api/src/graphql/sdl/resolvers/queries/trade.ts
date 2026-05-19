@@ -120,8 +120,45 @@ export const runTrades = async ({
  * trade execution args.
  * `filters` wins on conflicts. The `address` vs `seller`/`buyer`
  * mutual-exclusion check happens downstream in `runTrades`. New
- * filter fields (`executedAtMin`/`Max`) live only on `TradeFilter`.
+ * filter field (`executedAt`) lives only on `TradeFilter`.
  */
+const intFilterToBounds = (
+  filter:
+    | {
+        equals?: number | null;
+        gt?: number | null;
+        gte?: number | null;
+        lt?: number | null;
+        lte?: number | null;
+        in?: unknown[] | null;
+        notIn?: unknown[] | null;
+        not?: unknown;
+      }
+    | null
+    | undefined,
+  label: string
+): { min: number | null; max: number | null } => {
+  if (!filter) return { min: null, max: null };
+  if (filter.in?.length || filter.notIn?.length || filter.not != null) {
+    throw new Error(`${label}: only equals/gt/gte/lt/lte are supported`);
+  }
+  if (filter.equals != null) return { min: filter.equals, max: filter.equals };
+  return {
+    min:
+      filter.gte != null
+        ? filter.gte
+        : filter.gt != null
+          ? filter.gt + 1
+          : null,
+    max:
+      filter.lte != null
+        ? filter.lte
+        : filter.lt != null
+          ? filter.lt - 1
+          : null,
+  };
+};
+
 const mergeTradeFilters = (args: QueryTradesConnectionArgs): RunTradesArgs => {
   const f = args.filter ?? null;
   return {
@@ -132,8 +169,10 @@ const mergeTradeFilters = (args: QueryTradesConnectionArgs): RunTradesArgs => {
     buyer: f?.buyer ?? null,
     token: f?.token ?? null,
     chainId: f?.chainId ?? null,
-    executedAtMin: f?.executedAtMin ?? null,
-    executedAtMax: f?.executedAtMax ?? null,
+    executedAtMin: intFilterToBounds(f?.executedAt, 'TradeFilter.executedAt')
+      .min,
+    executedAtMax: intFilterToBounds(f?.executedAt, 'TradeFilter.executedAt')
+      .max,
     orderBy:
       args.orderBy?.field === TradeOrderField.BlockNumber
         ? 'BLOCK_NUMBER'
