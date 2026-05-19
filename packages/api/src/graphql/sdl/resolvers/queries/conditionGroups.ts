@@ -150,8 +150,17 @@ const CONNECTION_ORDER_FIELD_MAP: Record<ConditionGroupOrderField, string> = {
 const buildConditionGroupsConnectionWhere = (
   filter: ConditionGroupFilter | null | undefined
 ): Where => {
-  // Always restrict to groups with at least one public condition.
+  // Per-condition predicates (`public: true`, optional `tags hasSome`)
+  // are folded into a SINGLE `condition: { some: { ... } }` clause so
+  // Prisma requires the *same* child row to satisfy every predicate.
+  // Splitting them across two `{ condition: { some } }` clauses would
+  // let a private tagged condition + a public untagged sibling combine
+  // to match — and the nested `Condition` field resolver would then
+  // strip the private row, leaving the group empty in the response.
   const someConstraints: Prisma.ConditionWhereInput = { public: true };
+  if (filter?.tags && filter.tags.length > 0) {
+    someConstraints.tags = { hasSome: filter.tags };
+  }
   const and: Where[] = [{ condition: { some: someConstraints } }];
 
   if (filter?.search?.trim()) {
@@ -166,11 +175,6 @@ const buildConditionGroupsConnectionWhere = (
     if (numericIds.length > 0) {
       and.push({ categoryId: { in: numericIds } });
     }
-  }
-  if (filter?.tags && filter.tags.length > 0) {
-    and.push({
-      condition: { some: { tags: { hasSome: filter.tags } } },
-    });
   }
   return { AND: and };
 };

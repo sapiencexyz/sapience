@@ -70,6 +70,9 @@ import {
   conditionGroupsPage,
 } from './queries/conditionGroups';
 import { questions, questionsPage } from './queries/questions';
+import { conditionsLegacy } from './queries/deprecated/conditionsLegacy';
+import { conditionGroupsLegacy } from './queries/deprecated/conditionGroupsLegacy';
+import { questionsLegacy } from './queries/deprecated/questionsLegacy';
 import {
   account,
   attestationsPage,
@@ -148,8 +151,10 @@ export const resolvers: Resolvers = {
     collateralTransfersPage,
     // Conditions / questions
     conditions,
+    conditionsLegacy,
     conditionsPage,
     questions,
+    questionsLegacy,
     questionsPage,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
@@ -180,6 +185,7 @@ export const resolvers: Resolvers = {
     condition,
     conditionGroup,
     conditionGroups,
+    conditionGroupsLegacy,
     conditionGroupsPage,
     user,
     users,

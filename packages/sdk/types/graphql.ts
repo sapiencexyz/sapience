@@ -2560,6 +2560,15 @@ export type Query = {
    */
   conditionGroups: ConditionGroupConnection;
   /**
+   * Deprecated bare-array form previously exposed as `conditionGroups(where:)`.
+   * Renamed to `conditionGroupsLegacy` so the canonical `conditionGroups`
+   * name can host the new Relay-shaped connection. Honors the doc's
+   * one-release deprecation window — clients on the old shape should
+   * migrate to the connection before this field is removed.
+   * @deprecated Use `conditionGroups(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
+   */
+  conditionGroupsLegacy: Array<ConditionGroup>;
+  /**
    * Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
    *
    * Sorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.
@@ -2570,11 +2579,19 @@ export type Query = {
   /**
    * Relay-shaped connection over `Condition` rows. Forward-only cursor
    * pagination via `first` / `after`. Replaces the deprecated bare
-   * `conditions(where:)` and the offset-paginated `conditionsPage`.
-   * Public conditions only — admin-style visibility switches live on the
-   * deprecated `conditionsPage` for the migration window.
+   * `conditions(where:)` (now `conditionsLegacy`) and the offset-paginated
+   * `conditionsPage`. Public conditions only — admin-style visibility
+   * switches live on the deprecated `conditionsPage` for the migration window.
    */
   conditions: ConditionConnection;
+  /**
+   * Deprecated bare-array form previously exposed as `conditions(where:)`.
+   * Renamed to `conditionsLegacy` so the canonical `conditions` name can
+   * host the new Relay-shaped connection. Honors the doc's one-release
+   * deprecation window.
+   * @deprecated Use `conditions(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
+   */
+  conditionsLegacy: Array<Condition>;
   /**
    * Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input.
    * @deprecated Use `conditions(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data. Admin-only filters (`visibility`, `engagement`) remain on this resolver during the migration window.
@@ -2698,6 +2715,14 @@ export type Query = {
    * a single COUNT cheaply.
    */
   questions: QuestionConnection;
+  /**
+   * Deprecated bare-array form previously exposed as `questions(...)` with
+   * flat filter args. Renamed to `questionsLegacy` so the canonical
+   * `questions` name can host the Relay-shaped connection. Honors the
+   * doc's one-release deprecation window.
+   * @deprecated Use `questions(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed.
+   */
+  questionsLegacy: Array<Question>;
   /**
    * Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
    *
@@ -2986,6 +3011,16 @@ export type QueryConditionGroupsArgs = {
 };
 
 
+export type QueryConditionGroupsLegacyArgs = {
+  cursor?: InputMaybe<ConditionGroupWhereUniqueInput>;
+  distinct?: InputMaybe<Array<ConditionGroupScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<ConditionGroupOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<ConditionGroupWhereInput>;
+};
+
+
 export type QueryConditionGroupsPageArgs = {
   filters?: InputMaybe<ConditionGroupFilters>;
   orderBy?: InputMaybe<ConditionGroupSortField>;
@@ -3000,6 +3035,16 @@ export type QueryConditionsArgs = {
   filter?: InputMaybe<ConditionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ConditionOrder>;
+};
+
+
+export type QueryConditionsLegacyArgs = {
+  cursor?: InputMaybe<ConditionWhereUniqueInput>;
+  distinct?: InputMaybe<Array<ConditionScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<ConditionOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<ConditionWhereInput>;
 };
 
 
@@ -3158,6 +3203,25 @@ export type QueryQuestionsArgs = {
 };
 
 
+export type QueryQuestionsLegacyArgs = {
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  maxSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
+  minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  minSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
+  resolutionStatus?: InputMaybe<ResolutionStatus>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
+  skip?: Scalars['Int']['input'];
+  sortDirection?: SortOrder;
+  sortField?: InputMaybe<QuestionSortField>;
+  tag?: InputMaybe<Scalars['String']['input']>;
+  take?: Scalars['Int']['input'];
+};
+
+
 export type QueryQuestionsPageArgs = {
   filters?: InputMaybe<QuestionFilters>;
   orderBy?: InputMaybe<QuestionSortField>;
@@ -3296,34 +3360,22 @@ export type QuestionEdge = {
 
 /**
  * Filter input for the Relay-shaped `questions` connection. Combines
- * with AND. The runner currently honors a subset of these fields; full
- * parity with the underlying union runner lands in a follow-up. Fields
- * not yet honored are documented per-field below.
+ * with AND. Intentionally minimal — `categoryIds`, multi-tag, and
+ * `outcome` filters require runner changes to the underlying SQL UNION
+ * and are deferred to a follow-up. They will land as additive,
+ * non-breaking SDL extensions. For outcome-based filtering today, use
+ * `conditions(filter: {outcome:})`.
  */
 export type QuestionFilter = {
-  /**
-   * Restrict to questions whose category id is in this set.
-   * **NOT YET HONORED** — the union runner expects category slugs, not
-   * ids; resolved together with multi-tag support in the follow-up that
-   * also lands `OPEN_INTEREST` sort.
-   */
-  categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
-  /**
-   * Filter by resolution state. **NOT YET HONORED** on `questions` — the
-   * union runner does not yet support outcome-based filtering across both
-   * Condition and ConditionGroup sides. Use `conditions(filter: {outcome:})`
-   * for now if you need to slice by outcome.
-   */
-  outcome?: InputMaybe<ConditionOutcomeFilter>;
-  /** Free-text search across the wrapped Condition/Group's title and description (case-insensitive). HONORED. */
+  /** Free-text search across the wrapped Condition/Group's title and description (case-insensitive). */
   search?: InputMaybe<Scalars['String']['input']>;
   /**
-   * Restrict to questions tagged with any of these values.
-   * **PARTIAL** — only the first element is currently applied to the
-   * union runner (`tag: String`). Full multi-tag semantics land in the
-   * same follow-up as `categoryIds`.
+   * Restrict to questions tagged with this value. Single-tag only at
+   * the SDL level — the underlying union runner accepts one tag at a
+   * time. Multi-tag (`[String!]`) will be added when the runner supports
+   * it (additive, non-breaking).
    */
-  tags?: InputMaybe<Array<Scalars['String']['input']>>;
+  tag?: InputMaybe<Scalars['String']['input']>;
 };
 
 /**

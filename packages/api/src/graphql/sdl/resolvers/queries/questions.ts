@@ -825,7 +825,7 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
     skip,
     search: filter?.search ?? null,
     categorySlugs: null,
-    tag: filter?.tags?.[0] ?? null,
+    tag: filter?.tag ?? null,
     chainId: null,
     contractAddress: null,
     contractAddressIn: null,

@@ -2038,37 +2038,23 @@ input ConditionGroupFilter {
 
 """
 Filter input for the Relay-shaped `questions` connection. Combines
-with AND. The runner currently honors a subset of these fields; full
-parity with the underlying union runner lands in a follow-up. Fields
-not yet honored are documented per-field below.
+with AND. Intentionally minimal — `categoryIds`, multi-tag, and
+`outcome` filters require runner changes to the underlying SQL UNION
+and are deferred to a follow-up. They will land as additive,
+non-breaking SDL extensions. For outcome-based filtering today, use
+`conditions(filter: {outcome:})`.
 """
 input QuestionFilter {
-  """Free-text search across the wrapped Condition/Group's title and description (case-insensitive). HONORED."""
+  """Free-text search across the wrapped Condition/Group's title and description (case-insensitive)."""
   search: String
 
   """
-  Restrict to questions whose category id is in this set.
-  **NOT YET HONORED** — the union runner expects category slugs, not
-  ids; resolved together with multi-tag support in the follow-up that
-  also lands `OPEN_INTEREST` sort.
+  Restrict to questions tagged with this value. Single-tag only at
+  the SDL level — the underlying union runner accepts one tag at a
+  time. Multi-tag (`[String!]`) will be added when the runner supports
+  it (additive, non-breaking).
   """
-  categoryIds: [ID!]
-
-  """
-  Restrict to questions tagged with any of these values.
-  **PARTIAL** — only the first element is currently applied to the
-  union runner (`tag: String`). Full multi-tag semantics land in the
-  same follow-up as `categoryIds`.
-  """
-  tags: [String!]
-
-  """
-  Filter by resolution state. **NOT YET HONORED** on `questions` — the
-  union runner does not yet support outcome-based filtering across both
-  Condition and ConditionGroup sides. Use `conditions(filter: {outcome:})`
-  for now if you need to slice by outcome.
-  """
-  outcome: ConditionOutcomeFilter
+  tag: String
 }
 
 """
@@ -3060,11 +3046,30 @@ type Query {
     )
 
   """
+  Deprecated bare-array form previously exposed as `conditionGroups(where:)`.
+  Renamed to `conditionGroupsLegacy` so the canonical `conditionGroups`
+  name can host the new Relay-shaped connection. Honors the doc's
+  one-release deprecation window — clients on the old shape should
+  migrate to the connection before this field is removed.
+  """
+  conditionGroupsLegacy(
+    cursor: ConditionGroupWhereUniqueInput
+    distinct: [ConditionGroupScalarFieldEnum!]
+    orderBy: [ConditionGroupOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: ConditionGroupWhereInput
+  ): [ConditionGroup!]!
+    @deprecated(
+      reason: "Use `conditionGroups(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data."
+    )
+
+  """
   Relay-shaped connection over `Condition` rows. Forward-only cursor
   pagination via `first` / `after`. Replaces the deprecated bare
-  `conditions(where:)` and the offset-paginated `conditionsPage`.
-  Public conditions only — admin-style visibility switches live on the
-  deprecated `conditionsPage` for the migration window.
+  `conditions(where:)` (now `conditionsLegacy`) and the offset-paginated
+  `conditionsPage`. Public conditions only — admin-style visibility
+  switches live on the deprecated `conditionsPage` for the migration window.
   """
   conditions(
     first: Int
@@ -3072,6 +3077,24 @@ type Query {
     filter: ConditionFilter
     orderBy: ConditionOrder
   ): ConditionConnection!
+
+  """
+  Deprecated bare-array form previously exposed as `conditions(where:)`.
+  Renamed to `conditionsLegacy` so the canonical `conditions` name can
+  host the new Relay-shaped connection. Honors the doc's one-release
+  deprecation window.
+  """
+  conditionsLegacy(
+    cursor: ConditionWhereUniqueInput
+    distinct: [ConditionScalarFieldEnum!]
+    orderBy: [ConditionOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: ConditionWhereInput
+  ): [Condition!]!
+    @deprecated(
+      reason: "Use `conditions(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data."
+    )
 
   """
   Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input.
@@ -3385,6 +3408,33 @@ type Query {
     filter: QuestionFilter
     orderBy: QuestionOrder
   ): QuestionConnection!
+
+  """
+  Deprecated bare-array form previously exposed as `questions(...)` with
+  flat filter args. Renamed to `questionsLegacy` so the canonical
+  `questions` name can host the Relay-shaped connection. Honors the
+  doc's one-release deprecation window.
+  """
+  questionsLegacy(
+    categorySlugs: [String!]
+    chainId: Int
+    maxEstimatedPrice: Float
+    maxSimilarMarketVolume: Float
+    minEndTime: Int
+    minEstimatedPrice: Float
+    minSimilarMarketVolume: Float
+    resolutionStatus: ResolutionStatus
+    search: String
+    similarMarketVolumeWindow: VolumeWindow
+    skip: Int! = 0
+    sortDirection: SortOrder! = desc
+    sortField: QuestionSortField
+    tag: String
+    take: Int! = 50
+  ): [Question!]!
+    @deprecated(
+      reason: "Use `questions(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed."
+    )
 
   """
   Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
