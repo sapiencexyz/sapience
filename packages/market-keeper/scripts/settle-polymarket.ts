@@ -239,7 +239,7 @@ query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
 
 // ============ API Functions ============
 
-async function fetchConditionsPage(
+async function fetchConditionsConnection(
   apiUrl: string,
   resolver: string,
   take: number,
@@ -306,7 +306,7 @@ async function fetchUnresolvedConditions(
   console.log(`Fetching unresolved conditions from ${apiUrl}...`);
 
   while (true) {
-    const page = await fetchConditionsPage(
+    const page = await fetchConditionsConnection(
       apiUrl,
       resolver,
       CONDITIONS_PAGE_SIZE,

@@ -87,7 +87,7 @@ function mapCondition(raw: RawCondition): CleanupCondition {
   };
 }
 
-async function fetchConditionsPage(
+async function fetchConditionsConnection(
   apiUrl: string,
   take: number,
   skip: number
@@ -133,7 +133,7 @@ export async function fetchNoEngagementConditions(
   console.log(`Fetching unresolved no-engagement conditions from ${apiUrl}...`);
 
   while (true) {
-    const { items, hasMore } = await fetchConditionsPage(
+    const { items, hasMore } = await fetchConditionsConnection(
       apiUrl,
       CONDITIONS_PAGE_SIZE,
       skip

@@ -1722,9 +1722,9 @@ input LeaderboardFilter {
 | `activityPage(filters, take, skip)`                                                               | `activity(...)`                                                                             |
 | `prediction(predictionId)`                                                                        | `predictionByOnchainId(predictionId)`                                                       |
 | `predictionsPage(filters, orderBy, orderDirection, take, skip)`                                   | `predictions(...)`                                                                          |
-| `questionsPage(filters, orderBy, orderDirection, take, skip)`                                     | `questions(...)`                                                                            |
-| `conditionsPage(filters, orderBy, orderDirection, take, skip)`                                    | `conditions(...)`                                                                           |
-| `conditionGroupsPage(filters, orderBy, orderDirection, take, skip)`                               | `conditionGroups(...)`                                                                      |
+| `questionsConnection(filter, orderBy, first, after)`                                              | `questions(...)`                                                                            |
+| `conditionsConnection(filter, orderBy, first, after)`                                             | `conditions(...)`                                                                           |
+| `conditionGroupsConnection(filter, orderBy, first, after)`                                        | `conditionGroups(...)`                                                                      |
 | `positionsPage(filters, orderBy, orderDirection, take, skip)`                                     | `positions(...)`                                                                            |
 | `pickConfigurationsPage(filters, orderBy, orderDirection, take, skip)`                            | `pickConfigurations(...)`                                                                   |
 | `trade(tradeHash)`                                                                                | `tradeByHash(hash)`                                                                         |

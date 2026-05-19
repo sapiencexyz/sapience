@@ -235,7 +235,7 @@ The `*Page` queries take filter args in one of two shapes:
 
 - **Flat top-level args** — for surfaces whose filter primitives are
   semantically distinct query knobs (e.g. `predictionsPage(address:, chainId:, conditionId:, settled:, …)`). Most pages use this.
-- **`filters: <X>Filters`** — for surfaces with an open-ended typed filter struct that's expected to evolve (e.g. `conditionsPage(filters: ConditionFilters, …)`, `conditionGroupsPage(filters: ConditionGroupFilters, …)`, `accountStatsLeaderboardPage(filters: AccountStatsFilters, …)`). The wrapper lets us add filter fields without churning the resolver signature.
+- **`filters: <X>Filters`** — for surfaces with an open-ended typed filter struct that's expected to evolve (e.g. `conditionsConnection(filter: ConditionFilter, …)`, `conditionGroupsConnection(filter: ConditionGroupFilter, …)`, `accountStatsLeaderboardPage(filters: AccountStatsFilters, …)`). The wrapper lets us add filter fields without churning the resolver signature.
 
 Don't mix the two on a single query. When in doubt, prefer the flat form for ≤3 filter scalars; introduce a `<X>Filters` input when the filter surface is likely to grow past that.
 

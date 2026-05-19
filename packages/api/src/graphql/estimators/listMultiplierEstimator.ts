@@ -25,7 +25,7 @@
  *    `items` as a normal list would double-count: `take * defaultListSize`
  *    rows instead of `take`. A paginated query with a fat selection set
  *    would price 10× higher than the equivalent deprecated bare-array
- *    (see PR — `questionsPage(take: 20)` was hitting ~83k, well past
+ *    (see PR — `questionsConnection(first: 20)` was hitting ~83k, well past
  *    the 15k cap). Returning `childComplexity` here lets the envelope's
  *    multiplier stand alone.
  */

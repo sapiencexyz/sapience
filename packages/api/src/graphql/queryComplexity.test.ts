@@ -351,7 +351,7 @@ describe('queryComplexity', () => {
         expect(pageCost - bareCost).toBeLessThanOrEqual(100);
       });
 
-      it('regression: `questionsPage` fat selection stays under the 15k cap', () => {
+      it('regression: `questionsConnection` fat selection stays under the 15k cap', () => {
         // The frontend's GET_QUESTIONS query hit 82,762 before the
         // double-count fix. Reconstruct a comparable fat selection on
         // the simplified test schema and verify the new pricing is
