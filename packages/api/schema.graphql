@@ -1500,6 +1500,13 @@ type PickConfigurationsPage implements Page {
 
 """Relay-shaped connection over `Condition` rows."""
 type ConditionConnection {
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
+  items: [Condition!]!
+
+  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  hasMore: Boolean!
   edges: [ConditionEdge!]!
   nodes: [Condition!]!
   pageInfo: PageInfo!
@@ -1513,6 +1520,13 @@ type ConditionEdge {
 
 """Relay-shaped connection over `ConditionGroup` rows."""
 type ConditionGroupConnection {
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
+  items: [ConditionGroup!]!
+
+  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  hasMore: Boolean!
   edges: [ConditionGroupEdge!]!
   nodes: [ConditionGroup!]!
   pageInfo: PageInfo!
@@ -1530,6 +1544,13 @@ intentionally omitted — the underlying SQL UNION over `condition_group`
 and ungrouped `condition` rows cannot produce a single COUNT cheaply.
 """
 type QuestionConnection {
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
+  items: [Question!]!
+
+  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  hasMore: Boolean!
   edges: [QuestionEdge!]!
   nodes: [Question!]!
   pageInfo: PageInfo!
@@ -1854,6 +1875,43 @@ admin paths need an explicit replacement surface if private-condition
 visibility is still required.
 """
 input ConditionFilter {
+  """Restrict to these condition IDs (case-insensitive)."""
+  ids: [ID!]
+
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.
+  """
+  chainId: Int
+
+  """
+  Match the on-chain contract address stored in the DB `resolver` column (case-insensitive).
+  """
+  contractAddress: String
+
+  """
+  Match any on-chain contract address stored in the DB `resolver` column (case-insensitive).
+  """
+  contractAddressIn: [String!]
+
+  """
+  Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups.
+  """
+  visibility: ConditionVisibility
+
+  """Restrict to settled (true) or unsettled (false) conditions."""
+  settled: Boolean
+
+  """
+  Restrict to conditions resolved YES (true) or NO (false). Implies settled=true.
+  """
+  resolvedToYes: Boolean
+
+  """Restrict to conditions that have a non-empty similarMarkets array."""
+  hasSimilarMarkets: Boolean
+
+  """Engagement status based on open interest or attestations."""
+  engagement: ConditionEngagement
+
   """
   Free-text search across `question`, `shortName`, and `description` (case-insensitive).
   """
@@ -1866,6 +1924,9 @@ input ConditionFilter {
 
   """Restrict to conditions whose category id is in this set."""
   categoryIds: [ID!]
+
+  """Restrict to conditions whose category slug is in this set."""
+  categorySlugs: [String!]
 
   """Restrict to conditions tagged with any of these values."""
   tags: [String!]
@@ -1893,11 +1954,26 @@ with AND. Returns only groups with at least one public condition; the
 admin-only finer-grained switches need an explicit replacement surface if still required.
 """
 input ConditionGroupFilter {
+  """Restrict to these condition group IDs."""
+  ids: [ID!]
+
+  """Restrict to groups that have at least one condition on this chain."""
+  chainId: Int
+
+  """When true, require at least one public condition on the group."""
+  publicOnly: Boolean
+
+  """When true, allow groups with no conditions. Defaults false."""
+  includeEmpty: Boolean
+
   """Free-text search across the group's `name` (case-insensitive)."""
   search: String
 
   """Restrict to groups whose category id is in this set."""
   categoryIds: [ID!]
+
+  """Restrict to groups whose category slug is in this set."""
+  categorySlugs: [String!]
 
   """Restrict to groups whose conditions carry any of these tags."""
   tags: [String!]
@@ -1905,13 +1981,44 @@ input ConditionGroupFilter {
 
 """
 Filter input for the Relay-shaped `questions` connection. Combines
-with AND. Intentionally minimal — `categoryIds`, multi-tag, and
-`outcome` filters require runner changes to the underlying SQL UNION
-and are deferred to a follow-up. They will land as additive,
-non-breaking SDL extensions. For outcome-based filtering today, use
-`conditions(filter: {outcome:})`.
+with AND. For outcome-based filtering today, use
+`conditions(filter: { outcome: ... })`.
 """
 input QuestionFilter {
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.
+  """
+  chainId: Int
+
+  """
+  Match the on-chain contract address that owns the underlying condition (case-insensitive).
+  """
+  contractAddress: String
+
+  """
+  Match any on-chain contract address that owns the underlying condition (case-insensitive).
+  """
+  contractAddressIn: [String!]
+
+  """Restrict to questions whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """Resolution-status filter; defaults to all when omitted."""
+  resolutionStatus: ResolutionStatus
+
+  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  estimatedPrice: FloatFilter
+
+  """
+  Filter by all-time or windowed similar-market volume, e.g. `{ gte: 10000 }`.
+  """
+  similarMarketVolume: FloatFilter
+
+  """
+  Window the similar-market-volume filter and sort look at. When omitted, the all-time column is used.
+  """
+  similarMarketVolumeWindow: VolumeWindow
+
   """
   Free-text search across the wrapped Condition/Group's title and description (case-insensitive).
   """
@@ -1927,12 +2034,6 @@ input QuestionFilter {
 
   """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
   resolvesAt: IntFilter
-
-  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
-  estimatedPrice: FloatFilter
-
-  """Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`."""
-  similarMarketVolume: FloatFilter
 }
 
 """
@@ -2708,7 +2809,7 @@ type Query {
   bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
   (default-off, add per-PR where cheap).
   """
-  conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder): ConditionGroupConnection!
+  conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): ConditionGroupConnection!
 
   """
   Deprecated bare-array form. Retained unchanged for the one-release
@@ -2722,7 +2823,7 @@ type Query {
   pagination via `first` / `after`. Replaces the deprecated bare
   `conditions(where:)`. Public conditions only.
   """
-  conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder): ConditionConnection!
+  conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): ConditionConnection!
 
   """Look up a single pick configuration by ID"""
   pickConfiguration(id: String!): PickConfiguration @deprecated(reason: "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsPage` for list lookups.")
@@ -2838,7 +2939,7 @@ type Query {
   `QuestionConnection` because the underlying SQL UNION cannot produce
   a single COUNT cheaply.
   """
-  questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder): QuestionConnection!
+  questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): QuestionConnection!
 
   """
   Look up a single secondary market trade by its trade hash. Pass

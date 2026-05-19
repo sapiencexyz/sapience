@@ -149,7 +149,7 @@ describe('questionsConnection — operator filters and keyset cursors', () => {
     await questionsConnectionFn(
       {},
       {
-        first: 10,
+        take: 10,
         filter: {
           resolvesAt: { gte: 1000, lte: 2000 },
           estimatedPrice: { gte: 0.2, lte: 0.8 },
@@ -185,7 +185,7 @@ describe('questionsConnection — operator filters and keyset cursors', () => {
       { id: 'c-1', createdAt: new Date('2026-01-01T00:00:00Z') },
     ]);
 
-    const result = await questionsConnectionFn({}, { first: 10 }, {}, {});
+    const result = await questionsConnectionFn({}, { take: 10 }, {}, {});
     const { decodeCursor } = await import('../../../relay/cursor');
     const payload = decodeCursor(result.edges[0].cursor);
     expect(payload?.k).toBe('123');
@@ -204,7 +204,7 @@ describe('questionsConnection — operator filters and keyset cursors', () => {
     await questionsConnectionFn(
       {},
       {
-        first: 10,
+        take: 10,
         after: encodeCursor({
           k: '123',
           id: JSON.stringify({

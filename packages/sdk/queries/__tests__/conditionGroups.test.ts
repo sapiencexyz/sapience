@@ -9,7 +9,10 @@ vi.mock('../client/graphqlClient', () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   mockGraphqlRequest.mockResolvedValue({
-    conditionGroupsPage: { items: [], hasMore: false },
+    conditionGroupsConnection: {
+      nodes: [],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
   });
 });
 
@@ -18,14 +21,14 @@ describe('fetchConditionGroups', () => {
     await fetchConditionGroups();
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].take).toBe(100);
-    expect(call[1].skip).toBe(0);
+    expect(call[1].after).toBeNull();
   });
 
   test('passes custom take and skip', async () => {
     await fetchConditionGroups({ take: 10, skip: 5 });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].take).toBe(10);
-    expect(call[1].skip).toBe(5);
+    expect(call[1].take).toBe(15);
+    expect(call[1].after).toBeNull();
   });
 
   test('returns groups from response unchanged (server filters server-side)', async () => {
@@ -37,7 +40,10 @@ describe('fetchConditionGroups', () => {
       },
     ];
     mockGraphqlRequest.mockResolvedValue({
-      conditionGroupsPage: { items: groups, hasMore: false },
+      conditionGroupsConnection: {
+        nodes: groups,
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
     });
 
     const result = await fetchConditionGroups();
@@ -46,7 +52,10 @@ describe('fetchConditionGroups', () => {
 
   test('returns empty array when response items is null', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      conditionGroupsPage: { items: null, hasMore: false },
+      conditionGroupsConnection: {
+        nodes: null,
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
     });
     const result = await fetchConditionGroups();
     expect(result).toEqual([]);
@@ -54,11 +63,11 @@ describe('fetchConditionGroups', () => {
 
   // --- server-side filters (passed via `filters` arg) ----------------------
 
-  describe('filters (server-side)', () => {
-    test('no filters passes a `filters` payload with empty/undefined fields plus includeEmpty=false', async () => {
+  describe('filter (server-side)', () => {
+    test('no filters passes a `filter` payload with empty/undefined fields plus includeEmpty=false', async () => {
       await fetchConditionGroups();
       const call = mockGraphqlRequest.mock.calls[0];
-      expect(call[1].filters).toEqual({
+      expect(call[1].filter).toEqual({
         search: undefined,
         categorySlugs: undefined,
         chainId: undefined,
@@ -70,13 +79,13 @@ describe('fetchConditionGroups', () => {
     test('chainId is forwarded into the top-level filter', async () => {
       await fetchConditionGroups({ chainId: 5064014 });
       const call = mockGraphqlRequest.mock.calls[0];
-      expect(call[1].filters.chainId).toBe(5064014);
+      expect(call[1].filter.chainId).toBe(5064014);
     });
 
     test('publicOnly is forwarded as a boolean (true)', async () => {
       await fetchConditionGroups({ filters: { publicOnly: true } });
       const call = mockGraphqlRequest.mock.calls[0];
-      expect(call[1].filters.publicOnly).toBe(true);
+      expect(call[1].filter.publicOnly).toBe(true);
     });
 
     test('search and categorySlugs are forwarded server-side', async () => {
@@ -84,14 +93,14 @@ describe('fetchConditionGroups', () => {
         filters: { search: 'election', categorySlugs: ['crypto'] },
       });
       const call = mockGraphqlRequest.mock.calls[0];
-      expect(call[1].filters.search).toBe('election');
-      expect(call[1].filters.categorySlugs).toEqual(['crypto']);
+      expect(call[1].filter.search).toBe('election');
+      expect(call[1].filter.categorySlugs).toEqual(['crypto']);
     });
 
     test('includeEmptyGroups flips includeEmpty', async () => {
       await fetchConditionGroups({ includeEmptyGroups: true });
       const call = mockGraphqlRequest.mock.calls[0];
-      expect(call[1].filters.includeEmpty).toBe(true);
+      expect(call[1].filter.includeEmpty).toBe(true);
     });
   });
 
@@ -118,9 +127,9 @@ describe('fetchConditionGroups', () => {
   describe('no client-side post-filter', () => {
     test('returns whatever the server returned even if a name does not match search', async () => {
       mockGraphqlRequest.mockResolvedValue({
-        conditionGroupsPage: {
-          items: [{ id: 99, name: 'unrelated', conditions: [{ id: 'c1' }] }],
-          hasMore: false,
+        conditionGroupsConnection: {
+          nodes: [{ id: 99, name: 'unrelated', conditions: [{ id: 'c1' }] }],
+          pageInfo: { hasNextPage: false, endCursor: null },
         },
       });
       const result = await fetchConditionGroups({
@@ -132,8 +141,8 @@ describe('fetchConditionGroups', () => {
 
     test('returns whatever the server returned even if a category slug does not match', async () => {
       mockGraphqlRequest.mockResolvedValue({
-        conditionGroupsPage: {
-          items: [
+        conditionGroupsConnection: {
+          nodes: [
             {
               id: 99,
               name: 'A',
@@ -141,7 +150,7 @@ describe('fetchConditionGroups', () => {
               conditions: [{ id: 'c1' }],
             },
           ],
-          hasMore: false,
+          pageInfo: { hasNextPage: false, endCursor: null },
         },
       });
       const result = await fetchConditionGroups({

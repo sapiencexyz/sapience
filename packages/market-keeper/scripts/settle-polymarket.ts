@@ -125,7 +125,7 @@ interface GraphQLResponse<T> {
 }
 
 interface ConditionsQueryResponse {
-  conditionsPage: {
+  conditionsConnection: {
     items: SapienceCondition[];
     hasMore: boolean;
   };
@@ -215,8 +215,8 @@ const CONDITIONS_PAGE_SIZE = 30;
 
 const UNRESOLVED_CONDITIONS_QUERY = `
 query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
-  conditionsPage(
-    filters: {
+  conditionsConnection(
+    filter: {
       settled: false
       resolver: $resolver
       # Pick up both public and private — the deprecated resolver's
@@ -225,9 +225,8 @@ query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
       visibility: ALL
       engagement: ANY
     }
-    orderBy: END_TIME
-    orderDirection: asc
-    take: $take
+    orderBy: { field: RESOLVES_AT, direction: ASC }
+    first: $take
     skip: $skip
   ) {
     items {
@@ -294,7 +293,7 @@ async function fetchConditionsPage(
     );
   }
 
-  return result.data?.conditionsPage ?? { items: [], hasMore: false };
+  return result.data?.conditionsConnection ?? { items: [], hasMore: false };
 }
 
 async function fetchUnresolvedConditions(

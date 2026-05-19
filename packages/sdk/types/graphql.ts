@@ -812,6 +812,10 @@ export type ConditionPredictionsArgs = {
 export type ConditionConnection = {
   __typename?: 'ConditionConnection';
   edges: Array<ConditionEdge>;
+  /** Deprecated convenience alias for `pageInfo.hasNextPage`. */
+  hasMore: Scalars['Boolean']['output'];
+  /** Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape. */
+  items: Array<Condition>;
   nodes: Array<Condition>;
   pageInfo: PageInfo;
 };
@@ -859,24 +863,44 @@ export type ConditionEngagement =
 export type ConditionFilter = {
   /** Restrict to conditions whose category id is in this set. */
   categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
+  /** Restrict to conditions whose category slug is in this set. */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions. */
   conditionGroupId?: InputMaybe<IdFilter>;
+  /** Match the on-chain contract address stored in the DB `resolver` column (case-insensitive). */
+  contractAddress?: InputMaybe<Scalars['String']['input']>;
+  /** Match any on-chain contract address stored in the DB `resolver` column (case-insensitive). */
+  contractAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Engagement status based on open interest or attestations. */
+  engagement?: InputMaybe<ConditionEngagement>;
   /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
   estimatedPrice?: InputMaybe<FloatFilter>;
+  /** Restrict to conditions that have a non-empty similarMarkets array. */
+  hasSimilarMarkets?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to these condition IDs (case-insensitive). */
+  ids?: InputMaybe<Array<Scalars['ID']['input']>>;
   /**
    * Filter by resolution state. `{ isNull: true }` selects unsettled
    * conditions; `{ isNull: false }` selects settled (any outcome);
    * `{ equals: NON_DECISIVE }` selects voided settlements specifically.
    */
   outcome?: InputMaybe<ConditionOutcomeFilter>;
+  /** Restrict to conditions resolved YES (true) or NO (false). Implies settled=true. */
+  resolvedToYes?: InputMaybe<Scalars['Boolean']['input']>;
   /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
   resolvesAt?: InputMaybe<IntFilter>;
   /** Free-text search across `question`, `shortName`, and `description` (case-insensitive). */
   search?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to settled (true) or unsettled (false) conditions. */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
   /** Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`. */
   similarMarketVolume?: InputMaybe<FloatFilter>;
   /** Restrict to conditions tagged with any of these values. */
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups. */
+  visibility?: InputMaybe<ConditionVisibility>;
 };
 
 /** Legacy flat filter input for removed offset-page condition access. */
@@ -966,6 +990,10 @@ export type ConditionGroupConditionsArgs = {
 export type ConditionGroupConnection = {
   __typename?: 'ConditionGroupConnection';
   edges: Array<ConditionGroupEdge>;
+  /** Deprecated convenience alias for `pageInfo.hasNextPage`. */
+  hasMore: Scalars['Boolean']['output'];
+  /** Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape. */
+  items: Array<ConditionGroup>;
   nodes: Array<ConditionGroup>;
   pageInfo: PageInfo;
 };
@@ -995,6 +1023,16 @@ export type ConditionGroupEdge = {
 export type ConditionGroupFilter = {
   /** Restrict to groups whose category id is in this set. */
   categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
+  /** Restrict to groups whose category slug is in this set. */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to groups that have at least one condition on this chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to these condition group IDs. */
+  ids?: InputMaybe<Array<Scalars['ID']['input']>>;
+  /** When true, allow groups with no conditions. Defaults false. */
+  includeEmpty?: InputMaybe<Scalars['Boolean']['input']>;
+  /** When true, require at least one public condition on the group. */
+  publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
   /** Free-text search across the group's `name` (case-insensitive). */
   search?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to groups whose conditions carry any of these tags. */
@@ -2970,6 +3008,8 @@ export type QueryConditionGroupsConnectionArgs = {
   filter?: InputMaybe<ConditionGroupFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ConditionGroupOrder>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2988,6 +3028,8 @@ export type QueryConditionsConnectionArgs = {
   filter?: InputMaybe<ConditionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ConditionOrder>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3153,6 +3195,8 @@ export type QueryQuestionsConnectionArgs = {
   filter?: InputMaybe<QuestionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<QuestionOrder>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3270,6 +3314,10 @@ export type Question = {
 export type QuestionConnection = {
   __typename?: 'QuestionConnection';
   edges: Array<QuestionEdge>;
+  /** Deprecated convenience alias for `pageInfo.hasNextPage`. */
+  hasMore: Scalars['Boolean']['output'];
+  /** Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape. */
+  items: Array<Question>;
   nodes: Array<Question>;
   pageInfo: PageInfo;
 };
@@ -3283,21 +3331,30 @@ export type QuestionEdge = {
 
 /**
  * Filter input for the Relay-shaped `questions` connection. Combines
- * with AND. Intentionally minimal — `categoryIds`, multi-tag, and
- * `outcome` filters require runner changes to the underlying SQL UNION
- * and are deferred to a follow-up. They will land as additive,
- * non-breaking SDL extensions. For outcome-based filtering today, use
- * `conditions(filter: {outcome:})`.
+ * with AND. For outcome-based filtering today, use
+ * `conditions(filter: { outcome: ... })`.
  */
 export type QuestionFilter = {
+  /** Restrict to questions whose category slug is in this set. */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Match the on-chain contract address that owns the underlying condition (case-insensitive). */
+  contractAddress?: InputMaybe<Scalars['String']['input']>;
+  /** Match any on-chain contract address that owns the underlying condition (case-insensitive). */
+  contractAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
   estimatedPrice?: InputMaybe<FloatFilter>;
+  /** Resolution-status filter; defaults to all when omitted. */
+  resolutionStatus?: InputMaybe<ResolutionStatus>;
   /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
   resolvesAt?: InputMaybe<IntFilter>;
   /** Free-text search across the wrapped Condition/Group's title and description (case-insensitive). */
   search?: InputMaybe<Scalars['String']['input']>;
-  /** Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`. */
+  /** Filter by all-time or windowed similar-market volume, e.g. `{ gte: 10000 }`. */
   similarMarketVolume?: InputMaybe<FloatFilter>;
+  /** Window the similar-market-volume filter and sort look at. When omitted, the all-time column is used. */
+  similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
   /**
    * Restrict to questions tagged with this value. Single-tag only at
    * the SDL level — the underlying union runner accepts one tag at a

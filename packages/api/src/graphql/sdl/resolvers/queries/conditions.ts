@@ -16,6 +16,8 @@
  * this matches the deployed ConditionResolver behaviour.
  */
 
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+
 import type { Prisma } from '../../../../../generated/prisma';
 import type {
   QueryResolvers,
@@ -147,8 +149,35 @@ const buildOutcomeFilterClause = (
 const buildConditionsConnectionWhere = (
   filter: ConditionFilter | null | undefined
 ): Where => {
-  const and: Where[] = [{ public: { equals: true } }];
-  if (!filter) return { AND: and };
+  const and: Where[] = [];
+  if (!filter) return { AND: [{ public: { equals: true } }] };
+
+  if (filter.ids && filter.ids.length > 0) {
+    and.push({ id: { in: filter.ids.map((id) => String(id).toLowerCase()) } });
+  }
+
+  const contractAddress = filter.contractAddress?.toLowerCase() ?? null;
+  const contractAddressIn =
+    filter.contractAddressIn && filter.contractAddressIn.length > 0
+      ? filter.contractAddressIn.map((address) => address.toLowerCase())
+      : null;
+  const hasContractAddressFilter =
+    contractAddress != null || contractAddressIn != null;
+  const effectiveChainId =
+    filter.chainId != null
+      ? filter.chainId
+      : hasContractAddressFilter
+        ? DEFAULT_CHAIN_ID
+        : null;
+  if (effectiveChainId != null) {
+    and.push({ chainId: { equals: effectiveChainId } });
+  }
+  if (contractAddress) {
+    and.push({ resolver: { equals: contractAddress } });
+  }
+  if (contractAddressIn) {
+    and.push({ resolver: { in: contractAddressIn } });
+  }
 
   if (filter.search?.trim()) {
     const term = filter.search.trim();
@@ -167,6 +196,9 @@ const buildConditionsConnectionWhere = (
     if (numericIds.length > 0) {
       and.push({ categoryId: { in: numericIds } });
     }
+  }
+  if (filter.categorySlugs && filter.categorySlugs.length > 0) {
+    and.push({ category: { is: { slug: { in: filter.categorySlugs } } } });
   }
   if (filter.tags && filter.tags.length > 0) {
     and.push({ tags: { hasSome: filter.tags } });
@@ -196,10 +228,38 @@ const buildConditionsConnectionWhere = (
     'similarMarketVolume'
   );
   if (similarMarketVolumeClause) and.push(similarMarketVolumeClause);
+  if (filter.settled !== null && filter.settled !== undefined) {
+    and.push({ settled: filter.settled });
+  }
+  if (filter.resolvedToYes !== null && filter.resolvedToYes !== undefined) {
+    and.push({ settled: true, resolvedToYes: filter.resolvedToYes });
+  }
+  if (filter.hasSimilarMarkets === true) {
+    and.push({ similarMarkets: { isEmpty: false } });
+  }
+  if (filter.engagement === 'NONE') {
+    and.push({ openInterest: { equals: '0' } });
+    and.push({ attestations: { none: {} } });
+  } else if (filter.engagement === 'ANY') {
+    and.push({
+      OR: [
+        { openInterest: { not: { equals: '0' } } },
+        { attestations: { some: {} } },
+      ],
+    });
+  }
+
   const outcomeClause = buildOutcomeFilterClause(filter.outcome);
   if (outcomeClause) and.push(outcomeClause);
 
-  return { AND: and };
+  const visibility = filter.visibility ?? 'PUBLIC';
+  const hasIdFilter = filter.ids != null && filter.ids.length > 0;
+  if (!hasIdFilter) {
+    if (visibility === 'PUBLIC') and.push({ public: { equals: true } });
+    else if (visibility === 'PRIVATE') and.push({ public: { equals: false } });
+  }
+
+  return and.length > 0 ? { AND: and } : {};
 };
 
 /**
@@ -272,9 +332,12 @@ export const conditionsConnection: NonNullable<
   QueryResolvers['conditionsConnection']
 > = async (
   _parent,
-  { first, after, filter, orderBy }: QueryConditionsConnectionArgs
+  { first, after, filter, orderBy, take, skip }: QueryConditionsConnectionArgs
 ) => {
-  const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const cappedFirst = clampTake(first ?? take ?? 50, {
+    defaultTake: 50,
+    maxTake: 100,
+  });
   const orderField: ConditionOrderField =
     orderBy?.field ?? ConditionOrderField.CreatedAt;
   const direction: OrderDirection = orderBy?.direction ?? OrderDirection.Desc;
@@ -304,6 +367,7 @@ export const conditionsConnection: NonNullable<
       { id: prismaDir },
     ],
     take: cappedFirst + 1,
+    ...(after ? {} : { skip: skip ?? 0 }),
   });
 
   const hasNextPage = rawRows.length > cappedFirst;
@@ -315,6 +379,8 @@ export const conditionsConnection: NonNullable<
   }));
 
   return {
+    items: pageRows,
+    hasMore: hasNextPage,
     edges,
     nodes: pageRows,
     pageInfo: {

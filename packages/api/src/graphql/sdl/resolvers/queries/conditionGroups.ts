@@ -44,18 +44,14 @@ const CONNECTION_ORDER_FIELD_MAP: Record<ConditionGroupOrderField, string> = {
 const buildConditionGroupsConnectionWhere = (
   filter: ConditionGroupFilter | null | undefined
 ): Where => {
-  // Per-condition predicates (`public: true`, optional `tags hasSome`)
-  // are folded into a SINGLE `condition: { some: { ... } }` clause so
-  // Prisma requires the *same* child row to satisfy every predicate.
-  // Splitting them across two `{ condition: { some } }` clauses would
-  // let a private tagged condition + a public untagged sibling combine
-  // to match — and the nested `Condition` field resolver would then
-  // strip the private row, leaving the group empty in the response.
-  const someConstraints: Prisma.ConditionWhereInput = { public: true };
-  if (filter?.tags && filter.tags.length > 0) {
-    someConstraints.tags = { hasSome: filter.tags };
+  const and: Where[] = [];
+
+  if (filter?.ids && filter.ids.length > 0) {
+    const numericIds = filter.ids
+      .map((id) => Number(id))
+      .filter((n) => Number.isFinite(n));
+    if (numericIds.length > 0) and.push({ id: { in: numericIds } });
   }
-  const and: Where[] = [{ condition: { some: someConstraints } }];
 
   if (filter?.search?.trim()) {
     and.push({
@@ -70,7 +66,25 @@ const buildConditionGroupsConnectionWhere = (
       and.push({ categoryId: { in: numericIds } });
     }
   }
-  return { AND: and };
+  if (filter?.categorySlugs && filter.categorySlugs.length > 0) {
+    and.push({ category: { is: { slug: { in: filter.categorySlugs } } } });
+  }
+
+  // Per-condition predicates are folded into a SINGLE `condition: { some }`
+  // clause so the same child row must satisfy chain/public/tag constraints.
+  const someConstraints: Prisma.ConditionWhereInput = {};
+  if (filter?.chainId != null) someConstraints.chainId = filter.chainId;
+  if (filter?.publicOnly !== false) someConstraints.public = true;
+  if (filter?.tags && filter.tags.length > 0) {
+    someConstraints.tags = { hasSome: filter.tags };
+  }
+
+  const includeEmpty = filter?.includeEmpty === true;
+  if (!includeEmpty || Object.keys(someConstraints).length > 0) {
+    and.push({ condition: { some: someConstraints } });
+  }
+
+  return and.length > 0 ? { AND: and } : {};
 };
 
 type PrismaConditionGroupPick = {
@@ -130,9 +144,19 @@ export const conditionGroupsConnection: NonNullable<
   QueryResolvers['conditionGroupsConnection']
 > = async (
   _parent,
-  { first, after, filter, orderBy }: QueryConditionGroupsConnectionArgs
+  {
+    first,
+    after,
+    filter,
+    orderBy,
+    take,
+    skip,
+  }: QueryConditionGroupsConnectionArgs
 ) => {
-  const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const cappedFirst = clampTake(first ?? take ?? 50, {
+    defaultTake: 50,
+    maxTake: 100,
+  });
   const orderField: ConditionGroupOrderField =
     orderBy?.field ?? ConditionGroupOrderField.CreatedAt;
   const direction: OrderDirection = orderBy?.direction ?? OrderDirection.Desc;
@@ -162,6 +186,7 @@ export const conditionGroupsConnection: NonNullable<
       { id: prismaDir },
     ],
     take: cappedFirst + 1,
+    ...(after ? {} : { skip: skip ?? 0 }),
   });
 
   const hasNextPage = rawRows.length > cappedFirst;
@@ -176,6 +201,8 @@ export const conditionGroupsConnection: NonNullable<
   }));
 
   return {
+    items: pageRows,
+    hasMore: hasNextPage,
     edges,
     nodes: pageRows,
     pageInfo: {

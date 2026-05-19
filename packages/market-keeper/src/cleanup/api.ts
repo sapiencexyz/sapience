@@ -24,15 +24,14 @@ const CONDITIONS_PAGE_SIZE = 30;
 // Fetch unsettled conditions with no engagement (OI=0 and no attestations) — cleanup candidates
 const UNRESOLVED_NO_ENGAGEMENT_QUERY = `
 query UnresolvedNoEngagement($take: Int!, $skip: Int!) {
-  conditionsPage(
-    filters: {
+  conditionsConnection(
+    filter: {
       settled: false
       visibility: PUBLIC
       engagement: NONE
     }
-    orderBy: END_TIME
-    orderDirection: asc
-    take: $take
+    orderBy: { field: RESOLVES_AT, direction: ASC }
+    first: $take
     skip: $skip
   ) {
     hasMore
@@ -47,18 +46,18 @@ query UnresolvedNoEngagement($take: Int!, $skip: Int!) {
 `;
 
 // Re-check query: fetch IDs that gained engagement during safeguard wait.
-// `conditionsPage` exposes an `engagement: ANY` filter that internally
+// `conditionsConnection` exposes an `engagement: ANY` filter that internally
 // performs the OR(openInterest != 0, attestations.some) check; restricting
 // to the provided id set keeps the response small.
 const CONDITIONS_WITH_ENGAGEMENT_QUERY = `
 query ConditionsWithEngagement($ids: [String!]!) {
-  conditionsPage(
-    filters: {
+  conditionsConnection(
+    filter: {
       ids: $ids
       engagement: ANY
       visibility: ALL
     }
-    take: 100
+    first: 100
   ) {
     items {
       id
@@ -110,7 +109,7 @@ async function fetchConditionsPage(
   }
 
   const result = (await response.json()) as GraphQLResponse<{
-    conditionsPage: { items: RawCondition[]; hasMore?: boolean };
+    conditionsConnection: { nodes: RawCondition[]; hasMore?: boolean };
   }>;
   if (result.errors?.length) {
     throw new Error(
@@ -118,9 +117,9 @@ async function fetchConditionsPage(
     );
   }
 
-  const page = result.data?.conditionsPage;
+  const page = result.data?.conditionsConnection;
   return {
-    items: (page?.items ?? []).map(mapCondition),
+    items: (page?.nodes ?? []).map(mapCondition),
     hasMore: Boolean(page?.hasMore),
   };
 }
@@ -184,7 +183,7 @@ export async function fetchConditionsWithEngagement(
     }
 
     const result = (await response.json()) as GraphQLResponse<{
-      conditionsPage: { items: { id: string }[] };
+      conditionsConnection: { nodes: { id: string }[] };
     }>;
     if (result.errors?.length) {
       throw new Error(
@@ -193,7 +192,7 @@ export async function fetchConditionsWithEngagement(
     }
 
     allEngaged.push(
-      ...(result.data?.conditionsPage?.items ?? []).map((c) => c.id)
+      ...(result.data?.conditionsConnection?.nodes ?? []).map((c) => c.id)
     );
   }
 

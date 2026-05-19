@@ -918,8 +918,11 @@ const rangeMax = (filter: ScalarRangeFilter | null | undefined) =>
 
 export const questionsConnection: NonNullable<
   QueryResolvers['questionsConnection']
-> = async (_parent, { first, after, filter, orderBy }) => {
-  const take = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+> = async (_parent, { first, after, filter, orderBy, take, skip }) => {
+  const cappedFirst = clampTake(first ?? take ?? 50, {
+    defaultTake: 50,
+    maxTake: 100,
+  });
   const afterCursor = decodeQuestionCursor(after);
 
   const mapped = orderBy?.field
@@ -938,22 +941,23 @@ export const questionsConnection: NonNullable<
   };
 
   const { items, hasMore, pageItems } = await runQuestionsData({
-    take,
-    skip: 0,
+    take: cappedFirst,
+    skip: after ? 0 : (skip ?? 0),
     search: filter?.search ?? null,
-    categorySlugs: null,
+    categorySlugs: filter?.categorySlugs ?? null,
     tag: filter?.tag ?? null,
-    chainId: null,
-    contractAddress: null,
-    contractAddressIn: null,
+    chainId: filter?.chainId ?? null,
+    contractAddress: filter?.contractAddress ?? null,
+    contractAddressIn: filter?.contractAddressIn ?? null,
     minEndTime: rangeMin(operatorFilter?.resolvesAt),
     maxEndTime: rangeMax(operatorFilter?.resolvesAt),
-    resolutionStatus: null,
+    resolutionStatus: filter?.resolutionStatus ?? null,
     minEstimatedPrice: rangeMin(operatorFilter?.estimatedPrice),
     maxEstimatedPrice: rangeMax(operatorFilter?.estimatedPrice),
     minSimilarMarketVolume: rangeMin(operatorFilter?.similarMarketVolume),
     maxSimilarMarketVolume: rangeMax(operatorFilter?.similarMarketVolume),
-    similarMarketVolumeWindow: mapped.volumeWindow,
+    similarMarketVolumeWindow:
+      filter?.similarMarketVolumeWindow ?? mapped.volumeWindow,
     sortField: mapped.sortField,
     sortDirection,
     afterCursor,
@@ -965,6 +969,8 @@ export const questionsConnection: NonNullable<
   }));
 
   return {
+    items,
+    hasMore,
     edges,
     nodes: items,
     pageInfo: {

@@ -102,15 +102,15 @@ describe('buildConditionsFilters', () => {
   });
 
   describe('time filters', () => {
-    test('endTimeGte maps to minEndTime', () => {
+    test('endTimeGte maps to resolvesAt.gte', () => {
       expect(buildConditionsFilters(undefined, { endTimeGte: 1000 })).toEqual({
-        minEndTime: 1000,
+        resolvesAt: { gte: 1000 },
       });
     });
 
-    test('endTimeLte maps to maxEndTime', () => {
+    test('endTimeLte maps to resolvesAt.lte', () => {
       expect(buildConditionsFilters(undefined, { endTimeLte: 2000 })).toEqual({
-        maxEndTime: 2000,
+        resolvesAt: { lte: 2000 },
       });
     });
 
@@ -120,13 +120,13 @@ describe('buildConditionsFilters', () => {
           endTimeGte: 1000,
           endTimeLte: 2000,
         })
-      ).toEqual({ minEndTime: 1000, maxEndTime: 2000 });
+      ).toEqual({ resolvesAt: { gte: 1000, lte: 2000 } });
     });
   });
 
-  test('ungroupedOnly maps to flat field', () => {
+  test('ungroupedOnly maps to conditionGroupId null filter', () => {
     expect(buildConditionsFilters(undefined, { ungroupedOnly: true })).toEqual({
-      ungroupedOnly: true,
+      conditionGroupId: { isNull: true },
     });
   });
 
@@ -171,8 +171,8 @@ describe('buildConditionsFilters', () => {
       visibility: 'PUBLIC',
       search: 'bitcoin',
       categorySlugs: ['crypto'],
-      minEndTime: 1000,
-      ungroupedOnly: true,
+      resolvesAt: { gte: 1000 },
+      conditionGroupId: { isNull: true },
     });
   });
 });
@@ -183,50 +183,60 @@ describe('buildConditionsFilters', () => {
 
 describe('fetchConditions', () => {
   test('uses default take=50 and skip=0', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditionsPage: { items: [] } });
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: [] },
+    });
     await fetchConditions();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ take: 50, skip: 0 })
+      expect.objectContaining({ take: 50, after: null })
     );
   });
 
   test('passes custom take and skip', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditionsPage: { items: [] } });
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: [] },
+    });
     await fetchConditions({ take: 10, skip: 5 });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ take: 10, skip: 5 })
+      expect.objectContaining({ take: 15, after: null })
     );
   });
 
-  test('unwraps items from conditionsPage', async () => {
+  test('unwraps items from conditionsConnection', async () => {
     const items = [{ id: '1', question: 'test' }];
-    mockGraphqlRequest.mockResolvedValue({ conditionsPage: { items } });
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: items },
+    });
     const result = await fetchConditions();
     expect(result).toEqual(items);
   });
 
-  test('returns empty array when conditionsPage is null', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditionsPage: null });
+  test('returns empty array when conditionsConnection is null', async () => {
+    mockGraphqlRequest.mockResolvedValue({ conditionsConnection: null });
     const result = await fetchConditions();
     expect(result).toEqual([]);
   });
 
   test('omits filters when none provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditionsPage: { items: [] } });
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: [] },
+    });
     await fetchConditions();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ filters: undefined })
+      expect.objectContaining({ filter: undefined })
     );
   });
 
   test('includes filters when filters provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditionsPage: { items: [] } });
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: [] },
+    });
     await fetchConditions({ chainId: 5064014 });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters).toEqual({ chainId: 5064014 });
+    expect(call[1].filter).toEqual({ chainId: 5064014 });
   });
 });
 
@@ -235,7 +245,7 @@ describe('fetchConditions', () => {
 // ============================================================================
 
 describe('fetchConditionsByIds', () => {
-  const query = 'query { conditionsPage { items { id } } }';
+  const query = 'query { conditionsConnection { items { id } } }';
 
   test('returns empty array for empty ids', async () => {
     const result = await fetchConditionsByIds(query, []);
@@ -246,7 +256,7 @@ describe('fetchConditionsByIds', () => {
   test('single request for ids <= PAGE_SIZE (100)', async () => {
     const ids = Array.from({ length: 50 }, (_, i) => `id-${i}`);
     mockGraphqlRequest.mockResolvedValue({
-      conditionsPage: { items: ids.map((id) => ({ id })) },
+      conditionsConnection: { nodes: ids.map((id) => ({ id })) },
     });
 
     const result = await fetchConditionsByIds(query, ids);
@@ -257,7 +267,7 @@ describe('fetchConditionsByIds', () => {
   test('exactly 100 ids uses single request', async () => {
     const ids = Array.from({ length: 100 }, (_, i) => `id-${i}`);
     mockGraphqlRequest.mockResolvedValue({
-      conditionsPage: { items: ids.map((id) => ({ id })) },
+      conditionsConnection: { nodes: ids.map((id) => ({ id })) },
     });
 
     await fetchConditionsByIds(query, ids);
@@ -268,7 +278,7 @@ describe('fetchConditionsByIds', () => {
     const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
 
     mockGraphqlRequest.mockResolvedValue({
-      conditionsPage: { items: [{ id: 'result' }] },
+      conditionsConnection: { nodes: [{ id: 'result' }] },
     });
 
     const result = await fetchConditionsByIds(query, ids);
@@ -281,7 +291,7 @@ describe('fetchConditionsByIds', () => {
     const ids = Array.from({ length: 450 }, (_, i) => `id-${i}`);
 
     mockGraphqlRequest.mockImplementation(() =>
-      Promise.resolve({ conditionsPage: { items: [{ id: 'x' }] } })
+      Promise.resolve({ conditionsConnection: { nodes: [{ id: 'x' }] } })
     );
 
     await fetchConditionsByIds(query, ids);
@@ -291,19 +301,19 @@ describe('fetchConditionsByIds', () => {
   test('uses filters: { ids } as the variable', async () => {
     const ids = ['id-1', 'id-2'];
     mockGraphqlRequest.mockResolvedValue({
-      conditionsPage: { items: [{ id: 'id-1' }, { id: 'id-2' }] },
+      conditionsConnection: { nodes: [{ id: 'id-1' }, { id: 'id-2' }] },
     });
 
     await fetchConditionsByIds(query, ids);
     expect(mockGraphqlRequest).toHaveBeenCalledWith(query, {
-      filters: { ids },
+      filter: { ids },
     });
   });
 
   test('handles null response gracefully', async () => {
     const ids = ['id-1'];
     mockGraphqlRequest.mockResolvedValue({
-      conditionsPage: { items: null },
+      conditionsConnection: { nodes: null },
     });
 
     const result = await fetchConditionsByIds(query, ids);
@@ -315,10 +325,10 @@ describe('fetchConditionsByIds', () => {
 
     mockGraphqlRequest
       .mockResolvedValueOnce({
-        conditionsPage: { items: [{ id: 'a' }, { id: 'b' }] },
+        conditionsConnection: { nodes: [{ id: 'a' }, { id: 'b' }] },
       })
       .mockResolvedValueOnce({
-        conditionsPage: { items: [{ id: 'c' }] },
+        conditionsConnection: { nodes: [{ id: 'c' }] },
       });
 
     const result = await fetchConditionsByIds(query, ids);
@@ -336,11 +346,13 @@ describe('fetchConditionsByIdsQuery', () => {
     expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
-  test('returns typed ConditionById results from conditionsPage', async () => {
+  test('returns typed ConditionById results from conditionsConnection', async () => {
     const items = [
       { id: '1', shortName: 'BTC', question: 'Will BTC hit 100k?' },
     ];
-    mockGraphqlRequest.mockResolvedValue({ conditionsPage: { items } });
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: items },
+    });
 
     const result = await fetchConditionsByIdsQuery(['1']);
     expect(result).toEqual(items);

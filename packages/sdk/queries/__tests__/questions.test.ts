@@ -8,7 +8,12 @@ vi.mock('../client/graphqlClient', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockResolvedValue({ questions: [] });
+  mockGraphqlRequest.mockResolvedValue({
+    questionsConnection: {
+      nodes: [],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
+  });
 });
 
 describe('fetchQuestionsSorted', () => {
@@ -23,39 +28,37 @@ describe('fetchQuestionsSorted', () => {
     await fetchQuestionsSorted(baseParams);
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].take).toBe(10);
-    expect(call[1].skip).toBe(0);
-    expect(call[1].orderBy).toBe('createdAt');
-    expect(call[1].orderDirection).toBe('desc');
+    expect(call[1].orderBy).toEqual({ field: 'CREATED_AT', direction: 'DESC' });
   });
 
   test('normalizes missing chainId to null', async () => {
     await fetchQuestionsSorted(baseParams);
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.chainId).toBeNull();
+    expect(call[1].filter.chainId).toBeNull();
   });
 
   test('passes provided chainId', async () => {
     await fetchQuestionsSorted({ ...baseParams, chainId: 5064014 });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.chainId).toBe(5064014);
+    expect(call[1].filter.chainId).toBe(5064014);
   });
 
   test('trims search and converts empty to null', async () => {
     await fetchQuestionsSorted({ ...baseParams, search: '  ' });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.search).toBeNull();
+    expect(call[1].filter.search).toBeNull();
   });
 
   test('trims non-empty search', async () => {
     await fetchQuestionsSorted({ ...baseParams, search: '  bitcoin  ' });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.search).toBe('bitcoin');
+    expect(call[1].filter.search).toBe('bitcoin');
   });
 
   test('converts empty categorySlugs to null', async () => {
     await fetchQuestionsSorted({ ...baseParams, categorySlugs: [] });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.categorySlugs).toBeNull();
+    expect(call[1].filter.categorySlugs).toBeNull();
   });
 
   test('passes non-empty categorySlugs', async () => {
@@ -64,16 +67,16 @@ describe('fetchQuestionsSorted', () => {
       categorySlugs: ['crypto', 'politics'],
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.categorySlugs).toEqual(['crypto', 'politics']);
+    expect(call[1].filter.categorySlugs).toEqual(['crypto', 'politics']);
   });
 
   test('normalizes missing optional fields to null', async () => {
     await fetchQuestionsSorted(baseParams);
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.minEndTime).toBeNull();
-    expect(call[1].filters.resolutionStatus).toBeNull();
-    expect(call[1].filters.search).toBeNull();
-    expect(call[1].filters.categorySlugs).toBeNull();
+    expect(call[1].filter.resolvesAt).toBeNull();
+    expect(call[1].filter.resolutionStatus).toBeNull();
+    expect(call[1].filter.search).toBeNull();
+    expect(call[1].filter.categorySlugs).toBeNull();
   });
 
   test('passes provided optional fields', async () => {
@@ -83,8 +86,8 @@ describe('fetchQuestionsSorted', () => {
       resolutionStatus: 'unresolved',
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.minEndTime).toBe(1000);
-    expect(call[1].filters.resolutionStatus).toBe('unresolved');
+    expect(call[1].filter.resolvesAt).toEqual({ gte: 1000 });
+    expect(call[1].filter.resolutionStatus).toBe('unresolved');
   });
 
   test('forwards contractAddress as-is (server lowercases)', async () => {
@@ -93,8 +96,8 @@ describe('fetchQuestionsSorted', () => {
       contractAddress: '0xCAFE',
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.contractAddress).toBe('0xCAFE');
-    expect(call[1].filters.contractAddressIn).toBeNull();
+    expect(call[1].filter.contractAddress).toBe('0xCAFE');
+    expect(call[1].filter.contractAddressIn).toBeNull();
   });
 
   test('forwards contractAddressIn array', async () => {
@@ -103,7 +106,7 @@ describe('fetchQuestionsSorted', () => {
       contractAddressIn: ['0xAAA', '0xBBB'],
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.contractAddressIn).toEqual(['0xAAA', '0xBBB']);
+    expect(call[1].filter.contractAddressIn).toEqual(['0xAAA', '0xBBB']);
   });
 
   test('normalizes empty contractAddressIn to null', async () => {
@@ -112,14 +115,14 @@ describe('fetchQuestionsSorted', () => {
       contractAddressIn: [],
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.contractAddressIn).toBeNull();
+    expect(call[1].filter.contractAddressIn).toBeNull();
   });
 
   test('normalizes missing contract-address fields to null', async () => {
     await fetchQuestionsSorted(baseParams);
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filters.contractAddress).toBeNull();
-    expect(call[1].filters.contractAddressIn).toBeNull();
+    expect(call[1].filter.contractAddress).toBeNull();
+    expect(call[1].filter.contractAddressIn).toBeNull();
   });
 
   test('returns questions from response', async () => {
@@ -127,15 +130,15 @@ describe('fetchQuestionsSorted', () => {
       { questionType: 'condition', condition: { id: '1' }, group: null },
     ];
     mockGraphqlRequest.mockResolvedValue({
-      questionsPage: { items: questions },
+      questionsConnection: { nodes: questions },
     });
 
     const result = await fetchQuestionsSorted(baseParams);
     expect(result).toEqual(questions);
   });
 
-  test('returns empty array when questionsPage is null', async () => {
-    mockGraphqlRequest.mockResolvedValue({ questionsPage: null });
+  test('returns empty array when questionsConnection is null', async () => {
+    mockGraphqlRequest.mockResolvedValue({ questionsConnection: null });
     const result = await fetchQuestionsSorted(baseParams);
     expect(result).toEqual([]);
   });
