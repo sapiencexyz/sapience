@@ -2758,7 +2758,7 @@ type Query {
   unconditionally (cheap in-memory derivation).
   """
   accuracyLeaderboardPage(take: Int! = 25, skip: Int! = 0): AccountAccuracyLeaderboardPage!
-  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]! @deprecated(reason: "Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal.")
+  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]! @deprecated(reason: "Use `forecastsConnection` — purpose-built filters (forecaster, conditionId, schemaId, recipient, time range), paginated with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`.")
 
   """
   Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
@@ -2914,16 +2914,16 @@ type Query {
   `predictionId:` — the legacy `id:` arg is kept (deprecated) so existing
   callers keep working through one release.
   """
-  prediction(predictionId: String, id: String @deprecated(reason: "Use `predictionId:` — same value, the new arg name disambiguates it from the `Prediction.id` (Int!) row id surfaced on `predictionsPage` rows.")): Prediction
+  prediction(predictionId: String, id: String @deprecated(reason: "Use `predictionId:` — same value, the new arg name disambiguates it from the `Prediction.id` (Int!) row id surfaced on `predictionsConnection` nodes.")): Prediction
   predictionByOnchainId(predictionId: String!): Prediction
 
   """Count of escrow predictions involving the given address"""
-  predictionCount(address: String!, chainId: Int): Int! @deprecated(reason: "Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.")
+  predictionCount(address: String!, chainId: Int): Int! @deprecated(reason: "Use `predictionsConnection(...).totalCount` — same number, available alongside the connection payload, no extra query needed.")
 
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
   """
-  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]! @deprecated(reason: "Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.")
+  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]! @deprecated(reason: "Use `predictionsConnection` — same data with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`.")
 
   """Relay-style prediction list. Defaults to createdAt DESC."""
   predictionsConnection(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!

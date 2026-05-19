@@ -1,14 +1,15 @@
 /**
  * Deprecated escrow-system queries:
  *
- *   - positions / predictions / pickConfigurations — replaced by their
- *     `*Page` counterparts (server-truth `hasMore` + lazy `totalCount`).
+ *   - positions / pickConfigurations — replaced by their `*Page`
+ *     counterparts (server-truth `hasMore` + lazy `totalCount`).
+ *   - predictions — replaced by `predictionsConnection`.
  *     Logic lives in `runPositions` / `runPredictions` /
  *     `runPickConfigurations` in the live `../escrow.ts`; these
  *     wrappers discard the envelope and return the bare items array
  *     for backwards compatibility.
  *   - predictionCount / positionCount — replaced by
- *     `predictionsPage(...).totalCount` / `positionsPage(...).totalCount`.
+ *     `predictionsConnection(...).totalCount` / `positionsPage(...).totalCount`.
  *     Count() queries live here so the final cleanup PR can delete
  *     this whole directory.
  *

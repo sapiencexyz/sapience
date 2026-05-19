@@ -2963,7 +2963,7 @@ type Query {
     where: AttestationWhereInput
   ): [Attestation!]!
     @deprecated(
-      reason: "Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal."
+      reason: "Use `forecastsConnection` — purpose-built filters (forecaster, conditionId, schemaId, recipient, time range), paginated with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`."
     )
 
   """
@@ -3349,7 +3349,7 @@ type Query {
     predictionId: String
     id: String
       @deprecated(
-        reason: "Use `predictionId:` — same value, the new arg name disambiguates it from the `Prediction.id` (Int!) row id surfaced on `predictionsPage` rows."
+        reason: "Use `predictionId:` — same value, the new arg name disambiguates it from the `Prediction.id` (Int!) row id surfaced on `predictionsConnection` nodes."
       )
   ): Prediction
   predictionByOnchainId(predictionId: String!): Prediction
@@ -3359,7 +3359,7 @@ type Query {
   """
   predictionCount(address: String!, chainId: Int): Int!
     @deprecated(
-      reason: "Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed."
+      reason: "Use `predictionsConnection(...).totalCount` — same number, available alongside the connection payload, no extra query needed."
     )
 
   """
@@ -3377,7 +3377,7 @@ type Query {
     take: Int! = 50
   ): [Prediction!]!
     @deprecated(
-      reason: "Use `predictionsPage` — same data with a server-truth `hasMore` stop signal."
+      reason: "Use `predictionsConnection` — same data with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`."
     )
 
   """

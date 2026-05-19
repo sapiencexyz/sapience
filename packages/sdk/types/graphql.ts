@@ -2607,7 +2607,7 @@ export type Query = {
    * breaking; new callers should use `filters:`.
    */
   activityPage: ActivityItemsPage;
-  /** @deprecated Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal. */
+  /** @deprecated Use `forecastsConnection` — purpose-built filters (forecaster, conditionId, schemaId, recipient, time range), paginated with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`. */
   attestations: Array<Attestation>;
   /** @deprecated Use `categoriesPage` — purpose-built paginated wrapper with server-truth `hasMore`. Shares the same TtlCache as the deprecated path. */
   categories: Array<Category>;
@@ -2764,12 +2764,12 @@ export type Query = {
   predictionByOnchainId?: Maybe<Prediction>;
   /**
    * Count of escrow predictions involving the given address
-   * @deprecated Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   * @deprecated Use `predictionsConnection(...).totalCount` — same number, available alongside the connection payload, no extra query needed.
    */
   predictionCount: Scalars['Int']['output'];
   /**
    * Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
-   * @deprecated Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.
+   * @deprecated Use `predictionsConnection` — same data with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`.
    */
   predictions: Array<Prediction>;
   /** Relay-style prediction list. Defaults to createdAt DESC. */

@@ -19044,7 +19044,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal."
+            "deprecationReason": "Use `forecastsConnection` — purpose-built filters (forecaster, conditionId, schemaId, recipient, time range), paginated with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`."
           },
           {
             "name": "forecastsConnection",
@@ -20940,7 +20940,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed."
+            "deprecationReason": "Use `predictionsConnection(...).totalCount` — same number, available alongside the connection payload, no extra query needed."
           },
           {
             "name": "predictions",
@@ -21063,7 +21063,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `predictionsPage` — same data with a server-truth `hasMore` stop signal."
+            "deprecationReason": "Use `predictionsConnection` — same data with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`."
           },
           {
             "name": "predictionsConnection",

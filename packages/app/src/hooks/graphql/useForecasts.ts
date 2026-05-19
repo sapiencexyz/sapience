@@ -105,12 +105,12 @@ export const useInfiniteForecasts = ({
     queryFn: ({ pageParam }) =>
       fetchForecastsPage(
         { schemaId, attesterAddress, conditionId },
-        { take: pageSize, skip: pageParam }
+        { take: pageSize, after: pageParam }
       ),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => {
       if (!lastPage.hasMore) return undefined;
-      return allPages.length * pageSize;
+      return lastPage.endCursor;
     },
     retry: 3,
     retryDelay: 1000,
@@ -139,9 +139,15 @@ interface UseUserForecastsParams {
   schemaId?: string;
   conditionId?: string;
   take: number;
-  skip: number;
+  after?: string | null;
   orderBy: string;
   orderDirection: 'asc' | 'desc';
+}
+
+interface UserForecastsPage {
+  forecasts: FormattedAttestation[];
+  hasMore: boolean;
+  endCursor: string | null;
 }
 
 export const useUserForecasts = ({
@@ -149,18 +155,18 @@ export const useUserForecasts = ({
   schemaId = SCHEMA_UID,
   conditionId,
   take,
-  skip,
+  after,
   orderBy,
   orderDirection,
 }: UseUserForecastsParams) => {
-  return useQuery<FormattedAttestation[]>({
+  return useQuery<UserForecastsPage>({
     queryKey: [
       'forecasts',
       schemaId,
       attesterAddress,
       conditionId || null,
       take,
-      skip,
+      after ?? null,
       orderBy,
       orderDirection,
     ],
@@ -170,7 +176,7 @@ export const useUserForecasts = ({
         schemaId,
         conditionId,
         take,
-        skip,
+        after,
         orderBy,
         orderDirection,
       }),
