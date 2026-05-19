@@ -350,7 +350,7 @@ Prose orientation to the top-level `Query` shape. The full SDL below is the cano
 - `vaultByAddress(address: Address!)`
 - `account(address: Address!)` — Account's domain identifier _is_ its address, so there's no separate `accountByAddress`.
 
-**Relay-shaped connections** for each durable entity. During the staged migration, root list fields introduced by PRs 2–5 use the explicit `*Connection` suffix even when the final canonical name may eventually be shorter: `questionsConnection`, `conditionsConnection`, `conditionGroupsConnection`, `predictionsConnection`, `tradesConnection`, `forecastsConnection`, `positionsConnection`, `pickConfigurationsConnection`, and `vaultsConnection` if/when vault list migration lands. Each takes `first` / `after` / `filter: <Entity>Filter` / `orderBy: <Entity>Order`.
+**Relay-shaped connections** for each durable entity. During the staged migration, root list fields introduced by PRs 2–5 use the explicit `*Connection` suffix even when the final canonical name may eventually be shorter: `questionsConnection`, `conditionsConnection`, `conditionGroupsConnection`, `predictionsConnection`, `tradesConnection`, `forecastsConnection`, `positionsConnection`, `pickConfigurationsConnection`. Each takes `first` / `after` / `filter: <Entity>Filter` / `orderBy: <Entity>Order`. `vaultsConnection` appears in the target SDL but is deferred out of PRs 2–5 — no legacy `vaultsPage` exists to migrate from, and server-side vault enumeration depends on a source-of-truth decision that lives in its own PR (see PR 5 implementation questions).
 
 **Derived-view feeds** — list access only, no canonical `(id:)` lookup (see "Derived aggregate views"):
 
@@ -1794,7 +1794,16 @@ Implementation questions to settle before handoff:
 
 #### PR 5 — Collateral + Protocol + Vault + Categories + popularTags
 
-Self-contained: `CollateralBalance`, `CollateralTransfer`, `protocol.stats`, `protocol.vault().stats`, `categories`, `popularTags`.
+Self-contained: `CollateralBalance`, `CollateralTransfer`, `protocol.stats`, `protocol.vault().stats`, `categories`, `popularTags`. Single-vault access (`vault(id:)`, `vaultByAddress(address:)`, `Vault.stats(...)`) ships here; multi-vault enumeration (`vaultsConnection`) is **deferred** — see implementation questions below.
+
+Implementation questions to settle before handoff:
+
+- **Node identity:** `CollateralTransfer` global IDs encode `(chainId, transactionHash, logIndex)`. `transactionHash` alone is not unique — a single tx can emit multiple transfer events (e.g., batched deposit + fee); logIndex disambiguates within a tx, chainId guards against the same hash on a different chain. Once added to `FROZEN_NODE_TYPES`, this is permanent public wire identity. `Vault` Node IDs encode the existing vault domain identifier (`(chainId, address)` lowercased); `Category` Node IDs encode the existing category id.
+- **Vault list enumeration deferred:** `vaultsConnection` is **not** in PR 5 scope. There is no legacy `vaultsPage` resolver to migrate from, no `ConfiguredVault` table in the API's Prisma schema today, and the frontend already enumerates vaults from SDK config constants (`predictionMarketVault` / `pythPredictionMarketVault` / `predictionMarketVaultStrategyB` in `packages/sdk/contracts/addresses.ts`). Shipping enumeration requires a separate decision about the server-side source of truth (SDK config import vs. new indexer-populated table); that decision is its own PR. Single-vault access through `vault(id:)` and `vaultByAddress(address:)` is sufficient for `protocol.vault().stats` and for direct vault lookups; the SDL retains `vaultsConnection` as a target shape but no PR in this rollout ships it.
+- **Sort/filter surface:** choose only index-backed members for `ProtocolStatsOrderField`, `VaultStatsOrderField`, and `CollateralTransferOrderField`. `protocol_stats` is uniquely keyed on `(chainId, vaultAddress, timestamp)` — timestamp ordering is index-backed; arbitrary numeric-column sorts on stat values are not. Do not ship expensive sorts just because they are in the aspirational SDL.
+- **`totalCount` per connection:** default **omit** (per D3). `categories` is small enough that a count is cheap and may be worth including; `collateralTransfers` and stats connections are row-scanning and should not carry it.
+- **Account references:** `CollateralBalance.account` and `CollateralTransfer.account` are non-null `Account!`. The resolver must synthesize address-backed Accounts even when no user profile row exists, matching the pattern PR 4 establishes for `Prediction.predictor`. If PR 4 has not yet introduced an Account-synthesis helper, PR 5 may need to either ship a thin one or coordinate the helper into a shared location with PR 4.
+- **`protocol.vault(address:)` shape:** the legacy `protocolStats(vaultAddress)` overload is replaced by `vaultByAddress(address).stats(...)`. The `protocol` namespace itself does not need a `vault(...)` accessor — `Protocol.stats` is protocol-level totals only, and per-vault snapshots live on `Vault.stats` reached through the root `vault*` lookups. Confirm no consumer of the legacy overload depends on `protocol.vault.*` namespacing before removing.
 
 ### Convergence
 
