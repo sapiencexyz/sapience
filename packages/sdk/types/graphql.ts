@@ -1610,7 +1610,7 @@ export type LegacyPosition = {
   id: Scalars['Int']['output'];
   marketAddress: Scalars['String']['output'];
   mintedAt: Scalars['Int']['output'];
-  /** @deprecated LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead. */
+  /** @deprecated LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsConnection` instead. */
   predictions: Array<LegacyPrediction>;
   predictor: Scalars['String']['output'];
   predictorCollateral?: Maybe<Scalars['String']['output']>;
@@ -1710,7 +1710,7 @@ export type LegacyPrediction = {
   limitOrder?: Maybe<LimitOrder>;
   limitOrderId?: Maybe<Scalars['Int']['output']>;
   outcomeYes: Scalars['Boolean']['output'];
-  /** @deprecated LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead. */
+  /** @deprecated LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsConnection` instead. */
   position?: Maybe<LegacyPosition>;
   positionId?: Maybe<Scalars['Int']['output']>;
 };
@@ -2143,34 +2143,47 @@ export type PickConfiguration = {
   totalPredictorCollateral: Scalars['String']['output'];
 };
 
+/** Relay-shaped connection over `PickConfiguration` rows. */
+export type PickConfigurationConnection = {
+  __typename?: 'PickConfigurationConnection';
+  edges: Array<PickConfigurationEdge>;
+  nodes: Array<PickConfiguration>;
+  pageInfo: PageInfo;
+};
+
+/** Cursor-bearing edge for `PickConfigurationConnection`. */
+export type PickConfigurationEdge = {
+  __typename?: 'PickConfigurationEdge';
+  cursor: Scalars['String']['output'];
+  node: PickConfiguration;
+};
+
 /**
- * Flat filter input for the `pickConfigurationsPage` query. Each field is
- * optional; values combine with AND.
+ * Filter input for the `pickConfigurationsConnection` query. Values combine with AND.
+ * Range-like scalars use operator-pattern inputs; identifier/domain fields stay flat.
  */
-export type PickConfigurationFilters = {
-  /** Restrict to a single chain. */
+export type PickConfigurationFilter = {
+  /** Restrict to a single chain. Chain IDs are identifiers, not range-filtered metrics. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to resolved (true) or unresolved (false) pick configurations. */
   resolved?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Restrict to pick configurations with this settlement result. */
-  result?: InputMaybe<SettlementResult>;
+  /** Filter by settlement result, e.g. `{ equals: PREDICTOR_WINS }`. */
+  result?: InputMaybe<SettlementResultFilter>;
   /** Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request. */
   tokens?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
-/** Sort fields for the `pickConfigurationsPage` query. */
-export type PickConfigurationSortField =
+/** Order input for the Relay-shaped `pickConfigurationsConnection`. */
+export type PickConfigurationOrder = {
+  direction: OrderDirection;
+  field: PickConfigurationOrderField;
+};
+
+/** Sort fields for the Relay-shaped `pickConfigurationsConnection`. */
+export type PickConfigurationOrderField =
   | 'CREATED_AT'
   | 'ENDS_AT'
   | 'RESOLVED_AT';
-
-/** Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag */
-export type PickConfigurationsPage = Page & {
-  __typename?: 'PickConfigurationsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<PickConfiguration>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
 
 /** Time-bucketed PnL data point with cumulative tracking (legacy). */
 export type PnlDataPoint = {
@@ -2237,11 +2250,47 @@ export type Position = {
   userCollateral?: Maybe<Scalars['String']['output']>;
 };
 
+/** Relay-shaped connection over `Position` rows. */
+export type PositionConnection = {
+  __typename?: 'PositionConnection';
+  edges: Array<PositionEdge>;
+  nodes: Array<Position>;
+  pageInfo: PageInfo;
+};
+
+/** Cursor-bearing edge for `PositionConnection`. */
+export type PositionEdge = {
+  __typename?: 'PositionEdge';
+  cursor: Scalars['String']['output'];
+  node: Position;
+};
+
+/** Filter input for the Relay-shaped `positionsConnection` query. Combines with AND. */
+export type PositionFilter = {
+  /** Restrict to a single chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Filter by holder collateral on the pickConfig, e.g. `{ gte: "1000000000000000000" }`. */
+  collateral?: InputMaybe<BigIntFilter>;
+  /** Restrict to positions tied to a single condition (via the pickConfig join). */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  endsAt?: InputMaybe<IntFilter>;
+  /** Restrict to a single holder address (case-insensitive). */
+  holder?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions where holder won/lost the settled pickConfig. */
+  holderWon?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to a single pick configuration. */
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions whose pickConfig settled with this result. */
+  result?: InputMaybe<SettlementResult>;
+  /** Restrict to settled (true) or unsettled (false) positions. */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
 /**
- * Flat filter input for the `positionsPage` query. Each field is optional;
- * values combine with AND. Replaces the flat-arg shape on the resolver; the
- * old args remain for one release with `@deprecated` so existing callers can
- * migrate without breaking.
+ * Flat filter input for the deprecated `positionsPage` query. Each field is
+ * optional; values combine with AND. New callers should use the operator-pattern
+ * `PositionFilter` on `positionsConnection`.
  */
 export type PositionFilters = {
   /** Restrict to a single chain. */
@@ -2267,6 +2316,17 @@ export type PositionFilters = {
   /** Restrict to settled (true) or unsettled (false) positions. */
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
+
+/** Order input for the Relay-shaped `positionsConnection`. */
+export type PositionOrder = {
+  direction: OrderDirection;
+  field: PositionOrderField;
+};
+
+/** Sort fields for the Relay-shaped `positionsConnection`. */
+export type PositionOrderField =
+  | 'CREATED_AT'
+  | 'UPDATED_AT';
 
 /** Field to sort positions by */
 export type PositionSortField =
@@ -2331,10 +2391,6 @@ export type PredictionCountDataPoint = {
   won: Scalars['Int']['output'];
 };
 
-/**
- * Flat filter input for the `predictionsPage` query. Each field is optional;
- * values combine with AND.
- */
 export type PredictionFilters = {
   /** Restrict to predictions where the address is predictor or counterparty (case-insensitive). */
   address?: InputMaybe<Scalars['String']['input']>;
@@ -2620,45 +2676,33 @@ export type Query = {
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   /**
    * Look up a single pick configuration by ID
-   * @deprecated Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsPage` for list lookups.
+   * @deprecated Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsConnection` for list lookups.
    */
   pickConfiguration?: Maybe<PickConfiguration>;
   /**
    * Paginated list of pick configurations, filterable by chain, resolution status, and result
-   * @deprecated Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal.
+   * @deprecated Use `pickConfigurationsConnection` — Relay-shaped cursor pagination over the same data.
    */
   pickConfigurations: Array<PickConfiguration>;
-  /**
-   * Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
-   *
-   * Filtering is via `filters: PickConfigurationFilters`. The flat-arg
-   * filters (`chainId`, `resolved`, `result`, `tokens`) are retained for
-   * one release with `@deprecated` so existing callers can migrate without
-   * breaking; new callers should use `filters:`.
-   *
-   * Sorting via `orderBy: PickConfigurationSortField` + `orderDirection: SortOrder`.
-   * Defaults to `CREATED_AT` / `desc` when omitted.
-   */
-  pickConfigurationsPage: PickConfigurationsPage;
+  /** Relay-shaped connection over pick configurations. */
+  pickConfigurationsConnection: PickConfigurationConnection;
   /** Top 20 most-used tags across public conditions */
   popularTags: Array<Scalars['String']['output']>;
   /**
    * Count of token positions for a given holder
-   * @deprecated Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   * @deprecated Use `positionsConnection` — Relay-shaped cursor pagination over the same data.
    */
   positionCount: Scalars['Int']['output'];
   /**
    * Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
-   * @deprecated Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.
+   * @deprecated Use `positionsConnection` — Relay-shaped cursor pagination over the same data.
    */
   positions: Array<Position>;
+  /** Relay-shaped connection over token positions. */
+  positionsConnection: PositionConnection;
   /**
-   * Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
-   *
-   * Filtering is via `filters: PositionFilters`. The flat-arg filters
-   * (`holder`, `chainId`, `conditionId`, …) are retained for one release
-   * with `@deprecated` so existing callers can migrate without breaking;
-   * new callers should use `filters:`.
+   * Deprecated page wrapper retained for main/backward compatibility. New callers should use `positionsConnection(first:, after:, filter:, orderBy:)`.
+   * @deprecated Use `positionsConnection` instead.
    */
   positionsPage: PositionsPage;
   /**
@@ -2729,28 +2773,20 @@ export type Query = {
    * callers keep working through one release.
    */
   trade?: Maybe<Trade>;
+  /** Look up a single secondary market trade by its trade hash. */
+  tradeByHash?: Maybe<Trade>;
   /**
    * Count of secondary market trades matching the given filters
-   * @deprecated Use `tradesPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   * @deprecated Use `tradesConnection` — Relay-shaped cursor pagination over the same data.
    */
   tradeCount: Scalars['Int']['output'];
   /**
    * Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
-   * @deprecated Use `tradesPage` — same data with a server-truth `hasMore` stop signal.
+   * @deprecated Use `tradesConnection` — Relay-shaped cursor pagination over the same data.
    */
   trades: Array<Trade>;
-  /**
-   * Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.
-   *
-   * Filtering is via `filters: TradeFilters`. The flat-arg filters
-   * (`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one
-   * release with `@deprecated` so existing callers can migrate without
-   * breaking; new callers should use `filters:`.
-   *
-   * Sorting via `orderBy: TradeSortField` + `orderDirection: SortOrder`.
-   * Defaults to `EXECUTED_AT` / `desc` when omitted.
-   */
-  tradesPage: TradesPage;
+  /** Relay-shaped connection over secondary market trades. */
+  tradesConnection: TradeConnection;
   /** @deprecated Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains. */
   user?: Maybe<User>;
   /** @deprecated Unused; will be removed. No live consumers — account lookups go through `account(address:)`. */
@@ -3058,16 +3094,11 @@ export type QueryPickConfigurationsArgs = {
 };
 
 
-export type QueryPickConfigurationsPageArgs = {
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  filters?: InputMaybe<PickConfigurationFilters>;
-  orderBy?: InputMaybe<PickConfigurationSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  resolved?: InputMaybe<Scalars['Boolean']['input']>;
-  result?: InputMaybe<SettlementResult>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
+export type QueryPickConfigurationsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PickConfigurationFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PickConfigurationOrder>;
 };
 
 
@@ -3094,6 +3125,14 @@ export type QueryPositionsArgs = {
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
+};
+
+
+export type QueryPositionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PositionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PositionOrder>;
 };
 
 
@@ -3206,6 +3245,11 @@ export type QueryTradeArgs = {
 };
 
 
+export type QueryTradeByHashArgs = {
+  hash: Scalars['Bytes32']['input'];
+};
+
+
 export type QueryTradeCountArgs = {
   buyer?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
@@ -3225,17 +3269,11 @@ export type QueryTradesArgs = {
 };
 
 
-export type QueryTradesPageArgs = {
-  address?: InputMaybe<Scalars['String']['input']>;
-  buyer?: InputMaybe<Scalars['String']['input']>;
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  filters?: InputMaybe<TradeFilters>;
-  orderBy?: InputMaybe<TradeSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  seller?: InputMaybe<Scalars['String']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-  token?: InputMaybe<Scalars['String']['input']>;
+export type QueryTradesConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
 };
 
 
@@ -3512,6 +3550,13 @@ export type SettlementResult =
   | 'PREDICTOR_WINS'
   | 'UNRESOLVED';
 
+export type SettlementResultFilter = {
+  equals?: InputMaybe<SettlementResult>;
+  in?: InputMaybe<Array<SettlementResult>>;
+  not?: InputMaybe<SettlementResult>;
+  notIn?: InputMaybe<Array<SettlementResult>>;
+};
+
 export type SortOrder =
   | 'asc'
   | 'desc';
@@ -3613,40 +3658,47 @@ export type Trade = {
   txHash: Scalars['String']['output'];
 };
 
-/**
- * Flat filter input for the `tradesPage` query. Each field is optional;
- * values combine with AND. `address` and (`seller` | `buyer`) are mutually
- * exclusive — passing both yields an error.
- */
-export type TradeFilters = {
+/** Relay-shaped connection over `Trade` rows. */
+export type TradeConnection = {
+  __typename?: 'TradeConnection';
+  edges: Array<TradeEdge>;
+  nodes: Array<Trade>;
+  pageInfo: PageInfo;
+};
+
+/** Cursor-bearing edge for `TradeConnection`. */
+export type TradeEdge = {
+  __typename?: 'TradeEdge';
+  cursor: Scalars['String']['output'];
+  node: Trade;
+};
+
+/** Filter input for the Relay-shaped `tradesConnection` query. Combines with AND. */
+export type TradeFilter = {
   /** Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`. */
   address?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single buyer address (case-insensitive). */
   buyer?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  /** Restrict to trades with `executedAt <= this` (epoch seconds, inclusive). */
-  executedAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to trades with `executedAt >= this` (epoch seconds, inclusive). */
-  executedAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  executedAt?: InputMaybe<IntFilter>;
   /** Restrict to a single seller address (case-insensitive). */
   seller?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single position token address (case-insensitive). */
   token?: InputMaybe<Scalars['String']['input']>;
 };
 
-/** Sort fields for the `tradesPage` query. */
-export type TradeSortField =
+/** Order input for the Relay-shaped `tradesConnection`. */
+export type TradeOrder = {
+  direction: OrderDirection;
+  field: TradeOrderField;
+};
+
+/** Sort fields for the Relay-shaped `tradesConnection`. */
+export type TradeOrderField =
   | 'BLOCK_NUMBER'
   | 'EXECUTED_AT';
-
-/** Paginated wrapper around Trade rows with a server-truth hasMore flag */
-export type TradesPage = Page & {
-  __typename?: 'TradesPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Trade>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
 
 /**
  * Application-level user record, keyed by wallet address,

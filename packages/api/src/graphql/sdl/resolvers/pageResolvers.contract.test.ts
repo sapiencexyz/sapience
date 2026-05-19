@@ -21,20 +21,16 @@ const mockPrisma = vi.hoisted(() => ({
   attestation: { count: vi.fn() },
   category: { count: vi.fn() },
   collateralTransfer: { count: vi.fn() },
-  picks: { count: vi.fn() },
   position: { count: vi.fn() },
   prediction: { count: vi.fn() },
-  secondaryTrade: { count: vi.fn() },
 }));
 
 vi.mock('../../../core/db', () => ({ default: mockPrisma }));
 
 import { AttestationsPage } from './AttestationsPage';
 import { CollateralTransfersPage } from './CollateralTransfersPage';
-import { PickConfigurationsPage } from './PickConfigurationsPage';
 import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
-import { TradesPage } from './TradesPage';
 import { CategoriesPage } from './CategoriesPage';
 import { ActivityItemsPage } from './ActivityItemsPage';
 
@@ -62,18 +58,12 @@ const lazyPageResolvers: LazyCase[] = [
     resolver: CollateralTransfersPage,
     mock: mockPrisma.collateralTransfer,
   },
-  {
-    name: 'PickConfigurationsPage',
-    resolver: PickConfigurationsPage,
-    mock: mockPrisma.picks,
-  },
   { name: 'PositionsPage', resolver: PositionsPage, mock: mockPrisma.position },
   {
     name: 'PredictionsPage',
     resolver: PredictionsPage,
     mock: mockPrisma.prediction,
   },
-  { name: 'TradesPage', resolver: TradesPage, mock: mockPrisma.secondaryTrade },
 ];
 
 describe.each(lazyPageResolvers)(

@@ -2,6 +2,8 @@
 
 A running log of API changes that downstream services should adopt. Entries are reverse-chronological; the section header is the canonical name a downstream LLM/engineer should grep for.
 
+> PR 3 update: `positionsPage`, `tradesPage`, and `pickConfigurationsPage` were staging-only migration scaffolding and have been replaced by `positionsConnection`, `tradesConnection`, and `pickConfigurationsConnection`. Historical entries below may still mention the old page names for context; new callers should use the Connection fields.
+
 ---
 
 ## `predictionsPage` — paginated escrow predictions, replaces `predictions`
