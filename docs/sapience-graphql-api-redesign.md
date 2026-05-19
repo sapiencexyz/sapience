@@ -600,7 +600,11 @@ type Query {
 
   vault(id: ID!): Vault
   vaultByAddress(address: Address!): Vault
-  vaultsConnection(first: Int, after: String, filter: VaultFilter): VaultConnection!
+  vaultsConnection(
+    first: Int
+    after: String
+    filter: VaultFilter
+  ): VaultConnection!
 
   leaderboard(
     metric: LeaderboardMetric!
@@ -1796,7 +1800,7 @@ Self-contained: `CollateralBalance`, `CollateralTransfer`, `protocol.stats`, `pr
 
 #### PR 6 — Account + Activity + Leaderboard + cross-entity wire-up
 
-`Account` with all its child connections (`.predictions`, `.trades`, etc.). `ActivityItem` union over `Prediction | Trade | Forecast`. Top-level `leaderboard` query. Adds convenience connections on earlier entities:
+`Account` with all its child connections (`.predictions`, `.trades`, etc.). `Activity` feed type wrapping `ActivitySource = Prediction | Trade` (Forecast intentionally absent — see "Activity model"). Top-level `leaderboard` query. Adds convenience connections on earlier entities:
 
 - `Condition.predictions` / `.trades` / `.forecasts`
 - `Question.predictions` / `.trades` / `.forecasts` / `.activity`
