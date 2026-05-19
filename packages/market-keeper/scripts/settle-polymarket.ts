@@ -225,7 +225,7 @@ query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
       visibility: ALL
       engagement: ANY
     }
-    orderBy: endTime
+    orderBy: END_TIME
     orderDirection: asc
     take: $take
     skip: $skip
