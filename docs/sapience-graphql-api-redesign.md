@@ -73,7 +73,7 @@ Public API language should use `Forecast`, not `Attestation`.
 Mapping:
 
 - `Attestation` → `Forecast`
-- `attestationsPage` → `forecasts`
+- `attestationsPage` → `forecastsConnection`
 - `attester` → `forecaster`
 - `attestationScore` → `forecastScore`
 
@@ -350,11 +350,11 @@ Prose orientation to the top-level `Query` shape. The full SDL below is the cano
 - `vaultByAddress(address: Address!)`
 - `account(address: Address!)` — Account's domain identifier _is_ its address, so there's no separate `accountByAddress`.
 
-**Relay-shaped connections** for each durable entity: `accounts`, `conditions`, `conditionGroups`, `predictions`, `trades`, `forecasts`, `positions`, `pickConfigurations`, `vaults`. Each takes `first` / `after` / `filter: <Entity>Filter` / `orderBy: <Entity>Order`.
+**Relay-shaped connections** for each durable entity. During the staged migration, root list fields introduced by PRs 2–5 use the explicit `*Connection` suffix even when the final canonical name may eventually be shorter: `questionsConnection`, `conditionsConnection`, `conditionGroupsConnection`, `predictionsConnection`, `tradesConnection`, `forecastsConnection`, `positionsConnection`, `pickConfigurationsConnection`, and `vaultsConnection` if/when vault list migration lands. Each takes `first` / `after` / `filter: <Entity>Filter` / `orderBy: <Entity>Order`.
 
 **Derived-view feeds** — list access only, no canonical `(id:)` lookup (see "Derived aggregate views"):
 
-- `questions` — interleaved `Condition` / `ConditionGroup` feed.
+- `questionsConnection` — interleaved `Condition` / `ConditionGroup` feed.
 - `activity` — interleaved `Prediction` / `Trade` feed. (`Forecast` is intentionally not in the union today — see "Activity model".)
 
 **Cross-cutting and namespace fields:**
@@ -529,19 +529,19 @@ type Query {
   condition(id: ID!): Condition
   conditionGroup(id: ID!): ConditionGroup
 
-  questions(
+  questionsConnection(
     first: Int
     after: String
     filter: QuestionFilter
     orderBy: QuestionOrder
   ): QuestionConnection!
-  conditions(
+  conditionsConnection(
     first: Int
     after: String
     filter: ConditionFilter
     orderBy: ConditionOrder
   ): ConditionConnection!
-  conditionGroups(
+  conditionGroupsConnection(
     first: Int
     after: String
     filter: ConditionGroupFilter
@@ -550,7 +550,7 @@ type Query {
 
   prediction(id: ID!): Prediction
   predictionByOnchainId(predictionId: BigInt!): Prediction
-  predictions(
+  predictionsConnection(
     first: Int
     after: String
     filter: PredictionFilter
@@ -559,7 +559,7 @@ type Query {
 
   trade(id: ID!): Trade
   tradeByHash(hash: Bytes32!): Trade
-  trades(
+  tradesConnection(
     first: Int
     after: String
     filter: TradeFilter
@@ -568,7 +568,7 @@ type Query {
 
   forecast(id: ID!): Forecast
   forecastByUid(uid: Bytes32!): Forecast
-  forecasts(
+  forecastsConnection(
     first: Int
     after: String
     filter: ForecastFilter
@@ -583,7 +583,7 @@ type Query {
   ): ActivityConnection!
 
   position(id: ID!): Position
-  positions(
+  positionsConnection(
     first: Int
     after: String
     filter: PositionFilter
@@ -591,7 +591,7 @@ type Query {
   ): PositionConnection!
 
   pickConfiguration(id: ID!): PickConfiguration
-  pickConfigurations(
+  pickConfigurationsConnection(
     first: Int
     after: String
     filter: PickConfigurationFilter
@@ -600,7 +600,7 @@ type Query {
 
   vault(id: ID!): Vault
   vaultByAddress(address: Address!): Vault
-  vaults(first: Int, after: String, filter: VaultFilter): VaultConnection!
+  vaultsConnection(first: Int, after: String, filter: VaultFilter): VaultConnection!
 
   leaderboard(
     metric: LeaderboardMetric!
@@ -1759,13 +1759,34 @@ New types, top-level queries, deprecate old siblings. **No cross-stream child co
 
 #### PR 3 — PickConfigurations + Trades + Positions
 
-`Pick → Condition` is in-stream, fine. Top-level queries, `tradeByHash`, deprecations.
+`Pick → Condition` is in-stream, fine. Top-level connection fields, `tradeByHash`, deprecations. PR 3 is implemented from `staging` after PR 2 has landed. During the migration window, the new root resolvers are explicitly suffixed: `pickConfigurationsConnection`, `tradesConnection`, and `positionsConnection`. Delete the corresponding legacy `*Page` resolver when its replacement lands in the same PR (`pickConfigurationsPage`, `tradesPage`, `positionsPage`); do not keep dual Page/Connection surfaces for the same migrated list.
+
+PR 3 must not add PR 6 cross-stream child connections yet. `PickConfiguration.trades` / `.positions` and any `Condition.*` convenience fields wait for PR 6 unless they already exist as legacy fields and are left untouched.
+
+Implementation questions to settle before handoff:
+
+- **Node identity:** what exact domain value is encoded for `PickConfiguration`, `Trade`, and `Position` global IDs? `Trade` should probably use transaction hash. `PickConfiguration` likely uses the existing pick-config id. `Position` needs an explicit durable-row answer because today's position surfaces include synthesized rows in some flows; synthetic feed rows are not valid `Node` identities unless they can be refetched deterministically forever.
+- **Lookup compatibility:** existing `trade(...)` and `pickConfiguration(...)` names already carry legacy semantics. PR 3 should add `tradeByHash(hash:)` and the suffixed root connections without changing old lookup behavior unless the PR explicitly handles the breaking migration.
+- **Trade-to-pick configuration join:** `SecondaryTrade` points at token/hash data, not a clean `pickConfigId` field. The implementation needs one canonical token → pick-configuration lookup rule, including chain scoping and null/dangling behavior.
+- **Position economics:** document the source/formula for `size`, `collateralAmount`, `averagePrice`, `realizedPnl`, and `unrealizedPnl`; omit fields or make them nullable if the value is not cheaply and consistently derivable.
+- **Sort/filter surface:** choose only index-backed `TradeOrderField`, `PositionOrderField`, and `PickConfigurationOrderField` members for the first ship. Adding enum members later is non-breaking; removing one is not.
+- **Pick side mapping:** pin the `predictedOutcome` → `PickSide.YES/NO` mapping in tests.
 
 ### Stream B — user activity & treasury
 
 #### PR 4 — Predictions + Forecasts (Attestation rename)
 
-Both user-authored, both have on-chain-id sibling lookups (`predictionByOnchainId`, `forecastByUid`). The `Attestation → Forecast` rename surface lives here. **No cross-stream child connections.**
+Both user-authored, both have on-chain-id sibling lookups (`predictionByOnchainId`, `forecastByUid`). The `Attestation → Forecast` rename surface lives here. **No cross-stream child connections.** PR 4 is implemented from `staging` and can run in parallel with PR 3 as long as it does not depend on PR 3's new connection fields or Node registration. During the migration window, the new root resolvers are explicitly suffixed: `predictionsConnection` and `forecastsConnection`. Delete the corresponding legacy `*Page` resolver when its replacement lands in the same PR (`predictionsPage`, `attestationsPage`); do not keep dual Page/Connection surfaces for the same migrated list.
+
+Implementation questions to settle before handoff:
+
+- **Node identity:** `Prediction` global IDs should encode the on-chain prediction id unless there is a strong reason to expose database-row identity. `Forecast` global IDs should encode the EAS UID. Once added to `FROZEN_NODE_TYPES`, these are permanent public wire identities.
+- **Lookup compatibility:** existing `prediction(...)` already has legacy semantics. PR 4 should add `predictionByOnchainId(predictionId:)`, `forecastByUid(uid:)`, and suffixed root connections without changing old lookup behavior unless the PR explicitly handles the breaking migration.
+- **Forecast timestamp:** decide whether `Forecast.createdAt` means the EAS attestation time or the database insertion time. Public semantics should be product/event time; if DB insertion time is also useful, expose it under a different name later.
+- **Forecast rename scope:** `Forecast`, `forecaster`, and `forecastScore` are the new public names. Legacy `Attestation` root/Page surfaces replaced by PR 4 can be removed if they are the migrated `*Page` surfaces; unrelated legacy relation fields should either remain untouched or be explicitly deprecated in the PR.
+- **Prediction relations:** `Prediction.pickConfiguration` / `.conditions` must not force a PR 3 merge-order dependency. If PR 4 lands first, either resolve through existing stable legacy data or defer fields that require PR 3's new Node/connection layer.
+- **Account references:** if `Prediction.predictor`, `Prediction.counterparty`, or `Forecast.forecaster` are non-null `Account!`, the resolver must synthesize address-backed Accounts even when no user profile row exists, or the fields must stay nullable/deferred until PR 6's Account work.
+- **Sort/filter surface:** choose only index-backed `PredictionOrderField` and `ForecastOrderField` members for the first ship. Do not ship expensive score/PnL/collateral sorts just because they are present in the aspirational SDL.
 
 #### PR 5 — Collateral + Protocol + Vault + Categories + popularTags
 
@@ -1875,7 +1896,7 @@ Two in-flight PRs targeting the legacy `positionsPage` filter shape were closed 
 
 Every existing surface that doesn't conform to this plan **must** go through the deprecation cycle below before it can be removed or changed in a breaking way. This applies to renames, type changes, dropped filter options, and removed queries — not just deletions. The redesign is large and incremental; every client (Sapience frontend, external developers, indexers) must always have a one-release window to migrate off any surface this doc supersedes.
 
-Required migration path:
+Required migration path for ordinary legacy fields/types:
 
 1. Add the new shape alongside the existing field / type / query — additive only, no behavior change to the existing surface.
 2. Mark the existing surface `@deprecated` with a reason pointing at the new shape.
@@ -1883,13 +1904,15 @@ Required migration path:
 4. Publish the migration in `packages/api/MIGRATION.md` so external integrators can act.
 5. Remove the deprecated surface only after step 4 has been live for at least one release, and only in a release explicitly designated as breaking.
 
-A breaking change that skips steps 1–4 is a bug, not an oversight — flag it in code review even when the deprecated surface "looks dead." Servers don't see clients that haven't migrated yet.
+Exception for this staged internal migration: when a per-entity PR replaces a legacy `*Page` resolver with its new `*Connection` resolver, the matching `*Page` resolver may be deleted in that same PR instead of kept through a second live deprecation window. Do this only for the resolver being migrated in that PR, and update Sapience frontend callers in the same branch. This exception does **not** permit changing the semantics of unrelated existing fields or reusing an old field name with a new return shape.
+
+A breaking change outside that narrow `*Page` → `*Connection` replacement path is a bug, not an oversight — flag it in code review even when the deprecated surface "looks dead." Servers don't see clients that haven't migrated yet.
 
 Example:
 
 ```graphql
 type Query {
-  attestationsPage(...): AttestationsPage! @deprecated(reason: "Use forecasts instead.")
+  attestationsPage(...): AttestationsPage! @deprecated(reason: "Use forecastsConnection instead.")
 }
 ```
 
@@ -1918,13 +1941,14 @@ type Query {
 }
 ```
 
-For PR 2 this means `conditionsConnection`, `conditionGroupsConnection`, and `questionsConnection` are bridge names. They avoid the wire break while old `conditions`, `conditionGroups`, and `questions` still exist. Convention applies uniformly across per-entity PRs:
+For PR 2 this means `conditionsConnection`, `conditionGroupsConnection`, and `questionsConnection` are bridge names. They avoid the wire break while old `conditions`, `conditionGroups`, and `questions` still exist. Convention applies uniformly across PRs 2–5: **new root resolvers added by the staged migration use the `*Connection` suffix even when the canonical name appears available**, so humans and clients can distinguish redesign fields from legacy fields during the rollout.
 
 - PR 2: `conditionsConnection`, `conditionGroupsConnection`, `questionsConnection`
-- PR 3: `tradesConnection`, `positionsConnection`, `pickConfigurationsConnection` (if the bare equivalents exist)
-- PR 4+: same pattern; only suffix when there is a name collision
+- PR 3: `tradesConnection`, `positionsConnection`, `pickConfigurationsConnection`
+- PR 4: `predictionsConnection`, `forecastsConnection`
+- PR 5: use the same suffix convention for migrated list fields; genuinely namespace-style fields such as `protocol` remain unsuffixed
 
-A genuinely new field whose canonical name is not already taken keeps the canonical name from day one; no suffix is needed just because the return type is a connection — `activity(...)` does not need a suffix because no field called `activity` existed before this redesign.
+A genuinely new field outside the staged migration whose canonical name is not already taken can keep the canonical name from day one; no suffix is needed just because the return type is a connection — `activity(...)` does not need a suffix because no field called `activity` existed before this redesign.
 
 Post-deprecation exit (when the deprecated original is removed in a major-version cut), the team chooses per-field:
 
