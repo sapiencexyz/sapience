@@ -61,7 +61,8 @@ A synthetic `Question.id` is deferred (see D1). Clients that need a stable list 
 
 - `Prediction`
 - `Trade`
-- `Forecast`
+
+`Forecast` is intentionally **not** in the union — today's product feed only shows predictions and trades. Adding `Forecast` later is a separate product decision (feed UX + backend SQL union over `Attestation`), and it's an additive non-breaking change at the schema level when the time comes.
 
 It should not implement `Node` unless activity feed rows become durable persisted records.
 
@@ -354,7 +355,7 @@ Prose orientation to the top-level `Query` shape. The full SDL below is the cano
 **Derived-view feeds** — list access only, no canonical `(id:)` lookup (see "Derived aggregate views"):
 
 - `questions` — interleaved `Condition` / `ConditionGroup` feed.
-- `activity` — interleaved `Prediction` / `Trade` / `Forecast` feed.
+- `activity` — interleaved `Prediction` / `Trade` feed. (`Forecast` is intentionally not in the union today — see "Activity model".)
 
 **Cross-cutting and namespace fields:**
 
@@ -995,22 +996,23 @@ type Activity {
   # because it would duplicate what the union already encodes.
   source: ActivitySource!
   # The actor on the wrapped row: `predictor` for a Prediction,
-  # `account` for a Trade, `forecaster` for a Forecast. Always present
-  # — every union member has a non-null actor account.
+  # `account` for a Trade. Always present — every union member has a
+  # non-null actor account.
   account: Account!
   createdAt: DateTime!
 }
 
-union ActivitySource = Prediction | Trade | Forecast
+union ActivitySource = Prediction | Trade
 
 # Retained for use in ActivityFilter (filtering an interleaved feed by
-# member type is a real use case — clients ask "only my forecasts" or
-# "only trades"). On the wire of an Activity row itself, prefer
-# `__typename` on `source`.
+# member type is a real use case — clients ask "only my trades" or
+# "only my predictions"). On the wire of an Activity row itself, prefer
+# `__typename` on `source`. `FORECAST` is intentionally absent — Forecast
+# is not part of the activity union today (see "Activity model" above);
+# add it back here together with the union when forecasts join the feed.
 enum ActivityType {
   PREDICTION
   TRADE
-  FORECAST
 }
 
 type CollateralToken {
@@ -1451,12 +1453,20 @@ input QuestionOrder {
   direction: OrderDirection!
 }
 
+# All values map to existing partial indexes on the underlying
+# `condition` / `condition_group` tables. `UPDATED_AT` is intentionally
+# absent — neither table has an `updatedAt` column. `VOLUME` is split
+# into windowed values (24h / 7d) because the underlying indexes are
+# windowed (`IDX_condition_public_volume24h`, `IDX_cg_total_volume_24h`,
+# and 7d siblings) — a generic `VOLUME` would be ambiguous and could
+# silently fall back to an in-memory sort.
 enum QuestionOrderField {
   CREATED_AT
-  UPDATED_AT
-  OPEN_INTEREST
-  VOLUME
   RESOLVES_AT
+  OPEN_INTEREST
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
 }
 
 input ConditionFilter {
@@ -1474,10 +1484,11 @@ input ConditionOrder {
 
 enum ConditionOrderField {
   CREATED_AT
-  UPDATED_AT
   RESOLVES_AT
   OPEN_INTEREST
-  VOLUME
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
 }
 
 input ConditionGroupFilter {
@@ -1493,9 +1504,11 @@ input ConditionGroupOrder {
 
 enum ConditionGroupOrderField {
   CREATED_AT
-  UPDATED_AT
+  RESOLVES_AT
   OPEN_INTEREST
-  VOLUME
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
 }
 
 # `predictor` and `counterparty` filter the two sides of a Prediction
