@@ -7,11 +7,11 @@ import type { PickConfigData, PickData } from '~/hooks/graphql/usePositions';
 
 // tokens arg on pickConfigurations added in PR #1440. `picks.condition`
 // is fetched inline so callers can build their conditionsMap from a
-// single round trip — see Pick resolver + pickConfigurationsPage resolver.
-const PICK_CONFIGS_BY_TOKENS_QUERY = `
-  query PickConfigsByTokens($filters: PickConfigurationFilters) {
-    pickConfigurationsPage(filters: $filters, take: 100) {
-      items {
+// single round trip — see Pick resolver + pickConfigurationsConnection resolver.
+const PICK_CONFIGS_BY_TOKENS_QUERY = /* GraphQL */ `
+  query PickConfigsByTokens($filter: PickConfigurationFilters) {
+    pickConfigurationsConnection(filter: $filter, first: 100) {
+      nodes {
         id
         chainId
         marketAddress
@@ -75,9 +75,9 @@ export function usePickConfigsByTokens(tokens: string[]) {
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        pickConfigurationsPage: { items: PickConfigData[] };
-      }>(PICK_CONFIGS_BY_TOKENS_QUERY, { filters: { tokens: sorted } });
-      return resp?.pickConfigurationsPage?.items ?? [];
+        pickConfigurationsConnection: { nodes: PickConfigData[] };
+      }>(PICK_CONFIGS_BY_TOKENS_QUERY, { filter: { tokens: sorted } });
+      return resp?.pickConfigurationsConnection?.nodes ?? [];
     },
   });
 

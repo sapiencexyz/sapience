@@ -10,7 +10,15 @@ import type {
   QueryTradesArgs,
   QueryTradeArgs,
 } from '../../__generated__/resolvers';
-import { trade, tradesPage } from './trade';
+import { trade, tradesConnection } from './trade';
+
+const cursorFromSkip = (skip: number): string | null =>
+  skip > 0
+    ? Buffer.from(
+        JSON.stringify({ k: String(skip - 1), id: String(skip - 1) }),
+        'utf-8'
+      ).toString('base64url')
+    : null;
 
 type TradesPageFn = (
   parent: unknown,
@@ -24,7 +32,40 @@ type TradeFn = (
   ctx: unknown,
   info: unknown
 ) => Promise<unknown>;
-const tradesPageFn = tradesPage as unknown as TradesPageFn;
+const tradesPageFn: TradesPageFn = async (parent, args, ctx, info) => {
+  const result = await (
+    tradesConnection as unknown as (
+      parent: unknown,
+      args: unknown,
+      ctx: unknown,
+      info: unknown
+    ) => Promise<{ nodes: unknown[]; pageInfo: { hasNextPage: boolean } }>
+  )(
+    parent,
+    {
+      first: args.take,
+      after: cursorFromSkip(args.skip ?? 0),
+      filter: (args as QueryTradesArgs & { filters?: unknown }).filters ?? {
+        address: args.address ?? null,
+        seller: args.seller ?? null,
+        buyer: args.buyer ?? null,
+        token: args.token ?? null,
+        chainId: args.chainId ?? null,
+      },
+      orderBy: (args as QueryTradesArgs & { orderBy?: unknown }).orderBy
+        ? {
+            field: (args as QueryTradesArgs & { orderBy: unknown }).orderBy,
+            direction:
+              (args as QueryTradesArgs & { orderDirection?: unknown })
+                .orderDirection ?? 'desc',
+          }
+        : null,
+    },
+    ctx,
+    info
+  );
+  return { items: result.nodes, hasMore: result.pageInfo.hasNextPage };
+};
 const tradeFn = trade as unknown as TradeFn;
 
 const ALICE = '0xalice';

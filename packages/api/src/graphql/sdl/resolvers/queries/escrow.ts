@@ -34,14 +34,21 @@
 import type {
   QueryResolvers,
   QueryPickConfigurationsArgs,
-  QueryPickConfigurationsPageArgs,
+  QueryPickConfigurationsConnectionArgs,
   QueryPositionsArgs,
-  QueryPositionsPageArgs,
+  QueryPositionsConnectionArgs,
   QueryPredictionsArgs,
   QueryPredictionsPageArgs,
   Prediction,
   ResolversParentTypes,
   SettlementResult,
+} from '../../__generated__/resolvers';
+import {
+  OrderDirection,
+  PickConfigurationOrderField,
+  PositionOrderField,
+  PositionSortField,
+  SortOrder,
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
@@ -49,10 +56,17 @@ import { mapPickConfig } from '../pickConfigHelpers';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { clampSkip, clampTake } from './pagination';
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
 type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
 }>;
+
+const offsetFromCursor = (cursor: string | null | undefined): number => {
+  const payload = cursor ? decodeCursor(cursor) : null;
+  const offset = payload ? Number(payload.k) : Number.NaN;
+  return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
+};
 
 const mapPrediction = (
   r: PredictionWithPickConfig
@@ -306,25 +320,51 @@ export const runPickConfigurations = async ({
  * arg shape. `filters` wins on conflicts.
  */
 const mergePickConfigurationFilters = (
-  args: QueryPickConfigurationsPageArgs
+  args: QueryPickConfigurationsConnectionArgs
 ): RunPickConfigurationsArgs => {
-  const f = args.filters ?? null;
+  const f = args.filter ?? null;
   return {
-    take: args.take,
-    skip: args.skip,
-    chainId: f?.chainId ?? args.chainId ?? null,
-    resolved: f?.resolved ?? args.resolved ?? null,
-    result: f?.result ?? args.result ?? null,
-    tokens: f?.tokens ?? args.tokens ?? null,
-    orderBy: args.orderBy ?? null,
-    orderDirection: args.orderDirection ?? null,
+    take: args.first ?? 50,
+    skip: offsetFromCursor(args.after),
+    chainId: f?.chainId ?? null,
+    resolved: f?.resolved ?? null,
+    result: f?.result ?? null,
+    tokens: f?.tokens ?? null,
+    orderBy:
+      args.orderBy?.field === PickConfigurationOrderField.EndsAt
+        ? 'ENDS_AT'
+        : args.orderBy?.field === PickConfigurationOrderField.ResolvedAt
+          ? 'RESOLVED_AT'
+          : 'CREATED_AT',
+    orderDirection:
+      args.orderBy?.direction === OrderDirection.Asc ? 'asc' : 'desc',
   };
 };
 
-export const pickConfigurationsPage: NonNullable<
-  QueryResolvers['pickConfigurationsPage']
+export const pickConfigurationsConnection: NonNullable<
+  QueryResolvers['pickConfigurationsConnection']
 > = async (_parent, args) => {
-  return runPickConfigurations(mergePickConfigurationFilters(args));
+  const result = await runPickConfigurations(
+    mergePickConfigurationFilters(args)
+  );
+  const startOffset = offsetFromCursor(args.after);
+  const edges = result.items.map((node, index) => ({
+    node,
+    cursor: encodeCursor({
+      k: String(startOffset + index),
+      id: String(node.id),
+    }),
+  }));
+  return {
+    edges,
+    nodes: result.items,
+    pageInfo: {
+      hasNextPage: result.hasMore,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
 };
 
 export const pickConfiguration: NonNullable<
@@ -958,32 +998,56 @@ export const runPositions = async (
  * `filters` wins on conflicts.
  */
 const mergePositionFilters = (
-  args: QueryPositionsPageArgs
+  args: QueryPositionsConnectionArgs
 ): QueryPositionsArgs => {
-  const f = args.filters ?? null;
+  const f = args.filter ?? null;
   return {
-    take: args.take,
-    skip: args.skip,
-    orderBy: args.orderBy,
-    orderDirection: args.orderDirection,
-    holder: f?.holder ?? args.holder ?? null,
-    chainId: f?.chainId ?? args.chainId ?? null,
-    conditionId: f?.conditionId ?? args.conditionId ?? null,
-    pickConfigId: f?.pickConfigId ?? args.pickConfigId ?? null,
-    result: f?.result ?? args.result ?? null,
-    settled: f?.settled ?? args.settled ?? null,
-    holderWon: f?.holderWon ?? args.holderWon ?? null,
-    collateralMin: f?.collateralMin ?? args.collateralMin ?? null,
-    collateralMax: f?.collateralMax ?? args.collateralMax ?? null,
-    endsAtMin: f?.endsAtMin ?? args.endsAtMin ?? null,
-    endsAtMax: f?.endsAtMax ?? args.endsAtMax ?? null,
+    take: args.first ?? 50,
+    skip: offsetFromCursor(args.after),
+    orderBy:
+      args.orderBy?.field === PositionOrderField.CreatedAt
+        ? PositionSortField.CreatedAt
+        : PositionSortField.UpdatedAt,
+    orderDirection:
+      args.orderBy?.direction === OrderDirection.Asc
+        ? SortOrder.Asc
+        : SortOrder.Desc,
+    holder: f?.holder ?? null,
+    chainId: f?.chainId ?? null,
+    conditionId: f?.conditionId ?? null,
+    pickConfigId: f?.pickConfigId ?? null,
+    result: f?.result ?? null,
+    settled: f?.settled ?? null,
+    holderWon: f?.holderWon ?? null,
+    collateralMin: f?.collateralMin ?? null,
+    collateralMax: f?.collateralMax ?? null,
+    endsAtMin: f?.endsAtMin ?? null,
+    endsAtMax: f?.endsAtMax ?? null,
   };
 };
 
-export const positionsPage: NonNullable<
-  QueryResolvers['positionsPage']
+export const positionsConnection: NonNullable<
+  QueryResolvers['positionsConnection']
 > = async (_parent, args) => {
-  return runPositions(mergePositionFilters(args));
+  const result = await runPositions(mergePositionFilters(args));
+  const startOffset = offsetFromCursor(args.after);
+  const edges = result.items.map((node, index) => ({
+    node,
+    cursor: encodeCursor({
+      k: String(startOffset + index),
+      id: String(node.id),
+    }),
+  }));
+  return {
+    edges,
+    nodes: result.items,
+    pageInfo: {
+      hasNextPage: result.hasMore,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
 };
 
 export const closes: NonNullable<QueryResolvers['closes']> = async (

@@ -272,10 +272,12 @@ const PREDICTION_QUERY = /* GraphQL */ `
 // positions with no sells), so the client-side `lastPage.length === 0`
 // stop signal is unsafe — use the response's `hasMore` flag instead.
 const POSITION_BALANCES_QUERY = /* GraphQL */ `
-  query Positions($filters: PositionFilters, $take: Int, $skip: Int) {
-    positionsPage(filters: $filters, take: $take, skip: $skip) {
-      hasMore
-      items {
+  query Positions($filter: PositionFilters, $first: Int, $after: String) {
+    positionsConnection(filter: $filter, first: $first, after: $after) {
+      pageInfo {
+        hasNextPage
+      }
+      nodes {
         id
         chainId
         tokenAddress
@@ -296,13 +298,15 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
 
 const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
   query PositionsByCondition(
-    $filters: PositionFilters
-    $take: Int
-    $skip: Int
+    $filter: PositionFilters
+    $first: Int
+    $after: String
   ) {
-    positionsPage(filters: $filters, take: $take, skip: $skip) {
-      hasMore
-      items {
+    positionsConnection(filter: $filter, first: $first, after: $after) {
+      pageInfo {
+        hasNextPage
+      }
+      nodes {
         id
         chainId
         tokenAddress
@@ -386,6 +390,11 @@ export function usePredictions(params: {
 
 const DEFAULT_POSITIONS_PAGE_SIZE = 15;
 
+const cursorFromSkip = (skip: number): string | null =>
+  skip > 0
+    ? btoa(JSON.stringify({ k: String(skip - 1), id: String(skip - 1) }))
+    : null;
+
 /**
  * Hook to get position balances (ERC20 tokens) for a user, paginated.
  */
@@ -429,17 +438,23 @@ export function usePositionBalances(params: {
       lastPage.hasMore ? allPages.length * pageSize : undefined,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        positionsPage: PositionBalancePage;
+        positionsConnection: {
+          nodes: PositionBalance[];
+          pageInfo: { hasNextPage: boolean };
+        };
       }>(POSITION_BALANCES_QUERY, {
-        filters: {
+        filter: {
           holder,
           chainId: chainId ?? null,
           settled: settled ?? null,
         },
-        take: pageSize,
-        skip: pageParam,
+        first: pageSize,
+        after: cursorFromSkip(pageParam),
       });
-      return resp?.positionsPage ?? { items: [], hasMore: false };
+      return {
+        items: resp?.positionsConnection?.nodes ?? [],
+        hasMore: resp?.positionsConnection?.pageInfo?.hasNextPage ?? false,
+      };
     },
   });
 
@@ -500,13 +515,19 @@ export function usePositionBalancesByConditionId(params: {
       lastPage.hasMore ? allPages.length * pageSize : undefined,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        positionsPage: PositionBalancePage;
+        positionsConnection: {
+          nodes: PositionBalance[];
+          pageInfo: { hasNextPage: boolean };
+        };
       }>(POSITION_BALANCES_BY_CONDITION_QUERY, {
-        filters: { conditionId, settled: settled ?? null },
-        take: pageSize,
-        skip: pageParam,
+        filter: { conditionId, settled: settled ?? null },
+        first: pageSize,
+        after: cursorFromSkip(pageParam),
       });
-      return resp?.positionsPage ?? { items: [], hasMore: false };
+      return {
+        items: resp?.positionsConnection?.nodes ?? [],
+        hasMore: resp?.positionsConnection?.pageInfo?.hasNextPage ?? false,
+      };
     },
   });
 

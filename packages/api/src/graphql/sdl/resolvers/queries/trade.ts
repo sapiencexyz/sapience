@@ -13,11 +13,13 @@
 import type {
   QueryResolvers,
   QueryTradesArgs,
-  QueryTradesPageArgs,
+  QueryTradesConnectionArgs,
 } from '../../__generated__/resolvers';
+import { OrderDirection, TradeOrderField } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { clampSkip, clampTake } from './pagination';
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
 type Trade = NonNullable<
   Awaited<ReturnType<typeof prisma.secondaryTrade.findUnique>>
@@ -119,28 +121,55 @@ export const runTrades = async ({
  * mutual-exclusion check happens downstream in `runTrades`. New
  * filter fields (`executedAtMin`/`Max`) live only on `TradeFilters`.
  */
-const mergeTradeFilters = (args: QueryTradesPageArgs): RunTradesArgs => {
-  const f = args.filters ?? null;
+const mergeTradeFilters = (args: QueryTradesConnectionArgs): RunTradesArgs => {
+  const f = args.filter ?? null;
   return {
-    take: args.take,
-    skip: args.skip,
-    address: f?.address ?? args.address ?? null,
-    seller: f?.seller ?? args.seller ?? null,
-    buyer: f?.buyer ?? args.buyer ?? null,
-    token: f?.token ?? args.token ?? null,
-    chainId: f?.chainId ?? args.chainId ?? null,
+    take: args.first ?? 50,
+    skip: offsetFromCursor(args.after),
+    address: f?.address ?? null,
+    seller: f?.seller ?? null,
+    buyer: f?.buyer ?? null,
+    token: f?.token ?? null,
+    chainId: f?.chainId ?? null,
     executedAtMin: f?.executedAtMin ?? null,
     executedAtMax: f?.executedAtMax ?? null,
-    orderBy: args.orderBy ?? null,
-    orderDirection: args.orderDirection ?? null,
+    orderBy:
+      args.orderBy?.field === TradeOrderField.BlockNumber
+        ? 'BLOCK_NUMBER'
+        : 'EXECUTED_AT',
+    orderDirection:
+      args.orderBy?.direction === OrderDirection.Asc ? 'asc' : 'desc',
   };
 };
 
-export const tradesPage: NonNullable<QueryResolvers['tradesPage']> = async (
-  _parent,
-  args
-) => {
-  return runTrades(mergeTradeFilters(args));
+const offsetFromCursor = (cursor: string | null | undefined): number => {
+  const payload = cursor ? decodeCursor(cursor) : null;
+  const offset = payload ? Number(payload.k) : Number.NaN;
+  return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
+};
+
+export const tradesConnection: NonNullable<
+  QueryResolvers['tradesConnection']
+> = async (_parent, args) => {
+  const result = await runTrades(mergeTradeFilters(args));
+  const startOffset = offsetFromCursor(args.after);
+  const edges = result.items.map((node, index) => ({
+    node,
+    cursor: encodeCursor({
+      k: String(startOffset + index),
+      id: String(node.id),
+    }),
+  }));
+  return {
+    edges,
+    nodes: result.items,
+    pageInfo: {
+      hasNextPage: result.hasMore,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
 };
 
 export const trade: NonNullable<QueryResolvers['trade']> = async (
@@ -153,6 +182,16 @@ export const trade: NonNullable<QueryResolvers['trade']> = async (
   }
   const r = await prisma.secondaryTrade.findUnique({
     where: { tradeHash: key.toLowerCase() },
+  });
+  return r ? mapTrade(r) : null;
+};
+
+export const tradeByHash: NonNullable<QueryResolvers['tradeByHash']> = async (
+  _parent,
+  { hash }
+) => {
+  const r = await prisma.secondaryTrade.findUnique({
+    where: { tradeHash: hash.toLowerCase() },
   });
   return r ? mapTrade(r) : null;
 };

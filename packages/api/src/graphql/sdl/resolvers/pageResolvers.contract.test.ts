@@ -35,10 +35,7 @@ import { AttestationsPage } from './AttestationsPage';
 import { CollateralTransfersPage } from './CollateralTransfersPage';
 import { ConditionGroupsPage } from './ConditionGroupsPage';
 import { ConditionsPage } from './ConditionsPage';
-import { PickConfigurationsPage } from './PickConfigurationsPage';
-import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
-import { TradesPage } from './TradesPage';
 import { CategoriesPage } from './CategoriesPage';
 import { QuestionsPage } from './QuestionsPage';
 import { ActivityItemsPage } from './ActivityItemsPage';
@@ -78,17 +75,10 @@ const lazyPageResolvers: LazyCase[] = [
     mock: mockPrisma.condition,
   },
   {
-    name: 'PickConfigurationsPage',
-    resolver: PickConfigurationsPage,
-    mock: mockPrisma.picks,
-  },
-  { name: 'PositionsPage', resolver: PositionsPage, mock: mockPrisma.position },
-  {
     name: 'PredictionsPage',
     resolver: PredictionsPage,
     mock: mockPrisma.prediction,
   },
-  { name: 'TradesPage', resolver: TradesPage, mock: mockPrisma.secondaryTrade },
 ];
 
 describe.each(lazyPageResolvers)(

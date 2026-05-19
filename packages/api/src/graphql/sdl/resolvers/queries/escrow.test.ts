@@ -17,8 +17,8 @@ import type {
 } from '../../__generated__/resolvers';
 import {
   __clearPositionSynthesisCache,
-  positionsPage,
-  pickConfigurationsPage,
+  runPositions,
+  runPickConfigurations,
 } from './escrow';
 import { positionCount } from './deprecated/escrow';
 
@@ -44,7 +44,7 @@ type PositionCountFn = (
   ctx: unknown,
   info: unknown
 ) => Promise<number>;
-const positionsPageFn = positionsPage as unknown as PositionsPageFn;
+const positionsPageFn: PositionsPageFn = (_parent, args) => runPositions(args);
 const positionCountFn = positionCount as unknown as PositionCountFn;
 
 const ALICE = '0xalice';
@@ -841,8 +841,17 @@ type PickConfigurationsPageFn = (
   totalCount: number | null;
   _countWhere?: unknown;
 }>;
-const pickConfigurationsPageFn =
-  pickConfigurationsPage as unknown as PickConfigurationsPageFn;
+const pickConfigurationsPageFn: PickConfigurationsPageFn = (_parent, args) =>
+  runPickConfigurations({
+    take: args.take,
+    skip: args.skip,
+    chainId: args.chainId ?? null,
+    resolved: args.resolved ?? null,
+    result: args.result ?? null,
+    tokens: args.tokens ?? null,
+    orderBy: null,
+    orderDirection: null,
+  });
 
 describe('pickConfigurationsPage resolver — page envelope', () => {
   beforeEach(() => {

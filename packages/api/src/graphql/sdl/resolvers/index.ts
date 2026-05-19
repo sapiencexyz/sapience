@@ -36,12 +36,9 @@ import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
-import { PickConfigurationsPage } from './PickConfigurationsPage';
-import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
 import { QuestionsPage } from './QuestionsPage';
 import { Question, ConditionOrConditionGroup } from './Question';
-import { TradesPage } from './TradesPage';
 import { User } from './User';
 
 import { accountActivityPage, activityPage } from './queries/activity';
@@ -86,8 +83,8 @@ import {
   claims,
   closes,
   pickConfiguration,
-  pickConfigurationsPage,
-  positionsPage,
+  pickConfigurationsConnection,
+  positionsConnection,
   prediction,
   predictionsPage,
 } from './queries/escrow';
@@ -109,7 +106,7 @@ import {
   protocolVolume,
 } from './queries/timeSeries';
 import { node, nodes } from './queries/node';
-import { trade, tradesPage } from './queries/trade';
+import { trade, tradeByHash, tradesConnection } from './queries/trade';
 import { trades, tradeCount } from './queries/deprecated/trade';
 import { accountTotalVolume } from './queries/volume';
 
@@ -161,19 +158,20 @@ export const resolvers: Resolvers = {
     closes,
     pickConfiguration,
     pickConfigurations,
-    pickConfigurationsPage,
+    pickConfigurationsConnection,
     positionCount,
     positions,
-    positionsPage,
+    positionsConnection,
     prediction,
     predictionCount,
     predictions,
     predictionsPage,
     // Secondary market trades
     trade,
+    tradeByHash,
     tradeCount,
     trades,
-    tradesPage,
+    tradesConnection,
     // Tags
     popularTags,
     // CRUD passthroughs
@@ -206,12 +204,9 @@ export const resolvers: Resolvers = {
   LegacyPrediction,
   LimitOrder,
   Pick,
-  PickConfigurationsPage,
-  PositionsPage,
   PredictionsPage,
   QuestionsPage,
   Question,
   ConditionOrConditionGroup,
-  TradesPage,
   User,
 };
