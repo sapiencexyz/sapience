@@ -1828,6 +1828,58 @@ type Query {
 }
 ```
 
+#### Field naming when the canonical name is taken
+
+Relay convention puts `Connection` on the **return type** (`ConditionConnection`), not necessarily on the root field. The target end state can still be:
+
+```graphql
+type Query {
+  conditions(
+    first: Int
+    after: String
+    filter: ConditionFilter
+    orderBy: ConditionOrder
+  ): ConditionConnection!
+}
+```
+
+But GraphQL fields are keyed only by name. We cannot expose both of these at once:
+
+```graphql
+type Query {
+  conditions(where: ..., take: Int, skip: Int): [Condition!]!
+  conditions(first: Int, after: String, filter: ConditionFilter): ConditionConnection!
+}
+```
+
+Changing the existing `conditions` field from `[Condition!]!` to `ConditionConnection!` is breaking because pinned clients currently select condition fields directly (`conditions { id question }`), while the connection shape requires a wrapper selection (`conditions { nodes { id question } pageInfo { hasNextPage } }`). Deprecating args or fields inside the old list shape does not preserve that query once the return wrapper changes.
+
+When the canonical name is occupied by a different return type, use this explicit migration plan:
+
+```graphql
+type Query {
+  # Phase 1: old shape remains unchanged, deprecated for migration.
+  conditions(where: ..., take: Int, skip: Int): [Condition!]!
+    @deprecated(reason: "Use `conditionsConnection`.")
+
+  # Phase 2: new Relay shape ships under a temporary collision-avoidance name.
+  conditionsConnection(
+    first: Int
+    after: String
+    filter: ConditionFilter
+    orderBy: ConditionOrder
+  ): ConditionConnection!
+
+  # Phase 3, after clients migrate and the old field has completed its
+  # deprecation window in a breaking release: reclaim the canonical name.
+  # conditions(...): ConditionConnection!
+}
+```
+
+For PR 2 this means `conditionsConnection`, `conditionGroupsConnection`, and `questionsConnection` are bridge names. They avoid the wire break while old `conditions`, `conditionGroups`, and `questions` still exist. After the deprecated list fields are removed, the team can either keep the `*Connection` bridge names permanently or perform the final `conditionsConnection -> conditions` canonical-name cleanup in a later breaking release. The important rule is one client migration at a time: never change a root field's return wrapper under the same name while pinned clients still use the old selection shape.
+
+A genuinely new field whose canonical name is not already taken keeps the canonical name from day one; no suffix is needed just because the return type is a connection.
+
 ---
 
 ## Open Questions
