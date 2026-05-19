@@ -87,18 +87,18 @@ const mapPrediction = (
   pickConfig: r.pickConfiguration ? mapPickConfig(r.pickConfiguration) : null,
 });
 
-export type PredictionsPageEnvelope = {
+export type PredictionsEnvelope = {
   items: ResolversParentTypes['Prediction'][];
   hasMore: boolean;
   /**
    * Eagerly populated only on early-return paths where the count is
    * already known (empty pickConfigIds → 0). On the normal path, this
    * is null and `_countWhere` carries the filter for the lazy
-   * PredictionsPage.totalCount field resolver.
+   * predictionsConnection.totalCount field resolver.
    */
   totalCount: number | null;
   /**
-   * Lazy count input — used by the PredictionsPage.totalCount field
+   * Lazy count input — used by the predictionsConnection.totalCount field
    * resolver to issue `prisma.prediction.count({ where })` only when
    * the client actually selects totalCount. Avoids paying for a count
    * query on every page request.
@@ -109,7 +109,7 @@ export type PredictionsPageEnvelope = {
 /**
  * Extended args for `runPredictions` — superset of the deprecated bare
  * `predictions(...)` args. The richer filter fields (`result`,
- * `endsAtMin`/`Max`) live only on `predictionsPage` / `PredictionFilters`.
+ * `endsAtMin`/`Max`) live only on `predictionsConnection` / `PredictionFilter`.
  */
 export type RunPredictionsArgs = QueryPredictionsArgs & {
   result?: SettlementResult | null;
@@ -186,7 +186,7 @@ export const runPredictions = async ({
   endsAtMax,
   orderBy,
   orderDirection,
-}: RunPredictionsArgs): Promise<PredictionsPageEnvelope> => {
+}: RunPredictionsArgs): Promise<PredictionsEnvelope> => {
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
   const { where, empty } = await buildPredictionWhere({

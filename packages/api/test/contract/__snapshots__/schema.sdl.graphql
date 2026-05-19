@@ -1656,12 +1656,6 @@ type CategoriesPage implements Page {
   totalCount: Int
 }
 
-"""Sort fields for the `attestationsPage` query"""
-enum AttestationSortField {
-  ATTESTED_AT
-  CREATED_AT
-}
-
 """Sort fields for the `conditionsPage` query"""
 enum ConditionSortField {
   CREATED_AT
@@ -2418,40 +2412,6 @@ input PositionFilters {
   endsAtMin: UnixSeconds
 
   """Restrict to positions whose pickConfig `endsAt <= this`."""
-  endsAtMax: UnixSeconds
-}
-
-"""
-Flat filter input for the `predictionsPage` query. Each field is optional;
-values combine with AND.
-"""
-input PredictionFilters {
-  """
-  Restrict to predictions where the address is predictor or counterparty (case-insensitive).
-  """
-  address: String
-
-  """Restrict to a single chain."""
-  chainId: Int
-
-  """
-  Restrict to predictions on a single condition (via the pickConfig join).
-  """
-  conditionId: String
-
-  """Restrict to legacy (true) or non-legacy (false) predictions."""
-  isLegacy: Boolean
-
-  """Restrict to settled (true) or unsettled (false) predictions."""
-  settled: Boolean
-
-  """Restrict to predictions whose pickConfig settled with this result."""
-  result: SettlementResult
-
-  """Restrict to predictions whose pickConfig `endsAt >= this`."""
-  endsAtMin: UnixSeconds
-
-  """Restrict to predictions whose pickConfig `endsAt <= this`."""
   endsAtMax: UnixSeconds
 }
 

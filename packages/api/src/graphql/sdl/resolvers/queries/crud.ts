@@ -7,15 +7,15 @@
  *   - `categoriesPage` (live)
  *
  * Plus the live point-lookups (`condition(where:)`, `user(where:)`) and
- * the paginated `attestationsPage` runner. The other typegraphql-prisma-
+ * the `forecastsConnection` runner. The other typegraphql-prisma-
  * style passthroughs that don't share state with a live path live in
  * `./deprecated/crud.ts`.
  */
 
 import type {
   QueryResolvers,
-  QueryCategoriesPageArgs,
   QueryForecastsConnectionArgs,
+  QueryCategoriesPageArgs,
 } from '../../__generated__/resolvers';
 import {
   ForecastOrderField,
@@ -150,73 +150,6 @@ export const categoriesPage: NonNullable<
 
   if (isFullPage && !hasMore) categoriesCache.set(CATEGORIES_CACHE_KEY, items);
   return { items, hasMore };
-};
-
-export type AttestationsPageEnvelope = {
-  items: Awaited<ReturnType<typeof prisma.attestation.findMany>>;
-  hasMore: boolean;
-  _countWhere?: Prisma.AttestationWhereInput;
-};
-
-type RunAttestationsArgs = {
-  uid?: string | null;
-  attester?: string | null;
-  conditionId?: string | null;
-  schemaId?: string | null;
-  recipient?: string | null;
-  minTime?: number | null;
-  maxTime?: number | null;
-  orderBy?: 'ATTESTED_AT' | 'CREATED_AT' | null;
-  orderDirection?: 'asc' | 'desc' | null;
-  take?: number | null;
-  skip?: number | null;
-};
-
-export const runAttestations = async ({
-  uid,
-  attester,
-  conditionId,
-  schemaId,
-  recipient,
-  minTime,
-  maxTime,
-  orderBy,
-  orderDirection,
-  take,
-  skip,
-}: RunAttestationsArgs): Promise<AttestationsPageEnvelope> => {
-  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
-  const skipVal = clampSkip(skip);
-  const where: Prisma.AttestationWhereInput = {};
-  if (uid) where.uid = uid;
-  if (attester) where.attester = attester;
-  if (conditionId) where.conditionId = conditionId;
-  if (schemaId) where.schemaId = schemaId;
-  if (recipient) where.recipient = recipient;
-  if (minTime !== null && minTime !== undefined) {
-    where.time = { ...(where.time as object | undefined), gte: minTime };
-  }
-  if (maxTime !== null && maxTime !== undefined) {
-    where.time = { ...(where.time as object | undefined), lte: maxTime };
-  }
-  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
-  const orderField =
-    orderBy === 'CREATED_AT'
-      ? ({ createdAt: direction } as const)
-      : ({ time: direction } as const);
-
-  const rawRows = await prisma.attestation.findMany({
-    where,
-    orderBy: orderField,
-    take: cappedTake + 1,
-    skip: skipVal,
-  });
-  const hasMore = rawRows.length > cappedTake;
-  return {
-    items: rawRows.slice(0, cappedTake),
-    hasMore,
-    _countWhere: where,
-  };
 };
 
 const buildForecastCursorPredicate = (

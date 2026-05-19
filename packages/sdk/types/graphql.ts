@@ -430,11 +430,6 @@ export type AttestationScoreWhereInput = {
   used?: InputMaybe<BoolFilter>;
 };
 
-/** Sort fields for the `attestationsPage` query */
-export type AttestationSortField =
-  | 'ATTESTED_AT'
-  | 'CREATED_AT';
-
 export type AttestationWhereInput = {
   AND?: InputMaybe<Array<AttestationWhereInput>>;
   NOT?: InputMaybe<Array<AttestationWhereInput>>;
@@ -2392,29 +2387,6 @@ export type PredictionEdge = {
  * values combine with AND.
  */
 export type PredictionFilter = {
-  /** Restrict to predictions where the address is predictor or counterparty (case-insensitive). */
-  address?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to a single chain. */
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  /** Restrict to predictions on a single condition (via the pickConfig join). */
-  conditionId?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to predictions whose pickConfig `endsAt <= this`. */
-  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to predictions whose pickConfig `endsAt >= this`. */
-  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to legacy (true) or non-legacy (false) predictions. */
-  isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Restrict to predictions whose pickConfig settled with this result. */
-  result?: InputMaybe<SettlementResult>;
-  /** Restrict to settled (true) or unsettled (false) predictions. */
-  settled?: InputMaybe<Scalars['Boolean']['input']>;
-};
-
-/**
- * Flat filter input for the `predictionsPage` query. Each field is optional;
- * values combine with AND.
- */
-export type PredictionFilters = {
   /** Restrict to predictions where the address is predictor or counterparty (case-insensitive). */
   address?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */

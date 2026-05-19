@@ -2742,29 +2742,6 @@
         "possibleTypes": null
       },
       {
-        "kind": "ENUM",
-        "name": "AttestationSortField",
-        "description": "Sort fields for the `attestationsPage` query",
-        "fields": null,
-        "inputFields": null,
-        "interfaces": null,
-        "enumValues": [
-          {
-            "name": "ATTESTED_AT",
-            "description": null,
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "CREATED_AT",
-            "description": null,
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "possibleTypes": null
-      },
-      {
         "kind": "INPUT_OBJECT",
         "name": "AttestationWhereInput",
         "description": null,
@@ -17568,97 +17545,6 @@
         "kind": "INPUT_OBJECT",
         "name": "PredictionFilter",
         "description": "Filter input for the `predictionsConnection` query. Each field is optional;\nvalues combine with AND.",
-        "fields": null,
-        "inputFields": [
-          {
-            "name": "address",
-            "description": "Restrict to predictions where the address is predictor or counterparty (case-insensitive).",
-            "type": {
-              "kind": "SCALAR",
-              "name": "String",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "chainId",
-            "description": "Restrict to a single chain.",
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "conditionId",
-            "description": "Restrict to predictions on a single condition (via the pickConfig join).",
-            "type": {
-              "kind": "SCALAR",
-              "name": "String",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "isLegacy",
-            "description": "Restrict to legacy (true) or non-legacy (false) predictions.",
-            "type": {
-              "kind": "SCALAR",
-              "name": "Boolean",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "settled",
-            "description": "Restrict to settled (true) or unsettled (false) predictions.",
-            "type": {
-              "kind": "SCALAR",
-              "name": "Boolean",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "result",
-            "description": "Restrict to predictions whose pickConfig settled with this result.",
-            "type": {
-              "kind": "ENUM",
-              "name": "SettlementResult",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "endsAtMin",
-            "description": "Restrict to predictions whose pickConfig `endsAt >= this`.",
-            "type": {
-              "kind": "SCALAR",
-              "name": "UnixSeconds",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "endsAtMax",
-            "description": "Restrict to predictions whose pickConfig `endsAt <= this`.",
-            "type": {
-              "kind": "SCALAR",
-              "name": "UnixSeconds",
-              "ofType": null
-            },
-            "defaultValue": null
-          }
-        ],
-        "interfaces": null,
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "INPUT_OBJECT",
-        "name": "PredictionFilters",
-        "description": "Flat filter input for the `predictionsPage` query. Each field is optional;\nvalues combine with AND.",
         "fields": null,
         "inputFields": [
           {
