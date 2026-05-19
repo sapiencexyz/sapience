@@ -5,6 +5,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fetchWithRetry } from '../utils';
+import type { SapienceCategorySlug } from '../types';
+import { LLM_ENDTIME_TIMEOUT_MS } from '../constants';
 import type {
   MarketEnrichmentInput,
   MarketEnrichmentOutput,
@@ -12,6 +14,7 @@ import type {
   ShortNameOnlyOutput,
   EndTimeEnrichmentInput,
   EndTimeOutput,
+  EndTimeConfidence,
 } from './types';
 import {
   buildCategoryPrompt,
@@ -24,8 +27,6 @@ import {
   ENDTIME_SYSTEM_PROMPT,
   VALID_CATEGORIES,
 } from './prompts';
-import type { SapienceCategorySlug } from '../types';
-import { LLM_ENDTIME_TIMEOUT_MS } from '../constants';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = 'openai/gpt-4o-mini';
@@ -109,74 +110,6 @@ ${citationsSection}${parsedSection}
 `;
 
   // On first call, recreate the file (overwrite); otherwise append
-  if (!logFileInitialized) {
-    fs.writeFileSync(LLM_RESPONSE_LOG_FILE, logEntry);
-    logFileInitialized = true;
-  } else {
-    fs.appendFileSync(LLM_RESPONSE_LOG_FILE, logEntry);
-  }
-}
-
-export interface RegexResolvedEntry {
-  question: string;
-  tier: string;
-  ts: number;
-}
-
-export interface SanityFailEntry {
-  question: string;
-  tier: string;
-  regexTs: number;
-  polyTs: number;
-}
-
-/**
- * Log regex pre-pass results to the LLM log file (non-production only).
- * Called once per enrichEndTimesWithLLM run, before any Sonar calls.
- */
-export function logRegexPrepass(opts: {
-  total: number;
-  resolved: RegexResolvedEntry[];
-  sanityFails: SanityFailEntry[];
-  sonarQuestions: string[];
-}): void {
-  if (process.env.NODE_ENV === 'production') return;
-
-  const timestamp = new Date().toISOString();
-  const { total, resolved, sanityFails, sonarQuestions } = opts;
-
-  const resolvedSection = resolved.length
-    ? `\nRegex resolved (${resolved.length}):\n` +
-      resolved
-        .map(
-          (r) =>
-            `  [tier${r.tier.padEnd(8)}] "${r.question.slice(0, 60)}" -> ${new Date(r.ts * 1000).toISOString()}`
-        )
-        .join('\n')
-    : '\nRegex resolved: (none)';
-
-  const sanitySection = sanityFails.length
-    ? `\n\nSanity check failures (${sanityFails.length}) — |regex−poly| > 14d:\n` +
-      sanityFails
-        .map(
-          (r) =>
-            `  [tier${r.tier.padEnd(8)}] "${r.question.slice(0, 60)}" regex=${new Date(r.regexTs * 1000).toISOString().slice(0, 10)} poly=${new Date(r.polyTs * 1000).toISOString().slice(0, 10)}`
-        )
-        .join('\n')
-    : '';
-
-  const sonarSection = sonarQuestions.length
-    ? `\n\n→ Sonar (${sonarQuestions.length}):\n` +
-      sonarQuestions.map((q) => `  "${q.slice(0, 80)}"`).join('\n')
-    : '\n\n→ Sonar: (none)';
-
-  const logEntry =
-    `=== ${timestamp} | REGEX_PREPASS | ${total} markets | ${resolved.length} regex / ${sanityFails.length} sanity-fail / ${sonarQuestions.length} → Sonar ===` +
-    resolvedSection +
-    sanitySection +
-    sonarSection +
-    `\n\n===\n\n`;
-
   if (!logFileInitialized) {
     fs.writeFileSync(LLM_RESPONSE_LOG_FILE, logEntry);
     logFileInitialized = true;
@@ -861,7 +794,12 @@ function parseBothResponse(
 }
 
 /**
- * Parse endTime response (id,ISO8601_or_UNKNOWN)
+ * Parse endTime response. New format is a JSON array:
+ *   [{ id, ts: ISO8601 | null, confidence: "high"|"low"|"unknown" }]
+ *
+ * Legacy CSV format (id,ISO8601_or_UNKNOWN) is still accepted as fallback for
+ * resilience against the model regressing to the old shape — every CSV line
+ * gets a synthetic confidence: 'low' when ts is present, 'unknown' when not.
  */
 export function parseEndTimeResponse(
   content: string,
@@ -873,57 +811,48 @@ export function parseEndTimeResponse(
   const foundIds = new Set<string>();
   const now = Math.floor(Date.now() / 1000);
 
-  // First pass: collect parsed lines
-  const parsedLines: Array<{ id: string; dateStr: string }> = [];
+  // First pass: collect parsed entries — try JSON array first, fall back to CSV.
+  const parsedEntries: Array<{
+    id: string;
+    dateStr: string;
+    rawConfidence: string | null;
+  }> = [];
 
-  const lines = content.split('\n').filter((line) => line.trim());
-
-  for (const line of lines) {
-    if (
-      line.startsWith('```') ||
-      line.startsWith('id,') ||
-      line.startsWith('<')
-    ) {
-      continue;
-    }
-
-    const parsed = splitIdFromRest(line);
-    if (!parsed) {
-      console.warn(
-        `[LLM:endTime] Skipping malformed line: ${line.slice(0, 50)}...`
-      );
-      continue;
-    }
-
-    parsedLines.push({ id: parsed.id, dateStr: parsed.rest });
+  const jsonEntries = tryParseJsonArray(content);
+  if (jsonEntries) {
+    parsedEntries.push(...jsonEntries);
+  } else {
+    parsedEntries.push(...parseCsvFallback(content));
   }
 
   // Second pass: exact ID matches
-  for (const { id, dateStr } of parsedLines) {
+  for (const { id, dateStr, rawConfidence } of parsedEntries) {
     if (!marketMap.has(id)) continue;
 
     const endTime = parseEndTimeValue(dateStr, now);
+    const confidence = normalizeConfidence(rawConfidence, endTime);
     console.log(
-      `[LLM:endTime]   "${marketMap.get(id)!.question}" -> ${dateStr} (${endTime === null ? 'null' : endTime})`
+      `[LLM:endTime]   "${marketMap.get(id)!.question}" -> ${dateStr} (${endTime === null ? 'null' : endTime}, ${confidence})`
     );
 
-    results.push({ conditionId: id, endTime });
+    results.push({ conditionId: id, endTime, confidence });
     foundIds.add(id);
   }
 
   // Third pass: fuzzy match unmatched IDs
-  const unmatchedIds = parsedLines.filter(({ id }) => !marketMap.has(id));
+  const unmatchedIds = parsedEntries.filter(({ id }) => !marketMap.has(id));
   const missingMarketIds = validIds.filter((id) => !foundIds.has(id));
 
-  for (const { id, dateStr } of unmatchedIds) {
+  for (const { id, dateStr, rawConfidence } of unmatchedIds) {
     const matchedId = findClosestConditionId(id, missingMarketIds);
     if (matchedId && !foundIds.has(matchedId)) {
       const endTime = parseEndTimeValue(dateStr, now);
+      const confidence = normalizeConfidence(rawConfidence, endTime);
       console.log(
-        `[LLM:endTime]   "${marketMap.get(matchedId)!.question}" -> ${dateStr} (${endTime === null ? 'null' : endTime}) (fuzzy)`
+        `[LLM:endTime]   "${marketMap.get(matchedId)!.question}" -> ${dateStr} (${endTime === null ? 'null' : endTime}, ${confidence}) (fuzzy)`
       );
 
-      results.push({ conditionId: matchedId, endTime });
+      results.push({ conditionId: matchedId, endTime, confidence });
       foundIds.add(matchedId);
     }
   }
@@ -941,11 +870,105 @@ export function parseEndTimeResponse(
 }
 
 /**
+ * Try parsing the response as a JSON array of {id, ts, confidence}. Returns
+ * null if the content isn't valid JSON or isn't an array — caller then falls
+ * back to CSV. Strips ```json fences before attempting to parse, since
+ * Sonar sometimes wraps despite the instruction.
+ */
+function tryParseJsonArray(content: string): Array<{
+  id: string;
+  dateStr: string;
+  rawConfidence: string | null;
+}> | null {
+  const stripped = content
+    .replace(/^\s*```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+  if (!stripped.startsWith('[')) return null;
+  try {
+    const parsed: unknown = JSON.parse(stripped);
+    if (!Array.isArray(parsed)) return null;
+    const out: Array<{
+      id: string;
+      dateStr: string;
+      rawConfidence: string | null;
+    }> = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== 'object') continue;
+      const rec = item as Record<string, unknown>;
+      if (typeof rec.id !== 'string') continue;
+      const tsField = rec.ts;
+      const dateStr =
+        typeof tsField === 'string'
+          ? tsField
+          : tsField === null
+            ? 'UNKNOWN'
+            : '';
+      const rawConfidence =
+        typeof rec.confidence === 'string' ? rec.confidence : null;
+      out.push({ id: rec.id, dateStr, rawConfidence });
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Legacy CSV parser kept as fallback so a model regressing to the old format
+ * doesn't take the whole batch to UNKNOWN. CSV has no confidence field; we
+ * synthesize 'low' for resolved dates and 'unknown' for UNKNOWN/null.
+ */
+function parseCsvFallback(content: string): Array<{
+  id: string;
+  dateStr: string;
+  rawConfidence: string | null;
+}> {
+  const entries: Array<{
+    id: string;
+    dateStr: string;
+    rawConfidence: string | null;
+  }> = [];
+  const lines = content.split('\n').filter((line) => line.trim());
+  for (const line of lines) {
+    if (
+      line.startsWith('```') ||
+      line.startsWith('id,') ||
+      line.startsWith('<')
+    ) {
+      continue;
+    }
+    const parsed = splitIdFromRest(line);
+    if (!parsed) {
+      console.warn(
+        `[LLM:endTime] Skipping malformed line: ${line.slice(0, 50)}...`
+      );
+      continue;
+    }
+    entries.push({
+      id: parsed.id,
+      dateStr: parsed.rest,
+      rawConfidence: null,
+    });
+  }
+  return entries;
+}
+
+function normalizeConfidence(
+  raw: string | null,
+  endTime: number | null
+): EndTimeConfidence {
+  if (raw === 'high' || raw === 'low' || raw === 'unknown') return raw;
+  // No / invalid confidence reported (CSV fallback, malformed): infer.
+  return endTime === null ? 'unknown' : 'low';
+}
+
+/**
  * Parse a date string into a unix timestamp, or null if invalid/past/UNKNOWN
  */
 function parseEndTimeValue(dateStr: string, now: number): number | null {
   const trimmed = dateStr.trim().toUpperCase();
-  if (trimmed === 'UNKNOWN') return null;
+  if (trimmed === 'UNKNOWN' || trimmed === '') return null;
 
   const date = new Date(dateStr.trim());
   if (isNaN(date.getTime())) {
@@ -993,7 +1016,9 @@ export async function callOpenRouterForEndTime(
           { role: 'system', content: ENDTIME_SYSTEM_PROMPT },
           { role: 'user', content: prompt },
         ],
-        temperature: 0.1,
+        // Temperature 0.0: this is a structured extraction task, not a
+        // creative one — we want maximally deterministic JSON output.
+        temperature: 0.0,
         max_tokens: 10000,
       }),
       signal: AbortSignal.timeout(LLM_ENDTIME_TIMEOUT_MS),
@@ -1031,12 +1056,9 @@ export async function callOpenRouterForEndTime(
   const results = parseEndTimeResponse(content, markets);
   console.log(`[LLM:endTime] Parsed ${results.length} endTime results`);
 
-  // Build raw-value map from response lines for logging
-  const rawValueMap = new Map<string, string>();
-  for (const line of content.split('\n').filter((l: string) => l.trim())) {
-    const parsed = splitIdFromRest(line);
-    if (parsed) rawValueMap.set(parsed.id, parsed.rest);
-  }
+  // Per-market logging: drive off parsed results (JSON-aware) rather than
+  // re-parsing the raw text. Status reflects how the parser classified each
+  // entry, not the literal CSV split that the previous version assumed.
   const parsedEndTimeSet = new Map(results.map((r) => [r.conditionId, r]));
   logLLMResponse('endTime', markets, content, {
     model,
@@ -1045,25 +1067,23 @@ export async function callOpenRouterForEndTime(
     finishReason,
     citations: data.citations ?? [],
     parsedResults: markets.map((m) => {
-      const raw = rawValueMap.get(m.conditionId) ?? '(missing)';
       const result = parsedEndTimeSet.get(m.conditionId);
       let status: 'ok' | 'unknown' | 'rejected-past' | 'missing';
       let parsed: string;
-      if (!rawValueMap.has(m.conditionId)) {
+      if (!result) {
         status = 'missing';
         parsed = 'N/A';
-      } else if (raw.toUpperCase() === 'UNKNOWN') {
+      } else if (result.confidence === 'unknown' && result.endTime === null) {
         status = 'unknown';
         parsed = 'UNKNOWN';
-      } else if (result?.endTime === null) {
+      } else if (result.endTime === null) {
         status = 'rejected-past';
         parsed = 'rejected (past date)';
       } else {
         status = 'ok';
-        parsed = result?.endTime
-          ? new Date(result.endTime * 1000).toISOString()
-          : 'N/A';
+        parsed = `${new Date(result.endTime * 1000).toISOString()} [${result.confidence}]`;
       }
+      const raw = result ? `confidence=${result.confidence}` : '(missing)';
       return { question: m.question, raw, parsed, status };
     }),
   });

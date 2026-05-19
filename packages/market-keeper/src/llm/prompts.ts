@@ -276,7 +276,7 @@ export const BOTH_SYSTEM_PROMPT =
   'You are a prediction market categorization assistant. Respond only with CSV lines: id,category,shortName. No markdown, no headers, no quotes around values. NEVER shorten or truncate IDs.';
 
 export const ENDTIME_SYSTEM_PROMPT =
-  'You are a prediction market deadline analyst with web search. Each market is a YES/NO question — you do not need to know the answer, only WHEN the answer will become available. First check if the event has ALREADY HAPPENED by searching for results — if it has, return the past date when the outcome became known. Only search for future scheduled times if the event has not occurred yet. Always output UTC. Respond only with CSV lines: id,ISO8601_datetime_UTC. No markdown, no headers. NEVER shorten or truncate IDs. If you cannot determine a resolution date, respond with id,UNKNOWN.';
+  'You are a prediction market deadline analyst with web search. Each market is a YES/NO question — you do not need to know the answer, only WHEN the answer will become available. First check if the event has ALREADY HAPPENED by searching for results — if it has, return the past date when the outcome became known. Only search for future scheduled times if the event has not occurred yet. Always output UTC. Respond ONLY with a JSON array, no markdown, no prose, no explanation outside the JSON. Each entry: {"id": "<full hex id>", "ts": "<ISO8601 UTC>" or null, "confidence": "high" | "low" | "unknown"}. Use "high" when title or description contains an unambiguous specific time (date + clock time + timezone, "noon ET", "4 PM EDT", etc.). Use "low" with ts set to end-of-day 23:59:59 UTC when only the date is extractable. Use "unknown" with ts=null only when no date can be determined at all. NEVER shorten or truncate IDs.';
 
 /**
  * Build prompt for endTime determination via web search
@@ -349,6 +349,13 @@ IMPORTANT: Never shorten or truncate the market ID - copy it exactly as provided
 MARKETS:
 ${JSON.stringify(marketsJson, null, 2)}
 
-Respond with CSV format only (no header, no markdown):
-<full_id>,<ISO8601_datetime_UTC_or_UNKNOWN>`;
+OUTPUT FORMAT — respond with a single JSON array, no markdown fences, no prose:
+[
+  { "id": "<full hex id>", "ts": "<ISO8601 UTC>" or null, "confidence": "high" | "low" | "unknown" }
+]
+
+CONFIDENCE RULES:
+- "high": title or description gives an unambiguous specific time-of-day (date + hour + timezone, "noon ET", "4 PM EDT", "20:00 UTC").
+- "low": only the date is extractable; set ts to end-of-day 23:59:59 UTC of the named day.
+- "unknown": no date can be determined at all; set ts to null.`;
 }

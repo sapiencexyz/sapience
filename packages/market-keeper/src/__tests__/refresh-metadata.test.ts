@@ -73,26 +73,46 @@ function makeMarket(
   };
 }
 
+// Helper: wrap a list of items in the `conditionsPage` response shape used
+// by the new paginated GraphQL query. `hasMore` is implied by item count
+// being a full page; callers can override.
+function conditionsPageResponse(
+  items: Array<Record<string, unknown>>,
+  opts: { hasMore?: boolean } = {}
+): Response {
+  return jsonResponse({
+    data: {
+      conditionsPage: {
+        hasMore: opts.hasMore ?? items.length === 100,
+        items,
+      },
+    },
+  });
+}
+
 describe('fetchAllExistingConditions', () => {
-  it('sends a where clause that filters to public + unsettled + non-empty similarMarkets', async () => {
-    fetchQueue.push(() => jsonResponse({ data: { conditions: [] } }));
+  it('sends conditionsPage filters: PUBLIC visibility, unsettled, hasSimilarMarkets', async () => {
+    fetchQueue.push(() => conditionsPageResponse([], { hasMore: false }));
 
     await fetchAllExistingConditions('https://api.example.com');
 
     expect(fetchCalls).toHaveLength(1);
     const body = JSON.parse(fetchCalls[0].init!.body as string);
-    expect(body.variables.where).toEqual({
-      public: { equals: true },
-      settled: { equals: false },
-      similarMarkets: { isEmpty: false },
+    expect(body.variables.filters).toEqual({
+      visibility: 'PUBLIC',
+      settled: false,
+      hasSimilarMarkets: true,
     });
-    expect(body.variables.orderBy).toEqual([{ id: 'asc' }]);
+    // conditionsPage uses an enum orderBy + direction rather than an
+    // array-of-orderBy shape.
+    expect(body.query).toContain('orderBy: CREATED_AT');
+    expect(body.query).toContain('orderDirection: asc');
     expect(fetchCalls[0].url.endsWith('/graphql')).toBe(true);
   });
 
-  it('paginates with deterministic orderBy until a page returns < pageSize', async () => {
-    // Two full pages of 100 then an empty short page — same shape
-    // refresh-volume's fetchActiveConditionIds uses.
+  it('paginates until hasMore is false', async () => {
+    // Two full pages of 100 + a short page. The paginator uses the
+    // server-truth `hasMore` flag to know when to stop.
     const page1 = Array.from({ length: 100 }, (_, i) => ({
       id: `0x${(i + 1).toString().padStart(3, '0')}`,
       endTime: 1700000000,
@@ -111,9 +131,9 @@ describe('fetchAllExistingConditions', () => {
       },
     ];
 
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page1 } }));
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page2 } }));
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page3 } }));
+    fetchQueue.push(() => conditionsPageResponse(page1, { hasMore: true }));
+    fetchQueue.push(() => conditionsPageResponse(page2, { hasMore: true }));
+    fetchQueue.push(() => conditionsPageResponse(page3, { hasMore: false }));
 
     const result = await fetchAllExistingConditions('https://api.example.com');
 
@@ -132,29 +152,28 @@ describe('fetchAllExistingConditions', () => {
 
   it('maps GraphQL fields onto the ExistingCondition shape', async () => {
     fetchQueue.push(() =>
-      jsonResponse({
-        data: {
-          conditions: [
-            {
-              id: '0xabc',
-              endTime: 1700000000,
-              question: 'Will X happen?',
-              shortName: 'X?',
-              optionName: 'Yes side',
-              description: 'A description',
+      conditionsPageResponse(
+        [
+          {
+            id: '0xabc',
+            endTime: 1700000000,
+            question: 'Will X happen?',
+            shortName: 'X?',
+            optionName: 'Yes side',
+            description: 'A description',
+            similarMarkets: ['https://polymarket.com/event/foo#bar'],
+            tags: ['crypto', 'btc'],
+            similarMarketVolume: 1234,
+            similarMarketImage: 'https://img.example/x.png',
+            conditionGroup: {
+              id: 7,
+              name: 'Group Name',
               similarMarkets: ['https://polymarket.com/event/foo#bar'],
-              tags: ['crypto', 'btc'],
-              similarMarketVolume: 1234,
-              similarMarketImage: 'https://img.example/x.png',
-              conditionGroup: {
-                id: 7,
-                name: 'Group Name',
-                similarMarkets: ['https://polymarket.com/event/foo#bar'],
-              },
             },
-          ],
-        },
-      })
+          },
+        ],
+        { hasMore: false }
+      )
     );
 
     const result = await fetchAllExistingConditions('https://api.example.com');

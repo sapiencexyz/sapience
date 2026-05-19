@@ -6,6 +6,7 @@ const mockPrisma = {
   condition: {
     create: vi.fn(),
     findUnique: vi.fn(),
+    findMany: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
   },
@@ -720,6 +721,117 @@ describe('conditions routes', () => {
       expect(res.status).toBe(200);
       const updateCall = mockPrisma.condition.update.mock.calls[0][0];
       expect(updateCall.data.optionName).toBeNull();
+    });
+
+    describe('endTime field (Part C backfill support)', () => {
+      it('updates endTime on unsettled rows', async () => {
+        mockPrisma.condition.findMany.mockResolvedValue([
+          { id: VALID_ID, endTime: 1700000000, settled: false },
+        ]);
+        mockPrisma.condition.update.mockResolvedValue({});
+
+        const newEndTime = 1747411200; // noon ET 2026-05-16
+        const res = await request(app)
+          .put('/admin/conditions/batch-metadata')
+          .send({
+            updates: [{ id: VALID_ID, fields: { endTime: newEndTime } }],
+          });
+
+        expect(res.status).toBe(200);
+        expect(res.body.endTimeSkippedSettled).toBe(0);
+        const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+        expect(updateCall.data.endTime).toBe(newEndTime);
+      });
+
+      it('refuses to change endTime on settled rows (no update emitted)', async () => {
+        mockPrisma.condition.findMany.mockResolvedValue([
+          { id: VALID_ID, endTime: 1700000000, settled: true },
+        ]);
+        mockPrisma.condition.update.mockResolvedValue({});
+
+        const res = await request(app)
+          .put('/admin/conditions/batch-metadata')
+          .send({
+            updates: [{ id: VALID_ID, fields: { endTime: 1747411200 } }],
+          });
+
+        expect(res.status).toBe(200);
+        expect(res.body.endTimeSkippedSettled).toBe(1);
+        expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+      });
+
+      it('skips no-op endTime updates (DB already has the value)', async () => {
+        mockPrisma.condition.findMany.mockResolvedValue([
+          { id: VALID_ID, endTime: 1747411200, settled: false },
+        ]);
+        mockPrisma.condition.update.mockResolvedValue({});
+
+        const res = await request(app)
+          .put('/admin/conditions/batch-metadata')
+          .send({
+            updates: [{ id: VALID_ID, fields: { endTime: 1747411200 } }],
+          });
+
+        expect(res.status).toBe(200);
+        // No update fired — no fields changed
+        expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+      });
+
+      it('rejects non-integer endTime', async () => {
+        mockPrisma.condition.findMany.mockResolvedValue([]);
+        const res = await request(app)
+          .put('/admin/conditions/batch-metadata')
+          .send({
+            updates: [
+              { id: VALID_ID, fields: { endTime: 1.5 as unknown as number } },
+            ],
+          });
+
+        // Non-integer is silently skipped (falls through Number.isInteger
+        // gate); the update payload becomes empty and the per-row branch
+        // continues without firing an update.
+        expect(res.status).toBe(200);
+        expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+      });
+
+      it('does NOT call findMany when no update touches endTime', async () => {
+        mockPrisma.condition.update.mockResolvedValue({});
+
+        const res = await request(app)
+          .put('/admin/conditions/batch-metadata')
+          .send({
+            updates: [{ id: VALID_ID, fields: { optionName: 'foo' } }],
+          });
+
+        expect(res.status).toBe(200);
+        expect(mockPrisma.condition.findMany).not.toHaveBeenCalled();
+      });
+
+      it('updates endTime on one row, skips settled row in the same batch', async () => {
+        const ID_OPEN = '0x' + 'ab'.repeat(32);
+        const ID_SETTLED = '0x' + 'cd'.repeat(32);
+        mockPrisma.condition.findMany.mockResolvedValue([
+          { id: ID_OPEN, endTime: 1700000000, settled: false },
+          { id: ID_SETTLED, endTime: 1700000000, settled: true },
+        ]);
+        mockPrisma.condition.update.mockResolvedValue({});
+
+        const res = await request(app)
+          .put('/admin/conditions/batch-metadata')
+          .send({
+            updates: [
+              { id: ID_OPEN, fields: { endTime: 1747411200 } },
+              { id: ID_SETTLED, fields: { endTime: 1747411200 } },
+            ],
+          });
+
+        expect(res.status).toBe(200);
+        expect(res.body.endTimeSkippedSettled).toBe(1);
+        expect(mockPrisma.condition.update).toHaveBeenCalledTimes(1);
+        expect(mockPrisma.condition.update.mock.calls[0][0].where.id).toBe(
+          ID_OPEN
+        );
+      });
     });
   });
 });
