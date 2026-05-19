@@ -61,7 +61,8 @@ A synthetic `Question.id` is deferred (see D1). Clients that need a stable list 
 
 - `Prediction`
 - `Trade`
-- `Forecast`
+
+`Forecast` is intentionally **not** in the union — today's product feed only shows predictions and trades. Adding `Forecast` later is a separate product decision (feed UX + backend SQL union over `Attestation`), and it's an additive non-breaking change at the schema level when the time comes.
 
 It should not implement `Node` unless activity feed rows become durable persisted records.
 
@@ -354,7 +355,7 @@ Prose orientation to the top-level `Query` shape. The full SDL below is the cano
 **Derived-view feeds** — list access only, no canonical `(id:)` lookup (see "Derived aggregate views"):
 
 - `questions` — interleaved `Condition` / `ConditionGroup` feed.
-- `activity` — interleaved `Prediction` / `Trade` / `Forecast` feed.
+- `activity` — interleaved `Prediction` / `Trade` feed. (`Forecast` is intentionally not in the union today — see "Activity model".)
 
 **Cross-cutting and namespace fields:**
 
@@ -995,22 +996,23 @@ type Activity {
   # because it would duplicate what the union already encodes.
   source: ActivitySource!
   # The actor on the wrapped row: `predictor` for a Prediction,
-  # `account` for a Trade, `forecaster` for a Forecast. Always present
-  # — every union member has a non-null actor account.
+  # `account` for a Trade. Always present — every union member has a
+  # non-null actor account.
   account: Account!
   createdAt: DateTime!
 }
 
-union ActivitySource = Prediction | Trade | Forecast
+union ActivitySource = Prediction | Trade
 
 # Retained for use in ActivityFilter (filtering an interleaved feed by
-# member type is a real use case — clients ask "only my forecasts" or
-# "only trades"). On the wire of an Activity row itself, prefer
-# `__typename` on `source`.
+# member type is a real use case — clients ask "only my trades" or
+# "only my predictions"). On the wire of an Activity row itself, prefer
+# `__typename` on `source`. `FORECAST` is intentionally absent — Forecast
+# is not part of the activity union today (see "Activity model" above);
+# add it back here together with the union when forecasts join the feed.
 enum ActivityType {
   PREDICTION
   TRADE
-  FORECAST
 }
 
 type CollateralToken {
@@ -1451,12 +1453,20 @@ input QuestionOrder {
   direction: OrderDirection!
 }
 
+# All values map to existing partial indexes on the underlying
+# `condition` / `condition_group` tables. `UPDATED_AT` is intentionally
+# absent — neither table has an `updatedAt` column. `VOLUME` is split
+# into windowed values (24h / 7d) because the underlying indexes are
+# windowed (`IDX_condition_public_volume24h`, `IDX_cg_total_volume_24h`,
+# and 7d siblings) — a generic `VOLUME` would be ambiguous and could
+# silently fall back to an in-memory sort.
 enum QuestionOrderField {
   CREATED_AT
-  UPDATED_AT
-  OPEN_INTEREST
-  VOLUME
   RESOLVES_AT
+  OPEN_INTEREST
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
 }
 
 input ConditionFilter {
@@ -1474,10 +1484,11 @@ input ConditionOrder {
 
 enum ConditionOrderField {
   CREATED_AT
-  UPDATED_AT
   RESOLVES_AT
   OPEN_INTEREST
-  VOLUME
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
 }
 
 input ConditionGroupFilter {
@@ -1493,9 +1504,11 @@ input ConditionGroupOrder {
 
 enum ConditionGroupOrderField {
   CREATED_AT
-  UPDATED_AT
+  RESOLVES_AT
   OPEN_INTEREST
-  VOLUME
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
 }
 
 # `predictor` and `counterparty` filter the two sides of a Prediction
@@ -1730,6 +1743,58 @@ input LeaderboardFilter {
 
 ---
 
+## Rollout Plan
+
+The redesign ships as a sequence of incremental PRs grouped into two independent streams that fan out from a shared foundation and re-converge at the end. Stream A handles market mechanics; Stream B handles user activity and treasury. Within a stream, PRs are sequential because later types reference earlier ones; **across streams, PRs can land in parallel** because the streams intentionally avoid cross-stream child connections until the convergence PR.
+
+### PR 1 — Foundation
+
+`Node`, `PageInfo`, scalars (`Address`, `BigInt`, `Bytes32`, `DateTime`, `Decimal`), `OrderDirection`, `node(id:)`, `nodes(ids:)`, opaque global ID helpers. Everything below depends on this.
+
+### Stream A — market mechanics
+
+#### PR 2 — Conditions + ConditionGroups + Questions
+
+New types, top-level queries, deprecate old siblings. **No cross-stream child connections** (no `.predictions`, `.forecasts` on these yet — those land in PR 6).
+
+#### PR 3 — PickConfigurations + Trades + Positions
+
+`Pick → Condition` is in-stream, fine. Top-level queries, `tradeByHash`, deprecations.
+
+### Stream B — user activity & treasury
+
+#### PR 4 — Predictions + Forecasts (Attestation rename)
+
+Both user-authored, both have on-chain-id sibling lookups (`predictionByOnchainId`, `forecastByUid`). The `Attestation → Forecast` rename surface lives here. **No cross-stream child connections.**
+
+#### PR 5 — Collateral + Protocol + Vault + Categories + popularTags
+
+Self-contained: `CollateralBalance`, `CollateralTransfer`, `protocol.stats`, `protocol.vault().stats`, `categories`, `popularTags`.
+
+### Convergence
+
+#### PR 6 — Account + Activity + Leaderboard + cross-entity wire-up
+
+`Account` with all its child connections (`.predictions`, `.trades`, etc.). `ActivityItem` union over `Prediction | Trade | Forecast`. Top-level `leaderboard` query. Adds convenience connections on earlier entities:
+
+- `Condition.predictions` / `.trades` / `.forecasts`
+- `Question.predictions` / `.trades` / `.forecasts` / `.activity`
+- `PickConfiguration.predictions` / `.trades` / `.positions`
+
+This is the only PR that touches cross-stream wiring. The deferral is deliberate: by forbidding cross-stream child connections in PRs 2–5, the streams stay mergeable in any order, and the connective tissue ships in a single coherent pass once all the upstream types are stable.
+
+### Parallelization summary
+
+| Concurrent pair | Status                                                                    |
+| --------------- | ------------------------------------------------------------------------- |
+| PR 2 ‖ PR 4     | ✅ Different streams.                                                     |
+| PR 3 ‖ PR 5     | ✅ Different streams (after their in-stream predecessors land).           |
+| PR 2 ‖ PR 3     | ❌ Same stream — PR 3's `Pick → Condition` references PR 2's `Condition`. |
+| PR 4 ‖ PR 5     | ❌ Same stream — sequential.                                              |
+| Anything ‖ PR 6 | ❌ PR 6 is the convergence; requires both streams complete.               |
+
+---
+
 ## Implementation Notes
 
 ### Global IDs
@@ -1830,31 +1895,7 @@ type Query {
 
 #### Field naming when the canonical name is taken
 
-Relay convention puts `Connection` on the **return type** (`ConditionConnection`), not necessarily on the root field. The target end state can still be:
-
-```graphql
-type Query {
-  conditions(
-    first: Int
-    after: String
-    filter: ConditionFilter
-    orderBy: ConditionOrder
-  ): ConditionConnection!
-}
-```
-
-But GraphQL fields are keyed only by name. We cannot expose both of these at once:
-
-```graphql
-type Query {
-  conditions(where: ..., take: Int, skip: Int): [Condition!]!
-  conditions(first: Int, after: String, filter: ConditionFilter): ConditionConnection!
-}
-```
-
-Changing the existing `conditions` field from `[Condition!]!` to `ConditionConnection!` is breaking because pinned clients currently select condition fields directly (`conditions { id question }`), while the connection shape requires a wrapper selection (`conditions { nodes { id question } pageInfo { hasNextPage } }`). Deprecating args or fields inside the old list shape does not preserve that query once the return wrapper changes.
-
-When the canonical name is occupied by a different return type, use this explicit migration plan:
+GraphQL forbids two fields with the same name, and **output return types cannot be deprecated** (a field that used to return `[X!]!` can never start returning `XConnection!` without breaking pinned client queries at the wire level — `@deprecated` only marks args/fields as discouraged, it does not preserve old behavior). Relay convention puts `Connection` on the **return type** (`ConditionConnection`), but when the canonical root field name is already occupied by a different return type, the new Relay-shaped field takes a temporary **`*Connection` suffix** for the deprecation window.
 
 ```graphql
 type Query {
@@ -1871,14 +1912,27 @@ type Query {
   ): ConditionConnection!
 
   # Phase 3, after clients migrate and the old field has completed its
-  # deprecation window in a breaking release: reclaim the canonical name.
+  # deprecation window in a breaking release: optionally reclaim the
+  # canonical name.
   # conditions(...): ConditionConnection!
 }
 ```
 
-For PR 2 this means `conditionsConnection`, `conditionGroupsConnection`, and `questionsConnection` are bridge names. They avoid the wire break while old `conditions`, `conditionGroups`, and `questions` still exist. After the deprecated list fields are removed, the team can either keep the `*Connection` bridge names permanently or perform the final `conditionsConnection -> conditions` canonical-name cleanup in a later breaking release. The important rule is one client migration at a time: never change a root field's return wrapper under the same name while pinned clients still use the old selection shape.
+For PR 2 this means `conditionsConnection`, `conditionGroupsConnection`, and `questionsConnection` are bridge names. They avoid the wire break while old `conditions`, `conditionGroups`, and `questions` still exist. Convention applies uniformly across per-entity PRs:
 
-A genuinely new field whose canonical name is not already taken keeps the canonical name from day one; no suffix is needed just because the return type is a connection.
+- PR 2: `conditionsConnection`, `conditionGroupsConnection`, `questionsConnection`
+- PR 3: `tradesConnection`, `positionsConnection`, `pickConfigurationsConnection` (if the bare equivalents exist)
+- PR 4+: same pattern; only suffix when there is a name collision
+
+A genuinely new field whose canonical name is not already taken keeps the canonical name from day one; no suffix is needed just because the return type is a connection — `activity(...)` does not need a suffix because no field called `activity` existed before this redesign.
+
+Post-deprecation exit (when the deprecated original is removed in a major-version cut), the team chooses per-field:
+
+- keep the `*Connection` suffix permanently,
+- add a canonical-name resolver that delegates to the `*Connection` one, or
+- execute a second clean deprecation cycle to rename to the canonical name.
+
+Decided at v2-cut time; no commitment required now. The important rule is one client migration at a time: never change a root field's return wrapper under the same name while pinned clients still use the old selection shape.
 
 ---
 

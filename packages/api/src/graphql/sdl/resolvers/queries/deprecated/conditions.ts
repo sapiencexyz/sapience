@@ -1,13 +1,16 @@
 /**
- * Deprecated `conditions(where:)` resolver — accepts the full Prisma-
- * style where/orderBy/cursor/take/skip/distinct surface. Replaced by
- * `conditionsPage(filters:)` which exposes a flat, purpose-built
- * `ConditionFilters` input.
+ * `Query.conditions` — the original bare `conditions(where:)`
+ * Prisma-style resolver, renamed to free the canonical `conditions`
+ * name for the Relay-shaped connection while still honoring the
+ * doc's one-release deprecation window.
  *
  * The default-public safety net is preserved: callers that filter by
  * specific id(s) bypass the public filter (so admins / direct links
  * can fetch private conditions); otherwise the resolver injects
- * `public: true`.
+ * `public: { equals: true }`.
+ *
+ * The recursive walkers handle AND/OR/NOT trees of arbitrary depth —
+ * this matches the deployed ConditionResolver behaviour.
  */
 
 import type { Prisma } from '../../../../../../generated/prisma';
@@ -57,16 +60,11 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
   const effectiveTake = take != null ? Math.min(take, 100) : 50;
   return prisma.condition.findMany({
     where: effectiveWhere,
-    orderBy: (orderBy ?? undefined) as
-      | Prisma.ConditionOrderByWithRelationInput[]
-      | undefined,
-    cursor: (cursor ?? undefined) as
-      | Prisma.ConditionWhereUniqueInput
-      | undefined,
+    orderBy: (orderBy ??
+      undefined) as Prisma.ConditionOrderByWithRelationInput[],
+    cursor: (cursor ?? undefined) as Prisma.ConditionWhereUniqueInput,
     take: effectiveTake,
     skip: skip ?? undefined,
-    distinct: (distinct ?? undefined) as
-      | Prisma.ConditionScalarFieldEnum[]
-      | undefined,
+    distinct: (distinct ?? undefined) as Prisma.ConditionScalarFieldEnum[],
   });
 };

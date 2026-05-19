@@ -38,10 +38,17 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 import type {
   QueryResolvers,
-  QueryQuestionsArgs,
   ResolversTypes,
 } from '../../__generated__/resolvers';
-import { QuestionItemType } from '../../__generated__/resolvers';
+import {
+  QuestionItemType,
+  QuestionOrderField,
+  OrderDirection,
+  QuestionSortField,
+  SortOrder,
+  VolumeWindow,
+  type ResolutionStatus,
+} from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { clampSkip, clampTake } from './pagination';
@@ -59,6 +66,27 @@ type SortedItemRow = {
   group_id: number | null;
   condition_id: string | null;
   prediction_count: bigint;
+  sort_value: number | string;
+  end_time: number;
+};
+
+type QuestionCursor = {
+  sortValue: string;
+  endTime: number;
+  itemType: string;
+  groupId: number;
+  conditionId: string;
+};
+
+type ScalarRangeFilter = {
+  equals?: number | null;
+  gt?: number | null;
+  gte?: number | null;
+  lt?: number | null;
+  lte?: number | null;
+  in?: number[] | null;
+  notIn?: number[] | null;
+  not?: number | null;
 };
 
 const volumeColumnFragments = {
@@ -140,16 +168,32 @@ const fieldByResolvedVolumeKey: Record<VolumeKey, string> = {
 };
 
 /**
- * Inputs accepted by `runQuestions`. Superset of the deprecated
- * `questions(...)` resolver's `QueryQuestionsArgs` — the new
- * contract-address filters live only on `QuestionFilters` (i.e. only
- * reachable via `questionsPage`), so they're tacked on here instead of
- * pollinating the deprecated bare-args shape.
+ * Inputs accepted by `runQuestions`. Hand-written interface (not derived
+ * from any `Query<Field>Args`) so the runner is decoupled from any one
+ * SDL field shape — both the legacy `questionsPage` and the new Relay
+ * `questions` connection adapt their args into this shape before calling.
  */
-export type RunQuestionsInput = QueryQuestionsArgs & {
+export interface RunQuestionsInput {
+  take?: number | null;
+  skip?: number | null;
+  search?: string | null;
+  categorySlugs?: string[] | null;
+  tag?: string | null;
+  chainId?: number | null;
   contractAddress?: string | null;
   contractAddressIn?: string[] | null;
-};
+  minEndTime?: number | null;
+  maxEndTime?: number | null;
+  resolutionStatus?: ResolutionStatus | null;
+  minEstimatedPrice?: number | null;
+  maxEstimatedPrice?: number | null;
+  minSimilarMarketVolume?: number | null;
+  maxSimilarMarketVolume?: number | null;
+  similarMarketVolumeWindow?: VolumeWindow | null;
+  sortField?: QuestionSortField | null;
+  sortDirection?: SortOrder | null;
+  afterCursor?: QuestionCursor | null;
+}
 
 interface NormalizedArgs {
   take: number;
@@ -161,13 +205,15 @@ interface NormalizedArgs {
   contractAddress: string | null;
   contractAddressIn: string[] | null;
   minEndTime: number | null | undefined;
-  resolutionStatus: QueryQuestionsArgs['resolutionStatus'];
+  maxEndTime: number | null | undefined;
+  resolutionStatus: ResolutionStatus | null | undefined;
   minEstimatedPrice: number | null | undefined;
   maxEstimatedPrice: number | null | undefined;
   minSimilarMarketVolume: number | null | undefined;
   maxSimilarMarketVolume: number | null | undefined;
   sortField: string;
   sortDirectionRaw: 'ASC' | 'DESC';
+  afterCursor: QuestionCursor | null;
   volumeKey: VolumeKey;
   useWindowedSimilarMarketVolume: boolean;
   /**
@@ -214,6 +260,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
     args.minEstimatedPrice != null ||
     args.maxEstimatedPrice != null ||
     args.minEndTime != null ||
+    args.maxEndTime != null ||
     args.minSimilarMarketVolume != null ||
     args.maxSimilarMarketVolume != null;
 
@@ -227,6 +274,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
     contractAddress,
     contractAddressIn,
     minEndTime: args.minEndTime,
+    maxEndTime: args.maxEndTime,
     resolutionStatus: args.resolutionStatus,
     minEstimatedPrice: args.minEstimatedPrice,
     maxEstimatedPrice: args.maxEstimatedPrice,
@@ -234,6 +282,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
     maxSimilarMarketVolume: args.maxSimilarMarketVolume,
     sortField,
     sortDirectionRaw: args.sortDirection === 'asc' ? 'ASC' : 'DESC',
+    afterCursor: args.afterCursor ?? null,
     volumeKey,
     useWindowedSimilarMarketVolume,
     requiresConditionJoin:
@@ -306,10 +355,17 @@ const buildConditionFilterFragments = (
     return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
   })();
 
-  const endTimeFilter =
-    n.minEndTime != null
-      ? Prisma.sql`AND c."endTime" >= ${n.minEndTime}`
-      : Prisma.empty;
+  const endTimeFilter = (() => {
+    const parts: Prisma.Sql[] = [];
+    if (n.minEndTime != null) {
+      parts.push(Prisma.sql`c."endTime" >= ${n.minEndTime}`);
+    }
+    if (n.maxEndTime != null) {
+      parts.push(Prisma.sql`c."endTime" <= ${n.maxEndTime}`);
+    }
+    if (parts.length === 0) return Prisma.empty;
+    return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
+  })();
 
   const chainIdFilter =
     n.chainId != null
@@ -497,12 +553,75 @@ const buildSearchFragments = (n: NormalizedArgs): SearchFragments => {
   };
 };
 
+const cursorIdentity = (row: SortedItemRow) => ({
+  groupId: row.group_id ?? 0,
+  conditionId: row.condition_id ?? '',
+  itemType: row.item_type,
+  endTime: Number(row.end_time ?? 0),
+});
+
+const encodeQuestionCursor = (row: SortedItemRow): string => {
+  const identity = cursorIdentity(row);
+  return encodeCursor({
+    k: String(row.sort_value),
+    id: JSON.stringify(identity),
+  });
+};
+
+const decodeQuestionCursor = (cursor: string | null | undefined) => {
+  if (!cursor) return null;
+  const payload = decodeCursor(cursor);
+  if (!payload) return null;
+  try {
+    const parsed = JSON.parse(payload.id) as Partial<QuestionCursor>;
+    const groupId = Number(parsed.groupId);
+    const endTime = Number(parsed.endTime);
+    const itemType = String(parsed.itemType ?? '');
+    const conditionId = String(parsed.conditionId ?? '');
+    if (!itemType || !Number.isFinite(groupId) || !Number.isFinite(endTime)) {
+      return null;
+    }
+    return {
+      sortValue: payload.k,
+      itemType,
+      groupId,
+      conditionId,
+      endTime,
+    } satisfies QuestionCursor;
+  } catch {
+    return null;
+  }
+};
+
+const buildQuestionCursorWhere = (n: NormalizedArgs): Prisma.Sql => {
+  const c = n.afterCursor;
+  if (!c) return Prisma.empty;
+  const sortCmp = n.sortDirectionRaw === 'ASC' ? '>' : '<';
+  const sortValue = Number(c.sortValue);
+  const normalizedSortValue = Number.isFinite(sortValue)
+    ? sortValue
+    : c.sortValue;
+  return Prisma.sql`
+    WHERE (
+      sort_value ${Prisma.raw(sortCmp)} ${normalizedSortValue}
+      OR (sort_value = ${normalizedSortValue} AND end_time > ${c.endTime})
+      OR (sort_value = ${normalizedSortValue} AND end_time = ${c.endTime} AND item_type > ${c.itemType})
+      OR (sort_value = ${normalizedSortValue} AND end_time = ${c.endTime} AND item_type = ${c.itemType} AND COALESCE(group_id, 0) > ${c.groupId})
+      OR (sort_value = ${normalizedSortValue} AND end_time = ${c.endTime} AND item_type = ${c.itemType} AND COALESCE(group_id, 0) = ${c.groupId} AND COALESCE(condition_id, '') > ${c.conditionId})
+    )
+  `;
+};
+
 const fetchSortedItems = async (
   n: NormalizedArgs
 ): Promise<SortedItemRow[]> => {
   const filters = buildConditionFilterFragments(n);
   const sort = buildSortFragments(n, filters);
   const search = buildSearchFragments(n);
+  const cursorWhere = buildQuestionCursorWhere(n);
+  const offsetClause = n.afterCursor
+    ? Prisma.empty
+    : Prisma.sql`OFFSET ${n.skip}`;
 
   return prisma.$queryRaw<SortedItemRow[]>`
     WITH combined AS (
@@ -540,15 +659,16 @@ const fetchSortedItems = async (
         ${search.condCategory}
         ${search.condTag}
     )
-    SELECT item_type, group_id, condition_id, prediction_count
+    SELECT item_type, group_id, condition_id, prediction_count, sort_value, end_time
     FROM combined
+    ${cursorWhere}
     ORDER BY sort_value ${Prisma.raw(n.sortDirectionRaw)},
              end_time ASC,
              item_type ASC,
              COALESCE(group_id, 0) ASC,
              COALESCE(condition_id, '') ASC
     LIMIT ${n.take + 1}
-    OFFSET ${n.skip}
+    ${offsetClause}
   `;
 };
 
@@ -618,6 +738,16 @@ const buildConditionWhere = (n: NormalizedArgs): Prisma.ConditionWhereInput => {
     ...(n.minEndTime !== null && n.minEndTime !== undefined
       ? { endTime: { gte: n.minEndTime } }
       : {}),
+    ...(n.maxEndTime !== null && n.maxEndTime !== undefined
+      ? {
+          endTime: {
+            ...((n.minEndTime !== null && n.minEndTime !== undefined
+              ? { gte: n.minEndTime }
+              : {}) as object),
+            lte: n.maxEndTime,
+          },
+        }
+      : {}),
     ...(Object.keys(estimatedPriceFilter).length > 0
       ? { estimatedPrice: estimatedPriceFilter }
       : {}),
@@ -667,7 +797,13 @@ const hydrateItems = async (
   const conditionMap = new Map<string, (typeof conditions)[number]>();
   for (const c of conditions) conditionMap.set(c.id, c);
 
+  // Intermediate shape — Question field resolvers (Question.ts) fill in
+  // `source`, `title`, `description`, etc. from this shape, so the
+  // runner only needs to populate the discriminator + the wrapped row +
+  // the prediction count.
   const result: QuestionReturn[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const push = (item: any) => result.push(item as QuestionReturn);
   for (const item of pageItems) {
     if (item.item_type === 'group' && item.group_id !== null) {
       const group = groupMap.get(item.group_id);
@@ -675,14 +811,14 @@ const hydrateItems = async (
       if (group.condition.length === 1) {
         // Unwrap single-condition groups as standalone conditions so the
         // frontend doesn't render a group shell around a lone item.
-        result.push({
+        push({
           questionType: QuestionItemType.Condition,
           group: null,
           condition: group.condition[0] as unknown as ConditionReturn,
           predictionCount: Number(item.prediction_count),
         });
       } else if (group.condition.length > 1) {
-        result.push({
+        push({
           questionType: QuestionItemType.Group,
           group: {
             ...group,
@@ -695,7 +831,7 @@ const hydrateItems = async (
     } else if (item.item_type === 'condition' && item.condition_id !== null) {
       const condition = conditionMap.get(item.condition_id);
       if (!condition) continue;
-      result.push({
+      push({
         questionType: QuestionItemType.Condition,
         group: null,
         condition: condition as unknown as ConditionReturn,
@@ -706,17 +842,138 @@ const hydrateItems = async (
   return result;
 };
 
-export const runQuestions = async (
+const runQuestionsPageData = async (
   args: RunQuestionsInput
-): Promise<{ items: QuestionReturn[]; hasMore: boolean }> => {
+): Promise<{
+  items: QuestionReturn[];
+  hasMore: boolean;
+  pageItems: SortedItemRow[];
+}> => {
   const n = normalizeArgs(args);
   const sortedItems = await fetchSortedItems(n);
   const hasMore = sortedItems.length > n.take;
   const pageItems = sortedItems.slice(0, n.take);
-  if (pageItems.length === 0) return { items: [], hasMore };
+  if (pageItems.length === 0) return { items: [], hasMore, pageItems };
 
   const items = await hydrateItems(pageItems, buildConditionWhere(n));
+  return { items, hasMore, pageItems };
+};
+
+export const runQuestions = async (
+  args: RunQuestionsInput
+): Promise<{ items: QuestionReturn[]; hasMore: boolean }> => {
+  const { items, hasMore } = await runQuestionsPageData(args);
   return { items, hasMore };
+};
+
+// ---------------------------------------------------------------------
+// Relay-shaped `questions` connection (PR 2)
+// ---------------------------------------------------------------------
+// `questionsConnection` uses the same SQL UNION as `questionsPage`, but
+// passes a decoded ordering tuple after the first page so pagination is
+// keyset-based rather than OFFSET-based.
+
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
+
+/**
+ * Map the public `QuestionOrderField` enum to the internal
+ * `QuestionSortField` (plus a `VolumeWindow` for windowed-volume sorts).
+ * `OPEN_INTEREST` is intentionally not in `QuestionOrderField`; if the
+ * enum ever grows a value not covered here, fall through to the
+ * runner's `CREATED_AT DESC` default.
+ */
+const mapOrderField = (
+  field: QuestionOrderField
+): { sortField: QuestionSortField; volumeWindow: VolumeWindow | null } => {
+  switch (field) {
+    case QuestionOrderField.CreatedAt:
+      return { sortField: QuestionSortField.CreatedAt, volumeWindow: null };
+    case QuestionOrderField.ResolvesAt:
+      return { sortField: QuestionSortField.EndTime, volumeWindow: null };
+    case QuestionOrderField.PredictionCount:
+      return {
+        sortField: QuestionSortField.PredictionCount,
+        volumeWindow: null,
+      };
+    case QuestionOrderField.SimilarMarketVolume_24H:
+      return {
+        sortField: QuestionSortField.SimilarMarketVolume,
+        volumeWindow: VolumeWindow.TwentyFourHours,
+      };
+    case QuestionOrderField.SimilarMarketVolume_7D:
+      return {
+        sortField: QuestionSortField.SimilarMarketVolume,
+        volumeWindow: VolumeWindow.SevenDays,
+      };
+    default:
+      return { sortField: QuestionSortField.CreatedAt, volumeWindow: null };
+  }
+};
+
+const rangeMin = (filter: ScalarRangeFilter | null | undefined) =>
+  filter?.gte ?? filter?.gt ?? filter?.equals ?? null;
+
+const rangeMax = (filter: ScalarRangeFilter | null | undefined) =>
+  filter?.lte ?? filter?.lt ?? filter?.equals ?? null;
+
+export const questionsConnection: NonNullable<
+  QueryResolvers['questionsConnection']
+> = async (_parent, { first, after, filter, orderBy }) => {
+  const take = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const afterCursor = decodeQuestionCursor(after);
+
+  const mapped = orderBy?.field
+    ? mapOrderField(orderBy.field)
+    : { sortField: null, volumeWindow: null };
+  const sortDirection: SortOrder | null =
+    orderBy?.direction === OrderDirection.Asc
+      ? SortOrder.Asc
+      : orderBy?.direction === OrderDirection.Desc
+        ? SortOrder.Desc
+        : null;
+  const operatorFilter = filter as typeof filter & {
+    resolvesAt?: ScalarRangeFilter | null;
+    estimatedPrice?: ScalarRangeFilter | null;
+    similarMarketVolume?: ScalarRangeFilter | null;
+  };
+
+  const { items, hasMore, pageItems } = await runQuestionsPageData({
+    take,
+    skip: 0,
+    search: filter?.search ?? null,
+    categorySlugs: null,
+    tag: filter?.tag ?? null,
+    chainId: null,
+    contractAddress: null,
+    contractAddressIn: null,
+    minEndTime: rangeMin(operatorFilter?.resolvesAt),
+    maxEndTime: rangeMax(operatorFilter?.resolvesAt),
+    resolutionStatus: null,
+    minEstimatedPrice: rangeMin(operatorFilter?.estimatedPrice),
+    maxEstimatedPrice: rangeMax(operatorFilter?.estimatedPrice),
+    minSimilarMarketVolume: rangeMin(operatorFilter?.similarMarketVolume),
+    maxSimilarMarketVolume: rangeMax(operatorFilter?.similarMarketVolume),
+    similarMarketVolumeWindow: mapped.volumeWindow,
+    sortField: mapped.sortField,
+    sortDirection,
+    afterCursor,
+  });
+
+  const edges = items.map((item, idx) => ({
+    node: item,
+    cursor: encodeQuestionCursor(pageItems[idx]),
+  }));
+
+  return {
+    edges,
+    nodes: items,
+    pageInfo: {
+      hasNextPage: hasMore,
+      hasPreviousPage: afterCursor != null,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
 };
 
 export const questionsPage: NonNullable<
@@ -750,6 +1007,7 @@ export const questionsPage: NonNullable<
     categorySlugs: filters?.categorySlugs ?? null,
     tag: filters?.tag ?? null,
     minEndTime: filters?.minEndTime ?? null,
+    maxEndTime: null,
     resolutionStatus: filters?.resolutionStatus ?? null,
     minEstimatedPrice: filters?.minEstimatedPrice ?? null,
     maxEstimatedPrice: filters?.maxEstimatedPrice ?? null,

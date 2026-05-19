@@ -40,6 +40,7 @@ import { PickConfigurationsPage } from './PickConfigurationsPage';
 import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
 import { QuestionsPage } from './QuestionsPage';
+import { Question, ConditionOrConditionGroup } from './Question';
 import { TradesPage } from './TradesPage';
 import { User } from './User';
 
@@ -62,9 +63,15 @@ import {
   collateralTransfersPage,
 } from './queries/collateralBalance';
 import { collateralTransfers } from './queries/deprecated/collateralBalance';
-import { conditionsPage } from './queries/conditions';
-import { conditionGroup, conditionGroupsPage } from './queries/conditionGroups';
-import { questionsPage } from './queries/questions';
+import { conditionsConnection, conditionsPage } from './queries/conditions';
+import {
+  conditionGroup,
+  conditionGroupsConnection,
+  conditionGroupsPage,
+} from './queries/conditionGroups';
+import { questionsConnection, questionsPage } from './queries/questions';
+import { conditions } from './queries/deprecated/conditions';
+import { conditionGroups } from './queries/deprecated/conditionGroups';
 import { questions } from './queries/deprecated/questions';
 import {
   account,
@@ -75,8 +82,6 @@ import {
   user,
 } from './queries/crud';
 import { attestations, users } from './queries/deprecated/crud';
-import { conditions } from './queries/deprecated/conditions';
-import { conditionGroups } from './queries/deprecated/conditionGroups';
 import {
   claims,
   closes,
@@ -146,8 +151,10 @@ export const resolvers: Resolvers = {
     collateralTransfersPage,
     // Conditions / questions
     conditions,
+    conditionsConnection,
     conditionsPage,
     questions,
+    questionsConnection,
     questionsPage,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
@@ -178,6 +185,7 @@ export const resolvers: Resolvers = {
     condition,
     conditionGroup,
     conditionGroups,
+    conditionGroupsConnection,
     conditionGroupsPage,
     user,
     users,
@@ -202,6 +210,8 @@ export const resolvers: Resolvers = {
   PositionsPage,
   PredictionsPage,
   QuestionsPage,
+  Question,
+  ConditionOrConditionGroup,
   TradesPage,
   User,
 };

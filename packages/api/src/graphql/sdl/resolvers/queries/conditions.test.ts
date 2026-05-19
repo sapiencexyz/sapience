@@ -10,7 +10,7 @@ import type {
   QueryConditionsPageArgs,
   ConditionFilters,
 } from '../../__generated__/resolvers';
-import { conditionsPage } from './conditions';
+import { conditionsPage, conditionsConnection } from './conditions';
 
 type ConditionsPageFn = (
   parent: unknown,
@@ -19,6 +19,15 @@ type ConditionsPageFn = (
   info: unknown
 ) => Promise<{ items: unknown[]; hasMore: boolean }>;
 const conditionsPageFn = conditionsPage as unknown as ConditionsPageFn;
+
+type ConditionsConnectionFn = (
+  parent: unknown,
+  args: Record<string, unknown>,
+  ctx: unknown,
+  info: unknown
+) => Promise<unknown>;
+const conditionsConnectionFn =
+  conditionsConnection as unknown as ConditionsConnectionFn;
 
 const callPage = (overrides: Partial<QueryConditionsPageArgs> = {}) =>
   conditionsPageFn(
@@ -117,6 +126,33 @@ describe('conditionsPage — orderBy mapping', () => {
     await callPage({ orderBy: 'NOT_A_REAL_FIELD' as never });
     const args = mockPrisma.condition.findMany.mock.calls[0][0];
     expect(args.orderBy).toEqual({ createdAt: 'desc' });
+  });
+});
+
+describe('conditionsConnection — operator filters', () => {
+  it('maps gte/lte operator filters to Prisma ranges', async () => {
+    await conditionsConnectionFn(
+      undefined,
+      {
+        first: 10,
+        filter: {
+          resolvesAt: { gte: 1000, lte: 2000 },
+          estimatedPrice: { gte: 0.2, lte: 0.8 },
+          similarMarketVolume: { gte: 100, lte: 900 },
+        },
+      },
+      undefined,
+      undefined
+    );
+
+    const where = whereOf();
+    expect(where.AND).toContainEqual({ endTime: { gte: 1000, lte: 2000 } });
+    expect(where.AND).toContainEqual({
+      estimatedPrice: { gte: 0.2, lte: 0.8 },
+    });
+    expect(where.AND).toContainEqual({
+      similarMarketVolume: { gte: 100, lte: 900 },
+    });
   });
 });
 

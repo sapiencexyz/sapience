@@ -12,8 +12,14 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  /** 0x-prefixed lowercase 20-byte Ethereum address. Mixed-case checksum input is accepted and normalized to lowercase. */
+  Address: { input: any; output: any; }
   /** The `BigInt` scalar type represents non-fractional signed whole numeric values. */
   BigInt: { input: any; output: any; }
+  /** 0x-prefixed lowercase 32-byte hex value. Used for transaction hashes, EAS UIDs, and other 32-byte on-chain identifiers. */
+  Bytes32: { input: any; output: any; }
+  /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format. */
+  DateTime: { input: any; output: any; }
   /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format. */
   DateTimeISO: { input: any; output: any; }
   /** Prisma.Decimal — round-tripped as a decimal string with arbitrary precision. */
@@ -738,6 +744,14 @@ export type Condition = {
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
   optionName?: Maybe<Scalars['String']['output']>;
+  /**
+   * Resolution state of this condition. `null` until the on-chain resolver
+   * returns; once settled, carries the resolved value (`YES` / `NO` for
+   * decisive outcomes, `NON_DECISIVE` for voids / ties). Filter "settled
+   * vs unsettled" via `outcome: { isNull: ... }` rather than relying on
+   * the deprecated `settled: Boolean!` field.
+   */
+  outcome?: Maybe<ConditionOutcome>;
   predictionCount: Scalars['Int']['output'];
   predictions: Array<LegacyPrediction>;
   public: Scalars['Boolean']['output'];
@@ -794,6 +808,14 @@ export type ConditionPredictionsArgs = {
   where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
+/** Relay-shaped connection over `Condition` rows. */
+export type ConditionConnection = {
+  __typename?: 'ConditionConnection';
+  edges: Array<ConditionEdge>;
+  nodes: Array<Condition>;
+  pageInfo: PageInfo;
+};
+
 export type ConditionCount = {
   __typename?: 'ConditionCount';
   attestations: Scalars['Int']['output'];
@@ -810,6 +832,13 @@ export type ConditionCountPredictionsArgs = {
   where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
+/** Cursor-bearing edge for `ConditionConnection`. */
+export type ConditionEdge = {
+  __typename?: 'ConditionEdge';
+  cursor: Scalars['String']['output'];
+  node: Condition;
+};
+
 /**
  * Engagement status for a Condition. A condition has "engagement" if it
  * has non-zero open interest OR at least one attestation. Used by
@@ -820,6 +849,35 @@ export type ConditionEngagement =
   | 'ANY'
   /** `openInterest = 0` AND no attestations. */
   | 'NONE';
+
+/**
+ * Filter input for the Relay-shaped `conditions` connection. Combines
+ * with AND. Public-only — non-public conditions are out of scope here;
+ * the deprecated `conditionsPage` retains the `visibility` switch for
+ * admin paths.
+ */
+export type ConditionFilter = {
+  /** Restrict to conditions whose category id is in this set. */
+  categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
+  /** Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions. */
+  conditionGroupId?: InputMaybe<IdFilter>;
+  /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
+  estimatedPrice?: InputMaybe<FloatFilter>;
+  /**
+   * Filter by resolution state. `{ isNull: true }` selects unsettled
+   * conditions; `{ isNull: false }` selects settled (any outcome);
+   * `{ equals: NON_DECISIVE }` selects voided settlements specifically.
+   */
+  outcome?: InputMaybe<ConditionOutcomeFilter>;
+  /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
+  resolvesAt?: InputMaybe<IntFilter>;
+  /** Free-text search across `question`, `shortName`, and `description` (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`. */
+  similarMarketVolume?: InputMaybe<FloatFilter>;
+  /** Restrict to conditions tagged with any of these values. */
+  tags?: InputMaybe<Array<Scalars['String']['input']>>;
+};
 
 /**
  * Flat filter input for the `conditionsPage` query. Each field is optional;
@@ -908,6 +966,14 @@ export type ConditionGroupConditionsArgs = {
   where?: InputMaybe<ConditionWhereInput>;
 };
 
+/** Relay-shaped connection over `ConditionGroup` rows. */
+export type ConditionGroupConnection = {
+  __typename?: 'ConditionGroupConnection';
+  edges: Array<ConditionGroupEdge>;
+  nodes: Array<ConditionGroup>;
+  pageInfo: PageInfo;
+};
+
 export type ConditionGroupCount = {
   __typename?: 'ConditionGroupCount';
   condition: Scalars['Int']['output'];
@@ -916,6 +982,27 @@ export type ConditionGroupCount = {
 
 export type ConditionGroupCountConditionArgs = {
   where?: InputMaybe<ConditionWhereInput>;
+};
+
+/** Cursor-bearing edge for `ConditionGroupConnection`. */
+export type ConditionGroupEdge = {
+  __typename?: 'ConditionGroupEdge';
+  cursor: Scalars['String']['output'];
+  node: ConditionGroup;
+};
+
+/**
+ * Filter input for the Relay-shaped `conditionGroups` connection. Combines
+ * with AND. Returns only groups with at least one public condition; the
+ * deprecated `conditionGroupsPage` retains finer-grained switches.
+ */
+export type ConditionGroupFilter = {
+  /** Restrict to groups whose category id is in this set. */
+  categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
+  /** Free-text search across the group's `name` (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to groups whose conditions carry any of these tags. */
+  tags?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 /**
@@ -960,6 +1047,12 @@ export type ConditionGroupNullableRelationFilter = {
   isNot?: InputMaybe<ConditionGroupWhereInput>;
 };
 
+/** Order input for the Relay-shaped `conditionGroups` connection. */
+export type ConditionGroupOrder = {
+  direction: OrderDirection;
+  field: ConditionGroupOrderField;
+};
+
 export type ConditionGroupOrderByRelationAggregateInput = {
   _count?: InputMaybe<SortOrder>;
 };
@@ -986,6 +1079,27 @@ export type ConditionGroupOrderByWithRelationInput = {
   totalSimilarMarketVolumeFiltered7d?: InputMaybe<SortOrder>;
   totalSimilarMarketVolumeFiltered24h?: InputMaybe<SortOrder>;
 };
+
+/**
+ * Sort fields for the Relay-shaped `conditionGroups` connection. Mirrors
+ * the Condition enum value names; the resolver maps each to the
+ * group-level denormalized aggregate column (`maxCreatedAtEpoch`,
+ * `maxEndTime`, `totalPredictionCount`, `totalSimilarMarketVolume24h`,
+ * `totalSimilarMarketVolume7d`).
+ *
+ * `OPEN_INTEREST` is intentionally omitted — symmetric with
+ * `ConditionOrderField` above. The `totalOpenInterest` column is
+ * Decimal (not varchar), so the numeric-sort issue doesn't apply at the
+ * group level — but listing `OPEN_INTEREST` on `ConditionGroupOrderField`
+ * without listing it on `ConditionOrderField` would be confusingly
+ * asymmetric, so we hold both back together.
+ */
+export type ConditionGroupOrderField =
+  | 'CREATED_AT'
+  | 'PREDICTION_COUNT'
+  | 'RESOLVES_AT'
+  | 'SIMILAR_MARKET_VOLUME_7D'
+  | 'SIMILAR_MARKET_VOLUME_24H';
 
 export type ConditionGroupScalarFieldEnum =
   | 'categoryId'
@@ -1085,6 +1199,19 @@ export type ConditionNullableRelationFilter = {
   isNot?: InputMaybe<ConditionWhereInput>;
 };
 
+/**
+ * Discriminated union over the two backing entities a `Question` can wrap.
+ * Clients use fragment spreads on `Condition` and `ConditionGroup` to read
+ * fields specific to each branch.
+ */
+export type ConditionOrConditionGroup = Condition | ConditionGroup;
+
+/** Order input for the Relay-shaped `conditions` connection. */
+export type ConditionOrder = {
+  direction: OrderDirection;
+  field: ConditionOrderField;
+};
+
 export type ConditionOrderByRelationAggregateInput = {
   _count?: InputMaybe<SortOrder>;
 };
@@ -1128,6 +1255,59 @@ export type ConditionOrderByWithRelationInput = {
   similarMarketVolumeFiltered24h?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
   tags?: InputMaybe<SortOrder>;
+};
+
+/**
+ * Sort fields for the Relay-shaped `conditions` connection. All values
+ * map to existing partial indexes on the `condition` table:
+ *
+ * - `CREATED_AT` → `IDX_condition_public_createdat`
+ * - `RESOLVES_AT` → `IDX_condition_public_endtime` (column: `endTime`)
+ * - `PREDICTION_COUNT` → `IDX_condition_prediction_count`
+ * - `SIMILAR_MARKET_VOLUME_24H` → `IDX_condition_public_volume24h`
+ * - `SIMILAR_MARKET_VOLUME_7D` → `IDX_condition_public_volume7d`
+ *
+ * `OPEN_INTEREST` is intentionally omitted. The underlying
+ * `Condition.openInterest` column is varchar; the partial index
+ * `IDX_condition_oi_numeric` is on the `::numeric` cast expression, so
+ * typed Prisma `orderBy` would sort lexicographically (`"9" > "1000"`)
+ * and miss the index. Lands together with raw-SQL numeric sort in a
+ * follow-up — additive, non-breaking.
+ */
+export type ConditionOrderField =
+  | 'CREATED_AT'
+  | 'PREDICTION_COUNT'
+  | 'RESOLVES_AT'
+  | 'SIMILAR_MARKET_VOLUME_7D'
+  | 'SIMILAR_MARKET_VOLUME_24H';
+
+/**
+ * Resolved state of a `Condition`. `YES` and `NO` are decisive resolutions
+ * of the binary outcome; `NON_DECISIVE` covers voided / tied / unresolvable
+ * settlements (which the protocol collapses to `COUNTERPARTY_WINS` at the
+ * Prediction layer). Nullable on the wire — `null` means "not yet settled."
+ *
+ * Derived at the resolver from `settled` / `resolvedToYes` / `nonDecisive`
+ * columns; clients should filter "settled" via `outcome: { isNull: false }`
+ * rather than depending on the legacy boolean fields.
+ */
+export type ConditionOutcome =
+  | 'NO'
+  | 'NON_DECISIVE'
+  | 'YES';
+
+/**
+ * Operator-pattern filter for `ConditionOutcome` enum. `{ isNull: true }`
+ * selects unsettled conditions; `{ isNull: false }` selects settled
+ * (any outcome). `{ equals: NON_DECISIVE }` selects voided/non-decisive
+ * settlements specifically. See `ConditionOutcome`.
+ */
+export type ConditionOutcomeFilter = {
+  equals?: InputMaybe<ConditionOutcome>;
+  in?: InputMaybe<Array<ConditionOutcome>>;
+  isNull?: InputMaybe<Scalars['Boolean']['input']>;
+  not?: InputMaybe<ConditionOutcome>;
+  notIn?: InputMaybe<Array<ConditionOutcome>>;
 };
 
 export type ConditionRelationFilter = {
@@ -1365,6 +1545,19 @@ export type ForecasterScore = {
   numTimeWeighted: Scalars['Int']['output'];
   sumErrorSquared: Scalars['Float']['output'];
   sumTimeWeightedError: Scalars['Float']['output'];
+};
+
+/**
+ * Operator-pattern filter for `ID` scalar fields. Supports equality,
+ * membership, negation, and null. Resolvers reject unsupported operators
+ * on a per-field basis (e.g., a non-nullable column rejects `isNull`).
+ */
+export type IdFilter = {
+  equals?: InputMaybe<Scalars['ID']['input']>;
+  in?: InputMaybe<Array<Scalars['ID']['input']>>;
+  isNull?: InputMaybe<Scalars['Boolean']['input']>;
+  not?: InputMaybe<Scalars['ID']['input']>;
+  notIn?: InputMaybe<Array<Scalars['ID']['input']>>;
 };
 
 export type IntFilter = {
@@ -1835,9 +2028,31 @@ export type NestedStringNullableFilter = {
   startsWith?: InputMaybe<Scalars['String']['input']>;
 };
 
+/**
+ * Relay-style identifiable object. Types that implement `Node` carry a
+ * globally unique opaque `id` and are refetchable through the root
+ * `node(id:)` / `nodes(ids:)` fields. Domain identifiers (predictionId,
+ * hash, uid, address) remain on the entity as separate fields; `id` is a
+ * second identity layer used for cache normalization and polymorphic
+ * refetch.
+ */
+export type Node = {
+  /**
+   * Opaque, globally unique identifier. Clients should treat this as a
+   * refetch token only — do not parse, mint, or compare it to domain ids.
+   * Stable for the lifetime of the entity it identifies.
+   */
+  id: Scalars['ID']['output'];
+};
+
 export type NullsOrder =
   | 'first'
   | 'last';
+
+/** Sort order shared across every `orderBy` input on the redesigned surface. */
+export type OrderDirection =
+  | 'ASC'
+  | 'DESC';
 
 /**
  * Shared shape for `*Page` paginated wrappers. Concrete types add their own
@@ -1860,6 +2075,24 @@ export type Page = {
    *     the client selects it.
    */
   totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
+/**
+ * Cursor-based pagination metadata for Relay-style connections. Sits
+ * alongside the legacy `Page` interface (offset/skip-based pagination)
+ * during the API redesign; new connection types use `PageInfo`, existing
+ * `*Page` types keep `Page`.
+ */
+export type PageInfo = {
+  __typename?: 'PageInfo';
+  /** Cursor of the last edge in the page, or null when the page is empty. */
+  endCursor?: Maybe<Scalars['String']['output']>;
+  /** True if more rows exist after `endCursor` in the current ordering. */
+  hasNextPage: Scalars['Boolean']['output'];
+  /** True if more rows exist before `startCursor` in the current ordering. */
+  hasPreviousPage: Scalars['Boolean']['output'];
+  /** Cursor of the first edge in the page, or null when the page is empty. */
+  startCursor?: Maybe<Scalars['String']['output']>;
 };
 
 /** Individual outcome pick within a pick configuration */
@@ -2324,19 +2557,66 @@ export type Query = {
   condition?: Maybe<Condition>;
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape. */
   conditionGroup?: Maybe<ConditionGroup>;
-  /** @deprecated Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal. */
+  /**
+   * Deprecated bare-array form. Retained unchanged for the one-release
+   * deprecation window so pinned clients keep working. New callers
+   * should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`
+   * (Relay-shaped) or `conditionGroupsPage(filters:)` (offset-paginated).
+   * @deprecated Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
+   */
   conditionGroups: Array<ConditionGroup>;
+  /**
+   * Relay-shaped connection over `ConditionGroup` rows. Forward-only
+   * cursor pagination via `first` / `after`. Replaces the deprecated
+   * bare `conditionGroups(where:)` and the offset-paginated
+   * `conditionGroupsPage`. `totalCount` is omitted per design-doc D3
+   * (default-off, add per-PR where cheap).
+   */
+  conditionGroupsConnection: ConditionGroupConnection;
   /**
    * Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
    *
    * Sorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.
    * Defaults to `CREATED_AT` / `desc` when omitted.
+   * @deprecated Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
    */
   conditionGroupsPage: ConditionGroupsPage;
-  /** @deprecated Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal. */
+  /**
+   * Deprecated bare-array form. Retained unchanged for the one-release
+   * deprecation window. New callers should use
+   * `conditionsConnection(first:, after:, filter:, orderBy:)` (Relay-shaped)
+   * or `conditionsPage(filters:)` (offset-paginated).
+   * @deprecated Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
+   */
   conditions: Array<Condition>;
-  /** Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input. */
+  /**
+   * Relay-shaped connection over `Condition` rows. Forward-only cursor
+   * pagination via `first` / `after`. Replaces the deprecated bare
+   * `conditions(where:)` and the offset-paginated `conditionsPage`.
+   * Public conditions only — admin-style visibility switches live on the
+   * deprecated `conditionsPage` for the migration window.
+   */
+  conditionsConnection: ConditionConnection;
+  /**
+   * Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input.
+   * @deprecated Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data. Admin-only filters (`visibility`, `engagement`) remain on this resolver during the migration window.
+   */
   conditionsPage: ConditionsPage;
+  /**
+   * Refetch any `Node`-implementing entity by its opaque global id. Returns
+   * `null` when the id is malformed, the type is not registered, or the
+   * underlying entity has been deleted. Domain-id lookups (e.g.
+   * `predictionByOnchainId`, `tradeByHash`) remain the preferred entry point
+   * for new traffic; `node(id:)` exists so Relay-style clients can refetch
+   * cached entities polymorphically without knowing their concrete type.
+   */
+  node?: Maybe<Node>;
+  /**
+   * Batched form of `node(id:)`. Preserves input order; each element is
+   * resolved independently and may be null. Useful for client caches that
+   * refresh many entities in one round trip.
+   */
+  nodes: Array<Maybe<Node>>;
   /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
   openInterestByCategory: Array<CategoryOpenInterest>;
   /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
@@ -2432,10 +2712,22 @@ export type Query = {
    */
   protocolVolume: Array<VolumeDataPoint>;
   /**
-   * Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
-   * @deprecated Use `questionsPage` — same data with a server-truth `hasMore` stop signal.
+   * Deprecated bare-array form. Retained unchanged for the one-release
+   * deprecation window so pinned clients keep working. New callers
+   * should use `questionsConnection(first:, after:, filter:, orderBy:)`
+   * (Relay-shaped) or `questionsPage(filters:)` (offset-paginated).
+   * @deprecated Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed.
    */
   questions: Array<Question>;
+  /**
+   * Relay-shaped connection over `Question` rows — the interleaved
+   * Condition / ConditionGroup feed. Forward-only cursor pagination via
+   * `first` / `after`. Replaces the deprecated bare `questions(...)` and
+   * the offset-paginated `questionsPage`. `totalCount` is omitted on
+   * `QuestionConnection` because the underlying SQL UNION cannot produce
+   * a single COUNT cheaply.
+   */
+  questionsConnection: QuestionConnection;
   /**
    * Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
    *
@@ -2443,6 +2735,7 @@ export type Query = {
    * every other `*Page` resolver. The original `sortField` / `sortDirection`
    * args are retained for one release with `@deprecated`; new callers
    * should use `orderBy:` / `orderDirection:`.
+   * @deprecated Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved Condition / ConditionGroup feed.
    */
   questionsPage: QuestionsPage;
   /**
@@ -2725,6 +3018,14 @@ export type QueryConditionGroupsArgs = {
 };
 
 
+export type QueryConditionGroupsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ConditionGroupFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ConditionGroupOrder>;
+};
+
+
 export type QueryConditionGroupsPageArgs = {
   filters?: InputMaybe<ConditionGroupFilters>;
   orderBy?: InputMaybe<ConditionGroupSortField>;
@@ -2744,12 +3045,30 @@ export type QueryConditionsArgs = {
 };
 
 
+export type QueryConditionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ConditionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ConditionOrder>;
+};
+
+
 export type QueryConditionsPageArgs = {
   filters?: InputMaybe<ConditionFilters>;
   orderBy?: InputMaybe<ConditionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
+};
+
+
+export type QueryNodeArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryNodesArgs = {
+  ids: Array<Scalars['ID']['input']>;
 };
 
 
@@ -2900,6 +3219,14 @@ export type QueryQuestionsArgs = {
 };
 
 
+export type QueryQuestionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<QuestionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<QuestionOrder>;
+};
+
+
 export type QueryQuestionsPageArgs = {
   filters?: InputMaybe<QuestionFilters>;
   orderBy?: InputMaybe<QuestionSortField>;
@@ -2977,13 +3304,89 @@ export type QueryMode =
   | 'default'
   | 'insensitive';
 
-/** A question item — either a group of related conditions or a single ungrouped condition */
+/**
+ * A question — derived view that interleaves grouped and ungrouped markets.
+ * A `Question` is **not** a durable entity (no `Node` membership, no
+ * `question(id:)` lookup). Identity flows through the wrapped `source`
+ * (either a `Condition` or a `ConditionGroup`), each of which already
+ * carries its own primary key.
+ */
 export type Question = {
   __typename?: 'Question';
+  category?: Maybe<Category>;
+  /** @deprecated Use `source` (union over Condition | ConditionGroup). */
   condition?: Maybe<Condition>;
+  /** Creation timestamp forwarded from the source. */
+  createdAt: Scalars['DateTimeISO']['output'];
+  /** Long-form description forwarded from the source (`Condition.description`); null for groups. */
+  description?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `source` (union over Condition | ConditionGroup). */
   group?: Maybe<ConditionGroup>;
+  /** Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`. */
+  openInterest?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `source` and read `predictionCount` on the wrapped entity. */
   predictionCount?: Maybe<Scalars['Int']['output']>;
+  /** @deprecated Use `source.__typename`. */
   questionType: QuestionItemType;
+  /** Resolution time forwarded from the source — `Condition.endTime` or `ConditionGroup.maxEndTime`. */
+  resolvesAt?: Maybe<Scalars['UnixSeconds']['output']>;
+  /**
+   * The underlying entity this question wraps. Exactly one of
+   * `Condition` | `ConditionGroup`. `__typename` discriminates between
+   * the two; the legacy `questionType` field is the same information in
+   * scalar form and is now `@deprecated`.
+   */
+  source: ConditionOrConditionGroup;
+  tags: Array<Scalars['String']['output']>;
+  /** Display title forwarded from the source — `Condition.question` or `ConditionGroup.name`. */
+  title: Scalars['String']['output'];
+  /** 24h similar-market volume forwarded from the source. */
+  volume?: Maybe<Scalars['Float']['output']>;
+};
+
+/**
+ * Relay-shaped connection over `Question` rows. `totalCount` is
+ * intentionally omitted — the underlying SQL UNION over `condition_group`
+ * and ungrouped `condition` rows cannot produce a single COUNT cheaply.
+ */
+export type QuestionConnection = {
+  __typename?: 'QuestionConnection';
+  edges: Array<QuestionEdge>;
+  nodes: Array<Question>;
+  pageInfo: PageInfo;
+};
+
+/** Cursor-bearing edge for `QuestionConnection`. */
+export type QuestionEdge = {
+  __typename?: 'QuestionEdge';
+  cursor: Scalars['String']['output'];
+  node: Question;
+};
+
+/**
+ * Filter input for the Relay-shaped `questions` connection. Combines
+ * with AND. Intentionally minimal — `categoryIds`, multi-tag, and
+ * `outcome` filters require runner changes to the underlying SQL UNION
+ * and are deferred to a follow-up. They will land as additive,
+ * non-breaking SDL extensions. For outcome-based filtering today, use
+ * `conditions(filter: {outcome:})`.
+ */
+export type QuestionFilter = {
+  /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
+  estimatedPrice?: InputMaybe<FloatFilter>;
+  /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
+  resolvesAt?: InputMaybe<IntFilter>;
+  /** Free-text search across the wrapped Condition/Group's title and description (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`. */
+  similarMarketVolume?: InputMaybe<FloatFilter>;
+  /**
+   * Restrict to questions tagged with this value. Single-tag only at
+   * the SDL level — the underlying union runner accepts one tag at a
+   * time. Multi-tag (`[String!]`) will be added when the runner supports
+   * it (additive, non-breaking).
+   */
+  tag?: InputMaybe<Scalars['String']['input']>;
 };
 
 /**
@@ -3038,6 +3441,27 @@ export type QuestionFilters = {
 export type QuestionItemType =
   | 'condition'
   | 'group';
+
+/** Order input for the Relay-shaped `questions` connection. */
+export type QuestionOrder = {
+  direction: OrderDirection;
+  field: QuestionOrderField;
+};
+
+/**
+ * Sort fields for the Relay-shaped `questions` connection. The runner
+ * unions Conditions and ConditionGroups; sort values pick the column on
+ * each side. `OPEN_INTEREST` is intentionally omitted (symmetric with
+ * `ConditionOrderField`) — the Condition side would sort the varchar
+ * column lexicographically; restore together with raw-SQL numeric sort
+ * in a follow-up.
+ */
+export type QuestionOrderField =
+  | 'CREATED_AT'
+  | 'PREDICTION_COUNT'
+  | 'RESOLVES_AT'
+  | 'SIMILAR_MARKET_VOLUME_7D'
+  | 'SIMILAR_MARKET_VOLUME_24H';
 
 /** Field to sort questions by */
 export type QuestionSortField =

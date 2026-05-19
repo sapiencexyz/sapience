@@ -19,12 +19,16 @@
  */
 
 import type { ConditionResolvers } from '../__generated__/resolvers';
+import { ConditionOutcome } from '../__generated__/resolvers';
 import { loadRelation } from './relationHelpers';
 
 type PrismaCondition = {
   id: string;
   categoryId?: number | null;
   conditionGroupId?: number | null;
+  settled?: boolean;
+  resolvedToYes?: boolean;
+  nonDecisive?: boolean;
   category?: unknown;
   conditionGroup?: unknown;
   attestations?: unknown;
@@ -51,6 +55,19 @@ const isBatchableListArgs = (args: RelationListArgs | undefined | null) =>
     args.take == null);
 
 export const Condition: ConditionResolvers = {
+  /**
+   * Derived `outcome` enum — null while unsettled, otherwise mapped
+   * from the boolean state. `nonDecisive` wins over `resolvedToYes`
+   * because the protocol treats voided settlements as collapsing to
+   * the counterparty regardless of the YES/NO bit.
+   */
+  outcome: (parent) => {
+    const p = parent as PrismaCondition;
+    if (p.settled !== true) return null;
+    if (p.nonDecisive === true) return ConditionOutcome.NonDecisive;
+    return p.resolvedToYes ? ConditionOutcome.Yes : ConditionOutcome.No;
+  },
+
   category: async (parent, args, ctx) => {
     const p = parent as PrismaCondition;
     if (p.category !== undefined) return p.category as never;
