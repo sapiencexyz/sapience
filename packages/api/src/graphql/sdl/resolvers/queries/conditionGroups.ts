@@ -27,7 +27,7 @@ import type { Prisma } from '../../../../../generated/prisma';
 import type {
   QueryResolvers,
   QueryConditionGroupsPageArgs,
-  QueryConditionGroupsArgs,
+  QueryConditionGroupsConnectionArgs,
   ConditionGroupFilters,
   ConditionGroupSortField,
   ConditionGroupFilter,
@@ -232,11 +232,11 @@ const buildGroupCursorPredicate = (
   };
 };
 
-export const conditionGroups: NonNullable<
-  QueryResolvers['conditionGroups']
+export const conditionGroupsConnection: NonNullable<
+  QueryResolvers['conditionGroupsConnection']
 > = async (
   _parent,
-  { first, after, filter, orderBy }: QueryConditionGroupsArgs
+  { first, after, filter, orderBy }: QueryConditionGroupsConnectionArgs
 ) => {
   const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
   const orderField: ConditionGroupOrderField =

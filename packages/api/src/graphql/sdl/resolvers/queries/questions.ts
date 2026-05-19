@@ -803,10 +803,9 @@ const mapOrderField = (
   }
 };
 
-export const questions: NonNullable<QueryResolvers['questions']> = async (
-  _parent,
-  { first, after, filter, orderBy }
-) => {
+export const questionsConnection: NonNullable<
+  QueryResolvers['questionsConnection']
+> = async (_parent, { first, after, filter, orderBy }) => {
   const take = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
   const skip = offsetFromCursor(after);
 

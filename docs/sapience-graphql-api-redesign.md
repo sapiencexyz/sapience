@@ -1893,6 +1893,44 @@ type Query {
 }
 ```
 
+#### Field naming when the canonical name is taken
+
+GraphQL forbids two fields with the same name, and **output return types cannot be deprecated** (a field that used to return `[X!]!` can never start returning `XConnection!` without breaking pinned client queries at the wire level — `@deprecated` only marks args/fields as discouraged, it doesn't preserve old behavior). When the new Relay-shaped field's intended canonical name (e.g., `conditions`) is already used by an existing deprecated field with a different return type, the new field takes a **`*Connection` suffix** for the duration of the deprecation window:
+
+```graphql
+type Query {
+  # Old shape — kept unchanged for the deprecation window
+  conditions(where: ..., take: Int, skip: Int): [Condition!]!
+    @deprecated(reason: "Use `conditionsConnection`.")
+
+  # New Relay shape — suffixed because the canonical name is taken
+  conditionsConnection(
+    first: Int
+    after: String
+    filter: ConditionFilter
+    orderBy: ConditionOrder
+  ): ConditionConnection!
+}
+```
+
+Rationale: the type-system noun is already `ConditionConnection`, so the field name `conditionsConnection` matches the type. `Feed` is reserved for genuinely chronological/push-style surfaces (`activity(...)`).
+
+Convention applies uniformly across per-entity PRs:
+
+- PR 2: `conditionsConnection`, `conditionGroupsConnection`, `questionsConnection`
+- PR 3: `tradesConnection`, `positionsConnection`, `pickConfigurationsConnection` (if the bare equivalents exist)
+- PR 4+: same pattern; only suffix when there's a name collision
+
+A genuinely new field whose canonical name isn't already taken keeps the canonical name — `activity(...)` doesn't need a suffix because no field called `activity` existed before this redesign.
+
+Post-deprecation exit (when the deprecated original is removed in a major-version cut), the team chooses per-field:
+
+- keep the `*Connection` suffix permanently (most Relay-leaning APIs that hit this transition end up here), or
+- add a canonical-name resolver that delegates to the `*Connection` one (two-line aliasing in Apollo Server), or
+- execute a second clean deprecation cycle to rename to the canonical name
+
+Decided at v2-cut time; no commitment required now.
+
 ---
 
 ## Open Questions

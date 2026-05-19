@@ -1,5 +1,5 @@
 /**
- * `Query.conditionsLegacy` — the original bare `conditions(where:)`
+ * `Query.conditions` — the original bare `conditions(where:)`
  * Prisma-style resolver, renamed to free the canonical `conditions`
  * name for the Relay-shaped connection while still honoring the
  * doc's one-release deprecation window.
@@ -47,10 +47,11 @@ const hasPublicFilter = (where?: Where | null): boolean => {
   return false;
 };
 
-export const conditionsLegacy: NonNullable<
-  QueryResolvers['conditionsLegacy']
-> = async (_parent, { where, orderBy, cursor, take, skip, distinct }) => {
-  logDeprecatedHit('conditionsLegacy');
+export const conditions: NonNullable<QueryResolvers['conditions']> = async (
+  _parent,
+  { where, orderBy, cursor, take, skip, distinct }
+) => {
+  logDeprecatedHit('conditions');
   const w = where as Where | null | undefined;
   const effectiveWhere: Where =
     hasIdFilter(w) || hasPublicFilter(w)

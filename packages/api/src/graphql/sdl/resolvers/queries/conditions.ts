@@ -22,7 +22,7 @@ import type { Prisma } from '../../../../../generated/prisma';
 import type {
   QueryResolvers,
   QueryConditionsPageArgs,
-  QueryConditionsArgs,
+  QueryConditionsConnectionArgs,
   ConditionFilters,
   ConditionFilter,
   ConditionOutcomeFilter,
@@ -366,9 +366,11 @@ type PrismaConditionPick = {
   similarMarketVolume7d: number;
 };
 
-export const conditions: NonNullable<QueryResolvers['conditions']> = async (
+export const conditionsConnection: NonNullable<
+  QueryResolvers['conditionsConnection']
+> = async (
   _parent,
-  { first, after, filter, orderBy }: QueryConditionsArgs
+  { first, after, filter, orderBy }: QueryConditionsConnectionArgs
 ) => {
   const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
   const orderField: ConditionOrderField =

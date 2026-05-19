@@ -63,16 +63,16 @@ import {
   collateralTransfersPage,
 } from './queries/collateralBalance';
 import { collateralTransfers } from './queries/deprecated/collateralBalance';
-import { conditions, conditionsPage } from './queries/conditions';
+import { conditionsConnection, conditionsPage } from './queries/conditions';
 import {
   conditionGroup,
-  conditionGroups,
+  conditionGroupsConnection,
   conditionGroupsPage,
 } from './queries/conditionGroups';
-import { questions, questionsPage } from './queries/questions';
-import { conditionsLegacy } from './queries/deprecated/conditionsLegacy';
-import { conditionGroupsLegacy } from './queries/deprecated/conditionGroupsLegacy';
-import { questionsLegacy } from './queries/deprecated/questionsLegacy';
+import { questionsConnection, questionsPage } from './queries/questions';
+import { conditions } from './queries/deprecated/conditions';
+import { conditionGroups } from './queries/deprecated/conditionGroups';
+import { questions } from './queries/deprecated/questions';
 import {
   account,
   attestationsPage,
@@ -151,10 +151,10 @@ export const resolvers: Resolvers = {
     collateralTransfersPage,
     // Conditions / questions
     conditions,
-    conditionsLegacy,
+    conditionsConnection,
     conditionsPage,
     questions,
-    questionsLegacy,
+    questionsConnection,
     questionsPage,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
@@ -185,7 +185,7 @@ export const resolvers: Resolvers = {
     condition,
     conditionGroup,
     conditionGroups,
-    conditionGroupsLegacy,
+    conditionGroupsConnection,
     conditionGroupsPage,
     user,
     users,

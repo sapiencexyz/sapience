@@ -1,5 +1,5 @@
 /**
- * `Query.conditionGroupsLegacy` — original bare `conditionGroups(where:)`
+ * `Query.conditionGroups` — original bare `conditionGroups(where:)`
  * Prisma-style resolver, renamed to free the canonical `conditionGroups`
  * name for the Relay-shaped connection while honoring the doc's
  * one-release deprecation window.
@@ -12,10 +12,10 @@ import prisma from '../../../../../core/db';
 
 const asPrismaArgs = <T>(value: unknown): T => value as T;
 
-export const conditionGroupsLegacy: NonNullable<
-  QueryResolvers['conditionGroupsLegacy']
+export const conditionGroups: NonNullable<
+  QueryResolvers['conditionGroups']
 > = async (_parent, { where, orderBy, cursor, take, skip, distinct }) => {
-  logDeprecatedHit('conditionGroupsLegacy');
+  logDeprecatedHit('conditionGroups');
   return prisma.conditionGroup.findMany({
     where: asPrismaArgs<Prisma.ConditionGroupWhereInput | undefined>(
       where ?? undefined

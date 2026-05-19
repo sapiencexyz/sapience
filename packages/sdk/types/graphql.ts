@@ -2552,49 +2552,48 @@ export type Query = {
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape. */
   conditionGroup?: Maybe<ConditionGroup>;
   /**
+   * Deprecated bare-array form. Retained unchanged for the one-release
+   * deprecation window so pinned clients keep working. New callers
+   * should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`
+   * (Relay-shaped) or `conditionGroupsPage(filters:)` (offset-paginated).
+   * @deprecated Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
+   */
+  conditionGroups: Array<ConditionGroup>;
+  /**
    * Relay-shaped connection over `ConditionGroup` rows. Forward-only
    * cursor pagination via `first` / `after`. Replaces the deprecated
    * bare `conditionGroups(where:)` and the offset-paginated
    * `conditionGroupsPage`. `totalCount` is omitted per design-doc D3
    * (default-off, add per-PR where cheap).
    */
-  conditionGroups: ConditionGroupConnection;
-  /**
-   * Deprecated bare-array form previously exposed as `conditionGroups(where:)`.
-   * Renamed to `conditionGroupsLegacy` so the canonical `conditionGroups`
-   * name can host the new Relay-shaped connection. Honors the doc's
-   * one-release deprecation window — clients on the old shape should
-   * migrate to the connection before this field is removed.
-   * @deprecated Use `conditionGroups(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
-   */
-  conditionGroupsLegacy: Array<ConditionGroup>;
+  conditionGroupsConnection: ConditionGroupConnection;
   /**
    * Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
    *
    * Sorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.
    * Defaults to `CREATED_AT` / `desc` when omitted.
-   * @deprecated Use `conditionGroups(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
+   * @deprecated Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
    */
   conditionGroupsPage: ConditionGroupsPage;
   /**
+   * Deprecated bare-array form. Retained unchanged for the one-release
+   * deprecation window. New callers should use
+   * `conditionsConnection(first:, after:, filter:, orderBy:)` (Relay-shaped)
+   * or `conditionsPage(filters:)` (offset-paginated).
+   * @deprecated Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
+   */
+  conditions: Array<Condition>;
+  /**
    * Relay-shaped connection over `Condition` rows. Forward-only cursor
    * pagination via `first` / `after`. Replaces the deprecated bare
-   * `conditions(where:)` (now `conditionsLegacy`) and the offset-paginated
-   * `conditionsPage`. Public conditions only — admin-style visibility
-   * switches live on the deprecated `conditionsPage` for the migration window.
+   * `conditions(where:)` and the offset-paginated `conditionsPage`.
+   * Public conditions only — admin-style visibility switches live on the
+   * deprecated `conditionsPage` for the migration window.
    */
-  conditions: ConditionConnection;
-  /**
-   * Deprecated bare-array form previously exposed as `conditions(where:)`.
-   * Renamed to `conditionsLegacy` so the canonical `conditions` name can
-   * host the new Relay-shaped connection. Honors the doc's one-release
-   * deprecation window.
-   * @deprecated Use `conditions(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
-   */
-  conditionsLegacy: Array<Condition>;
+  conditionsConnection: ConditionConnection;
   /**
    * Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input.
-   * @deprecated Use `conditions(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data. Admin-only filters (`visibility`, `engagement`) remain on this resolver during the migration window.
+   * @deprecated Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data. Admin-only filters (`visibility`, `engagement`) remain on this resolver during the migration window.
    */
   conditionsPage: ConditionsPage;
   /**
@@ -2707,6 +2706,14 @@ export type Query = {
    */
   protocolVolume: Array<VolumeDataPoint>;
   /**
+   * Deprecated bare-array form. Retained unchanged for the one-release
+   * deprecation window so pinned clients keep working. New callers
+   * should use `questionsConnection(first:, after:, filter:, orderBy:)`
+   * (Relay-shaped) or `questionsPage(filters:)` (offset-paginated).
+   * @deprecated Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed.
+   */
+  questions: Array<Question>;
+  /**
    * Relay-shaped connection over `Question` rows — the interleaved
    * Condition / ConditionGroup feed. Forward-only cursor pagination via
    * `first` / `after`. Replaces the deprecated bare `questions(...)` and
@@ -2714,15 +2721,7 @@ export type Query = {
    * `QuestionConnection` because the underlying SQL UNION cannot produce
    * a single COUNT cheaply.
    */
-  questions: QuestionConnection;
-  /**
-   * Deprecated bare-array form previously exposed as `questions(...)` with
-   * flat filter args. Renamed to `questionsLegacy` so the canonical
-   * `questions` name can host the Relay-shaped connection. Honors the
-   * doc's one-release deprecation window.
-   * @deprecated Use `questions(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed.
-   */
-  questionsLegacy: Array<Question>;
+  questionsConnection: QuestionConnection;
   /**
    * Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
    *
@@ -2730,7 +2729,7 @@ export type Query = {
    * every other `*Page` resolver. The original `sortField` / `sortDirection`
    * args are retained for one release with `@deprecated`; new callers
    * should use `orderBy:` / `orderDirection:`.
-   * @deprecated Use `questions(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved Condition / ConditionGroup feed.
+   * @deprecated Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved Condition / ConditionGroup feed.
    */
   questionsPage: QuestionsPage;
   /**
@@ -3004,20 +3003,20 @@ export type QueryConditionGroupArgs = {
 
 
 export type QueryConditionGroupsArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<ConditionGroupFilter>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<ConditionGroupOrder>;
-};
-
-
-export type QueryConditionGroupsLegacyArgs = {
   cursor?: InputMaybe<ConditionGroupWhereUniqueInput>;
   distinct?: InputMaybe<Array<ConditionGroupScalarFieldEnum>>;
   orderBy?: InputMaybe<Array<ConditionGroupOrderByWithRelationInput>>;
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<ConditionGroupWhereInput>;
+};
+
+
+export type QueryConditionGroupsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ConditionGroupFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ConditionGroupOrder>;
 };
 
 
@@ -3031,20 +3030,20 @@ export type QueryConditionGroupsPageArgs = {
 
 
 export type QueryConditionsArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<ConditionFilter>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<ConditionOrder>;
-};
-
-
-export type QueryConditionsLegacyArgs = {
   cursor?: InputMaybe<ConditionWhereUniqueInput>;
   distinct?: InputMaybe<Array<ConditionScalarFieldEnum>>;
   orderBy?: InputMaybe<Array<ConditionOrderByWithRelationInput>>;
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<ConditionWhereInput>;
+};
+
+
+export type QueryConditionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ConditionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ConditionOrder>;
 };
 
 
@@ -3196,14 +3195,6 @@ export type QueryProtocolVolumeArgs = {
 
 
 export type QueryQuestionsArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<QuestionFilter>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<QuestionOrder>;
-};
-
-
-export type QueryQuestionsLegacyArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
@@ -3219,6 +3210,14 @@ export type QueryQuestionsLegacyArgs = {
   sortField?: InputMaybe<QuestionSortField>;
   tag?: InputMaybe<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
+};
+
+
+export type QueryQuestionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<QuestionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<QuestionOrder>;
 };
 
 
