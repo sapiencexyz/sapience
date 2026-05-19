@@ -218,7 +218,7 @@ query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
   conditionsConnection(
     filter: {
       settled: false
-      resolver: $resolver
+      contractAddress: $resolver
       # Pick up both public and private — the deprecated resolver's
       # implicit public=true filter would silently exclude privated
       # conditions that still have engagement to settle.

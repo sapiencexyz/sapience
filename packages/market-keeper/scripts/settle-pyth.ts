@@ -559,9 +559,9 @@ async function main() {
     }>(sapienceApiUrl, CONDITIONS_QUERY, {
       filters: {
         chainId: CHAIN_ID,
-        maxEndTime: nowSec,
+        resolvesAt: { lte: nowSec },
         settled: false,
-        resolver: PYTH_RESOLVER_ADDRESS,
+        contractAddress: PYTH_RESOLVER_ADDRESS,
       },
       take,
       skip,
