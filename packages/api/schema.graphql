@@ -1065,7 +1065,7 @@ type LegacyPosition {
   id: Int!
   marketAddress: String!
   mintedAt: Int!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]! @deprecated(reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead.")
+  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]! @deprecated(reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsConnection` instead.")
   predictor: String!
   predictorCollateral: String
   predictorNftTokenId: String!
@@ -1149,7 +1149,7 @@ type LegacyPrediction {
   limitOrder(where: LimitOrderWhereInput): LimitOrder @deprecated(reason: "LimitOrder is deprecated and being phased out.")
   limitOrderId: Int
   outcomeYes: Boolean!
-  position(where: LegacyPositionWhereInput): LegacyPosition @deprecated(reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead.")
+  position(where: LegacyPositionWhereInput): LegacyPosition @deprecated(reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsConnection` instead.")
   positionId: Int
 }
 
@@ -1535,48 +1535,15 @@ type ForecastEdge {
   cursor: String!
 }
 
-"""
-Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag
-"""
-type PickConfigurationsPage implements Page {
-  items: [PickConfiguration!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""
-Paginated wrapper around Condition rows with a server-truth hasMore flag
-"""
-type ConditionsPage implements Page {
-  items: [Condition!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""
-Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag
-"""
-type ConditionGroupsPage implements Page {
-  items: [ConditionGroup!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""
-Paginated wrapper around Question rows with a server-truth hasMore flag
-"""
-type QuestionsPage implements Page {
-  items: [Question!]!
-  hasMore: Boolean!
-
-  """
-  May be null: the underlying union/aggregation can't produce a stable total cheaply.
-  """
-  totalCount: Int
-}
-
 """Relay-shaped connection over `Condition` rows."""
 type ConditionConnection {
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
+  items: [Condition!]!
+
+  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  hasMore: Boolean!
   edges: [ConditionEdge!]!
   nodes: [Condition!]!
   pageInfo: PageInfo!
@@ -1590,6 +1557,13 @@ type ConditionEdge {
 
 """Relay-shaped connection over `ConditionGroup` rows."""
 type ConditionGroupConnection {
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
+  items: [ConditionGroup!]!
+
+  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  hasMore: Boolean!
   edges: [ConditionGroupEdge!]!
   nodes: [ConditionGroup!]!
   pageInfo: PageInfo!
@@ -1607,6 +1581,13 @@ intentionally omitted — the underlying SQL UNION over `condition_group`
 and ungrouped `condition` rows cannot produce a single COUNT cheaply.
 """
 type QuestionConnection {
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
+  items: [Question!]!
+
+  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  hasMore: Boolean!
   edges: [QuestionEdge!]!
   nodes: [Question!]!
   pageInfo: PageInfo!
@@ -1618,11 +1599,43 @@ type QuestionEdge {
   cursor: String!
 }
 
-"""Paginated wrapper around Trade rows with a server-truth hasMore flag"""
-type TradesPage implements Page {
-  items: [Trade!]!
-  hasMore: Boolean!
-  totalCount: Int
+"""Relay-shaped connection over `Trade` rows."""
+type TradeConnection {
+  edges: [TradeEdge!]!
+  nodes: [Trade!]!
+  pageInfo: PageInfo!
+}
+
+"""Cursor-bearing edge for `TradeConnection`."""
+type TradeEdge {
+  node: Trade!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `Position` rows."""
+type PositionConnection {
+  edges: [PositionEdge!]!
+  nodes: [Position!]!
+  pageInfo: PageInfo!
+}
+
+"""Cursor-bearing edge for `PositionConnection`."""
+type PositionEdge {
+  node: Position!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `PickConfiguration` rows."""
+type PickConfigurationConnection {
+  edges: [PickConfigurationEdge!]!
+  nodes: [PickConfiguration!]!
+  pageInfo: PageInfo!
+}
+
+"""Cursor-bearing edge for `PickConfigurationConnection`."""
+type PickConfigurationEdge {
+  node: PickConfiguration!
+  cursor: String!
 }
 
 """
@@ -1656,7 +1669,9 @@ type CategoriesPage implements Page {
   totalCount: Int
 }
 
-"""Sort fields for the `conditionsPage` query"""
+"""
+Legacy condition offset sort fields retained only for generated compatibility.
+"""
 enum ConditionSortField {
   CREATED_AT
   END_TIME
@@ -1664,7 +1679,9 @@ enum ConditionSortField {
   PREDICTION_COUNT
 }
 
-"""Sort fields for the `conditionGroupsPage` query."""
+"""
+Legacy condition-group offset sort fields retained only for generated compatibility.
+"""
 enum ConditionGroupSortField {
   CREATED_AT
   MAX_END_TIME
@@ -1753,14 +1770,38 @@ enum QuestionOrderField {
   SIMILAR_MARKET_VOLUME_7D
 }
 
-"""Sort fields for the `tradesPage` query."""
-enum TradeSortField {
+"""Order input for the Relay-shaped `tradesConnection`."""
+input TradeOrder {
+  field: TradeOrderField!
+  direction: OrderDirection!
+}
+
+"""Sort fields for the Relay-shaped `tradesConnection`."""
+enum TradeOrderField {
   EXECUTED_AT
   BLOCK_NUMBER
 }
 
-"""Sort fields for the `pickConfigurationsPage` query."""
-enum PickConfigurationSortField {
+"""Order input for the Relay-shaped `positionsConnection`."""
+input PositionOrder {
+  field: PositionOrderField!
+  direction: OrderDirection!
+}
+
+"""Sort fields for the Relay-shaped `positionsConnection`."""
+enum PositionOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+
+"""Order input for the Relay-shaped `pickConfigurationsConnection`."""
+input PickConfigurationOrder {
+  field: PickConfigurationOrderField!
+  direction: OrderDirection!
+}
+
+"""Sort fields for the Relay-shaped `pickConfigurationsConnection`."""
+enum PickConfigurationOrderField {
   CREATED_AT
   ENDS_AT
   RESOLVED_AT
@@ -1772,7 +1813,7 @@ enum CollateralTransferSortField {
   TIMESTAMP
 }
 
-"""Visibility filter for the `conditionsPage` query"""
+"""Legacy condition visibility filter."""
 enum ConditionVisibility {
   PUBLIC
   PRIVATE
@@ -1792,11 +1833,7 @@ enum ConditionEngagement {
   ANY
 }
 
-"""
-Flat filter input for the `conditionsPage` query. Each field is optional;
-values combine with AND. Replaces the Prisma-derived `ConditionWhereInput`
-for client-facing access.
-"""
+"""Legacy flat filter input for removed offset-page condition access."""
 input ConditionFilters {
   """Restrict to these condition IDs (case-insensitive)."""
   ids: [String!]
@@ -1877,8 +1914,7 @@ input ConditionFilters {
 }
 
 """
-Flat filter input for the `conditionGroupsPage` query. Each field is optional;
-values combine with AND.
+Legacy flat filter input for removed offset-page condition group access.
 """
 input ConditionGroupFilters {
   """Restrict to these condition group IDs."""
@@ -1915,10 +1951,47 @@ input ConditionGroupFilters {
 """
 Filter input for the Relay-shaped `conditions` connection. Combines
 with AND. Public-only — non-public conditions are out of scope here;
-the deprecated `conditionsPage` retains the `visibility` switch for
-admin paths.
+admin paths need an explicit replacement surface if private-condition
+visibility is still required.
 """
 input ConditionFilter {
+  """Restrict to these condition IDs (case-insensitive)."""
+  ids: [ID!]
+
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.
+  """
+  chainId: Int
+
+  """
+  Match the on-chain contract address stored in the DB `resolver` column (case-insensitive).
+  """
+  contractAddress: String
+
+  """
+  Match any on-chain contract address stored in the DB `resolver` column (case-insensitive).
+  """
+  contractAddressIn: [String!]
+
+  """
+  Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups.
+  """
+  visibility: ConditionVisibility
+
+  """Restrict to settled (true) or unsettled (false) conditions."""
+  settled: Boolean
+
+  """
+  Restrict to conditions resolved YES (true) or NO (false). Implies settled=true.
+  """
+  resolvedToYes: Boolean
+
+  """Restrict to conditions that have a non-empty similarMarkets array."""
+  hasSimilarMarkets: Boolean
+
+  """Engagement status based on open interest or attestations."""
+  engagement: ConditionEngagement
+
   """
   Free-text search across `question`, `shortName`, and `description` (case-insensitive).
   """
@@ -1931,6 +2004,9 @@ input ConditionFilter {
 
   """Restrict to conditions whose category id is in this set."""
   categoryIds: [ID!]
+
+  """Restrict to conditions whose category slug is in this set."""
+  categorySlugs: [String!]
 
   """Restrict to conditions tagged with any of these values."""
   tags: [String!]
@@ -1955,14 +2031,29 @@ input ConditionFilter {
 """
 Filter input for the Relay-shaped `conditionGroups` connection. Combines
 with AND. Returns only groups with at least one public condition; the
-deprecated `conditionGroupsPage` retains finer-grained switches.
+admin-only finer-grained switches need an explicit replacement surface if still required.
 """
 input ConditionGroupFilter {
+  """Restrict to these condition group IDs."""
+  ids: [ID!]
+
+  """Restrict to groups that have at least one condition on this chain."""
+  chainId: Int
+
+  """When true, require at least one public condition on the group."""
+  publicOnly: Boolean
+
+  """When true, allow groups with no conditions. Defaults false."""
+  includeEmpty: Boolean
+
   """Free-text search across the group's `name` (case-insensitive)."""
   search: String
 
   """Restrict to groups whose category id is in this set."""
   categoryIds: [ID!]
+
+  """Restrict to groups whose category slug is in this set."""
+  categorySlugs: [String!]
 
   """Restrict to groups whose conditions carry any of these tags."""
   tags: [String!]
@@ -1970,13 +2061,44 @@ input ConditionGroupFilter {
 
 """
 Filter input for the Relay-shaped `questions` connection. Combines
-with AND. Intentionally minimal — `categoryIds`, multi-tag, and
-`outcome` filters require runner changes to the underlying SQL UNION
-and are deferred to a follow-up. They will land as additive,
-non-breaking SDL extensions. For outcome-based filtering today, use
-`conditions(filter: {outcome:})`.
+with AND. For outcome-based filtering today, use
+`conditions(filter: { outcome: ... })`.
 """
 input QuestionFilter {
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.
+  """
+  chainId: Int
+
+  """
+  Match the on-chain contract address that owns the underlying condition (case-insensitive).
+  """
+  contractAddress: String
+
+  """
+  Match any on-chain contract address that owns the underlying condition (case-insensitive).
+  """
+  contractAddressIn: [String!]
+
+  """Restrict to questions whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """Resolution-status filter; defaults to all when omitted."""
+  resolutionStatus: ResolutionStatus
+
+  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  estimatedPrice: FloatFilter
+
+  """
+  Filter by all-time or windowed similar-market volume, e.g. `{ gte: 10000 }`.
+  """
+  similarMarketVolume: FloatFilter
+
+  """
+  Window the similar-market-volume filter and sort look at. When omitted, the all-time column is used.
+  """
+  similarMarketVolumeWindow: VolumeWindow
+
   """
   Free-text search across the wrapped Condition/Group's title and description (case-insensitive).
   """
@@ -1992,12 +2114,6 @@ input QuestionFilter {
 
   """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
   resolvesAt: IntFilter
-
-  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
-  estimatedPrice: FloatFilter
-
-  """Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`."""
-  similarMarketVolume: FloatFilter
 }
 
 """
@@ -2367,10 +2483,96 @@ type VaultStat {
 }
 
 """
-Flat filter input for the `positionsPage` query. Each field is optional;
-values combine with AND. Replaces the flat-arg shape on the resolver; the
-old args remain for one release with `@deprecated` so existing callers can
-migrate without breaking.
+Filter input for the Relay-shaped `positionsConnection` query. Combines with AND.
+"""
+input PositionFilter {
+  """Restrict to a single holder address (case-insensitive)."""
+  holder: String
+
+  """Restrict to a single chain."""
+  chainId: Int
+
+  """
+  Restrict to positions tied to a single condition (via the pickConfig join).
+  """
+  conditionId: String
+
+  """Restrict to a single pick configuration."""
+  pickConfigId: String
+
+  """Restrict to positions whose pickConfig settled with this result."""
+  result: SettlementResult
+
+  """Restrict to settled (true) or unsettled (false) positions."""
+  settled: Boolean
+
+  """Restrict to positions where holder won/lost the settled pickConfig."""
+  holderWon: Boolean
+
+  """
+  Filter by holder collateral on the pickConfig, e.g. `{ gte: "1000000000000000000" }`.
+  """
+  collateral: BigIntFilter
+
+  """
+  Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
+  endsAt: IntFilter
+}
+
+"""
+Filter input for the Relay-shaped `tradesConnection` query. Combines with AND.
+"""
+input TradeFilter {
+  """
+  Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`.
+  """
+  address: String
+
+  """Restrict to a single seller address (case-insensitive)."""
+  seller: String
+
+  """Restrict to a single buyer address (case-insensitive)."""
+  buyer: String
+
+  """Restrict to a single position token address (case-insensitive)."""
+  token: String
+
+  """Restrict to a single chain."""
+  chainId: Int
+
+  """
+  Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
+  executedAt: IntFilter
+}
+
+"""
+Filter input for the `pickConfigurationsConnection` query. Values combine with AND.
+Range-like scalars use operator-pattern inputs; identifier/domain fields stay flat.
+"""
+input PickConfigurationFilter {
+  """
+  Restrict to a single chain. Chain IDs are identifiers, not range-filtered metrics.
+  """
+  chainId: Int
+
+  """Restrict to resolved (true) or unresolved (false) pick configurations."""
+  resolved: Boolean
+
+  """Filter by settlement result, e.g. `{ equals: PREDICTOR_WINS }`."""
+  result: SettlementResultFilter
+
+  """
+  Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request.
+  """
+  tokens: [String!]
+}
+
+"""
+Flat filter input for the deprecated `positionsPage` query. Each field is
+optional; values combine with AND. New callers should use the operator-pattern
+`PositionFilter` on `positionsConnection`.
 """
 input PositionFilters {
   """Restrict to a single holder address (case-insensitive)."""
@@ -2462,40 +2664,6 @@ enum PredictionOrderField {
 }
 
 """
-Flat filter input for the `tradesPage` query. Each field is optional;
-values combine with AND. `address` and (`seller` | `buyer`) are mutually
-exclusive — passing both yields an error.
-"""
-input TradeFilters {
-  """
-  Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`.
-  """
-  address: String
-
-  """Restrict to a single seller address (case-insensitive)."""
-  seller: String
-
-  """Restrict to a single buyer address (case-insensitive)."""
-  buyer: String
-
-  """Restrict to a single position token address (case-insensitive)."""
-  token: String
-
-  """Restrict to a single chain."""
-  chainId: Int
-
-  """
-  Restrict to trades with `executedAt >= this` (epoch seconds, inclusive).
-  """
-  executedAtMin: UnixSeconds
-
-  """
-  Restrict to trades with `executedAt <= this` (epoch seconds, inclusive).
-  """
-  executedAtMax: UnixSeconds
-}
-
-"""
 Filter input for the `forecastsConnection` query. Each field is optional;
 values combine with AND.
 """
@@ -2532,26 +2700,6 @@ input ForecastOrder {
 enum ForecastOrderField {
   ATTESTED_AT
   CREATED_AT
-}
-
-"""
-Flat filter input for the `pickConfigurationsPage` query. Each field is
-optional; values combine with AND.
-"""
-input PickConfigurationFilters {
-  """Restrict to a single chain."""
-  chainId: Int
-
-  """Restrict to resolved (true) or unresolved (false) pick configurations."""
-  resolved: Boolean
-
-  """Restrict to pick configurations with this settlement result."""
-  result: SettlementResult
-
-  """
-  Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request.
-  """
-  tokens: [String!]
 }
 
 """
@@ -2783,91 +2931,61 @@ type Query {
   """
   Deprecated bare-array form. Retained unchanged for the one-release
   deprecation window so pinned clients keep working. New callers
-  should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`
-  (Relay-shaped) or `conditionGroupsPage(filters:)` (offset-paginated).
+  should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`.
   """
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
 
   """
   Relay-shaped connection over `ConditionGroup` rows. Forward-only
   cursor pagination via `first` / `after`. Replaces the deprecated
-  bare `conditionGroups(where:)` and the offset-paginated
-  `conditionGroupsPage`. `totalCount` is omitted per design-doc D3
+  bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
   (default-off, add per-PR where cheap).
   """
-  conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder): ConditionGroupConnection!
-
-  """
-  Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
-  
-  Sorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.
-  Defaults to `CREATED_AT` / `desc` when omitted.
-  """
-  conditionGroupsPage(filters: ConditionGroupFilters, orderBy: ConditionGroupSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0): ConditionGroupsPage! @deprecated(reason: "Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
+  conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): ConditionGroupConnection!
 
   """
   Deprecated bare-array form. Retained unchanged for the one-release
   deprecation window. New callers should use
-  `conditionsConnection(first:, after:, filter:, orderBy:)` (Relay-shaped)
-  or `conditionsPage(filters:)` (offset-paginated).
+  `conditionsConnection(first:, after:, filter:, orderBy:)`.
   """
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
 
   """
   Relay-shaped connection over `Condition` rows. Forward-only cursor
   pagination via `first` / `after`. Replaces the deprecated bare
-  `conditions(where:)` and the offset-paginated `conditionsPage`.
-  Public conditions only — admin-style visibility switches live on the
-  deprecated `conditionsPage` for the migration window.
+  `conditions(where:)`. Public conditions only.
   """
-  conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder): ConditionConnection!
-
-  """
-  Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input.
-  """
-  conditionsPage(filters: ConditionFilters, orderBy: ConditionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0): ConditionsPage! @deprecated(reason: "Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data. Admin-only filters (`visibility`, `engagement`) remain on this resolver during the migration window.")
+  conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): ConditionConnection!
 
   """Look up a single pick configuration by ID"""
-  pickConfiguration(id: String!): PickConfiguration @deprecated(reason: "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsPage` for list lookups.")
+  pickConfiguration(id: String!): PickConfiguration @deprecated(reason: "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsConnection` for list lookups.")
 
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
   """
-  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]! @deprecated(reason: "Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal.")
+  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]! @deprecated(reason: "Use `pickConfigurationsConnection` — Relay-shaped cursor pagination over the same data.")
 
-  """
-  Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
-  
-  Filtering is via `filters: PickConfigurationFilters`. The flat-arg
-  filters (`chainId`, `resolved`, `result`, `tokens`) are retained for
-  one release with `@deprecated` so existing callers can migrate without
-  breaking; new callers should use `filters:`.
-  
-  Sorting via `orderBy: PickConfigurationSortField` + `orderDirection: SortOrder`.
-  Defaults to `CREATED_AT` / `desc` when omitted.
-  """
-  pickConfigurationsPage(filters: PickConfigurationFilters, orderBy: PickConfigurationSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `PickConfigurationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), resolved: Boolean @deprecated(reason: "Use `filters: { resolved: ... }` on `PickConfigurationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), result: SettlementResult @deprecated(reason: "Use `filters: { result: ... }` on `PickConfigurationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), tokens: [String!] @deprecated(reason: "Use `filters: { tokens: ... }` on `PickConfigurationFilters` — the flat-arg shape is being unified across all `*Page` resolvers.")): PickConfigurationsPage!
+  """Relay-shaped connection over pick configurations."""
+  pickConfigurationsConnection(first: Int, after: String, filter: PickConfigurationFilter, orderBy: PickConfigurationOrder): PickConfigurationConnection!
 
   """Top 20 most-used tags across public conditions"""
   popularTags: [String!]!
 
   """Count of token positions for a given holder"""
-  positionCount(chainId: Int, holder: String!, settled: Boolean): Int! @deprecated(reason: "Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.")
+  positionCount(chainId: Int, holder: String!, settled: Boolean): Int! @deprecated(reason: "Use `positionsConnection` — Relay-shaped cursor pagination over the same data.")
 
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.")
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsConnection` — Relay-shaped cursor pagination over the same data.")
 
   """
-  Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
-  
-  Filtering is via `filters: PositionFilters`. The flat-arg filters
-  (`holder`, `chainId`, `conditionId`, …) are retained for one release
-  with `@deprecated` so existing callers can migrate without breaking;
-  new callers should use `filters:`.
+  Deprecated page wrapper retained for main/backward compatibility. New callers should use `positionsConnection(first:, after:, filter:, orderBy:)`.
   """
-  positionsPage(filters: PositionFilters, orderBy: PositionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), collateralMax: String @deprecated(reason: "Use `filters: { collateralMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), collateralMin: String @deprecated(reason: "Use `filters: { collateralMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), conditionId: String @deprecated(reason: "Use `filters: { conditionId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), endsAtMax: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), endsAtMin: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), holder: String @deprecated(reason: "Use `filters: { holder: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), holderWon: Boolean @deprecated(reason: "Use `filters: { holderWon: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), pickConfigId: String @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), result: SettlementResult @deprecated(reason: "Use `filters: { result: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), settled: Boolean @deprecated(reason: "Use `filters: { settled: ... }` on `PositionFilters` — the flat-arg shape is being unified across all `*Page` resolvers.")): PositionsPage!
+  positionsPage(filters: PositionFilters, orderBy: PositionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `PositionFilters`."), collateralMax: String @deprecated(reason: "Use `filters: { collateralMax: ... }` on `PositionFilters`."), collateralMin: String @deprecated(reason: "Use `filters: { collateralMin: ... }` on `PositionFilters`."), conditionId: String @deprecated(reason: "Use `filters: { conditionId: ... }` on `PositionFilters`."), endsAtMax: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters`."), endsAtMin: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters`."), holder: String @deprecated(reason: "Use `filters: { holder: ... }` on `PositionFilters`."), holderWon: Boolean @deprecated(reason: "Use `filters: { holderWon: ... }` on `PositionFilters`."), pickConfigId: String @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters`."), result: SettlementResult @deprecated(reason: "Use `filters: { result: ... }` on `PositionFilters`."), settled: Boolean @deprecated(reason: "Use `filters: { settled: ... }` on `PositionFilters`.")): PositionsPage! @deprecated(reason: "Use `positionsConnection` instead.")
+
+  """Relay-shaped connection over token positions."""
+  positionsConnection(first: Int, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
 
   """
   Look up a single prediction by its on-chain prediction ID. Pass
@@ -2924,58 +3042,39 @@ type Query {
   """
   Deprecated bare-array form. Retained unchanged for the one-release
   deprecation window so pinned clients keep working. New callers
-  should use `questionsConnection(first:, after:, filter:, orderBy:)`
-  (Relay-shaped) or `questionsPage(filters:)` (offset-paginated).
+  should use `questionsConnection(first:, after:, filter:, orderBy:)`.
   """
   questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]! @deprecated(reason: "Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed.")
 
   """
   Relay-shaped connection over `Question` rows — the interleaved
   Condition / ConditionGroup feed. Forward-only cursor pagination via
-  `first` / `after`. Replaces the deprecated bare `questions(...)` and
-  the offset-paginated `questionsPage`. `totalCount` is omitted on
+  `first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on
   `QuestionConnection` because the underlying SQL UNION cannot produce
   a single COUNT cheaply.
   """
-  questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder): QuestionConnection!
-
-  """
-  Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
-  
-  Sorting uses `orderBy` / `orderDirection` to match the convention on
-  every other `*Page` resolver. The original `sortField` / `sortDirection`
-  args are retained for one release with `@deprecated`; new callers
-  should use `orderBy:` / `orderDirection:`.
-  """
-  questionsPage(filters: QuestionFilters, orderBy: QuestionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, sortDirection: SortOrder! = desc @deprecated(reason: "Use `orderDirection:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`)."), sortField: QuestionSortField @deprecated(reason: "Use `orderBy:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`).")): QuestionsPage! @deprecated(reason: "Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved Condition / ConditionGroup feed.")
+  questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): QuestionConnection!
 
   """
   Look up a single secondary market trade by its trade hash. Pass
   `tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing
   callers keep working through one release.
   """
-  trade(tradeHash: String, id: String @deprecated(reason: "Use `tradeHash:` — same value, the new arg name disambiguates it from the `Trade.id` (Int!) row id surfaced on `tradesPage` rows.")): Trade
+  trade(tradeHash: String, id: String @deprecated(reason: "Use `tradeHash:` — same value, the new arg name disambiguates it from the `Trade.id` (Int!) row id surfaced on trade rows.")): Trade
 
   """Count of secondary market trades matching the given filters"""
-  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated(reason: "Use `tradesPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.")
+  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated(reason: "Use `tradesConnection` — Relay-shaped cursor pagination over the same data.")
 
   """
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
   """
-  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]! @deprecated(reason: "Use `tradesPage` — same data with a server-truth `hasMore` stop signal.")
+  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]! @deprecated(reason: "Use `tradesConnection` — Relay-shaped cursor pagination over the same data.")
 
-  """
-  Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.
-  
-  Filtering is via `filters: TradeFilters`. The flat-arg filters
-  (`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one
-  release with `@deprecated` so existing callers can migrate without
-  breaking; new callers should use `filters:`.
-  
-  Sorting via `orderBy: TradeSortField` + `orderDirection: SortOrder`.
-  Defaults to `EXECUTED_AT` / `desc` when omitted.
-  """
-  tradesPage(filters: TradeFilters, orderBy: TradeSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, address: String @deprecated(reason: "Use `filters: { address: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), buyer: String @deprecated(reason: "Use `filters: { buyer: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), seller: String @deprecated(reason: "Use `filters: { seller: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers."), token: String @deprecated(reason: "Use `filters: { token: ... }` on `TradeFilters` — the flat-arg shape is being unified across all `*Page` resolvers.")): TradesPage!
+  """Look up a single secondary market trade by its trade hash."""
+  tradeByHash(hash: Bytes32!): Trade
+
+  """Relay-shaped connection over secondary market trades."""
+  tradesConnection(first: Int, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
   user(where: UserWhereUniqueInput!): User @deprecated(reason: "Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains.")
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. No live consumers — account lookups go through `account(address:)`.")
 
@@ -3139,8 +3238,7 @@ enum QuestionSortField {
 }
 
 """
-Flat filter input for the `questionsPage` query. Each field is optional;
-values combine with AND. Mirrors the inline-arg shape that the deprecated
+Legacy flat filter input mirroring the inline-arg shape that the deprecated
 `questions(...)` resolver kept.
 """
 input QuestionFilters {
@@ -3268,6 +3366,13 @@ enum SettlementResult {
   NON_DECISIVE
   PREDICTOR_WINS
   UNRESOLVED
+}
+
+input SettlementResultFilter {
+  equals: SettlementResult
+  in: [SettlementResult!]
+  not: SettlementResult
+  notIn: [SettlementResult!]
 }
 
 enum SortOrder {

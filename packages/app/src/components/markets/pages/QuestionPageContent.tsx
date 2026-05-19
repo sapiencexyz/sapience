@@ -97,8 +97,8 @@ export default function QuestionPageContent({
     queryFn: async () => {
       if (!conditionId) return null;
       const QUERY = /* GraphQL */ `
-        query ConditionsByIds($filters: ConditionFilters!) {
-          conditionsPage(filters: $filters, take: 1) {
+        query ConditionsByIds($filters: ConditionFilter!) {
+          conditionsConnection(filter: $filters, first: 1) {
             items {
               id
               question
@@ -122,10 +122,10 @@ export default function QuestionPageContent({
       `;
       const filters: Record<string, unknown> = { ids: [conditionId] };
       if (resolverAddressFromUrl) {
-        filters.resolver = resolverAddressFromUrl;
+        filters.contractAddress = resolverAddressFromUrl;
       }
       const resp = await graphqlRequest<{
-        conditionsPage: {
+        conditionsConnection: {
           items: Array<{
             id: string;
             question: string;
@@ -143,7 +143,7 @@ export default function QuestionPageContent({
           }>;
         };
       }>(QUERY, { filters });
-      return resp?.conditionsPage?.items?.[0] || null;
+      return resp?.conditionsConnection?.items?.[0] || null;
     },
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,

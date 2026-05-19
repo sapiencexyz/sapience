@@ -170,8 +170,8 @@ const fieldByResolvedVolumeKey: Record<VolumeKey, string> = {
 /**
  * Inputs accepted by `runQuestions`. Hand-written interface (not derived
  * from any `Query<Field>Args`) so the runner is decoupled from any one
- * SDL field shape — both the legacy `questionsPage` and the new Relay
- * `questions` connection adapt their args into this shape before calling.
+ * SDL field shape — both the deprecated bare-array `questions` resolver
+ * and the Relay `questionsConnection` adapt their args into this shape before calling.
  */
 export interface RunQuestionsInput {
   take?: number | null;
@@ -842,7 +842,7 @@ const hydrateItems = async (
   return result;
 };
 
-const runQuestionsPageData = async (
+const runQuestionsData = async (
   args: RunQuestionsInput
 ): Promise<{
   items: QuestionReturn[];
@@ -862,15 +862,15 @@ const runQuestionsPageData = async (
 export const runQuestions = async (
   args: RunQuestionsInput
 ): Promise<{ items: QuestionReturn[]; hasMore: boolean }> => {
-  const { items, hasMore } = await runQuestionsPageData(args);
+  const { items, hasMore } = await runQuestionsData(args);
   return { items, hasMore };
 };
 
 // ---------------------------------------------------------------------
 // Relay-shaped `questions` connection (PR 2)
 // ---------------------------------------------------------------------
-// `questionsConnection` uses the same SQL UNION as `questionsPage`, but
-// passes a decoded ordering tuple after the first page so pagination is
+// `questionsConnection` uses the same SQL UNION runner as the deprecated bare-array
+// `questions` resolver, but passes a decoded ordering tuple after the first page so pagination is
 // keyset-based rather than OFFSET-based.
 
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
@@ -918,8 +918,11 @@ const rangeMax = (filter: ScalarRangeFilter | null | undefined) =>
 
 export const questionsConnection: NonNullable<
   QueryResolvers['questionsConnection']
-> = async (_parent, { first, after, filter, orderBy }) => {
-  const take = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+> = async (_parent, { first, after, filter, orderBy, take, skip }) => {
+  const cappedFirst = clampTake(first ?? take ?? 50, {
+    defaultTake: 50,
+    maxTake: 100,
+  });
   const afterCursor = decodeQuestionCursor(after);
 
   const mapped = orderBy?.field
@@ -937,23 +940,24 @@ export const questionsConnection: NonNullable<
     similarMarketVolume?: ScalarRangeFilter | null;
   };
 
-  const { items, hasMore, pageItems } = await runQuestionsPageData({
-    take,
-    skip: 0,
+  const { items, hasMore, pageItems } = await runQuestionsData({
+    take: cappedFirst,
+    skip: after ? 0 : (skip ?? 0),
     search: filter?.search ?? null,
-    categorySlugs: null,
+    categorySlugs: filter?.categorySlugs ?? null,
     tag: filter?.tag ?? null,
-    chainId: null,
-    contractAddress: null,
-    contractAddressIn: null,
+    chainId: filter?.chainId ?? null,
+    contractAddress: filter?.contractAddress ?? null,
+    contractAddressIn: filter?.contractAddressIn ?? null,
     minEndTime: rangeMin(operatorFilter?.resolvesAt),
     maxEndTime: rangeMax(operatorFilter?.resolvesAt),
-    resolutionStatus: null,
+    resolutionStatus: filter?.resolutionStatus ?? null,
     minEstimatedPrice: rangeMin(operatorFilter?.estimatedPrice),
     maxEstimatedPrice: rangeMax(operatorFilter?.estimatedPrice),
     minSimilarMarketVolume: rangeMin(operatorFilter?.similarMarketVolume),
     maxSimilarMarketVolume: rangeMax(operatorFilter?.similarMarketVolume),
-    similarMarketVolumeWindow: mapped.volumeWindow,
+    similarMarketVolumeWindow:
+      filter?.similarMarketVolumeWindow ?? mapped.volumeWindow,
     sortField: mapped.sortField,
     sortDirection,
     afterCursor,
@@ -965,6 +969,8 @@ export const questionsConnection: NonNullable<
   }));
 
   return {
+    items,
+    hasMore,
     edges,
     nodes: items,
     pageInfo: {
@@ -974,45 +980,4 @@ export const questionsConnection: NonNullable<
       endCursor: edges[edges.length - 1]?.cursor ?? null,
     },
   };
-};
-
-export const questionsPage: NonNullable<
-  QueryResolvers['questionsPage']
-> = async (_parent, args) => {
-  const {
-    filters,
-    orderBy,
-    orderDirection,
-    sortField,
-    sortDirection,
-    take,
-    skip,
-  } = args;
-  // `orderBy` / `orderDirection` is the canonical sort-arg shape across
-  // every `*Page` resolver; `sortField` / `sortDirection` remain for one
-  // release as `@deprecated` siblings. Each axis falls back independently
-  // — `(orderDirection: asc)` alone should honor `asc` even when the
-  // caller leaves `orderBy` (and the legacy `sortField` / `sortDirection`)
-  // at defaults. `orderDirection` is intentionally nullable on the SDL so
-  // the resolver can distinguish "client set it" from "schema default".
-  return runQuestions({
-    take,
-    skip,
-    sortField: orderBy ?? sortField,
-    sortDirection: orderDirection ?? sortDirection,
-    chainId: filters?.chainId ?? null,
-    contractAddress: filters?.contractAddress ?? null,
-    contractAddressIn: filters?.contractAddressIn ?? null,
-    search: filters?.search ?? null,
-    categorySlugs: filters?.categorySlugs ?? null,
-    tag: filters?.tag ?? null,
-    minEndTime: filters?.minEndTime ?? null,
-    maxEndTime: null,
-    resolutionStatus: filters?.resolutionStatus ?? null,
-    minEstimatedPrice: filters?.minEstimatedPrice ?? null,
-    maxEstimatedPrice: filters?.maxEstimatedPrice ?? null,
-    minSimilarMarketVolume: filters?.minSimilarMarketVolume ?? null,
-    maxSimilarMarketVolume: filters?.maxSimilarMarketVolume ?? null,
-    similarMarketVolumeWindow: filters?.similarMarketVolumeWindow ?? null,
-  });
 };

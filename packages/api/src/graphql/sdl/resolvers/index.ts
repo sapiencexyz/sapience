@@ -29,18 +29,13 @@ import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
 import { ActivityItemsPage } from './ActivityItemsPage';
 import { CollateralTransfersPage } from './CollateralTransfersPage';
-import { ConditionGroupsPage } from './ConditionGroupsPage';
-import { ConditionsPage } from './ConditionsPage';
 import { Forecast } from './Forecast';
 import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
-import { PickConfigurationsPage } from './PickConfigurationsPage';
 import { PositionsPage } from './PositionsPage';
-import { QuestionsPage } from './QuestionsPage';
 import { Question, ConditionOrConditionGroup } from './Question';
-import { TradesPage } from './TradesPage';
 import { User } from './User';
 
 import { accountActivityPage, activityPage } from './queries/activity';
@@ -62,13 +57,12 @@ import {
   collateralTransfersPage,
 } from './queries/collateralBalance';
 import { collateralTransfers } from './queries/deprecated/collateralBalance';
-import { conditionsConnection, conditionsPage } from './queries/conditions';
+import { conditionsConnection } from './queries/conditions';
 import {
   conditionGroup,
   conditionGroupsConnection,
-  conditionGroupsPage,
 } from './queries/conditionGroups';
-import { questionsConnection, questionsPage } from './queries/questions';
+import { questionsConnection } from './queries/questions';
 import { conditions } from './queries/deprecated/conditions';
 import { conditionGroups } from './queries/deprecated/conditionGroups';
 import { questions } from './queries/deprecated/questions';
@@ -86,7 +80,8 @@ import {
   claims,
   closes,
   pickConfiguration,
-  pickConfigurationsPage,
+  pickConfigurationsConnection,
+  positionsConnection,
   positionsPage,
   prediction,
   predictionByOnchainId,
@@ -110,7 +105,7 @@ import {
   protocolVolume,
 } from './queries/timeSeries';
 import { node, nodes } from './queries/node';
-import { trade, tradesPage } from './queries/trade';
+import { trade, tradeByHash, tradesConnection } from './queries/trade';
 import { trades, tradeCount } from './queries/deprecated/trade';
 import { accountTotalVolume } from './queries/volume';
 
@@ -153,18 +148,17 @@ export const resolvers: Resolvers = {
     // Conditions / questions
     conditions,
     conditionsConnection,
-    conditionsPage,
     questions,
     questionsConnection,
-    questionsPage,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
     closes,
     pickConfiguration,
     pickConfigurations,
-    pickConfigurationsPage,
+    pickConfigurationsConnection,
     positionCount,
     positions,
+    positionsConnection,
     positionsPage,
     prediction,
     predictionByOnchainId,
@@ -173,9 +167,10 @@ export const resolvers: Resolvers = {
     predictionsConnection,
     // Secondary market trades
     trade,
+    tradeByHash,
     tradeCount,
     trades,
-    tradesPage,
+    tradesConnection,
     // Tags
     popularTags,
     // CRUD passthroughs
@@ -189,7 +184,6 @@ export const resolvers: Resolvers = {
     conditionGroup,
     conditionGroups,
     conditionGroupsConnection,
-    conditionGroupsPage,
     user,
     users,
   },
@@ -202,18 +196,13 @@ export const resolvers: Resolvers = {
   CollateralTransfersPage,
   Condition,
   ConditionGroup,
-  ConditionGroupsPage,
-  ConditionsPage,
   Forecast,
   LegacyPosition,
   LegacyPrediction,
   LimitOrder,
   Pick,
-  PickConfigurationsPage,
   PositionsPage,
-  QuestionsPage,
   Question,
   ConditionOrConditionGroup,
-  TradesPage,
   User,
 };

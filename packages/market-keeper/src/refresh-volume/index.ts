@@ -100,10 +100,10 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
 
   while (true) {
     const query = `
-      query ActiveConditions($filters: ConditionFilters!, $take: Int!, $skip: Int!) {
-        conditionsPage(filters: $filters, take: $take, skip: $skip, orderBy: CREATED_AT, orderDirection: asc) {
+      query ActiveConditions($filters: ConditionFilter!, $take: Int!, $skip: Int!) {
+        conditionsConnection(filter: $filters, first: $take, skip: $skip, orderBy: { field: CREATED_AT, direction: ASC }) {
           hasMore
-          items {
+          nodes {
             id
           }
         }
@@ -135,14 +135,18 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
 
     const result = (await response.json()) as {
       data?: {
-        conditionsPage?: {
+        conditionsConnection?: {
           hasMore?: boolean | null;
-          items?: Array<{ id: string }>;
+          pageInfo?: {
+            hasNextPage?: boolean | null;
+            endCursor?: string | null;
+          } | null;
+          nodes?: Array<{ id: string }>;
         };
       };
     };
-    const conditions = result.data?.conditionsPage?.items ?? [];
-    const hasMore = result.data?.conditionsPage?.hasMore ?? false;
+    const conditions = result.data?.conditionsConnection?.nodes ?? [];
+    const hasMore = result.data?.conditionsConnection?.hasMore ?? false;
 
     for (const c of conditions) {
       if (!seen.has(c.id)) {

@@ -171,9 +171,10 @@ async function fetchConditionData(
 ): Promise<ConditionData> {
   try {
     const query = `
-      query ConditionForOG($filters: ConditionFilters!) {
-        conditionsPage(filters: $filters, take: 1) {
-          items {
+      query ConditionForOG($filters: ConditionFilter!) {
+        conditionsConnection(filter: $filters, first: 1) {
+          hasMore
+          nodes {
             question
             category { slug }
           }
@@ -183,7 +184,7 @@ async function fetchConditionData(
 
     const filters: Record<string, unknown> = { ids: [conditionId] };
     if (resolver) {
-      filters.resolver = resolver;
+      filters.contractAddress = resolver;
     }
 
     const response = await fetch(getGraphQLEndpoint(), {
@@ -195,7 +196,7 @@ async function fetchConditionData(
     if (!response.ok) return { question: null, categorySlug: null };
 
     const result = await response.json();
-    const condition = result?.data?.conditionsPage?.items?.[0];
+    const condition = result?.data?.conditionsConnection?.nodes?.[0];
     return {
       question: condition?.question || null,
       categorySlug: condition?.category?.slug || null,

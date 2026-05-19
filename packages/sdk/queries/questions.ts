@@ -19,7 +19,6 @@ export type VolumeWindow =
   | '24hFiltered'
   | '7dFiltered';
 
-/** Map friendly VolumeWindow values to GraphQL enum keys */
 const VOLUME_WINDOW_TO_GQL: Record<VolumeWindow, string> = {
   '1h': 'oneHour',
   '4h': 'fourHours',
@@ -30,6 +29,15 @@ const VOLUME_WINDOW_TO_GQL: Record<VolumeWindow, string> = {
   '24hFiltered': 'twentyFourHoursFiltered',
   '7dFiltered': 'sevenDaysFiltered',
 };
+
+const SORT_FIELD_TO_ORDER_FIELD: Record<SortField, string> = {
+  createdAt: 'CREATED_AT',
+  endTime: 'RESOLVES_AT',
+  openInterest: 'CREATED_AT',
+  predictionCount: 'PREDICTION_COUNT',
+  similarMarketVolume: 'SIMILAR_MARKET_VOLUME_24H',
+};
+
 export type ResolutionStatusValue =
   | 'all'
   | 'unresolved'
@@ -46,19 +54,18 @@ export interface QuestionType {
 export const GET_QUESTIONS = /* GraphQL */ `
   query Questions(
     $take: Int!
-    $skip: Int!
-    $orderBy: QuestionSortField!
-    $orderDirection: SortOrder!
-    $filters: QuestionFilters
+    $after: String
+    $orderBy: QuestionOrder
+    $filter: QuestionFilter
   ) {
-    questionsPage(
-      take: $take
-      skip: $skip
+    questionsConnection(
+      first: $take
+      after: $after
       orderBy: $orderBy
-      orderDirection: $orderDirection
-      filters: $filters
+      filter: $filter
     ) {
-      items {
+      hasMore
+      nodes {
         questionType
         group {
           id
@@ -145,6 +152,10 @@ export const GET_QUESTIONS = /* GraphQL */ `
           }
         }
       }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
@@ -153,12 +164,7 @@ export interface FetchQuestionsSortedParams {
   take: number;
   skip: number;
   chainId?: number;
-  /**
-   * On-chain contract address (case-insensitive). When set without `chainId`,
-   * the API defaults the chain to its `DEFAULT_CHAIN_ID`.
-   */
   contractAddress?: string;
-  /** Same as `contractAddress` but matches any address in the list. */
   contractAddressIn?: string[];
   sortField: SortField;
   sortDirection: SortDirection;
@@ -174,42 +180,81 @@ export interface FetchQuestionsSortedParams {
   similarMarketVolumeWindow?: VolumeWindow;
 }
 
+type QuestionsQueryResult = {
+  questionsConnection?: {
+    nodes?: QuestionType[] | null;
+    pageInfo?: {
+      hasNextPage?: boolean | null;
+      endCursor?: string | null;
+    } | null;
+  } | null;
+};
+
+function buildQuestionFilter(params: FetchQuestionsSortedParams) {
+  return {
+    chainId: params.chainId ?? null,
+    contractAddress: params.contractAddress ?? null,
+    contractAddressIn: params.contractAddressIn?.length
+      ? params.contractAddressIn
+      : null,
+    search: params.search?.trim() || null,
+    categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
+    resolvesAt: params.minEndTime != null ? { gte: params.minEndTime } : null,
+    resolutionStatus: params.resolutionStatus ?? null,
+    estimatedPrice:
+      params.minEstimatedPrice != null || params.maxEstimatedPrice != null
+        ? {
+            ...(params.minEstimatedPrice != null
+              ? { gte: params.minEstimatedPrice }
+              : {}),
+            ...(params.maxEstimatedPrice != null
+              ? { lte: params.maxEstimatedPrice }
+              : {}),
+          }
+        : null,
+    similarMarketVolume:
+      params.minSimilarMarketVolume != null ||
+      params.maxSimilarMarketVolume != null
+        ? {
+            ...(params.minSimilarMarketVolume != null
+              ? { gte: params.minSimilarMarketVolume }
+              : {}),
+            ...(params.maxSimilarMarketVolume != null
+              ? { lte: params.maxSimilarMarketVolume }
+              : {}),
+          }
+        : null,
+    tag: params.tag ?? null,
+    similarMarketVolumeWindow: params.similarMarketVolumeWindow
+      ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
+      : null,
+  };
+}
+
 export async function fetchQuestionsSorted(
   params: FetchQuestionsSortedParams
 ): Promise<QuestionType[]> {
-  type QuestionsQueryResult = {
-    questionsPage: { items: QuestionType[] };
-  };
-  const variables = {
-    take: params.take,
-    skip: params.skip,
-    orderBy: params.sortField,
-    orderDirection: params.sortDirection,
-    filters: {
-      chainId: params.chainId ?? null,
-      contractAddress: params.contractAddress ?? null,
-      contractAddressIn: params.contractAddressIn?.length
-        ? params.contractAddressIn
-        : null,
-      search: params.search?.trim() || null,
-      categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
-      minEndTime: params.minEndTime ?? null,
-      resolutionStatus: params.resolutionStatus ?? null,
-      minEstimatedPrice: params.minEstimatedPrice ?? null,
-      maxEstimatedPrice: params.maxEstimatedPrice ?? null,
-      minSimilarMarketVolume: params.minSimilarMarketVolume ?? null,
-      maxSimilarMarketVolume: params.maxSimilarMarketVolume ?? null,
-      tag: params.tag ?? null,
-      similarMarketVolumeWindow: params.similarMarketVolumeWindow
-        ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
-        : null,
-    },
-  };
+  const target = params.skip + params.take;
+  const collected: QuestionType[] = [];
+  let after: string | null | undefined = null;
 
-  const data = await graphqlRequest<QuestionsQueryResult>(
-    GET_QUESTIONS,
-    variables
-  );
+  while (collected.length < target) {
+    const first = Math.min(100, target - collected.length);
+    const data: QuestionsQueryResult =
+      await graphqlRequest<QuestionsQueryResult>(GET_QUESTIONS, {
+        take: first,
+        after,
+        orderBy: {
+          field: SORT_FIELD_TO_ORDER_FIELD[params.sortField],
+          direction: params.sortDirection.toUpperCase(),
+        },
+        filter: buildQuestionFilter(params),
+      });
+    const conn = data.questionsConnection;
+    collected.push(...(conn?.nodes ?? []));
+    if (!conn?.pageInfo?.hasNextPage || !conn.pageInfo.endCursor) break;
+    after = conn.pageInfo.endCursor;
+  }
 
-  return data.questionsPage?.items ?? [];
+  return collected.slice(params.skip, target);
 }

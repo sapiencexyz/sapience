@@ -28,9 +28,10 @@ async function fetchQuestionTitle(
 ): Promise<string | null> {
   try {
     const query = `
-      query ConditionForMeta($filters: ConditionFilters!) {
-        conditionsPage(filters: $filters, take: 1) {
-          items {
+      query ConditionForMeta($filters: ConditionFilter!) {
+        conditionsConnection(filter: $filters, first: 1) {
+          hasMore
+          nodes {
             shortName
             question
           }
@@ -40,7 +41,7 @@ async function fetchQuestionTitle(
 
     const filters: Record<string, unknown> = { ids: [conditionId] };
     if (resolverAddress) {
-      filters.resolver = resolverAddress;
+      filters.contractAddress = resolverAddress;
     }
 
     const response = await fetch(getGraphQLEndpoint(), {
@@ -53,7 +54,7 @@ async function fetchQuestionTitle(
     if (!response.ok) return null;
 
     const result = await response.json();
-    const condition = result?.data?.conditionsPage?.items?.[0];
+    const condition = result?.data?.conditionsConnection?.nodes?.[0];
     return condition?.question || null;
   } catch {
     return null;

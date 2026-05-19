@@ -8,7 +8,6 @@
  *   pickConfigurations   — paginated picks config list
  *   pickConfiguration    — single lookup by id
  *   positions            — paginated token-balance list with many filters (deprecated; see `queries/deprecated/escrow.ts`)
- *   positionsPage        — same data, server-truth `hasMore` + lazy `totalCount`
  *   closes               — paginated burn records
  *   claims               — paginated redemption records
  *
@@ -34,8 +33,9 @@
 import type {
   QueryResolvers,
   QueryPickConfigurationsArgs,
-  QueryPickConfigurationsPageArgs,
+  QueryPickConfigurationsConnectionArgs,
   QueryPositionsArgs,
+  QueryPositionsConnectionArgs,
   QueryPositionsPageArgs,
   QueryPredictionsArgs,
   QueryPredictionsConnectionArgs,
@@ -45,7 +45,11 @@ import type {
 } from '../../__generated__/resolvers';
 import {
   OrderDirection,
+  PickConfigurationOrderField,
+  PositionOrderField,
+  PositionSortField,
   PredictionOrderField,
+  SortOrder,
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
@@ -58,6 +62,12 @@ import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
 }>;
+
+const offsetFromCursor = (cursor: string | null | undefined): number => {
+  const payload = cursor ? decodeCursor(cursor) : null;
+  const offset = payload ? Number(payload.k) : Number.NaN;
+  return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
+};
 
 const mapPrediction = (
   r: PredictionWithPickConfig
@@ -373,7 +383,11 @@ export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   return r ? mapPrediction(r) : null;
 };
 
-export type RunPickConfigurationsArgs = QueryPickConfigurationsArgs & {
+export type RunPickConfigurationsArgs = Omit<
+  QueryPickConfigurationsArgs,
+  'result'
+> & {
+  result?: SettlementResult | Prisma.EnumSettlementResultFilter | null;
   orderBy?: 'CREATED_AT' | 'ENDS_AT' | 'RESOLVED_AT' | null;
   orderDirection?: 'asc' | 'desc' | null;
 };
@@ -436,29 +450,83 @@ export const runPickConfigurations = async ({
 };
 
 /**
- * Merge `filters: PickConfigurationFilters` with the deprecated flat
- * arg shape. `filters` wins on conflicts.
+ * Map the new singular `filter: PickConfigurationFilter` connection shape to
+ * the shared pick-configuration execution args.
  */
+const enumFilterToPrisma = <T extends string>(
+  filter:
+    | {
+        equals?: T | null;
+        in?: T[] | null;
+        not?: T | null;
+        notIn?: T[] | null;
+      }
+    | null
+    | undefined,
+  label: string
+): T | { equals?: T; in?: T[]; not?: T; notIn?: T[] } | null => {
+  if (!filter) return null;
+  const out: { equals?: T; in?: T[]; not?: T; notIn?: T[] } = {};
+  if (filter.equals != null) out.equals = filter.equals;
+  if (filter.in?.length) out.in = filter.in;
+  if (filter.not != null) out.not = filter.not;
+  if (filter.notIn?.length) out.notIn = filter.notIn;
+  if (Object.keys(out).length === 0) return null;
+  if (out.equals != null && (out.in || out.notIn || out.not != null)) {
+    throw new Error(`${label}: equals cannot be combined with in/not/notIn`);
+  }
+  return Object.keys(out).length === 1 && out.equals != null ? out.equals : out;
+};
+
 const mergePickConfigurationFilters = (
-  args: QueryPickConfigurationsPageArgs
+  args: QueryPickConfigurationsConnectionArgs
 ): RunPickConfigurationsArgs => {
-  const f = args.filters ?? null;
+  const f = args.filter ?? null;
   return {
-    take: args.take,
-    skip: args.skip,
-    chainId: f?.chainId ?? args.chainId ?? null,
-    resolved: f?.resolved ?? args.resolved ?? null,
-    result: f?.result ?? args.result ?? null,
-    tokens: f?.tokens ?? args.tokens ?? null,
-    orderBy: args.orderBy ?? null,
-    orderDirection: args.orderDirection ?? null,
+    take: args.first ?? 50,
+    skip: offsetFromCursor(args.after),
+    chainId: f?.chainId ?? null,
+    resolved: f?.resolved ?? null,
+    result: enumFilterToPrisma<SettlementResult>(
+      f?.result,
+      'PickConfigurationFilter.result'
+    ),
+    tokens: f?.tokens ?? null,
+    orderBy:
+      args.orderBy?.field === PickConfigurationOrderField.EndsAt
+        ? 'ENDS_AT'
+        : args.orderBy?.field === PickConfigurationOrderField.ResolvedAt
+          ? 'RESOLVED_AT'
+          : 'CREATED_AT',
+    orderDirection:
+      args.orderBy?.direction === OrderDirection.Asc ? 'asc' : 'desc',
   };
 };
 
-export const pickConfigurationsPage: NonNullable<
-  QueryResolvers['pickConfigurationsPage']
+export const pickConfigurationsConnection: NonNullable<
+  QueryResolvers['pickConfigurationsConnection']
 > = async (_parent, args) => {
-  return runPickConfigurations(mergePickConfigurationFilters(args));
+  const result = await runPickConfigurations(
+    mergePickConfigurationFilters(args)
+  );
+  const startOffset = offsetFromCursor(args.after);
+  const edges = result.items.map((node, index) => ({
+    node,
+    cursor: encodeCursor({
+      k: String(startOffset + index),
+      id: String(node.id),
+    }),
+  }));
+  return {
+    edges,
+    nodes: result.items,
+    pageInfo: {
+      hasNextPage: result.hasMore,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
 };
 
 export const pickConfiguration: NonNullable<
@@ -520,7 +588,7 @@ const positionSynthesisCacheKey = (r: {
 export const __clearPositionSynthesisCache = () =>
   positionSynthesisCache.clear();
 
-export type PositionsPageEnvelope = {
+export type PositionsEnvelope = {
   items: PositionShape[];
   hasMore: boolean;
   totalCount: number | null;
@@ -1002,7 +1070,7 @@ const sortSynthesizedRows = (
   return out;
 };
 
-const EMPTY_POSITIONS_PAGE: PositionsPageEnvelope = {
+const EMPTY_POSITIONS: PositionsEnvelope = {
   items: [],
   hasMore: false,
   totalCount: 0,
@@ -1010,7 +1078,7 @@ const EMPTY_POSITIONS_PAGE: PositionsPageEnvelope = {
 
 export const runPositions = async (
   args: QueryPositionsArgs
-): Promise<PositionsPageEnvelope> => {
+): Promise<PositionsEnvelope> => {
   const norm = normalizePositionsArgs(args);
 
   let conditionPickConfigIds: string[] | null = null;
@@ -1018,11 +1086,11 @@ export const runPositions = async (
     conditionPickConfigIds = await resolveConditionPickConfigIds(
       norm.conditionId
     );
-    if (conditionPickConfigIds === null) return EMPTY_POSITIONS_PAGE;
+    if (conditionPickConfigIds === null) return EMPTY_POSITIONS;
   }
 
   let where = buildPositionsWhere(norm, conditionPickConfigIds);
-  if (where === null) return EMPTY_POSITIONS_PAGE;
+  if (where === null) return EMPTY_POSITIONS;
 
   if (norm.holderLower && (norm.collateralMin || norm.collateralMax)) {
     const next = await applyCollateralRangeFilter(
@@ -1031,7 +1099,7 @@ export const runPositions = async (
       norm.collateralMin,
       norm.collateralMax
     );
-    if (next === null) return EMPTY_POSITIONS_PAGE;
+    if (next === null) return EMPTY_POSITIONS;
     where = next;
   }
 
@@ -1059,11 +1127,8 @@ export const runPositions = async (
   // `lastPage.length === 0` is unreliable as a stop signal — we need
   // server-truth pagination.
   //
-  // `totalCount` is left null here; the PositionsPage.totalCount field
-  // resolver lazily issues `prisma.position.count({ where })` only when
-  // the client actually selects the field. The deprecated `positions`
-  // wrapper discards totalCount entirely, so it now skips the count
-  // query for free.
+  // `totalCount` is left null; connection callers use `pageInfo.hasNextPage`
+  // and the deprecated `positions` wrapper discards counts entirely.
   const rawRows = await prisma.position.findMany({
     where,
     orderBy: { [norm.orderField]: norm.orderDirection },
@@ -1088,18 +1153,15 @@ export const runPositions = async (
 };
 
 /**
- * Merge `filters: PositionFilters` with the deprecated flat arg shape.
+ * Merge deprecated `positionsPage(filters: PositionFilters)` with the flat arg shape.
  * `filters` wins on conflicts.
  */
-const mergePositionFilters = (
+const mergePositionPageFilters = (
   args: QueryPositionsPageArgs
 ): QueryPositionsArgs => {
   const f = args.filters ?? null;
   return {
-    take: args.take,
-    skip: args.skip,
-    orderBy: args.orderBy,
-    orderDirection: args.orderDirection,
+    ...args,
     holder: f?.holder ?? args.holder ?? null,
     chainId: f?.chainId ?? args.chainId ?? null,
     conditionId: f?.conditionId ?? args.conditionId ?? null,
@@ -1116,8 +1178,113 @@ const mergePositionFilters = (
 
 export const positionsPage: NonNullable<
   QueryResolvers['positionsPage']
+> = async (_parent, args) => runPositions(mergePositionPageFilters(args));
+
+/**
+ * Convert operator-pattern numeric filters (`gte`/`lt`/etc.) to the legacy
+ * min/max execution args used by `runPositions`. The underlying values are
+ * integer-like (wei strings and epoch seconds), so exclusive bounds are mapped
+ * by one unit to preserve semantics through the existing inclusive SQL path.
+ */
+const rangeFilterToBounds = (
+  filter:
+    | {
+        equals?: string | number | bigint | null;
+        gt?: string | number | bigint | null;
+        gte?: string | number | bigint | null;
+        lt?: string | number | bigint | null;
+        lte?: string | number | bigint | null;
+        in?: unknown[] | null;
+        notIn?: unknown[] | null;
+        not?: unknown;
+      }
+    | null
+    | undefined,
+  label: string
+): { min: string | null; max: string | null } => {
+  if (!filter) return { min: null, max: null };
+  if (filter.in?.length || filter.notIn?.length || filter.not != null) {
+    throw new Error(`${label}: only equals/gt/gte/lt/lte are supported`);
+  }
+  if (filter.equals != null) {
+    const v = BigInt(filter.equals);
+    return { min: v.toString(), max: v.toString() };
+  }
+  const min =
+    filter.gte != null
+      ? BigInt(filter.gte)
+      : filter.gt != null
+        ? BigInt(filter.gt) + 1n
+        : null;
+  const max =
+    filter.lte != null
+      ? BigInt(filter.lte)
+      : filter.lt != null
+        ? BigInt(filter.lt) - 1n
+        : null;
+  return { min: min?.toString() ?? null, max: max?.toString() ?? null };
+};
+
+/**
+ * Map the singular `filter: PositionFilter` connection shape to the shared
+ * legacy `runPositions` execution args.
+ */
+const mergePositionConnectionFilter = (
+  args: QueryPositionsConnectionArgs
+): QueryPositionsArgs => {
+  const f = args.filter ?? null;
+  const collateral = rangeFilterToBounds(
+    f?.collateral,
+    'PositionFilter.collateral'
+  );
+  const endsAt = rangeFilterToBounds(f?.endsAt, 'PositionFilter.endsAt');
+  return {
+    take: args.first ?? 50,
+    skip: offsetFromCursor(args.after),
+    orderBy:
+      args.orderBy?.field === PositionOrderField.CreatedAt
+        ? PositionSortField.CreatedAt
+        : PositionSortField.UpdatedAt,
+    orderDirection:
+      args.orderBy?.direction === OrderDirection.Asc
+        ? SortOrder.Asc
+        : SortOrder.Desc,
+    holder: f?.holder ?? null,
+    chainId: f?.chainId ?? null,
+    conditionId: f?.conditionId ?? null,
+    pickConfigId: f?.pickConfigId ?? null,
+    result: f?.result ?? null,
+    settled: f?.settled ?? null,
+    holderWon: f?.holderWon ?? null,
+    collateralMin: collateral.min,
+    collateralMax: collateral.max,
+    endsAtMin: endsAt.min == null ? null : Number(endsAt.min),
+    endsAtMax: endsAt.max == null ? null : Number(endsAt.max),
+  };
+};
+
+export const positionsConnection: NonNullable<
+  QueryResolvers['positionsConnection']
 > = async (_parent, args) => {
-  return runPositions(mergePositionFilters(args));
+  const result = await runPositions(mergePositionConnectionFilter(args));
+  const startOffset = offsetFromCursor(args.after);
+  const edges = result.items.map((node, index) => ({
+    node,
+    cursor: encodeCursor({
+      k: String(startOffset + index),
+      id: String(node.id),
+    }),
+  }));
+  return {
+    edges,
+    nodes: result.items,
+    pageInfo: {
+      hasNextPage: result.hasMore,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
 };
 
 export const closes: NonNullable<QueryResolvers['closes']> = async (

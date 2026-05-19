@@ -8,8 +8,9 @@ const mockPrisma = vi.hoisted(() => ({
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
-const { resolveVolumeKey, runQuestions, questionsPage, questionsConnection } =
-  await import('./questions');
+const { resolveVolumeKey, runQuestions, questionsConnection } = await import(
+  './questions'
+);
 
 beforeEach(() => {
   mockPrisma.$queryRaw.mockReset();
@@ -42,7 +43,7 @@ describe('resolveVolumeKey', () => {
   });
 });
 
-// `runQuestions` is the entry point under questionsPage. The raw-SQL
+// `runQuestions` backs the deprecated bare-array resolver and connection. The raw-SQL
 // step (`fetchSortedItems`) returns an array of `{ kind, id, ... }`
 // rows that drive the hydrate step. We mock `$queryRaw` directly so we
 // can pin the envelope contract (hasMore, items, empty short-circuit)
@@ -148,7 +149,7 @@ describe('questionsConnection — operator filters and keyset cursors', () => {
     await questionsConnectionFn(
       {},
       {
-        first: 10,
+        take: 10,
         filter: {
           resolvesAt: { gte: 1000, lte: 2000 },
           estimatedPrice: { gte: 0.2, lte: 0.8 },
@@ -184,7 +185,7 @@ describe('questionsConnection — operator filters and keyset cursors', () => {
       { id: 'c-1', createdAt: new Date('2026-01-01T00:00:00Z') },
     ]);
 
-    const result = await questionsConnectionFn({}, { first: 10 }, {}, {});
+    const result = await questionsConnectionFn({}, { take: 10 }, {}, {});
     const { decodeCursor } = await import('../../../relay/cursor');
     const payload = decodeCursor(result.edges[0].cursor);
     expect(payload?.k).toBe('123');
@@ -203,7 +204,7 @@ describe('questionsConnection — operator filters and keyset cursors', () => {
     await questionsConnectionFn(
       {},
       {
-        first: 10,
+        take: 10,
         after: encodeCursor({
           k: '123',
           id: JSON.stringify({
@@ -223,67 +224,6 @@ describe('questionsConnection — operator filters and keyset cursors', () => {
     expect(sql).toContain('sort_value');
     expect(sql).toContain('123');
     expect(sql).toContain('c-1');
-  });
-});
-
-// The `questionsPage` wrapper merges the new `orderBy` / `orderDirection`
-// args with the deprecated `sortField` / `sortDirection` siblings. The two
-// axes fall back independently so a caller can adopt the new args one at
-// a time — e.g. `(orderDirection: asc)` alone must honor `asc` rather
-// than silently falling through to the `sortDirection` default of `desc`.
-describe('questionsPage — sort-arg merge', () => {
-  type WrapperArgs = {
-    filters?: unknown;
-    orderBy?: 'createdAt' | 'endTime' | 'openInterest' | 'predictionCount';
-    orderDirection?: 'asc' | 'desc';
-    sortField?: 'createdAt' | 'endTime' | 'openInterest' | 'predictionCount';
-    sortDirection?: 'asc' | 'desc';
-    take: number;
-    skip: number;
-  };
-  type ResolverFn = (
-    parent: unknown,
-    args: WrapperArgs,
-    ctx: unknown,
-    info: unknown
-  ) => Promise<unknown>;
-  const questionsPageFn = questionsPage as unknown as ResolverFn;
-
-  // Read the SQL direction back: `Prisma.raw(...)` wraps `ASC` / `DESC` in a
-  // sql fragment whose serialized form includes the literal string.
-  const directionFromCall = (): string => {
-    const callArgs = mockPrisma.$queryRaw.mock.calls[0];
-    const json = JSON.stringify(callArgs);
-    if (json.includes('"ASC"')) return 'ASC';
-    if (json.includes('"DESC"')) return 'DESC';
-    throw new Error(`could not find direction in SQL call: ${json}`);
-  };
-
-  const invoke = async (args: Partial<WrapperArgs>) => {
-    mockPrisma.$queryRaw.mockResolvedValue([]);
-    await questionsPageFn({}, { take: 10, skip: 0, ...args }, {}, {});
-  };
-
-  it('uses orderDirection when only the new direction arg is passed', async () => {
-    // Regression: previously the wrapper ignored orderDirection unless
-    // orderBy was also set, which silently broke `(orderDirection: asc)`.
-    await invoke({ orderDirection: 'asc' });
-    expect(directionFromCall()).toBe('ASC');
-  });
-
-  it('uses sortDirection when only the deprecated direction arg is passed', async () => {
-    await invoke({ sortDirection: 'asc' });
-    expect(directionFromCall()).toBe('ASC');
-  });
-
-  it('prefers orderDirection over sortDirection when both are set', async () => {
-    await invoke({ orderDirection: 'asc', sortDirection: 'desc' });
-    expect(directionFromCall()).toBe('ASC');
-  });
-
-  it('defaults to desc when neither direction arg is set', async () => {
-    await invoke({});
-    expect(directionFromCall()).toBe('DESC');
   });
 });
 

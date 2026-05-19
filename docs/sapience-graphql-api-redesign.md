@@ -257,7 +257,7 @@ The current schema mixes flat `<field>Min` / `<field>Max` args, operator-pattern
 
 #### Filters
 
-Every list / connection field accepts a single `filter: <Entity>Filter` input.
+Every new list / connection field accepts a single `filter: <Entity>Filter` input. Use the singular input name (`TradeFilter`, `PositionFilter`, `PickConfigurationFilter`) even when the input contains many optional predicates; plural `*Filters` is reserved for legacy Page surfaces that already shipped that shape and need a compatibility window.
 
 Scalar fields on `<Entity>Filter` use operator-pattern inputs:
 
@@ -294,9 +294,12 @@ Rules:
 - **Unsupported operators on a specific field reject** with a clear error, not silently no-op. If a field can only be filtered by `equals` (e.g., a hashed identifier), the resolver rejects `gt`/`lt` rather than returning empty or full results.
 - **Forbid flat `<field>Min` / `<field>Max` on new types.** Existing flat args get `@deprecated` with a one-release migration cycle. PR 1730 was the legacy-surface bridge attempt; the target shape is the operator-pattern filter in this doc.
 - **Booleans stay flat.** Use `<field>: Boolean` rather than a `BooleanFilter` wrapper — there is no `gt true` and the operator pattern adds noise without benefit. For tri-state fields that need an "unset" third value, prefer a nullable enum and filter via `<field>: { isNull }` rather than a Boolean — that's the pattern `Condition.outcome` / `Prediction.result` use in place of the older `settled: Boolean!`.
+- **Identifier/domain scalars stay flat unless membership is needed.** `chainId`, hashes, and other domain identifiers are not ordered metrics; exposing `gt`/`gte`/`lt`/`lte` on them is misleading. PR 2 already keeps `ConditionFilter.chainId`, `ConditionGroupFilter.chainId`, and `QuestionFilter.chainId` as flat `Int`; PR 3 should do the same for `PickConfigurationFilter.chainId`, `TradeFilter.chainId`, and `PositionFilter.chainId`. If a future caller needs multi-chain selection, add a narrow identifier-specific filter (`equals`/`in`/`notIn`) rather than reusing `IntFilter`.
 - **Null filtering goes through `isNull`.** `{ outcome: { isNull: true } }` matches unsettled conditions; `{ isNull: false }` matches settled. Available on every operator input including the enum filters. Rejected on non-nullable columns per the unsupported-operator rule.
 
-The SDL draft below has been normalized to operator-pattern. Multi-value membership filters (`categoryIds: [ID!]`, `tags: [String!]`, `activityTypes: [ActivityType!]`) intentionally stay flat — the operator pattern is for single-value scalar comparisons; "is any of" is a different beast. Full-text `search: String` also stays flat — it isn't a field filter.
+The SDL draft below has been normalized to operator-pattern where operator semantics are meaningful. Multi-value membership filters (`categoryIds: [ID!]`, `tags: [String!]`, `activityTypes: [ActivityType!]`) intentionally stay flat — the operator pattern is for single-value scalar comparisons; "is any of" is a different beast. Full-text `search: String` also stays flat — it isn't a field filter.
+
+Migration PRs may use a flatter first-pass `<Entity>Filter` than the aspirational operator-pattern draft when that keeps the PR reviewable; the important invariant is the public field shape (`filter`, not scattered root args) and the singular input name. Operator-pattern internals can be tightened additively before the legacy surface is removed.
 
 #### Sort
 
@@ -350,7 +353,7 @@ Prose orientation to the top-level `Query` shape. The full SDL below is the cano
 - `vaultByAddress(address: Address!)`
 - `account(address: Address!)` — Account's domain identifier _is_ its address, so there's no separate `accountByAddress`.
 
-**Relay-shaped connections** for each durable entity. During the staged migration, root list fields introduced by PRs 2–5 use the explicit `*Connection` suffix even when the final canonical name may eventually be shorter: `questionsConnection`, `conditionsConnection`, `conditionGroupsConnection`, `predictionsConnection`, `tradesConnection`, `forecastsConnection`, `positionsConnection`, `pickConfigurationsConnection`, and `vaultsConnection` if/when vault list migration lands. Each takes `first` / `after` / `filter: <Entity>Filter` / `orderBy: <Entity>Order`.
+**Relay-shaped connections** for each durable entity. During the staged migration, root list fields introduced by PRs 2–5 use the explicit `*Connection` suffix even when the final canonical name may eventually be shorter: `questionsConnection`, `conditionsConnection`, `conditionGroupsConnection`, `predictionsConnection`, `tradesConnection`, `forecastsConnection`, `positionsConnection`, `pickConfigurationsConnection`. Each takes `first` / `after` / `filter: <Entity>Filter` / `orderBy: <Entity>Order`. `vaultsConnection` appears in the target SDL but is deferred out of PRs 2–5 — no legacy `vaultsPage` exists to migrate from, and server-side vault enumeration depends on a source-of-truth decision that lives in its own PR (see PR 5 implementation questions).
 
 **Derived-view feeds** — list access only, no canonical `(id:)` lookup (see "Derived aggregate views"):
 
@@ -600,7 +603,11 @@ type Query {
 
   vault(id: ID!): Vault
   vaultByAddress(address: Address!): Vault
-  vaultsConnection(first: Int, after: String, filter: VaultFilter): VaultConnection!
+  vaultsConnection(
+    first: Int
+    after: String
+    filter: VaultFilter
+  ): VaultConnection!
 
   leaderboard(
     metric: LeaderboardMetric!
@@ -1722,9 +1729,9 @@ input LeaderboardFilter {
 | `activityPage(filters, take, skip)`                                                               | `activity(...)`                                                                             |
 | `prediction(predictionId)`                                                                        | `predictionByOnchainId(predictionId)`                                                       |
 | `predictionsPage(filters, orderBy, orderDirection, take, skip)`                                   | `predictions(...)`                                                                          |
-| `questionsPage(filters, orderBy, orderDirection, take, skip)`                                     | `questions(...)`                                                                            |
-| `conditionsPage(filters, orderBy, orderDirection, take, skip)`                                    | `conditions(...)`                                                                           |
-| `conditionGroupsPage(filters, orderBy, orderDirection, take, skip)`                               | `conditionGroups(...)`                                                                      |
+| `questionsConnection(filter, orderBy, first, after)`                                              | `questions(...)`                                                                            |
+| `conditionsConnection(filter, orderBy, first, after)`                                             | `conditions(...)`                                                                           |
+| `conditionGroupsConnection(filter, orderBy, first, after)`                                        | `conditionGroups(...)`                                                                      |
 | `positionsPage(filters, orderBy, orderDirection, take, skip)`                                     | `positions(...)`                                                                            |
 | `pickConfigurationsPage(filters, orderBy, orderDirection, take, skip)`                            | `pickConfigurations(...)`                                                                   |
 | `trade(tradeHash)`                                                                                | `tradeByHash(hash)`                                                                         |
@@ -1759,7 +1766,11 @@ New types, top-level queries, deprecate old siblings. **No cross-stream child co
 
 #### PR 3 — PickConfigurations + Trades + Positions
 
-`Pick → Condition` is in-stream, fine. Top-level connection fields, `tradeByHash`, deprecations. PR 3 is implemented from `staging` after PR 2 has landed. During the migration window, the new root resolvers are explicitly suffixed: `pickConfigurationsConnection`, `tradesConnection`, and `positionsConnection`. Delete the corresponding legacy `*Page` resolver when its replacement lands in the same PR (`pickConfigurationsPage`, `tradesPage`, `positionsPage`); do not keep dual Page/Connection surfaces for the same migrated list.
+`Pick → Condition` is in-stream, fine. Top-level connection fields, `tradeByHash`, deprecations. PR 3 is implemented from `staging` after PR 2 has landed. During the migration window, the new root resolvers are explicitly suffixed: `pickConfigurationsConnection`, `tradesConnection`, and `positionsConnection`. Delete staging-only legacy `*Page` scaffolding when its replacement lands in the same PR (`pickConfigurationsPage`, `tradesPage`). Do **not** delete a Page resolver that has already shipped from `main`; keep it with `@deprecated` for one release and route callers to the new connection. In practice, `positionsPage` is shipped API and must remain as a deprecated compatibility surface while `positionsConnection` becomes the new path.
+
+PR 3's initial cursors are opaque but may remain offset-backed while the schema migration lands. Keyset pagination is a follow-up, especially for positions where the API can synthesize sell-event rows from underlying position rows. The contract to preserve now is opacity plus `pageInfo.hasNextPage`; callers must not infer cursor internals.
+
+PR 3 follows PR 2's chain-scoping convention: `chainId` remains a flat equality filter because chain IDs are domain identifiers, not ordered numeric metrics. Range-capable operator filters are still appropriate for ordered fields such as `TradeFilter.executedAt`, `PositionFilter.endsAt`, and `PositionFilter.collateral`; `PickConfigurationFilter.result` may use an enum operator filter for equality/membership.
 
 PR 3 must not add PR 6 cross-stream child connections yet. `PickConfiguration.trades` / `.positions` and any `Condition.*` convenience fields wait for PR 6 unless they already exist as legacy fields and are left untouched.
 
@@ -1790,13 +1801,22 @@ Implementation questions to settle before handoff:
 
 #### PR 5 — Collateral + Protocol + Vault + Categories + popularTags
 
-Self-contained: `CollateralBalance`, `CollateralTransfer`, `protocol.stats`, `protocol.vault().stats`, `categories`, `popularTags`.
+Self-contained: `CollateralBalance`, `CollateralTransfer`, `protocol.stats`, `protocol.vault().stats`, `categories`, `popularTags`. Single-vault access (`vault(id:)`, `vaultByAddress(address:)`, `Vault.stats(...)`) ships here; multi-vault enumeration (`vaultsConnection`) is **deferred** — see implementation questions below.
+
+Implementation questions to settle before handoff:
+
+- **Node identity:** `CollateralTransfer` global IDs encode `(chainId, transactionHash, logIndex)`. `transactionHash` alone is not unique — a single tx can emit multiple transfer events (e.g., batched deposit + fee); logIndex disambiguates within a tx, chainId guards against the same hash on a different chain. Once added to `FROZEN_NODE_TYPES`, this is permanent public wire identity. `Vault` Node IDs encode the existing vault domain identifier (`(chainId, address)` lowercased); `Category` Node IDs encode the existing category id.
+- **Vault list enumeration deferred:** `vaultsConnection` is **not** in PR 5 scope. There is no legacy `vaultsPage` resolver to migrate from, no `ConfiguredVault` table in the API's Prisma schema today, and the frontend already enumerates vaults from SDK config constants (`predictionMarketVault` / `pythPredictionMarketVault` / `predictionMarketVaultStrategyB` in `packages/sdk/contracts/addresses.ts`). Shipping enumeration requires a separate decision about the server-side source of truth (SDK config import vs. new indexer-populated table); that decision is its own PR. Single-vault access through `vault(id:)` and `vaultByAddress(address:)` is sufficient for `protocol.vault().stats` and for direct vault lookups; the SDL retains `vaultsConnection` as a target shape but no PR in this rollout ships it.
+- **Sort/filter surface:** choose only index-backed members for `ProtocolStatsOrderField`, `VaultStatsOrderField`, and `CollateralTransferOrderField`. `protocol_stats` is uniquely keyed on `(chainId, vaultAddress, timestamp)` — timestamp ordering is index-backed; arbitrary numeric-column sorts on stat values are not. Do not ship expensive sorts just because they are in the aspirational SDL.
+- **`totalCount` per connection:** default **omit** (per D3). `categories` is small enough that a count is cheap and may be worth including; `collateralTransfers` and stats connections are row-scanning and should not carry it.
+- **Account references:** `CollateralBalance.account` and `CollateralTransfer.account` are non-null `Account!`. The resolver must synthesize address-backed Accounts even when no user profile row exists, matching the pattern PR 4 establishes for `Prediction.predictor`. If PR 4 has not yet introduced an Account-synthesis helper, PR 5 may need to either ship a thin one or coordinate the helper into a shared location with PR 4.
+- **`protocol.vault(address:)` shape:** the legacy `protocolStats(vaultAddress)` overload is replaced by `vaultByAddress(address).stats(...)`. The `protocol` namespace itself does not need a `vault(...)` accessor — `Protocol.stats` is protocol-level totals only, and per-vault snapshots live on `Vault.stats` reached through the root `vault*` lookups. Confirm no consumer of the legacy overload depends on `protocol.vault.*` namespacing before removing.
 
 ### Convergence
 
 #### PR 6 — Account + Activity + Leaderboard + cross-entity wire-up
 
-`Account` with all its child connections (`.predictions`, `.trades`, etc.). `ActivityItem` union over `Prediction | Trade | Forecast`. Top-level `leaderboard` query. Adds convenience connections on earlier entities:
+`Account` with all its child connections (`.predictions`, `.trades`, etc.). `Activity` feed type wrapping `ActivitySource = Prediction | Trade` (Forecast intentionally absent — see "Activity model"). Top-level `leaderboard` query. Adds convenience connections on earlier entities:
 
 - `Condition.predictions` / `.trades` / `.forecasts`
 - `Question.predictions` / `.trades` / `.forecasts` / `.activity`

@@ -1,6 +1,6 @@
 -- Adds partial indexes on `condition` for sort fields exposed via
 -- QuestionSortField that previously fell back to sequential scan when
--- the ungrouped-condition branch of the questionsPage UNION sorted on
+-- the ungrouped-condition branch of the questionsConnection UNION sorted on
 -- them. The matching condition_group aggregate columns already had
 -- indexes; this closes the gap on the per-condition side.
 --
