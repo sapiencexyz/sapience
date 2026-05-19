@@ -255,9 +255,8 @@ export const prediction: NonNullable<QueryResolvers['prediction']> = async (
 
 export type RunPickConfigurationsArgs = Omit<
   QueryPickConfigurationsArgs,
-  'chainId' | 'result'
+  'result'
 > & {
-  chainId?: number | Prisma.IntFilter | null;
   result?: SettlementResult | Prisma.EnumSettlementResultFilter | null;
   orderBy?: 'CREATED_AT' | 'ENDS_AT' | 'RESOLVED_AT' | null;
   orderDirection?: 'asc' | 'desc' | null;
@@ -324,41 +323,6 @@ export const runPickConfigurations = async ({
  * Map the new singular `filter: PickConfigurationFilter` connection shape to
  * the shared pick-configuration execution args.
  */
-const intFilterToPrisma = (
-  filter:
-    | {
-        equals?: number | null;
-        gt?: number | null;
-        gte?: number | null;
-        in?: number[] | null;
-        lt?: number | null;
-        lte?: number | null;
-        not?: unknown;
-        notIn?: number[] | null;
-      }
-    | null
-    | undefined,
-  label: string
-): number | Prisma.IntFilter | null => {
-  if (!filter) return null;
-  if (filter.not != null) {
-    throw new Error(`${label}: not is not supported`);
-  }
-  const out: Prisma.IntFilter = {};
-  if (filter.equals != null) out.equals = filter.equals;
-  if (filter.gt != null) out.gt = filter.gt;
-  if (filter.gte != null) out.gte = filter.gte;
-  if (filter.lt != null) out.lt = filter.lt;
-  if (filter.lte != null) out.lte = filter.lte;
-  if (filter.in?.length) out.in = filter.in;
-  if (filter.notIn?.length) out.notIn = filter.notIn;
-  if (Object.keys(out).length === 0) return null;
-  if (out.equals != null && Object.keys(out).length > 1) {
-    throw new Error(`${label}: equals cannot be combined with other operators`);
-  }
-  return Object.keys(out).length === 1 && out.equals != null ? out.equals : out;
-};
-
 const enumFilterToPrisma = <T extends string>(
   filter:
     | {
@@ -391,7 +355,7 @@ const mergePickConfigurationFilters = (
   return {
     take: args.first ?? 50,
     skip: offsetFromCursor(args.after),
-    chainId: intFilterToPrisma(f?.chainId, 'PickConfigurationFilter.chainId'),
+    chainId: f?.chainId ?? null,
     resolved: f?.resolved ?? null,
     result: enumFilterToPrisma<SettlementResult>(
       f?.result,

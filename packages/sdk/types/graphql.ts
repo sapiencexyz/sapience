@@ -2159,12 +2159,12 @@ export type PickConfigurationEdge = {
 };
 
 /**
- * Filter input for the `pickConfigurationsConnection` query. Scalar fields use
- * operator-pattern inputs; values combine with AND.
+ * Filter input for the `pickConfigurationsConnection` query. Values combine with AND.
+ * Range-like scalars use operator-pattern inputs; identifier/domain fields stay flat.
  */
 export type PickConfigurationFilter = {
-  /** Filter by chain ID, e.g. `{ equals: 13374202 }`. */
-  chainId?: InputMaybe<IntFilter>;
+  /** Restrict to a single chain. Chain IDs are identifiers, not range-filtered metrics. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to resolved (true) or unresolved (false) pick configurations. */
   resolved?: InputMaybe<Scalars['Boolean']['input']>;
   /** Filter by settlement result, e.g. `{ equals: PREDICTOR_WINS }`. */

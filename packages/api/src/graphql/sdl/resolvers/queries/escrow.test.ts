@@ -909,7 +909,7 @@ describe('pickConfigurationsConnection filters', () => {
     mockPrisma.picks.count.mockReset();
   });
 
-  it('maps operator-pattern chainId and result filters', async () => {
+  it('maps flat chainId and operator-pattern result filters', async () => {
     mockPrisma.picks.findMany.mockResolvedValue([]);
 
     await pickConfigurationsConnectionFn(
@@ -917,7 +917,7 @@ describe('pickConfigurationsConnection filters', () => {
       {
         first: 10,
         filter: {
-          chainId: { gte: 13374200, lt: 13374203 },
+          chainId: 13374202,
           result: { in: ['PREDICTOR_WINS', 'COUNTERPARTY_WINS'] },
           resolved: true,
         },
@@ -928,7 +928,7 @@ describe('pickConfigurationsConnection filters', () => {
 
     const where = mockPrisma.picks.findMany.mock.calls[0][0].where;
     expect(where).toMatchObject({
-      chainId: { gte: 13374200, lt: 13374203 },
+      chainId: 13374202,
       result: { in: ['PREDICTOR_WINS', 'COUNTERPARTY_WINS'] },
       resolved: true,
     });
