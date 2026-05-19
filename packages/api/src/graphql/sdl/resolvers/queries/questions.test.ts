@@ -8,9 +8,8 @@ const mockPrisma = vi.hoisted(() => ({
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
-const { resolveVolumeKey, runQuestions, questionsPage } = await import(
-  './questions'
-);
+const { resolveVolumeKey, runQuestions, questionsPage, questionsConnection } =
+  await import('./questions');
 
 beforeEach(() => {
   mockPrisma.$queryRaw.mockReset();
@@ -130,6 +129,100 @@ describe('runQuestions — page envelope', () => {
     mockPrisma.$queryRaw.mockResolvedValue([]);
     await runQuestions({ take: 10, skip: -50 });
     expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+  });
+});
+
+type ConnectionResolverFn = (
+  parent: unknown,
+  args: Record<string, unknown>,
+  ctx: unknown,
+  info: unknown
+) => Promise<{ edges: { cursor: string; node: unknown }[] }>;
+const questionsConnectionFn =
+  questionsConnection as unknown as ConnectionResolverFn;
+
+describe('questionsConnection — operator filters and keyset cursors', () => {
+  it('maps operator gte/lte filters to the underlying SQL ranges', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+
+    await questionsConnectionFn(
+      {},
+      {
+        first: 10,
+        filter: {
+          resolvesAt: { gte: 1000, lte: 2000 },
+          estimatedPrice: { gte: 0.2, lte: 0.8 },
+          similarMarketVolume: { gte: 100, lte: 900 },
+        },
+      },
+      {},
+      {}
+    );
+
+    const sql = queryRawCallJson();
+    expect(sql).toContain('1000');
+    expect(sql).toContain('2000');
+    expect(sql).toContain('0.2');
+    expect(sql).toContain('0.8');
+    expect(sql).toContain('100');
+    expect(sql).toContain('900');
+  });
+
+  it('encodes the SQL ordering tuple in edge cursors instead of an offset', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'c-1',
+        prediction_count: 0n,
+        sort_value: 123,
+        end_time: 456,
+      },
+    ]);
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+    mockPrisma.condition.findMany.mockResolvedValue([
+      { id: 'c-1', createdAt: new Date('2026-01-01T00:00:00Z') },
+    ]);
+
+    const result = await questionsConnectionFn({}, { first: 10 }, {}, {});
+    const { decodeCursor } = await import('../../../relay/cursor');
+    const payload = decodeCursor(result.edges[0].cursor);
+    expect(payload?.k).toBe('123');
+    expect(JSON.parse(payload?.id ?? '{}')).toEqual({
+      groupId: 0,
+      conditionId: 'c-1',
+      itemType: 'condition',
+      endTime: 456,
+    });
+  });
+
+  it('uses a keyset predicate, not OFFSET, when an after cursor is supplied', async () => {
+    const { encodeCursor } = await import('../../../relay/cursor');
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+
+    await questionsConnectionFn(
+      {},
+      {
+        first: 10,
+        after: encodeCursor({
+          k: '123',
+          id: JSON.stringify({
+            itemType: 'condition',
+            groupId: 0,
+            conditionId: 'c-1',
+            endTime: 456,
+          }),
+        }),
+      },
+      {},
+      {}
+    );
+
+    const sql = queryRawCallJson();
+    expect(sql).not.toContain('OFFSET');
+    expect(sql).toContain('sort_value');
+    expect(sql).toContain('123');
+    expect(sql).toContain('c-1');
   });
 });
 

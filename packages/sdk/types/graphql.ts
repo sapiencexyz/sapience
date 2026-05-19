@@ -861,14 +861,20 @@ export type ConditionFilter = {
   categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
   /** Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions. */
   conditionGroupId?: InputMaybe<IdFilter>;
+  /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
+  estimatedPrice?: InputMaybe<FloatFilter>;
   /**
    * Filter by resolution state. `{ isNull: true }` selects unsettled
    * conditions; `{ isNull: false }` selects settled (any outcome);
    * `{ equals: NON_DECISIVE }` selects voided settlements specifically.
    */
   outcome?: InputMaybe<ConditionOutcomeFilter>;
+  /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
+  resolvesAt?: InputMaybe<IntFilter>;
   /** Free-text search across `question`, `shortName`, and `description` (case-insensitive). */
   search?: InputMaybe<Scalars['String']['input']>;
+  /** Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`. */
+  similarMarketVolume?: InputMaybe<FloatFilter>;
   /** Restrict to conditions tagged with any of these values. */
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
 };
@@ -3366,8 +3372,14 @@ export type QuestionEdge = {
  * `conditions(filter: {outcome:})`.
  */
 export type QuestionFilter = {
+  /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
+  estimatedPrice?: InputMaybe<FloatFilter>;
+  /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
+  resolvesAt?: InputMaybe<IntFilter>;
   /** Free-text search across the wrapped Condition/Group's title and description (case-insensitive). */
   search?: InputMaybe<Scalars['String']['input']>;
+  /** Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`. */
+  similarMarketVolume?: InputMaybe<FloatFilter>;
   /**
    * Restrict to questions tagged with this value. Single-tag only at
    * the SDL level — the underlying union runner accepts one tag at a

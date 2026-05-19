@@ -2012,6 +2012,15 @@ input ConditionFilter {
   """Restrict to conditions tagged with any of these values."""
   tags: [String!]
 
+  """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
+  resolvesAt: IntFilter
+
+  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  estimatedPrice: FloatFilter
+
+  """Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`."""
+  similarMarketVolume: FloatFilter
+
   """
   Filter by resolution state. `{ isNull: true }` selects unsettled
   conditions; `{ isNull: false }` selects settled (any outcome);
@@ -2055,6 +2064,15 @@ input QuestionFilter {
   it (additive, non-breaking).
   """
   tag: String
+
+  """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
+  resolvesAt: IntFilter
+
+  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  estimatedPrice: FloatFilter
+
+  """Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`."""
+  similarMarketVolume: FloatFilter
 }
 
 """
