@@ -40,6 +40,7 @@ import { PickConfigurationsPage } from './PickConfigurationsPage';
 import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
 import { QuestionsPage } from './QuestionsPage';
+import { Question, ConditionOrConditionGroup } from './Question';
 import { TradesPage } from './TradesPage';
 import { User } from './User';
 
@@ -62,10 +63,13 @@ import {
   collateralTransfersPage,
 } from './queries/collateralBalance';
 import { collateralTransfers } from './queries/deprecated/collateralBalance';
-import { conditionsPage } from './queries/conditions';
-import { conditionGroup, conditionGroupsPage } from './queries/conditionGroups';
-import { questionsPage } from './queries/questions';
-import { questions } from './queries/deprecated/questions';
+import { conditions, conditionsPage } from './queries/conditions';
+import {
+  conditionGroup,
+  conditionGroups,
+  conditionGroupsPage,
+} from './queries/conditionGroups';
+import { questions, questionsPage } from './queries/questions';
 import {
   account,
   attestationsPage,
@@ -75,8 +79,6 @@ import {
   user,
 } from './queries/crud';
 import { attestations, users } from './queries/deprecated/crud';
-import { conditions } from './queries/deprecated/conditions';
-import { conditionGroups } from './queries/deprecated/conditionGroups';
 import {
   claims,
   closes,
@@ -202,6 +204,8 @@ export const resolvers: Resolvers = {
   PositionsPage,
   PredictionsPage,
   QuestionsPage,
+  Question,
+  ConditionOrConditionGroup,
   TradesPage,
   User,
 };

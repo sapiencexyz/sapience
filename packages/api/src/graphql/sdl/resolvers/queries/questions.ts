@@ -38,10 +38,15 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 import type {
   QueryResolvers,
-  QueryQuestionsArgs,
   ResolversTypes,
 } from '../../__generated__/resolvers';
-import { QuestionItemType } from '../../__generated__/resolvers';
+import {
+  QuestionItemType,
+  type ResolutionStatus,
+  type VolumeWindow,
+  type QuestionSortField,
+  type SortOrder,
+} from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { clampSkip, clampTake } from './pagination';
@@ -140,16 +145,30 @@ const fieldByResolvedVolumeKey: Record<VolumeKey, string> = {
 };
 
 /**
- * Inputs accepted by `runQuestions`. Superset of the deprecated
- * `questions(...)` resolver's `QueryQuestionsArgs` — the new
- * contract-address filters live only on `QuestionFilters` (i.e. only
- * reachable via `questionsPage`), so they're tacked on here instead of
- * pollinating the deprecated bare-args shape.
+ * Inputs accepted by `runQuestions`. Hand-written interface (not derived
+ * from any `Query<Field>Args`) so the runner is decoupled from any one
+ * SDL field shape — both the legacy `questionsPage` and the new Relay
+ * `questions` connection adapt their args into this shape before calling.
  */
-export type RunQuestionsInput = QueryQuestionsArgs & {
+export interface RunQuestionsInput {
+  take?: number | null;
+  skip?: number | null;
+  search?: string | null;
+  categorySlugs?: string[] | null;
+  tag?: string | null;
+  chainId?: number | null;
   contractAddress?: string | null;
   contractAddressIn?: string[] | null;
-};
+  minEndTime?: number | null;
+  resolutionStatus?: ResolutionStatus | null;
+  minEstimatedPrice?: number | null;
+  maxEstimatedPrice?: number | null;
+  minSimilarMarketVolume?: number | null;
+  maxSimilarMarketVolume?: number | null;
+  similarMarketVolumeWindow?: VolumeWindow | null;
+  sortField?: QuestionSortField | null;
+  sortDirection?: SortOrder | null;
+}
 
 interface NormalizedArgs {
   take: number;
@@ -161,7 +180,7 @@ interface NormalizedArgs {
   contractAddress: string | null;
   contractAddressIn: string[] | null;
   minEndTime: number | null | undefined;
-  resolutionStatus: QueryQuestionsArgs['resolutionStatus'];
+  resolutionStatus: ResolutionStatus | null | undefined;
   minEstimatedPrice: number | null | undefined;
   maxEstimatedPrice: number | null | undefined;
   minSimilarMarketVolume: number | null | undefined;
@@ -667,7 +686,13 @@ const hydrateItems = async (
   const conditionMap = new Map<string, (typeof conditions)[number]>();
   for (const c of conditions) conditionMap.set(c.id, c);
 
+  // Intermediate shape — Question field resolvers (Question.ts) fill in
+  // `source`, `title`, `description`, etc. from this shape, so the
+  // runner only needs to populate the discriminator + the wrapped row +
+  // the prediction count.
   const result: QuestionReturn[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const push = (item: any) => result.push(item as QuestionReturn);
   for (const item of pageItems) {
     if (item.item_type === 'group' && item.group_id !== null) {
       const group = groupMap.get(item.group_id);
@@ -675,14 +700,14 @@ const hydrateItems = async (
       if (group.condition.length === 1) {
         // Unwrap single-condition groups as standalone conditions so the
         // frontend doesn't render a group shell around a lone item.
-        result.push({
+        push({
           questionType: QuestionItemType.Condition,
           group: null,
           condition: group.condition[0] as unknown as ConditionReturn,
           predictionCount: Number(item.prediction_count),
         });
       } else if (group.condition.length > 1) {
-        result.push({
+        push({
           questionType: QuestionItemType.Group,
           group: {
             ...group,
@@ -695,7 +720,7 @@ const hydrateItems = async (
     } else if (item.item_type === 'condition' && item.condition_id !== null) {
       const condition = conditionMap.get(item.condition_id);
       if (!condition) continue;
-      result.push({
+      push({
         questionType: QuestionItemType.Condition,
         group: null,
         condition: condition as unknown as ConditionReturn,
@@ -717,6 +742,75 @@ export const runQuestions = async (
 
   const items = await hydrateItems(pageItems, buildConditionWhere(n));
   return { items, hasMore };
+};
+
+// ---------------------------------------------------------------------
+// Relay-shaped `questions` connection (PR 2)
+// ---------------------------------------------------------------------
+//
+// The new connection wraps the existing offset-based `runQuestions`
+// runner — questions is a UNION over `condition_group` and ungrouped
+// `condition`, so real keyset cursor pagination across both sides is
+// non-trivial and deferred to a follow-up. The cursor here is an opaque
+// handle around the offset, which preserves the Relay-shaped wire
+// format and lets clients migrate now; the perf-win-via-keyset comes
+// later without an SDL change.
+
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
+
+const offsetFromCursor = (cursor: string | null | undefined): number => {
+  if (!cursor) return 0;
+  const payload = decodeCursor(cursor);
+  if (!payload) return 0;
+  const parsed = Number(payload.id);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
+
+export const questions: NonNullable<QueryResolvers['questions']> = async (
+  _parent,
+  // `orderBy` deliberately unread for now — `runQuestions` defaults to
+  // CREATED_AT DESC. Wiring `orderBy` through is the follow-up that
+  // upgrades the connection from offset-as-cursor to true keyset.
+  { first, after, filter, orderBy: _orderBy }
+) => {
+  const take = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const skip = offsetFromCursor(after);
+
+  const { items, hasMore } = await runQuestions({
+    take,
+    skip,
+    search: filter?.search ?? null,
+    categorySlugs: null,
+    tag: filter?.tags?.[0] ?? null,
+    chainId: null,
+    contractAddress: null,
+    contractAddressIn: null,
+    minEndTime: null,
+    resolutionStatus: null,
+    minEstimatedPrice: null,
+    maxEstimatedPrice: null,
+    minSimilarMarketVolume: null,
+    maxSimilarMarketVolume: null,
+    similarMarketVolumeWindow: null,
+    sortField: null,
+    sortDirection: null,
+  });
+
+  const edges = items.map((item, idx) => ({
+    node: item,
+    cursor: encodeCursor({ k: '', id: String(skip + idx + 1) }),
+  }));
+
+  return {
+    edges,
+    nodes: items,
+    pageInfo: {
+      hasNextPage: hasMore,
+      hasPreviousPage: skip > 0,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
 };
 
 export const questionsPage: NonNullable<
