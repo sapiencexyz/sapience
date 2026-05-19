@@ -853,8 +853,8 @@ export type ConditionEngagement =
 /**
  * Filter input for the Relay-shaped `conditions` connection. Combines
  * with AND. Public-only — non-public conditions are out of scope here;
- * the deprecated `conditionsPage` retains the `visibility` switch for
- * admin paths.
+ * admin paths need an explicit replacement surface if private-condition
+ * visibility is still required.
  */
 export type ConditionFilter = {
   /** Restrict to conditions whose category id is in this set. */
@@ -879,11 +879,7 @@ export type ConditionFilter = {
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
-/**
- * Flat filter input for the `conditionsPage` query. Each field is optional;
- * values combine with AND. Replaces the Prisma-derived `ConditionWhereInput`
- * for client-facing access.
- */
+/** Legacy flat filter input for removed offset-page condition access. */
 export type ConditionFilters = {
   /** Restrict to conditions whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -994,7 +990,7 @@ export type ConditionGroupEdge = {
 /**
  * Filter input for the Relay-shaped `conditionGroups` connection. Combines
  * with AND. Returns only groups with at least one public condition; the
- * deprecated `conditionGroupsPage` retains finer-grained switches.
+ * admin-only finer-grained switches need an explicit replacement surface if still required.
  */
 export type ConditionGroupFilter = {
   /** Restrict to groups whose category id is in this set. */
@@ -1005,10 +1001,7 @@ export type ConditionGroupFilter = {
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
-/**
- * Flat filter input for the `conditionGroupsPage` query. Each field is optional;
- * values combine with AND.
- */
+/** Legacy flat filter input for removed offset-page condition group access. */
 export type ConditionGroupFilters = {
   /** Restrict to groups whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -1121,7 +1114,7 @@ export type ConditionGroupScalarFieldEnum =
   | 'totalSimilarMarketVolumeFiltered7d'
   | 'totalSimilarMarketVolumeFiltered24h';
 
-/** Sort fields for the `conditionGroupsPage` query. */
+/** Legacy condition-group offset sort fields retained only for generated compatibility. */
 export type ConditionGroupSortField =
   | 'CREATED_AT'
   | 'MAX_END_TIME'
@@ -1178,14 +1171,6 @@ export type ConditionGroupWhereUniqueInput = {
   totalSimilarMarketVolumeFiltered4h?: InputMaybe<DecimalFilter>;
   totalSimilarMarketVolumeFiltered7d?: InputMaybe<DecimalFilter>;
   totalSimilarMarketVolumeFiltered24h?: InputMaybe<DecimalFilter>;
-};
-
-/** Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag */
-export type ConditionGroupsPage = Page & {
-  __typename?: 'ConditionGroupsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<ConditionGroup>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type ConditionListRelationFilter = {
@@ -1351,14 +1336,14 @@ export type ConditionScalarFieldEnum =
   | 'similarMarkets'
   | 'tags';
 
-/** Sort fields for the `conditionsPage` query */
+/** Legacy offset sort fields retained only for generated compatibility. */
 export type ConditionSortField =
   | 'CREATED_AT'
   | 'END_TIME'
   | 'OPEN_INTEREST'
   | 'PREDICTION_COUNT';
 
-/** Visibility filter for the `conditionsPage` query */
+/** Legacy condition visibility filter. */
 export type ConditionVisibility =
   | 'ALL'
   | 'PRIVATE'
@@ -1450,14 +1435,6 @@ export type ConditionWhereUniqueInput = {
   similarMarketVolumeFiltered24h?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
-};
-
-/** Paginated wrapper around Condition rows with a server-truth hasMore flag */
-export type ConditionsPage = Page & {
-  __typename?: 'ConditionsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Condition>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type DateTimeFilter = {
@@ -2560,48 +2537,30 @@ export type Query = {
   /**
    * Deprecated bare-array form. Retained unchanged for the one-release
    * deprecation window so pinned clients keep working. New callers
-   * should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`
-   * (Relay-shaped) or `conditionGroupsPage(filters:)` (offset-paginated).
+   * should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`.
    * @deprecated Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
    */
   conditionGroups: Array<ConditionGroup>;
   /**
    * Relay-shaped connection over `ConditionGroup` rows. Forward-only
    * cursor pagination via `first` / `after`. Replaces the deprecated
-   * bare `conditionGroups(where:)` and the offset-paginated
-   * `conditionGroupsPage`. `totalCount` is omitted per design-doc D3
+   * bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
    * (default-off, add per-PR where cheap).
    */
   conditionGroupsConnection: ConditionGroupConnection;
   /**
-   * Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
-   *
-   * Sorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.
-   * Defaults to `CREATED_AT` / `desc` when omitted.
-   * @deprecated Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
-   */
-  conditionGroupsPage: ConditionGroupsPage;
-  /**
    * Deprecated bare-array form. Retained unchanged for the one-release
    * deprecation window. New callers should use
-   * `conditionsConnection(first:, after:, filter:, orderBy:)` (Relay-shaped)
-   * or `conditionsPage(filters:)` (offset-paginated).
+   * `conditionsConnection(first:, after:, filter:, orderBy:)`.
    * @deprecated Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
    */
   conditions: Array<Condition>;
   /**
    * Relay-shaped connection over `Condition` rows. Forward-only cursor
    * pagination via `first` / `after`. Replaces the deprecated bare
-   * `conditions(where:)` and the offset-paginated `conditionsPage`.
-   * Public conditions only — admin-style visibility switches live on the
-   * deprecated `conditionsPage` for the migration window.
+   * `conditions(where:)`. Public conditions only.
    */
   conditionsConnection: ConditionConnection;
-  /**
-   * Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input.
-   * @deprecated Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data. Admin-only filters (`visibility`, `engagement`) remain on this resolver during the migration window.
-   */
-  conditionsPage: ConditionsPage;
   /**
    * Refetch any `Node`-implementing entity by its opaque global id. Returns
    * `null` when the id is malformed, the type is not registered, or the
@@ -2714,30 +2673,18 @@ export type Query = {
   /**
    * Deprecated bare-array form. Retained unchanged for the one-release
    * deprecation window so pinned clients keep working. New callers
-   * should use `questionsConnection(first:, after:, filter:, orderBy:)`
-   * (Relay-shaped) or `questionsPage(filters:)` (offset-paginated).
+   * should use `questionsConnection(first:, after:, filter:, orderBy:)`.
    * @deprecated Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed.
    */
   questions: Array<Question>;
   /**
    * Relay-shaped connection over `Question` rows — the interleaved
    * Condition / ConditionGroup feed. Forward-only cursor pagination via
-   * `first` / `after`. Replaces the deprecated bare `questions(...)` and
-   * the offset-paginated `questionsPage`. `totalCount` is omitted on
+   * `first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on
    * `QuestionConnection` because the underlying SQL UNION cannot produce
    * a single COUNT cheaply.
    */
   questionsConnection: QuestionConnection;
-  /**
-   * Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
-   *
-   * Sorting uses `orderBy` / `orderDirection` to match the convention on
-   * every other `*Page` resolver. The original `sortField` / `sortDirection`
-   * args are retained for one release with `@deprecated`; new callers
-   * should use `orderBy:` / `orderDirection:`.
-   * @deprecated Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved Condition / ConditionGroup feed.
-   */
-  questionsPage: QuestionsPage;
   /**
    * Look up a single secondary market trade by its trade hash. Pass
    * `tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing
@@ -3026,15 +2973,6 @@ export type QueryConditionGroupsConnectionArgs = {
 };
 
 
-export type QueryConditionGroupsPageArgs = {
-  filters?: InputMaybe<ConditionGroupFilters>;
-  orderBy?: InputMaybe<ConditionGroupSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-};
-
-
 export type QueryConditionsArgs = {
   cursor?: InputMaybe<ConditionWhereUniqueInput>;
   distinct?: InputMaybe<Array<ConditionScalarFieldEnum>>;
@@ -3050,15 +2988,6 @@ export type QueryConditionsConnectionArgs = {
   filter?: InputMaybe<ConditionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ConditionOrder>;
-};
-
-
-export type QueryConditionsPageArgs = {
-  filters?: InputMaybe<ConditionFilters>;
-  orderBy?: InputMaybe<ConditionSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
 };
 
 
@@ -3227,17 +3156,6 @@ export type QueryQuestionsConnectionArgs = {
 };
 
 
-export type QueryQuestionsPageArgs = {
-  filters?: InputMaybe<QuestionFilters>;
-  orderBy?: InputMaybe<QuestionSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  skip?: Scalars['Int']['input'];
-  sortDirection?: SortOrder;
-  sortField?: InputMaybe<QuestionSortField>;
-  take?: Scalars['Int']['input'];
-};
-
-
 export type QueryTradeArgs = {
   id?: InputMaybe<Scalars['String']['input']>;
   tradeHash?: InputMaybe<Scalars['String']['input']>;
@@ -3390,8 +3308,7 @@ export type QuestionFilter = {
 };
 
 /**
- * Flat filter input for the `questionsPage` query. Each field is optional;
- * values combine with AND. Mirrors the inline-arg shape that the deprecated
+ * Legacy flat filter input mirroring the inline-arg shape that the deprecated
  * `questions(...)` resolver kept.
  */
 export type QuestionFilters = {
@@ -3470,15 +3387,6 @@ export type QuestionSortField =
   | 'openInterest'
   | 'predictionCount'
   | 'similarMarketVolume';
-
-/** Paginated wrapper around Question rows with a server-truth hasMore flag */
-export type QuestionsPage = Page & {
-  __typename?: 'QuestionsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Question>;
-  /** May be null: the underlying union/aggregation can't produce a stable total cheaply. */
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
 
 /**
  * Public referral code metadata. Exposed via `User.referredByCode` /

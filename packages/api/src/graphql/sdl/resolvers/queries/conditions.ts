@@ -16,14 +16,10 @@
  * this matches the deployed ConditionResolver behaviour.
  */
 
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-
 import type { Prisma } from '../../../../../generated/prisma';
 import type {
   QueryResolvers,
-  QueryConditionsPageArgs,
   QueryConditionsConnectionArgs,
-  ConditionFilters,
   ConditionFilter,
   ConditionOutcomeFilter,
   IdFilter,
@@ -33,152 +29,10 @@ import {
   OrderDirection,
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
-import { clampSkip, clampTake } from './pagination';
+import { clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
 type Where = Prisma.ConditionWhereInput;
-
-const buildConditionsWhereFromFilters = (
-  filters: ConditionFilters | null | undefined
-): Where => {
-  if (!filters) return { public: { equals: true } };
-
-  const and: Where[] = [];
-
-  if (filters.ids && filters.ids.length > 0) {
-    const lowered = filters.ids.map((id) => id.toLowerCase());
-    and.push({ id: { in: lowered } });
-  }
-
-  // Contract-address filters: `contractAddress` and `contractAddressIn` are
-  // the public-facing names; both map to the DB `resolver` column. The
-  // legacy `resolver` / `resolverIn` inputs are protocol-jargon aliases and
-  // are kept for back-compat. Contract addresses are not a global namespace,
-  // so when a caller filters by address without specifying a chain, we
-  // default to `DEFAULT_CHAIN_ID` to keep lookups single-chain.
-  const contractAddress = filters.contractAddress ?? filters.resolver ?? null;
-  const contractAddressIn =
-    filters.contractAddressIn ?? filters.resolverIn ?? null;
-  const hasContractAddressFilter =
-    contractAddress != null ||
-    (contractAddressIn != null && contractAddressIn.length > 0);
-
-  const effectiveChainId =
-    filters.chainId != null
-      ? filters.chainId
-      : hasContractAddressFilter
-        ? DEFAULT_CHAIN_ID
-        : null;
-  if (effectiveChainId != null) {
-    and.push({ chainId: { equals: effectiveChainId } });
-  }
-  if (contractAddress) {
-    and.push({ resolver: { equals: contractAddress.toLowerCase() } });
-  }
-  if (contractAddressIn && contractAddressIn.length > 0) {
-    const lowered = contractAddressIn.map((r) => r.toLowerCase());
-    and.push({ resolver: { in: lowered } });
-  }
-  if (filters.search?.trim()) {
-    const term = filters.search.trim();
-    and.push({
-      OR: [
-        { question: { contains: term, mode: 'insensitive' } },
-        { shortName: { contains: term, mode: 'insensitive' } },
-        { description: { contains: term, mode: 'insensitive' } },
-      ],
-    });
-  }
-  if (filters.categorySlugs && filters.categorySlugs.length > 0) {
-    and.push({
-      category: { is: { slug: { in: filters.categorySlugs } } },
-    });
-  }
-  if (filters.minEndTime != null || filters.maxEndTime != null) {
-    const range: Record<string, number> = {};
-    if (filters.minEndTime != null) range.gte = filters.minEndTime;
-    if (filters.maxEndTime != null) range.lte = filters.maxEndTime;
-    and.push({ endTime: range });
-  }
-  if (filters.ungroupedOnly === true) {
-    and.push({ conditionGroupId: null });
-  }
-  if (filters.conditionGroupId != null) {
-    and.push({ conditionGroupId: { equals: filters.conditionGroupId } });
-  }
-  if (filters.settled !== null && filters.settled !== undefined) {
-    and.push({ settled: filters.settled });
-  }
-  if (filters.resolvedToYes !== null && filters.resolvedToYes !== undefined) {
-    and.push({ settled: true, resolvedToYes: filters.resolvedToYes });
-  }
-  if (filters.hasSimilarMarkets === true) {
-    and.push({ similarMarkets: { isEmpty: false } });
-  }
-  if (filters.engagement === 'NONE') {
-    and.push({ openInterest: { equals: '0' } });
-    and.push({ attestations: { none: {} } });
-  } else if (filters.engagement === 'ANY') {
-    and.push({
-      OR: [
-        { openInterest: { not: { equals: '0' } } },
-        { attestations: { some: {} } },
-      ],
-    });
-  }
-
-  // Visibility — matches the safety-net behaviour of the bare `conditions`
-  // resolver: when callers pass a list of IDs they bypass the public filter
-  // (so admins / direct links can fetch private conditions); otherwise
-  // default to PUBLIC unless explicitly overridden.
-  const visibility = filters.visibility ?? 'PUBLIC';
-  const hasIdFilterFromInput = filters.ids != null && filters.ids.length > 0;
-  if (!hasIdFilterFromInput) {
-    if (visibility === 'PUBLIC') and.push({ public: { equals: true } });
-    else if (visibility === 'PRIVATE') and.push({ public: { equals: false } });
-    // ALL → no filter
-  }
-
-  return and.length > 0 ? { AND: and } : {};
-};
-
-const ORDER_FIELD_MAP: Record<string, string> = {
-  CREATED_AT: 'createdAt',
-  END_TIME: 'endTime',
-  OPEN_INTEREST: 'openInterest',
-  PREDICTION_COUNT: 'predictionCount',
-};
-
-export const conditionsPage: NonNullable<
-  QueryResolvers['conditionsPage']
-> = async (
-  _parent,
-  { filters, orderBy, orderDirection, take, skip }: QueryConditionsPageArgs
-) => {
-  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
-  // Opts out of MAX_SKIP=1000 so the keeper's bulk refresh-metadata loop
-  // can read past row 1000. Switch to cursor pagination to remove this.
-  const skipVal = clampSkip(skip, { maxSkip: Number.POSITIVE_INFINITY });
-  const where = buildConditionsWhereFromFilters(filters);
-  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
-  const orderField = ORDER_FIELD_MAP[orderBy ?? 'CREATED_AT'] ?? 'createdAt';
-  const orderByClause = {
-    [orderField]: direction,
-  } as Prisma.ConditionOrderByWithRelationInput;
-
-  const rawRows = await prisma.condition.findMany({
-    where,
-    orderBy: orderByClause,
-    take: cappedTake + 1,
-    skip: skipVal,
-  });
-  const hasMore = rawRows.length > cappedTake;
-  return {
-    items: rawRows.slice(0, cappedTake),
-    hasMore,
-    _countWhere: where,
-  };
-};
 
 // ---------------------------------------------------------------------
 // Relay-shaped `conditions` connection (PR 2)
@@ -288,8 +142,7 @@ const buildOutcomeFilterClause = (
 
 /**
  * Build the Prisma where clause for the new `conditions` connection.
- * Public-only — admin visibility switches live on the deprecated
- * `conditionsPage`. Reuses the same default-public safety net.
+ * Public-only. Reuses the same default-public safety net.
  */
 const buildConditionsConnectionWhere = (
   filter: ConditionFilter | null | undefined

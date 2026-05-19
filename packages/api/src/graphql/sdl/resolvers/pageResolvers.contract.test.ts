@@ -12,8 +12,8 @@
  * The three pages that don't follow the standard pattern have their
  * own dedicated cases:
  *   - CategoriesPage: no `_countWhere`, always counts the full table
- *   - QuestionsPage / ActivityItemsPage: raw-SQL union, totalCount is
- *     always null when not eagerly populated
+ *   - ActivityItemsPage: mixed-source feed, totalCount is always null
+ *     when not eagerly populated
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -21,8 +21,6 @@ const mockPrisma = vi.hoisted(() => ({
   attestation: { count: vi.fn() },
   category: { count: vi.fn() },
   collateralTransfer: { count: vi.fn() },
-  condition: { count: vi.fn() },
-  conditionGroup: { count: vi.fn() },
   picks: { count: vi.fn() },
   position: { count: vi.fn() },
   prediction: { count: vi.fn() },
@@ -33,14 +31,11 @@ vi.mock('../../../core/db', () => ({ default: mockPrisma }));
 
 import { AttestationsPage } from './AttestationsPage';
 import { CollateralTransfersPage } from './CollateralTransfersPage';
-import { ConditionGroupsPage } from './ConditionGroupsPage';
-import { ConditionsPage } from './ConditionsPage';
 import { PickConfigurationsPage } from './PickConfigurationsPage';
 import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
 import { TradesPage } from './TradesPage';
 import { CategoriesPage } from './CategoriesPage';
-import { QuestionsPage } from './QuestionsPage';
 import { ActivityItemsPage } from './ActivityItemsPage';
 
 beforeEach(() => {
@@ -66,16 +61,6 @@ const lazyPageResolvers: LazyCase[] = [
     name: 'CollateralTransfersPage',
     resolver: CollateralTransfersPage,
     mock: mockPrisma.collateralTransfer,
-  },
-  {
-    name: 'ConditionGroupsPage',
-    resolver: ConditionGroupsPage,
-    mock: mockPrisma.conditionGroup,
-  },
-  {
-    name: 'ConditionsPage',
-    resolver: ConditionsPage,
-    mock: mockPrisma.condition,
   },
   {
     name: 'PickConfigurationsPage',
@@ -133,17 +118,6 @@ describe('CategoriesPage.totalCount — no filter, unconditional count', () => {
     expect(out).toBe(10);
     expect(mockPrisma.category.count).toHaveBeenCalledTimes(1);
     expect(mockPrisma.category.count).toHaveBeenCalledWith();
-  });
-});
-
-describe('QuestionsPage.totalCount — always null when not eager', () => {
-  it('returns the eager value when present', async () => {
-    expect(await call(QuestionsPage, { totalCount: 1 })).toBe(1);
-  });
-
-  it('returns null otherwise (raw-SQL union, no count path)', async () => {
-    expect(await call(QuestionsPage, {})).toBeNull();
-    expect(await call(QuestionsPage, { totalCount: null })).toBeNull();
   });
 });
 

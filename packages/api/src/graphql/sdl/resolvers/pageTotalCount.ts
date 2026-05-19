@@ -13,7 +13,7 @@
  * discard the envelope entirely, so they get the count-skip for free.
  *
  * Pages whose runner can't cheaply produce a `_countWhere` (the union
- * feed on `questionsPage`, the merged predictions/trades feed on
+ * questions connection/bare resolver and the merged predictions/trades feed on
  * `activityPage`) keep their own dedicated resolver and stay `null`
  * even when selected.
  */

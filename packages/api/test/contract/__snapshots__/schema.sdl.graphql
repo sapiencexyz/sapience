@@ -320,9 +320,19 @@ input AttestationWhereUniqueInput {
 }
 
 """
+0x-prefixed lowercase 20-byte Ethereum address. Mixed-case checksum input is accepted and normalized to lowercase.
+"""
+scalar Address
+
+"""
 The `BigInt` scalar type represents non-fractional signed whole numeric values.
 """
 scalar BigInt
+
+"""
+0x-prefixed lowercase 32-byte hex value. Used for transaction hashes, EAS UIDs, and other 32-byte on-chain identifiers.
+"""
+scalar Bytes32
 
 input BigIntFilter {
   equals: BigInt
@@ -333,6 +343,33 @@ input BigIntFilter {
   lte: BigInt
   not: NestedBigIntFilter
   notIn: [BigInt!]
+}
+
+"""
+Operator-pattern filter for `ID` scalar fields. Supports equality,
+membership, negation, and null. Resolvers reject unsupported operators
+on a per-field basis (e.g., a non-nullable column rejects `isNull`).
+"""
+input IDFilter {
+  equals: ID
+  in: [ID!]
+  notIn: [ID!]
+  not: ID
+  isNull: Boolean
+}
+
+"""
+Operator-pattern filter for `ConditionOutcome` enum. `{ isNull: true }`
+selects unsettled conditions; `{ isNull: false }` selects settled
+(any outcome). `{ equals: NON_DECISIVE }` selects voided/non-decisive
+settlements specifically. See `ConditionOutcome`.
+"""
+input ConditionOutcomeFilter {
+  equals: ConditionOutcome
+  in: [ConditionOutcome!]
+  notIn: [ConditionOutcome!]
+  not: ConditionOutcome
+  isNull: Boolean
 }
 
 input BoolFilter {
@@ -486,6 +523,15 @@ type Condition {
   nonDecisive: Boolean!
   openInterest: String!
   optionName: String
+
+  """
+  Resolution state of this condition. `null` until the on-chain resolver
+  returns; once settled, carries the resolved value (`YES` / `NO` for
+  decisive outcomes, `NON_DECISIVE` for voids / ties). Filter "settled
+  vs unsettled" via `outcome: { isNull: ... }` rather than relying on
+  the deprecated `settled: Boolean!` field.
+  """
+  outcome: ConditionOutcome
   predictionCount: Int!
   predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
   public: Boolean!
@@ -518,6 +564,22 @@ type Condition {
 type ConditionCount {
   attestations(where: AttestationWhereInput): Int!
   predictions(where: LegacyPredictionWhereInput): Int!
+}
+
+"""
+Resolved state of a `Condition`. `YES` and `NO` are decisive resolutions
+of the binary outcome; `NON_DECISIVE` covers voided / tied / unresolvable
+settlements (which the protocol collapses to `COUNTERPARTY_WINS` at the
+Prediction layer). Nullable on the wire — `null` means "not yet settled."
+
+Derived at the resolver from `settled` / `resolvedToYes` / `nonDecisive`
+columns; clients should filter "settled" via `outcome: { isNull: false }`
+rather than depending on the legacy boolean fields.
+"""
+enum ConditionOutcome {
+  YES
+  NO
+  NON_DECISIVE
 }
 
 type ConditionGroup {
@@ -842,6 +904,11 @@ input DateTimeFilter {
   not: NestedDateTimeFilter
   notIn: [DateTimeISO!]
 }
+
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
+"""
+scalar DateTime
 
 """
 A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
@@ -1431,35 +1498,47 @@ type PickConfigurationsPage implements Page {
   totalCount: Int
 }
 
-"""
-Paginated wrapper around Condition rows with a server-truth hasMore flag
-"""
-type ConditionsPage implements Page {
-  items: [Condition!]!
-  hasMore: Boolean!
-  totalCount: Int
+"""Relay-shaped connection over `Condition` rows."""
+type ConditionConnection {
+  edges: [ConditionEdge!]!
+  nodes: [Condition!]!
+  pageInfo: PageInfo!
+}
+
+"""Cursor-bearing edge for `ConditionConnection`."""
+type ConditionEdge {
+  node: Condition!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `ConditionGroup` rows."""
+type ConditionGroupConnection {
+  edges: [ConditionGroupEdge!]!
+  nodes: [ConditionGroup!]!
+  pageInfo: PageInfo!
+}
+
+"""Cursor-bearing edge for `ConditionGroupConnection`."""
+type ConditionGroupEdge {
+  node: ConditionGroup!
+  cursor: String!
 }
 
 """
-Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag
+Relay-shaped connection over `Question` rows. `totalCount` is
+intentionally omitted — the underlying SQL UNION over `condition_group`
+and ungrouped `condition` rows cannot produce a single COUNT cheaply.
 """
-type ConditionGroupsPage implements Page {
-  items: [ConditionGroup!]!
-  hasMore: Boolean!
-  totalCount: Int
+type QuestionConnection {
+  edges: [QuestionEdge!]!
+  nodes: [Question!]!
+  pageInfo: PageInfo!
 }
 
-"""
-Paginated wrapper around Question rows with a server-truth hasMore flag
-"""
-type QuestionsPage implements Page {
-  items: [Question!]!
-  hasMore: Boolean!
-
-  """
-  May be null: the underlying union/aggregation can't produce a stable total cheaply.
-  """
-  totalCount: Int
+"""Cursor-bearing edge for `QuestionConnection`."""
+type QuestionEdge {
+  node: Question!
+  cursor: String!
 }
 
 """Paginated wrapper around Trade rows with a server-truth hasMore flag"""
@@ -1515,7 +1594,7 @@ enum AttestationSortField {
   CREATED_AT
 }
 
-"""Sort fields for the `conditionsPage` query"""
+"""Legacy offset sort fields retained only for generated compatibility."""
 enum ConditionSortField {
   CREATED_AT
   END_TIME
@@ -1523,12 +1602,95 @@ enum ConditionSortField {
   PREDICTION_COUNT
 }
 
-"""Sort fields for the `conditionGroupsPage` query."""
+"""
+Legacy condition-group offset sort fields retained only for generated compatibility.
+"""
 enum ConditionGroupSortField {
   CREATED_AT
   MAX_END_TIME
   TOTAL_OPEN_INTEREST
   TOTAL_PREDICTION_COUNT
+}
+
+"""Order input for the Relay-shaped `conditions` connection."""
+input ConditionOrder {
+  field: ConditionOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Sort fields for the Relay-shaped `conditions` connection. All values
+map to existing partial indexes on the `condition` table:
+
+- `CREATED_AT` → `IDX_condition_public_createdat`
+- `RESOLVES_AT` → `IDX_condition_public_endtime` (column: `endTime`)
+- `PREDICTION_COUNT` → `IDX_condition_prediction_count`
+- `SIMILAR_MARKET_VOLUME_24H` → `IDX_condition_public_volume24h`
+- `SIMILAR_MARKET_VOLUME_7D` → `IDX_condition_public_volume7d`
+
+`OPEN_INTEREST` is intentionally omitted. The underlying
+`Condition.openInterest` column is varchar; the partial index
+`IDX_condition_oi_numeric` is on the `::numeric` cast expression, so
+typed Prisma `orderBy` would sort lexicographically (`"9" > "1000"`)
+and miss the index. Lands together with raw-SQL numeric sort in a
+follow-up — additive, non-breaking.
+"""
+enum ConditionOrderField {
+  CREATED_AT
+  RESOLVES_AT
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
+}
+
+"""Order input for the Relay-shaped `conditionGroups` connection."""
+input ConditionGroupOrder {
+  field: ConditionGroupOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Sort fields for the Relay-shaped `conditionGroups` connection. Mirrors
+the Condition enum value names; the resolver maps each to the
+group-level denormalized aggregate column (`maxCreatedAtEpoch`,
+`maxEndTime`, `totalPredictionCount`, `totalSimilarMarketVolume24h`,
+`totalSimilarMarketVolume7d`).
+
+`OPEN_INTEREST` is intentionally omitted — symmetric with
+`ConditionOrderField` above. The `totalOpenInterest` column is
+Decimal (not varchar), so the numeric-sort issue doesn't apply at the
+group level — but listing `OPEN_INTEREST` on `ConditionGroupOrderField`
+without listing it on `ConditionOrderField` would be confusingly
+asymmetric, so we hold both back together.
+"""
+enum ConditionGroupOrderField {
+  CREATED_AT
+  RESOLVES_AT
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
+}
+
+"""Order input for the Relay-shaped `questions` connection."""
+input QuestionOrder {
+  field: QuestionOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Sort fields for the Relay-shaped `questions` connection. The runner
+unions Conditions and ConditionGroups; sort values pick the column on
+each side. `OPEN_INTEREST` is intentionally omitted (symmetric with
+`ConditionOrderField`) — the Condition side would sort the varchar
+column lexicographically; restore together with raw-SQL numeric sort
+in a follow-up.
+"""
+enum QuestionOrderField {
+  CREATED_AT
+  RESOLVES_AT
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
 }
 
 """Sort fields for the `tradesPage` query."""
@@ -1550,7 +1712,7 @@ enum CollateralTransferSortField {
   TIMESTAMP
 }
 
-"""Visibility filter for the `conditionsPage` query"""
+"""Legacy condition visibility filter."""
 enum ConditionVisibility {
   PUBLIC
   PRIVATE
@@ -1570,11 +1732,7 @@ enum ConditionEngagement {
   ANY
 }
 
-"""
-Flat filter input for the `conditionsPage` query. Each field is optional;
-values combine with AND. Replaces the Prisma-derived `ConditionWhereInput`
-for client-facing access.
-"""
+"""Legacy flat filter input for removed offset-page condition access."""
 input ConditionFilters {
   """Restrict to these condition IDs (case-insensitive)."""
   ids: [String!]
@@ -1655,8 +1813,7 @@ input ConditionFilters {
 }
 
 """
-Flat filter input for the `conditionGroupsPage` query. Each field is optional;
-values combine with AND.
+Legacy flat filter input for removed offset-page condition group access.
 """
 input ConditionGroupFilters {
   """Restrict to these condition group IDs."""
@@ -1688,6 +1845,94 @@ input ConditionGroupFilters {
   included (admin-style use cases only).
   """
   includeEmpty: Boolean
+}
+
+"""
+Filter input for the Relay-shaped `conditions` connection. Combines
+with AND. Public-only — non-public conditions are out of scope here;
+admin paths need an explicit replacement surface if private-condition
+visibility is still required.
+"""
+input ConditionFilter {
+  """
+  Free-text search across `question`, `shortName`, and `description` (case-insensitive).
+  """
+  search: String
+
+  """
+  Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions.
+  """
+  conditionGroupId: IDFilter
+
+  """Restrict to conditions whose category id is in this set."""
+  categoryIds: [ID!]
+
+  """Restrict to conditions tagged with any of these values."""
+  tags: [String!]
+
+  """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
+  resolvesAt: IntFilter
+
+  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  estimatedPrice: FloatFilter
+
+  """Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`."""
+  similarMarketVolume: FloatFilter
+
+  """
+  Filter by resolution state. `{ isNull: true }` selects unsettled
+  conditions; `{ isNull: false }` selects settled (any outcome);
+  `{ equals: NON_DECISIVE }` selects voided settlements specifically.
+  """
+  outcome: ConditionOutcomeFilter
+}
+
+"""
+Filter input for the Relay-shaped `conditionGroups` connection. Combines
+with AND. Returns only groups with at least one public condition; the
+admin-only finer-grained switches need an explicit replacement surface if still required.
+"""
+input ConditionGroupFilter {
+  """Free-text search across the group's `name` (case-insensitive)."""
+  search: String
+
+  """Restrict to groups whose category id is in this set."""
+  categoryIds: [ID!]
+
+  """Restrict to groups whose conditions carry any of these tags."""
+  tags: [String!]
+}
+
+"""
+Filter input for the Relay-shaped `questions` connection. Combines
+with AND. Intentionally minimal — `categoryIds`, multi-tag, and
+`outcome` filters require runner changes to the underlying SQL UNION
+and are deferred to a follow-up. They will land as additive,
+non-breaking SDL extensions. For outcome-based filtering today, use
+`conditions(filter: {outcome:})`.
+"""
+input QuestionFilter {
+  """
+  Free-text search across the wrapped Condition/Group's title and description (case-insensitive).
+  """
+  search: String
+
+  """
+  Restrict to questions tagged with this value. Single-tag only at
+  the SDL level — the underlying union runner accepts one tag at a
+  time. Multi-tag (`[String!]`) will be added when the runner supports
+  it (additive, non-breaking).
+  """
+  tag: String
+
+  """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
+  resolvesAt: IntFilter
+
+  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  estimatedPrice: FloatFilter
+
+  """Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`."""
+  similarMarketVolume: FloatFilter
 }
 
 """
@@ -1824,6 +2069,51 @@ input AccountStatsFilters {
   to: UnixSeconds
   fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format (Int seconds), the new field drops the unit-suffix in favor of carrying the contract on the scalar type.")
   toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format (Int seconds), the new field drops the unit-suffix in favor of carrying the contract on the scalar type.")
+}
+
+"""
+Relay-style identifiable object. Types that implement `Node` carry a
+globally unique opaque `id` and are refetchable through the root
+`node(id:)` / `nodes(ids:)` fields. Domain identifiers (predictionId,
+hash, uid, address) remain on the entity as separate fields; `id` is a
+second identity layer used for cache normalization and polymorphic
+refetch.
+"""
+interface Node {
+  """
+  Opaque, globally unique identifier. Clients should treat this as a
+  refetch token only — do not parse, mint, or compare it to domain ids.
+  Stable for the lifetime of the entity it identifies.
+  """
+  id: ID!
+}
+
+"""
+Cursor-based pagination metadata for Relay-style connections. Sits
+alongside the legacy `Page` interface (offset/skip-based pagination)
+during the API redesign; new connection types use `PageInfo`, existing
+`*Page` types keep `Page`.
+"""
+type PageInfo {
+  """True if more rows exist after `endCursor` in the current ordering."""
+  hasNextPage: Boolean!
+
+  """True if more rows exist before `startCursor` in the current ordering."""
+  hasPreviousPage: Boolean!
+
+  """Cursor of the first edge in the page, or null when the page is empty."""
+  startCursor: String
+
+  """Cursor of the last edge in the page, or null when the page is empty."""
+  endCursor: String
+}
+
+"""
+Sort order shared across every `orderBy` input on the redesigned surface.
+"""
+enum OrderDirection {
+  ASC
+  DESC
 }
 
 """
@@ -2199,6 +2489,23 @@ input ActivityFilters {
 
 type Query {
   """
+  Refetch any `Node`-implementing entity by its opaque global id. Returns
+  `null` when the id is malformed, the type is not registered, or the
+  underlying entity has been deleted. Domain-id lookups (e.g.
+  `predictionByOnchainId`, `tradeByHash`) remain the preferred entry point
+  for new traffic; `node(id:)` exists so Relay-style clients can refetch
+  cached entities polymorphically without knowing their concrete type.
+  """
+  node(id: ID!): Node
+
+  """
+  Batched form of `node(id:)`. Preserves input order; each element is
+  resolved independently and may be null. Useful for client caches that
+  refresh many entities in one round trip.
+  """
+  nodes(ids: [ID!]!): [Node]!
+
+  """
   Accuracy rank and lifetime score for a single address. Mirrors
   `accountStatsRank`'s shape: stats fields are always populated (zero for
   unscored addresses), `rank` is null when the address is absent from the
@@ -2387,21 +2694,35 @@ type Query {
   account(address: String!): Account
   condition(where: ConditionWhereUniqueInput!): Condition @deprecated(reason: "Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape.")
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated(reason: "Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape.")
-  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal.")
 
   """
-  Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
-  
-  Sorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.
-  Defaults to `CREATED_AT` / `desc` when omitted.
+  Deprecated bare-array form. Retained unchanged for the one-release
+  deprecation window so pinned clients keep working. New callers
+  should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`.
   """
-  conditionGroupsPage(filters: ConditionGroupFilters, orderBy: ConditionGroupSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0): ConditionGroupsPage!
-  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal.")
+  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
 
   """
-  Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input.
+  Relay-shaped connection over `ConditionGroup` rows. Forward-only
+  cursor pagination via `first` / `after`. Replaces the deprecated
+  bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
+  (default-off, add per-PR where cheap).
   """
-  conditionsPage(filters: ConditionFilters, orderBy: ConditionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0): ConditionsPage!
+  conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder): ConditionGroupConnection!
+
+  """
+  Deprecated bare-array form. Retained unchanged for the one-release
+  deprecation window. New callers should use
+  `conditionsConnection(first:, after:, filter:, orderBy:)`.
+  """
+  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
+
+  """
+  Relay-shaped connection over `Condition` rows. Forward-only cursor
+  pagination via `first` / `after`. Replaces the deprecated bare
+  `conditions(where:)`. Public conditions only.
+  """
+  conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder): ConditionConnection!
 
   """Look up a single pick configuration by ID"""
   pickConfiguration(id: String!): PickConfiguration @deprecated(reason: "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsPage` for list lookups.")
@@ -2504,19 +2825,20 @@ type Query {
   protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated(reason: "Use `protocolStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.")
 
   """
-  Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
+  Deprecated bare-array form. Retained unchanged for the one-release
+  deprecation window so pinned clients keep working. New callers
+  should use `questionsConnection(first:, after:, filter:, orderBy:)`.
   """
-  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]! @deprecated(reason: "Use `questionsPage` — same data with a server-truth `hasMore` stop signal.")
+  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]! @deprecated(reason: "Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed.")
 
   """
-  Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
-  
-  Sorting uses `orderBy` / `orderDirection` to match the convention on
-  every other `*Page` resolver. The original `sortField` / `sortDirection`
-  args are retained for one release with `@deprecated`; new callers
-  should use `orderBy:` / `orderDirection:`.
+  Relay-shaped connection over `Question` rows — the interleaved
+  Condition / ConditionGroup feed. Forward-only cursor pagination via
+  `first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on
+  `QuestionConnection` because the underlying SQL UNION cannot produce
+  a single COUNT cheaply.
   """
-  questionsPage(filters: QuestionFilters, orderBy: QuestionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, sortDirection: SortOrder! = desc @deprecated(reason: "Use `orderDirection:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`)."), sortField: QuestionSortField @deprecated(reason: "Use `orderBy:` — the sort-arg naming is being unified across all `*Page` resolvers (`orderBy` / `orderDirection`).")): QuestionsPage!
+  questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder): QuestionConnection!
 
   """
   Look up a single secondary market trade by its trade hash. Pass
@@ -2635,14 +2957,60 @@ enum QueryMode {
 }
 
 """
-A question item — either a group of related conditions or a single ungrouped condition
+A question — derived view that interleaves grouped and ungrouped markets.
+A `Question` is **not** a durable entity (no `Node` membership, no
+`question(id:)` lookup). Identity flows through the wrapped `source`
+(either a `Condition` or a `ConditionGroup`), each of which already
+carries its own primary key.
 """
 type Question {
-  condition: Condition
-  group: ConditionGroup
-  predictionCount: Int
-  questionType: QuestionItemType!
+  """
+  The underlying entity this question wraps. Exactly one of
+  `Condition` | `ConditionGroup`. `__typename` discriminates between
+  the two; the legacy `questionType` field is the same information in
+  scalar form and is now `@deprecated`.
+  """
+  source: ConditionOrConditionGroup!
+
+  """
+  Display title forwarded from the source — `Condition.question` or `ConditionGroup.name`.
+  """
+  title: String!
+
+  """
+  Long-form description forwarded from the source (`Condition.description`); null for groups.
+  """
+  description: String
+  category: Category
+  tags: [String!]!
+
+  """
+  Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`.
+  """
+  openInterest: String
+
+  """24h similar-market volume forwarded from the source."""
+  volume: Float
+
+  """Creation timestamp forwarded from the source."""
+  createdAt: DateTimeISO!
+
+  """
+  Resolution time forwarded from the source — `Condition.endTime` or `ConditionGroup.maxEndTime`.
+  """
+  resolvesAt: UnixSeconds
+  condition: Condition @deprecated(reason: "Use `source` (union over Condition | ConditionGroup).")
+  group: ConditionGroup @deprecated(reason: "Use `source` (union over Condition | ConditionGroup).")
+  predictionCount: Int @deprecated(reason: "Use `source` and read `predictionCount` on the wrapped entity.")
+  questionType: QuestionItemType! @deprecated(reason: "Use `source.__typename`.")
 }
+
+"""
+Discriminated union over the two backing entities a `Question` can wrap.
+Clients use fragment spreads on `Condition` and `ConditionGroup` to read
+fields specific to each branch.
+"""
+union ConditionOrConditionGroup = Condition | ConditionGroup
 
 """
 Whether a question is a group of related conditions or a single condition
@@ -2662,8 +3030,7 @@ enum QuestionSortField {
 }
 
 """
-Flat filter input for the `questionsPage` query. Each field is optional;
-values combine with AND. Mirrors the inline-arg shape that the deprecated
+Legacy flat filter input mirroring the inline-arg shape that the deprecated
 `questions(...)` resolver kept.
 """
 input QuestionFilters {

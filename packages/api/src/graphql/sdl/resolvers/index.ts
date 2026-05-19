@@ -30,8 +30,6 @@ import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
 import { ActivityItemsPage } from './ActivityItemsPage';
 import { CollateralTransfersPage } from './CollateralTransfersPage';
-import { ConditionGroupsPage } from './ConditionGroupsPage';
-import { ConditionsPage } from './ConditionsPage';
 import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
@@ -39,7 +37,6 @@ import { Pick } from './Pick';
 import { PickConfigurationsPage } from './PickConfigurationsPage';
 import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
-import { QuestionsPage } from './QuestionsPage';
 import { Question, ConditionOrConditionGroup } from './Question';
 import { TradesPage } from './TradesPage';
 import { User } from './User';
@@ -63,13 +60,12 @@ import {
   collateralTransfersPage,
 } from './queries/collateralBalance';
 import { collateralTransfers } from './queries/deprecated/collateralBalance';
-import { conditionsConnection, conditionsPage } from './queries/conditions';
+import { conditionsConnection } from './queries/conditions';
 import {
   conditionGroup,
   conditionGroupsConnection,
-  conditionGroupsPage,
 } from './queries/conditionGroups';
-import { questionsConnection, questionsPage } from './queries/questions';
+import { questionsConnection } from './queries/questions';
 import { conditions } from './queries/deprecated/conditions';
 import { conditionGroups } from './queries/deprecated/conditionGroups';
 import { questions } from './queries/deprecated/questions';
@@ -152,10 +148,8 @@ export const resolvers: Resolvers = {
     // Conditions / questions
     conditions,
     conditionsConnection,
-    conditionsPage,
     questions,
     questionsConnection,
-    questionsPage,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
     closes,
@@ -186,7 +180,6 @@ export const resolvers: Resolvers = {
     conditionGroup,
     conditionGroups,
     conditionGroupsConnection,
-    conditionGroupsPage,
     user,
     users,
   },
@@ -200,8 +193,6 @@ export const resolvers: Resolvers = {
   CollateralTransfersPage,
   Condition,
   ConditionGroup,
-  ConditionGroupsPage,
-  ConditionsPage,
   LegacyPosition,
   LegacyPrediction,
   LimitOrder,
@@ -209,7 +200,6 @@ export const resolvers: Resolvers = {
   PickConfigurationsPage,
   PositionsPage,
   PredictionsPage,
-  QuestionsPage,
   Question,
   ConditionOrConditionGroup,
   TradesPage,
