@@ -42,10 +42,12 @@ import type {
 } from '../../__generated__/resolvers';
 import {
   QuestionItemType,
+  QuestionOrderField,
+  OrderDirection,
+  QuestionSortField,
+  SortOrder,
+  VolumeWindow,
   type ResolutionStatus,
-  type VolumeWindow,
-  type QuestionSortField,
-  type SortOrder,
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
@@ -766,15 +768,57 @@ const offsetFromCursor = (cursor: string | null | undefined): number => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 };
 
+/**
+ * Map the public `QuestionOrderField` enum to the internal
+ * `QuestionSortField` (plus a `VolumeWindow` for windowed-volume sorts).
+ * `OPEN_INTEREST` is intentionally not in `QuestionOrderField`; if the
+ * enum ever grows a value not covered here, fall through to the
+ * runner's `CREATED_AT DESC` default.
+ */
+const mapOrderField = (
+  field: QuestionOrderField
+): { sortField: QuestionSortField; volumeWindow: VolumeWindow | null } => {
+  switch (field) {
+    case QuestionOrderField.CreatedAt:
+      return { sortField: QuestionSortField.CreatedAt, volumeWindow: null };
+    case QuestionOrderField.ResolvesAt:
+      return { sortField: QuestionSortField.EndTime, volumeWindow: null };
+    case QuestionOrderField.PredictionCount:
+      return {
+        sortField: QuestionSortField.PredictionCount,
+        volumeWindow: null,
+      };
+    case QuestionOrderField.SimilarMarketVolume_24H:
+      return {
+        sortField: QuestionSortField.SimilarMarketVolume,
+        volumeWindow: VolumeWindow.TwentyFourHours,
+      };
+    case QuestionOrderField.SimilarMarketVolume_7D:
+      return {
+        sortField: QuestionSortField.SimilarMarketVolume,
+        volumeWindow: VolumeWindow.SevenDays,
+      };
+    default:
+      return { sortField: QuestionSortField.CreatedAt, volumeWindow: null };
+  }
+};
+
 export const questions: NonNullable<QueryResolvers['questions']> = async (
   _parent,
-  // `orderBy` deliberately unread for now — `runQuestions` defaults to
-  // CREATED_AT DESC. Wiring `orderBy` through is the follow-up that
-  // upgrades the connection from offset-as-cursor to true keyset.
-  { first, after, filter, orderBy: _orderBy }
+  { first, after, filter, orderBy }
 ) => {
   const take = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
   const skip = offsetFromCursor(after);
+
+  const mapped = orderBy?.field
+    ? mapOrderField(orderBy.field)
+    : { sortField: null, volumeWindow: null };
+  const sortDirection: SortOrder | null =
+    orderBy?.direction === OrderDirection.Asc
+      ? SortOrder.Asc
+      : orderBy?.direction === OrderDirection.Desc
+        ? SortOrder.Desc
+        : null;
 
   const { items, hasMore } = await runQuestions({
     take,
@@ -791,9 +835,9 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
     maxEstimatedPrice: null,
     minSimilarMarketVolume: null,
     maxSimilarMarketVolume: null,
-    similarMarketVolumeWindow: null,
-    sortField: null,
-    sortDirection: null,
+    similarMarketVolumeWindow: mapped.volumeWindow,
+    sortField: mapped.sortField,
+    sortDirection,
   });
 
   const edges = items.map((item, idx) => ({

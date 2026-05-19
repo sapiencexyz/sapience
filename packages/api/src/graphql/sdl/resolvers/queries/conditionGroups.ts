@@ -135,10 +135,11 @@ export const conditionGroupsPage: NonNullable<
  * Map `ConditionGroupOrderField` enum values to the underlying Prisma
  * column. Every value is index-backed (see `IDX_cg_*` declarations).
  */
+// `OPEN_INTEREST` intentionally not represented — held back together
+// with the Condition-side enum (see SDL docs).
 const CONNECTION_ORDER_FIELD_MAP: Record<ConditionGroupOrderField, string> = {
   [ConditionGroupOrderField.CreatedAt]: 'maxCreatedAtEpoch',
   [ConditionGroupOrderField.ResolvesAt]: 'maxEndTime',
-  [ConditionGroupOrderField.OpenInterest]: 'totalOpenInterest',
   [ConditionGroupOrderField.PredictionCount]: 'totalPredictionCount',
   [ConditionGroupOrderField.SimilarMarketVolume_24H]:
     'totalSimilarMarketVolume24h',
@@ -179,7 +180,6 @@ type PrismaConditionGroupPick = {
   createdAt: Date;
   maxCreatedAtEpoch: bigint;
   maxEndTime: number;
-  totalOpenInterest: unknown;
   totalPredictionCount: number;
   totalSimilarMarketVolume24h: unknown;
   totalSimilarMarketVolume7d: unknown;
@@ -194,8 +194,6 @@ const readGroupOrderKey = (
       return String(row.maxCreatedAtEpoch);
     case ConditionGroupOrderField.ResolvesAt:
       return String(row.maxEndTime);
-    case ConditionGroupOrderField.OpenInterest:
-      return String(row.totalOpenInterest);
     case ConditionGroupOrderField.PredictionCount:
       return String(row.totalPredictionCount);
     case ConditionGroupOrderField.SimilarMarketVolume_24H:

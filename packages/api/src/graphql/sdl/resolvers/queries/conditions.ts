@@ -185,14 +185,15 @@ export const conditionsPage: NonNullable<
 // ---------------------------------------------------------------------
 
 /**
- * Map `ConditionOrderField` enum values to the underlying Prisma column
- * name. Every value is index-backed — see `IDX_condition_*` declarations
- * in `prisma/schema.prisma`.
+ * Map `ConditionOrderField` enum values to the underlying Prisma column.
+ * `OPEN_INTEREST` is intentionally not represented — the column is
+ * varchar, the partial index `IDX_condition_oi_numeric` is on the
+ * `::numeric` cast, and Prisma's typed `orderBy` can't issue that cast.
+ * Adding it back requires raw SQL; see SDL docs on `ConditionOrderField`.
  */
 const CONNECTION_ORDER_FIELD_MAP: Record<ConditionOrderField, string> = {
   [ConditionOrderField.CreatedAt]: 'createdAt',
   [ConditionOrderField.ResolvesAt]: 'endTime',
-  [ConditionOrderField.OpenInterest]: 'openInterest',
   [ConditionOrderField.PredictionCount]: 'predictionCount',
   [ConditionOrderField.SimilarMarketVolume_24H]: 'similarMarketVolume24h',
   [ConditionOrderField.SimilarMarketVolume_7D]: 'similarMarketVolume7d',
@@ -313,10 +314,11 @@ const buildCursorPredicate = (
   direction: 'asc' | 'desc'
 ): Where => {
   const ltOp = direction === 'desc' ? 'lt' : 'gt';
-  const coerced = prismaOrderField === 'openInterest' ? k : Number(k);
-  // `openInterest` is a varchar column (Decimal stored as string in the
-  // condition table); every other order column is numeric, so we coerce.
-  const keyValue = Number.isFinite(coerced as number) ? coerced : k;
+  // All currently-supported order fields are numeric (Int / Float /
+  // BigInt / Date). `OPEN_INTEREST` (varchar) is intentionally not in
+  // the connection's supported sort set — see SDL docs.
+  const numeric = Number(k);
+  const keyValue = Number.isFinite(numeric) ? numeric : k;
   return {
     OR: [
       { [prismaOrderField]: { [ltOp]: keyValue } } as Where,
@@ -344,8 +346,6 @@ const readOrderKey = (
       return row.createdAt.toISOString();
     case ConditionOrderField.ResolvesAt:
       return String(row.endTime);
-    case ConditionOrderField.OpenInterest:
-      return row.openInterest;
     case ConditionOrderField.PredictionCount:
       return String(row.predictionCount);
     case ConditionOrderField.SimilarMarketVolume_24H:
@@ -361,7 +361,6 @@ type PrismaConditionPick = {
   id: string;
   createdAt: Date;
   endTime: number;
-  openInterest: string;
   predictionCount: number;
   similarMarketVolume24h: number;
   similarMarketVolume7d: number;

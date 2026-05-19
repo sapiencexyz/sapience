@@ -1781,15 +1781,20 @@ map to existing partial indexes on the `condition` table:
 
 - `CREATED_AT` → `IDX_condition_public_createdat`
 - `RESOLVES_AT` → `IDX_condition_public_endtime` (column: `endTime`)
-- `OPEN_INTEREST` → `IDX_condition_oi_numeric`
 - `PREDICTION_COUNT` → `IDX_condition_prediction_count`
 - `SIMILAR_MARKET_VOLUME_24H` → `IDX_condition_public_volume24h`
 - `SIMILAR_MARKET_VOLUME_7D` → `IDX_condition_public_volume7d`
+
+`OPEN_INTEREST` is intentionally omitted. The underlying
+`Condition.openInterest` column is varchar; the partial index
+`IDX_condition_oi_numeric` is on the `::numeric` cast expression, so
+typed Prisma `orderBy` would sort lexicographically (`"9" > "1000"`)
+and miss the index. Lands together with raw-SQL numeric sort in a
+follow-up — additive, non-breaking.
 """
 enum ConditionOrderField {
   CREATED_AT
   RESOLVES_AT
-  OPEN_INTEREST
   PREDICTION_COUNT
   SIMILAR_MARKET_VOLUME_24H
   SIMILAR_MARKET_VOLUME_7D
@@ -1805,13 +1810,19 @@ input ConditionGroupOrder {
 Sort fields for the Relay-shaped `conditionGroups` connection. Mirrors
 the Condition enum value names; the resolver maps each to the
 group-level denormalized aggregate column (`maxCreatedAtEpoch`,
-`maxEndTime`, `totalOpenInterest`, `totalPredictionCount`,
-`totalSimilarMarketVolume24h`, `totalSimilarMarketVolume7d`).
+`maxEndTime`, `totalPredictionCount`, `totalSimilarMarketVolume24h`,
+`totalSimilarMarketVolume7d`).
+
+`OPEN_INTEREST` is intentionally omitted — symmetric with
+`ConditionOrderField` above. The `totalOpenInterest` column is
+Decimal (not varchar), so the numeric-sort issue doesn't apply at the
+group level — but listing `OPEN_INTEREST` on `ConditionGroupOrderField`
+without listing it on `ConditionOrderField` would be confusingly
+asymmetric, so we hold both back together.
 """
 enum ConditionGroupOrderField {
   CREATED_AT
   RESOLVES_AT
-  OPEN_INTEREST
   PREDICTION_COUNT
   SIMILAR_MARKET_VOLUME_24H
   SIMILAR_MARKET_VOLUME_7D
@@ -1826,13 +1837,14 @@ input QuestionOrder {
 """
 Sort fields for the Relay-shaped `questions` connection. The runner
 unions Conditions and ConditionGroups; sort values pick the column on
-each side (e.g., `OPEN_INTEREST` reads `condition.openInterest` for
-ungrouped rows and `conditionGroup.totalOpenInterest` for grouped rows).
+each side. `OPEN_INTEREST` is intentionally omitted (symmetric with
+`ConditionOrderField`) — the Condition side would sort the varchar
+column lexicographically; restore together with raw-SQL numeric sort
+in a follow-up.
 """
 enum QuestionOrderField {
   CREATED_AT
   RESOLVES_AT
-  OPEN_INTEREST
   PREDICTION_COUNT
   SIMILAR_MARKET_VOLUME_24H
   SIMILAR_MARKET_VOLUME_7D
@@ -2026,23 +2038,35 @@ input ConditionGroupFilter {
 
 """
 Filter input for the Relay-shaped `questions` connection. Combines
-with AND. Mirrors `ConditionFilter` semantics; the runner applies the
-filter to both the Condition and ConditionGroup sides of the union.
+with AND. The runner currently honors a subset of these fields; full
+parity with the underlying union runner lands in a follow-up. Fields
+not yet honored are documented per-field below.
 """
 input QuestionFilter {
-  """Free-text search across the wrapped Condition/Group's title and description (case-insensitive)."""
+  """Free-text search across the wrapped Condition/Group's title and description (case-insensitive). HONORED."""
   search: String
 
-  """Restrict to questions whose category id is in this set."""
+  """
+  Restrict to questions whose category id is in this set.
+  **NOT YET HONORED** — the union runner expects category slugs, not
+  ids; resolved together with multi-tag support in the follow-up that
+  also lands `OPEN_INTEREST` sort.
+  """
   categoryIds: [ID!]
 
-  """Restrict to questions tagged with any of these values."""
+  """
+  Restrict to questions tagged with any of these values.
+  **PARTIAL** — only the first element is currently applied to the
+  union runner (`tag: String`). Full multi-tag semantics land in the
+  same follow-up as `categoryIds`.
+  """
   tags: [String!]
 
   """
-  Filter by resolution state. Applies to the wrapped Condition's
-  `outcome` (and is rolled up across a Group's children). See
-  `ConditionOutcomeFilter` for semantics.
+  Filter by resolution state. **NOT YET HONORED** on `questions` — the
+  union runner does not yet support outcome-based filtering across both
+  Condition and ConditionGroup sides. Use `conditions(filter: {outcome:})`
+  for now if you need to slice by outcome.
   """
   outcome: ConditionOutcomeFilter
 }

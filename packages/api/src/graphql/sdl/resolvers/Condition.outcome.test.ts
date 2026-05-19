@@ -8,10 +8,17 @@ import { ConditionOutcome } from '../__generated__/resolvers';
  * matters because clients filter "settled vs unsettled" via
  * `outcome: { isNull: ... }` — the boundary between null and non-null
  * is the resolver's responsibility.
+ *
+ * Codegen types every field resolver as the `Resolver<T>` union, which
+ * isn't directly callable at the TS level. Cast through `unknown` to a
+ * plain function shape — the same pattern `Condition.test.ts` uses for
+ * `category`, `conditionGroup`, `attestations`, `predictions`.
  */
+type OutcomeFn = (parent: unknown) => string | null;
+
 describe('Condition.outcome — derivation from boolean state', () => {
-  const callOutcome = (parent: Record<string, unknown>) =>
-    Condition.outcome!(parent as never, {}, {} as never, {} as never);
+  const outcomeFn = (Condition as unknown as { outcome: OutcomeFn }).outcome;
+  const callOutcome = (parent: Record<string, unknown>) => outcomeFn(parent);
 
   it('returns null when unsettled', () => {
     expect(callOutcome({ id: 'c1', settled: false })).toBeNull();
