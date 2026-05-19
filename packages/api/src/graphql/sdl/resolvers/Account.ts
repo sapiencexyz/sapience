@@ -21,13 +21,13 @@ export const Account: AccountResolvers = {
   referredBy: async (parent, _args, ctx) => {
     const p = parent as PrismaUser;
     if (p.referredById == null) return null;
-    return ctx.loaders.userById.load(p.referredById);
+    return ctx.loaders!.userById.load(p.referredById);
   },
 
   referredByCode: async (parent, _args, ctx) => {
     const p = parent as PrismaUser;
     if (p.referredByCodeId == null) return null;
-    return ctx.loaders.referralCodeById.load(p.referredByCodeId);
+    return ctx.loaders!.referralCodeById.load(p.referredByCodeId);
   },
 
   referrals: async (parent) => {

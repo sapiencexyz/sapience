@@ -23,7 +23,6 @@ import { scalarResolvers } from './scalars';
 import { Account } from './Account';
 import { Attestation } from './Attestation';
 import { AttestationScore } from './AttestationScore';
-import { AttestationsPage } from './AttestationsPage';
 import { CategoriesPage } from './CategoriesPage';
 import { Category } from './Category';
 import { Condition } from './Condition';
@@ -32,13 +31,13 @@ import { ActivityItemsPage } from './ActivityItemsPage';
 import { CollateralTransfersPage } from './CollateralTransfersPage';
 import { ConditionGroupsPage } from './ConditionGroupsPage';
 import { ConditionsPage } from './ConditionsPage';
+import { Forecast } from './Forecast';
 import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
 import { PickConfigurationsPage } from './PickConfigurationsPage';
 import { PositionsPage } from './PositionsPage';
-import { PredictionsPage } from './PredictionsPage';
 import { QuestionsPage } from './QuestionsPage';
 import { Question, ConditionOrConditionGroup } from './Question';
 import { TradesPage } from './TradesPage';
@@ -75,10 +74,11 @@ import { conditionGroups } from './queries/deprecated/conditionGroups';
 import { questions } from './queries/deprecated/questions';
 import {
   account,
-  attestationsPage,
   categories,
   categoriesPage,
   condition,
+  forecastByUid,
+  forecastsConnection,
   user,
 } from './queries/crud';
 import { attestations, users } from './queries/deprecated/crud';
@@ -89,7 +89,8 @@ import {
   pickConfigurationsPage,
   positionsPage,
   prediction,
-  predictionsPage,
+  predictionByOnchainId,
+  predictionsConnection,
 } from './queries/escrow';
 import {
   pickConfigurations,
@@ -166,9 +167,10 @@ export const resolvers: Resolvers = {
     positions,
     positionsPage,
     prediction,
+    predictionByOnchainId,
     predictionCount,
     predictions,
-    predictionsPage,
+    predictionsConnection,
     // Secondary market trades
     trade,
     tradeCount,
@@ -179,7 +181,8 @@ export const resolvers: Resolvers = {
     // CRUD passthroughs
     account,
     attestations,
-    attestationsPage,
+    forecastByUid,
+    forecastsConnection,
     categories,
     categoriesPage,
     condition,
@@ -194,7 +197,6 @@ export const resolvers: Resolvers = {
   ActivityItemsPage,
   Attestation,
   AttestationScore,
-  AttestationsPage,
   CategoriesPage,
   Category,
   CollateralTransfersPage,
@@ -202,13 +204,13 @@ export const resolvers: Resolvers = {
   ConditionGroup,
   ConditionGroupsPage,
   ConditionsPage,
+  Forecast,
   LegacyPosition,
   LegacyPrediction,
   LimitOrder,
   Pick,
   PickConfigurationsPage,
   PositionsPage,
-  PredictionsPage,
   QuestionsPage,
   Question,
   ConditionOrConditionGroup,

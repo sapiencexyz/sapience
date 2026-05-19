@@ -1398,6 +1398,16 @@
         "possibleTypes": null
       },
       {
+        "kind": "SCALAR",
+        "name": "Address",
+        "description": "0x-prefixed lowercase 20-byte Ethereum address. Mixed-case checksum input is accepted and normalized to lowercase.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "OBJECT",
         "name": "Attestation",
         "description": null,
@@ -1695,87 +1705,6 @@
         ],
         "inputFields": null,
         "interfaces": [],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "INPUT_OBJECT",
-        "name": "AttestationFilters",
-        "description": "Flat filter input for the `attestationsPage` query. Each field is optional;\nvalues combine with AND.",
-        "fields": null,
-        "inputFields": [
-          {
-            "name": "uid",
-            "description": "Restrict to a single attestation by UID.",
-            "type": {
-              "kind": "SCALAR",
-              "name": "String",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "attester",
-            "description": "Restrict to a single attester address (case-insensitive).",
-            "type": {
-              "kind": "SCALAR",
-              "name": "String",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "recipient",
-            "description": "Restrict to a single recipient address (case-insensitive).",
-            "type": {
-              "kind": "SCALAR",
-              "name": "String",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "conditionId",
-            "description": "Restrict to attestations on a single condition.",
-            "type": {
-              "kind": "SCALAR",
-              "name": "String",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "schemaId",
-            "description": "Restrict to a single EAS schema ID.",
-            "type": {
-              "kind": "SCALAR",
-              "name": "String",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "minTime",
-            "description": "Restrict to attestations with `time >= this` (epoch seconds).",
-            "type": {
-              "kind": "SCALAR",
-              "name": "UnixSeconds",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "maxTime",
-            "description": "Restrict to attestations with `time <= this` (epoch seconds).",
-            "type": {
-              "kind": "SCALAR",
-              "name": "UnixSeconds",
-              "ofType": null
-            },
-            "defaultValue": null
-          }
-        ],
-        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },
@@ -2836,75 +2765,6 @@
         "possibleTypes": null
       },
       {
-        "kind": "OBJECT",
-        "name": "AttestationsPage",
-        "description": "Paginated wrapper around Attestation rows with a server-truth hasMore flag",
-        "fields": [
-          {
-            "name": "items",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "Attestation",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalCount",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "inputFields": null,
-        "interfaces": [
-          {
-            "kind": "INTERFACE",
-            "name": "Page",
-            "ofType": null
-          }
-        ],
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
         "kind": "INPUT_OBJECT",
         "name": "AttestationWhereInput",
         "description": null,
@@ -3618,6 +3478,16 @@
             "defaultValue": null
           }
         ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "SCALAR",
+        "name": "Bytes32",
+        "description": "0x-prefixed lowercase 32-byte hex value. Used for transaction hashes, EAS UIDs, and other 32-byte on-chain identifiers.",
+        "fields": null,
+        "inputFields": null,
         "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
@@ -5595,6 +5465,18 @@
             "deprecationReason": null
           },
           {
+            "name": "outcome",
+            "description": "Resolution state of this condition. `null` until the on-chain resolver\nreturns; once settled, carries the resolved value (`YES` / `NO` for\ndecisive outcomes, `NON_DECISIVE` for voids / ties). Filter \"settled\nvs unsettled\" via `outcome: { isNull: ... }` rather than relying on\nthe deprecated `settled: Boolean!` field.",
+            "args": [],
+            "type": {
+              "kind": "ENUM",
+              "name": "ConditionOutcome",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "predictionCount",
             "description": null,
             "args": [],
@@ -6027,6 +5909,81 @@
       },
       {
         "kind": "OBJECT",
+        "name": "ConditionConnection",
+        "description": "Relay-shaped connection over `Condition` rows.",
+        "fields": [
+          {
+            "name": "edges",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "ConditionEdge",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "nodes",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "Condition",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pageInfo",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "ConditionCount",
         "description": null,
         "fields": [
@@ -6091,6 +6048,49 @@
         "possibleTypes": null
       },
       {
+        "kind": "OBJECT",
+        "name": "ConditionEdge",
+        "description": "Cursor-bearing edge for `ConditionConnection`.",
+        "fields": [
+          {
+            "name": "node",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "Condition",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cursor",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "ENUM",
         "name": "ConditionEngagement",
         "description": "Engagement status for a Condition. A condition has \"engagement\" if it\nhas non-zero open interest OR at least one attestation. Used by\ncleanup workflows to find dead markets and recheck them.",
@@ -6111,6 +6111,113 @@
             "deprecationReason": null
           }
         ],
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "ConditionFilter",
+        "description": "Filter input for the Relay-shaped `conditions` connection. Combines\nwith AND. Public-only — non-public conditions are out of scope here;\nthe deprecated `conditionsPage` retains the `visibility` switch for\nadmin paths.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "search",
+            "description": "Free-text search across `question`, `shortName`, and `description` (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "conditionGroupId",
+            "description": "Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "IDFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "categoryIds",
+            "description": "Restrict to conditions whose category id is in this set.",
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "ID",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "tags",
+            "description": "Restrict to conditions tagged with any of these values.",
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "resolvesAt",
+            "description": "Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "IntFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "estimatedPrice",
+            "description": "Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "FloatFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "similarMarketVolume",
+            "description": "Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "FloatFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "outcome",
+            "description": "Filter by resolution state. `{ isNull: true }` selects unsettled\nconditions; `{ isNull: false }` selects settled (any outcome);\n`{ equals: NON_DECISIVE }` selects voided settlements specifically.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "ConditionOutcomeFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
         "possibleTypes": null
       },
       {
@@ -6559,6 +6666,81 @@
       },
       {
         "kind": "OBJECT",
+        "name": "ConditionGroupConnection",
+        "description": "Relay-shaped connection over `ConditionGroup` rows.",
+        "fields": [
+          {
+            "name": "edges",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "ConditionGroupEdge",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "nodes",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "ConditionGroup",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pageInfo",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "ConditionGroupCount",
         "description": null,
         "fields": [
@@ -6592,6 +6774,106 @@
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "ConditionGroupEdge",
+        "description": "Cursor-bearing edge for `ConditionGroupConnection`.",
+        "fields": [
+          {
+            "name": "node",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "ConditionGroup",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cursor",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "ConditionGroupFilter",
+        "description": "Filter input for the Relay-shaped `conditionGroups` connection. Combines\nwith AND. Returns only groups with at least one public condition; the\ndeprecated `conditionGroupsPage` retains finer-grained switches.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "search",
+            "description": "Free-text search across the group's `name` (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "categoryIds",
+            "description": "Restrict to groups whose category id is in this set.",
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "ID",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "tags",
+            "description": "Restrict to groups whose conditions carry any of these tags.",
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },
@@ -6746,6 +7028,45 @@
               "kind": "INPUT_OBJECT",
               "name": "ConditionGroupWhereInput",
               "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "ConditionGroupOrder",
+        "description": "Order input for the Relay-shaped `conditionGroups` connection.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "ConditionGroupOrderField",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "OrderDirection",
+                "ofType": null
+              }
             },
             "defaultValue": null
           }
@@ -6984,6 +7305,47 @@
         ],
         "interfaces": null,
         "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "ConditionGroupOrderField",
+        "description": "Sort fields for the Relay-shaped `conditionGroups` connection. Mirrors\nthe Condition enum value names; the resolver maps each to the\ngroup-level denormalized aggregate column (`maxCreatedAtEpoch`,\n`maxEndTime`, `totalPredictionCount`, `totalSimilarMarketVolume24h`,\n`totalSimilarMarketVolume7d`).\n\n`OPEN_INTEREST` is intentionally omitted — symmetric with\n`ConditionOrderField` above. The `totalOpenInterest` column is\nDecimal (not varchar), so the numeric-sort issue doesn't apply at the\ngroup level — but listing `OPEN_INTEREST` on `ConditionGroupOrderField`\nwithout listing it on `ConditionOrderField` would be confusingly\nasymmetric, so we hold both back together.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "CREATED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "RESOLVES_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "PREDICTION_COUNT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "SIMILAR_MARKET_VOLUME_24H",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "SIMILAR_MARKET_VOLUME_7D",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
         "possibleTypes": null
       },
       {
@@ -7812,6 +8174,66 @@
         "possibleTypes": null
       },
       {
+        "kind": "UNION",
+        "name": "ConditionOrConditionGroup",
+        "description": "Discriminated union over the two backing entities a `Question` can wrap.\nClients use fragment spreads on `Condition` and `ConditionGroup` to read\nfields specific to each branch.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": [
+          {
+            "kind": "OBJECT",
+            "name": "Condition",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "ConditionGroup",
+            "ofType": null
+          }
+        ]
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "ConditionOrder",
+        "description": "Order input for the Relay-shaped `conditions` connection.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "ConditionOrderField",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "OrderDirection",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "INPUT_OBJECT",
         "name": "ConditionOrderByRelationAggregateInput",
         "description": null,
@@ -8214,6 +8636,153 @@
             "type": {
               "kind": "ENUM",
               "name": "SortOrder",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "ConditionOrderField",
+        "description": "Sort fields for the Relay-shaped `conditions` connection. All values\nmap to existing partial indexes on the `condition` table:\n\n- `CREATED_AT` → `IDX_condition_public_createdat`\n- `RESOLVES_AT` → `IDX_condition_public_endtime` (column: `endTime`)\n- `PREDICTION_COUNT` → `IDX_condition_prediction_count`\n- `SIMILAR_MARKET_VOLUME_24H` → `IDX_condition_public_volume24h`\n- `SIMILAR_MARKET_VOLUME_7D` → `IDX_condition_public_volume7d`\n\n`OPEN_INTEREST` is intentionally omitted. The underlying\n`Condition.openInterest` column is varchar; the partial index\n`IDX_condition_oi_numeric` is on the `::numeric` cast expression, so\ntyped Prisma `orderBy` would sort lexicographically (`\"9\" > \"1000\"`)\nand miss the index. Lands together with raw-SQL numeric sort in a\nfollow-up — additive, non-breaking.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "CREATED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "RESOLVES_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "PREDICTION_COUNT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "SIMILAR_MARKET_VOLUME_24H",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "SIMILAR_MARKET_VOLUME_7D",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "ConditionOutcome",
+        "description": "Resolved state of a `Condition`. `YES` and `NO` are decisive resolutions\nof the binary outcome; `NON_DECISIVE` covers voided / tied / unresolvable\nsettlements (which the protocol collapses to `COUNTERPARTY_WINS` at the\nPrediction layer). Nullable on the wire — `null` means \"not yet settled.\"\n\nDerived at the resolver from `settled` / `resolvedToYes` / `nonDecisive`\ncolumns; clients should filter \"settled\" via `outcome: { isNull: false }`\nrather than depending on the legacy boolean fields.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "YES",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "NO",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "NON_DECISIVE",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "ConditionOutcomeFilter",
+        "description": "Operator-pattern filter for `ConditionOutcome` enum. `{ isNull: true }`\nselects unsettled conditions; `{ isNull: false }` selects settled\n(any outcome). `{ equals: NON_DECISIVE }` selects voided/non-decisive\nsettlements specifically. See `ConditionOutcome`.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "equals",
+            "description": null,
+            "type": {
+              "kind": "ENUM",
+              "name": "ConditionOutcome",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "in",
+            "description": null,
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "ConditionOutcome",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "notIn",
+            "description": null,
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "ConditionOutcome",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "not",
+            "description": null,
+            "type": {
+              "kind": "ENUM",
+              "name": "ConditionOutcome",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "isNull",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
               "ofType": null
             },
             "defaultValue": null
@@ -9493,6 +10062,16 @@
         "possibleTypes": null
       },
       {
+        "kind": "SCALAR",
+        "name": "DateTime",
+        "description": "A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "INPUT_OBJECT",
         "name": "DateTimeFilter",
         "description": null,
@@ -10193,6 +10772,425 @@
       },
       {
         "kind": "OBJECT",
+        "name": "Forecast",
+        "description": "Public Forecast surface backed by EAS attestation rows.",
+        "fields": [
+          {
+            "name": "forecastScore",
+            "description": null,
+            "args": [
+              {
+                "name": "where",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "AttestationScoreWhereInput",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "OBJECT",
+              "name": "AttestationScore",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "forecaster",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "blockNumber",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "comment",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "condition",
+            "description": null,
+            "args": [
+              {
+                "name": "where",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "ConditionWhereInput",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "OBJECT",
+              "name": "Condition",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "conditionId",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "createdAt",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "DateTimeISO",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "data",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "decodedDataJson",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "id",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "forecast",
+            "description": "Raw forecast value as recorded on-chain, returned as a decimal string in D18.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "recipient",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "resolver",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "schemaId",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "attestedAt",
+            "description": "When the forecast was made on-chain.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "UnixSeconds",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "transactionHash",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "uid",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "ForecastConnection",
+        "description": "Relay-shaped connection over `Forecast` rows.",
+        "fields": [
+          {
+            "name": "edges",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "ForecastEdge",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "nodes",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "Forecast",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pageInfo",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "ForecastEdge",
+        "description": "Cursor-bearing edge for `ForecastConnection`.",
+        "fields": [
+          {
+            "name": "node",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "Forecast",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cursor",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "ForecasterScore",
         "description": "DEPRECATED — kept only as the return type of `accountAccuracy`, which is\nitself `@deprecated`. The leaderboard-row shape lives on\n`AccountAccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation\ncounters (`numScored`, `numTimeWeighted`, `sumErrorSquared`,\n`sumTimeWeightedError`) were always returned as zeros from the resolver\neven on main, so callers should treat them as non-load-bearing.",
         "fields": [
@@ -10295,6 +11293,236 @@
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "ForecastFilter",
+        "description": "Filter input for the `forecastsConnection` query. Each field is optional;\nvalues combine with AND.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "uid",
+            "description": "Restrict to a single forecast by UID.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "forecaster",
+            "description": "Restrict to a single forecaster address (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "recipient",
+            "description": "Restrict to a single recipient address (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Restrict to forecasts on a single condition.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "schemaId",
+            "description": "Restrict to a single EAS schema ID.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "attestedAtMin",
+            "description": "Restrict to forecasts with `attestedAt >= this` (epoch seconds).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "attestedAtMax",
+            "description": "Restrict to forecasts with `attestedAt <= this` (epoch seconds).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "ForecastOrder",
+        "description": "Order input for `forecastsConnection`.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "ForecastOrderField",
+                "ofType": null
+              }
+            },
+            "defaultValue": "ATTESTED_AT"
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "OrderDirection",
+                "ofType": null
+              }
+            },
+            "defaultValue": "DESC"
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "ForecastOrderField",
+        "description": "Sort fields for `forecastsConnection`.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "ATTESTED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "CREATED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
+        "kind": "SCALAR",
+        "name": "ID",
+        "description": "The `ID` scalar type represents a unique identifier, often used to refetch an object or as key for a cache. The ID type appears in a JSON response as a String; however, it is not intended to be human-readable. When expected as an input type, any string (such as `\"4\"`) or integer (such as `4`) input value will be accepted as an ID.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "IDFilter",
+        "description": "Operator-pattern filter for `ID` scalar fields. Supports equality,\nmembership, negation, and null. Resolvers reject unsupported operators\non a per-field basis (e.g., a non-nullable column rejects `isNull`).",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "equals",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "ID",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "in",
+            "description": null,
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "ID",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "notIn",
+            "description": null,
+            "type": {
+              "kind": "LIST",
+              "name": null,
+              "ofType": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "ID",
+                  "ofType": null
+                }
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "not",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "ID",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "isNull",
+            "description": null,
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },
@@ -14524,6 +15752,33 @@
         "possibleTypes": null
       },
       {
+        "kind": "INTERFACE",
+        "name": "Node",
+        "description": "Relay-style identifiable object. Types that implement `Node` carry a\nglobally unique opaque `id` and are refetchable through the root\n`node(id:)` / `nodes(ids:)` fields. Domain identifiers (predictionId,\nhash, uid, address) remain on the entity as separate fields; `id` is a\nsecond identity layer used for cache normalization and polymorphic\nrefetch.",
+        "fields": [
+          {
+            "name": "id",
+            "description": "Opaque, globally unique identifier. Clients should treat this as a\nrefetch token only — do not parse, mint, or compare it to domain ids.\nStable for the lifetime of the entity it identifies.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "ID",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": []
+      },
+      {
         "kind": "ENUM",
         "name": "NullsOrder",
         "description": null,
@@ -14539,6 +15794,29 @@
           },
           {
             "name": "last",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "OrderDirection",
+        "description": "Sort order shared across every `orderBy` input on the redesigned surface.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "ASC",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "DESC",
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null
@@ -14596,11 +15874,6 @@
           },
           {
             "kind": "OBJECT",
-            "name": "PredictionsPage",
-            "ofType": null
-          },
-          {
-            "kind": "OBJECT",
             "name": "PickConfigurationsPage",
             "ofType": null
           },
@@ -14636,11 +15909,6 @@
           },
           {
             "kind": "OBJECT",
-            "name": "AttestationsPage",
-            "ofType": null
-          },
-          {
-            "kind": "OBJECT",
             "name": "CategoriesPage",
             "ofType": null
           },
@@ -14650,6 +15918,73 @@
             "ofType": null
           }
         ]
+      },
+      {
+        "kind": "OBJECT",
+        "name": "PageInfo",
+        "description": "Cursor-based pagination metadata for Relay-style connections. Sits\nalongside the legacy `Page` interface (offset/skip-based pagination)\nduring the API redesign; new connection types use `PageInfo`, existing\n`*Page` types keep `Page`.",
+        "fields": [
+          {
+            "name": "hasNextPage",
+            "description": "True if more rows exist after `endCursor` in the current ordering.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "hasPreviousPage",
+            "description": "True if more rows exist before `startCursor` in the current ordering.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "startCursor",
+            "description": "Cursor of the first edge in the page, or null when the page is empty.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "endCursor",
+            "description": "Cursor of the last edge in the page, or null when the page is empty.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
       },
       {
         "kind": "OBJECT",
@@ -15990,6 +17325,97 @@
       },
       {
         "kind": "OBJECT",
+        "name": "PredictionConnection",
+        "description": "Relay-shaped connection over `Prediction` rows.",
+        "fields": [
+          {
+            "name": "edges",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "PredictionEdge",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "nodes",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "Prediction",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pageInfo",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
         "name": "PredictionCountDataPoint",
         "description": "Time-bucketed prediction-count data point with outcome breakdown (legacy).",
         "fields": [
@@ -16096,6 +17522,140 @@
         "possibleTypes": null
       },
       {
+        "kind": "OBJECT",
+        "name": "PredictionEdge",
+        "description": "Cursor-bearing edge for `PredictionConnection`.",
+        "fields": [
+          {
+            "name": "node",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "Prediction",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cursor",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "PredictionFilter",
+        "description": "Filter input for the `predictionsConnection` query. Each field is optional;\nvalues combine with AND.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "address",
+            "description": "Restrict to predictions where the address is predictor or counterparty (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "chainId",
+            "description": "Restrict to a single chain.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Restrict to predictions on a single condition (via the pickConfig join).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "isLegacy",
+            "description": "Restrict to legacy (true) or non-legacy (false) predictions.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "settled",
+            "description": "Restrict to settled (true) or unsettled (false) predictions.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "result",
+            "description": "Restrict to predictions whose pickConfig settled with this result.",
+            "type": {
+              "kind": "ENUM",
+              "name": "SettlementResult",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "endsAtMin",
+            "description": "Restrict to predictions whose pickConfig `endsAt >= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "endsAtMax",
+            "description": "Restrict to predictions whose pickConfig `endsAt <= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "INPUT_OBJECT",
         "name": "PredictionFilters",
         "description": "Flat filter input for the `predictionsPage` query. Each field is optional;\nvalues combine with AND.",
@@ -16187,9 +17747,48 @@
         "possibleTypes": null
       },
       {
+        "kind": "INPUT_OBJECT",
+        "name": "PredictionOrder",
+        "description": "Order input for `predictionsConnection`.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "PredictionOrderField",
+                "ofType": null
+              }
+            },
+            "defaultValue": "CREATED_AT"
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "OrderDirection",
+                "ofType": null
+              }
+            },
+            "defaultValue": "DESC"
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
         "kind": "ENUM",
-        "name": "PredictionSortField",
-        "description": "Field to sort predictions by",
+        "name": "PredictionOrderField",
+        "description": "Sort fields for `predictionsConnection`.",
         "fields": null,
         "inputFields": null,
         "interfaces": null,
@@ -16210,72 +17809,26 @@
         "possibleTypes": null
       },
       {
-        "kind": "OBJECT",
-        "name": "PredictionsPage",
-        "description": "Paginated wrapper around Prediction rows with a server-truth hasMore flag",
-        "fields": [
-          {
-            "name": "items",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "Prediction",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "totalCount",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "Int",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
+        "kind": "ENUM",
+        "name": "PredictionSortField",
+        "description": "Field to sort predictions by",
+        "fields": null,
         "inputFields": null,
-        "interfaces": [
+        "interfaces": null,
+        "enumValues": [
           {
-            "kind": "INTERFACE",
-            "name": "Page",
-            "ofType": null
+            "name": "CREATED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "SETTLED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
-        "enumValues": null,
         "possibleTypes": null
       },
       {
@@ -16477,6 +18030,76 @@
         "name": "Query",
         "description": null,
         "fields": [
+          {
+            "name": "node",
+            "description": "Refetch any `Node`-implementing entity by its opaque global id. Returns\n`null` when the id is malformed, the type is not registered, or the\nunderlying entity has been deleted. Domain-id lookups (e.g.\n`predictionByOnchainId`, `tradeByHash`) remain the preferred entry point\nfor new traffic; `node(id:)` exists so Relay-style clients can refetch\ncached entities polymorphically without knowing their concrete type.",
+            "args": [
+              {
+                "name": "id",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "ID",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "INTERFACE",
+              "name": "Node",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "nodes",
+            "description": "Batched form of `node(id:)`. Preserves input order; each element is\nresolved independently and may be null. Useful for client caches that\nrefresh many entities in one round trip.",
+            "args": [
+              {
+                "name": "ids",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "LIST",
+                    "name": null,
+                    "ofType": {
+                      "kind": "NON_NULL",
+                      "name": null,
+                      "ofType": {
+                        "kind": "SCALAR",
+                        "name": "ID",
+                        "ofType": null
+                      }
+                    }
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "INTERFACE",
+                  "name": "Node",
+                  "ofType": null
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
           {
             "name": "accountAccuracyRank",
             "description": "Accuracy rank and lifetime score for a single address. Mirrors\n`accountStatsRank`'s shape: stats fields are always populated (zero for\nunscored addresses), `rank` is null when the address is absent from the\nranked set, and `totalParticipants` is the size of the scored-forecaster\nset.",
@@ -17424,15 +19047,35 @@
             "deprecationReason": "Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal."
           },
           {
-            "name": "attestationsPage",
-            "description": "Same as `attestations`, but with a purpose-built `AttestationFilters` input and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.\n\nFiltering is via `filters: AttestationFilters`. The flat-arg filters\n(`uid`, `attester`, `recipient`, `conditionId`, `schemaId`, `minTime`,\n`maxTime`) are retained for one release with `@deprecated` so existing\ncallers can migrate without breaking; new callers should use `filters:`.",
+            "name": "forecastsConnection",
+            "description": "Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.",
             "args": [
               {
-                "name": "filters",
+                "name": "first",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": "50"
+              },
+              {
+                "name": "after",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filter",
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "AttestationFilters",
+                  "name": "ForecastFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -17441,49 +19084,11 @@
                 "name": "orderBy",
                 "description": null,
                 "type": {
-                  "kind": "ENUM",
-                  "name": "AttestationSortField",
+                  "kind": "INPUT_OBJECT",
+                  "name": "ForecastOrder",
                   "ofType": null
                 },
                 "defaultValue": null
-              },
-              {
-                "name": "orderDirection",
-                "description": null,
-                "type": {
-                  "kind": "ENUM",
-                  "name": "SortOrder",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "50"
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
               }
             ],
             "type": {
@@ -17491,9 +19096,36 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "AttestationsPage",
+                "name": "ForecastConnection",
                 "ofType": null
               }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "forecastByUid",
+            "description": null,
+            "args": [
+              {
+                "name": "uid",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "OBJECT",
+              "name": "Forecast",
+              "ofType": null
             },
             "isDeprecated": false,
             "deprecationReason": null
@@ -18219,7 +19851,7 @@
           },
           {
             "name": "conditionGroups",
-            "description": null,
+            "description": "Deprecated bare-array form. Retained unchanged for the one-release\ndeprecation window so pinned clients keep working. New callers\nshould use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`\n(Relay-shaped) or `conditionGroupsPage(filters:)` (offset-paginated).",
             "args": [
               {
                 "name": "cursor",
@@ -18316,7 +19948,64 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal."
+            "deprecationReason": "Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data."
+          },
+          {
+            "name": "conditionGroupsConnection",
+            "description": "Relay-shaped connection over `ConditionGroup` rows. Forward-only\ncursor pagination via `first` / `after`. Replaces the deprecated\nbare `conditionGroups(where:)` and the offset-paginated\n`conditionGroupsPage`. `totalCount` is omitted per design-doc D3\n(default-off, add per-PR where cheap).",
+            "args": [
+              {
+                "name": "first",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "after",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filter",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "ConditionGroupFilter",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderBy",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "ConditionGroupOrder",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "ConditionGroupConnection",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "conditionGroupsPage",
@@ -18390,12 +20079,12 @@
                 "ofType": null
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data."
           },
           {
             "name": "conditions",
-            "description": null,
+            "description": "Deprecated bare-array form. Retained unchanged for the one-release\ndeprecation window. New callers should use\n`conditionsConnection(first:, after:, filter:, orderBy:)` (Relay-shaped)\nor `conditionsPage(filters:)` (offset-paginated).",
             "args": [
               {
                 "name": "cursor",
@@ -18492,7 +20181,64 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal."
+            "deprecationReason": "Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data."
+          },
+          {
+            "name": "conditionsConnection",
+            "description": "Relay-shaped connection over `Condition` rows. Forward-only cursor\npagination via `first` / `after`. Replaces the deprecated bare\n`conditions(where:)` and the offset-paginated `conditionsPage`.\nPublic conditions only — admin-style visibility switches live on the\ndeprecated `conditionsPage` for the migration window.",
+            "args": [
+              {
+                "name": "first",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "after",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filter",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "ConditionFilter",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderBy",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "ConditionOrder",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "ConditionConnection",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "conditionsPage",
@@ -18566,8 +20312,8 @@
                 "ofType": null
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data. Admin-only filters (`visibility`, `engagement`) remain on this resolver during the migration window."
           },
           {
             "name": "pickConfiguration",
@@ -19129,6 +20875,33 @@
             "deprecationReason": null
           },
           {
+            "name": "predictionByOnchainId",
+            "description": null,
+            "args": [
+              {
+                "name": "predictionId",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "OBJECT",
+              "name": "Prediction",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "predictionCount",
             "description": "Count of escrow predictions involving the given address",
             "args": [
@@ -19293,15 +21066,35 @@
             "deprecationReason": "Use `predictionsPage` — same data with a server-truth `hasMore` stop signal."
           },
           {
-            "name": "predictionsPage",
-            "description": "Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.\n\nFiltering is via `filters: PredictionFilters`. The flat-arg filters\n(`address`, `chainId`, `conditionId`, `isLegacy`, `settled`) are\nretained for one release with `@deprecated` so existing callers can\nmigrate without breaking; new callers should use `filters:`.",
+            "name": "predictionsConnection",
+            "description": "Relay-style prediction list. Defaults to createdAt DESC.",
             "args": [
               {
-                "name": "filters",
+                "name": "first",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": "50"
+              },
+              {
+                "name": "after",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filter",
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "PredictionFilters",
+                  "name": "PredictionFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -19310,49 +21103,11 @@
                 "name": "orderBy",
                 "description": null,
                 "type": {
-                  "kind": "ENUM",
-                  "name": "PredictionSortField",
+                  "kind": "INPUT_OBJECT",
+                  "name": "PredictionOrder",
                   "ofType": null
                 },
                 "defaultValue": null
-              },
-              {
-                "name": "orderDirection",
-                "description": null,
-                "type": {
-                  "kind": "ENUM",
-                  "name": "SortOrder",
-                  "ofType": null
-                },
-                "defaultValue": null
-              },
-              {
-                "name": "take",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "50"
-              },
-              {
-                "name": "skip",
-                "description": null,
-                "type": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
-                  }
-                },
-                "defaultValue": "0"
               }
             ],
             "type": {
@@ -19360,7 +21115,7 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "PredictionsPage",
+                "name": "PredictionConnection",
                 "ofType": null
               }
             },
@@ -19521,7 +21276,7 @@
           },
           {
             "name": "questions",
-            "description": "Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field",
+            "description": "Deprecated bare-array form. Retained unchanged for the one-release\ndeprecation window so pinned clients keep working. New callers\nshould use `questionsConnection(first:, after:, filter:, orderBy:)`\n(Relay-shaped) or `questionsPage(filters:)` (offset-paginated).",
             "args": [
               {
                 "name": "categorySlugs",
@@ -19712,7 +21467,64 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `questionsPage` — same data with a server-truth `hasMore` stop signal."
+            "deprecationReason": "Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed."
+          },
+          {
+            "name": "questionsConnection",
+            "description": "Relay-shaped connection over `Question` rows — the interleaved\nCondition / ConditionGroup feed. Forward-only cursor pagination via\n`first` / `after`. Replaces the deprecated bare `questions(...)` and\nthe offset-paginated `questionsPage`. `totalCount` is omitted on\n`QuestionConnection` because the underlying SQL UNION cannot produce\na single COUNT cheaply.",
+            "args": [
+              {
+                "name": "first",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "after",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filter",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "QuestionFilter",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderBy",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "QuestionOrder",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "QuestionConnection",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           },
           {
             "name": "questionsPage",
@@ -19786,8 +21598,8 @@
                 "ofType": null
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved Condition / ConditionGroup feed."
           },
           {
             "name": "trade",
@@ -20266,8 +22078,140 @@
       {
         "kind": "OBJECT",
         "name": "Question",
-        "description": "A question item — either a group of related conditions or a single ungrouped condition",
+        "description": "A question — derived view that interleaves grouped and ungrouped markets.\nA `Question` is **not** a durable entity (no `Node` membership, no\n`question(id:)` lookup). Identity flows through the wrapped `source`\n(either a `Condition` or a `ConditionGroup`), each of which already\ncarries its own primary key.",
         "fields": [
+          {
+            "name": "source",
+            "description": "The underlying entity this question wraps. Exactly one of\n`Condition` | `ConditionGroup`. `__typename` discriminates between\nthe two; the legacy `questionType` field is the same information in\nscalar form and is now `@deprecated`.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "UNION",
+                "name": "ConditionOrConditionGroup",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "title",
+            "description": "Display title forwarded from the source — `Condition.question` or `ConditionGroup.name`.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "description",
+            "description": "Long-form description forwarded from the source (`Condition.description`); null for groups.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "category",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "OBJECT",
+              "name": "Category",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "tags",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "openInterest",
+            "description": "Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "volume",
+            "description": "24h similar-market volume forwarded from the source.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Float",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "createdAt",
+            "description": "Creation timestamp forwarded from the source.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "DateTimeISO",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "resolvesAt",
+            "description": "Resolution time forwarded from the source — `Condition.endTime` or `ConditionGroup.maxEndTime`.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
           {
             "name": "condition",
             "description": null,
@@ -20277,8 +22221,8 @@
               "name": "Condition",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `source` (union over Condition | ConditionGroup)."
           },
           {
             "name": "group",
@@ -20289,8 +22233,8 @@
               "name": "ConditionGroup",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `source` (union over Condition | ConditionGroup)."
           },
           {
             "name": "predictionCount",
@@ -20301,8 +22245,8 @@
               "name": "Int",
               "ofType": null
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `source` and read `predictionCount` on the wrapped entity."
           },
           {
             "name": "questionType",
@@ -20317,12 +22261,191 @@
                 "ofType": null
               }
             },
+            "isDeprecated": true,
+            "deprecationReason": "Use `source.__typename`."
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "QuestionConnection",
+        "description": "Relay-shaped connection over `Question` rows. `totalCount` is\nintentionally omitted — the underlying SQL UNION over `condition_group`\nand ungrouped `condition` rows cannot produce a single COUNT cheaply.",
+        "fields": [
+          {
+            "name": "edges",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "QuestionEdge",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "nodes",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "Question",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pageInfo",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PageInfo",
+                "ofType": null
+              }
+            },
             "isDeprecated": false,
             "deprecationReason": null
           }
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "QuestionEdge",
+        "description": "Cursor-bearing edge for `QuestionConnection`.",
+        "fields": [
+          {
+            "name": "node",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "Question",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "cursor",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "QuestionFilter",
+        "description": "Filter input for the Relay-shaped `questions` connection. Combines\nwith AND. Intentionally minimal — `categoryIds`, multi-tag, and\n`outcome` filters require runner changes to the underlying SQL UNION\nand are deferred to a follow-up. They will land as additive,\nnon-breaking SDL extensions. For outcome-based filtering today, use\n`conditions(filter: {outcome:})`.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "search",
+            "description": "Free-text search across the wrapped Condition/Group's title and description (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "tag",
+            "description": "Restrict to questions tagged with this value. Single-tag only at\nthe SDL level — the underlying union runner accepts one tag at a\ntime. Multi-tag (`[String!]`) will be added when the runner supports\nit (additive, non-breaking).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "resolvesAt",
+            "description": "Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "IntFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "estimatedPrice",
+            "description": "Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "FloatFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "similarMarketVolume",
+            "description": "Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "FloatFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },
@@ -20499,6 +22622,86 @@
           },
           {
             "name": "group",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "QuestionOrder",
+        "description": "Order input for the Relay-shaped `questions` connection.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "QuestionOrderField",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "OrderDirection",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "QuestionOrderField",
+        "description": "Sort fields for the Relay-shaped `questions` connection. The runner\nunions Conditions and ConditionGroups; sort values pick the column on\neach side. `OPEN_INTEREST` is intentionally omitted (symmetric with\n`ConditionOrderField`) — the Condition side would sort the varchar\ncolumn lexicographically; restore together with raw-SQL numeric sort\nin a follow-up.",
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "CREATED_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "RESOLVES_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "PREDICTION_COUNT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "SIMILAR_MARKET_VOLUME_24H",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "SIMILAR_MARKET_VOLUME_7D",
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null

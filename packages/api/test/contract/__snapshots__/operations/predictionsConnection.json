@@ -1,6 +1,6 @@
 {
-  "predictionsPage": {
-    "items": [
+  "predictionsConnection": {
+    "nodes": [
       {
         "id": 206,
         "predictionId": "0x48c689e306408c6d8aef83335eacd1d95d0d0e10640fbf323e01d9f7ae5e44c0",
@@ -102,7 +102,10 @@
         "createdAt": "<ISO_TIMESTAMP>"
       }
     ],
-    "hasMore": true,
+    "pageInfo": {
+      "hasNextPage": true,
+      "hasPreviousPage": false
+    },
     "totalCount": 194
   }
 }

@@ -4,12 +4,12 @@
 import { getGraphQLEndpoint } from './graphql';
 
 export const ATTESTATION_BY_UID_QUERY = `
-  query FindAttestationByUid($filters: AttestationFilters) {
-    attestationsPage(filters: $filters, take: 1) {
-      items {
+  query FindAttestationByUid($filter: ForecastFilter) {
+    forecastsConnection(filter: $filter, first: 1) {
+      nodes {
         id
         uid
-        attester
+        attester: forecaster
         attestedAt
         forecast
         comment
@@ -71,11 +71,11 @@ export async function fetchAttestationByUid(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       query: ATTESTATION_BY_UID_QUERY,
-      variables: { filters: { uid } },
+      variables: { filter: { uid } },
     }),
   });
   if (!resp.ok) return null;
   const json = await resp.json();
-  const items: AttestationData[] = json?.data?.attestationsPage?.items ?? [];
+  const items: AttestationData[] = json?.data?.forecastsConnection?.nodes ?? [];
   return items[0] ?? null;
 }

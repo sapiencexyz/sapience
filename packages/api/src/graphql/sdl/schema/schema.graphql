@@ -207,6 +207,33 @@ type Attestation {
   uid: String!
 }
 
+"""Public Forecast surface backed by EAS attestation rows."""
+type Forecast {
+  forecastScore(where: AttestationScoreWhereInput): AttestationScore
+  forecaster: String!
+  blockNumber: Int!
+  comment: String
+  condition(where: ConditionWhereInput): Condition
+  conditionId: String
+  createdAt: DateTimeISO!
+  data: String!
+  decodedDataJson: String!
+  id: Int!
+
+  """
+  Raw forecast value as recorded on-chain, returned as a decimal string in D18.
+  """
+  forecast: String!
+  recipient: String!
+  resolver: String
+  schemaId: String!
+
+  """When the forecast was made on-chain."""
+  attestedAt: UnixSeconds!
+  transactionHash: String!
+  uid: String!
+}
+
 input AttestationListRelationFilter {
   every: AttestationWhereInput
   none: AttestationWhereInput
@@ -1619,11 +1646,32 @@ type PositionsPage implements Page {
   totalCount: Int
 }
 
-"""Paginated wrapper around Prediction rows with a server-truth hasMore flag"""
-type PredictionsPage implements Page {
-  items: [Prediction!]!
-  hasMore: Boolean!
-  totalCount: Int
+"""Relay-shaped connection over `Prediction` rows."""
+type PredictionConnection {
+  edges: [PredictionEdge!]!
+  nodes: [Prediction!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Cursor-bearing edge for `PredictionConnection`."""
+type PredictionEdge {
+  node: Prediction!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `Forecast` rows."""
+type ForecastConnection {
+  edges: [ForecastEdge!]!
+  nodes: [Forecast!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Cursor-bearing edge for `ForecastConnection`."""
+type ForecastEdge {
+  node: Forecast!
+  cursor: String!
 }
 
 """Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag"""
@@ -1723,13 +1771,6 @@ type ActivityItemsPage implements Page {
 """Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag"""
 type CollateralTransfersPage implements Page {
   items: [CollateralTransfer!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""Paginated wrapper around Attestation rows with a server-truth hasMore flag"""
-type AttestationsPage implements Page {
-  items: [Attestation!]!
   hasMore: Boolean!
   totalCount: Int
 }
@@ -2546,6 +2587,41 @@ input PredictionFilters {
 }
 
 """
+Filter input for the `predictionsConnection` query. Each field is optional;
+values combine with AND.
+"""
+input PredictionFilter {
+  """Restrict to predictions where the address is predictor or counterparty (case-insensitive)."""
+  address: String
+  """Restrict to a single chain."""
+  chainId: Int
+  """Restrict to predictions on a single condition (via the pickConfig join)."""
+  conditionId: String
+  """Restrict to legacy (true) or non-legacy (false) predictions."""
+  isLegacy: Boolean
+  """Restrict to settled (true) or unsettled (false) predictions."""
+  settled: Boolean
+  """Restrict to predictions whose pickConfig settled with this result."""
+  result: SettlementResult
+  """Restrict to predictions whose pickConfig `endsAt >= this`."""
+  endsAtMin: UnixSeconds
+  """Restrict to predictions whose pickConfig `endsAt <= this`."""
+  endsAtMax: UnixSeconds
+}
+
+"""Order input for `predictionsConnection`."""
+input PredictionOrder {
+  field: PredictionOrderField! = CREATED_AT
+  direction: OrderDirection! = DESC
+}
+
+"""Sort fields for `predictionsConnection`."""
+enum PredictionOrderField {
+  CREATED_AT
+  SETTLED_AT
+}
+
+"""
 Flat filter input for the `tradesPage` query. Each field is optional;
 values combine with AND. `address` and (`seller` | `buyer`) are mutually
 exclusive — passing both yields an error.
@@ -2568,24 +2644,36 @@ input TradeFilters {
 }
 
 """
-Flat filter input for the `attestationsPage` query. Each field is optional;
+Filter input for the `forecastsConnection` query. Each field is optional;
 values combine with AND.
 """
-input AttestationFilters {
-  """Restrict to a single attestation by UID."""
+input ForecastFilter {
+  """Restrict to a single forecast by UID."""
   uid: String
-  """Restrict to a single attester address (case-insensitive)."""
-  attester: String
+  """Restrict to a single forecaster address (case-insensitive)."""
+  forecaster: String
   """Restrict to a single recipient address (case-insensitive)."""
   recipient: String
-  """Restrict to attestations on a single condition."""
+  """Restrict to forecasts on a single condition."""
   conditionId: String
   """Restrict to a single EAS schema ID."""
   schemaId: String
-  """Restrict to attestations with `time >= this` (epoch seconds)."""
-  minTime: UnixSeconds
-  """Restrict to attestations with `time <= this` (epoch seconds)."""
-  maxTime: UnixSeconds
+  """Restrict to forecasts with `attestedAt >= this` (epoch seconds)."""
+  attestedAtMin: UnixSeconds
+  """Restrict to forecasts with `attestedAt <= this` (epoch seconds)."""
+  attestedAtMax: UnixSeconds
+}
+
+"""Order input for `forecastsConnection`."""
+input ForecastOrder {
+  field: ForecastOrderField! = ATTESTED_AT
+  direction: OrderDirection! = DESC
+}
+
+"""Sort fields for `forecastsConnection`."""
+enum ForecastOrderField {
+  ATTESTED_AT
+  CREATED_AT
 }
 
 """
@@ -2879,48 +2967,15 @@ type Query {
     )
 
   """
-  Same as `attestations`, but with a purpose-built `AttestationFilters` input and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
-
-  Filtering is via `filters: AttestationFilters`. The flat-arg filters
-  (`uid`, `attester`, `recipient`, `conditionId`, `schemaId`, `minTime`,
-  `maxTime`) are retained for one release with `@deprecated` so existing
-  callers can migrate without breaking; new callers should use `filters:`.
+  Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
   """
-  attestationsPage(
-    filters: AttestationFilters
-    orderBy: AttestationSortField
-    orderDirection: SortOrder
-    take: Int! = 50
-    skip: Int! = 0
-    attester: String
-      @deprecated(
-        reason: "Use `filters: { attester: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-    conditionId: String
-      @deprecated(
-        reason: "Use `filters: { conditionId: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-    maxTime: UnixSeconds
-      @deprecated(
-        reason: "Use `filters: { maxTime: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-    minTime: UnixSeconds
-      @deprecated(
-        reason: "Use `filters: { minTime: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-    recipient: String
-      @deprecated(
-        reason: "Use `filters: { recipient: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-    schemaId: String
-      @deprecated(
-        reason: "Use `filters: { schemaId: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-    uid: String
-      @deprecated(
-        reason: "Use `filters: { uid: ... }` on `AttestationFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-  ): AttestationsPage!
+  forecastsConnection(
+    first: Int = 50
+    after: String
+    filter: ForecastFilter
+    orderBy: ForecastOrder
+  ): ForecastConnection!
+  forecastByUid(uid: String!): Forecast
   categories(
     cursor: CategoryWhereUniqueInput
     distinct: [CategoryScalarFieldEnum!]
@@ -3297,6 +3352,7 @@ type Query {
         reason: "Use `predictionId:` — same value, the new arg name disambiguates it from the `Prediction.id` (Int!) row id surfaced on `predictionsPage` rows."
       )
   ): Prediction
+  predictionByOnchainId(predictionId: String!): Prediction
 
   """
   Count of escrow predictions involving the given address
@@ -3325,40 +3381,14 @@ type Query {
     )
 
   """
-  Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
-
-  Filtering is via `filters: PredictionFilters`. The flat-arg filters
-  (`address`, `chainId`, `conditionId`, `isLegacy`, `settled`) are
-  retained for one release with `@deprecated` so existing callers can
-  migrate without breaking; new callers should use `filters:`.
+  Relay-style prediction list. Defaults to createdAt DESC.
   """
-  predictionsPage(
-    filters: PredictionFilters
-    orderBy: PredictionSortField
-    orderDirection: SortOrder
-    take: Int! = 50
-    skip: Int! = 0
-    address: String
-      @deprecated(
-        reason: "Use `filters: { address: ... }` on `PredictionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-    chainId: Int
-      @deprecated(
-        reason: "Use `filters: { chainId: ... }` on `PredictionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-    conditionId: String
-      @deprecated(
-        reason: "Use `filters: { conditionId: ... }` on `PredictionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-    isLegacy: Boolean
-      @deprecated(
-        reason: "Use `filters: { isLegacy: ... }` on `PredictionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-    settled: Boolean
-      @deprecated(
-        reason: "Use `filters: { settled: ... }` on `PredictionFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
-  ): PredictionsPage!
+  predictionsConnection(
+    first: Int = 50
+    after: String
+    filter: PredictionFilter
+    orderBy: PredictionOrder
+  ): PredictionConnection!
 
   """
   Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.

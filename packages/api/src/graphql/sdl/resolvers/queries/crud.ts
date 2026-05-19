@@ -14,14 +14,19 @@
 
 import type {
   QueryResolvers,
-  QueryAttestationsPageArgs,
   QueryCategoriesPageArgs,
+  QueryForecastsConnectionArgs,
+} from '../../__generated__/resolvers';
+import {
+  ForecastOrderField,
+  OrderDirection,
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { clampSkip, clampTake } from './pagination';
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
 /**
  * Cache only the no-args call (the dominant public path: integrator's
@@ -113,7 +118,7 @@ export const account: NonNullable<QueryResolvers['account']> = async (
   _parent,
   { address },
   ctx
-) => ctx.loaders.userByAddress.load(address);
+) => ctx.loaders!.userByAddress.load(address);
 
 export const categoriesPage: NonNullable<
   QueryResolvers['categoriesPage']
@@ -153,6 +158,20 @@ export type AttestationsPageEnvelope = {
   _countWhere?: Prisma.AttestationWhereInput;
 };
 
+type RunAttestationsArgs = {
+  uid?: string | null;
+  attester?: string | null;
+  conditionId?: string | null;
+  schemaId?: string | null;
+  recipient?: string | null;
+  minTime?: number | null;
+  maxTime?: number | null;
+  orderBy?: 'ATTESTED_AT' | 'CREATED_AT' | null;
+  orderDirection?: 'asc' | 'desc' | null;
+  take?: number | null;
+  skip?: number | null;
+};
+
 export const runAttestations = async ({
   uid,
   attester,
@@ -165,7 +184,7 @@ export const runAttestations = async ({
   orderDirection,
   take,
   skip,
-}: QueryAttestationsPageArgs): Promise<AttestationsPageEnvelope> => {
+}: RunAttestationsArgs): Promise<AttestationsPageEnvelope> => {
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
   const where: Prisma.AttestationWhereInput = {};
@@ -200,29 +219,127 @@ export const runAttestations = async ({
   };
 };
 
-/**
- * Merge `filters: AttestationFilters` with the deprecated flat arg
- * shape. `filters` wins on conflicts.
- */
-const mergeAttestationFilters = (
-  args: QueryAttestationsPageArgs
-): QueryAttestationsPageArgs => {
-  const f = args.filters ?? null;
+const buildForecastCursorPredicate = (
+  k: string,
+  cursorId: string,
+  prismaOrderField: string,
+  direction: 'asc' | 'desc'
+): Prisma.AttestationWhereInput => {
+  const op = direction === 'desc' ? 'lt' : 'gt';
+  const keyValue = prismaOrderField === 'createdAt' ? new Date(k) : Number(k);
   return {
-    take: args.take,
-    skip: args.skip,
-    orderBy: args.orderBy,
-    orderDirection: args.orderDirection,
-    uid: f?.uid ?? args.uid ?? null,
-    attester: f?.attester ?? args.attester ?? null,
-    recipient: f?.recipient ?? args.recipient ?? null,
-    conditionId: f?.conditionId ?? args.conditionId ?? null,
-    schemaId: f?.schemaId ?? args.schemaId ?? null,
-    minTime: f?.minTime ?? args.minTime ?? null,
-    maxTime: f?.maxTime ?? args.maxTime ?? null,
+    OR: [
+      {
+        [prismaOrderField]: { [op]: keyValue },
+      } as Prisma.AttestationWhereInput,
+      {
+        AND: [
+          {
+            [prismaOrderField]: { equals: keyValue },
+          } as Prisma.AttestationWhereInput,
+          { uid: { [op]: cursorId } } as Prisma.AttestationWhereInput,
+        ],
+      },
+    ],
   };
 };
 
-export const attestationsPage: NonNullable<
-  QueryResolvers['attestationsPage']
-> = async (_parent, args) => runAttestations(mergeAttestationFilters(args));
+const mapForecast = (
+  row: Awaited<ReturnType<typeof prisma.attestation.findMany>>[number]
+) => ({
+  ...row,
+  attestedAt: row.time,
+  forecaster: row.attester,
+});
+
+export const forecastsConnection: NonNullable<
+  QueryResolvers['forecastsConnection']
+> = async (
+  _parent,
+  { first, after, filter, orderBy }: QueryForecastsConnectionArgs
+) => {
+  const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const where: Prisma.AttestationWhereInput = {};
+  if (filter?.uid) where.uid = filter.uid;
+  if (filter?.forecaster) where.attester = filter.forecaster;
+  if (filter?.conditionId) where.conditionId = filter.conditionId;
+  if (filter?.schemaId) where.schemaId = filter.schemaId;
+  if (filter?.recipient) where.recipient = filter.recipient;
+  if (filter?.attestedAtMin != null) {
+    where.time = {
+      ...(where.time as object | undefined),
+      gte: filter.attestedAtMin,
+    };
+  }
+  if (filter?.attestedAtMax != null) {
+    where.time = {
+      ...(where.time as object | undefined),
+      lte: filter.attestedAtMax,
+    };
+  }
+
+  const orderField = orderBy?.field ?? ForecastOrderField.AttestedAt;
+  const direction = orderBy?.direction ?? OrderDirection.Desc;
+  const prismaDir = direction === OrderDirection.Asc ? 'asc' : 'desc';
+  const prismaOrderField =
+    orderField === ForecastOrderField.CreatedAt ? 'createdAt' : 'time';
+  const cursorPayload = after ? decodeCursor(after) : null;
+  const cursorWhere = cursorPayload
+    ? buildForecastCursorPredicate(
+        cursorPayload.k,
+        cursorPayload.id,
+        prismaOrderField,
+        prismaDir
+      )
+    : null;
+  const pageWhere: Prisma.AttestationWhereInput = cursorWhere
+    ? { AND: [where, cursorWhere] }
+    : where;
+
+  const [rawRows, totalCount] = await Promise.all([
+    prisma.attestation.findMany({
+      where: pageWhere,
+      orderBy: [
+        {
+          [prismaOrderField]: prismaDir,
+        } as Prisma.AttestationOrderByWithRelationInput,
+        { uid: prismaDir },
+      ],
+      take: cappedFirst + 1,
+    }),
+    prisma.attestation.count({ where }),
+  ]);
+
+  const hasNextPage = rawRows.length > cappedFirst;
+  const pageRows = hasNextPage ? rawRows.slice(0, cappedFirst) : rawRows;
+  const nodes = pageRows.map(mapForecast);
+  const edges = nodes.map((node, index) => ({
+    node,
+    cursor: encodeCursor({
+      k:
+        orderField === ForecastOrderField.CreatedAt
+          ? pageRows[index].createdAt.toISOString()
+          : String(pageRows[index].time),
+      id: pageRows[index].uid,
+    }),
+  }));
+
+  return {
+    edges,
+    nodes,
+    totalCount,
+    pageInfo: {
+      hasNextPage,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
+};
+
+export const forecastByUid: NonNullable<
+  QueryResolvers['forecastByUid']
+> = async (_parent, { uid }) => {
+  const row = await prisma.attestation.findUnique({ where: { uid } });
+  return row ? mapForecast(row) : null;
+};

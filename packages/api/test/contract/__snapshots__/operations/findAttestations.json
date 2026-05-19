@@ -1,6 +1,6 @@
 {
-  "attestationsPage": {
-    "items": [
+  "forecastsConnection": {
+    "nodes": [
       {
         "id": 9,
         "uid": "0x554d70a89bb75d5efda7f791641582f926e8f000402bb726798c538a34db2a03",
