@@ -2159,16 +2159,16 @@ export type PickConfigurationEdge = {
 };
 
 /**
- * Flat filter input for the `pickConfigurationsConnection` query. Each field is
- * optional; values combine with AND.
+ * Filter input for the `pickConfigurationsConnection` query. Scalar fields use
+ * operator-pattern inputs; values combine with AND.
  */
 export type PickConfigurationFilter = {
-  /** Restrict to a single chain. */
-  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Filter by chain ID, e.g. `{ equals: 13374202 }`. */
+  chainId?: InputMaybe<IntFilter>;
   /** Restrict to resolved (true) or unresolved (false) pick configurations. */
   resolved?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Restrict to pick configurations with this settlement result. */
-  result?: InputMaybe<SettlementResult>;
+  /** Filter by settlement result, e.g. `{ equals: PREDICTOR_WINS }`. */
+  result?: InputMaybe<SettlementResultFilter>;
   /** Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request. */
   tokens?: InputMaybe<Array<Scalars['String']['input']>>;
 };
@@ -3549,6 +3549,13 @@ export type SettlementResult =
   | 'NON_DECISIVE'
   | 'PREDICTOR_WINS'
   | 'UNRESOLVED';
+
+export type SettlementResultFilter = {
+  equals?: InputMaybe<SettlementResult>;
+  in?: InputMaybe<Array<SettlementResult>>;
+  not?: InputMaybe<SettlementResult>;
+  notIn?: InputMaybe<Array<SettlementResult>>;
+};
 
 export type SortOrder =
   | 'asc'

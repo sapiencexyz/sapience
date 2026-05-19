@@ -2515,18 +2515,18 @@ input TradeFilter {
 }
 
 """
-Flat filter input for the `pickConfigurationsConnection` query. Each field is
-optional; values combine with AND.
+Filter input for the `pickConfigurationsConnection` query. Scalar fields use
+operator-pattern inputs; values combine with AND.
 """
 input PickConfigurationFilter {
-  """Restrict to a single chain."""
-  chainId: Int
+  """Filter by chain ID, e.g. `{ equals: 13374202 }`."""
+  chainId: IntFilter
 
   """Restrict to resolved (true) or unresolved (false) pick configurations."""
   resolved: Boolean
 
-  """Restrict to pick configurations with this settlement result."""
-  result: SettlementResult
+  """Filter by settlement result, e.g. `{ equals: PREDICTOR_WINS }`."""
+  result: SettlementResultFilter
 
   """
   Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request.
@@ -3313,6 +3313,13 @@ enum SettlementResult {
   NON_DECISIVE
   PREDICTOR_WINS
   UNRESOLVED
+}
+
+input SettlementResultFilter {
+  equals: SettlementResult
+  in: [SettlementResult!]
+  not: SettlementResult
+  notIn: [SettlementResult!]
 }
 
 enum SortOrder {

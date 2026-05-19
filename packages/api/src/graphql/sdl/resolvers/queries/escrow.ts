@@ -253,7 +253,12 @@ export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   return r ? mapPrediction(r) : null;
 };
 
-export type RunPickConfigurationsArgs = QueryPickConfigurationsArgs & {
+export type RunPickConfigurationsArgs = Omit<
+  QueryPickConfigurationsArgs,
+  'chainId' | 'result'
+> & {
+  chainId?: number | Prisma.IntFilter | null;
+  result?: SettlementResult | Prisma.EnumSettlementResultFilter | null;
   orderBy?: 'CREATED_AT' | 'ENDS_AT' | 'RESOLVED_AT' | null;
   orderDirection?: 'asc' | 'desc' | null;
 };
@@ -319,6 +324,66 @@ export const runPickConfigurations = async ({
  * Map the new singular `filter: PickConfigurationFilter` connection shape to
  * the shared pick-configuration execution args.
  */
+const intFilterToPrisma = (
+  filter:
+    | {
+        equals?: number | null;
+        gt?: number | null;
+        gte?: number | null;
+        in?: number[] | null;
+        lt?: number | null;
+        lte?: number | null;
+        not?: unknown;
+        notIn?: number[] | null;
+      }
+    | null
+    | undefined,
+  label: string
+): number | Prisma.IntFilter | null => {
+  if (!filter) return null;
+  if (filter.not != null) {
+    throw new Error(`${label}: not is not supported`);
+  }
+  const out: Prisma.IntFilter = {};
+  if (filter.equals != null) out.equals = filter.equals;
+  if (filter.gt != null) out.gt = filter.gt;
+  if (filter.gte != null) out.gte = filter.gte;
+  if (filter.lt != null) out.lt = filter.lt;
+  if (filter.lte != null) out.lte = filter.lte;
+  if (filter.in?.length) out.in = filter.in;
+  if (filter.notIn?.length) out.notIn = filter.notIn;
+  if (Object.keys(out).length === 0) return null;
+  if (out.equals != null && Object.keys(out).length > 1) {
+    throw new Error(`${label}: equals cannot be combined with other operators`);
+  }
+  return Object.keys(out).length === 1 && out.equals != null ? out.equals : out;
+};
+
+const enumFilterToPrisma = <T extends string>(
+  filter:
+    | {
+        equals?: T | null;
+        in?: T[] | null;
+        not?: T | null;
+        notIn?: T[] | null;
+      }
+    | null
+    | undefined,
+  label: string
+): T | { equals?: T; in?: T[]; not?: T; notIn?: T[] } | null => {
+  if (!filter) return null;
+  const out: { equals?: T; in?: T[]; not?: T; notIn?: T[] } = {};
+  if (filter.equals != null) out.equals = filter.equals;
+  if (filter.in?.length) out.in = filter.in;
+  if (filter.not != null) out.not = filter.not;
+  if (filter.notIn?.length) out.notIn = filter.notIn;
+  if (Object.keys(out).length === 0) return null;
+  if (out.equals != null && (out.in || out.notIn || out.not != null)) {
+    throw new Error(`${label}: equals cannot be combined with in/not/notIn`);
+  }
+  return Object.keys(out).length === 1 && out.equals != null ? out.equals : out;
+};
+
 const mergePickConfigurationFilters = (
   args: QueryPickConfigurationsConnectionArgs
 ): RunPickConfigurationsArgs => {
@@ -326,9 +391,12 @@ const mergePickConfigurationFilters = (
   return {
     take: args.first ?? 50,
     skip: offsetFromCursor(args.after),
-    chainId: f?.chainId ?? null,
+    chainId: intFilterToPrisma(f?.chainId, 'PickConfigurationFilter.chainId'),
     resolved: f?.resolved ?? null,
-    result: f?.result ?? null,
+    result: enumFilterToPrisma<SettlementResult>(
+      f?.result,
+      'PickConfigurationFilter.result'
+    ),
     tokens: f?.tokens ?? null,
     orderBy:
       args.orderBy?.field === PickConfigurationOrderField.EndsAt

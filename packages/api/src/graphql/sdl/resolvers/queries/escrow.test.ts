@@ -14,9 +14,13 @@ import type {
   QueryPositionsArgs,
   QueryPositionCountArgs,
   QueryPickConfigurationsArgs,
+  QueryPickConfigurationsConnectionArgs,
+  QueryPositionsConnectionArgs,
 } from '../../__generated__/resolvers';
 import {
   __clearPositionSynthesisCache,
+  positionsConnection,
+  pickConfigurationsConnection,
   runPositions,
   runPickConfigurations,
 } from './escrow';
@@ -46,6 +50,22 @@ type PositionCountFn = (
 ) => Promise<number>;
 const positionsPageFn: PositionsPageFn = (_parent, args) => runPositions(args);
 const positionCountFn = positionCount as unknown as PositionCountFn;
+type PositionsConnectionFn = (
+  parent: unknown,
+  args: QueryPositionsConnectionArgs,
+  ctx: unknown,
+  info: unknown
+) => Promise<{ nodes: unknown[]; pageInfo: { hasNextPage: boolean } }>;
+const positionsConnectionFn =
+  positionsConnection as unknown as PositionsConnectionFn;
+type PickConfigurationsConnectionFn = (
+  parent: unknown,
+  args: QueryPickConfigurationsConnectionArgs,
+  ctx: unknown,
+  info: unknown
+) => Promise<{ nodes: unknown[]; pageInfo: { hasNextPage: boolean } }>;
+const pickConfigurationsConnectionFn =
+  pickConfigurationsConnection as unknown as PickConfigurationsConnectionFn;
 
 const ALICE = '0xalice';
 const BOB = '0xbob';
@@ -184,6 +204,36 @@ beforeEach(() => {
   // when the field is actually selected. The default mock here just
   // covers tests that do exercise the totalCount path.
   mockPrisma.position.count.mockResolvedValue(0);
+});
+
+describe('positionsConnection filters', () => {
+  it('maps operator-pattern endsAt and collateral filters to the legacy inclusive bounds', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      { pickConfigId: PC_ID, is_predictor: true },
+    ]);
+    mockPrisma.position.findMany.mockResolvedValue([]);
+
+    await positionsConnectionFn(
+      undefined,
+      {
+        first: 10,
+        filter: {
+          holder: ALICE,
+          endsAt: { gte: 100, lt: 200 },
+          collateral: { equals: '1000000000000000000' },
+        },
+      } as unknown as QueryPositionsConnectionArgs,
+      undefined,
+      undefined
+    );
+
+    const where = mockPrisma.position.findMany.mock.calls[0][0].where;
+    expect(where.pickConfiguration).toMatchObject({
+      endsAt: { gte: 100, lte: 199 },
+    });
+    expect(where.pickConfigId).toEqual({ in: [PC_ID] });
+    expect(mockPrisma.$queryRaw).toHaveBeenCalled();
+  });
 });
 
 describe('positions resolver — synthetic row emission', () => {
@@ -852,6 +902,38 @@ const pickConfigurationsPageFn: PickConfigurationsPageFn = (_parent, args) =>
     orderBy: null,
     orderDirection: null,
   });
+
+describe('pickConfigurationsConnection filters', () => {
+  beforeEach(() => {
+    mockPrisma.picks.findMany.mockReset();
+    mockPrisma.picks.count.mockReset();
+  });
+
+  it('maps operator-pattern chainId and result filters', async () => {
+    mockPrisma.picks.findMany.mockResolvedValue([]);
+
+    await pickConfigurationsConnectionFn(
+      undefined,
+      {
+        first: 10,
+        filter: {
+          chainId: { gte: 13374200, lt: 13374203 },
+          result: { in: ['PREDICTOR_WINS', 'COUNTERPARTY_WINS'] },
+          resolved: true,
+        },
+      } as unknown as QueryPickConfigurationsConnectionArgs,
+      undefined,
+      undefined
+    );
+
+    const where = mockPrisma.picks.findMany.mock.calls[0][0].where;
+    expect(where).toMatchObject({
+      chainId: { gte: 13374200, lt: 13374203 },
+      result: { in: ['PREDICTOR_WINS', 'COUNTERPARTY_WINS'] },
+      resolved: true,
+    });
+  });
+});
 
 describe('pickConfigurationsPage resolver — page envelope', () => {
   beforeEach(() => {

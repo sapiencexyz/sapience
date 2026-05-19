@@ -179,6 +179,37 @@ describe('tradesPage — filter construction', () => {
     expect(where.token).toBe('0xtoken');
   });
 
+  it('maps operator-pattern executedAt filters to legacy inclusive bounds', async () => {
+    await tradesPageFn(
+      undefined,
+      {
+        take: 10,
+        skip: 0,
+        filters: { executedAt: { equals: 12345 } },
+      } as unknown as QueryTradesArgs,
+      undefined,
+      undefined
+    );
+    const where = mockPrisma.secondaryTrade.findMany.mock.calls[0][0].where;
+    expect(where.executedAt).toEqual({ gte: 12345, lte: 12345 });
+
+    vi.clearAllMocks();
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    await tradesPageFn(
+      undefined,
+      {
+        take: 10,
+        skip: 0,
+        filters: { executedAt: { gt: 100, lt: 200 } },
+      } as unknown as QueryTradesArgs,
+      undefined,
+      undefined
+    );
+    const rangeWhere =
+      mockPrisma.secondaryTrade.findMany.mock.calls[0][0].where;
+    expect(rangeWhere.executedAt).toEqual({ gte: 101, lte: 199 });
+  });
+
   it('passes chainId through unmodified', async () => {
     await tradesPageFn(
       undefined,
