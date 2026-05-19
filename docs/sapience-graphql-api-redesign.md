@@ -1743,6 +1743,58 @@ input LeaderboardFilter {
 
 ---
 
+## Rollout Plan
+
+The redesign ships as a sequence of incremental PRs grouped into two independent streams that fan out from a shared foundation and re-converge at the end. Stream A handles market mechanics; Stream B handles user activity and treasury. Within a stream, PRs are sequential because later types reference earlier ones; **across streams, PRs can land in parallel** because the streams intentionally avoid cross-stream child connections until the convergence PR.
+
+### PR 1 — Foundation
+
+`Node`, `PageInfo`, scalars (`Address`, `BigInt`, `Bytes32`, `DateTime`, `Decimal`), `OrderDirection`, `node(id:)`, `nodes(ids:)`, opaque global ID helpers. Everything below depends on this.
+
+### Stream A — market mechanics
+
+#### PR 2 — Conditions + ConditionGroups + Questions
+
+New types, top-level queries, deprecate old siblings. **No cross-stream child connections** (no `.predictions`, `.forecasts` on these yet — those land in PR 6).
+
+#### PR 3 — PickConfigurations + Trades + Positions
+
+`Pick → Condition` is in-stream, fine. Top-level queries, `tradeByHash`, deprecations.
+
+### Stream B — user activity & treasury
+
+#### PR 4 — Predictions + Forecasts (Attestation rename)
+
+Both user-authored, both have on-chain-id sibling lookups (`predictionByOnchainId`, `forecastByUid`). The `Attestation → Forecast` rename surface lives here. **No cross-stream child connections.**
+
+#### PR 5 — Collateral + Protocol + Vault + Categories + popularTags
+
+Self-contained: `CollateralBalance`, `CollateralTransfer`, `protocol.stats`, `protocol.vault().stats`, `categories`, `popularTags`.
+
+### Convergence
+
+#### PR 6 — Account + Activity + Leaderboard + cross-entity wire-up
+
+`Account` with all its child connections (`.predictions`, `.trades`, etc.). `ActivityItem` union over `Prediction | Trade | Forecast`. Top-level `leaderboard` query. Adds convenience connections on earlier entities:
+
+- `Condition.predictions` / `.trades` / `.forecasts`
+- `Question.predictions` / `.trades` / `.forecasts` / `.activity`
+- `PickConfiguration.predictions` / `.trades` / `.positions`
+
+This is the only PR that touches cross-stream wiring. The deferral is deliberate: by forbidding cross-stream child connections in PRs 2–5, the streams stay mergeable in any order, and the connective tissue ships in a single coherent pass once all the upstream types are stable.
+
+### Parallelization summary
+
+| Concurrent pair | Status                                                                    |
+| --------------- | ------------------------------------------------------------------------- |
+| PR 2 ‖ PR 4     | ✅ Different streams.                                                     |
+| PR 3 ‖ PR 5     | ✅ Different streams (after their in-stream predecessors land).           |
+| PR 2 ‖ PR 3     | ❌ Same stream — PR 3's `Pick → Condition` references PR 2's `Condition`. |
+| PR 4 ‖ PR 5     | ❌ Same stream — sequential.                                              |
+| Anything ‖ PR 6 | ❌ PR 6 is the convergence; requires both streams complete.               |
+
+---
+
 ## Implementation Notes
 
 ### Global IDs
