@@ -37,6 +37,7 @@ import type {
   QueryPickConfigurationsConnectionArgs,
   QueryPositionsArgs,
   QueryPositionsConnectionArgs,
+  QueryPositionsPageArgs,
   QueryPredictionsArgs,
   QueryPredictionsPageArgs,
   Prediction,
@@ -316,8 +317,8 @@ export const runPickConfigurations = async ({
 };
 
 /**
- * Merge `filters: PickConfigurationFilters` with the deprecated flat
- * arg shape. `filters` wins on conflicts.
+ * Map the new singular `filter: PickConfigurationFilter` connection shape to
+ * the shared pick-configuration execution args.
  */
 const mergePickConfigurationFilters = (
   args: QueryPickConfigurationsConnectionArgs
@@ -994,10 +995,35 @@ export const runPositions = async (
 };
 
 /**
- * Merge `filters: PositionFilters` with the deprecated flat arg shape.
+ * Merge legacy `positionsPage(filters: PositionFilters)` with the deprecated
+ * flat arg shape.
  * `filters` wins on conflicts.
  */
-const mergePositionFilters = (
+const mergePositionPageFilters = (
+  args: QueryPositionsPageArgs
+): QueryPositionsArgs => {
+  const f = args.filters ?? null;
+  return {
+    ...args,
+    holder: f?.holder ?? args.holder ?? null,
+    chainId: f?.chainId ?? args.chainId ?? null,
+    conditionId: f?.conditionId ?? args.conditionId ?? null,
+    pickConfigId: f?.pickConfigId ?? args.pickConfigId ?? null,
+    result: f?.result ?? args.result ?? null,
+    settled: f?.settled ?? args.settled ?? null,
+    holderWon: f?.holderWon ?? args.holderWon ?? null,
+    collateralMin: f?.collateralMin ?? args.collateralMin ?? null,
+    collateralMax: f?.collateralMax ?? args.collateralMax ?? null,
+    endsAtMin: f?.endsAtMin ?? args.endsAtMin ?? null,
+    endsAtMax: f?.endsAtMax ?? args.endsAtMax ?? null,
+  };
+};
+
+/**
+ * Map the new singular `filter: PositionFilter` connection shape to the
+ * shared legacy `runPositions` execution args.
+ */
+const mergePositionConnectionFilter = (
   args: QueryPositionsConnectionArgs
 ): QueryPositionsArgs => {
   const f = args.filter ?? null;
@@ -1026,10 +1052,14 @@ const mergePositionFilters = (
   };
 };
 
+export const positionsPage: NonNullable<
+  QueryResolvers['positionsPage']
+> = async (_parent, args) => runPositions(mergePositionPageFilters(args));
+
 export const positionsConnection: NonNullable<
   QueryResolvers['positionsConnection']
 > = async (_parent, args) => {
-  const result = await runPositions(mergePositionFilters(args));
+  const result = await runPositions(mergePositionConnectionFilter(args));
   const startOffset = offsetFromCursor(args.after);
   const edges = result.items.map((node, index) => ({
     node,

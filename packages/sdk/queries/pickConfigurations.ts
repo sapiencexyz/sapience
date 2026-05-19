@@ -2,7 +2,7 @@ import { graphqlRequest } from './client/graphqlClient';
 
 export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
   query PickConfigurations(
-    $filter: PickConfigurationFilters
+    $filter: PickConfigurationFilter
     $first: Int
     $after: String
   ) {

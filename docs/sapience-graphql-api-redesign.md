@@ -257,7 +257,7 @@ The current schema mixes flat `<field>Min` / `<field>Max` args, operator-pattern
 
 #### Filters
 
-Every list / connection field accepts a single `filter: <Entity>Filter` input.
+Every new list / connection field accepts a single `filter: <Entity>Filter` input. Use the singular input name (`TradeFilter`, `PositionFilter`, `PickConfigurationFilter`) even when the input contains many optional predicates; plural `*Filters` is reserved for legacy Page surfaces that already shipped that shape and need a compatibility window.
 
 Scalar fields on `<Entity>Filter` use operator-pattern inputs:
 
@@ -297,6 +297,8 @@ Rules:
 - **Null filtering goes through `isNull`.** `{ outcome: { isNull: true } }` matches unsettled conditions; `{ isNull: false }` matches settled. Available on every operator input including the enum filters. Rejected on non-nullable columns per the unsupported-operator rule.
 
 The SDL draft below has been normalized to operator-pattern. Multi-value membership filters (`categoryIds: [ID!]`, `tags: [String!]`, `activityTypes: [ActivityType!]`) intentionally stay flat — the operator pattern is for single-value scalar comparisons; "is any of" is a different beast. Full-text `search: String` also stays flat — it isn't a field filter.
+
+Migration PRs may use a flatter first-pass `<Entity>Filter` than the aspirational operator-pattern draft when that keeps the PR reviewable; the important invariant is the public field shape (`filter`, not scattered root args) and the singular input name. Operator-pattern internals can be tightened additively before the legacy surface is removed.
 
 #### Sort
 
@@ -600,7 +602,11 @@ type Query {
 
   vault(id: ID!): Vault
   vaultByAddress(address: Address!): Vault
-  vaultsConnection(first: Int, after: String, filter: VaultFilter): VaultConnection!
+  vaultsConnection(
+    first: Int
+    after: String
+    filter: VaultFilter
+  ): VaultConnection!
 
   leaderboard(
     metric: LeaderboardMetric!
@@ -1759,7 +1765,9 @@ New types, top-level queries, deprecate old siblings. **No cross-stream child co
 
 #### PR 3 — PickConfigurations + Trades + Positions
 
-`Pick → Condition` is in-stream, fine. Top-level connection fields, `tradeByHash`, deprecations. PR 3 is implemented from `staging` after PR 2 has landed. During the migration window, the new root resolvers are explicitly suffixed: `pickConfigurationsConnection`, `tradesConnection`, and `positionsConnection`. Delete the corresponding legacy `*Page` resolver when its replacement lands in the same PR (`pickConfigurationsPage`, `tradesPage`, `positionsPage`); do not keep dual Page/Connection surfaces for the same migrated list.
+`Pick → Condition` is in-stream, fine. Top-level connection fields, `tradeByHash`, deprecations. PR 3 is implemented from `staging` after PR 2 has landed. During the migration window, the new root resolvers are explicitly suffixed: `pickConfigurationsConnection`, `tradesConnection`, and `positionsConnection`. Delete staging-only legacy `*Page` scaffolding when its replacement lands in the same PR (`pickConfigurationsPage`, `tradesPage`). Do **not** delete a Page resolver that has already shipped from `main`; keep it with `@deprecated` for one release and route callers to the new connection. In practice, `positionsPage` is shipped API and must remain as a deprecated compatibility surface while `positionsConnection` becomes the new path.
+
+PR 3's initial cursors are opaque but may remain offset-backed while the schema migration lands. Keyset pagination is a follow-up, especially for positions where the API can synthesize sell-event rows from underlying position rows. The contract to preserve now is opacity plus `pageInfo.hasNextPage`; callers must not infer cursor internals.
 
 PR 3 must not add PR 6 cross-stream child connections yet. `PickConfiguration.trades` / `.positions` and any `Condition.*` convenience fields wait for PR 6 unless they already exist as legacy fields and are left untouched.
 

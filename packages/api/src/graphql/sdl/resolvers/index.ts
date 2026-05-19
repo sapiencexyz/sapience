@@ -36,6 +36,7 @@ import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
+import { PositionsPage } from './PositionsPage';
 import { PredictionsPage } from './PredictionsPage';
 import { QuestionsPage } from './QuestionsPage';
 import { Question, ConditionOrConditionGroup } from './Question';
@@ -85,6 +86,7 @@ import {
   pickConfiguration,
   pickConfigurationsConnection,
   positionsConnection,
+  positionsPage,
   prediction,
   predictionsPage,
 } from './queries/escrow';
@@ -162,6 +164,7 @@ export const resolvers: Resolvers = {
     positionCount,
     positions,
     positionsConnection,
+    positionsPage,
     prediction,
     predictionCount,
     predictions,
@@ -204,6 +207,7 @@ export const resolvers: Resolvers = {
   LegacyPrediction,
   LimitOrder,
   Pick,
+  PositionsPage,
   PredictionsPage,
   QuestionsPage,
   Question,

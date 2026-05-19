@@ -272,7 +272,7 @@ const PREDICTION_QUERY = /* GraphQL */ `
 // positions with no sells), so the client-side `lastPage.length === 0`
 // stop signal is unsafe — use the response's `hasMore` flag instead.
 const POSITION_BALANCES_QUERY = /* GraphQL */ `
-  query Positions($filter: PositionFilters, $first: Int, $after: String) {
+  query Positions($filter: PositionFilter, $first: Int, $after: String) {
     positionsConnection(filter: $filter, first: $first, after: $after) {
       pageInfo {
         hasNextPage
@@ -298,7 +298,7 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
 
 const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
   query PositionsByCondition(
-    $filter: PositionFilters
+    $filter: PositionFilter
     $first: Int
     $after: String
   ) {

@@ -2147,7 +2147,7 @@ export type PickConfigurationEdge = {
  * Flat filter input for the `pickConfigurationsConnection` query. Each field is
  * optional; values combine with AND.
  */
-export type PickConfigurationFilters = {
+export type PickConfigurationFilter = {
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to resolved (true) or unresolved (false) pick configurations. */
@@ -2250,11 +2250,35 @@ export type PositionEdge = {
   node: Position;
 };
 
+/** Flat filter input for the `positionsConnection` query. Each field is optional; values combine with AND. */
+export type PositionFilter = {
+  /** Restrict to a single chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei). */
+  collateralMax?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei). */
+  collateralMin?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions tied to a single condition (via the pickConfig join). */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions whose pickConfig `endsAt <= this`. */
+  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Restrict to positions whose pickConfig `endsAt >= this`. */
+  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Restrict to a single holder address (case-insensitive). */
+  holder?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions where the holder won (true) or lost (false). Combines side with settlement result. */
+  holderWon?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to a single pick configuration. */
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions whose pickConfig settled with this result. */
+  result?: InputMaybe<SettlementResult>;
+  /** Restrict to settled (true) or unsettled (false) positions. */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
 /**
- * Flat filter input for the `positionsConnection` query. Each field is optional;
- * values combine with AND. Replaces the flat-arg shape on the resolver; the
- * old args remain for one release with `@deprecated` so existing callers can
- * migrate without breaking.
+ * Flat filter input for the deprecated `positionsPage` query. Each field is optional;
+ * values combine with AND. New connection callers should use `PositionFilter`.
  */
 export type PositionFilters = {
   /** Restrict to a single chain. */
@@ -2296,6 +2320,19 @@ export type PositionOrderField =
 export type PositionSortField =
   | 'CREATED_AT'
   | 'UPDATED_AT';
+
+/**
+ * Paginated wrapper around Position rows with a server-truth hasMore flag.
+ * `totalCount` counts underlying Position rows matching the filters (not the
+ * rendered event-stream rows, which can be larger due to per-sell synthetic
+ * expansion).
+ */
+export type PositionsPage = Page & {
+  __typename?: 'PositionsPage';
+  hasMore: Scalars['Boolean']['output'];
+  items: Array<Position>;
+  totalCount?: Maybe<Scalars['Int']['output']>;
+};
 
 /** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
 export type Prediction = {
@@ -2673,6 +2710,16 @@ export type Query = {
   positions: Array<Position>;
   /** Relay-shaped connection over token positions. */
   positionsConnection: PositionConnection;
+  /**
+   * Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
+   *
+   * Filtering is via `filters: PositionFilters`. The flat-arg filters
+   * (`holder`, `chainId`, `conditionId`, …) are retained for one release
+   * with `@deprecated` so existing callers can migrate without breaking;
+   * new callers should use `positionsConnection(filter:)`.
+   * @deprecated Use `positionsConnection` instead.
+   */
+  positionsPage: PositionsPage;
   /**
    * Look up a single prediction by its on-chain prediction ID. Pass
    * `predictionId:` — the legacy `id:` arg is kept (deprecated) so existing
@@ -3090,7 +3137,7 @@ export type QueryPickConfigurationsArgs = {
 
 export type QueryPickConfigurationsConnectionArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<PickConfigurationFilters>;
+  filter?: InputMaybe<PickConfigurationFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<PickConfigurationOrder>;
 };
@@ -3124,9 +3171,29 @@ export type QueryPositionsArgs = {
 
 export type QueryPositionsConnectionArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<PositionFilters>;
+  filter?: InputMaybe<PositionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<PositionOrder>;
+};
+
+
+export type QueryPositionsPageArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  collateralMax?: InputMaybe<Scalars['String']['input']>;
+  collateralMin?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  filters?: InputMaybe<PositionFilters>;
+  holder?: InputMaybe<Scalars['String']['input']>;
+  holderWon?: InputMaybe<Scalars['Boolean']['input']>;
+  orderBy?: InputMaybe<PositionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  result?: InputMaybe<SettlementResult>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 
@@ -3254,7 +3321,7 @@ export type QueryTradesArgs = {
 
 export type QueryTradesConnectionArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<TradeFilters>;
+  filter?: InputMaybe<TradeFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<TradeOrder>;
 };
@@ -3651,7 +3718,7 @@ export type TradeEdge = {
  * values combine with AND. `address` and (`seller` | `buyer`) are mutually
  * exclusive — passing both yields an error.
  */
-export type TradeFilters = {
+export type TradeFilter = {
   /** Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`. */
   address?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single buyer address (case-insensitive). */

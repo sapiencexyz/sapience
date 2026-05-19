@@ -1469,6 +1469,18 @@ type PickConfiguration {
 }
 
 """
+Paginated wrapper around Position rows with a server-truth hasMore flag.
+`totalCount` counts underlying Position rows matching the filters (not the
+rendered event-stream rows, which can be larger due to per-sell synthetic
+expansion).
+"""
+type PositionsPage implements Page {
+  items: [Position!]!
+  hasMore: Boolean!
+  totalCount: Int
+}
+
+"""
 Paginated wrapper around Prediction rows with a server-truth hasMore flag
 """
 type PredictionsPage implements Page {
@@ -2377,12 +2389,56 @@ type VaultStat {
 }
 
 """
-Flat filter input for the `positionsConnection` query. Each field is optional;
-values combine with AND. Replaces the flat-arg shape on the resolver; the
-old args remain for one release with `@deprecated` so existing callers can
-migrate without breaking.
+Flat filter input for the deprecated `positionsPage` query. Each field is optional;
+values combine with AND. New connection callers should use `PositionFilter`.
 """
 input PositionFilters {
+  """Restrict to a single holder address (case-insensitive)."""
+  holder: String
+
+  """Restrict to a single chain."""
+  chainId: Int
+
+  """
+  Restrict to positions tied to a single condition (via the pickConfig join).
+  """
+  conditionId: String
+
+  """Restrict to a single pick configuration."""
+  pickConfigId: String
+
+  """Restrict to positions whose pickConfig settled with this result."""
+  result: SettlementResult
+
+  """Restrict to settled (true) or unsettled (false) positions."""
+  settled: Boolean
+
+  """
+  Restrict to positions where the holder won (true) or lost (false). Combines side with settlement result.
+  """
+  holderWon: Boolean
+
+  """
+  Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei).
+  """
+  collateralMin: String
+
+  """
+  Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei).
+  """
+  collateralMax: String
+
+  """Restrict to positions whose pickConfig `endsAt >= this`."""
+  endsAtMin: UnixSeconds
+
+  """Restrict to positions whose pickConfig `endsAt <= this`."""
+  endsAtMax: UnixSeconds
+}
+
+"""
+Flat filter input for the `positionsConnection` query. Each field is optional; values combine with AND.
+"""
+input PositionFilter {
   """Restrict to a single holder address (case-insensitive)."""
   holder: String
 
@@ -2464,7 +2520,7 @@ Flat filter input for the `tradesConnection` query. Each field is optional;
 values combine with AND. `address` and (`seller` | `buyer`) are mutually
 exclusive — passing both yields an error.
 """
-input TradeFilters {
+input TradeFilter {
   """
   Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`.
   """
@@ -2524,7 +2580,7 @@ input AttestationFilters {
 Flat filter input for the `pickConfigurationsConnection` query. Each field is
 optional; values combine with AND.
 """
-input PickConfigurationFilters {
+input PickConfigurationFilter {
   """Restrict to a single chain."""
   chainId: Int
 
@@ -2826,7 +2882,7 @@ type Query {
   pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]! @deprecated(reason: "Use `pickConfigurationsConnection` — Relay-shaped cursor pagination over the same data.")
 
   """Relay-shaped connection over pick configurations."""
-  pickConfigurationsConnection(first: Int, after: String, filter: PickConfigurationFilters, orderBy: PickConfigurationOrder): PickConfigurationConnection!
+  pickConfigurationsConnection(first: Int, after: String, filter: PickConfigurationFilter, orderBy: PickConfigurationOrder): PickConfigurationConnection!
 
   """Top 20 most-used tags across public conditions"""
   popularTags: [String!]!
@@ -2839,8 +2895,18 @@ type Query {
   """
   positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsConnection` — Relay-shaped cursor pagination over the same data.")
 
+  """
+  Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
+
+  Filtering is via `filters: PositionFilters`. The flat-arg filters
+  (`holder`, `chainId`, `conditionId`, …) are retained for one release
+  with `@deprecated` so existing callers can migrate without breaking;
+  new callers should use `positionsConnection(filter:)`.
+  """
+  positionsPage(filters: PositionFilters, orderBy: PositionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers."), collateralMax: String @deprecated(reason: "Use `filters: { collateralMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers."), collateralMin: String @deprecated(reason: "Use `filters: { collateralMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers."), conditionId: String @deprecated(reason: "Use `filters: { conditionId: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers."), endsAtMax: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers."), endsAtMin: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers."), holder: String @deprecated(reason: "Use `filters: { holder: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers."), holderWon: Boolean @deprecated(reason: "Use `filters: { holderWon: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers."), pickConfigId: String @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers."), result: SettlementResult @deprecated(reason: "Use `filters: { result: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers."), settled: Boolean @deprecated(reason: "Use `filters: { settled: ... }` on `PositionFilters` — the flat-arg shape is being unified across paginated resolvers.")): PositionsPage! @deprecated(reason: "Use `positionsConnection` instead.")
+
   """Relay-shaped connection over token positions."""
-  positionsConnection(first: Int, after: String, filter: PositionFilters, orderBy: PositionOrder): PositionConnection!
+  positionsConnection(first: Int, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
 
   """
   Look up a single prediction by its on-chain prediction ID. Pass
@@ -2947,7 +3013,7 @@ type Query {
   trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]! @deprecated(reason: "Use `tradesConnection` — Relay-shaped cursor pagination over the same data.")
 
   """Relay-shaped connection over secondary market trades."""
-  tradesConnection(first: Int, after: String, filter: TradeFilters, orderBy: TradeOrder): TradeConnection!
+  tradesConnection(first: Int, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
   user(where: UserWhereUniqueInput!): User @deprecated(reason: "Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains.")
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. No live consumers — account lookups go through `account(address:)`.")
 

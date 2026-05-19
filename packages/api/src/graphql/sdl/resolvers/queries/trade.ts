@@ -50,8 +50,8 @@ export type TradesPageEnvelope = {
 /**
  * Extended args accepted by `runTrades` — superset of the deprecated bare
  * `trades(...)` args. The new filter fields (`executedAtMin`/`Max`) and
- * sort args (`orderBy`/`orderDirection`) live only on `tradesPage` /
- * `TradeFilters`; passing them through here keeps a single canonical
+ * sort args (`orderBy`/`orderDirection`) live only on the connection /
+ * `TradeFilter`; passing them through here keeps a single canonical
  * pipeline for both surfaces.
  */
 export type RunTradesArgs = QueryTradesArgs & {
@@ -116,10 +116,11 @@ export const runTrades = async ({
 };
 
 /**
- * Merge `filters: TradeFilters` with the deprecated flat arg shape.
+ * Map the new singular `filter: TradeFilter` connection shape to the shared
+ * trade execution args.
  * `filters` wins on conflicts. The `address` vs `seller`/`buyer`
  * mutual-exclusion check happens downstream in `runTrades`. New
- * filter fields (`executedAtMin`/`Max`) live only on `TradeFilters`.
+ * filter fields (`executedAtMin`/`Max`) live only on `TradeFilter`.
  */
 const mergeTradeFilters = (args: QueryTradesConnectionArgs): RunTradesArgs => {
   const f = args.filter ?? null;

@@ -19,7 +19,7 @@ export type SecondaryTrade = {
 };
 
 const TRADES_BY_SELLER_QUERY = /* GraphQL */ `
-  query TradesBySeller($filter: TradeFilters, $first: Int, $after: String) {
+  query TradesBySeller($filter: TradeFilter, $first: Int, $after: String) {
     tradesConnection(filter: $filter, first: $first, after: $after) {
       nodes {
         id
@@ -40,7 +40,7 @@ const TRADES_BY_SELLER_QUERY = /* GraphQL */ `
 `;
 
 const TRADES_BY_BUYER_QUERY = /* GraphQL */ `
-  query TradesByBuyer($filter: TradeFilters, $first: Int, $after: String) {
+  query TradesByBuyer($filter: TradeFilter, $first: Int, $after: String) {
     tradesConnection(filter: $filter, first: $first, after: $after) {
       nodes {
         id
@@ -61,7 +61,7 @@ const TRADES_BY_BUYER_QUERY = /* GraphQL */ `
 `;
 
 const ALL_TRADES_QUERY = /* GraphQL */ `
-  query AllTrades($filter: TradeFilters, $first: Int, $after: String) {
+  query AllTrades($filter: TradeFilter, $first: Int, $after: String) {
     tradesConnection(filter: $filter, first: $first, after: $after) {
       nodes {
         id

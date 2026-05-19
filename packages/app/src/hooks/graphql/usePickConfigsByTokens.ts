@@ -9,7 +9,7 @@ import type { PickConfigData, PickData } from '~/hooks/graphql/usePositions';
 // is fetched inline so callers can build their conditionsMap from a
 // single round trip — see Pick resolver + pickConfigurationsConnection resolver.
 const PICK_CONFIGS_BY_TOKENS_QUERY = /* GraphQL */ `
-  query PickConfigsByTokens($filter: PickConfigurationFilters) {
+  query PickConfigsByTokens($filter: PickConfigurationFilter) {
     pickConfigurationsConnection(filter: $filter, first: 100) {
       nodes {
         id

@@ -15457,6 +15457,11 @@
           },
           {
             "kind": "OBJECT",
+            "name": "PositionsPage",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
             "name": "PredictionsPage",
             "ofType": null
           },
@@ -16047,7 +16052,7 @@
       },
       {
         "kind": "INPUT_OBJECT",
-        "name": "PickConfigurationFilters",
+        "name": "PickConfigurationFilter",
         "description": "Flat filter input for the `pickConfigurationsConnection` query. Each field is\noptional; values combine with AND.",
         "fields": null,
         "inputFields": [
@@ -16554,8 +16559,129 @@
       },
       {
         "kind": "INPUT_OBJECT",
+        "name": "PositionFilter",
+        "description": "Flat filter input for the `positionsConnection` query. Each field is optional; values combine with AND.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "holder",
+            "description": "Restrict to a single holder address (case-insensitive).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "chainId",
+            "description": "Restrict to a single chain.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Restrict to positions tied to a single condition (via the pickConfig join).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "pickConfigId",
+            "description": "Restrict to a single pick configuration.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "result",
+            "description": "Restrict to positions whose pickConfig settled with this result.",
+            "type": {
+              "kind": "ENUM",
+              "name": "SettlementResult",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "settled",
+            "description": "Restrict to settled (true) or unsettled (false) positions.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "holderWon",
+            "description": "Restrict to positions where the holder won (true) or lost (false). Combines side with settlement result.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "Boolean",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "collateralMin",
+            "description": "Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "collateralMax",
+            "description": "Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei).",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "endsAtMin",
+            "description": "Restrict to positions whose pickConfig `endsAt >= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "endsAtMax",
+            "description": "Restrict to positions whose pickConfig `endsAt <= this`.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "UnixSeconds",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
         "name": "PositionFilters",
-        "description": "Flat filter input for the `positionsConnection` query. Each field is optional;\nvalues combine with AND. Replaces the flat-arg shape on the resolver; the\nold args remain for one release with `@deprecated` so existing callers can\nmigrate without breaking.",
+        "description": "Flat filter input for the deprecated `positionsPage` query. Each field is optional;\nvalues combine with AND. New connection callers should use `PositionFilter`.",
         "fields": null,
         "inputFields": [
           {
@@ -16756,6 +16882,75 @@
             "deprecationReason": null
           }
         ],
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "PositionsPage",
+        "description": "Paginated wrapper around Position rows with a server-truth hasMore flag.\n`totalCount` counts underlying Position rows matching the filters (not the\nrendered event-stream rows, which can be larger due to per-sell synthetic\nexpansion).",
+        "fields": [
+          {
+            "name": "items",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "OBJECT",
+                    "name": "Position",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "hasMore",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Page",
+            "ofType": null
+          }
+        ],
+        "enumValues": null,
         "possibleTypes": null
       },
       {
@@ -20027,7 +20222,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "PickConfigurationFilters",
+                  "name": "PickConfigurationFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -20314,6 +20509,81 @@
             "deprecationReason": "Use `positionsConnection` — Relay-shaped cursor pagination over the same data."
           },
           {
+            "name": "positionsPage",
+            "description": "Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.\n\nFiltering is via `filters: PositionFilters`. The flat-arg filters\n(`holder`, `chainId`, `conditionId`, …) are retained for one release\nwith `@deprecated` so existing callers can migrate without breaking;\nnew callers should use `positionsConnection(filter:)`.",
+            "args": [
+              {
+                "name": "filters",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "PositionFilters",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderBy",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "PositionSortField",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "orderDirection",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "SortOrder",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "take",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "50"
+              },
+              {
+                "name": "skip",
+                "description": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  }
+                },
+                "defaultValue": "0"
+              }
+            ],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "PositionsPage",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `positionsConnection` instead."
+          },
+          {
             "name": "positionsConnection",
             "description": "Relay-shaped connection over token positions.",
             "args": [
@@ -20342,7 +20612,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "PositionFilters",
+                  "name": "PositionFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -21350,7 +21620,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "TradeFilters",
+                  "name": "TradeFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -23708,7 +23978,7 @@
       },
       {
         "kind": "INPUT_OBJECT",
-        "name": "TradeFilters",
+        "name": "TradeFilter",
         "description": "Flat filter input for the `tradesConnection` query. Each field is optional;\nvalues combine with AND. `address` and (`seller` | `buyer`) are mutually\nexclusive — passing both yields an error.",
         "fields": null,
         "inputFields": [
