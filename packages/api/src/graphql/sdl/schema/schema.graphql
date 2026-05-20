@@ -864,21 +864,9 @@ type Condition {
   outcome: ConditionOutcome
 
   predictionCount: Int!
-  predictions(
-    cursor: LegacyPredictionWhereUniqueInput
-    distinct: [LegacyPredictionScalarFieldEnum!]
-    orderBy: [LegacyPredictionOrderByWithRelationInput!]
-    skip: Int
-    take: Int
-    where: LegacyPredictionWhereInput
-  ): [LegacyPrediction!]!
-    @deprecated(
-      reason: "Use `predictionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data."
-    )
   """
   Note: this field will be renamed to drop the `Connection` suffix
-  (→ `predictions`) in a subsequent migration, once the deprecated
-  bare-array sibling above is removed.
+  (→ `predictions`) in a subsequent migration.
   """
   predictionsConnection(
     first: Int = 50
@@ -933,7 +921,6 @@ type Condition {
 
 type ConditionCount {
   attestations(where: AttestationWhereInput): Int!
-  predictions(where: LegacyPredictionWhereInput): Int!
 }
 
 """
@@ -1119,7 +1106,6 @@ input ConditionOrderByWithRelationInput {
   openInterest: SortOrder
   optionName: SortOrderInput
   predictionCount: SortOrder
-  predictions: LegacyPredictionOrderByRelationAggregateInput
   public: SortOrder
   question: SortOrder
   resolvedToYes: SortOrder
@@ -1205,7 +1191,6 @@ input ConditionWhereInput {
   openInterest: StringFilter
   optionName: StringNullableFilter
   predictionCount: IntFilter
-  predictions: LegacyPredictionListRelationFilter
   public: BoolFilter
   question: StringFilter
   resolvedToYes: BoolFilter
@@ -1249,7 +1234,6 @@ input ConditionWhereUniqueInput {
   openInterest: StringFilter
   optionName: StringNullableFilter
   predictionCount: IntFilter
-  predictions: LegacyPredictionListRelationFilter
   public: BoolFilter
   question: StringFilter
   resolvedToYes: BoolFilter
@@ -1334,20 +1318,6 @@ input DecimalFilter {
   notIn: [Decimal!]
 }
 
-input EnumLegacyPositionStatusFilter {
-  equals: LegacyPositionStatus
-  in: [LegacyPositionStatus!]
-  not: NestedEnumLegacyPositionStatusFilter
-  notIn: [LegacyPositionStatus!]
-}
-
-input EnumLimitOrderStatusFilter {
-  equals: LimitOrderStatus
-  in: [LimitOrderStatus!]
-  not: NestedEnumLimitOrderStatusFilter
-  notIn: [LimitOrderStatus!]
-}
-
 input FloatFilter {
   equals: Float
   gt: Float
@@ -1414,292 +1384,6 @@ input IntNullableFilter {
   notIn: [Int!]
 }
 
-"""
-Legacy position model (NFT-based, V1)
-"""
-type LegacyPosition {
-  _count: LegacyPositionCount
-  chainId: Int!
-  counterparty: String!
-  counterpartyCollateral: String
-  counterpartyNftTokenId: String!
-  createdAt: DateTimeISO!
-  endsAt: Int
-  id: Int!
-  marketAddress: String!
-  mintedAt: Int!
-  predictions(
-    cursor: LegacyPredictionWhereUniqueInput
-    distinct: [LegacyPredictionScalarFieldEnum!]
-    orderBy: [LegacyPredictionOrderByWithRelationInput!]
-    skip: Int
-    take: Int
-    where: LegacyPredictionWhereInput
-  ): [LegacyPrediction!]!
-    @deprecated(
-      reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsConnection` instead."
-    )
-  predictor: String!
-  predictorCollateral: String
-  predictorNftTokenId: String!
-
-  """
-  True when the predictor's submitted outcomes were correct (previously makerWon)
-  """
-  predictorWon: Boolean
-  refCode: String
-  settledAt: Int
-  status: LegacyPositionStatus!
-  totalCollateral: String!
-}
-
-type LegacyPositionCount {
-  predictions(where: LegacyPredictionWhereInput): Int!
-}
-
-input LegacyPositionNullableRelationFilter {
-  is: LegacyPositionWhereInput
-  isNot: LegacyPositionWhereInput
-}
-
-input LegacyPositionOrderByWithRelationInput {
-  chainId: SortOrder
-  counterparty: SortOrder
-  counterpartyCollateral: SortOrderInput
-  counterpartyNftTokenId: SortOrder
-  createdAt: SortOrder
-  endsAt: SortOrderInput
-  id: SortOrder
-  marketAddress: SortOrder
-  mintedAt: SortOrder
-  predictions: LegacyPredictionOrderByRelationAggregateInput
-  predictor: SortOrder
-  predictorCollateral: SortOrderInput
-  predictorNftTokenId: SortOrder
-  predictorWon: SortOrderInput
-  refCode: SortOrderInput
-  settledAt: SortOrderInput
-  status: SortOrder
-  totalCollateral: SortOrder
-}
-
-enum LegacyPositionStatus {
-  active
-  consolidated
-  settled
-}
-
-input LegacyPositionWhereInput {
-  AND: [LegacyPositionWhereInput!]
-  NOT: [LegacyPositionWhereInput!]
-  OR: [LegacyPositionWhereInput!]
-  chainId: IntFilter
-  counterparty: StringFilter
-  counterpartyCollateral: StringNullableFilter
-  counterpartyNftTokenId: StringFilter
-  createdAt: DateTimeFilter
-  endsAt: IntNullableFilter
-  id: IntFilter
-  marketAddress: StringFilter
-  mintedAt: IntFilter
-  predictions: LegacyPredictionListRelationFilter
-  predictor: StringFilter
-  predictorCollateral: StringNullableFilter
-  predictorNftTokenId: StringFilter
-  predictorWon: BoolNullableFilter
-  refCode: StringNullableFilter
-  settledAt: IntNullableFilter
-  status: EnumLegacyPositionStatusFilter
-  totalCollateral: StringFilter
-}
-
-type LegacyPrediction {
-  chainId: Int
-  condition: Condition!
-  conditionId: String!
-  createdAt: DateTimeISO!
-  id: Int!
-  limitOrder(where: LimitOrderWhereInput): LimitOrder
-    @deprecated(reason: "LimitOrder is deprecated and being phased out.")
-  limitOrderId: Int
-  outcomeYes: Boolean!
-  position(where: LegacyPositionWhereInput): LegacyPosition
-    @deprecated(
-      reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsConnection` instead."
-    )
-  positionId: Int
-}
-
-input LegacyPredictionLimitOrderIdConditionIdCompoundUniqueInput {
-  conditionId: String!
-  limitOrderId: Int!
-}
-
-input LegacyPredictionListRelationFilter {
-  every: LegacyPredictionWhereInput
-  none: LegacyPredictionWhereInput
-  some: LegacyPredictionWhereInput
-}
-
-input LegacyPredictionOrderByRelationAggregateInput {
-  _count: SortOrder
-}
-
-input LegacyPredictionOrderByWithRelationInput {
-  chainId: SortOrderInput
-  condition: ConditionOrderByWithRelationInput
-  conditionId: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  limitOrder: LimitOrderOrderByWithRelationInput
-  limitOrderId: SortOrderInput
-  outcomeYes: SortOrder
-  position: LegacyPositionOrderByWithRelationInput
-  positionId: SortOrderInput
-}
-
-input LegacyPredictionPositionIdConditionIdCompoundUniqueInput {
-  conditionId: String!
-  positionId: Int!
-}
-
-enum LegacyPredictionScalarFieldEnum {
-  chainId
-  conditionId
-  createdAt
-  id
-  limitOrderId
-  outcomeYes
-  positionId
-}
-
-input LegacyPredictionWhereInput {
-  AND: [LegacyPredictionWhereInput!]
-  NOT: [LegacyPredictionWhereInput!]
-  OR: [LegacyPredictionWhereInput!]
-  chainId: IntNullableFilter
-  condition: ConditionRelationFilter
-  conditionId: StringFilter
-  createdAt: DateTimeFilter
-  id: IntFilter
-  limitOrder: LimitOrderNullableRelationFilter
-  limitOrderId: IntNullableFilter
-  outcomeYes: BoolFilter
-  position: LegacyPositionNullableRelationFilter
-  positionId: IntNullableFilter
-}
-
-input LegacyPredictionWhereUniqueInput {
-  AND: [LegacyPredictionWhereInput!]
-  NOT: [LegacyPredictionWhereInput!]
-  OR: [LegacyPredictionWhereInput!]
-  chainId: IntNullableFilter
-  condition: ConditionRelationFilter
-  conditionId: StringFilter
-  createdAt: DateTimeFilter
-  id: Int
-  limitOrder: LimitOrderNullableRelationFilter
-  limitOrderId: IntNullableFilter
-  limitOrderId_conditionId: LegacyPredictionLimitOrderIdConditionIdCompoundUniqueInput
-  outcomeYes: BoolFilter
-  position: LegacyPositionNullableRelationFilter
-  positionId: IntNullableFilter
-  positionId_conditionId: LegacyPredictionPositionIdConditionIdCompoundUniqueInput
-}
-
-type LimitOrder {
-  _count: LimitOrderCount
-  cancelledAt: Int
-  cancelledTxHash: String
-  chainId: Int!
-  counterparty: String
-  counterpartyCollateral: String!
-  createdAt: DateTimeISO!
-  filledAt: Int
-  filledTxHash: String
-  id: Int!
-  marketAddress: String!
-  orderId: String!
-  placedAt: Int!
-  placedTxHash: String!
-  predictions(
-    cursor: LegacyPredictionWhereUniqueInput
-    distinct: [LegacyPredictionScalarFieldEnum!]
-    orderBy: [LegacyPredictionOrderByWithRelationInput!]
-    skip: Int
-    take: Int
-    where: LegacyPredictionWhereInput
-  ): [LegacyPrediction!]!
-    @deprecated(reason: "LimitOrder is deprecated and being phased out.")
-  predictor: String!
-  predictorCollateral: String!
-  refCode: String
-  resolver: String!
-  status: LimitOrderStatus!
-}
-
-type LimitOrderCount {
-  predictions(where: LegacyPredictionWhereInput): Int!
-}
-
-input LimitOrderNullableRelationFilter {
-  is: LimitOrderWhereInput
-  isNot: LimitOrderWhereInput
-}
-
-input LimitOrderOrderByWithRelationInput {
-  cancelledAt: SortOrderInput
-  cancelledTxHash: SortOrderInput
-  chainId: SortOrder
-  counterparty: SortOrderInput
-  counterpartyCollateral: SortOrder
-  createdAt: SortOrder
-  filledAt: SortOrderInput
-  filledTxHash: SortOrderInput
-  id: SortOrder
-  marketAddress: SortOrder
-  orderId: SortOrder
-  placedAt: SortOrder
-  placedTxHash: SortOrder
-  predictions: LegacyPredictionOrderByRelationAggregateInput
-  predictor: SortOrder
-  predictorCollateral: SortOrder
-  refCode: SortOrderInput
-  resolver: SortOrder
-  status: SortOrder
-}
-
-enum LimitOrderStatus {
-  cancelled
-  filled
-  pending
-}
-
-input LimitOrderWhereInput {
-  AND: [LimitOrderWhereInput!]
-  NOT: [LimitOrderWhereInput!]
-  OR: [LimitOrderWhereInput!]
-  cancelledAt: IntNullableFilter
-  cancelledTxHash: StringNullableFilter
-  chainId: IntFilter
-  counterparty: StringNullableFilter
-  counterpartyCollateral: StringFilter
-  createdAt: DateTimeFilter
-  filledAt: IntNullableFilter
-  filledTxHash: StringNullableFilter
-  id: IntFilter
-  marketAddress: StringFilter
-  orderId: StringFilter
-  placedAt: IntFilter
-  placedTxHash: StringFilter
-  predictions: LegacyPredictionListRelationFilter
-  predictor: StringFilter
-  predictorCollateral: StringFilter
-  refCode: StringNullableFilter
-  resolver: StringFilter
-  status: EnumLimitOrderStatusFilter
-}
-
 input NestedBigIntFilter {
   equals: BigInt
   gt: BigInt
@@ -1752,20 +1436,6 @@ input NestedDecimalFilter {
   lte: Decimal
   not: NestedDecimalFilter
   notIn: [Decimal!]
-}
-
-input NestedEnumLegacyPositionStatusFilter {
-  equals: LegacyPositionStatus
-  in: [LegacyPositionStatus!]
-  not: NestedEnumLegacyPositionStatusFilter
-  notIn: [LegacyPositionStatus!]
-}
-
-input NestedEnumLimitOrderStatusFilter {
-  equals: LimitOrderStatus
-  in: [LimitOrderStatus!]
-  not: NestedEnumLimitOrderStatusFilter
-  notIn: [LimitOrderStatus!]
 }
 
 input NestedFloatFilter {
@@ -3039,17 +2709,9 @@ type Vault implements Node {
   id: ID!
   address: Address!
   chainId: Int!
-  kind: VaultKind!
   collateral: CollateralToken!
   account: Account!
   stats(filter: VaultStatsFilter): VaultStatsConnection!
-}
-
-enum VaultKind {
-  PROTOCOL
-  PYTH
-  SINGLE_LEG
-  STRATEGY_B
 }
 
 """
