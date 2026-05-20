@@ -568,9 +568,13 @@ export const pickConfigurationsConnection: NonNullable<
       id: String(node.id),
     }),
   }));
+  const totalCount = await prisma.picks.count({
+    where: result._countWhere ?? {},
+  });
   return {
     edges,
     nodes: result.items,
+    totalCount,
     pageInfo: {
       hasNextPage: result.hasMore,
       hasPreviousPage: false,
@@ -1326,9 +1330,13 @@ export const positionsConnection: NonNullable<
       id: String(node.id),
     }),
   }));
+  const totalCount = await prisma.position.count({
+    where: result._countWhere ?? {},
+  });
   return {
     edges,
     nodes: result.items,
+    totalCount,
     pageInfo: {
       hasNextPage: result.hasMore,
       hasPreviousPage: false,

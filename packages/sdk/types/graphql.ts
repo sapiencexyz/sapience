@@ -63,7 +63,7 @@ export type Account = Node & {
   referredBy?: Maybe<Account>;
   /** The referral code this account was referred by, if any. */
   referredByCode?: Maybe<ReferralCode>;
-  stats: AccountStatsConnection;
+  stats: AccountStatConnection;
   trades: TradeConnection;
 };
 
@@ -259,6 +259,12 @@ export type AccountRankingConnection = {
   metric: LeaderboardMetric;
   nodes: Array<AccountRanking>;
   pageInfo: PageInfo;
+  /**
+   * Size of the underlying ranked set the page is sliced from. Already
+   * computed in memory (the leaderboard materializes the full ranking),
+   * so cheap to surface.
+   */
+  totalCount: Scalars['Int']['output'];
 };
 
 export type AccountRankingEdge = {
@@ -311,15 +317,21 @@ export type AccountStat = {
   timestamp: Scalars['UnixSeconds']['output'];
 };
 
-export type AccountStatsConnection = {
-  __typename?: 'AccountStatsConnection';
-  edges: Array<AccountStatsEdge>;
+export type AccountStatConnection = {
+  __typename?: 'AccountStatConnection';
+  edges: Array<AccountStatEdge>;
   nodes: Array<AccountStat>;
   pageInfo: PageInfo;
+  /**
+   * Size of the full time-series rendered by this query (pre-pagination).
+   * Already known in memory — the resolver materializes every bucket
+   * before slicing — so cheap to surface.
+   */
+  totalCount: Scalars['Int']['output'];
 };
 
-export type AccountStatsEdge = {
-  __typename?: 'AccountStatsEdge';
+export type AccountStatEdge = {
+  __typename?: 'AccountStatEdge';
   cursor: Scalars['String']['output'];
   node: AccountStat;
 };
@@ -851,6 +863,16 @@ export type CategoryEdge = {
   node: Category;
 };
 
+/**
+ * Filter input for `categoriesConnection`. Intentionally narrow — the
+ * category table is tiny, so the only meaningful filter dimension is
+ * substring match for autocomplete / lookup UIs.
+ */
+export type CategoryFilter = {
+  /** Case-insensitive substring search against the category name. */
+  search?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type CategoryNullableRelationFilter = {
   is?: InputMaybe<CategoryWhereInput>;
   isNot?: InputMaybe<CategoryWhereInput>;
@@ -989,6 +1011,7 @@ export type CollateralTransferConnection = {
   edges: Array<CollateralTransferEdge>;
   nodes: Array<CollateralTransfer>;
   pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type CollateralTransferEdge = {
@@ -1127,6 +1150,7 @@ export type ConditionConnection = {
   items: Array<Condition>;
   nodes: Array<Condition>;
   pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type ConditionCount = {
@@ -1299,6 +1323,7 @@ export type ConditionGroupConnection = {
   items: Array<ConditionGroup>;
   nodes: Array<ConditionGroup>;
   pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type ConditionGroupCount = {
@@ -2253,6 +2278,7 @@ export type PickConfigurationConnection = {
   edges: Array<PickConfigurationEdge>;
   nodes: Array<PickConfiguration>;
   pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
 };
 
 /** Cursor-bearing edge for `PickConfigurationConnection`. */
@@ -2360,6 +2386,7 @@ export type PositionConnection = {
   edges: Array<PositionEdge>;
   nodes: Array<Position>;
   pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
 };
 
 /** Cursor-bearing edge for `PositionConnection`. */
@@ -2580,7 +2607,7 @@ export type Protocol = {
   __typename?: 'Protocol';
   openInterestByCategory: Array<CategoryOpenInterest>;
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
-  stats: ProtocolStatsConnection;
+  stats: ProtocolStatConnection;
 };
 
 
@@ -2604,15 +2631,21 @@ export type ProtocolStat = {
   timestamp: Scalars['UnixSeconds']['output'];
 };
 
-export type ProtocolStatsConnection = {
-  __typename?: 'ProtocolStatsConnection';
-  edges: Array<ProtocolStatsEdge>;
+export type ProtocolStatConnection = {
+  __typename?: 'ProtocolStatConnection';
+  edges: Array<ProtocolStatEdge>;
   nodes: Array<ProtocolStat>;
   pageInfo: PageInfo;
+  /**
+   * Size of the full snapshot series rendered by this query (pre-pagination).
+   * Already known in memory — the resolver materializes every snapshot
+   * before slicing — so cheap to surface.
+   */
+  totalCount: Scalars['Int']['output'];
 };
 
-export type ProtocolStatsEdge = {
-  __typename?: 'ProtocolStatsEdge';
+export type ProtocolStatEdge = {
+  __typename?: 'ProtocolStatEdge';
   cursor: Scalars['String']['output'];
   node: ProtocolStat;
 };
@@ -3194,6 +3227,7 @@ export type QueryCategoriesArgs = {
 
 export type QueryCategoriesConnectionArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<CategoryFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -3979,6 +4013,7 @@ export type TradeConnection = {
   edges: Array<TradeEdge>;
   nodes: Array<Trade>;
   pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
 };
 
 /** Cursor-bearing edge for `TradeConnection`. */
@@ -4170,7 +4205,7 @@ export type Vault = Node & {
   chainId: Scalars['Int']['output'];
   collateral: CollateralToken;
   id: Scalars['ID']['output'];
-  stats: VaultStatsConnection;
+  stats: VaultStatConnection;
 };
 
 
@@ -4236,15 +4271,21 @@ export type VaultStat = {
   withdrawals: Scalars['String']['output'];
 };
 
-export type VaultStatsConnection = {
-  __typename?: 'VaultStatsConnection';
-  edges: Array<VaultStatsEdge>;
+export type VaultStatConnection = {
+  __typename?: 'VaultStatConnection';
+  edges: Array<VaultStatEdge>;
   nodes: Array<VaultStat>;
   pageInfo: PageInfo;
+  /**
+   * Size of the full per-vault snapshot series (pre-pagination). Already
+   * known in memory — the resolver materializes every snapshot before
+   * slicing — so cheap to surface.
+   */
+  totalCount: Scalars['Int']['output'];
 };
 
-export type VaultStatsEdge = {
-  __typename?: 'VaultStatsEdge';
+export type VaultStatEdge = {
+  __typename?: 'VaultStatEdge';
   cursor: Scalars['String']['output'];
   node: VaultStat;
 };

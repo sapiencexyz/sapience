@@ -358,17 +358,20 @@ export const conditionsConnection: NonNullable<
     ? { AND: [filterWhere, cursorWhere] }
     : filterWhere;
 
-  const rawRows = await prisma.condition.findMany({
-    where,
-    orderBy: [
-      {
-        [prismaOrderField]: prismaDir,
-      } as Prisma.ConditionOrderByWithRelationInput,
-      { id: prismaDir },
-    ],
-    take: cappedFirst + 1,
-    ...(after ? {} : { skip: skip ?? 0 }),
-  });
+  const [rawRows, totalCount] = await Promise.all([
+    prisma.condition.findMany({
+      where,
+      orderBy: [
+        {
+          [prismaOrderField]: prismaDir,
+        } as Prisma.ConditionOrderByWithRelationInput,
+        { id: prismaDir },
+      ],
+      take: cappedFirst + 1,
+      ...(after ? {} : { skip: skip ?? 0 }),
+    }),
+    prisma.condition.count({ where: filterWhere }),
+  ]);
 
   const hasNextPage = rawRows.length > cappedFirst;
   const pageRows = hasNextPage ? rawRows.slice(0, cappedFirst) : rawRows;
@@ -383,6 +386,7 @@ export const conditionsConnection: NonNullable<
     hasMore: hasNextPage,
     edges,
     nodes: pageRows,
+    totalCount,
     pageInfo: {
       hasNextPage,
       hasPreviousPage: false,

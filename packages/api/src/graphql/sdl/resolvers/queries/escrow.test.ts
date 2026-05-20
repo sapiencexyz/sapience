@@ -796,7 +796,7 @@ describe('positionsPage resolver — page envelope', () => {
     expect(result._countWhere).toEqual(findManyWhere);
   });
 
-  it('clamps skip at the positions-specific cap of 10_000 (regression: MIGRATION.md flags this as a behavior change)', async () => {
+  it('clamps skip at the positions-specific cap of 10_000', async () => {
     mockPrisma.position.findMany.mockResolvedValue([]);
 
     await callPositionsPage({ take: 10, skip: 5_000_000, holder: ALICE });

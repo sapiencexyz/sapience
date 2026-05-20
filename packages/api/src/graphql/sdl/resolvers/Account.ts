@@ -162,6 +162,7 @@ export const Account: AccountResolvers = {
     return {
       nodes: pageRows,
       edges,
+      totalCount: rows.length,
       pageInfo: {
         hasNextPage: start + pageRows.length < rows.length,
         hasPreviousPage: false,

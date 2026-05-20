@@ -171,6 +171,7 @@ export const leaderboard = (async (
     metric,
     nodes,
     edges,
+    totalCount: ranked.length,
     pageInfo: {
       hasNextPage: start + slice.length < ranked.length,
       hasPreviousPage: false,
