@@ -8,7 +8,7 @@ import { collateralToken } from '@sapience/sdk/contracts/addresses';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { clampSkip, clampTake } from './pagination';
+import { buildConnection, clampSkip, clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import { registerNodeType, toGlobalId } from '../../../relay/globalId';
 import { synthesizeAccount } from '../accountSynthesis';
@@ -347,26 +347,16 @@ export const collateralTransfersConnection = (async (
     }),
     prisma.collateralTransfer.count({ where: baseWhere }),
   ]);
-  const pageRows = rows.slice(0, first);
-  const nodes = pageRows.map((row) =>
-    mapCollateralTransfer(row, args.filter?.account ?? undefined)
-  );
-  const edges = nodes.map((node, i) => ({
-    node,
-    cursor: encodeCursor({
-      k: String(pageRows[i].blockNumber),
-      id: String(pageRows[i].id),
-    }),
-  }));
-  return {
-    edges,
-    nodes,
+  return buildConnection({
+    rows,
+    first,
     totalCount,
-    pageInfo: {
-      hasNextPage: rows.length > first,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges.at(-1)?.cursor ?? null,
-    },
-  };
+    getNode: (row) =>
+      mapCollateralTransfer(row, args.filter?.account ?? undefined),
+    getCursor: (row) =>
+      encodeCursor({
+        k: String(row.blockNumber),
+        id: String(row.id),
+      }),
+  });
 }) as unknown as NonNullable<QueryResolvers['collateralTransfersConnection']>;

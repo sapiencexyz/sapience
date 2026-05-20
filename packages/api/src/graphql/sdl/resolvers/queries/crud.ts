@@ -28,7 +28,7 @@ import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import { registerNodeType, toGlobalId } from '../../../relay/globalId';
 import { synthesizeAccount } from '../accountSynthesis';
-import { clampTake } from './pagination';
+import { buildConnection, clampTake } from './pagination';
 
 /**
  * Cache only the no-args call (the dominant public path: integrator's
@@ -214,26 +214,16 @@ export const accountsConnection = (async (
     prisma.user.count({ where: baseWhere }),
   ]);
 
-  const hasNextPage = rows.length > cappedFirst;
-  const pageRows = hasNextPage ? rows.slice(0, cappedFirst) : rows;
-  const edges = pageRows.map((row) => ({
-    node: row,
-    cursor: encodeCursor({
-      k: row.createdAt.toISOString(),
-      id: String(row.id),
-    }),
-  }));
-  return {
-    edges,
-    nodes: pageRows,
+  return buildConnection({
+    rows,
+    first: cappedFirst,
     totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges.at(-1)?.cursor ?? null,
-    },
-  };
+    getCursor: (row) =>
+      encodeCursor({
+        k: row.createdAt.toISOString(),
+        id: String(row.id),
+      }),
+  });
 }) as any as NonNullable<QueryResolvers['accountsConnection']>;
 
 const buildForecastCursorPredicate = (
@@ -351,31 +341,20 @@ export const forecastsConnection: NonNullable<
     prisma.attestation.count({ where }),
   ]);
 
-  const hasNextPage = rawRows.length > cappedFirst;
-  const pageRows = hasNextPage ? rawRows.slice(0, cappedFirst) : rawRows;
-  const nodes = pageRows.map(mapForecast);
-  const edges = nodes.map((node, index) => ({
-    node,
-    cursor: encodeCursor({
-      k:
-        orderField === ForecastOrderField.CreatedAt
-          ? pageRows[index].createdAt.toISOString()
-          : String(pageRows[index].time),
-      id: pageRows[index].uid,
-    }),
-  }));
-
-  return {
-    edges,
-    nodes,
+  return buildConnection({
+    rows: rawRows,
+    first: cappedFirst,
     totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+    getNode: mapForecast,
+    getCursor: (row) =>
+      encodeCursor({
+        k:
+          orderField === ForecastOrderField.CreatedAt
+            ? row.createdAt.toISOString()
+            : String(row.time),
+        id: row.uid,
+      }),
+  });
 };
 
 const buildCategoryCursorPredicate = (
@@ -420,24 +399,14 @@ export const categoriesConnection = (async (
     }),
     prisma.category.count({ where: searchWhere }),
   ]);
-  const pageRows = rawRows.slice(0, cappedTake);
-  const nodes = pageRows.map((row) => ({
-    ...row,
-    id: toGlobalId('Category', row.id),
-  }));
-  const edges = nodes.map((node, i) => ({
-    node,
-    cursor: encodeCursor({ k: pageRows[i].name, id: String(pageRows[i].id) }),
-  }));
-  return {
-    edges,
-    nodes,
+  return buildConnection({
+    rows: rawRows,
+    first: cappedTake,
     totalCount,
-    pageInfo: {
-      hasNextPage: rawRows.length > cappedTake,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges.at(-1)?.cursor ?? null,
-    },
-  };
+    getNode: (row) => ({
+      ...row,
+      id: toGlobalId('Category', row.id),
+    }),
+    getCursor: (row) => encodeCursor({ k: row.name, id: String(row.id) }),
+  });
 }) as unknown as NonNullable<QueryResolvers['categoriesConnection']>;

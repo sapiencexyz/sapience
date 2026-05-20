@@ -69,8 +69,8 @@ describe('staging compat shims — runPositions normalization', () => {
       holderWon: null,
       result: null,
       settled: null,
-      orderBy: 'createdAt',
-      orderDirection: 'DESC',
+      orderBy: 'createdAt' as never,
+      orderDirection: 'DESC' as never,
     });
     const call = mockPrisma.position.findMany.mock.calls.at(-1)?.[0];
     expect(call?.orderBy).toEqual({ createdAt: 'desc' });
@@ -92,8 +92,8 @@ describe('staging compat shims — runPositions normalization', () => {
       holderWon: null,
       result: null,
       settled: null,
-      orderBy: 'CREATED_AT',
-      orderDirection: 'ASC',
+      orderBy: 'CREATED_AT' as never,
+      orderDirection: 'ASC' as never,
     });
     const call = mockPrisma.position.findMany.mock.calls.at(-1)?.[0];
     expect(call?.orderBy).toEqual({ createdAt: 'asc' });
