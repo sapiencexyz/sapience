@@ -204,6 +204,47 @@ export type AccountAccuracyRank = {
   totalParticipants: Scalars['Int']['output'];
 };
 
+/**
+ * Relay-shaped connection over `Account` rows (User table). Address-only
+ * synthetic accounts are not returned — those are reachable through
+ * `account(address:)` directly. `totalCount` is the row count matching the
+ * filter (cheap — the User table is small).
+ */
+export type AccountConnection = {
+  __typename?: 'AccountConnection';
+  edges: Array<AccountEdge>;
+  nodes: Array<Account>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type AccountEdge = {
+  __typename?: 'AccountEdge';
+  cursor: Scalars['String']['output'];
+  node: Account;
+};
+
+/**
+ * Filter input for `accountsConnection`. Intentionally narrow — the only
+ * meaningful filter dimension for an address-keyed table is substring
+ * match against the address itself.
+ */
+export type AccountFilter = {
+  /**
+   * Substring search against the wallet address (case-insensitive). Useful
+   * for autocomplete / lookup UIs.
+   */
+  search?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AccountOrder = {
+  direction: OrderDirection;
+  field: AccountOrderField;
+};
+
+export type AccountOrderField =
+  | 'CREATED_AT';
+
 export type AccountRanking = {
   __typename?: 'AccountRanking';
   account: Account;
@@ -3017,6 +3058,13 @@ export type Query = {
    */
   accountVolume: Array<VolumeDataPoint>;
   /**
+   * Relay-shaped connection over accounts (User-table rows). Single-address
+   * lookups should keep using `account(address:)`, which synthesizes
+   * address-backed Accounts for wallets without a User row;
+   * `accountsConnection` is for enumeration / search use cases.
+   */
+  accountsConnection: AccountConnection;
+  /**
    * Top forecasters ranked by lifetime accuracy. The time-weighted error
    * already weights by recency, so there's no window filter on this surface.
    * Page-shaped with server-truth `hasMore`; `totalCount` is populated
@@ -3362,6 +3410,14 @@ export type QueryAccountVolumeArgs = {
   from?: InputMaybe<Scalars['DateTimeISO']['input']>;
   interval: TimeInterval;
   to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccountsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AccountFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<AccountOrder>;
 };
 
 

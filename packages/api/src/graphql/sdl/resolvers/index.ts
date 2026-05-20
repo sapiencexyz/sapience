@@ -75,6 +75,7 @@ import { conditionGroups } from './queries/deprecated/conditionGroups';
 import { questions } from './queries/deprecated/questions';
 import {
   account,
+  accountsConnection,
   categories,
   categoriesConnection,
   condition,
@@ -187,6 +188,7 @@ export const resolvers: Resolvers = {
     popularTags,
     // CRUD passthroughs
     account,
+    accountsConnection,
     attestations,
     forecastByUid,
     forecastsConnection,
