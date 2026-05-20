@@ -39,17 +39,18 @@
 
 """
 Accuracy rank and lifetime score for a single address. Mirrors
-`AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),
-`rank` (1-indexed, null when unranked), and `totalParticipants` (size of
-the scored-forecaster set). Accuracy is lifetime-aggregated — the
-time-weighted error already weights by recency, so there's no window
-filter on this surface.
+`AccountStatsRank`'s shape (`address`, the metric (`accuracyScore`),
+`rank` 1-indexed and null when unranked) plus `totalForecasters` — the
+size of the scored-forecaster set. Named specifically vs the generic
+`AccountStatsRank.totalParticipants` because this surface only ranks
+forecasters; accuracy is lifetime-aggregated (the time-weighted error
+already weights by recency) so there's no window filter.
 """
 type AccountAccuracyRank {
   address: Address!
   accuracyScore: Float!
   rank: Int
-  totalParticipants: Int!
+  totalForecasters: Int!
 }
 
 """
@@ -864,6 +865,17 @@ type Condition {
 
   predictionCount: Int!
   predictions(
+    cursor: LegacyPredictionWhereUniqueInput
+    distinct: [LegacyPredictionScalarFieldEnum!]
+    orderBy: [LegacyPredictionOrderByWithRelationInput!]
+    skip: Int
+    take: Int
+    where: LegacyPredictionWhereInput
+  ): [LegacyPrediction!]!
+    @deprecated(
+      reason: "Use `predictionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data."
+    )
+  predictionsConnection(
     first: Int = 50
     after: String
     filter: PredictionFilter
@@ -3497,7 +3509,7 @@ type Query {
   Accuracy rank and lifetime score for a single address. Mirrors
   `accountStatsRank`'s shape: stats fields are always populated (zero for
   unscored addresses), `rank` is null when the address is absent from the
-  ranked set, and `totalParticipants` is the size of the scored-forecaster
+  ranked set, and `totalForecasters` is the size of the scored-forecaster
   set.
   """
   accountAccuracyRank(address: String!): AccountAccuracyRank!

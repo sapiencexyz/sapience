@@ -142,7 +142,21 @@ export const Condition: ConditionResolvers = {
     });
   },
 
-  predictions: (parent, args, ctx, info) => {
+  predictions: async (parent, args, ctx) => {
+    const p = parent as PrismaCondition;
+    if (Array.isArray(p.predictions)) return p.predictions as never[];
+    if (ctx.loaders && isBatchableListArgs(args as RelationListArgs)) {
+      return ctx.loaders.predictionsByConditionId.load(p.id) as never;
+    }
+    return loadRelation(p, 'predictions', {
+      parentModel: 'condition',
+      parentWhere: { id: p.id },
+      prismaRelationName: 'predictions',
+      args,
+    });
+  },
+
+  predictionsConnection: (parent, args, ctx, info) => {
     const p = parent as PrismaCondition;
     return (predictionsConnection as any)(
       parent,

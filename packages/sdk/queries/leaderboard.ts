@@ -21,12 +21,12 @@ export type AccountAccuracyLeaderboardEntry = {
 
 /** Single-address result from `accountAccuracyRank`. `accuracyScore` is always
  *  a number (zero when unscored); `rank` is null for unscored addresses;
- *  `totalParticipants` mirrors `AccountStatsRank`. */
+ *  `totalForecasters` is the size of the scored-forecaster set. */
 export interface AccountAccuracyRankResult {
   address: string;
   accuracyScore: number;
   rank: number | null;
-  totalParticipants: number;
+  totalForecasters: number;
 }
 
 /** Single-address result from `accountStatsRank`. Stats fields are wei strings
@@ -60,7 +60,7 @@ export const GET_ACCOUNT_ACCURACY_RANK = /* GraphQL */ `
       address
       accuracyScore
       rank
-      totalParticipants
+      totalForecasters
     }
   }
 `;
@@ -194,7 +194,7 @@ export async function fetchAccountAccuracyRank(
   }>(GET_ACCOUNT_ACCURACY_RANK, { address: a });
   const r = data?.accountAccuracyRank;
   if (!r) {
-    return { address: a, accuracyScore: 0, rank: null, totalParticipants: 0 };
+    return { address: a, accuracyScore: 0, rank: null, totalForecasters: 0 };
   }
   return r;
 }

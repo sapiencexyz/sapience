@@ -54,7 +54,7 @@ describe('cross-stream child connections', () => {
   });
 
   it('Condition child connections force conditionId parent scope', async () => {
-    callResolver(Condition.predictions)(
+    callResolver(Condition.predictionsConnection)(
       { id: 'cond1' },
       { filter: { chainId: 1 } },
       {},

@@ -93,13 +93,13 @@ async function fetchProfitAndVolume(address: string): Promise<{
 async function fetchAccuracyRank(address: string): Promise<{
   accuracyScore: number | null;
   rank: number | null;
-  totalParticipants: number;
+  totalForecasters: number;
 }> {
   const r = await fetchAccountAccuracyRank(address);
   return {
     accuracyScore: r.rank == null ? null : r.accuracyScore,
     rank: r.rank,
-    totalParticipants: r.totalParticipants,
+    totalForecasters: r.totalForecasters,
   };
 }
 
@@ -152,7 +152,7 @@ export async function fetchProfileData(
   const accuracy =
     accuracyResult.status === 'fulfilled'
       ? accuracyResult.value
-      : { accuracyScore: null, rank: null, totalParticipants: 0 };
+      : { accuracyScore: null, rank: null, totalForecasters: 0 };
   const forecastsCount =
     forecastsResult.status === 'fulfilled' ? forecastsResult.value : null;
 
@@ -162,7 +162,7 @@ export async function fetchProfileData(
     totalParticipants: profit.totalParticipants,
     accuracyScore: accuracy.accuracyScore,
     accuracyRank: accuracy.rank,
-    accuracyTotalParticipants: accuracy.totalParticipants,
+    accuracyTotalParticipants: accuracy.totalForecasters,
     volumeDisplay: profit.volumeDisplay,
     forecastsCount,
   };

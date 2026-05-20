@@ -190,18 +190,19 @@ export type AccountAccuracyLeaderboardPage = Page & {
 
 /**
  * Accuracy rank and lifetime score for a single address. Mirrors
- * `AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),
- * `rank` (1-indexed, null when unranked), and `totalParticipants` (size of
- * the scored-forecaster set). Accuracy is lifetime-aggregated — the
- * time-weighted error already weights by recency, so there's no window
- * filter on this surface.
+ * `AccountStatsRank`'s shape (`address`, the metric (`accuracyScore`),
+ * `rank` 1-indexed and null when unranked) plus `totalForecasters` — the
+ * size of the scored-forecaster set. Named specifically vs the generic
+ * `AccountStatsRank.totalParticipants` because this surface only ranks
+ * forecasters; accuracy is lifetime-aggregated (the time-weighted error
+ * already weights by recency) so there's no window filter.
  */
 export type AccountAccuracyRank = {
   __typename?: 'AccountAccuracyRank';
   accuracyScore: Scalars['Float']['output'];
   address: Scalars['Address']['output'];
   rank?: Maybe<Scalars['Int']['output']>;
-  totalParticipants: Scalars['Int']['output'];
+  totalForecasters: Scalars['Int']['output'];
 };
 
 /**
@@ -1042,7 +1043,9 @@ export type Condition = {
    */
   outcome?: Maybe<ConditionOutcome>;
   predictionCount: Scalars['Int']['output'];
-  predictions: PredictionConnection;
+  /** @deprecated Use `predictionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data. */
+  predictions: Array<LegacyPrediction>;
+  predictionsConnection: PredictionConnection;
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
@@ -1098,6 +1101,16 @@ export type ConditionForecastsArgs = {
 
 
 export type ConditionPredictionsArgs = {
+  cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
+  distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<LegacyPredictionOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<LegacyPredictionWhereInput>;
+};
+
+
+export type ConditionPredictionsConnectionArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<PredictionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
@@ -2970,7 +2983,7 @@ export type Query = {
    * Accuracy rank and lifetime score for a single address. Mirrors
    * `accountStatsRank`'s shape: stats fields are always populated (zero for
    * unscored addresses), `rank` is null when the address is absent from the
-   * ranked set, and `totalParticipants` is the size of the scored-forecaster
+   * ranked set, and `totalForecasters` is the size of the scored-forecaster
    * set.
    * @deprecated Use `account(address: $a).rank(metric: ACCURACY)` — returns the same rank + value via the Relay-shaped Account surface.
    */

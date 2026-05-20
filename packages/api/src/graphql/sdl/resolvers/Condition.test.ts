@@ -159,9 +159,9 @@ describe('Condition.attestations', () => {
   });
 });
 
-// `Condition.predictions` used to return a bare `[Prediction!]!` array
-// loaded via the `predictionsByConditionId` DataLoader. The PR6
-// convergence rewrite changed it to return `PredictionConnection!` and
-// delegate to the root `predictionsConnection` runner with `conditionId`
-// parent scope. The connection-level behavior is covered by
-// `crossStream.test.ts`.
+// `Condition.predictions` (legacy `[LegacyPrediction!]!`) is kept as a
+// `@deprecated` overload alongside `Condition.predictionsConnection`
+// (Relay-shaped) so external clients can migrate over one release. The
+// legacy path delegates to the `predictionsByConditionId` DataLoader (or
+// the per-row `loadRelation` fallback when args are present); the
+// connection-level behavior is covered by `crossStream.test.ts`.
