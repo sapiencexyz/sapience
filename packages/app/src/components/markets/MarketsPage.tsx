@@ -103,8 +103,10 @@ const MarketsPage = () => {
     ) {
       defaultedRef.current = true;
       const pmSlugs = allCategories
-        .filter((c) => !c.slug.startsWith('prices-'))
-        .map((c) => c.slug);
+        .map((c) => c.slug)
+        .filter((slug): slug is string =>
+          Boolean(slug && !slug.startsWith('prices-'))
+        );
       setFilters((prev) => ({ ...prev, selectedCategories: pmSlugs }));
     }
   }, [allCategories, filters.selectedCategories, setFilters]);
@@ -266,7 +268,12 @@ const MarketsPage = () => {
 
   // Sort categories alphabetically for the filter dropdown
   const categoryOptions = useMemo(
-    () => [...allCategories].sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      allCategories
+        .filter((category): category is typeof category & { slug: string } =>
+          Boolean(category.slug)
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [allCategories]
   );
 

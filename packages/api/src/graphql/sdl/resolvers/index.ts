@@ -48,13 +48,18 @@ import {
 import {
   openInterestByCategory,
   openInterestByTimeToResolution,
+  protocol,
   protocolStats,
+  Protocol,
+  vault,
+  Vault,
+  vaultByAddress,
   vaultStats,
 } from './queries/analytics';
 import {
   collateralBalance,
   collateralBalanceHistory,
-  collateralTransfersPage,
+  collateralTransfersConnection,
 } from './queries/collateralBalance';
 import { collateralTransfers } from './queries/deprecated/collateralBalance';
 import { conditionsConnection } from './queries/conditions';
@@ -69,7 +74,7 @@ import { questions } from './queries/deprecated/questions';
 import {
   account,
   categories,
-  categoriesPage,
+  categoriesConnection,
   condition,
   forecastByUid,
   forecastsConnection,
@@ -131,7 +136,10 @@ export const resolvers: Resolvers = {
     // Analytics
     openInterestByCategory,
     openInterestByTimeToResolution,
+    protocol,
     protocolStats,
+    vault,
+    vaultByAddress,
     vaultStats,
     // Legacy per-metric time series (DEPRECATED — superseded by accountStats / accountStatsRank.volume / protocolStats).
     accountBalance,
@@ -144,7 +152,7 @@ export const resolvers: Resolvers = {
     collateralBalance,
     collateralBalanceHistory,
     collateralTransfers,
-    collateralTransfersPage,
+    collateralTransfersConnection,
     // Conditions / questions
     conditions,
     conditionsConnection,
@@ -179,7 +187,7 @@ export const resolvers: Resolvers = {
     forecastByUid,
     forecastsConnection,
     categories,
-    categoriesPage,
+    categoriesConnection,
     condition,
     conditionGroup,
     conditionGroups,
@@ -204,5 +212,7 @@ export const resolvers: Resolvers = {
   PositionsPage,
   Question,
   ConditionOrConditionGroup,
+  Protocol,
   User,
+  Vault,
 };

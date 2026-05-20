@@ -409,14 +409,14 @@ input BoolNullableFilter {
   not: NestedBoolNullableFilter
 }
 
-type Category {
+type Category implements Node {
   _count: CategoryCount
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
   createdAt: DateTimeISO!
-  id: Int!
+  id: ID!
   name: String!
-  slug: String!
+  slug: String
 }
 
 type CategoryCount {
@@ -505,28 +505,46 @@ type Close {
   txHash: String!
 }
 
+type CollateralToken {
+  symbol: String!
+  address: Address!
+  decimals: Int!
+  chainId: Int!
+}
+
 type CollateralBalanceSnapshot {
-  balance: String!
-  index: Int!
+  account: Account!
+  chainId: Int!
+  collateral: CollateralToken!
+  amount: String!
+  blockNumber: BigInt!
   timestamp: DateTimeISO!
 }
 
 type CollateralBalance {
-  address: String!
-  atBlock: Int
-  balance: String!
+  account: Account!
   chainId: Int!
+  collateral: CollateralToken!
+  amount: String!
+  atBlock: Int
+  address: String!
+  balance: String!
 }
 
-type CollateralTransfer {
-  blockNumber: Int!
+type CollateralTransfer implements Node {
+  id: ID!
+  account: Account!
   chainId: Int!
+  collateral: CollateralToken!
+  amount: String!
+  transactionHash: Bytes32!
+  createdAt: DateTimeISO!
+  blockNumber: Int!
   from: String!
-  id: Int!
   timestamp: DateTimeISO!
   to: String!
-  transactionHash: String!
   value: String!
+  logIndex: Int!
 }
 
 type Condition {
@@ -1638,6 +1656,52 @@ type PickConfigurationEdge {
   cursor: String!
 }
 
+"""Relay-shaped connection over `CollateralTransfer` rows."""
+type CollateralTransferConnection {
+  edges: [CollateralTransferEdge!]!
+  nodes: [CollateralTransfer!]!
+  pageInfo: PageInfo!
+}
+
+type CollateralTransferEdge {
+  node: CollateralTransfer!
+  cursor: String!
+}
+
+type ProtocolStatsConnection {
+  edges: [ProtocolStatsEdge!]!
+  nodes: [ProtocolStat!]!
+  pageInfo: PageInfo!
+}
+
+type ProtocolStatsEdge {
+  node: ProtocolStat!
+  cursor: String!
+}
+
+type VaultStatsConnection {
+  edges: [VaultStatsEdge!]!
+  nodes: [VaultStat!]!
+  pageInfo: PageInfo!
+}
+
+type VaultStatsEdge {
+  node: VaultStat!
+  cursor: String!
+}
+
+type CategoryConnection {
+  edges: [CategoryEdge!]!
+  nodes: [Category!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type CategoryEdge {
+  node: Category!
+  cursor: String!
+}
+
 """
 Paginated wrapper around ActivityItem rows with a server-truth hasMore flag
 """
@@ -1807,7 +1871,50 @@ enum PickConfigurationOrderField {
   RESOLVED_AT
 }
 
-"""Sort fields for the `collateralTransfersPage` query."""
+input CollateralTransferFilter {
+  account: StringFilter
+  chainId: IntFilter
+  excludeProtocol: Boolean
+  createdAt: DateTimeFilter
+}
+
+input CollateralTransferOrder {
+  field: CollateralTransferOrderField!
+  direction: OrderDirection!
+}
+
+enum CollateralTransferOrderField {
+  CREATED_AT
+  AMOUNT
+}
+
+input ProtocolStatsFilter {
+  timestamp: IntFilter
+}
+
+input ProtocolStatsOrder {
+  field: ProtocolStatsOrderField!
+  direction: OrderDirection!
+}
+
+enum ProtocolStatsOrderField {
+  TIMESTAMP
+}
+
+input VaultStatsFilter {
+  timestamp: IntFilter
+}
+
+input VaultStatsOrder {
+  field: VaultStatsOrderField!
+  direction: OrderDirection!
+}
+
+enum VaultStatsOrderField {
+  TIMESTAMP
+}
+
+"""Sort fields for the `collateralTransfersConnection` query."""
 enum CollateralTransferSortField {
   BLOCK_NUMBER
   TIMESTAMP
@@ -2382,6 +2489,29 @@ type TimeToResolutionBucket {
   predictionCount: Int!
 }
 
+type Protocol {
+  stats(first: Int, after: String, filter: ProtocolStatsFilter, orderBy: ProtocolStatsOrder): ProtocolStatsConnection!
+  openInterestByCategory: [CategoryOpenInterest!]! @deprecated(reason: "Use `protocol.openInterestByCategory`.")
+  openInterestByTimeToResolution: [TimeToResolutionBucket!]! @deprecated(reason: "Use `protocol.openInterestByTimeToResolution`.")
+}
+
+type Vault implements Node {
+  id: ID!
+  address: Address!
+  chainId: Int!
+  kind: VaultKind!
+  collateral: CollateralToken!
+  account: Account!
+  stats(first: Int, after: String, filter: VaultStatsFilter, orderBy: VaultStatsOrder): VaultStatsConnection!
+}
+
+enum VaultKind {
+  PROTOCOL
+  PYTH
+  SINGLE_LEG
+  STRATEGY_B
+}
+
 """Protocol-wide stats snapshot — no vault scoping."""
 type ProtocolStat {
   """Snapshot boundary, aligned to the snapshot interval."""
@@ -2459,6 +2589,7 @@ type AccountStat {
 type VaultStat {
   """Snapshot boundary, aligned to the snapshot interval."""
   timestamp: UnixSeconds!
+  vault: Vault!
   balance: String!
   availableAssets: String!
   deployed: String!
@@ -2837,6 +2968,9 @@ type Query {
   time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
   unconditionally (cheap in-memory derivation).
   """
+  protocol: Protocol!
+  vault(id: ID!): Vault
+  vaultByAddress(address: Address!, chainId: Int = 13374202): Vault
   accountStatsLeaderboardPage(filters: AccountStatsFilters, take: Int! = 25, skip: Int! = 0): AccountStatsLeaderboardPage!
 
   """
@@ -2870,10 +3004,8 @@ type Query {
   """
   forecastsConnection(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
   forecastByUid(uid: String!): Forecast
-  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesPage` — purpose-built paginated wrapper with server-truth `hasMore`. Shares the same TtlCache as the deprecated path.")
-
-  """Paginated category list, sorted alphabetically by name."""
-  categoriesPage(take: Int! = 100, skip: Int! = 0): CategoriesPage!
+  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories.")
+  categoriesConnection(first: Int = 100, after: String): CategoryConnection!
 
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
@@ -2884,7 +3016,7 @@ type Query {
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated(reason: "Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement.")
-  collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalance!
+  collateralBalance(account: Address, address: String @deprecated(reason: "Use `account`."), atBlock: Int, chainId: Int!): CollateralBalance! @deprecated(reason: "Use `collateralBalance(account:, chainId:)`; legacy `address` remains as an argument alias during migration.")
 
   """
   Cumulative wUSDe collateral balance for an address at `count + 1`
@@ -2894,9 +3026,12 @@ type Query {
   `intervalSeconds` wins.
   """
   collateralBalanceHistory(
-    address: String!
+    account: Address
+    address: String @deprecated(reason: "Use `account`.")
     chainId: Int!
-    count: Int! = 12
+    first: Int = 12
+    after: String
+    count: Int = 12
 
     """
     Snapshot cadence in seconds. Replaces the deprecated `intervalHours`
@@ -2906,15 +3041,14 @@ type Query {
     intervalSeconds: Int
     intervalHours: Int! = 168 @deprecated(reason: "Use `intervalSeconds:` — drops the unit-suffix to match the unit-on-scalar convention used elsewhere. When both are supplied, `intervalSeconds` wins.")
   ): [CollateralBalanceSnapshot!]!
-  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransfer!]! @deprecated(reason: "Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal.")
+  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransfer!]! @deprecated(reason: "Use `collateralTransfersConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over collateral transfers.")
 
   """
-  Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.
+  Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
   
-  Sorting via `orderBy: CollateralTransferSortField` + `orderDirection: SortOrder`.
-  Defaults to `BLOCK_NUMBER` / `desc` when omitted.
+  Sorting via `orderBy: { field, direction }`. Defaults to `BLOCK_NUMBER` / `DESC` when omitted.
   """
-  collateralTransfersPage(address: String!, chainId: Int!, excludeProtocol: Boolean = false, orderBy: CollateralTransferSortField, orderDirection: SortOrder, take: Int! = 100, skip: Int! = 0): CollateralTransfersPage!
+  collateralTransfersConnection(first: Int = 100, after: String, filter: CollateralTransferFilter, orderBy: CollateralTransferOrder): CollateralTransferConnection!
 
   """
   Look up a single account by canonical wallet address. Replacement for
@@ -3027,7 +3161,7 @@ type Query {
   back), so callers can distinguish it as `points[points.length - 1]
   .timestamp >= floor(now / interval) * interval`.
   """
-  protocolStats(from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [ProtocolStat!]!
+  protocolStats(from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [ProtocolStat!]! @deprecated(reason: "Use `protocol.stats(filter:)` — Relay-shaped stats connection under the protocol namespace.")
 
   """
   Time-bucketed total protocol trading volume across all users. DEPRECATED:
@@ -3087,7 +3221,7 @@ type Query {
   trailing live candle (anchored to the *current* interval boundary) is
   appended when `toEpoch` covers now.
   """
-  vaultStats(vaultAddress: String!, from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [VaultStat!]!
+  vaultStats(vaultAddress: String!, from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [VaultStat!]! @deprecated(reason: "Use `vaultByAddress(address:).stats(filter:)` — per-vault snapshots now live on Vault.")
 }
 
 """

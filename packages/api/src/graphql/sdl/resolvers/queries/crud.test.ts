@@ -10,10 +10,11 @@ const mockPrisma = vi.hoisted(() => ({
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
 import type {
-  QueryCategoriesPageArgs,
   QueryConditionArgs,
   QueryUserArgs,
 } from '../../__generated__/resolvers';
+
+type QueryCategoriesPageArgs = { take: number; skip: number };
 import {
   __clearCategoriesCache,
   categoriesPage,
