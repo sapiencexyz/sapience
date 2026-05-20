@@ -561,7 +561,7 @@ async function main() {
         chainId: CHAIN_ID,
         resolvesAt: { lte: nowSec },
         settled: false,
-        contractAddress: PYTH_RESOLVER_ADDRESS,
+        marketAddress: PYTH_RESOLVER_ADDRESS,
       },
       take,
       skip,
