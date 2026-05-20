@@ -9,7 +9,6 @@ const makePrisma = (overrides: {
   conditionGroups?: { id: number; name?: string }[];
   referralCodes?: { id: number }[];
   attestations?: { id: number; conditionId: string | null }[];
-  predictions?: { id: number; conditionId: string }[];
 }) => {
   const picksFindMany = vi.fn().mockResolvedValue(overrides.picks ?? []);
   const conditionFindMany = vi
@@ -28,9 +27,6 @@ const makePrisma = (overrides: {
   const attestationFindMany = vi
     .fn()
     .mockResolvedValue(overrides.attestations ?? []);
-  const legacyPredictionFindMany = vi
-    .fn()
-    .mockResolvedValue(overrides.predictions ?? []);
   return {
     picksFindMany,
     conditionFindMany,
@@ -39,7 +35,6 @@ const makePrisma = (overrides: {
     conditionGroupFindMany,
     referralCodeFindMany,
     attestationFindMany,
-    legacyPredictionFindMany,
     client: {
       picks: { findMany: picksFindMany },
       condition: { findMany: conditionFindMany },
@@ -48,7 +43,6 @@ const makePrisma = (overrides: {
       conditionGroup: { findMany: conditionGroupFindMany },
       referralCode: { findMany: referralCodeFindMany },
       attestation: { findMany: attestationFindMany },
-      legacyPrediction: { findMany: legacyPredictionFindMany },
     } as unknown as Parameters<typeof createLoaders>[0],
   };
 };
@@ -330,27 +324,5 @@ describe('createLoaders.attestationsByConditionId', () => {
 
     expect(attestationFindMany).toHaveBeenCalledTimes(1);
     expect(mixed.map((a) => a.id)).toEqual([1]);
-  });
-});
-
-describe('createLoaders.predictionsByConditionId', () => {
-  it('groups predictions by conditionId in a single findMany', async () => {
-    const { legacyPredictionFindMany, client } = makePrisma({
-      predictions: [
-        { id: 100, conditionId: '0xcond1' },
-        { id: 101, conditionId: '0xcond2' },
-        { id: 102, conditionId: '0xcond1' },
-      ],
-    });
-    const loaders = createLoaders(client);
-
-    const [forCond1, forCond2] = await Promise.all([
-      loaders.predictionsByConditionId.load('0xcond1'),
-      loaders.predictionsByConditionId.load('0xcond2'),
-    ]);
-
-    expect(legacyPredictionFindMany).toHaveBeenCalledTimes(1);
-    expect(forCond1.map((p) => p.id).sort()).toEqual([100, 102]);
-    expect(forCond2.map((p) => p.id)).toEqual([101]);
   });
 });
