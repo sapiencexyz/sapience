@@ -272,13 +272,17 @@ export const runPredictions = async ({
   });
   if (empty) return { items: [], hasMore: false, totalCount: 0 };
 
-  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
+  // SortOrder enum carries `asc`/`desc` plus uppercase ASC/DESC aliases
+  // for older clients; PredictionSortField carries SCREAMING_SNAKE plus
+  // camelCase aliases for the same reason.
+  const direction =
+    orderDirection === 'asc' || orderDirection === 'ASC' ? 'asc' : 'desc';
   let orderByClause: Prisma.PredictionOrderByWithRelationInput = {
     createdAt: 'desc',
   };
-  if (orderBy === 'CREATED_AT') {
+  if (orderBy === 'CREATED_AT' || orderBy === 'createdAt') {
     orderByClause = { createdAt: direction };
-  } else if (orderBy === 'SETTLED_AT') {
+  } else if (orderBy === 'SETTLED_AT' || orderBy === 'settledAt') {
     orderByClause = { settledAt: direction };
   }
 
@@ -694,9 +698,18 @@ const normalizePositionsArgs = (
   collateralMin: args.collateralMin,
   collateralMax: args.collateralMax,
   // PositionSortField SDL enum values are CREATED_AT / UPDATED_AT; map
-  // to the Prisma column name for orderBy.
-  orderField: args.orderBy === 'CREATED_AT' ? 'createdAt' : 'updatedAt',
-  orderDirection: args.orderDirection === 'asc' ? 'asc' : 'desc',
+  // to the Prisma column name for orderBy. Accept camelCase aliases kept
+  // on the enum for older clients (`createdAt`, `updatedAt`).
+  orderField:
+    args.orderBy === 'CREATED_AT' || args.orderBy === 'createdAt'
+      ? 'createdAt'
+      : 'updatedAt',
+  // SortOrder SDL enum values are `asc` / `desc`; accept uppercase
+  // ASC / DESC aliases kept on the enum for older clients.
+  orderDirection:
+    args.orderDirection === 'asc' || args.orderDirection === 'ASC'
+      ? 'asc'
+      : 'desc',
 });
 
 /**

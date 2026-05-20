@@ -1296,6 +1296,12 @@ export type ConditionGroup = {
   id: Scalars['Int']['output'];
   name: Scalars['String']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
+  /**
+   * Compatibility alias mirroring `name`. Kept so external clients still
+   * selecting `ConditionGroup.title` keep working through one release.
+   * @deprecated Use `name` — same value, the alias exists only to absorb in-flight queries from older clients.
+   */
+  title: Scalars['String']['output'];
 };
 
 
@@ -2462,7 +2468,9 @@ export type PositionOrderField =
 /** Field to sort positions by */
 export type PositionSortField =
   | 'CREATED_AT'
-  | 'UPDATED_AT';
+  | 'UPDATED_AT'
+  | 'createdAt'
+  | 'updatedAt';
 
 /**
  * Paginated wrapper around Position rows with a server-truth hasMore flag.
@@ -2586,7 +2594,9 @@ export type PredictionOrderField =
 /** Field to sort predictions by */
 export type PredictionSortField =
   | 'CREATED_AT'
-  | 'SETTLED_AT';
+  | 'SETTLED_AT'
+  | 'createdAt'
+  | 'settledAt';
 
 /**
  * DEPRECATED — kept only as the return type of `accountProfitRank`, which is
@@ -3907,6 +3917,8 @@ export type SettlementResultFilter = {
 };
 
 export type SortOrder =
+  | 'ASC'
+  | 'DESC'
   | 'asc'
   | 'desc';
 

@@ -281,7 +281,12 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
     minSimilarMarketVolume: args.minSimilarMarketVolume,
     maxSimilarMarketVolume: args.maxSimilarMarketVolume,
     sortField,
-    sortDirectionRaw: args.sortDirection === 'asc' ? 'ASC' : 'DESC',
+    // SortOrder enum carries `asc`/`desc` plus uppercase ASC/DESC aliases
+    // for older clients.
+    sortDirectionRaw:
+      args.sortDirection === 'asc' || args.sortDirection === 'ASC'
+        ? 'ASC'
+        : 'DESC',
     afterCursor: args.afterCursor ?? null,
     volumeKey,
     useWindowedSimilarMarketVolume,

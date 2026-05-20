@@ -20,12 +20,14 @@ import { loadRelation } from './relationHelpers';
 
 type PrismaConditionGroup = {
   id: number;
+  name?: string | null;
   categoryId?: number | null;
   category?: unknown;
   [k: string]: unknown;
 };
 
 export const ConditionGroup: ConditionGroupResolvers = {
+  title: (parent) => (parent as PrismaConditionGroup).name ?? '',
   category: async (parent, args, ctx) => {
     const p = parent as PrismaConditionGroup;
     if (p.category !== undefined) return p.category as never;
