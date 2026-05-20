@@ -4,6 +4,40 @@ A running log of API changes that downstream services should adopt. Entries are 
 
 > PR 3 update: `positionsPage`, `tradesPage`, and `pickConfigurationsPage` were staging-only migration scaffolding and have been replaced by `positionsConnection`, `tradesConnection`, and `pickConfigurationsConnection`. Historical entries below may still mention the old page names for context; new callers should use the Connection fields.
 
+
+---
+
+## PR6 GraphQL redesign — Account, Activity, and Leaderboard convergence
+
+### TL;DR
+
+PR6 introduces the account-centered replacement surface while the old Page-style account/activity resolvers are still present for compatibility during the draft phase. New callers should target:
+
+- `account(address: Address!)` for address-backed account identity and child feeds.
+- `account(address).stats(first, after, filter)` instead of `accountStats(address, from, to)`.
+- `account(address).rank(metric, filter)` instead of `accountStatsRank` / `accountAccuracyRank`.
+- `leaderboard(metric, first, after, filter)` instead of `accountStatsLeaderboardPage` / `accuracyLeaderboardPage`.
+- `activity(first, after, filter, orderBy)` instead of `activityPage(filters, take, skip)`.
+
+### Migration map
+
+| Before | After |
+| --- | --- |
+| `accountStats(address, from, to)` | `account(address).stats(filter: { timestamp: { gte: from, lte: to } })` |
+| `accountStatsRank(address, filters)` | `account(address).rank(metric: PNL/VOLUME/ROI, filter: { from, to })` |
+| `accountStatsLeaderboardPage(filters, take, skip)` | `leaderboard(metric: PNL/VOLUME/ROI, first: take, filter: { from, to })` |
+| `accountAccuracyRank(address)` | `account(address).rank(metric: ACCURACY)` |
+| `accuracyLeaderboardPage(take, skip)` | `leaderboard(metric: ACCURACY, first: take)` |
+| `activityPage(filters, take, skip)` | `activity(first: take, after: cursor, filter: { account, conditionId, pickConfigId, types })` |
+
+### Notes
+
+- `ActivitySource` is intentionally only `Prediction | Trade`. Forecasts are not part of the feed in PR6.
+- `ActivityFilter.types: []` is an explicit zero-result query. Omit `types` for predictions and trades.
+- `Account.predictions` is intentionally OR-across-roles (`predictor = account OR counterparty = account`). Root prediction filters keep their stricter semantics.
+- `AccountRanking.value` is metric-polymorphic: signed wUSDe for `PNL`, positive wUSDe for `VOLUME`, ratio string for `ROI`, raw Brier-derived score for `ACCURACY`.
+- PNL/VOLUME/ROI are currently backed by the existing aggregate account-stats helpers; the materialized `account_stat` latest-snapshot table/index is still future work.
+
 ---
 
 ## `predictionsPage` — paginated escrow predictions, replaces `predictions`

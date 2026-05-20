@@ -46,7 +46,7 @@ time-weighted error already weights by recency, so there's no window
 filter on this surface.
 """
 type AccountAccuracyRank {
-  address: String!
+  address: Address!
   accuracyScore: Float!
   rank: Int
   totalParticipants: Int!
@@ -90,11 +90,12 @@ that's referral-graph data). When address-keyed metadata that doesn't fit
 elsewhere shows up (display name, avatar, settings), it can grow here
 without renaming.
 """
-type Account {
+type Account implements Node {
+  id: ID!
   """
   Canonical Ethereum wallet address.
   """
-  address: String!
+  address: Address!
 
   """
   When this account first appeared in the database.
@@ -127,6 +128,39 @@ type Account {
   Accounts referred by this account (via this account's referral code).
   """
   referrals: [Account!]!
+
+  stats(
+    first: Int = 50
+    after: String
+    filter: AccountStatsFilter
+    orderBy: AccountStatsOrder
+  ): AccountStatsConnection!
+  rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRanking
+  predictions(
+    first: Int = 50
+    after: String
+    filter: PredictionFilter
+    orderBy: PredictionOrder
+  ): PredictionConnection!
+  trades(
+    first: Int = 50
+    after: String
+    filter: TradeFilter
+    orderBy: TradeOrder
+  ): TradeConnection!
+  forecasts(
+    first: Int = 50
+    after: String
+    filter: ForecastFilter
+    orderBy: ForecastOrder
+  ): ForecastConnection!
+  positions(
+    first: Int = 50
+    after: String
+    filter: PositionFilter
+    orderBy: PositionOrder
+  ): PositionConnection!
+  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
 }
 
 """
@@ -599,6 +633,153 @@ type Close {
   txHash: String!
 }
 
+type Activity {
+  source: ActivitySource!
+  account: Account!
+  createdAt: DateTimeISO!
+}
+
+union ActivitySource = Prediction | Trade
+
+enum ActivityType {
+  PREDICTION
+  TRADE
+}
+
+type ActivityConnection {
+  edges: [ActivityEdge!]!
+  nodes: [Activity!]!
+  pageInfo: PageInfo!
+}
+
+type ActivityEdge {
+  node: Activity!
+  cursor: String!
+}
+
+enum ActivityOrderField {
+  CREATED_AT
+}
+
+input ActivityOrder {
+  field: ActivityOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Filter input for the Relay-shaped `activity(...)` connection. Combines
+with AND. `types: []` is an explicit zero-result query — omit `types`
+to include both predictions and trades.
+"""
+input ActivityFilter {
+  """
+  Restrict to a single account's activity (case-insensitive). OR-across
+  prediction roles (predictor / counterparty) and trade sides (buyer /
+  seller). Omit for a global feed.
+  """
+  account: String
+  """
+  Restrict to activity on a single condition. Walks Pick → PickConfiguration
+  to derive the matching pickConfigIds (predictions) and predictor /
+  counterparty tokens (trades).
+  """
+  conditionId: String
+  """
+  Restrict to activity on any of these conditions. Union with `conditionId`
+  when both are supplied; useful for group-backed feeds where the caller
+  has the condition list pre-resolved.
+  """
+  conditionIds: [String!]
+  """
+  Restrict to activity reachable through a ConditionGroup's member conditions.
+  Expanded server-side into the group's condition ids, then treated as
+  `conditionIds`.
+  """
+  conditionGroupId: Int
+  """
+  Restrict to activity tied to a single pick configuration. When combined
+  with `conditionId`/`conditionIds`, intersects with that condition's
+  pickConfig set.
+  """
+  pickConfigId: String
+  """
+  Restrict to one or both ActivityType union members. `[]` is an explicit
+  zero-result query.
+  """
+  types: [ActivityType!]
+  """
+  Filter by activity row creation epoch seconds, e.g. `{ gte: 1770000000 }`.
+  Applied as `createdAt` on Predictions (Postgres timestamp) and
+  `executedAt` on Trades (Int seconds) — bounds project to each side's
+  native column type.
+  """
+  createdAt: IntFilter
+}
+
+enum LeaderboardMetric {
+  ACCURACY
+  PNL
+  VOLUME
+  ROI
+}
+
+"""
+Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a
+configurable window; ACCURACY is lifetime-aggregated (the time-weighted
+Brier-derived score already weights by recency) and ignores the window.
+Operator-pattern shape matches `AccountStatsFilter`.
+"""
+input LeaderboardFilter {
+  """
+  Filter by aggregation epoch seconds. `{ gte }` sets the window's lower
+  bound, `{ lte }` sets the upper bound; both inclusive. Other operators
+  reject — this is a window selector, not a point query.
+  """
+  timestamp: IntFilter
+}
+
+input AccountStatsFilter {
+  timestamp: IntFilter
+}
+
+input AccountStatsOrder {
+  field: AccountStatsOrderField!
+  direction: OrderDirection!
+}
+
+enum AccountStatsOrderField {
+  TIMESTAMP
+}
+
+type AccountRanking {
+  account: Account!
+  rank: Int!
+  value: String!
+}
+
+type AccountRankingConnection {
+  edges: [AccountRankingEdge!]!
+  nodes: [AccountRanking!]!
+  pageInfo: PageInfo!
+  metric: LeaderboardMetric!
+}
+
+type AccountRankingEdge {
+  node: AccountRanking!
+  cursor: String!
+}
+
+type AccountStatsConnection {
+  edges: [AccountStatsEdge!]!
+  nodes: [AccountStat!]!
+  pageInfo: PageInfo!
+}
+
+type AccountStatsEdge {
+  node: AccountStat!
+  cursor: String!
+}
+
 type CollateralToken {
   symbol: String!
   address: Address!
@@ -683,13 +864,23 @@ type Condition {
 
   predictionCount: Int!
   predictions(
-    cursor: LegacyPredictionWhereUniqueInput
-    distinct: [LegacyPredictionScalarFieldEnum!]
-    orderBy: [LegacyPredictionOrderByWithRelationInput!]
-    skip: Int
-    take: Int
-    where: LegacyPredictionWhereInput
-  ): [LegacyPrediction!]!
+    first: Int = 50
+    after: String
+    filter: PredictionFilter
+    orderBy: PredictionOrder
+  ): PredictionConnection!
+  trades(
+    first: Int = 50
+    after: String
+    filter: TradeFilter
+    orderBy: TradeOrder
+  ): TradeConnection!
+  forecasts(
+    first: Int = 50
+    after: String
+    filter: ForecastFilter
+    orderBy: ForecastOrder
+  ): ForecastConnection!
   public: Boolean!
   question: String!
   resolvedToYes: Boolean!
@@ -1665,6 +1856,24 @@ type PickConfiguration {
   isLegacy: Boolean!
   marketAddress: String!
   picks: [Pick!]!
+  predictions(
+    first: Int = 50
+    after: String
+    filter: PredictionFilter
+    orderBy: PredictionOrder
+  ): PredictionConnection!
+  trades(
+    first: Int = 50
+    after: String
+    filter: TradeFilter
+    orderBy: TradeOrder
+  ): TradeConnection!
+  positions(
+    first: Int = 50
+    after: String
+    filter: PositionFilter
+    orderBy: PositionOrder
+  ): PositionConnection!
   predictionId: String
   predictorToken: String
   resolved: Boolean!
@@ -1906,6 +2115,46 @@ type CategoryEdge {
 }
 
 """
+Relay-shaped connection over `Account` rows (User table). Address-only
+synthetic accounts are not returned — those are reachable through
+`account(address:)` directly. `totalCount` is the row count matching the
+filter (cheap — the User table is small).
+"""
+type AccountConnection {
+  edges: [AccountEdge!]!
+  nodes: [Account!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AccountEdge {
+  node: Account!
+  cursor: String!
+}
+
+"""
+Filter input for `accountsConnection`. Intentionally narrow — the only
+meaningful filter dimension for an address-keyed table is substring
+match against the address itself.
+"""
+input AccountFilter {
+  """
+  Substring search against the wallet address (case-insensitive). Useful
+  for autocomplete / lookup UIs.
+  """
+  search: String
+}
+
+input AccountOrder {
+  field: AccountOrderField!
+  direction: OrderDirection!
+}
+
+enum AccountOrderField {
+  CREATED_AT
+}
+
+"""
 Paginated wrapper around ActivityItem rows with a server-truth hasMore flag
 """
 type ActivityItemsPage implements Page {
@@ -1937,7 +2186,7 @@ enum ConditionGroupSortField {
   TOTAL_PREDICTION_COUNT
 }
 
-# --- New-convention Order inputs and OrderField enums (PR 2) ---
+# --- Order inputs and OrderField enums (redesign convention) ---
 # Used by the Relay-shaped `conditions` / `conditionGroups` / `questions`
 # connections. Each `<Entity>OrderField` lists only values that map to
 # an existing partial index on the underlying table — see the design
@@ -2251,7 +2500,7 @@ input ConditionGroupFilters {
   includeEmpty: Boolean
 }
 
-# --- New-convention filter inputs (PR 2) ---
+# --- Filter inputs (redesign convention) ---
 # Operator-pattern shape per the design doc. Intentionally minimal —
 # start with the filters every client needs, extend as demand surfaces.
 # Clients needing legacy features (engagement, hasSimilarMarkets,
@@ -2830,6 +3079,8 @@ the resolver to read from it — the wire shape is the destination, so
 clients are forward-compatible across that swap.
 """
 type AccountStat {
+  account: Account!
+
   """
   Snapshot boundary.
   """
@@ -2993,6 +3244,7 @@ input TradeFilter {
   Restrict to a single position token address (case-insensitive).
   """
   token: String
+  tokens: [String!]
   """
   Restrict to a single chain.
   """
@@ -3096,6 +3348,13 @@ input PredictionFilter {
   """
   conditionId: String
   """
+  Restrict to predictions on any of these conditions (via the pickConfig join).
+  Useful for group-backed feeds where the caller already has the condition
+  list resolved.
+  """
+  conditionIds: [String!]
+  pickConfigId: String
+  """
   Restrict to legacy (true) or non-legacy (false) predictions.
   """
   isLegacy: Boolean
@@ -3149,6 +3408,11 @@ input ForecastFilter {
   Restrict to forecasts on a single condition.
   """
   conditionId: String
+  """
+  Restrict to forecasts on any of these conditions. Useful for group-backed
+  feeds where the caller already has the condition list resolved.
+  """
+  conditionIds: [String!]
   """
   Restrict to a single EAS schema ID.
   """
@@ -3216,6 +3480,19 @@ type Query {
   """
   nodes(ids: [ID!]!): [Node]!
 
+  activity(
+    first: Int = 50
+    after: String
+    filter: ActivityFilter
+    orderBy: ActivityOrder
+  ): ActivityConnection!
+  leaderboard(
+    metric: LeaderboardMetric!
+    first: Int = 25
+    after: String
+    filter: LeaderboardFilter
+  ): AccountRankingConnection!
+
   """
   Accuracy rank and lifetime score for a single address. Mirrors
   `accountStatsRank`'s shape: stats fields are always populated (zero for
@@ -3224,6 +3501,9 @@ type Query {
   set.
   """
   accountAccuracyRank(address: String!): AccountAccuracyRank!
+    @deprecated(
+      reason: "Use `account(address: $a).rank(metric: ACCURACY)` — returns the same rank + value via the Relay-shaped Account surface."
+    )
 
   """
   Lifetime accuracy score for a single address, or null if no scored
@@ -3254,36 +3534,23 @@ type Query {
 
   """
   Unified activity feed (predictions + trades merged by timestamp), wrapped
-  in an `ActivityItemsPage` with a server-truth `hasMore` flag. When
-  `address` is provided the feed is scoped to that account; otherwise it
-  returns recent global activity.
-
-  Filtering is via `filters: ActivityFilters`. The flat-arg filters
-  (`address`, `conditionId`, `pickConfigId`, `type`) are retained for one
-  release with `@deprecated` so existing callers can migrate without
-  breaking; new callers should use `filters:`.
+  in an `ActivityItemsPage` with a server-truth `hasMore` flag. The whole
+  field is deprecated in favor of `activity(...)`, the Relay-shaped
+  replacement; flat-arg / `filters:`-arg variants both keep working until
+  the deprecation window closes.
   """
   activityPage(
     filters: ActivityFilters
     take: Int! = 20
     skip: Int! = 0
     address: String
-      @deprecated(
-        reason: "Use `filters: { address: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
     conditionId: String
-      @deprecated(
-        reason: "Use `filters: { conditionId: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
     pickConfigId: String
-      @deprecated(
-        reason: "Use `filters: { pickConfigId: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
     type: ActivityItemType
-      @deprecated(
-        reason: "Use `filters: { type: ... }` on `ActivityFilters` — the flat-arg shape is being unified across all `*Page` resolvers."
-      )
   ): ActivityItemsPage!
+    @deprecated(
+      reason: "Use `activity(first:, after:, filter:, orderBy:)` — Relay-shaped pagination over the same merged predictions/trades feed."
+    )
 
   """
   Deprecated alias for `activityPage` — the `account*` prefix predates the
@@ -3328,6 +3595,9 @@ type Query {
         reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix."
       )
   ): [AccountStat!]!
+    @deprecated(
+      reason: "Use `account(address: $a).stats(filter: { timestamp: { gte: $from, lte: $to } })` — same fat-row shape via the Relay-shaped Account surface."
+    )
 
   """
   Time-bucketed collateral balance for a single address — deployed (in open
@@ -3415,6 +3685,9 @@ type Query {
     take: Int! = 25
     skip: Int! = 0
   ): AccountStatsLeaderboardPage!
+    @deprecated(
+      reason: "Use `leaderboard(metric: PNL|VOLUME|ROI, first:, after:, filter:)` — Relay-shaped pagination over the same ranked set."
+    )
 
   """
   Stats + rank for a single address against the same ranked set the
@@ -3429,6 +3702,9 @@ type Query {
     address: String!
     filters: AccountStatsFilters
   ): AccountStatsRank!
+    @deprecated(
+      reason: "Use `account(address: $a).rank(metric: PNL|VOLUME|ROI, filter:)` — returns the same rank + value via the Relay-shaped Account surface."
+    )
 
   """
   Profit rank and total PnL for a single address relative to all
@@ -3449,6 +3725,9 @@ type Query {
     take: Int! = 25
     skip: Int! = 0
   ): AccountAccuracyLeaderboardPage!
+    @deprecated(
+      reason: "Use `leaderboard(metric: ACCURACY, first:, after:)` — Relay-shaped pagination over the same ranked set."
+    )
   attestations(
     cursor: AttestationWhereUniqueInput
     distinct: [AttestationScalarFieldEnum!]
@@ -3574,6 +3853,19 @@ type Query {
   Prisma-shaped `UserWhereUniqueInput`.
   """
   account(address: String!): Account
+
+  """
+  Relay-shaped connection over accounts (User-table rows). Single-address
+  lookups should keep using `account(address:)`, which synthesizes
+  address-backed Accounts for wallets without a User row;
+  `accountsConnection` is for enumeration / search use cases.
+  """
+  accountsConnection(
+    first: Int
+    after: String
+    filter: AccountFilter
+    orderBy: AccountOrder
+  ): AccountConnection!
   condition(where: ConditionWhereUniqueInput!): Condition
     @deprecated(
       reason: "Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape."
@@ -4169,6 +4461,31 @@ type Question {
 
   category: Category
   tags: [String!]!
+
+  predictions(
+    first: Int = 50
+    after: String
+    filter: PredictionFilter
+    orderBy: PredictionOrder
+  ): PredictionConnection!
+  trades(
+    first: Int = 50
+    after: String
+    filter: TradeFilter
+    orderBy: TradeOrder
+  ): TradeConnection!
+  forecasts(
+    first: Int = 50
+    after: String
+    filter: ForecastFilter
+    orderBy: ForecastOrder
+  ): ForecastConnection!
+  activity(
+    first: Int = 50
+    after: String
+    filter: ActivityFilter
+    orderBy: ActivityOrder
+  ): ActivityConnection!
 
   """
   Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`.

@@ -26,17 +26,21 @@ import { AttestationScore } from './AttestationScore';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
+import { Activity, ActivitySource } from './Activity';
 import { ActivityItemsPage } from './ActivityItemsPage';
 import { Forecast } from './Forecast';
 import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
+import { PickConfiguration } from './PickConfiguration';
 import { PositionsPage } from './PositionsPage';
 import { Question, ConditionOrConditionGroup } from './Question';
 import { User } from './User';
 
-import { accountActivityPage, activityPage } from './queries/activity';
+import { accountActivityPage, activityPage } from './queries/activityPage';
+import { activity } from './queries/activity';
+import { leaderboard } from './queries/leaderboard';
 import { accountActivity } from './queries/deprecated/activity';
 import {
   accountStats,
@@ -71,6 +75,7 @@ import { conditionGroups } from './queries/deprecated/conditionGroups';
 import { questions } from './queries/deprecated/questions';
 import {
   account,
+  accountsConnection,
   categories,
   categoriesConnection,
   condition,
@@ -118,6 +123,8 @@ export const resolvers: Resolvers = {
     // Relay polymorphic refetch
     node,
     nodes,
+    activity,
+    leaderboard,
     // Leaderboards / account scores
     accountAccuracy,
     accountAccuracyRank,
@@ -181,6 +188,7 @@ export const resolvers: Resolvers = {
     popularTags,
     // CRUD passthroughs
     account,
+    accountsConnection,
     attestations,
     forecastByUid,
     forecastsConnection,
@@ -194,6 +202,8 @@ export const resolvers: Resolvers = {
     users,
   },
   Account,
+  Activity,
+  ActivitySource,
   ActivityItemsPage,
   Attestation,
   AttestationScore,
@@ -205,6 +215,7 @@ export const resolvers: Resolvers = {
   LegacyPrediction,
   LimitOrder,
   Pick,
+  PickConfiguration,
   PositionsPage,
   Question,
   ConditionOrConditionGroup,

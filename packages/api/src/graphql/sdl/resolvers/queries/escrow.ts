@@ -58,7 +58,7 @@ import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { clampSkip, clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
-type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
+export type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
 }>;
 
@@ -68,7 +68,7 @@ const offsetFromCursor = (cursor: string | null | undefined): number => {
   return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
 };
 
-const mapPrediction = (
+export const mapPrediction = (
   r: PredictionWithPickConfig
 ): ResolversParentTypes['Prediction'] => ({
   id: r.id,
@@ -122,6 +122,9 @@ export type PredictionsEnvelope = {
  * `predictionsConnection` / `PredictionFilter`.
  */
 export type RunPredictionsArgs = QueryPredictionsArgs & {
+  pickConfigId?: string | null;
+  conditionGroupId?: string | number | null;
+  conditionIds?: string[] | null;
   result?: SettlementResult | null;
   endsAt?: Prisma.IntFilter | null;
   endsAtMin?: number | null;
@@ -131,6 +134,9 @@ export type RunPredictionsArgs = QueryPredictionsArgs & {
 const buildPredictionWhere = async ({
   address,
   conditionId,
+  pickConfigId,
+  conditionGroupId,
+  conditionIds,
   chainId,
   settled,
   isLegacy,
@@ -142,6 +148,9 @@ const buildPredictionWhere = async ({
   RunPredictionsArgs,
   | 'address'
   | 'conditionId'
+  | 'pickConfigId'
+  | 'conditionGroupId'
+  | 'conditionIds'
   | 'chainId'
   | 'settled'
   | 'isLegacy'
@@ -154,11 +163,43 @@ const buildPredictionWhere = async ({
   const where: Prisma.PredictionWhereInput = {};
   const filters: Prisma.PredictionWhereInput[] = [];
   if (addr) filters.push({ OR: [{ predictor: addr }, { counterparty: addr }] });
+  if (pickConfigId) {
+    filters.push({ pickConfigId: pickConfigId.toLowerCase() });
+  }
   if (conditionId) {
     const matchingPicks = await prisma.pick.findMany({
       where: {
         conditionId: { equals: conditionId.toLowerCase(), mode: 'insensitive' },
       },
+      select: { pickConfigId: true },
+      distinct: ['pickConfigId'],
+    });
+    const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+    if (pickConfigIds.length === 0) return { where, empty: true };
+    filters.push({ pickConfigId: { in: pickConfigIds } });
+  }
+  if (conditionIds?.length) {
+    const ids = conditionIds.map((id) => id.toLowerCase());
+    const matchingPicks = await prisma.pick.findMany({
+      where: { conditionId: { in: ids } },
+      select: { pickConfigId: true },
+      distinct: ['pickConfigId'],
+    });
+    const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+    if (pickConfigIds.length === 0) return { where, empty: true };
+    filters.push({ pickConfigId: { in: pickConfigIds } });
+  }
+  if (conditionGroupId != null) {
+    const conditions = await prisma.condition.findMany({
+      where: { conditionGroupId: Number(conditionGroupId) },
+      select: { id: true },
+    });
+    const conditionIds = conditions.map((condition) =>
+      condition.id.toLowerCase()
+    );
+    if (conditionIds.length === 0) return { where, empty: true };
+    const matchingPicks = await prisma.pick.findMany({
+      where: { conditionId: { in: conditionIds } },
       select: { pickConfigId: true },
       distinct: ['pickConfigId'],
     });
@@ -193,6 +234,9 @@ export const runPredictions = async ({
   skip,
   address,
   conditionId,
+  pickConfigId,
+  conditionGroupId,
+  conditionIds,
   chainId,
   settled,
   isLegacy,
@@ -207,6 +251,9 @@ export const runPredictions = async ({
   const { where, empty } = await buildPredictionWhere({
     address,
     conditionId,
+    pickConfigId,
+    conditionGroupId,
+    conditionIds,
     chainId,
     settled,
     isLegacy,
@@ -280,6 +327,19 @@ export const predictionsConnection: NonNullable<
   const { where: filterWhere, empty } = await buildPredictionWhere({
     address: filter?.address ?? null,
     conditionId: filter?.conditionId ?? null,
+    pickConfigId:
+      (filter as { pickConfigId?: string | null } | null | undefined)
+        ?.pickConfigId ?? null,
+    conditionGroupId:
+      (
+        filter as
+          | { conditionGroupId?: string | number | null }
+          | null
+          | undefined
+      )?.conditionGroupId ?? null,
+    conditionIds:
+      (filter as { conditionIds?: string[] | null } | null | undefined)
+        ?.conditionIds ?? null,
     chainId: filter?.chainId ?? null,
     settled: filter?.settled ?? null,
     isLegacy: filter?.isLegacy ?? null,

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Live CRUD-style queries that share a TtlCache with their deprecated
  * passthroughs:
@@ -20,13 +21,14 @@ import {
   ForecastOrderField,
   OrderDirection,
 } from '../../__generated__/resolvers';
-import { Prisma } from '../../../../../generated/prisma';
+import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
-import { clampSkip, clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import { registerNodeType, toGlobalId } from '../../../relay/globalId';
+import { synthesizeAccount } from '../accountSynthesis';
+import { clampTake } from './pagination';
 
 /**
  * Cache only the no-args call (the dominant public path: integrator's
@@ -49,6 +51,26 @@ registerNodeType({
     const numericId = Number(id);
     if (!Number.isInteger(numericId)) return null;
     return prisma.category.findUnique({ where: { id: numericId } });
+  },
+});
+
+registerNodeType({
+  type: 'Account',
+  loader: async (id, ctx) => {
+    const address = id.toLowerCase();
+    const loaders = (
+      ctx as {
+        loaders?: {
+          userByAddress?: {
+            load: (address: string) => Promise<unknown | null>;
+          };
+        };
+      }
+    ).loaders;
+    const row = loaders?.userByAddress
+      ? await loaders.userByAddress.load(address)
+      : await prisma.user.findUnique({ where: { address } });
+    return row ?? synthesizeAccount(address);
   },
 });
 
@@ -123,11 +145,96 @@ export const user: NonNullable<QueryResolvers['user']> = async (
   });
 };
 
-export const account: NonNullable<QueryResolvers['account']> = async (
-  _parent,
-  { address },
-  ctx
-) => ctx.loaders!.userByAddress.load(address);
+export const account = (async (
+  _parent: unknown,
+  { address }: any,
+  ctx: any
+) => {
+  const addressLc = address.toLowerCase();
+  const row = await ctx.loaders!.userByAddress.load(addressLc);
+  return (row ?? synthesizeAccount(addressLc)) as never;
+}) as any as NonNullable<QueryResolvers['account']>;
+
+/**
+ * Keyset cursor predicate for accounts ordered by `(createdAt, id)`.
+ * Stable across pages: `createdAt` alone collides, `id` alone shifts under
+ * inserts. Direction is parameterized for forward (`desc`) and ascending
+ * (`asc`) orderings.
+ */
+const buildAccountCursorPredicate = (
+  k: string,
+  cursorId: string,
+  direction: 'asc' | 'desc'
+): Prisma.UserWhereInput => {
+  const op = direction === 'desc' ? 'lt' : 'gt';
+  const createdAt = new Date(k);
+  const id = Number(cursorId);
+  return {
+    OR: [
+      { createdAt: { [op]: createdAt } },
+      {
+        AND: [{ createdAt: { equals: createdAt } }, { id: { [op]: id } }],
+      },
+    ],
+  } as Prisma.UserWhereInput;
+};
+
+/**
+ * Relay-shaped connection over `Account` rows (User table). Accounts
+ * without a User row aren't returned — synthesis only happens at the
+ * single-lookup level (`account(address:)`). Default order is
+ * `CREATED_AT DESC`; `filter.search` substring-matches the wallet
+ * address case-insensitively.
+ */
+export const accountsConnection = (async (
+  _parent: unknown,
+  { first, after, filter, orderBy }: any
+) => {
+  const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const direction: 'asc' | 'desc' =
+    orderBy?.direction === 'ASC' ? 'asc' : 'desc';
+  const search = (filter?.search as string | null | undefined)?.trim();
+  const baseWhere: Prisma.UserWhereInput = search
+    ? { address: { contains: search.toLowerCase(), mode: 'insensitive' } }
+    : {};
+  const cursorPayload = after ? decodeCursor(after) : null;
+  const cursorWhere = cursorPayload
+    ? buildAccountCursorPredicate(cursorPayload.k, cursorPayload.id, direction)
+    : null;
+  const pageWhere: Prisma.UserWhereInput = cursorWhere
+    ? { AND: [baseWhere, cursorWhere] }
+    : baseWhere;
+
+  const [rows, totalCount] = await Promise.all([
+    prisma.user.findMany({
+      where: pageWhere,
+      orderBy: [{ createdAt: direction }, { id: direction }],
+      take: cappedFirst + 1,
+    }),
+    prisma.user.count({ where: baseWhere }),
+  ]);
+
+  const hasNextPage = rows.length > cappedFirst;
+  const pageRows = hasNextPage ? rows.slice(0, cappedFirst) : rows;
+  const edges = pageRows.map((row) => ({
+    node: row,
+    cursor: encodeCursor({
+      k: row.createdAt.toISOString(),
+      id: String(row.id),
+    }),
+  }));
+  return {
+    edges,
+    nodes: pageRows,
+    totalCount,
+    pageInfo: {
+      hasNextPage,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges.at(-1)?.cursor ?? null,
+    },
+  };
+}) as any as NonNullable<QueryResolvers['accountsConnection']>;
 
 const buildForecastCursorPredicate = (
   k: string,
@@ -173,6 +280,39 @@ export const forecastsConnection: NonNullable<
   if (filter?.uid) where.uid = filter.uid;
   if (filter?.forecaster) where.attester = filter.forecaster;
   if (filter?.conditionId) where.conditionId = filter.conditionId;
+  const conditionIdsFilter = (
+    filter as { conditionIds?: string[] | null } | null | undefined
+  )?.conditionIds;
+  if (conditionIdsFilter?.length)
+    where.conditionId = {
+      in: conditionIdsFilter.map((id) => id.toLowerCase()),
+    };
+  const conditionGroupId = (
+    filter as { conditionGroupId?: string | number | null } | null | undefined
+  )?.conditionGroupId;
+  if (conditionGroupId != null) {
+    const conditions = await prisma.condition.findMany({
+      where: { conditionGroupId: Number(conditionGroupId) },
+      select: { id: true },
+    });
+    const conditionIds = conditions.map((condition) =>
+      condition.id.toLowerCase()
+    );
+    if (conditionIds.length === 0) {
+      return {
+        edges: [],
+        nodes: [],
+        totalCount: 0,
+        pageInfo: {
+          hasNextPage: false,
+          hasPreviousPage: false,
+          startCursor: null,
+          endCursor: null,
+        },
+      };
+    }
+    where.conditionId = { in: conditionIds };
+  }
   if (filter?.schemaId) where.schemaId = filter.schemaId;
   if (filter?.recipient) where.recipient = filter.recipient;
   if (filter?.attestedAt) {
