@@ -164,8 +164,8 @@ export interface FetchQuestionsSortedParams {
   take: number;
   skip: number;
   chainId?: number;
-  contractAddress?: string;
-  contractAddressIn?: string[];
+  marketAddress?: string;
+  marketAddressIn?: string[];
   sortField: SortField;
   sortDirection: SortDirection;
   search?: string;
@@ -193,9 +193,9 @@ type QuestionsQueryResult = {
 function buildQuestionFilter(params: FetchQuestionsSortedParams) {
   return {
     chainId: params.chainId ?? null,
-    contractAddress: params.contractAddress ?? null,
-    contractAddressIn: params.contractAddressIn?.length
-      ? params.contractAddressIn
+    marketAddress: params.marketAddress ?? null,
+    marketAddressIn: params.marketAddressIn?.length
+      ? params.marketAddressIn
       : null,
     search: params.search?.trim() || null,
     categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,

@@ -22,7 +22,7 @@ const addressOf = (parent: unknown): string =>
   ((parent as { address?: string }).address ?? '').toLowerCase();
 
 /**
- * Project the `AccountStatsFilter.timestamp: IntFilter` window selector to
+ * Project the `AccountStatFilter.timestamp: IntFilter` window selector to
  * `{ from, to }` epoch seconds for the legacy `accountStats(...)` runner.
  * Only `gte` (lower bound) and `lte` (upper bound) are meaningful here —
  * the underlying time-series helpers are window-shaped. Other operators

@@ -55,12 +55,15 @@ type PrismaCondition = {
   settled?: boolean;
   resolvedToYes?: boolean;
   nonDecisive?: boolean;
+  resolver?: string;
   category?: unknown;
   conditionGroup?: unknown;
   [k: string]: unknown;
 };
 
 export const Condition: ConditionResolvers = {
+  marketAddress: (parent) => (parent as PrismaCondition).resolver ?? '',
+
   /**
    * Derived `outcome` enum — null while unsettled, otherwise mapped
    * from the boolean state. `nonDecisive` wins over `resolvedToYes`
