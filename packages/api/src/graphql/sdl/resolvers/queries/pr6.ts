@@ -132,9 +132,14 @@ const activityCursorPredicate = (
     };
   }
   const executedAt = Math.floor(createdAt.getTime() / 1000);
+  const hasSubsecondCursor = createdAt.getTime() % 1000 !== 0;
   return {
     OR: [
-      { executedAt: { lt: executedAt } },
+      {
+        executedAt: hasSubsecondCursor
+          ? { lte: executedAt }
+          : { lt: executedAt },
+      },
       ...(sourceTypeIsAfterCursorType
         ? [
             {
