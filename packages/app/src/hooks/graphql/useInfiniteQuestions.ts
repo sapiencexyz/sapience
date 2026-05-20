@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  fetchQuestionsSorted,
+  fetchQuestionsPage,
   type QuestionType,
   type SortField,
   type SortDirection,
@@ -108,7 +108,7 @@ export function useInfiniteQuestions(
     data: rawData,
     isFetching,
     isError,
-  } = useQuery<QuestionType[], Error>({
+  } = useQuery<{ items: QuestionType[]; hasMore: boolean }, Error>({
     queryKey: [
       'infiniteQuestions',
       pageSize,
@@ -128,8 +128,8 @@ export function useInfiniteQuestions(
       similarMarketVolumeWindow,
     ],
     queryFn: () =>
-      fetchQuestionsSorted({
-        take: pageSize + 1,
+      fetchQuestionsPage({
+        take: pageSize,
         skip,
         chainId,
         sortField,
@@ -152,10 +152,9 @@ export function useInfiniteQuestions(
       processedSkipRef.current = skip;
       lastSuccessfulSkipRef.current = skip;
 
-      const hasMoreItems = rawData.length > pageSize;
-      setHasMore(hasMoreItems);
+      setHasMore(rawData.hasMore);
 
-      const items = hasMoreItems ? rawData.slice(0, pageSize) : rawData;
+      const items = rawData.items;
 
       if (skip === 0) {
         setAllLoadedData(items);
@@ -186,7 +185,7 @@ export function useInfiniteQuestions(
         });
       }
     }
-  }, [rawData, skip, pageSize]);
+  }, [rawData, skip]);
 
   useEffect(() => {
     if (isError && skip !== lastSuccessfulSkipRef.current) {

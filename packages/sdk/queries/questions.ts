@@ -190,6 +190,11 @@ type QuestionsQueryResult = {
   } | null;
 };
 
+export interface QuestionsPageResult {
+  items: QuestionType[];
+  hasMore: boolean;
+}
+
 function buildQuestionFilter(params: FetchQuestionsSortedParams) {
   return {
     chainId: params.chainId ?? null,
@@ -231,12 +236,13 @@ function buildQuestionFilter(params: FetchQuestionsSortedParams) {
   };
 }
 
-export async function fetchQuestionsSorted(
+export async function fetchQuestionsPage(
   params: FetchQuestionsSortedParams
-): Promise<QuestionType[]> {
+): Promise<QuestionsPageResult> {
   const target = params.skip + params.take;
   const collected: QuestionType[] = [];
   let after: string | null | undefined = null;
+  let hasMore = false;
 
   while (collected.length < target) {
     const first = Math.min(100, target - collected.length);
@@ -251,10 +257,22 @@ export async function fetchQuestionsSorted(
         filter: buildQuestionFilter(params),
       });
     const conn = data.questionsConnection;
-    collected.push(...(conn?.nodes ?? []));
-    if (!conn?.pageInfo?.hasNextPage || !conn.pageInfo.endCursor) break;
+    const nodes = conn?.nodes ?? [];
+    collected.push(...nodes);
+    hasMore = Boolean(conn?.pageInfo?.hasNextPage);
+    if (!hasMore || !conn?.pageInfo?.endCursor || nodes.length === 0) break;
     after = conn.pageInfo.endCursor;
   }
 
-  return collected.slice(params.skip, target);
+  return {
+    items: collected.slice(params.skip, target),
+    hasMore,
+  };
+}
+
+export async function fetchQuestionsSorted(
+  params: FetchQuestionsSortedParams
+): Promise<QuestionType[]> {
+  const page = await fetchQuestionsPage(params);
+  return page.items;
 }

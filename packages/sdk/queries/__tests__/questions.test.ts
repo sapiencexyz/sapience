@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { fetchQuestionsSorted } from '../questions';
+import { fetchQuestionsPage, fetchQuestionsSorted } from '../questions';
 
 const mockGraphqlRequest = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
@@ -141,5 +141,56 @@ describe('fetchQuestionsSorted', () => {
     mockGraphqlRequest.mockResolvedValue({ questionsConnection: null });
     const result = await fetchQuestionsSorted(baseParams);
     expect(result).toEqual([]);
+  });
+
+  test('returns connection hasMore separately from node count', async () => {
+    const questions = Array.from({ length: 8 }, (_, i) => ({
+      questionType: 'condition',
+      condition: { id: String(i + 1) },
+      group: null,
+    }));
+    mockGraphqlRequest.mockResolvedValue({
+      questionsConnection: {
+        nodes: questions,
+        pageInfo: { hasNextPage: true, endCursor: 'cursor-8' },
+      },
+    });
+
+    const result = await fetchQuestionsPage({ ...baseParams, take: 8 });
+    expect(result.items).toEqual(questions);
+    expect(result.hasMore).toBe(true);
+  });
+
+  test('continues cursor requests when hydration returns fewer nodes than requested', async () => {
+    const firstBatch = Array.from({ length: 8 }, (_, i) => ({
+      questionType: 'condition',
+      condition: { id: String(i + 1) },
+      group: null,
+    }));
+    const secondBatch = Array.from({ length: 2 }, (_, i) => ({
+      questionType: 'condition',
+      condition: { id: String(i + 9) },
+      group: null,
+    }));
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        questionsConnection: {
+          nodes: firstBatch,
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-8' },
+        },
+      })
+      .mockResolvedValueOnce({
+        questionsConnection: {
+          nodes: secondBatch,
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-10' },
+        },
+      });
+
+    const result = await fetchQuestionsPage(baseParams);
+    expect(result.items).toEqual([...firstBatch, ...secondBatch]);
+    expect(result.hasMore).toBe(true);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[1][1].take).toBe(2);
+    expect(mockGraphqlRequest.mock.calls[1][1].after).toBe('cursor-8');
   });
 });
