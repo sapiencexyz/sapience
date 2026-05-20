@@ -129,12 +129,37 @@ type Account implements Node {
   """
   referrals: [Account!]!
 
-  stats(first: Int = 50, after: String, filter: AccountStatsFilter, orderBy: AccountStatsOrder): AccountStatsConnection!
+  stats(
+    first: Int = 50
+    after: String
+    filter: AccountStatsFilter
+    orderBy: AccountStatsOrder
+  ): AccountStatsConnection!
   rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRanking
-  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
-  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
-  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
-  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+  predictions(
+    first: Int = 50
+    after: String
+    filter: PredictionFilter
+    orderBy: PredictionOrder
+  ): PredictionConnection!
+  trades(
+    first: Int = 50
+    after: String
+    filter: TradeFilter
+    orderBy: TradeOrder
+  ): TradeConnection!
+  forecasts(
+    first: Int = 50
+    after: String
+    filter: ForecastFilter
+    orderBy: ForecastOrder
+  ): ForecastConnection!
+  positions(
+    first: Int = 50
+    after: String
+    filter: PositionFilter
+    orderBy: PositionOrder
+  ): PositionConnection!
   collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
 }
 
@@ -789,9 +814,24 @@ type Condition {
   outcome: ConditionOutcome
 
   predictionCount: Int!
-  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
-  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
-  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
+  predictions(
+    first: Int = 50
+    after: String
+    filter: PredictionFilter
+    orderBy: PredictionOrder
+  ): PredictionConnection!
+  trades(
+    first: Int = 50
+    after: String
+    filter: TradeFilter
+    orderBy: TradeOrder
+  ): TradeConnection!
+  forecasts(
+    first: Int = 50
+    after: String
+    filter: ForecastFilter
+    orderBy: ForecastOrder
+  ): ForecastConnection!
   public: Boolean!
   question: String!
   resolvedToYes: Boolean!
@@ -1767,9 +1807,24 @@ type PickConfiguration {
   isLegacy: Boolean!
   marketAddress: String!
   picks: [Pick!]!
-  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
-  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
-  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+  predictions(
+    first: Int = 50
+    after: String
+    filter: PredictionFilter
+    orderBy: PredictionOrder
+  ): PredictionConnection!
+  trades(
+    first: Int = 50
+    after: String
+    filter: TradeFilter
+    orderBy: TradeOrder
+  ): TradeConnection!
+  positions(
+    first: Int = 50
+    after: String
+    filter: PositionFilter
+    orderBy: PositionOrder
+  ): PositionConnection!
   predictionId: String
   predictorToken: String
   resolved: Boolean!
@@ -3325,8 +3380,18 @@ type Query {
   """
   nodes(ids: [ID!]!): [Node]!
 
-  activity(first: Int = 50, after: String, filter: ActivityFilter, orderBy: ActivityOrder): ActivityConnection!
-  leaderboard(metric: LeaderboardMetric!, first: Int = 25, after: String, filter: LeaderboardFilter): AccountRankingConnection!
+  activity(
+    first: Int = 50
+    after: String
+    filter: ActivityFilter
+    orderBy: ActivityOrder
+  ): ActivityConnection!
+  leaderboard(
+    metric: LeaderboardMetric!
+    first: Int = 25
+    after: String
+    filter: LeaderboardFilter
+  ): AccountRankingConnection!
 
   """
   Accuracy rank and lifetime score for a single address. Mirrors
@@ -3685,7 +3750,7 @@ type Query {
   `user(where:)` — accepts a flat `address: String!` arg instead of the
   Prisma-shaped `UserWhereUniqueInput`.
   """
-  account(address: Address!): Account
+  account(address: String!): Account
   condition(where: ConditionWhereUniqueInput!): Condition
     @deprecated(
       reason: "Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape."
@@ -4282,10 +4347,30 @@ type Question {
   category: Category
   tags: [String!]!
 
-  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
-  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
-  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
-  activity(first: Int = 50, after: String, filter: ActivityFilter, orderBy: ActivityOrder): ActivityConnection!
+  predictions(
+    first: Int = 50
+    after: String
+    filter: PredictionFilter
+    orderBy: PredictionOrder
+  ): PredictionConnection!
+  trades(
+    first: Int = 50
+    after: String
+    filter: TradeFilter
+    orderBy: TradeOrder
+  ): TradeConnection!
+  forecasts(
+    first: Int = 50
+    after: String
+    filter: ForecastFilter
+    orderBy: ForecastOrder
+  ): ForecastConnection!
+  activity(
+    first: Int = 50
+    after: String
+    filter: ActivityFilter
+    orderBy: ActivityOrder
+  ): ActivityConnection!
 
   """
   Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`.

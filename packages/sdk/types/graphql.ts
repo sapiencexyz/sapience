@@ -35,17 +35,23 @@ export type Scalars = {
  * elsewhere shows up (display name, avatar, settings), it can grow here
  * without renaming.
  */
-export type Account = {
+export type Account = Node & {
   __typename?: 'Account';
   /** Canonical Ethereum wallet address. */
   address: Scalars['String']['output'];
+  collateralBalance: CollateralBalance;
   /** When this account first appeared in the database. */
   createdAt: Scalars['DateTimeISO']['output'];
+  forecasts: ForecastConnection;
+  id: Scalars['ID']['output'];
   /**
    * Maximum number of referrals this account's code allows. Default is 0,
    * so codes are not usable until explicitly configured.
    */
   maxReferrals: Scalars['Int']['output'];
+  positions: PositionConnection;
+  predictions: PredictionConnection;
+  rank?: Maybe<AccountRanking>;
   /**
    * keccak256(utf8(trimmed_lowercase_code)) of the user's referral code, if
    * they own one. 0x-prefixed hex.
@@ -57,6 +63,109 @@ export type Account = {
   referredBy?: Maybe<Account>;
   /** The referral code this account was referred by, if any. */
   referredByCode?: Maybe<ReferralCode>;
+  stats: AccountStatsConnection;
+  trades: TradeConnection;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountCollateralBalanceArgs = {
+  atBlock?: InputMaybe<Scalars['BigInt']['input']>;
+  chainId: Scalars['Int']['input'];
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountForecastsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ForecastFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ForecastOrder>;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountPositionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PositionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PositionOrder>;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountPredictionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountRankArgs = {
+  filter?: InputMaybe<LeaderboardFilter>;
+  metric: LeaderboardMetric;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountStatsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AccountStatsFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<AccountStatsOrder>;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountTradesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
 };
 
 /**
@@ -90,9 +199,34 @@ export type AccountAccuracyLeaderboardPage = Page & {
 export type AccountAccuracyRank = {
   __typename?: 'AccountAccuracyRank';
   accuracyScore: Scalars['Float']['output'];
-  address: Scalars['String']['output'];
+  address: Scalars['Address']['output'];
   rank?: Maybe<Scalars['Int']['output']>;
   totalParticipants: Scalars['Int']['output'];
+};
+
+export type AccountFilter = {
+  address?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AccountRanking = {
+  __typename?: 'AccountRanking';
+  account: Account;
+  rank: Scalars['Int']['output'];
+  value: Scalars['String']['output'];
+};
+
+export type AccountRankingConnection = {
+  __typename?: 'AccountRankingConnection';
+  edges: Array<AccountRankingEdge>;
+  metric: LeaderboardMetric;
+  nodes: Array<AccountRanking>;
+  pageInfo: PageInfo;
+};
+
+export type AccountRankingEdge = {
+  __typename?: 'AccountRankingEdge';
+  cursor: Scalars['String']['output'];
+  node: AccountRanking;
 };
 
 /**
@@ -112,6 +246,7 @@ export type AccountAccuracyRank = {
  */
 export type AccountStat = {
   __typename?: 'AccountStat';
+  account: Account;
   /** Collateral available to claim from settled positions at this bucket (wei, 18 dec) */
   claimableCollateral: Scalars['String']['output'];
   /** Running cumulative realized PnL through this bucket (wei, 18 dec) */
@@ -136,6 +271,23 @@ export type AccountStat = {
   predictionsWon: Scalars['Int']['output'];
   /** Snapshot boundary. */
   timestamp: Scalars['UnixSeconds']['output'];
+};
+
+export type AccountStatsConnection = {
+  __typename?: 'AccountStatsConnection';
+  edges: Array<AccountStatsEdge>;
+  nodes: Array<AccountStat>;
+  pageInfo: PageInfo;
+};
+
+export type AccountStatsEdge = {
+  __typename?: 'AccountStatsEdge';
+  cursor: Scalars['String']['output'];
+  node: AccountStat;
+};
+
+export type AccountStatsFilter = {
+  timestamp?: InputMaybe<IntFilter>;
 };
 
 /**
@@ -184,6 +336,14 @@ export type AccountStatsMetric =
   | 'NET_PNL'
   | 'VOLUME';
 
+export type AccountStatsOrder = {
+  direction: OrderDirection;
+  field: AccountStatsOrderField;
+};
+
+export type AccountStatsOrderField =
+  | 'TIMESTAMP';
+
 /**
  * Stats + rank for a single address against the same ranked set the
  * leaderboard slices. Stat fields mirror `AccountStatsLeaderboardEntry` and
@@ -203,6 +363,33 @@ export type AccountStatsRank = {
   rank?: Maybe<Scalars['Int']['output']>;
   totalParticipants: Scalars['Int']['output'];
   volume: Scalars['String']['output'];
+};
+
+export type Activity = {
+  __typename?: 'Activity';
+  account: Account;
+  createdAt: Scalars['DateTimeISO']['output'];
+  source: ActivitySource;
+};
+
+export type ActivityConnection = {
+  __typename?: 'ActivityConnection';
+  edges: Array<ActivityEdge>;
+  nodes: Array<Activity>;
+  pageInfo: PageInfo;
+};
+
+export type ActivityEdge = {
+  __typename?: 'ActivityEdge';
+  cursor: Scalars['String']['output'];
+  node: Activity;
+};
+
+export type ActivityFilter = {
+  account?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  types?: InputMaybe<Array<ActivityType>>;
 };
 
 /**
@@ -248,6 +435,16 @@ export type ActivityItemsPage = Page & {
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
+export type ActivityOrder = {
+  direction: OrderDirection;
+  field: ActivityOrderField;
+};
+
+export type ActivityOrderField =
+  | 'CREATED_AT';
+
+export type ActivitySource = Prediction | Trade;
+
 /** Trade fields embedded in an activity item */
 export type ActivityTrade = {
   __typename?: 'ActivityTrade';
@@ -265,6 +462,10 @@ export type ActivityTrade = {
   tradeHash: Scalars['String']['output'];
   txHash: Scalars['String']['output'];
 };
+
+export type ActivityType =
+  | 'PREDICTION'
+  | 'TRADE';
 
 export type Attestation = {
   __typename?: 'Attestation';
@@ -747,6 +948,7 @@ export type Condition = {
   endTime: Scalars['UnixSeconds']['output'];
   /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket */
   estimatedPrice?: Maybe<Scalars['Float']['output']>;
+  forecasts: ForecastConnection;
   id: Scalars['String']['output'];
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
@@ -760,7 +962,7 @@ export type Condition = {
    */
   outcome?: Maybe<ConditionOutcome>;
   predictionCount: Scalars['Int']['output'];
-  predictions: Array<LegacyPrediction>;
+  predictions: PredictionConnection;
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
@@ -783,6 +985,7 @@ export type Condition = {
   similarMarketVolumeFiltered24h: Scalars['Float']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
   tags: Array<Scalars['String']['output']>;
+  trades: TradeConnection;
 };
 
 
@@ -806,13 +1009,27 @@ export type ConditionConditionGroupArgs = {
 };
 
 
+export type ConditionForecastsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ForecastFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ForecastOrder>;
+};
+
+
 export type ConditionPredictionsArgs = {
-  cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
-  distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<LegacyPredictionOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<LegacyPredictionWhereInput>;
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
+};
+
+
+export type ConditionTradesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
 };
 
 /** Relay-shaped connection over `Condition` rows. */
@@ -1686,6 +1903,17 @@ export type IntNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
+export type LeaderboardFilter = {
+  from?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  to?: InputMaybe<Scalars['UnixSeconds']['input']>;
+};
+
+export type LeaderboardMetric =
+  | 'ACCURACY'
+  | 'PNL'
+  | 'ROI'
+  | 'VOLUME';
+
 /** Legacy position model (NFT-based, V1) */
 export type LegacyPosition = {
   __typename?: 'LegacyPosition';
@@ -2223,13 +2451,43 @@ export type PickConfiguration = {
   isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
   picks: Array<Pick>;
+  positions: PositionConnection;
   predictionId?: Maybe<Scalars['String']['output']>;
+  predictions: PredictionConnection;
   predictorToken?: Maybe<Scalars['String']['output']>;
   resolved: Scalars['Boolean']['output'];
   resolvedAt?: Maybe<Scalars['UnixSeconds']['output']>;
   result: SettlementResult;
   totalCounterpartyCollateral: Scalars['String']['output'];
   totalPredictorCollateral: Scalars['String']['output'];
+  trades: TradeConnection;
+};
+
+
+/** Group of outcome picks forming a combined prediction position, with collateral and settlement tracking */
+export type PickConfigurationPositionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PositionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PositionOrder>;
+};
+
+
+/** Group of outcome picks forming a combined prediction position, with collateral and settlement tracking */
+export type PickConfigurationPredictionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
+};
+
+
+/** Group of outcome picks forming a combined prediction position, with collateral and settlement tracking */
+export type PickConfigurationTradesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
 };
 
 /** Relay-shaped connection over `PickConfiguration` rows. */
@@ -2511,6 +2769,7 @@ export type PredictionFilter = {
   endsAt?: InputMaybe<IntFilter>;
   /** Restrict to legacy (true) or non-legacy (false) predictions. */
   isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to predictions whose pickConfig settled with this result. */
   result?: InputMaybe<SettlementResult>;
   /** Restrict to settled (true) or unsettled (false) predictions. */
@@ -2700,6 +2959,7 @@ export type Query = {
    * unconditionally (cheap in-memory derivation).
    */
   accuracyLeaderboardPage: AccountAccuracyLeaderboardPage;
+  activity: ActivityConnection;
   /**
    * Unified activity feed (predictions + trades merged by timestamp), wrapped
    * in an `ActivityItemsPage` with a server-truth `hasMore` flag. When
@@ -2779,6 +3039,7 @@ export type Query = {
   forecastByUid?: Maybe<Forecast>;
   /** Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC. */
   forecastsConnection: ForecastConnection;
+  leaderboard: AccountRankingConnection;
   /**
    * Refetch any `Node`-implementing entity by its opaque global id. Returns
    * `null` when the id is malformed, the type is not registered, or the
@@ -3048,6 +3309,14 @@ export type QueryAccuracyLeaderboardPageArgs = {
 };
 
 
+export type QueryActivityArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ActivityFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ActivityOrder>;
+};
+
+
 export type QueryActivityPageArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
@@ -3200,6 +3469,14 @@ export type QueryForecastsConnectionArgs = {
   filter?: InputMaybe<ForecastFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ForecastOrder>;
+};
+
+
+export type QueryLeaderboardArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<LeaderboardFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  metric: LeaderboardMetric;
 };
 
 
@@ -3457,6 +3734,7 @@ export type QueryMode =
  */
 export type Question = {
   __typename?: 'Question';
+  activity: ActivityConnection;
   category?: Maybe<Category>;
   /** @deprecated Use `source` (union over Condition | ConditionGroup). */
   condition?: Maybe<Condition>;
@@ -3464,12 +3742,14 @@ export type Question = {
   createdAt: Scalars['DateTimeISO']['output'];
   /** Long-form description forwarded from the source (`Condition.description`); null for groups. */
   description?: Maybe<Scalars['String']['output']>;
+  forecasts: ForecastConnection;
   /** @deprecated Use `source` (union over Condition | ConditionGroup). */
   group?: Maybe<ConditionGroup>;
   /** Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`. */
   openInterest?: Maybe<Scalars['String']['output']>;
   /** @deprecated Use `source` and read `predictionCount` on the wrapped entity. */
   predictionCount?: Maybe<Scalars['Int']['output']>;
+  predictions: PredictionConnection;
   /** @deprecated Use `source.__typename`. */
   questionType: QuestionItemType;
   /** Resolution time forwarded from the source — `Condition.endTime` or `ConditionGroup.maxEndTime`. */
@@ -3484,8 +3764,69 @@ export type Question = {
   tags: Array<Scalars['String']['output']>;
   /** Display title forwarded from the source — `Condition.question` or `ConditionGroup.name`. */
   title: Scalars['String']['output'];
+  trades: TradeConnection;
   /** 24h similar-market volume forwarded from the source. */
   volume?: Maybe<Scalars['Float']['output']>;
+};
+
+
+/**
+ * A question — derived view that interleaves grouped and ungrouped markets.
+ * A `Question` is **not** a durable entity (no `Node` membership, no
+ * `question(id:)` lookup). Identity flows through the wrapped `source`
+ * (either a `Condition` or a `ConditionGroup`), each of which already
+ * carries its own primary key.
+ */
+export type QuestionActivityArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ActivityFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ActivityOrder>;
+};
+
+
+/**
+ * A question — derived view that interleaves grouped and ungrouped markets.
+ * A `Question` is **not** a durable entity (no `Node` membership, no
+ * `question(id:)` lookup). Identity flows through the wrapped `source`
+ * (either a `Condition` or a `ConditionGroup`), each of which already
+ * carries its own primary key.
+ */
+export type QuestionForecastsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ForecastFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ForecastOrder>;
+};
+
+
+/**
+ * A question — derived view that interleaves grouped and ungrouped markets.
+ * A `Question` is **not** a durable entity (no `Node` membership, no
+ * `question(id:)` lookup). Identity flows through the wrapped `source`
+ * (either a `Condition` or a `ConditionGroup`), each of which already
+ * carries its own primary key.
+ */
+export type QuestionPredictionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
+};
+
+
+/**
+ * A question — derived view that interleaves grouped and ungrouped markets.
+ * A `Question` is **not** a durable entity (no `Node` membership, no
+ * `question(id:)` lookup). Identity flows through the wrapped `source`
+ * (either a `Condition` or a `ConditionGroup`), each of which already
+ * carries its own primary key.
+ */
+export type QuestionTradesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
 };
 
 /**
@@ -3831,6 +4172,7 @@ export type TradeFilter = {
   seller?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single position token address (case-insensitive). */
   token?: InputMaybe<Scalars['String']['input']>;
+  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 /** Order input for the Relay-shaped `tradesConnection`. */

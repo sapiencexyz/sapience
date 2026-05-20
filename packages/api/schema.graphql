@@ -7,7 +7,7 @@ time-weighted error already weights by recency, so there's no window
 filter on this surface.
 """
 type AccountAccuracyRank {
-  address: String!
+  address: Address!
   accuracyScore: Float!
   rank: Int
   totalParticipants: Int!
@@ -51,7 +51,9 @@ that's referral-graph data). When address-keyed metadata that doesn't fit
 elsewhere shows up (display name, avatar, settings), it can grow here
 without renaming.
 """
-type Account {
+type Account implements Node {
+  id: ID!
+
   """Canonical Ethereum wallet address."""
   address: String!
 
@@ -78,6 +80,13 @@ type Account {
 
   """Accounts referred by this account (via this account's referral code)."""
   referrals: [Account!]!
+  stats(first: Int = 50, after: String, filter: AccountStatsFilter, orderBy: AccountStatsOrder): AccountStatsConnection!
+  rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRanking
+  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
+  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
+  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
+  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
 }
 
 """
@@ -505,6 +514,104 @@ type Close {
   txHash: String!
 }
 
+type Activity {
+  source: ActivitySource!
+  account: Account!
+  createdAt: DateTimeISO!
+}
+
+union ActivitySource = Prediction | Trade
+
+enum ActivityType {
+  PREDICTION
+  TRADE
+}
+
+type ActivityConnection {
+  edges: [ActivityEdge!]!
+  nodes: [Activity!]!
+  pageInfo: PageInfo!
+}
+
+type ActivityEdge {
+  node: Activity!
+  cursor: String!
+}
+
+enum ActivityOrderField {
+  CREATED_AT
+}
+
+input ActivityOrder {
+  field: ActivityOrderField!
+  direction: OrderDirection!
+}
+
+input ActivityFilter {
+  account: String
+  conditionId: String
+  pickConfigId: String
+  types: [ActivityType!]
+}
+
+enum LeaderboardMetric {
+  ACCURACY
+  PNL
+  VOLUME
+  ROI
+}
+
+input LeaderboardFilter {
+  from: UnixSeconds
+  to: UnixSeconds
+}
+
+input AccountFilter {
+  address: String
+}
+
+input AccountStatsFilter {
+  timestamp: IntFilter
+}
+
+input AccountStatsOrder {
+  field: AccountStatsOrderField!
+  direction: OrderDirection!
+}
+
+enum AccountStatsOrderField {
+  TIMESTAMP
+}
+
+type AccountRanking {
+  account: Account!
+  rank: Int!
+  value: String!
+}
+
+type AccountRankingConnection {
+  edges: [AccountRankingEdge!]!
+  nodes: [AccountRanking!]!
+  pageInfo: PageInfo!
+  metric: LeaderboardMetric!
+}
+
+type AccountRankingEdge {
+  node: AccountRanking!
+  cursor: String!
+}
+
+type AccountStatsConnection {
+  edges: [AccountStatsEdge!]!
+  nodes: [AccountStat!]!
+  pageInfo: PageInfo!
+}
+
+type AccountStatsEdge {
+  node: AccountStat!
+  cursor: String!
+}
+
 type CollateralToken {
   symbol: String!
   address: Address!
@@ -578,7 +685,9 @@ type Condition {
   """
   outcome: ConditionOutcome
   predictionCount: Int!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
+  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
+  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
   public: Boolean!
   question: String!
   resolvedToYes: Boolean!
@@ -1504,6 +1613,9 @@ type PickConfiguration {
   isLegacy: Boolean!
   marketAddress: String!
   picks: [Pick!]!
+  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
+  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
+  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
   predictionId: String
   predictorToken: String
   resolved: Boolean!
@@ -2503,6 +2615,8 @@ the resolver to read from it — the wire shape is the destination, so
 clients are forward-compatible across that swap.
 """
 type AccountStat {
+  account: Account!
+
   """Snapshot boundary."""
   timestamp: UnixSeconds!
 
@@ -2625,6 +2739,7 @@ input TradeFilter {
 
   """Restrict to a single position token address (case-insensitive)."""
   token: String
+  tokens: [String!]
 
   """Restrict to a single chain."""
   chainId: Int
@@ -2722,6 +2837,7 @@ input PredictionFilter {
   Restrict to predictions on a single condition (via the pickConfig join).
   """
   conditionId: String
+  pickConfigId: String
 
   """Restrict to legacy (true) or non-legacy (false) predictions."""
   isLegacy: Boolean
@@ -2826,6 +2942,8 @@ type Query {
   refresh many entities in one round trip.
   """
   nodes(ids: [ID!]!): [Node]!
+  activity(first: Int = 50, after: String, filter: ActivityFilter, orderBy: ActivityOrder): ActivityConnection!
+  leaderboard(metric: LeaderboardMetric!, first: Int = 25, after: String, filter: LeaderboardFilter): AccountRankingConnection!
 
   """
   Accuracy rank and lifetime score for a single address. Mirrors
@@ -3279,6 +3397,10 @@ type Question {
   description: String
   category: Category
   tags: [String!]!
+  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
+  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
+  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
+  activity(first: Int = 50, after: String, filter: ActivityFilter, orderBy: ActivityOrder): ActivityConnection!
 
   """
   Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`.

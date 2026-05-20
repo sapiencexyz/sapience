@@ -123,6 +123,8 @@ export type PredictionsEnvelope = {
  */
 export type RunPredictionsArgs = QueryPredictionsArgs & {
   pickConfigId?: string | null;
+  conditionGroupId?: string | number | null;
+  conditionIds?: string[] | null;
   result?: SettlementResult | null;
   endsAt?: Prisma.IntFilter | null;
   endsAtMin?: number | null;
@@ -133,6 +135,8 @@ const buildPredictionWhere = async ({
   address,
   conditionId,
   pickConfigId,
+  conditionGroupId,
+  conditionIds,
   chainId,
   settled,
   isLegacy,
@@ -145,6 +149,8 @@ const buildPredictionWhere = async ({
   | 'address'
   | 'conditionId'
   | 'pickConfigId'
+  | 'conditionGroupId'
+  | 'conditionIds'
   | 'chainId'
   | 'settled'
   | 'isLegacy'
@@ -165,6 +171,35 @@ const buildPredictionWhere = async ({
       where: {
         conditionId: { equals: conditionId.toLowerCase(), mode: 'insensitive' },
       },
+      select: { pickConfigId: true },
+      distinct: ['pickConfigId'],
+    });
+    const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+    if (pickConfigIds.length === 0) return { where, empty: true };
+    filters.push({ pickConfigId: { in: pickConfigIds } });
+  }
+  if (conditionIds?.length) {
+    const ids = conditionIds.map((id) => id.toLowerCase());
+    const matchingPicks = await prisma.pick.findMany({
+      where: { conditionId: { in: ids } },
+      select: { pickConfigId: true },
+      distinct: ['pickConfigId'],
+    });
+    const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+    if (pickConfigIds.length === 0) return { where, empty: true };
+    filters.push({ pickConfigId: { in: pickConfigIds } });
+  }
+  if (conditionGroupId != null) {
+    const conditions = await prisma.condition.findMany({
+      where: { conditionGroupId: Number(conditionGroupId) },
+      select: { id: true },
+    });
+    const conditionIds = conditions.map((condition) =>
+      condition.id.toLowerCase()
+    );
+    if (conditionIds.length === 0) return { where, empty: true };
+    const matchingPicks = await prisma.pick.findMany({
+      where: { conditionId: { in: conditionIds } },
       select: { pickConfigId: true },
       distinct: ['pickConfigId'],
     });
@@ -200,6 +235,8 @@ export const runPredictions = async ({
   address,
   conditionId,
   pickConfigId,
+  conditionGroupId,
+  conditionIds,
   chainId,
   settled,
   isLegacy,
@@ -215,6 +252,8 @@ export const runPredictions = async ({
     address,
     conditionId,
     pickConfigId,
+    conditionGroupId,
+    conditionIds,
     chainId,
     settled,
     isLegacy,
@@ -288,7 +327,19 @@ export const predictionsConnection: NonNullable<
   const { where: filterWhere, empty } = await buildPredictionWhere({
     address: filter?.address ?? null,
     conditionId: filter?.conditionId ?? null,
-    pickConfigId: (filter as { pickConfigId?: string | null } | null | undefined)?.pickConfigId ?? null,
+    pickConfigId:
+      (filter as { pickConfigId?: string | null } | null | undefined)
+        ?.pickConfigId ?? null,
+    conditionGroupId:
+      (
+        filter as
+          | { conditionGroupId?: string | number | null }
+          | null
+          | undefined
+      )?.conditionGroupId ?? null,
+    conditionIds:
+      (filter as { conditionIds?: string[] | null } | null | undefined)
+        ?.conditionIds ?? null,
     chainId: filter?.chainId ?? null,
     settled: filter?.settled ?? null,
     isLegacy: filter?.isLegacy ?? null,

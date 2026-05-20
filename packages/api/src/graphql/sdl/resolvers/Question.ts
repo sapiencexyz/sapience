@@ -27,12 +27,39 @@ import { predictionsConnection } from './queries/escrow';
 import { tradesConnection } from './queries/trade';
 import { forecastsConnection } from './queries/crud';
 import { activity } from './queries/pr6';
+import { tokensForConditionIds } from './Condition';
 
 type QuestionParent = {
   questionType: 'condition' | 'group';
   condition: { [k: string]: unknown; id?: string } | null;
-  group: { [k: string]: unknown; id?: number } | null;
+  group: {
+    [k: string]: unknown;
+    id?: number;
+    condition?: Array<{ id?: string }>;
+    conditions?: Array<{ id?: string }>;
+  } | null;
   predictionCount?: number | null;
+};
+
+const emptyConnection = () => ({
+  edges: [],
+  nodes: [],
+  totalCount: 0,
+  pageInfo: {
+    hasNextPage: false,
+    hasPreviousPage: false,
+    startCursor: null,
+    endCursor: null,
+  },
+});
+
+const conditionIdsOf = (parent: QuestionParent): string[] => {
+  if (parent.questionType === 'condition') {
+    return parent.condition?.id ? [parent.condition.id] : [];
+  }
+  const conditions = parent.group?.conditions ?? parent.group?.condition;
+  if (!Array.isArray(conditions)) return [];
+  return conditions.map((c) => c.id).filter(Boolean) as string[];
 };
 
 const subject = (parent: QuestionParent) =>
@@ -124,33 +151,70 @@ export const Question: QuestionResolvers = {
     return raw as Date;
   },
 
-
   predictions: (parent, args, ctx, info) => {
     const p = parent as QuestionParent;
-    if (p.questionType !== 'condition' || !p.condition?.id) {
-      return { edges: [], nodes: [], totalCount: 0, pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } } as never;
+    const conditionIds = conditionIdsOf(p);
+    if (conditionIds.length === 0) {
+      return emptyConnection() as never;
     }
-    return (predictionsConnection as any)(parent, { ...args, filter: { ...(args.filter ?? {}), conditionId: p.condition.id } }, ctx, info);
+    const conditionFilter =
+      conditionIds.length === 1
+        ? { conditionId: conditionIds[0] }
+        : { conditionIds };
+    return (predictionsConnection as any)(
+      parent,
+      { ...args, filter: { ...(args.filter ?? {}), ...conditionFilter } },
+      ctx,
+      info
+    );
   },
 
-  trades: (parent, args, ctx, info) => {
-    return (tradesConnection as any)(parent, args, ctx, info);
+  trades: async (parent, args, ctx, info) => {
+    const p = parent as QuestionParent;
+    const tokens = await tokensForConditionIds(conditionIdsOf(p));
+    if (tokens.length === 0) return emptyConnection() as never;
+    return (tradesConnection as any)(
+      parent,
+      { ...args, filter: { ...(args.filter ?? {}), tokens } },
+      ctx,
+      info
+    );
   },
 
   forecasts: (parent, args, ctx, info) => {
     const p = parent as QuestionParent;
-    if (p.questionType !== 'condition' || !p.condition?.id) {
-      return { edges: [], nodes: [], totalCount: 0, pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } } as never;
+    const conditionIds = conditionIdsOf(p);
+    if (conditionIds.length === 0) {
+      return emptyConnection() as never;
     }
-    return (forecastsConnection as any)(parent, { ...args, filter: { ...(args.filter ?? {}), conditionId: p.condition.id } }, ctx, info);
+    const conditionFilter =
+      conditionIds.length === 1
+        ? { conditionId: conditionIds[0] }
+        : { conditionIds };
+    return (forecastsConnection as any)(
+      parent,
+      { ...args, filter: { ...(args.filter ?? {}), ...conditionFilter } },
+      ctx,
+      info
+    );
   },
 
   activity: (parent, args, ctx, info) => {
     const p = parent as QuestionParent;
-    if (p.questionType !== 'condition' || !p.condition?.id) {
-      return { edges: [], nodes: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } } as never;
+    const conditionIds = conditionIdsOf(p);
+    if (conditionIds.length === 0) {
+      return emptyConnection() as never;
     }
-    return (activity as any)(parent, { ...args, filter: { ...(args.filter ?? {}), conditionId: p.condition.id } }, ctx, info);
+    const conditionFilter =
+      conditionIds.length === 1
+        ? { conditionId: conditionIds[0] }
+        : { conditionIds };
+    return (activity as any)(
+      parent,
+      { ...args, filter: { ...(args.filter ?? {}), ...conditionFilter } },
+      ctx,
+      info
+    );
   },
 
   resolvesAt: (parent) => {

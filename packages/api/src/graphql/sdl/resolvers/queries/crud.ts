@@ -25,7 +25,7 @@ import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
-import { clampSkip, clampTake } from './pagination';
+import { clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import { registerNodeType, toGlobalId } from '../../../relay/globalId';
 import { synthesizeAccount } from '../accountSynthesis';
@@ -58,11 +58,15 @@ registerNodeType({
   type: 'Account',
   loader: async (id, ctx) => {
     const address = id.toLowerCase();
-    const loaders = (ctx as {
-      loaders?: {
-        userByAddress?: { load: (address: string) => Promise<unknown | null> };
-      };
-    }).loaders;
+    const loaders = (
+      ctx as {
+        loaders?: {
+          userByAddress?: {
+            load: (address: string) => Promise<unknown | null>;
+          };
+        };
+      }
+    ).loaders;
     const row = loaders?.userByAddress
       ? await loaders.userByAddress.load(address)
       : await prisma.user.findUnique({ where: { address } });
@@ -195,6 +199,39 @@ export const forecastsConnection: NonNullable<
   if (filter?.uid) where.uid = filter.uid;
   if (filter?.forecaster) where.attester = filter.forecaster;
   if (filter?.conditionId) where.conditionId = filter.conditionId;
+  const conditionIdsFilter = (
+    filter as { conditionIds?: string[] | null } | null | undefined
+  )?.conditionIds;
+  if (conditionIdsFilter?.length)
+    where.conditionId = {
+      in: conditionIdsFilter.map((id) => id.toLowerCase()),
+    };
+  const conditionGroupId = (
+    filter as { conditionGroupId?: string | number | null } | null | undefined
+  )?.conditionGroupId;
+  if (conditionGroupId != null) {
+    const conditions = await prisma.condition.findMany({
+      where: { conditionGroupId: Number(conditionGroupId) },
+      select: { id: true },
+    });
+    const conditionIds = conditions.map((condition) =>
+      condition.id.toLowerCase()
+    );
+    if (conditionIds.length === 0) {
+      return {
+        edges: [],
+        nodes: [],
+        totalCount: 0,
+        pageInfo: {
+          hasNextPage: false,
+          hasPreviousPage: false,
+          startCursor: null,
+          endCursor: null,
+        },
+      };
+    }
+    where.conditionId = { in: conditionIds };
+  }
   if (filter?.schemaId) where.schemaId = filter.schemaId;
   if (filter?.recipient) where.recipient = filter.recipient;
   if (filter?.attestedAt) {

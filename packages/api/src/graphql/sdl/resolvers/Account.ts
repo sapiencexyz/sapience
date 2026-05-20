@@ -16,7 +16,7 @@ import { forecastsConnection } from './queries/crud';
 import { positionsConnection } from './queries/escrow';
 import { collateralBalance } from './queries/collateralBalance';
 import { accountStats } from './queries/accountStats';
-import { leaderboard } from './queries/pr6';
+import { rankedAccountsForMetric } from './queries/pr6';
 
 const addressOf = (parent: unknown): string =>
   ((parent as { address?: string }).address ?? '').toLowerCase();
@@ -51,7 +51,10 @@ export const Account: AccountResolvers = {
   predictions: (parent, args, ctx, info) =>
     (predictionsConnection as any)(
       parent,
-      { ...args, filter: { ...(args.filter ?? {}), address: addressOf(parent) } },
+      {
+        ...args,
+        filter: { ...(args.filter ?? {}), address: addressOf(parent) },
+      },
       ctx,
       info
     ),
@@ -59,7 +62,10 @@ export const Account: AccountResolvers = {
   trades: (parent, args, ctx, info) =>
     (tradesConnection as any)(
       parent,
-      { ...args, filter: { ...(args.filter ?? {}), address: addressOf(parent) } },
+      {
+        ...args,
+        filter: { ...(args.filter ?? {}), address: addressOf(parent) },
+      },
       ctx,
       info
     ),
@@ -67,7 +73,10 @@ export const Account: AccountResolvers = {
   forecasts: (parent, args, ctx, info) =>
     (forecastsConnection as any)(
       parent,
-      { ...args, filter: { ...(args.filter ?? {}), forecaster: addressOf(parent) } },
+      {
+        ...args,
+        filter: { ...(args.filter ?? {}), forecaster: addressOf(parent) },
+      },
       ctx,
       info
     ),
@@ -75,19 +84,29 @@ export const Account: AccountResolvers = {
   positions: (parent, args, ctx, info) =>
     (positionsConnection as any)(
       parent,
-      { ...args, filter: { ...(args.filter ?? {}), holder: addressOf(parent) } },
+      {
+        ...args,
+        filter: { ...(args.filter ?? {}), holder: addressOf(parent) },
+      },
       ctx,
       info
     ),
 
   collateralBalance: (parent, args, ctx, info) =>
-    (collateralBalance as any)(parent, { ...args, address: addressOf(parent) }, ctx, info),
+    (collateralBalance as any)(
+      parent,
+      { ...args, address: addressOf(parent) },
+      ctx,
+      info
+    ),
 
   stats: async (parent, args) => {
     const rows = await (accountStats as any)(null, {
       address: addressOf(parent),
-      from: (args.filter?.timestamp as { gte?: number | null } | null)?.gte ?? null,
-      to: (args.filter?.timestamp as { lte?: number | null } | null)?.lte ?? null,
+      from:
+        (args.filter?.timestamp as { gte?: number | null } | null)?.gte ?? null,
+      to:
+        (args.filter?.timestamp as { lte?: number | null } | null)?.lte ?? null,
       fromEpoch: null,
       toEpoch: null,
     });
@@ -100,7 +119,10 @@ export const Account: AccountResolvers = {
     }));
     const edges = pageRows.map((node: any, index: number) => ({
       node,
-      cursor: encodeCursor({ k: String(start + index), id: String(node.timestamp) }),
+      cursor: encodeCursor({
+        k: String(start + index),
+        id: String(node.timestamp),
+      }),
     }));
     return {
       nodes: pageRows,
@@ -114,13 +136,20 @@ export const Account: AccountResolvers = {
     };
   },
 
-  rank: async (parent, args, ctx, info) => {
-    const page = await (leaderboard as any)(
-      parent,
-      { metric: args.metric, first: 100, after: null, filter: args.filter ?? null },
-      ctx,
-      info
+  rank: async (parent, args) => {
+    const address = addressOf(parent);
+    const ranked = await rankedAccountsForMetric(
+      args.metric,
+      args.filter ?? null
     );
-    return page.nodes.find((n: any) => n.account.address === addressOf(parent)) ?? null;
+    const index = ranked.findIndex(
+      (entry) => entry.address.toLowerCase() === address
+    );
+    if (index < 0) return null;
+    return {
+      account: synthesizeAccount(address) as never,
+      rank: index + 1,
+      value: ranked[index].value,
+    };
   },
 };

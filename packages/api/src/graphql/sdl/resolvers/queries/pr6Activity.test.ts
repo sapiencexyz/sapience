@@ -11,7 +11,7 @@ const mockPrisma = vi.hoisted(() => ({
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
 import { decodeCursor } from '../../../relay/cursor';
-import { ActivitySource } from '../Activity';
+import { Activity, ActivitySource } from '../Activity';
 import { activity } from './pr6';
 
 const callResolver = <TResult = unknown>(resolver: unknown) =>
@@ -114,12 +114,20 @@ describe('PR6 activity', () => {
     }>(activity)(null, { first: 10 }, {}, null);
 
     expect(result.nodes).toHaveLength(2);
-    expect(ActivitySource.__resolveType?.(result.nodes[0].source as never, {} as never, {} as never)).toBe(
-      'Prediction'
-    );
-    expect(ActivitySource.__resolveType?.(result.nodes[1].source as never, {} as never, {} as never)).toBe(
-      'Trade'
-    );
+    expect(
+      ActivitySource.__resolveType?.(
+        result.nodes[0].source as never,
+        {} as never,
+        {} as never
+      )
+    ).toBe('Prediction');
+    expect(
+      ActivitySource.__resolveType?.(
+        result.nodes[1].source as never,
+        {} as never,
+        {} as never
+      )
+    ).toBe('Trade');
     expect(decodeCursor(result.edges[0].cursor)).toMatchObject({
       k: '2026-01-02T00:00:00.000Z',
       id: 'PREDICTION:100',
@@ -129,7 +137,13 @@ describe('PR6 activity', () => {
   it('applies account scope as OR across prediction roles and trade sides', async () => {
     await callResolver(activity)(
       null,
-      { first: 10, filter: { account: '0xAAA', types: [ActivityType.Prediction, ActivityType.Trade] } },
+      {
+        first: 10,
+        filter: {
+          account: '0xAAA',
+          types: [ActivityType.Prediction, ActivityType.Trade],
+        },
+      },
       {},
       null
     );
@@ -142,6 +156,70 @@ describe('PR6 activity', () => {
     expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { OR: [{ buyer: '0xaaa' }, { seller: '0xaaa' }] },
+      })
+    );
+  });
+
+  it('uses seller as the Activity.account actor when the scoped account sold the trade', async () => {
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
+      {
+        ...tradeRow(7, Date.parse('2026-01-01T00:00:00Z') / 1000),
+        seller: '0xaaa',
+        buyer: '0xbbb',
+      },
+    ]);
+
+    const result = await callResolver<{
+      nodes: Array<{
+        account: { address: string };
+        source: Record<string, unknown>;
+      }>;
+    }>(activity)(
+      null,
+      { first: 10, filter: { account: '0xAAA', types: [ActivityType.Trade] } },
+      {},
+      null
+    );
+
+    expect(result.nodes[0].account.address).toBe('0xaaa');
+    const accountResolver = Activity.account as unknown as (
+      parent: unknown,
+      args: Record<string, unknown>,
+      ctx: unknown,
+      info: unknown
+    ) => unknown;
+    expect(accountResolver(result.nodes[0], {}, {}, {})).toEqual(
+      expect.objectContaining({ address: '0xaaa' })
+    );
+  });
+
+  it('pushes activity keyset cursors into both source queries before taking rows', async () => {
+    mockPrisma.prediction.findMany.mockResolvedValue([
+      predictionRow('100', new Date('2026-01-02T00:00:00Z')),
+    ]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
+      tradeRow(7, Date.parse('2026-01-01T00:00:00Z') / 1000),
+    ]);
+
+    const firstPage = await callResolver<{ edges: Array<{ cursor: string }> }>(
+      activity
+    )(null, { first: 1 }, {}, null);
+
+    await callResolver(activity)(
+      null,
+      { first: 1, after: firstPage.edges[0].cursor },
+      {},
+      null
+    );
+
+    expect(mockPrisma.prediction.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ AND: expect.any(Array) }),
+      })
+    );
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ AND: expect.any(Array) }),
       })
     );
   });

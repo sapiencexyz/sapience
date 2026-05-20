@@ -21,10 +21,39 @@
 
 import type { ConditionResolvers } from '../__generated__/resolvers';
 import { ConditionOutcome } from '../__generated__/resolvers';
+import prisma from '../../../core/db';
 import { loadRelation } from './relationHelpers';
 import { predictionsConnection } from './queries/escrow';
 import { tradesConnection } from './queries/trade';
 import { forecastsConnection } from './queries/crud';
+
+export const tokensForConditionIds = async (
+  conditionIds: string[]
+): Promise<string[]> => {
+  const ids = Array.from(
+    new Set(conditionIds.map((id) => id.toLowerCase()).filter(Boolean))
+  );
+  if (ids.length === 0) return [];
+  const rows = await prisma.pick.findMany({
+    where: { conditionId: { in: ids } },
+    select: {
+      pickConfiguration: {
+        select: { predictorToken: true, counterpartyToken: true },
+      },
+    },
+  });
+  return Array.from(
+    new Set(
+      rows
+        .flatMap((r) => [
+          r.pickConfiguration?.predictorToken,
+          r.pickConfiguration?.counterpartyToken,
+        ])
+        .filter(Boolean)
+        .map((t) => t!.toLowerCase())
+    )
+  );
+};
 
 type PrismaCondition = {
   id: string;
@@ -115,16 +144,32 @@ export const Condition: ConditionResolvers = {
 
   predictions: (parent, args, ctx, info) => {
     const p = parent as PrismaCondition;
-    return (predictionsConnection as any)(parent, { ...args, filter: { ...(args.filter ?? {}), conditionId: p.id } }, ctx, info);
+    return (predictionsConnection as any)(
+      parent,
+      { ...args, filter: { ...(args.filter ?? {}), conditionId: p.id } },
+      ctx,
+      info
+    );
   },
 
-  trades: (parent, args, ctx, info) => {
+  trades: async (parent, args, ctx, info) => {
     const p = parent as PrismaCondition;
-    return (tradesConnection as any)(parent, { ...args, filter: { ...(args.filter ?? {}), token: null } }, ctx, info);
+    const tokens = await tokensForConditionIds([p.id]);
+    return (tradesConnection as any)(
+      parent,
+      { ...args, filter: { ...(args.filter ?? {}), tokens } },
+      ctx,
+      info
+    );
   },
 
   forecasts: (parent, args, ctx, info) => {
     const p = parent as PrismaCondition;
-    return (forecastsConnection as any)(parent, { ...args, filter: { ...(args.filter ?? {}), conditionId: p.id } }, ctx, info);
+    return (forecastsConnection as any)(
+      parent,
+      { ...args, filter: { ...(args.filter ?? {}), conditionId: p.id } },
+      ctx,
+      info
+    );
   },
 };

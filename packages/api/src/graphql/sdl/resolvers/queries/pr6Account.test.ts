@@ -9,8 +9,14 @@ const mockPrisma = vi.hoisted(() => ({
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
+vi.mock('./pr6', () => ({
+  rankedAccountsForMetric: vi.fn(),
+}));
+
 import { account } from './crud';
 import { Account } from '../Account';
+import { rankedAccountsForMetric } from './pr6';
+import { LeaderboardMetric } from '../../__generated__/resolvers';
 
 const ADDRESS = '0x000000000000000000000000000000000000aaaa';
 
@@ -54,12 +60,9 @@ describe('PR6 Account', () => {
   });
 
   it('synthesizes an Account when no User row exists', async () => {
-    const result = await callResolver<{ address: string; createdAt: Date }>(account)(
-      null,
-      { address: ADDRESS.toUpperCase() },
-      ctx,
-      null
-    );
+    const result = await callResolver<{ address: string; createdAt: Date }>(
+      account
+    )(null, { address: ADDRESS.toUpperCase() }, ctx, null);
 
     expect(result.address).toBe(ADDRESS);
     expect(result.createdAt).toEqual(new Date(0));
@@ -82,6 +85,30 @@ describe('PR6 Account', () => {
           ]),
         }),
       })
+    );
+  });
+
+  it('Account.rank searches the full ranked set instead of truncating at top 100', async () => {
+    vi.mocked(rankedAccountsForMetric).mockResolvedValue(
+      Array.from({ length: 101 }, (_, i) => ({
+        address: i === 100 ? ADDRESS : `0x${String(i).padStart(40, '0')}`,
+        value: String(101 - i),
+      }))
+    );
+
+    const result = await callResolver<{ rank: number; value: string }>(
+      Account.rank
+    )(
+      { address: ADDRESS.toUpperCase() },
+      { metric: LeaderboardMetric.Pnl, filter: null },
+      ctx,
+      null
+    );
+
+    expect(result).toMatchObject({ rank: 101, value: '1' });
+    expect(rankedAccountsForMetric).toHaveBeenCalledWith(
+      LeaderboardMetric.Pnl,
+      null
     );
   });
 });
