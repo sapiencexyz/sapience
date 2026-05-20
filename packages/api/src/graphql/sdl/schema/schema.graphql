@@ -841,6 +841,14 @@ type ConditionGroup {
   id: Int!
   name: String!
   similarMarkets: [String!]!
+  """
+  Compatibility alias mirroring `name`. Kept so external clients still
+  selecting `ConditionGroup.title` keep working through one release.
+  """
+  title: String!
+    @deprecated(
+      reason: "Use `name` — same value, the alias exists only to absorb in-flight queries from older clients."
+    )
 }
 
 type ConditionGroupCount {
@@ -2386,6 +2394,12 @@ Field to sort positions by
 enum PositionSortField {
   CREATED_AT
   UPDATED_AT
+  createdAt
+    @deprecated(
+      reason: "Use `CREATED_AT` — camelCase value kept for compatibility with older clients."
+    )
+  updatedAt
+    @deprecated(reason: "Use `UPDATED_AT` — camelCase kept for older clients.")
 }
 
 """
@@ -2423,6 +2437,12 @@ Field to sort predictions by
 enum PredictionSortField {
   CREATED_AT
   SETTLED_AT
+  createdAt
+    @deprecated(
+      reason: "Use `CREATED_AT` — camelCase value kept for compatibility with older clients."
+    )
+  settledAt
+    @deprecated(reason: "Use `SETTLED_AT` — camelCase kept for older clients.")
 }
 
 """
@@ -4373,6 +4393,14 @@ input SettlementResultFilter {
 enum SortOrder {
   asc
   desc
+  ASC
+    @deprecated(
+      reason: "Use `asc` — uppercase value kept for compatibility with older clients passing `OrderDirection`-shaped values."
+    )
+  DESC
+    @deprecated(
+      reason: "Use `desc` — uppercase value kept for compatibility with older clients passing `OrderDirection`-shaped values."
+    )
 }
 
 input SortOrderInput {

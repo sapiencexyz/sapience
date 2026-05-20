@@ -74,6 +74,21 @@ const config: CodegenConfig = {
         },
         avoidOptionals: false,
         enumsAsTypes: false,
+        // Replace generated TS enums with hand-written ones for the
+        // three enums that intentionally carry both SCREAMING_SNAKE
+        // and camelCase (or lowercase/uppercase) wire values for
+        // older-client compatibility. graphql-codegen's default
+        // PascalCase transformation collides across casings; the
+        // hand-written enums in enumOverrides.ts give each member a
+        // unique TS identifier while preserving the original wire
+        // values for the canonical members so existing resolver
+        // references like `SortOrder.Asc` keep compiling.
+        enumValues: {
+          PredictionSortField:
+            '../enumOverrides#PredictionSortField',
+          PositionSortField: '../enumOverrides#PositionSortField',
+          SortOrder: '../enumOverrides#SortOrder',
+        },
         // Let `makeExecutableSchema` do the typename work at runtime
         // via prisma-model mappers; we don't need __resolveType here
         // unless we introduce a union/interface later in the port.
