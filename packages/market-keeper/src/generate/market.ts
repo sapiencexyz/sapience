@@ -85,23 +85,21 @@ export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
       }
     }
 
+    const newMinEndDate = maxEndDateInBatch.toISOString();
+
     // Stop conditions:
     // 1. Got less than PAGE_SIZE markets (no more pages)
     // 2. Max endDate in batch exceeds our window (all remaining markets are beyond our window)
-    // 3. No new markets added (we've seen all markets at this endDate)
-    if (
-      markets.length < PAGE_SIZE ||
-      maxEndDateInBatch >= maxEndDate ||
-      newMarketsCount === 0
-    ) {
+    if (markets.length < PAGE_SIZE || maxEndDateInBatch >= maxEndDate) {
       break;
     }
 
-    // Move the cursor to fetch next page
-    const newMinEndDate = maxEndDateInBatch.toISOString();
-    if (newMinEndDate === currentMinEndDate) {
-      // Cursor didn't advance — many markets share the same endDate.
-      // Use offset to page through them.
+    // Move the cursor to fetch next page. Gamma's end_date_min is inclusive,
+    // so the first request after advancing to a crowded timestamp can return
+    // the exact same PAGE_SIZE markets we just saw. Do not stop on that
+    // duplicate page — advance offset within the timestamp so later siblings
+    // (e.g. player props sharing the game start time) are not skipped.
+    if (newMinEndDate === currentMinEndDate || newMarketsCount === 0) {
       offset += PAGE_SIZE;
     } else {
       currentMinEndDate = newMinEndDate;

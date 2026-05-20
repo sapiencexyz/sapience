@@ -257,9 +257,9 @@ export function inferShortName(market: PolymarketMarket): string | null {
   const question = market.question;
   const outcomes = parseOutcomes(market.outcomes);
 
-  // Rule 1: Player props - "Player: Stat Over X.X"
+  // Rule 1: Player props - "Player: Stat Over X.X" or "Player: Stat O/U X.X"
   const playerPropMatch = question.match(
-    /^(.+?):\s+(Points|Rebounds|Assists|Steals|Blocks|Turnovers|3-Pointers|Fantasy Points)\s+Over\s+(\d+(?:\.\d+)?)$/i
+    /^(.+?):\s+(Points|Rebounds|Assists|Steals|Blocks|Turnovers|3-Pointers|Fantasy Points)\s+(?:Over|O\/U)\s+(\d+(?:\.\d+)?)$/i
   );
   if (playerPropMatch) {
     const [, player, stat, value] = playerPropMatch;

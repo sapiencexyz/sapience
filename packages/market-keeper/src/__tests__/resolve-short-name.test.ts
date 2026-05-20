@@ -55,6 +55,15 @@ describe('resolveShortName', () => {
     expect(result).toContain('BTC');
   });
 
+  it('returns regex inference for O/U player props', () => {
+    const market = makeMarket({
+      question: 'Victor Wembanyama: Points O/U 24.5',
+      outcomes: ['Yes', 'No'],
+      sportsMarketType: 'points',
+    });
+    expect(resolveShortName(market)).toBe('Wembanyama O24.5pts');
+  });
+
   it('returns null when no regex rule matches (LLM fallback path)', () => {
     const market = makeMarket({
       question: 'Some obscure question with no pattern?',
