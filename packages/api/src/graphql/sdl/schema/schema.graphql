@@ -91,10 +91,14 @@ elsewhere shows up (display name, avatar, settings), it can grow here
 without renaming.
 """
 type Account {
-  """Canonical Ethereum wallet address."""
+  """
+  Canonical Ethereum wallet address.
+  """
   address: String!
 
-  """When this account first appeared in the database."""
+  """
+  When this account first appeared in the database.
+  """
   createdAt: DateTimeISO!
 
   """
@@ -109,13 +113,19 @@ type Account {
   """
   maxReferrals: Int!
 
-  """The account that referred this one (via their referral code), if any."""
+  """
+  The account that referred this one (via their referral code), if any.
+  """
   referredBy: Account
 
-  """The referral code this account was referred by, if any."""
+  """
+  The referral code this account was referred by, if any.
+  """
   referredByCode: ReferralCode
 
-  """Accounts referred by this account (via this account's referral code)."""
+  """
+  Accounts referred by this account (via this account's referral code).
+  """
   referrals: [Account!]!
 }
 
@@ -125,7 +135,9 @@ A single activity entry — either a prediction or a trade, sorted by timestamp
 type ActivityItem {
   prediction: Prediction
 
-  """Unix seconds timestamp for sorting."""
+  """
+  Unix seconds timestamp for sorting.
+  """
   timestamp: UnixSeconds!
   trade: ActivityTrade
   # Wire values are the lowercase enum names ("prediction" / "trade"). Kept as
@@ -207,7 +219,9 @@ type Attestation {
   uid: String!
 }
 
-"""Public Forecast surface backed by EAS attestation rows."""
+"""
+Public Forecast surface backed by EAS attestation rows.
+"""
 type Forecast {
   forecastScore(where: AttestationScoreWhereInput): AttestationScore
   forecaster: String!
@@ -228,7 +242,9 @@ type Forecast {
   resolver: String
   schemaId: String!
 
-  """When the forecast was made on-chain."""
+  """
+  When the forecast was made on-chain.
+  """
   attestedAt: UnixSeconds!
   transactionHash: String!
   uid: String!
@@ -473,7 +489,7 @@ input BoolNullableFilter {
   not: NestedBoolNullableFilter
 }
 
-type Category {
+type Category implements Node {
   _count: CategoryCount
   conditionGroups(
     cursor: ConditionGroupWhereUniqueInput
@@ -492,9 +508,9 @@ type Category {
     where: ConditionWhereInput
   ): [Condition!]!
   createdAt: DateTimeISO!
-  id: Int!
+  id: ID!
   name: String!
-  slug: String!
+  slug: String
 }
 
 type CategoryCount {
@@ -583,28 +599,46 @@ type Close {
   txHash: String!
 }
 
+type CollateralToken {
+  symbol: String!
+  address: Address!
+  decimals: Int!
+  chainId: Int!
+}
+
 type CollateralBalanceSnapshot {
-  balance: String!
-  index: Int!
+  account: Account!
+  chainId: Int!
+  collateral: CollateralToken!
+  amount: String!
+  blockNumber: BigInt!
   timestamp: DateTimeISO!
 }
 
 type CollateralBalance {
-  address: String!
-  atBlock: Int
-  balance: String!
+  account: Account!
   chainId: Int!
+  collateral: CollateralToken!
+  amount: String!
+  atBlock: Int
+  address: String!
+  balance: String!
 }
 
-type CollateralTransfer {
-  blockNumber: Int!
+type CollateralTransfer implements Node {
+  id: ID!
+  account: Account!
   chainId: Int!
+  collateral: CollateralToken!
+  amount: String!
+  transactionHash: Bytes32!
+  createdAt: DateTimeISO!
+  blockNumber: Int!
   from: String!
-  id: Int!
   timestamp: DateTimeISO!
   to: String!
-  transactionHash: String!
   value: String!
+  logIndex: Int!
 }
 
 type Condition {
@@ -1144,7 +1178,9 @@ Paginated wrapper around `AccountAccuracyLeaderboardEntry` rows with a server-tr
 type AccountAccuracyLeaderboardPage implements Page {
   items: [AccountAccuracyLeaderboardEntry!]!
   hasMore: Boolean!
-  """Eagerly populated: derived from the in-memory leaderboard array."""
+  """
+  Eagerly populated: derived from the in-memory leaderboard array.
+  """
   totalCount: Int
 }
 
@@ -1275,10 +1311,14 @@ type LegacyPrediction {
   conditionId: String!
   createdAt: DateTimeISO!
   id: Int!
-  limitOrder(where: LimitOrderWhereInput): LimitOrder @deprecated(reason: "LimitOrder is deprecated and being phased out.")
+  limitOrder(where: LimitOrderWhereInput): LimitOrder
+    @deprecated(reason: "LimitOrder is deprecated and being phased out.")
   limitOrderId: Int
   outcomeYes: Boolean!
-  position(where: LegacyPositionWhereInput): LegacyPosition @deprecated(reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsConnection` instead.")
+  position(where: LegacyPositionWhereInput): LegacyPosition
+    @deprecated(
+      reason: "LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsConnection` instead."
+    )
   positionId: Int
 }
 
@@ -1634,7 +1674,6 @@ type PickConfiguration {
   totalPredictorCollateral: String!
 }
 
-
 """
 Paginated wrapper around Position rows with a server-truth hasMore flag.
 `totalCount` counts underlying Position rows matching the filters (not the
@@ -1647,7 +1686,9 @@ type PositionsPage implements Page {
   totalCount: Int
 }
 
-"""Relay-shaped connection over `Prediction` rows."""
+"""
+Relay-shaped connection over `Prediction` rows.
+"""
 type PredictionConnection {
   edges: [PredictionEdge!]!
   nodes: [Prediction!]!
@@ -1655,13 +1696,17 @@ type PredictionConnection {
   totalCount: Int!
 }
 
-"""Cursor-bearing edge for `PredictionConnection`."""
+"""
+Cursor-bearing edge for `PredictionConnection`.
+"""
 type PredictionEdge {
   node: Prediction!
   cursor: String!
 }
 
-"""Relay-shaped connection over `Forecast` rows."""
+"""
+Relay-shaped connection over `Forecast` rows.
+"""
 type ForecastConnection {
   edges: [ForecastEdge!]!
   nodes: [Forecast!]!
@@ -1669,7 +1714,9 @@ type ForecastConnection {
   totalCount: Int!
 }
 
-"""Cursor-bearing edge for `ForecastConnection`."""
+"""
+Cursor-bearing edge for `ForecastConnection`.
+"""
 type ForecastEdge {
   node: Forecast!
   cursor: String!
@@ -1682,35 +1729,51 @@ type ForecastEdge {
 # the count is structurally unaffordable (e.g., `QuestionConnection`'s
 # Condition/Group union) per open question D3.
 
-"""Relay-shaped connection over `Condition` rows."""
+"""
+Relay-shaped connection over `Condition` rows.
+"""
 type ConditionConnection {
-  """Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape."""
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
   items: [Condition!]!
-  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  """
+  Deprecated convenience alias for `pageInfo.hasNextPage`.
+  """
   hasMore: Boolean!
   edges: [ConditionEdge!]!
   nodes: [Condition!]!
   pageInfo: PageInfo!
 }
 
-"""Cursor-bearing edge for `ConditionConnection`."""
+"""
+Cursor-bearing edge for `ConditionConnection`.
+"""
 type ConditionEdge {
   node: Condition!
   cursor: String!
 }
 
-"""Relay-shaped connection over `ConditionGroup` rows."""
+"""
+Relay-shaped connection over `ConditionGroup` rows.
+"""
 type ConditionGroupConnection {
-  """Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape."""
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
   items: [ConditionGroup!]!
-  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  """
+  Deprecated convenience alias for `pageInfo.hasNextPage`.
+  """
   hasMore: Boolean!
   edges: [ConditionGroupEdge!]!
   nodes: [ConditionGroup!]!
   pageInfo: PageInfo!
 }
 
-"""Cursor-bearing edge for `ConditionGroupConnection`."""
+"""
+Cursor-bearing edge for `ConditionGroupConnection`.
+"""
 type ConditionGroupEdge {
   node: ConditionGroup!
   cursor: String!
@@ -1722,83 +1785,141 @@ intentionally omitted — the underlying SQL UNION over `condition_group`
 and ungrouped `condition` rows cannot produce a single COUNT cheaply.
 """
 type QuestionConnection {
-  """Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape."""
+  """
+  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
+  """
   items: [Question!]!
-  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
+  """
+  Deprecated convenience alias for `pageInfo.hasNextPage`.
+  """
   hasMore: Boolean!
   edges: [QuestionEdge!]!
   nodes: [Question!]!
   pageInfo: PageInfo!
 }
 
-"""Cursor-bearing edge for `QuestionConnection`."""
+"""
+Cursor-bearing edge for `QuestionConnection`.
+"""
 type QuestionEdge {
   node: Question!
   cursor: String!
 }
 
-"""Relay-shaped connection over `Trade` rows."""
+"""
+Relay-shaped connection over `Trade` rows.
+"""
 type TradeConnection {
   edges: [TradeEdge!]!
   nodes: [Trade!]!
   pageInfo: PageInfo!
 }
 
-"""Cursor-bearing edge for `TradeConnection`."""
+"""
+Cursor-bearing edge for `TradeConnection`.
+"""
 type TradeEdge {
   node: Trade!
   cursor: String!
 }
 
-"""Relay-shaped connection over `Position` rows."""
+"""
+Relay-shaped connection over `Position` rows.
+"""
 type PositionConnection {
   edges: [PositionEdge!]!
   nodes: [Position!]!
   pageInfo: PageInfo!
 }
 
-"""Cursor-bearing edge for `PositionConnection`."""
+"""
+Cursor-bearing edge for `PositionConnection`.
+"""
 type PositionEdge {
   node: Position!
   cursor: String!
 }
 
-"""Relay-shaped connection over `PickConfiguration` rows."""
+"""
+Relay-shaped connection over `PickConfiguration` rows.
+"""
 type PickConfigurationConnection {
   edges: [PickConfigurationEdge!]!
   nodes: [PickConfiguration!]!
   pageInfo: PageInfo!
 }
 
-"""Cursor-bearing edge for `PickConfigurationConnection`."""
+"""
+Cursor-bearing edge for `PickConfigurationConnection`.
+"""
 type PickConfigurationEdge {
   node: PickConfiguration!
   cursor: String!
 }
 
-"""Paginated wrapper around ActivityItem rows with a server-truth hasMore flag"""
+"""
+Relay-shaped connection over `CollateralTransfer` rows.
+"""
+type CollateralTransferConnection {
+  edges: [CollateralTransferEdge!]!
+  nodes: [CollateralTransfer!]!
+  pageInfo: PageInfo!
+}
+
+type CollateralTransferEdge {
+  node: CollateralTransfer!
+  cursor: String!
+}
+
+type ProtocolStatsConnection {
+  edges: [ProtocolStatsEdge!]!
+  nodes: [ProtocolStat!]!
+  pageInfo: PageInfo!
+}
+
+type ProtocolStatsEdge {
+  node: ProtocolStat!
+  cursor: String!
+}
+
+type VaultStatsConnection {
+  edges: [VaultStatsEdge!]!
+  nodes: [VaultStat!]!
+  pageInfo: PageInfo!
+}
+
+type VaultStatsEdge {
+  node: VaultStat!
+  cursor: String!
+}
+
+type CategoryConnection {
+  edges: [CategoryEdge!]!
+  nodes: [Category!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type CategoryEdge {
+  node: Category!
+  cursor: String!
+}
+
+"""
+Paginated wrapper around ActivityItem rows with a server-truth hasMore flag
+"""
 type ActivityItemsPage implements Page {
   items: [ActivityItem!]!
   hasMore: Boolean!
-  """May be null: the merged predictions/trades feed doesn't compute a unified count."""
+  """
+  May be null: the merged predictions/trades feed doesn't compute a unified count.
+  """
   totalCount: Int
 }
 
-"""Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag"""
-type CollateralTransfersPage implements Page {
-  items: [CollateralTransfer!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""Paginated wrapper around Category rows with a server-truth hasMore flag"""
-type CategoriesPage implements Page {
-  items: [Category!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""Legacy condition offset sort fields retained only for generated compatibility."""
+"""
+Legacy condition offset sort fields retained only for generated compatibility.
+"""
 enum ConditionSortField {
   CREATED_AT
   END_TIME
@@ -1806,7 +1927,9 @@ enum ConditionSortField {
   PREDICTION_COUNT
 }
 
-"""Legacy condition-group offset sort fields retained only for generated compatibility."""
+"""
+Legacy condition-group offset sort fields retained only for generated compatibility.
+"""
 enum ConditionGroupSortField {
   CREATED_AT
   MAX_END_TIME
@@ -1820,7 +1943,9 @@ enum ConditionGroupSortField {
 # an existing partial index on the underlying table — see the design
 # doc for the index-mapping rationale.
 
-"""Order input for the Relay-shaped `conditions` connection."""
+"""
+Order input for the Relay-shaped `conditions` connection.
+"""
 input ConditionOrder {
   field: ConditionOrderField!
   direction: OrderDirection!
@@ -1851,7 +1976,9 @@ enum ConditionOrderField {
   SIMILAR_MARKET_VOLUME_7D
 }
 
-"""Order input for the Relay-shaped `conditionGroups` connection."""
+"""
+Order input for the Relay-shaped `conditionGroups` connection.
+"""
 input ConditionGroupOrder {
   field: ConditionGroupOrderField!
   direction: OrderDirection!
@@ -1879,7 +2006,9 @@ enum ConditionGroupOrderField {
   SIMILAR_MARKET_VOLUME_7D
 }
 
-"""Order input for the Relay-shaped `questions` connection."""
+"""
+Order input for the Relay-shaped `questions` connection.
+"""
 input QuestionOrder {
   field: QuestionOrderField!
   direction: OrderDirection!
@@ -1901,52 +2030,82 @@ enum QuestionOrderField {
   SIMILAR_MARKET_VOLUME_7D
 }
 
-"""Order input for the Relay-shaped `tradesConnection`."""
+"""
+Order input for the Relay-shaped `tradesConnection`.
+"""
 input TradeOrder {
   field: TradeOrderField!
   direction: OrderDirection!
 }
 
-"""Sort fields for the Relay-shaped `tradesConnection`."""
+"""
+Sort fields for the Relay-shaped `tradesConnection`.
+"""
 enum TradeOrderField {
   EXECUTED_AT
   BLOCK_NUMBER
 }
 
-"""Order input for the Relay-shaped `positionsConnection`."""
+"""
+Order input for the Relay-shaped `positionsConnection`.
+"""
 input PositionOrder {
   field: PositionOrderField!
   direction: OrderDirection!
 }
 
-"""Sort fields for the Relay-shaped `positionsConnection`."""
+"""
+Sort fields for the Relay-shaped `positionsConnection`.
+"""
 enum PositionOrderField {
   CREATED_AT
   UPDATED_AT
 }
 
-"""Order input for the Relay-shaped `pickConfigurationsConnection`."""
+"""
+Order input for the Relay-shaped `pickConfigurationsConnection`.
+"""
 input PickConfigurationOrder {
   field: PickConfigurationOrderField!
   direction: OrderDirection!
 }
 
-"""Sort fields for the Relay-shaped `pickConfigurationsConnection`."""
+"""
+Sort fields for the Relay-shaped `pickConfigurationsConnection`.
+"""
 enum PickConfigurationOrderField {
   CREATED_AT
   ENDS_AT
   RESOLVED_AT
 }
 
-
-
-"""Sort fields for the `collateralTransfersPage` query."""
-enum CollateralTransferSortField {
-  BLOCK_NUMBER
-  TIMESTAMP
+input CollateralTransferFilter {
+  account: Address
+  chainId: Int
+  timestamp: DateTimeFilter
+  transactionHash: Bytes32
 }
 
-"""Legacy condition visibility filter."""
+input CollateralTransferOrder {
+  field: CollateralTransferOrderField!
+  direction: OrderDirection!
+}
+
+enum CollateralTransferOrderField {
+  BLOCK_NUMBER
+}
+
+input ProtocolStatsFilter {
+  timestamp: IntFilter
+}
+
+input VaultStatsFilter {
+  timestamp: IntFilter
+}
+
+"""
+Legacy condition visibility filter.
+"""
 enum ConditionVisibility {
   PUBLIC
   PRIVATE
@@ -1959,9 +2118,13 @@ has non-zero open interest OR at least one attestation. Used by
 cleanup workflows to find dead markets and recheck them.
 """
 enum ConditionEngagement {
-  """`openInterest = 0` AND no attestations."""
+  """
+  `openInterest = 0` AND no attestations.
+  """
   NONE
-  """`openInterest != 0` OR at least one attestation."""
+  """
+  `openInterest != 0` OR at least one attestation.
+  """
   ANY
 }
 
@@ -1969,7 +2132,9 @@ enum ConditionEngagement {
 Legacy flat filter input for removed offset-page condition access.
 """
 input ConditionFilters {
-  """Restrict to these condition IDs (case-insensitive)."""
+  """
+  Restrict to these condition IDs (case-insensitive).
+  """
   ids: [String!]
   """
   Restrict to a single chain. When omitted and a `contractAddress*` filter is
@@ -1999,27 +2164,49 @@ input ConditionFilters {
   alias of `contractAddressIn`; new callers should prefer `contractAddressIn`.
   """
   resolverIn: [String!]
-  """Free-text search across question, shortName, and description (case-insensitive)."""
+  """
+  Free-text search across question, shortName, and description (case-insensitive).
+  """
   search: String
-  """Restrict to conditions whose category slug is in this set."""
+  """
+  Restrict to conditions whose category slug is in this set.
+  """
   categorySlugs: [String!]
-  """Restrict to conditions with `endTime >= this`."""
+  """
+  Restrict to conditions with `endTime >= this`.
+  """
   minEndTime: UnixSeconds
-  """Restrict to conditions with `endTime <= this`."""
+  """
+  Restrict to conditions with `endTime <= this`.
+  """
   maxEndTime: UnixSeconds
-  """Visibility filter. Defaults to `PUBLIC` when omitted."""
+  """
+  Visibility filter. Defaults to `PUBLIC` when omitted.
+  """
   visibility: ConditionVisibility
-  """Restrict to conditions not assigned to any condition group."""
+  """
+  Restrict to conditions not assigned to any condition group.
+  """
   ungroupedOnly: Boolean
-  """Restrict to a single condition group."""
+  """
+  Restrict to a single condition group.
+  """
   conditionGroupId: Int
-  """Restrict to settled (true) or unsettled (false) conditions."""
+  """
+  Restrict to settled (true) or unsettled (false) conditions.
+  """
   settled: Boolean
-  """Restrict to conditions resolved YES (true) or NO (false). Implies settled=true."""
+  """
+  Restrict to conditions resolved YES (true) or NO (false). Implies settled=true.
+  """
   resolvedToYes: Boolean
-  """When true, only return conditions that have a non-empty `similarMarkets` array."""
+  """
+  When true, only return conditions that have a non-empty `similarMarkets` array.
+  """
   hasSimilarMarkets: Boolean
-  """Engagement filter (used by cleanup workflows). See `ConditionEngagement`."""
+  """
+  Engagement filter (used by cleanup workflows). See `ConditionEngagement`.
+  """
   engagement: ConditionEngagement
 }
 
@@ -2027,7 +2214,9 @@ input ConditionFilters {
 Legacy flat filter input for removed offset-page condition group access.
 """
 input ConditionGroupFilters {
-  """Restrict to these condition group IDs."""
+  """
+  Restrict to these condition group IDs.
+  """
   ids: [Int!]
 
   """
@@ -2035,7 +2224,9 @@ input ConditionGroupFilters {
   """
   search: String
 
-  """Restrict to groups whose category slug is in this set."""
+  """
+  Restrict to groups whose category slug is in this set.
+  """
   categorySlugs: [String!]
 
   """
@@ -2073,55 +2264,89 @@ admin paths need an explicit replacement surface if private-condition
 visibility is still required.
 """
 input ConditionFilter {
-  """Restrict to these condition IDs (case-insensitive)."""
+  """
+  Restrict to these condition IDs (case-insensitive).
+  """
   ids: [ID!]
 
-  """Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present."""
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.
+  """
   chainId: Int
 
-  """Match the on-chain contract address stored in the DB `resolver` column (case-insensitive)."""
+  """
+  Match the on-chain contract address stored in the DB `resolver` column (case-insensitive).
+  """
   contractAddress: String
 
-  """Match any on-chain contract address stored in the DB `resolver` column (case-insensitive)."""
+  """
+  Match any on-chain contract address stored in the DB `resolver` column (case-insensitive).
+  """
   contractAddressIn: [String!]
 
-  """Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups."""
+  """
+  Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups.
+  """
   visibility: ConditionVisibility
 
-  """Restrict to settled (true) or unsettled (false) conditions."""
+  """
+  Restrict to settled (true) or unsettled (false) conditions.
+  """
   settled: Boolean
 
-  """Restrict to conditions resolved YES (true) or NO (false). Implies settled=true."""
+  """
+  Restrict to conditions resolved YES (true) or NO (false). Implies settled=true.
+  """
   resolvedToYes: Boolean
 
-  """Restrict to conditions that have a non-empty similarMarkets array."""
+  """
+  Restrict to conditions that have a non-empty similarMarkets array.
+  """
   hasSimilarMarkets: Boolean
 
-  """Engagement status based on open interest or attestations."""
+  """
+  Engagement status based on open interest or attestations.
+  """
   engagement: ConditionEngagement
 
-  """Free-text search across `question`, `shortName`, and `description` (case-insensitive)."""
+  """
+  Free-text search across `question`, `shortName`, and `description` (case-insensitive).
+  """
   search: String
 
-  """Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions."""
+  """
+  Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions.
+  """
   conditionGroupId: IDFilter
 
-  """Restrict to conditions whose category id is in this set."""
+  """
+  Restrict to conditions whose category id is in this set.
+  """
   categoryIds: [ID!]
 
-  """Restrict to conditions whose category slug is in this set."""
+  """
+  Restrict to conditions whose category slug is in this set.
+  """
   categorySlugs: [String!]
 
-  """Restrict to conditions tagged with any of these values."""
+  """
+  Restrict to conditions tagged with any of these values.
+  """
   tags: [String!]
 
-  """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
+  """
+  Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`.
+  """
   resolvesAt: IntFilter
 
-  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  """
+  Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`.
+  """
   estimatedPrice: FloatFilter
 
-  """Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`."""
+  """
+  Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`.
+  """
   similarMarketVolume: FloatFilter
 
   """
@@ -2138,28 +2363,44 @@ with AND. Returns only groups with at least one public condition; the
 admin-only finer-grained switches need an explicit replacement surface if still required.
 """
 input ConditionGroupFilter {
-  """Restrict to these condition group IDs."""
+  """
+  Restrict to these condition group IDs.
+  """
   ids: [ID!]
 
-  """Restrict to groups that have at least one condition on this chain."""
+  """
+  Restrict to groups that have at least one condition on this chain.
+  """
   chainId: Int
 
-  """When true, require at least one public condition on the group."""
+  """
+  When true, require at least one public condition on the group.
+  """
   publicOnly: Boolean
 
-  """When true, allow groups with no conditions. Defaults false."""
+  """
+  When true, allow groups with no conditions. Defaults false.
+  """
   includeEmpty: Boolean
 
-  """Free-text search across the group's `name` (case-insensitive)."""
+  """
+  Free-text search across the group's `name` (case-insensitive).
+  """
   search: String
 
-  """Restrict to groups whose category id is in this set."""
+  """
+  Restrict to groups whose category id is in this set.
+  """
   categoryIds: [ID!]
 
-  """Restrict to groups whose category slug is in this set."""
+  """
+  Restrict to groups whose category slug is in this set.
+  """
   categorySlugs: [String!]
 
-  """Restrict to groups whose conditions carry any of these tags."""
+  """
+  Restrict to groups whose conditions carry any of these tags.
+  """
   tags: [String!]
 }
 
@@ -2169,31 +2410,49 @@ with AND. For outcome-based filtering today, use
 `conditions(filter: { outcome: ... })`.
 """
 input QuestionFilter {
-  """Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present."""
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.
+  """
   chainId: Int
 
-  """Match the on-chain contract address that owns the underlying condition (case-insensitive)."""
+  """
+  Match the on-chain contract address that owns the underlying condition (case-insensitive).
+  """
   contractAddress: String
 
-  """Match any on-chain contract address that owns the underlying condition (case-insensitive)."""
+  """
+  Match any on-chain contract address that owns the underlying condition (case-insensitive).
+  """
   contractAddressIn: [String!]
 
-  """Restrict to questions whose category slug is in this set."""
+  """
+  Restrict to questions whose category slug is in this set.
+  """
   categorySlugs: [String!]
 
-  """Resolution-status filter; defaults to all when omitted."""
+  """
+  Resolution-status filter; defaults to all when omitted.
+  """
   resolutionStatus: ResolutionStatus
 
-  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  """
+  Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`.
+  """
   estimatedPrice: FloatFilter
 
-  """Filter by all-time or windowed similar-market volume, e.g. `{ gte: 10000 }`."""
+  """
+  Filter by all-time or windowed similar-market volume, e.g. `{ gte: 10000 }`.
+  """
   similarMarketVolume: FloatFilter
 
-  """Window the similar-market-volume filter and sort look at. When omitted, the all-time column is used."""
+  """
+  Window the similar-market-volume filter and sort look at. When omitted, the all-time column is used.
+  """
   similarMarketVolumeWindow: VolumeWindow
 
-  """Free-text search across the wrapped Condition/Group's title and description (case-insensitive)."""
+  """
+  Free-text search across the wrapped Condition/Group's title and description (case-insensitive).
+  """
   search: String
 
   """
@@ -2204,9 +2463,10 @@ input QuestionFilter {
   """
   tag: String
 
-  """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
+  """
+  Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`.
+  """
   resolvesAt: IntFilter
-
 }
 
 """
@@ -2224,14 +2484,18 @@ type Position {
   balance: String!
   chainId: Int!
   createdAt: DateTimeISO!
-  """Holder wallet address (lowercase 0x-hex)."""
+  """
+  Holder wallet address (lowercase 0x-hex).
+  """
   holder: String!
   """
   Synthetic row id. Open rows use the underlying Position row id
   serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
   """
   id: String!
-  """True if this is the predictor token side; false for counterparty."""
+  """
+  True if this is the predictor token side; false for counterparty.
+  """
   isPredictorToken: Boolean!
   pickConfig: PickConfiguration
   pickConfigId: String!
@@ -2242,7 +2506,9 @@ type Position {
   holder-wide aggregate.
   """
   realizedPnL: String
-  """ERC-20 position token address (lowercase 0x-hex)."""
+  """
+  ERC-20 position token address (lowercase 0x-hex).
+  """
   tokenAddress: String!
   """
   Cumulative payout the contract would owe this position if every
@@ -2374,20 +2640,30 @@ during the API redesign; new connection types use `PageInfo`, existing
 `*Page` types keep `Page`.
 """
 type PageInfo {
-  """True if more rows exist after `endCursor` in the current ordering."""
+  """
+  True if more rows exist after `endCursor` in the current ordering.
+  """
   hasNextPage: Boolean!
 
-  """True if more rows exist before `startCursor` in the current ordering."""
+  """
+  True if more rows exist before `startCursor` in the current ordering.
+  """
   hasPreviousPage: Boolean!
 
-  """Cursor of the first edge in the page, or null when the page is empty."""
+  """
+  Cursor of the first edge in the page, or null when the page is empty.
+  """
   startCursor: String
 
-  """Cursor of the last edge in the page, or null when the page is empty."""
+  """
+  Cursor of the last edge in the page, or null when the page is empty.
+  """
   endCursor: String
 }
 
-"""Sort order shared across every `orderBy` input on the redesigned surface."""
+"""
+Sort order shared across every `orderBy` input on the redesigned surface.
+"""
 enum OrderDirection {
   ASC
   DESC
@@ -2425,7 +2701,9 @@ Paginated wrapper around `AccountStatsLeaderboardEntry` rows with a server-truth
 type AccountStatsLeaderboardPage implements Page {
   items: [AccountStatsLeaderboardEntry!]!
   hasMore: Boolean!
-  """Eagerly populated: derived from the in-memory merged-stats array."""
+  """
+  Eagerly populated: derived from the in-memory merged-stats array.
+  """
   totalCount: Int
 }
 
@@ -2485,11 +2763,36 @@ type TimeToResolutionBucket {
   predictionCount: Int!
 }
 
+type Protocol {
+  stats(filter: ProtocolStatsFilter): ProtocolStatsConnection!
+  openInterestByCategory: [CategoryOpenInterest!]!
+  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
+}
+
+type Vault implements Node {
+  id: ID!
+  address: Address!
+  chainId: Int!
+  kind: VaultKind!
+  collateral: CollateralToken!
+  account: Account!
+  stats(filter: VaultStatsFilter): VaultStatsConnection!
+}
+
+enum VaultKind {
+  PROTOCOL
+  PYTH
+  SINGLE_LEG
+  STRATEGY_B
+}
+
 """
 Protocol-wide stats snapshot — no vault scoping.
 """
 type ProtocolStat {
-  """Snapshot boundary, aligned to the snapshot interval."""
+  """
+  Snapshot boundary, aligned to the snapshot interval.
+  """
   timestamp: UnixSeconds!
   cumulativeVolume: String!
 
@@ -2527,7 +2830,9 @@ the resolver to read from it — the wire shape is the destination, so
 clients are forward-compatible across that swap.
 """
 type AccountStat {
-  """Snapshot boundary."""
+  """
+  Snapshot boundary.
+  """
   timestamp: UnixSeconds!
 
   """
@@ -2594,6 +2899,7 @@ type VaultStat {
   Snapshot boundary, aligned to the snapshot interval.
   """
   timestamp: UnixSeconds!
+  vault: Vault!
   balance: String!
   availableAssets: String!
   deployed: String!
@@ -2625,42 +2931,75 @@ type VaultStat {
   periodPnL: String!
 }
 
-
-"""Filter input for the Relay-shaped `positionsConnection` query. Combines with AND."""
+"""
+Filter input for the Relay-shaped `positionsConnection` query. Combines with AND.
+"""
 input PositionFilter {
-  """Restrict to a single holder address (case-insensitive)."""
+  """
+  Restrict to a single holder address (case-insensitive).
+  """
   holder: String
-  """Restrict to a single chain."""
+  """
+  Restrict to a single chain.
+  """
   chainId: Int
-  """Restrict to positions tied to a single condition (via the pickConfig join)."""
+  """
+  Restrict to positions tied to a single condition (via the pickConfig join).
+  """
   conditionId: String
-  """Restrict to a single pick configuration."""
+  """
+  Restrict to a single pick configuration.
+  """
   pickConfigId: String
-  """Restrict to positions whose pickConfig settled with this result."""
+  """
+  Restrict to positions whose pickConfig settled with this result.
+  """
   result: SettlementResult
-  """Restrict to settled (true) or unsettled (false) positions."""
+  """
+  Restrict to settled (true) or unsettled (false) positions.
+  """
   settled: Boolean
-  """Restrict to positions where holder won/lost the settled pickConfig."""
+  """
+  Restrict to positions where holder won/lost the settled pickConfig.
+  """
   holderWon: Boolean
-  """Filter by holder collateral on the pickConfig, e.g. `{ gte: "1000000000000000000" }`."""
+  """
+  Filter by holder collateral on the pickConfig, e.g. `{ gte: "1000000000000000000" }`.
+  """
   collateral: BigIntFilter
-  """Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`."""
+  """
+  Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
   endsAt: IntFilter
 }
 
-"""Filter input for the Relay-shaped `tradesConnection` query. Combines with AND."""
+"""
+Filter input for the Relay-shaped `tradesConnection` query. Combines with AND.
+"""
 input TradeFilter {
-  """Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`."""
+  """
+  Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`.
+  """
   address: String
-  """Restrict to a single seller address (case-insensitive)."""
+  """
+  Restrict to a single seller address (case-insensitive).
+  """
   seller: String
-  """Restrict to a single buyer address (case-insensitive)."""
+  """
+  Restrict to a single buyer address (case-insensitive).
+  """
   buyer: String
-  """Restrict to a single position token address (case-insensitive)."""
+  """
+  Restrict to a single position token address (case-insensitive).
+  """
   token: String
-  """Restrict to a single chain."""
+  """
+  Restrict to a single chain.
+  """
   chainId: Int
-  """Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`."""
+  """
+  Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
   executedAt: IntFilter
 }
 
@@ -2669,13 +3008,21 @@ Filter input for the `pickConfigurationsConnection` query. Values combine with A
 Range-like scalars use operator-pattern inputs; identifier/domain fields stay flat.
 """
 input PickConfigurationFilter {
-  """Restrict to a single chain. Chain IDs are identifiers, not range-filtered metrics."""
+  """
+  Restrict to a single chain. Chain IDs are identifiers, not range-filtered metrics.
+  """
   chainId: Int
-  """Restrict to resolved (true) or unresolved (false) pick configurations."""
+  """
+  Restrict to resolved (true) or unresolved (false) pick configurations.
+  """
   resolved: Boolean
-  """Filter by settlement result, e.g. `{ equals: PREDICTOR_WINS }`."""
+  """
+  Filter by settlement result, e.g. `{ equals: PREDICTOR_WINS }`.
+  """
   result: SettlementResultFilter
-  """Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request."""
+  """
+  Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request.
+  """
   tokens: [String!]
 }
 
@@ -2685,27 +3032,49 @@ optional; values combine with AND. New callers should use the operator-pattern
 `PositionFilter` on `positionsConnection`.
 """
 input PositionFilters {
-  """Restrict to a single holder address (case-insensitive)."""
+  """
+  Restrict to a single holder address (case-insensitive).
+  """
   holder: String
-  """Restrict to a single chain."""
+  """
+  Restrict to a single chain.
+  """
   chainId: Int
-  """Restrict to positions tied to a single condition (via the pickConfig join)."""
+  """
+  Restrict to positions tied to a single condition (via the pickConfig join).
+  """
   conditionId: String
-  """Restrict to a single pick configuration."""
+  """
+  Restrict to a single pick configuration.
+  """
   pickConfigId: String
-  """Restrict to positions whose pickConfig settled with this result."""
+  """
+  Restrict to positions whose pickConfig settled with this result.
+  """
   result: SettlementResult
-  """Restrict to settled (true) or unsettled (false) positions."""
+  """
+  Restrict to settled (true) or unsettled (false) positions.
+  """
   settled: Boolean
-  """Restrict to positions where the holder won (true) or lost (false). Combines side with settlement result."""
+  """
+  Restrict to positions where the holder won (true) or lost (false). Combines side with settlement result.
+  """
   holderWon: Boolean
-  """Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei)."""
+  """
+  Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei).
+  """
   collateralMin: String
-  """Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei)."""
+  """
+  Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei).
+  """
   collateralMax: String
-  """Restrict to positions whose pickConfig `endsAt >= this`."""
+  """
+  Restrict to positions whose pickConfig `endsAt >= this`.
+  """
   endsAtMin: UnixSeconds
-  """Restrict to positions whose pickConfig `endsAt <= this`."""
+  """
+  Restrict to positions whose pickConfig `endsAt <= this`.
+  """
   endsAtMax: UnixSeconds
 }
 
@@ -2714,78 +3083,118 @@ Filter input for the `predictionsConnection` query. Each field is optional;
 values combine with AND.
 """
 input PredictionFilter {
-  """Restrict to predictions where the address is predictor or counterparty (case-insensitive)."""
+  """
+  Restrict to predictions where the address is predictor or counterparty (case-insensitive).
+  """
   address: String
-  """Restrict to a single chain."""
+  """
+  Restrict to a single chain.
+  """
   chainId: Int
-  """Restrict to predictions on a single condition (via the pickConfig join)."""
+  """
+  Restrict to predictions on a single condition (via the pickConfig join).
+  """
   conditionId: String
-  """Restrict to legacy (true) or non-legacy (false) predictions."""
+  """
+  Restrict to legacy (true) or non-legacy (false) predictions.
+  """
   isLegacy: Boolean
-  """Restrict to settled (true) or unsettled (false) predictions."""
+  """
+  Restrict to settled (true) or unsettled (false) predictions.
+  """
   settled: Boolean
-  """Restrict to predictions whose pickConfig settled with this result."""
+  """
+  Restrict to predictions whose pickConfig settled with this result.
+  """
   result: SettlementResult
-  """Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`."""
+  """
+  Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
   endsAt: IntFilter
 }
 
-"""Order input for `predictionsConnection`."""
+"""
+Order input for `predictionsConnection`.
+"""
 input PredictionOrder {
   field: PredictionOrderField!
   direction: OrderDirection!
 }
 
-"""Sort fields for `predictionsConnection`."""
+"""
+Sort fields for `predictionsConnection`.
+"""
 enum PredictionOrderField {
   CREATED_AT
 }
-
 
 """
 Filter input for the `forecastsConnection` query. Each field is optional;
 values combine with AND.
 """
 input ForecastFilter {
-  """Restrict to a single forecast by UID."""
+  """
+  Restrict to a single forecast by UID.
+  """
   uid: String
-  """Restrict to a single forecaster address (case-insensitive)."""
+  """
+  Restrict to a single forecaster address (case-insensitive).
+  """
   forecaster: String
-  """Restrict to a single recipient address (case-insensitive)."""
+  """
+  Restrict to a single recipient address (case-insensitive).
+  """
   recipient: String
-  """Restrict to forecasts on a single condition."""
+  """
+  Restrict to forecasts on a single condition.
+  """
   conditionId: String
-  """Restrict to a single EAS schema ID."""
+  """
+  Restrict to a single EAS schema ID.
+  """
   schemaId: String
-  """Filter by attestation epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`."""
+  """
+  Filter by attestation epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
   attestedAt: IntFilter
 }
 
-"""Order input for `forecastsConnection`."""
+"""
+Order input for `forecastsConnection`.
+"""
 input ForecastOrder {
   field: ForecastOrderField!
   direction: OrderDirection!
 }
 
-"""Sort fields for `forecastsConnection`."""
+"""
+Sort fields for `forecastsConnection`.
+"""
 enum ForecastOrderField {
   ATTESTED_AT
   CREATED_AT
 }
-
 
 """
 Flat filter input for the `accountActivityPage` query. Each field is
 optional; values combine with AND. Omit `address` for a global feed.
 """
 input ActivityFilters {
-  """Restrict to a single account's activity (case-insensitive). Omit for a global feed."""
+  """
+  Restrict to a single account's activity (case-insensitive). Omit for a global feed.
+  """
   address: String
-  """Restrict to activity on a single condition."""
+  """
+  Restrict to activity on a single condition.
+  """
   conditionId: String
-  """Restrict to activity tied to a single pick configuration."""
+  """
+  Restrict to activity tied to a single pick configuration.
+  """
   pickConfigId: String
-  """Restrict to just prediction events or just trade events. Omit for both."""
+  """
+  Restrict to just prediction events or just trade events. Omit for both.
+  """
   type: ActivityItemType
 }
 
@@ -2998,6 +3407,9 @@ type Query {
   time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
   unconditionally (cheap in-memory derivation).
   """
+  protocol: Protocol!
+  vault(id: ID!): Vault
+  vaultByAddress(address: Address!, chainId: Int = 13374202): Vault
   accountStatsLeaderboardPage(
     filters: AccountStatsFilters
     take: Int! = 25
@@ -3068,13 +3480,10 @@ type Query {
     where: CategoryWhereInput
   ): [Category!]!
     @deprecated(
-      reason: "Use `categoriesPage` — purpose-built paginated wrapper with server-truth `hasMore`. Shares the same TtlCache as the deprecated path."
+      reason: "Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories."
     )
 
-  """
-  Paginated category list, sorted alphabetically by name.
-  """
-  categoriesPage(take: Int! = 100, skip: Int! = 0): CategoriesPage!
+  categoriesConnection(first: Int = 100, after: String): CategoryConnection!
 
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
@@ -3104,10 +3513,14 @@ type Query {
       reason: "Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement."
     )
   collateralBalance(
-    address: String!
+    account: Address
+    address: String @deprecated(reason: "Use `account`.")
     atBlock: Int
     chainId: Int!
   ): CollateralBalance!
+    @deprecated(
+      reason: "Use `collateralBalance(account:, chainId:)`; legacy `address` remains as an argument alias during migration."
+    )
   """
   Cumulative wUSDe collateral balance for an address at `count + 1`
   evenly-spaced snapshot boundaries going back from now. The snapshot
@@ -3116,9 +3529,12 @@ type Query {
   `intervalSeconds` wins.
   """
   collateralBalanceHistory(
-    address: String!
+    account: Address
+    address: String @deprecated(reason: "Use `account`.")
     chainId: Int!
-    count: Int! = 12
+    first: Int = 12
+    after: String
+    count: Int = 12
     """
     Snapshot cadence in seconds. Replaces the deprecated `intervalHours`
     arg; when omitted (and `intervalHours` is also omitted) defaults to
@@ -3138,24 +3554,20 @@ type Query {
     offset: Int! = 0
   ): [CollateralTransfer!]!
     @deprecated(
-      reason: "Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal."
+      reason: "Use `collateralTransfersConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over collateral transfers."
     )
 
   """
-  Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.
+  Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
 
-  Sorting via `orderBy: CollateralTransferSortField` + `orderDirection: SortOrder`.
-  Defaults to `BLOCK_NUMBER` / `desc` when omitted.
+  Sorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.
   """
-  collateralTransfersPage(
-    address: String!
-    chainId: Int!
-    excludeProtocol: Boolean = false
-    orderBy: CollateralTransferSortField
-    orderDirection: SortOrder
-    take: Int! = 100
-    skip: Int! = 0
-  ): CollateralTransfersPage!
+  collateralTransfersConnection(
+    first: Int = 100
+    after: String
+    filter: CollateralTransferFilter
+    orderBy: CollateralTransferOrder
+  ): CollateralTransferConnection!
   """
   Look up a single account by canonical wallet address. Replacement for
   `user(where:)` — accepts a flat `address: String!` arg instead of the
@@ -3256,8 +3668,9 @@ type Query {
       reason: "Use `pickConfigurationsConnection` — Relay-shaped cursor pagination over the same data."
     )
 
-
-  """Relay-shaped connection over pick configurations."""
+  """
+  Relay-shaped connection over pick configurations.
+  """
   pickConfigurationsConnection(
     first: Int
     after: String
@@ -3305,7 +3718,6 @@ type Query {
       reason: "Use `positionsConnection` — Relay-shaped cursor pagination over the same data."
     )
 
-
   """
   Deprecated page wrapper retained for main/backward compatibility. New callers should use `positionsConnection(first:, after:, filter:, orderBy:)`.
   """
@@ -3316,30 +3728,54 @@ type Query {
     take: Int! = 50
     skip: Int! = 0
     chainId: Int
-      @deprecated(reason: "Use `filters: { chainId: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { chainId: ... }` on `PositionFilters`."
+      )
     collateralMax: String
-      @deprecated(reason: "Use `filters: { collateralMax: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { collateralMax: ... }` on `PositionFilters`."
+      )
     collateralMin: String
-      @deprecated(reason: "Use `filters: { collateralMin: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { collateralMin: ... }` on `PositionFilters`."
+      )
     conditionId: String
-      @deprecated(reason: "Use `filters: { conditionId: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { conditionId: ... }` on `PositionFilters`."
+      )
     endsAtMax: UnixSeconds
-      @deprecated(reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters`."
+      )
     endsAtMin: UnixSeconds
-      @deprecated(reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters`."
+      )
     holder: String
-      @deprecated(reason: "Use `filters: { holder: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { holder: ... }` on `PositionFilters`."
+      )
     holderWon: Boolean
-      @deprecated(reason: "Use `filters: { holderWon: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { holderWon: ... }` on `PositionFilters`."
+      )
     pickConfigId: String
-      @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters`."
+      )
     result: SettlementResult
-      @deprecated(reason: "Use `filters: { result: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { result: ... }` on `PositionFilters`."
+      )
     settled: Boolean
-      @deprecated(reason: "Use `filters: { settled: ... }` on `PositionFilters`.")
+      @deprecated(
+        reason: "Use `filters: { settled: ... }` on `PositionFilters`."
+      )
   ): PositionsPage! @deprecated(reason: "Use `positionsConnection` instead.")
 
-  """Relay-shaped connection over token positions."""
+  """
+  Relay-shaped connection over token positions.
+  """
   positionsConnection(
     first: Int
     after: String
@@ -3401,11 +3837,13 @@ type Query {
   Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
   """
   openInterestByCategory: [CategoryOpenInterest!]!
+    @deprecated(reason: "Use `protocol.openInterestByCategory`.")
 
   """
   Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
   """
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
+    @deprecated(reason: "Use `protocol.openInterestByTimeToResolution`.")
 
   """
   Protocol-wide statistics time series at the configured snapshot cadence —
@@ -3433,6 +3871,9 @@ type Query {
         reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix."
       )
   ): [ProtocolStat!]!
+    @deprecated(
+      reason: "Use `protocol.stats(filter:)` — Relay-shaped stats connection under the protocol namespace."
+    )
 
   """
   Time-bucketed total protocol trading volume across all users. DEPRECATED:
@@ -3527,11 +3968,14 @@ type Query {
       reason: "Use `tradesConnection` — Relay-shaped cursor pagination over the same data."
     )
 
-
-  """Look up a single secondary market trade by its trade hash."""
+  """
+  Look up a single secondary market trade by its trade hash.
+  """
   tradeByHash(hash: Bytes32!): Trade
 
-  """Relay-shaped connection over secondary market trades."""
+  """
+  Relay-shaped connection over secondary market trades.
+  """
   tradesConnection(
     first: Int
     after: String
@@ -3579,6 +4023,9 @@ type Query {
         reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix."
       )
   ): [VaultStat!]!
+    @deprecated(
+      reason: "Use `vaultByAddress(address:).stats(filter:)` — per-vault snapshots now live on Vault."
+    )
 }
 
 # -----------------------------------------------
@@ -3710,34 +4157,52 @@ type Question {
   """
   source: ConditionOrConditionGroup!
 
-  """Display title forwarded from the source — `Condition.question` or `ConditionGroup.name`."""
+  """
+  Display title forwarded from the source — `Condition.question` or `ConditionGroup.name`.
+  """
   title: String!
 
-  """Long-form description forwarded from the source (`Condition.description`); null for groups."""
+  """
+  Long-form description forwarded from the source (`Condition.description`); null for groups.
+  """
   description: String
 
   category: Category
   tags: [String!]!
 
-  """Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`."""
+  """
+  Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`.
+  """
   openInterest: String
 
-  """24h similar-market volume forwarded from the source."""
+  """
+  24h similar-market volume forwarded from the source.
+  """
   volume: Float
 
-  """Creation timestamp forwarded from the source."""
+  """
+  Creation timestamp forwarded from the source.
+  """
   createdAt: DateTimeISO!
 
-  """Resolution time forwarded from the source — `Condition.endTime` or `ConditionGroup.maxEndTime`."""
+  """
+  Resolution time forwarded from the source — `Condition.endTime` or `ConditionGroup.maxEndTime`.
+  """
   resolvesAt: UnixSeconds
 
   # Deprecated — kept during the migration window so existing
   # legacy `questions` integrators (frontend + external) continue to work.
   # New clients should select `source` with fragment spreads.
-  condition: Condition @deprecated(reason: "Use `source` (union over Condition | ConditionGroup).")
-  group: ConditionGroup @deprecated(reason: "Use `source` (union over Condition | ConditionGroup).")
-  predictionCount: Int @deprecated(reason: "Use `source` and read `predictionCount` on the wrapped entity.")
-  questionType: QuestionItemType! @deprecated(reason: "Use `source.__typename`.")
+  condition: Condition
+    @deprecated(reason: "Use `source` (union over Condition | ConditionGroup).")
+  group: ConditionGroup
+    @deprecated(reason: "Use `source` (union over Condition | ConditionGroup).")
+  predictionCount: Int
+    @deprecated(
+      reason: "Use `source` and read `predictionCount` on the wrapped entity."
+    )
+  questionType: QuestionItemType!
+    @deprecated(reason: "Use `source.__typename`.")
 }
 
 """
@@ -3788,23 +4253,41 @@ input QuestionFilters {
   semantics as `contractAddress`.
   """
   contractAddressIn: [String!]
-  """Free-text search across the group/condition's `name`, `question`, `shortName`, and `tags` (case-insensitive)."""
+  """
+  Free-text search across the group/condition's `name`, `question`, `shortName`, and `tags` (case-insensitive).
+  """
   search: String
-  """Restrict to questions whose category slug is in this set."""
+  """
+  Restrict to questions whose category slug is in this set.
+  """
   categorySlugs: [String!]
-  """Single-tag filter (case-sensitive against the condition's `tags` array)."""
+  """
+  Single-tag filter (case-sensitive against the condition's `tags` array).
+  """
   tag: String
-  """Restrict to conditions with `endTime >= this`."""
+  """
+  Restrict to conditions with `endTime >= this`.
+  """
   minEndTime: UnixSeconds
-  """Resolution-status filter; defaults to `all` when omitted."""
+  """
+  Resolution-status filter; defaults to `all` when omitted.
+  """
   resolutionStatus: ResolutionStatus
-  """Restrict to conditions with `estimatedPrice >= this`."""
+  """
+  Restrict to conditions with `estimatedPrice >= this`.
+  """
   minEstimatedPrice: Float
-  """Restrict to conditions with `estimatedPrice <= this`."""
+  """
+  Restrict to conditions with `estimatedPrice <= this`.
+  """
   maxEstimatedPrice: Float
-  """Restrict to conditions with similar-market volume `>= this`."""
+  """
+  Restrict to conditions with similar-market volume `>= this`.
+  """
   minSimilarMarketVolume: Float
-  """Restrict to conditions with similar-market volume `<= this`."""
+  """
+  Restrict to conditions with similar-market volume `<= this`.
+  """
   maxSimilarMarketVolume: Float
   """
   Window the similar-market-volume filter and sort look at. When omitted,
@@ -3947,23 +4430,37 @@ internal row id (see schema-preamble conventions).
 """
 type Trade {
   blockNumber: Int!
-  """Buyer wallet address (lowercase 0x-hex)."""
+  """
+  Buyer wallet address (lowercase 0x-hex).
+  """
   buyer: String!
   chainId: Int!
-  """Collateral asset address paid in this trade (lowercase 0x-hex)."""
+  """
+  Collateral asset address paid in this trade (lowercase 0x-hex).
+  """
   collateral: String!
   executedAt: UnixSeconds!
   id: Int!
-  """Total collateral paid by buyer (wei, 18 dec). `price / tokenAmount` is the per-share price."""
+  """
+  Total collateral paid by buyer (wei, 18 dec). `price / tokenAmount` is the per-share price.
+  """
   price: String!
   refCode: String
-  """Seller wallet address (lowercase 0x-hex)."""
+  """
+  Seller wallet address (lowercase 0x-hex).
+  """
   seller: String!
-  """Position token address being exchanged (lowercase 0x-hex)."""
+  """
+  Position token address being exchanged (lowercase 0x-hex).
+  """
   token: String!
-  """Quantity of position tokens transferred (wei, 18 dec on Sapience)."""
+  """
+  Quantity of position tokens transferred (wei, 18 dec on Sapience).
+  """
   tokenAmount: String!
-  """Canonical trade hash — the on-chain identifier (0x-prefixed)."""
+  """
+  Canonical trade hash — the on-chain identifier (0x-prefixed).
+  """
   tradeHash: String!
   txHash: String!
 }

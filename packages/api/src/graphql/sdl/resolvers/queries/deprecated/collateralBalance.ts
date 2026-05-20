@@ -1,16 +1,32 @@
 /**
  * Deprecated `collateralTransfers(limit:, offset:)` resolver — replaced
- * by `collateralTransfersPage(take:, skip:)`. The wrapper translates
+ * by `collateralTransfersConnection(first:, after:)`. The wrapper translates
  * limit/offset → take/skip and discards `hasMore`.
  */
 
 import type { QueryResolvers } from '../../../__generated__/resolvers';
 import { logDeprecatedHit } from '../../../../../lib/deprecationTelemetry';
-import { runCollateralTransfers } from '../collateralBalance';
+import {
+  mapCollateralTransfer,
+  runCollateralTransfers,
+} from '../collateralBalance';
 
-export const collateralTransfers: NonNullable<
-  QueryResolvers['collateralTransfers']
-> = async (_parent, { address, chainId, excludeProtocol, limit, offset }) => {
+const collateralTransfersImpl = async (
+  _parent: unknown,
+  {
+    address,
+    chainId,
+    excludeProtocol,
+    limit,
+    offset,
+  }: {
+    address: string;
+    chainId: number;
+    excludeProtocol?: boolean | null;
+    limit?: number | null;
+    offset?: number | null;
+  }
+) => {
   logDeprecatedHit('collateralTransfers');
   const { items } = await runCollateralTransfers({
     address,
@@ -19,5 +35,10 @@ export const collateralTransfers: NonNullable<
     take: limit,
     skip: offset,
   });
-  return items;
+  return items.map((item) => mapCollateralTransfer(item, address));
 };
+
+export const collateralTransfers =
+  collateralTransfersImpl as unknown as NonNullable<
+    QueryResolvers['collateralTransfers']
+  >;

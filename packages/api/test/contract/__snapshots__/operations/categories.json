@@ -1,53 +1,53 @@
 {
-  "categoriesPage": {
-    "items": [
+  "categoriesConnection": {
+    "nodes": [
       {
-        "id": 163,
+        "id": "Q2F0ZWdvcnk6MTYz",
         "name": "Commodities",
         "slug": "prices-commodities"
       },
       {
-        "id": 1,
+        "id": "Q2F0ZWdvcnk6MQ==",
         "name": "Crypto",
         "slug": "crypto"
       },
       {
-        "id": 162,
+        "id": "Q2F0ZWdvcnk6MTYy",
         "name": "Crypto",
         "slug": "prices-crypto"
       },
       {
-        "id": 7,
+        "id": "Q2F0ZWdvcnk6Nw==",
         "name": "Culture",
         "slug": "culture"
       },
       {
-        "id": 5,
+        "id": "Q2F0ZWdvcnk6NQ==",
         "name": "Economy & Finance",
         "slug": "economy-finance"
       },
       {
-        "id": 164,
+        "id": "Q2F0ZWdvcnk6MTY0",
         "name": "Equity",
         "slug": "prices-equity"
       },
       {
-        "id": 4,
+        "id": "Q2F0ZWdvcnk6NA==",
         "name": "Geopolitics",
         "slug": "geopolitics"
       },
       {
-        "id": 6,
+        "id": "Q2F0ZWdvcnk6Ng==",
         "name": "Sports",
         "slug": "sports"
       },
       {
-        "id": 3,
+        "id": "Q2F0ZWdvcnk6Mw==",
         "name": "Tech & Science",
         "slug": "tech-science"
       },
       {
-        "id": 2,
+        "id": "Q2F0ZWdvcnk6Mg==",
         "name": "Weather",
         "slug": "weather"
       }

@@ -1,15 +1,15 @@
 import { graphqlRequest } from './client/graphqlClient';
 
 export type CategoryQueryResult = {
-  id: number;
+  id: string;
   name: string;
   slug: string;
 };
 
 export const GET_CATEGORIES = /* GraphQL */ `
   query Categories {
-    categoriesPage(take: 100) {
-      items {
+    categoriesConnection(first: 100) {
+      nodes {
         id
         name
         slug
@@ -20,14 +20,14 @@ export const GET_CATEGORIES = /* GraphQL */ `
 
 export async function fetchCategories(): Promise<CategoryQueryResult[]> {
   type CategoriesResponse = {
-    categoriesPage: { items: CategoryQueryResult[] };
+    categoriesConnection: { nodes: CategoryQueryResult[] };
   };
 
   const data = await graphqlRequest<CategoriesResponse>(GET_CATEGORIES);
 
-  if (!data || !Array.isArray(data.categoriesPage?.items)) {
+  if (!data || !Array.isArray(data.categoriesConnection?.nodes)) {
     throw new Error('Failed to fetch categories: Invalid response structure');
   }
 
-  return data.categoriesPage.items;
+  return data.categoriesConnection.nodes;
 }

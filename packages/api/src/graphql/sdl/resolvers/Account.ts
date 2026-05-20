@@ -32,6 +32,7 @@ export const Account: AccountResolvers = {
 
   referrals: async (parent) => {
     const p = parent as PrismaUser;
+    if (p.id == null) return [];
     return prisma.user.findMany({ where: { referredById: p.id } });
   },
 };

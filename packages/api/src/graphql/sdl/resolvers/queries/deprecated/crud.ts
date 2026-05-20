@@ -6,7 +6,7 @@
  *     deprecation telemetry shows zero external callers.
  *
  * `categories` stays in the live `../crud.ts` file because it shares the
- * `categoriesCache` TtlCache with the live `categoriesPage` resolver — it
+ * `categoriesCache` TtlCache with the live `categoriesConnection` resolver — it
  * just calls `logDeprecatedHit('categories')` from there.
  *
  * Each wrapper here emits a `logDeprecatedHit` log line so the final

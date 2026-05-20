@@ -10,6 +10,14 @@
 
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { normalizeLegacyEntry } from '@sapience/sdk/contracts';
+import { collateralToken } from '@sapience/sdk/contracts/addresses';
+import {
+  fromGlobalId,
+  registerNodeType,
+  toGlobalId,
+} from '../../../relay/globalId';
+import { synthesizeAccount } from '../accountSynthesis';
+import { encodeCursor } from '../../../relay/cursor';
 import type {
   QueryResolvers,
   ProtocolStat,
@@ -75,7 +83,7 @@ const buildTimestampMap = <T extends { timestamp: bigint }>(
  * the shared `timestamp` + `__typename` discriminator don't collide.
  */
 type FatStat = Omit<ProtocolStat, '__typename'> &
-  Omit<VaultStat, '__typename' | 'timestamp'>;
+  Omit<VaultStat, '__typename' | 'timestamp' | 'vault'>;
 
 /**
  * Shared inner pipeline for `protocolStats` and `vaultStats`. Returns the
@@ -439,9 +447,21 @@ const runFatStats = async (
 /**
  * Project protocol-wide fields from the fat shared pipeline.
  */
-export const protocolStats: NonNullable<
-  QueryResolvers['protocolStats']
-> = async (_parent, { from, to, fromEpoch, toEpoch }) => {
+type ProtocolStatsArgs = {
+  from?: number | null;
+  to?: number | null;
+  fromEpoch?: number | null;
+  toEpoch?: number | null;
+};
+
+type VaultStatsArgs = ProtocolStatsArgs & {
+  vaultAddress?: string | null;
+};
+
+const protocolStatsImpl = async (
+  _parent: unknown,
+  { from, to, fromEpoch, toEpoch }: ProtocolStatsArgs
+): Promise<ProtocolStat[]> => {
   const fat = await runFatStats(undefined, from ?? fromEpoch, to ?? toEpoch);
   return fat.map(
     (s): ProtocolStat => ({
@@ -456,33 +476,42 @@ export const protocolStats: NonNullable<
   );
 };
 
+export const protocolStats = protocolStatsImpl as unknown as NonNullable<
+  QueryResolvers['protocolStats']
+>;
+
 /**
  * Project vault-specific fields from the fat shared pipeline.
  */
-export const vaultStats: NonNullable<QueryResolvers['vaultStats']> = async (
-  _parent,
-  { vaultAddress, from, to, fromEpoch, toEpoch }
-) => {
+const vaultStatsImpl = async (
+  _parent: unknown,
+  { vaultAddress, from, to, fromEpoch, toEpoch }: VaultStatsArgs
+): Promise<VaultStat[]> => {
   const fat = await runFatStats(vaultAddress, from ?? fromEpoch, to ?? toEpoch);
   return fat.map(
-    (s): VaultStat => ({
-      timestamp: s.timestamp,
-      balance: s.balance,
-      availableAssets: s.availableAssets,
-      deployed: s.deployed,
-      cumulativePnL: s.cumulativePnL,
-      positionsWon: s.positionsWon,
-      positionsLost: s.positionsLost,
-      deposits: s.deposits,
-      withdrawals: s.withdrawals,
-      airdropGains: s.airdropGains,
-      secondaryBought: s.secondaryBought,
-      secondarySold: s.secondarySold,
-      unredeemedClaim: s.unredeemedClaim,
-      periodPnL: s.periodPnL,
-    })
+    (s) =>
+      ({
+        timestamp: s.timestamp,
+        balance: s.balance,
+        availableAssets: s.availableAssets,
+        deployed: s.deployed,
+        cumulativePnL: s.cumulativePnL,
+        positionsWon: s.positionsWon,
+        positionsLost: s.positionsLost,
+        deposits: s.deposits,
+        withdrawals: s.withdrawals,
+        airdropGains: s.airdropGains,
+        secondaryBought: s.secondaryBought,
+        secondarySold: s.secondarySold,
+        unredeemedClaim: s.unredeemedClaim,
+        periodPnL: s.periodPnL,
+      }) as unknown as VaultStat
   );
 };
+
+export const vaultStats = vaultStatsImpl as unknown as NonNullable<
+  QueryResolvers['vaultStats']
+>;
 
 interface CategoryOpenInterestRow {
   category_id: number;
@@ -569,9 +598,10 @@ const fetchOpenInterestByCategory = memoTtl(
   ANALYTICS_CACHE_TTL_MS
 );
 
-export const openInterestByCategory: NonNullable<
+export const openInterestByCategory = (() =>
+  fetchOpenInterestByCategory()) as unknown as NonNullable<
   QueryResolvers['openInterestByCategory']
-> = () => fetchOpenInterestByCategory();
+>;
 
 interface TimeToResolutionRow {
   bucket: number;
@@ -654,3 +684,154 @@ const fetchOpenInterestByTimeToResolution = memoTtl(
 export const openInterestByTimeToResolution: NonNullable<
   QueryResolvers['openInterestByTimeToResolution']
 > = () => fetchOpenInterestByTimeToResolution();
+
+const vaultKindToGraphql = (kind: string) =>
+  kind === 'single-leg'
+    ? 'SINGLE_LEG'
+    : kind === 'strategy-b'
+      ? 'STRATEGY_B'
+      : kind.toUpperCase();
+
+const vaultDomainId = (chainId: number, address: string) =>
+  `${chainId}:${address.toLowerCase()}`;
+
+const vaultCollateral = (chainId: number) => ({
+  symbol: 'wUSDe',
+  address: (collateralToken[chainId]?.address ?? '').toLowerCase(),
+  decimals: 18,
+  chainId,
+});
+
+const mapVault = (
+  vault: ReturnType<typeof getConfiguredVaults>[number],
+  chainId: number
+) => ({
+  id: toGlobalId('Vault', vaultDomainId(chainId, vault.address)),
+  address: vault.address,
+  chainId,
+  kind: vaultKindToGraphql(vault.kind),
+  collateral: vaultCollateral(chainId),
+  account: synthesizeAccount(vault.address),
+});
+
+const parseVaultDomainId = (id: string) => {
+  const [chainIdRaw, addressRaw] = id.split(':');
+  const chainId = Number(chainIdRaw);
+  if (!Number.isInteger(chainId) || !addressRaw) return null;
+  return { chainId, address: addressRaw.toLowerCase() };
+};
+
+registerNodeType({
+  type: 'Vault',
+  loader: async (id) => {
+    const parsed = parseVaultDomainId(id);
+    if (!parsed) return null;
+    const vault = getConfiguredVaults(parsed.chainId).find(
+      (v) =>
+        v.address === parsed.address ||
+        (v.config.legacy ?? []).some(
+          (le) =>
+            normalizeLegacyEntry(le).address.toLowerCase() === parsed.address
+        )
+    );
+    return vault
+      ? mapVault({ ...vault, address: parsed.address }, parsed.chainId)
+      : null;
+  },
+});
+
+export const protocol = (async () => ({})) as unknown as NonNullable<
+  QueryResolvers['protocol']
+>;
+
+type VaultLookupArgs = {
+  address: string;
+  chainId?: number | null;
+};
+
+const vaultByAddressImpl = async (
+  _parent: unknown,
+  { address, chainId }: VaultLookupArgs
+) => {
+  const resolvedChainId = chainId ?? DEFAULT_CHAIN_ID;
+  const addr = address.toLowerCase();
+  const vault = getConfiguredVaults(resolvedChainId).find(
+    (v) =>
+      v.address === addr ||
+      (v.config.legacy ?? []).some(
+        (le) => normalizeLegacyEntry(le).address.toLowerCase() === addr
+      )
+  );
+  return vault ? mapVault({ ...vault, address: addr }, resolvedChainId) : null;
+};
+
+export const vaultByAddress = vaultByAddressImpl as unknown as NonNullable<
+  QueryResolvers['vaultByAddress']
+>;
+
+export const vault = (async (_parent: unknown, { id }: { id: string }) => {
+  const parsed = parseVaultDomainId(fromGlobalId(id).id);
+  if (!parsed) return null;
+  return vaultByAddressImpl(null, parsed);
+}) as unknown as NonNullable<QueryResolvers['vault']>;
+
+export const Protocol = {
+  stats: async (
+    _parent: unknown,
+    args: {
+      filter?: { timestamp?: { gte?: number; lte?: number } | null } | null;
+    }
+  ) => {
+    const rows = await protocolStatsImpl(null, {
+      fromEpoch: args.filter?.timestamp?.gte ?? undefined,
+      toEpoch: args.filter?.timestamp?.lte ?? undefined,
+    });
+    const nodes = rows;
+    const edges = nodes.map((node, i) => ({
+      node,
+      cursor: encodeCursor({ k: String(node.timestamp), id: String(i) }),
+    }));
+    return {
+      edges,
+      nodes,
+      pageInfo: {
+        hasNextPage: false,
+        hasPreviousPage: false,
+        startCursor: edges[0]?.cursor ?? null,
+        endCursor: edges.at(-1)?.cursor ?? null,
+      },
+    };
+  },
+  openInterestByCategory: () => fetchOpenInterestByCategory(),
+  openInterestByTimeToResolution: () => fetchOpenInterestByTimeToResolution(),
+} as never;
+
+export const Vault = {
+  stats: async (
+    parent: { address: string },
+    args: {
+      filter?: { timestamp?: { gte?: number; lte?: number } | null } | null;
+    }
+  ) => {
+    const rows = await vaultStatsImpl(null, {
+      vaultAddress: parent.address,
+      fromEpoch: args.filter?.timestamp?.gte ?? undefined,
+      toEpoch: args.filter?.timestamp?.lte ?? undefined,
+    });
+    const nodes = rows.map((row) => ({ ...row, vault: parent }));
+    const edges = nodes.map((node, i) => ({
+      node,
+      cursor: encodeCursor({ k: String(node.timestamp), id: String(i) }),
+    }));
+    return {
+      edges,
+      nodes,
+      pageInfo: {
+        hasNextPage: false,
+        hasPreviousPage: false,
+        startCursor: edges[0]?.cursor ?? null,
+        endCursor: edges.at(-1)?.cursor ?? null,
+      },
+    };
+  },
+} as never;

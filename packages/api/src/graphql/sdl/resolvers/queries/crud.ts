@@ -3,8 +3,8 @@
  * passthroughs:
  *
  *   - `categories` (deprecated, but stays here so it shares the
- *     `categoriesCache` with `categoriesPage`)
- *   - `categoriesPage` (live)
+ *     `categoriesCache` with `categoriesConnection`)
+ *   - `categoriesConnection` (live)
  *
  * Plus the live point-lookups (`condition(where:)`, `user(where:)`) and
  * the `forecastsConnection` runner. The other typegraphql-prisma-
@@ -15,7 +15,6 @@
 import type {
   QueryResolvers,
   QueryForecastsConnectionArgs,
-  QueryCategoriesPageArgs,
 } from '../../__generated__/resolvers';
 import {
   ForecastOrderField,
@@ -27,6 +26,7 @@ import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { clampSkip, clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
+import { registerNodeType, toGlobalId } from '../../../relay/globalId';
 
 /**
  * Cache only the no-args call (the dominant public path: integrator's
@@ -42,6 +42,15 @@ const categoriesCache = new TtlCache<string, CategoryRow>({
   ttlMs: 60 * 60 * 1000,
 });
 const CATEGORIES_CACHE_KEY = 'categories:v1';
+
+registerNodeType({
+  type: 'Category',
+  loader: async (id) => {
+    const numericId = Number(id);
+    if (!Number.isInteger(numericId)) return null;
+    return prisma.category.findUnique({ where: { id: numericId } });
+  },
+});
 
 /** Test-only: clear cache between test cases. */
 export const __clearCategoriesCache = () => categoriesCache.clear();
@@ -119,38 +128,6 @@ export const account: NonNullable<QueryResolvers['account']> = async (
   { address },
   ctx
 ) => ctx.loaders!.userByAddress.load(address);
-
-export const categoriesPage: NonNullable<
-  QueryResolvers['categoriesPage']
-> = async (_parent, { take, skip }: QueryCategoriesPageArgs) => {
-  // Categories is a tiny lookup table (<100 rows). Stick to the
-  // default MAX_TAKE = 100; if it ever grows past a single page we'll
-  // revisit before lifting the cap.
-  const cappedTake = clampTake(take, { defaultTake: 100 });
-  const skipVal = clampSkip(skip);
-  const isFullPage = skipVal === 0 && cappedTake >= 100;
-
-  if (isFullPage) {
-    const cached = categoriesCache.get(CATEGORIES_CACHE_KEY);
-    if (cached) {
-      return {
-        items: cached.slice(0, cappedTake),
-        hasMore: cached.length > cappedTake,
-      };
-    }
-  }
-
-  const rawRows = await prisma.category.findMany({
-    orderBy: { name: 'asc' },
-    take: cappedTake + 1,
-    skip: skipVal,
-  });
-  const hasMore = rawRows.length > cappedTake;
-  const items = rawRows.slice(0, cappedTake);
-
-  if (isFullPage && !hasMore) categoriesCache.set(CATEGORIES_CACHE_KEY, items);
-  return { items, hasMore };
-};
 
 const buildForecastCursorPredicate = (
   k: string,
@@ -267,3 +244,52 @@ export const forecastByUid: NonNullable<
   const row = await prisma.attestation.findUnique({ where: { uid } });
   return row ? mapForecast(row) : null;
 };
+
+const buildCategoryCursorPredicate = (
+  name: string,
+  id: string
+): Prisma.CategoryWhereInput => ({
+  OR: [
+    { name: { gt: name } },
+    { AND: [{ name: { equals: name } }, { id: { gt: Number(id) } }] },
+  ],
+});
+
+export const categoriesConnection = (async (
+  _parent: unknown,
+  { first, after }: { first?: number | null; after?: string | null }
+) => {
+  const cappedTake = clampTake(first ?? undefined, { defaultTake: 100 });
+  const cursor = after ? decodeCursor(after) : null;
+  const where = cursor
+    ? buildCategoryCursorPredicate(cursor.k, cursor.id)
+    : undefined;
+  const [rawRows, totalCount] = await Promise.all([
+    prisma.category.findMany({
+      where,
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      take: cappedTake + 1,
+    }),
+    prisma.category.count(),
+  ]);
+  const pageRows = rawRows.slice(0, cappedTake);
+  const nodes = pageRows.map((row) => ({
+    ...row,
+    id: toGlobalId('Category', row.id),
+  }));
+  const edges = nodes.map((node, i) => ({
+    node,
+    cursor: encodeCursor({ k: pageRows[i].name, id: String(pageRows[i].id) }),
+  }));
+  return {
+    edges,
+    nodes,
+    totalCount,
+    pageInfo: {
+      hasNextPage: rawRows.length > cappedTake,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges.at(-1)?.cursor ?? null,
+    },
+  };
+}) as unknown as NonNullable<QueryResolvers['categoriesConnection']>;

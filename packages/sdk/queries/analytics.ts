@@ -31,40 +31,44 @@ export interface VaultStat {
 }
 
 export const GET_PROTOCOL_STATS = /* GraphQL */ `
-  query ProtocolStats($from: UnixSeconds, $to: UnixSeconds) {
-    protocolStats(from: $from, to: $to) {
-      timestamp
-      cumulativeVolume
-      cumulativeTradeCount
-      periodTradeCount
-      periodVolume
-      openInterest
-      escrowBalance
+  query ProtocolStats($from: Int, $to: Int) {
+    protocol {
+      stats(filter: { timestamp: { gte: $from, lte: $to } }) {
+        nodes {
+          timestamp
+          cumulativeVolume
+          cumulativeTradeCount
+          periodTradeCount
+          periodVolume
+          openInterest
+          escrowBalance
+        }
+      }
     }
   }
 `;
 
 export const GET_VAULT_STATS = /* GraphQL */ `
-  query VaultStats(
-    $vaultAddress: String!
-    $from: UnixSeconds
-    $to: UnixSeconds
-  ) {
-    vaultStats(vaultAddress: $vaultAddress, from: $from, to: $to) {
-      timestamp
-      balance
-      availableAssets
-      deployed
-      cumulativePnL
-      positionsWon
-      positionsLost
-      deposits
-      withdrawals
-      airdropGains
-      secondaryBought
-      secondarySold
-      unredeemedClaim
-      periodPnL
+  query VaultStats($vaultAddress: String!, $from: Int, $to: Int) {
+    vaultByAddress(address: $vaultAddress) {
+      stats(filter: { timestamp: { gte: $from, lte: $to } }) {
+        nodes {
+          timestamp
+          balance
+          availableAssets
+          deployed
+          cumulativePnL
+          positionsWon
+          positionsLost
+          deposits
+          withdrawals
+          airdropGains
+          secondaryBought
+          secondarySold
+          unredeemedClaim
+          periodPnL
+        }
+      }
     }
   }
 `;
@@ -74,12 +78,12 @@ export async function fetchProtocolStats(params?: {
   to?: Date | string | number | null;
 }): Promise<ProtocolStat[]> {
   const data = await graphqlRequest<{
-    protocolStats: ProtocolStat[];
+    protocol?: { stats?: { nodes?: ProtocolStat[] } | null } | null;
   }>(GET_PROTOCOL_STATS, {
     from: toEpochOrNull(params?.from),
     to: toEpochOrNull(params?.to),
   });
-  return data?.protocolStats ?? [];
+  return data?.protocol?.stats?.nodes ?? [];
 }
 
 export async function fetchVaultStats(params: {
@@ -88,18 +92,18 @@ export async function fetchVaultStats(params: {
   to?: Date | string | number | null;
 }): Promise<VaultStat[]> {
   const data = await graphqlRequest<{
-    vaultStats: VaultStat[];
+    vaultByAddress?: { stats?: { nodes?: VaultStat[] } | null } | null;
   }>(GET_VAULT_STATS, {
     vaultAddress: params.vaultAddress,
     from: toEpochOrNull(params.from),
     to: toEpochOrNull(params.to),
   });
-  return data?.vaultStats ?? [];
+  return data?.vaultByAddress?.stats?.nodes ?? [];
 }
 
 export interface CategoryOpenInterest {
   category: {
-    id: number;
+    id: string;
     name: string;
     slug: string;
   };
@@ -109,13 +113,15 @@ export interface CategoryOpenInterest {
 
 export const GET_OPEN_INTEREST_BY_CATEGORY = /* GraphQL */ `
   query OpenInterestByCategory {
-    openInterestByCategory {
-      category {
-        id
-        name
-        slug
+    protocol {
+      openInterestByCategory {
+        category {
+          id
+          name
+          slug
+        }
+        openInterest
       }
-      openInterest
     }
   }
 `;
@@ -124,9 +130,9 @@ export async function fetchOpenInterestByCategory(): Promise<
   CategoryOpenInterest[]
 > {
   const data = await graphqlRequest<{
-    openInterestByCategory: CategoryOpenInterest[];
+    protocol?: { openInterestByCategory?: CategoryOpenInterest[] | null } | null;
   }>(GET_OPEN_INTEREST_BY_CATEGORY);
-  return data?.openInterestByCategory ?? [];
+  return data?.protocol?.openInterestByCategory ?? [];
 }
 
 export interface TimeToResolutionBucket {
@@ -142,11 +148,13 @@ export interface TimeToResolutionBucket {
 
 export const GET_OPEN_INTEREST_BY_TIME_TO_RESOLUTION = /* GraphQL */ `
   query OpenInterestByTimeToResolution {
-    openInterestByTimeToResolution {
-      bucket
-      label
-      openInterest
-      predictionCount
+    protocol {
+      openInterestByTimeToResolution {
+        bucket
+        label
+        openInterest
+        predictionCount
+      }
     }
   }
 `;
@@ -155,7 +163,9 @@ export async function fetchOpenInterestByTimeToResolution(): Promise<
   TimeToResolutionBucket[]
 > {
   const data = await graphqlRequest<{
-    openInterestByTimeToResolution: TimeToResolutionBucket[];
+    protocol?: {
+      openInterestByTimeToResolution?: TimeToResolutionBucket[] | null;
+    } | null;
   }>(GET_OPEN_INTEREST_BY_TIME_TO_RESOLUTION);
-  return data?.openInterestByTimeToResolution ?? [];
+  return data?.protocol?.openInterestByTimeToResolution ?? [];
 }

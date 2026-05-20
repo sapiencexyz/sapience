@@ -508,23 +508,15 @@ export type BoolNullableFilter = {
   not?: InputMaybe<NestedBoolNullableFilter>;
 };
 
-/** Paginated wrapper around Category rows with a server-truth hasMore flag */
-export type CategoriesPage = Page & {
-  __typename?: 'CategoriesPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Category>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
-
-export type Category = {
+export type Category = Node & {
   __typename?: 'Category';
   _count?: Maybe<CategoryCount>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
   createdAt: Scalars['DateTimeISO']['output'];
-  id: Scalars['Int']['output'];
+  id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
-  slug: Scalars['String']['output'];
+  slug?: Maybe<Scalars['String']['output']>;
 };
 
 
@@ -547,6 +539,14 @@ export type CategoryConditionsArgs = {
   where?: InputMaybe<ConditionWhereInput>;
 };
 
+export type CategoryConnection = {
+  __typename?: 'CategoryConnection';
+  edges: Array<CategoryEdge>;
+  nodes: Array<Category>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
 export type CategoryCount = {
   __typename?: 'CategoryCount';
   condition: Scalars['Int']['output'];
@@ -561,6 +561,12 @@ export type CategoryCountConditionArgs = {
 
 export type CategoryCountCondition_GroupArgs = {
   where?: InputMaybe<ConditionGroupWhereInput>;
+};
+
+export type CategoryEdge = {
+  __typename?: 'CategoryEdge';
+  cursor: Scalars['String']['output'];
+  node: Category;
 };
 
 export type CategoryNullableRelationFilter = {
@@ -651,43 +657,78 @@ export type Close = {
 
 export type CollateralBalance = {
   __typename?: 'CollateralBalance';
+  account: Account;
   address: Scalars['String']['output'];
+  amount: Scalars['String']['output'];
   atBlock?: Maybe<Scalars['Int']['output']>;
   balance: Scalars['String']['output'];
   chainId: Scalars['Int']['output'];
+  collateral: CollateralToken;
 };
 
 export type CollateralBalanceSnapshot = {
   __typename?: 'CollateralBalanceSnapshot';
-  balance: Scalars['String']['output'];
-  index: Scalars['Int']['output'];
+  account: Account;
+  amount: Scalars['String']['output'];
+  blockNumber: Scalars['BigInt']['output'];
+  chainId: Scalars['Int']['output'];
+  collateral: CollateralToken;
   timestamp: Scalars['DateTimeISO']['output'];
 };
 
-export type CollateralTransfer = {
+export type CollateralToken = {
+  __typename?: 'CollateralToken';
+  address: Scalars['Address']['output'];
+  chainId: Scalars['Int']['output'];
+  decimals: Scalars['Int']['output'];
+  symbol: Scalars['String']['output'];
+};
+
+export type CollateralTransfer = Node & {
   __typename?: 'CollateralTransfer';
+  account: Account;
+  amount: Scalars['String']['output'];
   blockNumber: Scalars['Int']['output'];
   chainId: Scalars['Int']['output'];
+  collateral: CollateralToken;
+  createdAt: Scalars['DateTimeISO']['output'];
   from: Scalars['String']['output'];
-  id: Scalars['Int']['output'];
+  id: Scalars['ID']['output'];
+  logIndex: Scalars['Int']['output'];
   timestamp: Scalars['DateTimeISO']['output'];
   to: Scalars['String']['output'];
-  transactionHash: Scalars['String']['output'];
+  transactionHash: Scalars['Bytes32']['output'];
   value: Scalars['String']['output'];
 };
 
-/** Sort fields for the `collateralTransfersPage` query. */
-export type CollateralTransferSortField =
-  | 'BLOCK_NUMBER'
-  | 'TIMESTAMP';
-
-/** Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag */
-export type CollateralTransfersPage = Page & {
-  __typename?: 'CollateralTransfersPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<CollateralTransfer>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
+/** Relay-shaped connection over `CollateralTransfer` rows. */
+export type CollateralTransferConnection = {
+  __typename?: 'CollateralTransferConnection';
+  edges: Array<CollateralTransferEdge>;
+  nodes: Array<CollateralTransfer>;
+  pageInfo: PageInfo;
 };
+
+export type CollateralTransferEdge = {
+  __typename?: 'CollateralTransferEdge';
+  cursor: Scalars['String']['output'];
+  node: CollateralTransfer;
+};
+
+export type CollateralTransferFilter = {
+  account?: InputMaybe<Scalars['Address']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  timestamp?: InputMaybe<DateTimeFilter>;
+  transactionHash?: InputMaybe<Scalars['Bytes32']['input']>;
+};
+
+export type CollateralTransferOrder = {
+  direction: OrderDirection;
+  field: CollateralTransferOrderField;
+};
+
+export type CollateralTransferOrderField =
+  | 'BLOCK_NUMBER';
 
 export type Condition = {
   __typename?: 'Condition';
@@ -2506,6 +2547,18 @@ export type ProfitRank = {
   totalPnL: Scalars['String']['output'];
 };
 
+export type Protocol = {
+  __typename?: 'Protocol';
+  openInterestByCategory: Array<CategoryOpenInterest>;
+  openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
+  stats: ProtocolStatsConnection;
+};
+
+
+export type ProtocolStatsArgs = {
+  filter?: InputMaybe<ProtocolStatsFilter>;
+};
+
 /** Protocol-wide stats snapshot — no vault scoping. */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
@@ -2520,6 +2573,23 @@ export type ProtocolStat = {
   periodVolume: Scalars['String']['output'];
   /** Snapshot boundary, aligned to the snapshot interval. */
   timestamp: Scalars['UnixSeconds']['output'];
+};
+
+export type ProtocolStatsConnection = {
+  __typename?: 'ProtocolStatsConnection';
+  edges: Array<ProtocolStatsEdge>;
+  nodes: Array<ProtocolStat>;
+  pageInfo: PageInfo;
+};
+
+export type ProtocolStatsEdge = {
+  __typename?: 'ProtocolStatsEdge';
+  cursor: Scalars['String']['output'];
+  node: ProtocolStat;
+};
+
+export type ProtocolStatsFilter = {
+  timestamp?: InputMaybe<IntFilter>;
 };
 
 export type Query = {
@@ -2599,13 +2669,6 @@ export type Query = {
    * snapshot table without changing the wire shape.
    */
   accountStats: Array<AccountStat>;
-  /**
-   * Accounts ranked by an account metric (net PnL, gains, losses, or volume)
-   * over an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over
-   * all-time. PnL metrics are attributed to settlement time, volume to trade
-   * time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
-   * unconditionally (cheap in-memory derivation).
-   */
   accountStatsLeaderboardPage: AccountStatsLeaderboardPage;
   /**
    * Stats + rank for a single address against the same ranked set the
@@ -2651,10 +2714,9 @@ export type Query = {
   activityPage: ActivityItemsPage;
   /** @deprecated Use `forecastsConnection` — purpose-built filters (forecaster, conditionId, schemaId, recipient, time range), paginated with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`. */
   attestations: Array<Attestation>;
-  /** @deprecated Use `categoriesPage` — purpose-built paginated wrapper with server-truth `hasMore`. Shares the same TtlCache as the deprecated path. */
+  /** @deprecated Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories. */
   categories: Array<Category>;
-  /** Paginated category list, sorted alphabetically by name. */
-  categoriesPage: CategoriesPage;
+  categoriesConnection: CategoryConnection;
   /**
    * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
    * @deprecated Unused; will be removed. No live consumers — claim records are reachable as a side-effect of position settlement.
@@ -2665,6 +2727,7 @@ export type Query = {
    * @deprecated Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement.
    */
   closes: Array<Close>;
+  /** @deprecated Use `collateralBalance(account:, chainId:)`; legacy `address` remains as an argument alias during migration. */
   collateralBalance: CollateralBalance;
   /**
    * Cumulative wUSDe collateral balance for an address at `count + 1`
@@ -2674,15 +2737,14 @@ export type Query = {
    * `intervalSeconds` wins.
    */
   collateralBalanceHistory: Array<CollateralBalanceSnapshot>;
-  /** @deprecated Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal. */
+  /** @deprecated Use `collateralTransfersConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over collateral transfers. */
   collateralTransfers: Array<CollateralTransfer>;
   /**
-   * Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.
+   * Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
    *
-   * Sorting via `orderBy: CollateralTransferSortField` + `orderDirection: SortOrder`.
-   * Defaults to `BLOCK_NUMBER` / `desc` when omitted.
+   * Sorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.
    */
-  collateralTransfersPage: CollateralTransfersPage;
+  collateralTransfersConnection: CollateralTransferConnection;
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape. */
   condition?: Maybe<Condition>;
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape. */
@@ -2732,9 +2794,15 @@ export type Query = {
    * refresh many entities in one round trip.
    */
   nodes: Array<Maybe<Node>>;
-  /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
+  /**
+   * Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
+   * @deprecated Use `protocol.openInterestByCategory`.
+   */
   openInterestByCategory: Array<CategoryOpenInterest>;
-  /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
+  /**
+   * Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
+   * @deprecated Use `protocol.openInterestByTimeToResolution`.
+   */
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   /**
    * Look up a single pick configuration by ID
@@ -2787,6 +2855,14 @@ export type Query = {
   /** Relay-style prediction list. Defaults to createdAt DESC. */
   predictionsConnection: PredictionConnection;
   /**
+   * Accounts ranked by an account metric (net PnL, gains, losses, or volume)
+   * over an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over
+   * all-time. PnL metrics are attributed to settlement time, volume to trade
+   * time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
+   * unconditionally (cheap in-memory derivation).
+   */
+  protocol: Protocol;
+  /**
    * Protocol-wide statistics time series at the configured snapshot cadence —
    * cumulative volume, trade count, open interest, escrow balance. Window
    * with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
@@ -2799,6 +2875,7 @@ export type Query = {
    * candle's `timestamp` is the *current* interval boundary (not shifted
    * back), so callers can distinguish it as `points[points.length - 1]
    * .timestamp >= floor(now / interval) * interval`.
+   * @deprecated Use `protocol.stats(filter:)` — Relay-shaped stats connection under the protocol namespace.
    */
   protocolStats: Array<ProtocolStat>;
   /**
@@ -2847,6 +2924,8 @@ export type Query = {
   user?: Maybe<User>;
   /** @deprecated Unused; will be removed. No live consumers — account lookups go through `account(address:)`. */
   users: Array<User>;
+  vault?: Maybe<Vault>;
+  vaultByAddress?: Maybe<Vault>;
   /**
    * Vault-specific statistics time series for a single vault address — vault
    * balance, deployed/available collateral, cumulative PnL, deposits,
@@ -2858,6 +2937,7 @@ export type Query = {
    * bars are labelled at the *start* of the interval they represent, and a
    * trailing live candle (anchored to the *current* interval boundary) is
    * appended when `toEpoch` covers now.
+   * @deprecated Use `vaultByAddress(address:).stats(filter:)` — per-vault snapshots now live on Vault.
    */
   vaultStats: Array<VaultStat>;
 };
@@ -2999,9 +3079,9 @@ export type QueryCategoriesArgs = {
 };
 
 
-export type QueryCategoriesPageArgs = {
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
+export type QueryCategoriesConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3024,16 +3104,20 @@ export type QueryClosesArgs = {
 
 
 export type QueryCollateralBalanceArgs = {
-  address: Scalars['String']['input'];
+  account?: InputMaybe<Scalars['Address']['input']>;
+  address?: InputMaybe<Scalars['String']['input']>;
   atBlock?: InputMaybe<Scalars['Int']['input']>;
   chainId: Scalars['Int']['input'];
 };
 
 
 export type QueryCollateralBalanceHistoryArgs = {
-  address: Scalars['String']['input'];
+  account?: InputMaybe<Scalars['Address']['input']>;
+  address?: InputMaybe<Scalars['String']['input']>;
+  after?: InputMaybe<Scalars['String']['input']>;
   chainId: Scalars['Int']['input'];
-  count?: Scalars['Int']['input'];
+  count?: InputMaybe<Scalars['Int']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
   intervalHours?: Scalars['Int']['input'];
   intervalSeconds?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -3048,14 +3132,11 @@ export type QueryCollateralTransfersArgs = {
 };
 
 
-export type QueryCollateralTransfersPageArgs = {
-  address: Scalars['String']['input'];
-  chainId: Scalars['Int']['input'];
-  excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
-  orderBy?: InputMaybe<CollateralTransferSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
+export type QueryCollateralTransfersConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<CollateralTransferFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<CollateralTransferOrder>;
 };
 
 
@@ -3341,6 +3422,17 @@ export type QueryUsersArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<UserWhereInput>;
+};
+
+
+export type QueryVaultArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryVaultByAddressArgs = {
+  address: Scalars['Address']['input'];
+  chainId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3893,6 +3985,28 @@ export type UserWhereUniqueInput = {
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
 
+export type Vault = Node & {
+  __typename?: 'Vault';
+  account: Account;
+  address: Scalars['Address']['output'];
+  chainId: Scalars['Int']['output'];
+  collateral: CollateralToken;
+  id: Scalars['ID']['output'];
+  kind: VaultKind;
+  stats: VaultStatsConnection;
+};
+
+
+export type VaultStatsArgs = {
+  filter?: InputMaybe<VaultStatsFilter>;
+};
+
+export type VaultKind =
+  | 'PROTOCOL'
+  | 'PYTH'
+  | 'SINGLE_LEG'
+  | 'STRATEGY_B';
+
 /** Vault-specific stats snapshot for a single vault address. */
 export type VaultStat = {
   __typename?: 'VaultStat';
@@ -3914,7 +4028,25 @@ export type VaultStat = {
   timestamp: Scalars['UnixSeconds']['output'];
   /** wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins */
   unredeemedClaim: Scalars['String']['output'];
+  vault: Vault;
   withdrawals: Scalars['String']['output'];
+};
+
+export type VaultStatsConnection = {
+  __typename?: 'VaultStatsConnection';
+  edges: Array<VaultStatsEdge>;
+  nodes: Array<VaultStat>;
+  pageInfo: PageInfo;
+};
+
+export type VaultStatsEdge = {
+  __typename?: 'VaultStatsEdge';
+  cursor: Scalars['String']['output'];
+  node: VaultStat;
+};
+
+export type VaultStatsFilter = {
+  timestamp?: InputMaybe<IntFilter>;
 };
 
 /** Time-bucketed volume data point for charts (legacy). */

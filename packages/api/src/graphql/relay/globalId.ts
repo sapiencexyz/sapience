@@ -41,11 +41,8 @@
  * append their type name to `FROZEN_NODE_TYPES`.
  */
 
-/**
- * Names of types that implement `Node`. Populated by per-entity PRs.
- * Currently empty — PR 1 ships the dispatch surface only.
- */
-export type NodeTypeName = never;
+/** Names of types that implement `Node` and have frozen public global-id formats. */
+export type NodeTypeName = 'CollateralTransfer' | 'Vault' | 'Category';
 
 export type GlobalIdParts = {
   type: string;
@@ -82,9 +79,9 @@ export class InvalidGlobalIdError extends Error {
  * EXPLICITLY FLAG THOSE CHANGES IN YOUR RESPONSE SINCE THIS IS A BREAKING CHANGE.
  */
 export const FROZEN_NODE_TYPES: readonly string[] = [
-  // Per-entity PRs add entries here. Examples (illustrative only):
-  //   'Account', 'Condition', 'ConditionGroup', 'PickConfiguration',
-  //   'Prediction', 'Trade', 'Forecast', 'Position', 'Vault', ...
+  'CollateralTransfer',
+  'Vault',
+  'Category',
 ];
 
 const SEPARATOR = ':';
