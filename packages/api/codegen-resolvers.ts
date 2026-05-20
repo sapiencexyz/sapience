@@ -68,12 +68,6 @@ const config: CodegenConfig = {
             '../../../../generated/prisma#Condition as PrismaConditionRow',
           ConditionGroup:
             '../../../../generated/prisma#ConditionGroup as PrismaConditionGroupRow',
-          LegacyPosition:
-            '../../../../generated/prisma#LegacyPosition as PrismaLegacyPositionRow',
-          LegacyPrediction:
-            '../../../../generated/prisma#LegacyPrediction as PrismaLegacyPredictionRow',
-          LimitOrder:
-            '../../../../generated/prisma#LimitOrder as PrismaLimitOrderRow',
           ReferralCode:
             '../../../../generated/prisma#ReferralCode as PrismaReferralCodeRow',
           User: '../../../../generated/prisma#User as PrismaUserRow',
