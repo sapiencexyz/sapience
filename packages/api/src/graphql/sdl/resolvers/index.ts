@@ -38,8 +38,9 @@ import { PositionsPage } from './PositionsPage';
 import { Question, ConditionOrConditionGroup } from './Question';
 import { User } from './User';
 
-import { accountActivityPage, activityPage } from './queries/activity';
-import { activity, leaderboard } from './queries/pr6';
+import { accountActivityPage, activityPage } from './queries/activityPage';
+import { activity } from './queries/activity';
+import { leaderboard } from './queries/leaderboard';
 import { accountActivity } from './queries/deprecated/activity';
 import {
   accountStats,

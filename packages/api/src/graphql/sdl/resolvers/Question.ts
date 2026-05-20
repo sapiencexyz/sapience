@@ -26,7 +26,7 @@ import type {
 import { predictionsConnection } from './queries/escrow';
 import { tradesConnection } from './queries/trade';
 import { forecastsConnection } from './queries/crud';
-import { activity } from './queries/pr6';
+import { activity } from './queries/activity';
 import { tokensForConditionIds } from './Condition';
 
 type QuestionParent = {

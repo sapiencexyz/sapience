@@ -159,25 +159,9 @@ describe('Condition.attestations', () => {
   });
 });
 
-describe('Condition.predictions', () => {
-  it('uses predictionsByConditionId loader when args are absent', async () => {
-    const load = vi.fn().mockResolvedValue([{ id: 1 }]);
-    await callField('predictions', { id: '0xcond' }, undefined, {
-      loaders: { predictionsByConditionId: { load } },
-    });
-    expect(load).toHaveBeenCalledWith('0xcond');
-  });
-
-  it('falls back to loadRelation when args contain a take', async () => {
-    helperMock.loadRelation.mockResolvedValue([]);
-    const load = vi.fn();
-    await callField(
-      'predictions',
-      { id: '0xcond' },
-      { take: 10 },
-      { loaders: { predictionsByConditionId: { load } } }
-    );
-    expect(load).not.toHaveBeenCalled();
-    expect(helperMock.loadRelation).toHaveBeenCalledTimes(1);
-  });
-});
+// `Condition.predictions` used to return a bare `[Prediction!]!` array
+// loaded via the `predictionsByConditionId` DataLoader. The PR6
+// convergence rewrite changed it to return `PredictionConnection!` and
+// delegate to the root `predictionsConnection` runner with `conditionId`
+// parent scope. The connection-level behavior is covered by
+// `crossStream.test.ts`.

@@ -16,10 +16,44 @@ import { forecastsConnection } from './queries/crud';
 import { positionsConnection } from './queries/escrow';
 import { collateralBalance } from './queries/collateralBalance';
 import { accountStats } from './queries/accountStats';
-import { rankedAccountsForMetric } from './queries/pr6';
+import { rankedAccountsForMetric } from './queries/leaderboard';
 
 const addressOf = (parent: unknown): string =>
   ((parent as { address?: string }).address ?? '').toLowerCase();
+
+/**
+ * Project the `AccountStatsFilter.timestamp: IntFilter` window selector to
+ * `{ from, to }` epoch seconds for the legacy `accountStats(...)` runner.
+ * Only `gte` (lower bound) and `lte` (upper bound) are meaningful here —
+ * the underlying time-series helpers are window-shaped. Other operators
+ * reject with a clear error rather than silently no-op, per the redesign
+ * doc convention.
+ */
+const SUPPORTED_TIMESTAMP_OPS = new Set(['gte', 'lte']);
+
+const projectTimestampWindow = (
+  raw: unknown
+): { from: number | null; to: number | null } => {
+  if (raw == null) return { from: null, to: null };
+  if (typeof raw !== 'object') {
+    throw new Error(
+      'Account.stats: filter.timestamp must be an IntFilter-shaped object'
+    );
+  }
+  const filter = raw as Record<string, unknown>;
+  for (const key of Object.keys(filter)) {
+    if (filter[key] == null) continue;
+    if (!SUPPORTED_TIMESTAMP_OPS.has(key)) {
+      throw new Error(
+        `Account.stats: filter.timestamp.${key} is not supported — use gte / lte`
+      );
+    }
+  }
+  return {
+    from: typeof filter.gte === 'number' ? (filter.gte as number) : null,
+    to: typeof filter.lte === 'number' ? (filter.lte as number) : null,
+  };
+};
 
 type PrismaUser = {
   id: number;
@@ -101,12 +135,13 @@ export const Account: AccountResolvers = {
     ),
 
   stats: async (parent, args) => {
+    const { from, to } = projectTimestampWindow(
+      (args.filter?.timestamp as unknown) ?? null
+    );
     const rows = await (accountStats as any)(null, {
       address: addressOf(parent),
-      from:
-        (args.filter?.timestamp as { gte?: number | null } | null)?.gte ?? null,
-      to:
-        (args.filter?.timestamp as { lte?: number | null } | null)?.lte ?? null,
+      from,
+      to,
       fromEpoch: null,
       toEpoch: null,
     });

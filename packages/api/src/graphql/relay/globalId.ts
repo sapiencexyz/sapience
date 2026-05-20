@@ -35,14 +35,18 @@
  *
  * ---
  *
- * PR 1 ships the encoder/decoder and dispatch surface against an empty
- * registry. Per-entity PRs call `registerNodeType` at module import
- * time alongside the schema change that adds `implements Node`, and
- * append their type name to `FROZEN_NODE_TYPES`.
+ * The encoder/decoder and dispatch surface started out against an empty
+ * registry. Each new Node-implementing type calls `registerNodeType` at
+ * module import time alongside the schema change that adds
+ * `implements Node`, and appends its type name to `FROZEN_NODE_TYPES`.
  */
 
 /** Names of types that implement `Node` and have frozen public global-id formats. */
-export type NodeTypeName = 'CollateralTransfer' | 'Vault' | 'Category' | 'Account';
+export type NodeTypeName =
+  | 'CollateralTransfer'
+  | 'Vault'
+  | 'Category'
+  | 'Account';
 
 export type GlobalIdParts = {
   type: string;
@@ -70,7 +74,8 @@ export class InvalidGlobalIdError extends Error {
 
 /**
  * Frozen list of every type name that has ever been registered as a
- * Node. Empty in PR 1; per-entity PRs append. The snapshot test
+ * Node. Started empty; entries are appended whenever a new type
+ * implements `Node`. The snapshot test
  * `globalId.test.ts > frozen node types` cross-checks this against the
  * runtime registry to catch silent renames or removals.
  *

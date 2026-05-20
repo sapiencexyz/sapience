@@ -1,13 +1,13 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { contracts } from '@sapience/sdk/contracts';
 import {
   fromGlobalId,
   toGlobalId,
   registeredNodeTypes,
 } from '../../../relay/globalId';
 import { encodeCursor } from '../../../relay/cursor';
-import { contracts } from '@sapience/sdk/contracts';
 
 const mockPrisma = vi.hoisted(() => ({
   collateralTransfer: { findMany: vi.fn(), findUnique: vi.fn() },
@@ -45,7 +45,7 @@ beforeEach(() => {
   mockPrisma.$queryRaw.mockResolvedValue([{ balance: '0' }]);
 });
 
-describe('PR5 SDL guardrails', () => {
+describe('treasury — SDL guardrails', () => {
   it('removes deleted page fields and page wrapper types from the public schema', () => {
     expect(SCHEMA).not.toContain('collateralTransfersPage');
     expect(SCHEMA).not.toContain('categoriesPage');
@@ -69,8 +69,12 @@ describe('PR5 SDL guardrails', () => {
   });
 
   it('does not expose unimplemented stats pagination or ordering args yet', () => {
-    expect(SCHEMA).toMatch(/stats\(filter: ProtocolStatsFilter\): ProtocolStatsConnection!/);
-    expect(SCHEMA).toMatch(/stats\(filter: VaultStatsFilter\): VaultStatsConnection!/);
+    expect(SCHEMA).toMatch(
+      /stats\(filter: ProtocolStatsFilter\): ProtocolStatsConnection!/
+    );
+    expect(SCHEMA).toMatch(
+      /stats\(filter: VaultStatsFilter\): VaultStatsConnection!/
+    );
     expect(SCHEMA).not.toContain('input ProtocolStatsOrder');
     expect(SCHEMA).not.toContain('input VaultStatsOrder');
   });
@@ -79,12 +83,14 @@ describe('PR5 SDL guardrails', () => {
     expect(SCHEMA).toMatch(
       /input CollateralTransferFilter \{\n\s*account: Address\n\s*chainId: Int\n\s*timestamp: DateTimeFilter\n\s*transactionHash: Bytes32\n\}/
     );
-    expect(SCHEMA).toMatch(/enum CollateralTransferOrderField \{\n\s*BLOCK_NUMBER\n\}/);
+    expect(SCHEMA).toMatch(
+      /enum CollateralTransferOrderField \{\n\s*BLOCK_NUMBER\n\}/
+    );
     expect(SCHEMA).not.toContain('AMOUNT');
   });
 });
 
-describe('PR5 Node identity', () => {
+describe('treasury — Node identity', () => {
   it('freezes CollateralTransfer, Vault, and Category node types', () => {
     expect(registeredNodeTypes()).toEqual(
       expect.arrayContaining(['CollateralTransfer', 'Vault', 'Category'])
@@ -111,7 +117,7 @@ describe('PR5 Node identity', () => {
   });
 });
 
-describe('PR5 collateral surface', () => {
+describe('treasury — collateral surface', () => {
   it('collateralBalance returns account-backed amount shape', async () => {
     const result = await callResolver(collateralBalance)(
       null,
@@ -196,10 +202,7 @@ describe('PR5 collateral surface', () => {
               OR: [
                 { blockNumber: { lt: 123 } },
                 {
-                  AND: [
-                    { blockNumber: { equals: 123 } },
-                    { id: { lt: 7 } },
-                  ],
+                  AND: [{ blockNumber: { equals: 123 } }, { id: { lt: 7 } }],
                 },
               ],
             }),
@@ -211,7 +214,7 @@ describe('PR5 collateral surface', () => {
   });
 });
 
-describe('PR5 protocol/vault/categories surface', () => {
+describe('treasury — protocol/vault/categories surface', () => {
   it('exposes protocol namespace resolvers', async () => {
     const p = await callResolver(protocol)(
       null,

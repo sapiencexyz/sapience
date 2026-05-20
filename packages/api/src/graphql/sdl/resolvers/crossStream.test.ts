@@ -34,7 +34,7 @@ const callResolver = <TResult = unknown>(resolver: unknown) =>
     info: unknown
   ) => TResult;
 
-describe('PR6 cross-stream child connections', () => {
+describe('cross-stream child connections', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPrisma.pick.findMany.mockResolvedValue([

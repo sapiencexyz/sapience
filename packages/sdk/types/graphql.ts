@@ -38,7 +38,7 @@ export type Scalars = {
 export type Account = Node & {
   __typename?: 'Account';
   /** Canonical Ethereum wallet address. */
-  address: Scalars['String']['output'];
+  address: Scalars['Address']['output'];
   collateralBalance: CollateralBalance;
   /** When this account first appeared in the database. */
   createdAt: Scalars['DateTimeISO']['output'];
@@ -202,10 +202,6 @@ export type AccountAccuracyRank = {
   address: Scalars['Address']['output'];
   rank?: Maybe<Scalars['Int']['output']>;
   totalParticipants: Scalars['Int']['output'];
-};
-
-export type AccountFilter = {
-  address?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type AccountRanking = {
@@ -385,10 +381,53 @@ export type ActivityEdge = {
   node: Activity;
 };
 
+/**
+ * Filter input for the Relay-shaped `activity(...)` connection. Combines
+ * with AND. `types: []` is an explicit zero-result query — omit `types`
+ * to include both predictions and trades.
+ */
 export type ActivityFilter = {
+  /**
+   * Restrict to a single account's activity (case-insensitive). OR-across
+   * prediction roles (predictor / counterparty) and trade sides (buyer /
+   * seller). Omit for a global feed.
+   */
   account?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to activity reachable through a ConditionGroup's member conditions.
+   * Expanded server-side into the group's condition ids, then treated as
+   * `conditionIds`.
+   */
+  conditionGroupId?: InputMaybe<Scalars['Int']['input']>;
+  /**
+   * Restrict to activity on a single condition. Walks Pick → PickConfiguration
+   * to derive the matching pickConfigIds (predictions) and predictor /
+   * counterparty tokens (trades).
+   */
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to activity on any of these conditions. Union with `conditionId`
+   * when both are supplied; useful for group-backed feeds where the caller
+   * has the condition list pre-resolved.
+   */
+  conditionIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /**
+   * Filter by activity row creation epoch seconds, e.g. `{ gte: 1770000000 }`.
+   * Applied as `createdAt` on Predictions (Postgres timestamp) and
+   * `executedAt` on Trades (Int seconds) — bounds project to each side's
+   * native column type.
+   */
+  createdAt?: InputMaybe<IntFilter>;
+  /**
+   * Restrict to activity tied to a single pick configuration. When combined
+   * with `conditionId`/`conditionIds`, intersects with that condition's
+   * pickConfig set.
+   */
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to one or both ActivityType union members. `[]` is an explicit
+   * zero-result query.
+   */
   types?: InputMaybe<Array<ActivityType>>;
 };
 
@@ -1829,6 +1868,11 @@ export type ForecastFilter = {
   attestedAt?: InputMaybe<IntFilter>;
   /** Restrict to forecasts on a single condition. */
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to forecasts on any of these conditions. Useful for group-backed
+   * feeds where the caller already has the condition list resolved.
+   */
+  conditionIds?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Restrict to a single forecaster address (case-insensitive). */
   forecaster?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single recipient address (case-insensitive). */
@@ -1903,9 +1947,19 @@ export type IntNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
+/**
+ * Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a
+ * configurable window; ACCURACY is lifetime-aggregated (the time-weighted
+ * Brier-derived score already weights by recency) and ignores the window.
+ * Operator-pattern shape matches `AccountStatsFilter`.
+ */
 export type LeaderboardFilter = {
-  from?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  to?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /**
+   * Filter by aggregation epoch seconds. `{ gte }` sets the window's lower
+   * bound, `{ lte }` sets the upper bound; both inclusive. Other operators
+   * reject — this is a window selector, not a point query.
+   */
+  timestamp?: InputMaybe<IntFilter>;
 };
 
 export type LeaderboardMetric =
@@ -2765,6 +2819,12 @@ export type PredictionFilter = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to predictions on a single condition (via the pickConfig join). */
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to predictions on any of these conditions (via the pickConfig join).
+   * Useful for group-backed feeds where the caller already has the condition
+   * list resolved.
+   */
+  conditionIds?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
   endsAt?: InputMaybe<IntFilter>;
   /** Restrict to legacy (true) or non-legacy (false) predictions. */
@@ -2871,6 +2931,7 @@ export type Query = {
    * unscored addresses), `rank` is null when the address is absent from the
    * ranked set, and `totalParticipants` is the size of the scored-forecaster
    * set.
+   * @deprecated Use `account(address: $a).rank(metric: ACCURACY)` — returns the same rank + value via the Relay-shaped Account surface.
    */
   accountAccuracyRank: AccountAccuracyRank;
   /**
@@ -2926,8 +2987,10 @@ export type Query = {
    * Implementation today wraps the legacy per-metric SQL helpers and emits
    * one point per day. A follow-up migrates this to a real per-account
    * snapshot table without changing the wire shape.
+   * @deprecated Use `account(address: $a).stats(filter: { timestamp: { gte: $from, lte: $to } })` — same fat-row shape via the Relay-shaped Account surface.
    */
   accountStats: Array<AccountStat>;
+  /** @deprecated Use `leaderboard(metric: PNL|VOLUME|ROI, first:, after:, filter:)` — Relay-shaped pagination over the same ranked set. */
   accountStatsLeaderboardPage: AccountStatsLeaderboardPage;
   /**
    * Stats + rank for a single address against the same ranked set the
@@ -2937,6 +3000,7 @@ export type Query = {
    * ranked set; `totalParticipants` is the ranked-set size (0 when the
    * window has no participants at all — that distinguishes "empty window"
    * from "present window, address unranked").
+   * @deprecated Use `account(address: $a).rank(metric: PNL|VOLUME|ROI, filter:)` — returns the same rank + value via the Relay-shaped Account surface.
    */
   accountStatsRank: AccountStatsRank;
   /**
@@ -2957,19 +3021,17 @@ export type Query = {
    * already weights by recency, so there's no window filter on this surface.
    * Page-shaped with server-truth `hasMore`; `totalCount` is populated
    * unconditionally (cheap in-memory derivation).
+   * @deprecated Use `leaderboard(metric: ACCURACY, first:, after:)` — Relay-shaped pagination over the same ranked set.
    */
   accuracyLeaderboardPage: AccountAccuracyLeaderboardPage;
   activity: ActivityConnection;
   /**
    * Unified activity feed (predictions + trades merged by timestamp), wrapped
-   * in an `ActivityItemsPage` with a server-truth `hasMore` flag. When
-   * `address` is provided the feed is scoped to that account; otherwise it
-   * returns recent global activity.
-   *
-   * Filtering is via `filters: ActivityFilters`. The flat-arg filters
-   * (`address`, `conditionId`, `pickConfigId`, `type`) are retained for one
-   * release with `@deprecated` so existing callers can migrate without
-   * breaking; new callers should use `filters:`.
+   * in an `ActivityItemsPage` with a server-truth `hasMore` flag. The whole
+   * field is deprecated in favor of `activity(...)`, the Relay-shaped
+   * replacement; flat-arg / `filters:`-arg variants both keep working until
+   * the deprecation window closes.
+   * @deprecated Use `activity(first:, after:, filter:, orderBy:)` — Relay-shaped pagination over the same merged predictions/trades feed.
    */
   activityPage: ActivityItemsPage;
   /** @deprecated Use `forecastsConnection` — purpose-built filters (forecaster, conditionId, schemaId, recipient, time range), paginated with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`. */

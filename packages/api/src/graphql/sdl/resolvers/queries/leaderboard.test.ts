@@ -13,7 +13,7 @@ vi.mock('./accountStats', () => ({
 
 import { getLeaderboardScores } from './score';
 import { getMerged, rankedFor } from './accountStats';
-import { leaderboard } from './pr6';
+import { leaderboard } from './leaderboard';
 
 const callResolver = <TResult = unknown>(resolver: unknown) =>
   resolver as (
@@ -23,7 +23,7 @@ const callResolver = <TResult = unknown>(resolver: unknown) =>
     info: unknown
   ) => Promise<TResult>;
 
-describe('PR6 leaderboard', () => {
+describe('leaderboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

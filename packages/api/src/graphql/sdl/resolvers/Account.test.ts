@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fromGlobalId, registeredNodeTypes } from '../../../relay/globalId';
+import { fromGlobalId, registeredNodeTypes } from '../../relay/globalId';
 
 const mockPrisma = vi.hoisted(() => ({
   user: { findUnique: vi.fn(), findMany: vi.fn() },
@@ -7,16 +7,16 @@ const mockPrisma = vi.hoisted(() => ({
   $queryRaw: vi.fn(),
 }));
 
-vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
+vi.mock('../../../core/db', () => ({ default: mockPrisma }));
 
-vi.mock('./pr6', () => ({
+vi.mock('./queries/leaderboard', () => ({
   rankedAccountsForMetric: vi.fn(),
 }));
 
-import { account } from './crud';
-import { Account } from '../Account';
-import { rankedAccountsForMetric } from './pr6';
-import { LeaderboardMetric } from '../../__generated__/resolvers';
+import { LeaderboardMetric } from '../__generated__/resolvers';
+import { account } from './queries/crud';
+import { Account } from './Account';
+import { rankedAccountsForMetric } from './queries/leaderboard';
 
 const ADDRESS = '0x000000000000000000000000000000000000aaaa';
 
@@ -36,7 +36,7 @@ const ctx = {
   },
 };
 
-describe('PR6 Account', () => {
+describe('Account', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     ctx.loaders.userByAddress.load.mockResolvedValue(null);

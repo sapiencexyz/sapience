@@ -187,11 +187,12 @@ describe('resolveNodes (batch)', () => {
 });
 
 describe('frozen node types — public-API stability', () => {
-  it('PR 5 freezes collateral transfer, vault, and category node types', () => {
+  it('freezes the public list of Node type names', () => {
     expect(FROZEN_NODE_TYPES).toEqual([
       'CollateralTransfer',
       'Vault',
       'Category',
+      'Account',
     ]);
     expect(registeredNodeTypes()).toHaveLength(0);
   });
