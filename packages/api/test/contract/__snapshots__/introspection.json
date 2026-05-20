@@ -270,7 +270,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "AccountStatsFilter",
+                  "name": "AccountStatFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -280,7 +280,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "AccountStatsOrder",
+                  "name": "AccountStatOrder",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -291,7 +291,7 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "AccountStatsConnection",
+                "name": "AccountStatConnection",
                 "ofType": null
               }
             },
@@ -1139,6 +1139,22 @@
             "deprecationReason": null
           },
           {
+            "name": "totalCount",
+            "description": "Size of the underlying ranked set the page is sliced from. Already\ncomputed in memory (the leaderboard materializes the full ranking),\nso cheap to surface.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "metric",
             "description": null,
             "args": [],
@@ -1424,7 +1440,7 @@
       },
       {
         "kind": "OBJECT",
-        "name": "AccountStatsConnection",
+        "name": "AccountStatConnection",
         "description": null,
         "fields": [
           {
@@ -1442,7 +1458,7 @@
                   "name": null,
                   "ofType": {
                     "kind": "OBJECT",
-                    "name": "AccountStatsEdge",
+                    "name": "AccountStatEdge",
                     "ofType": null
                   }
                 }
@@ -1490,6 +1506,22 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Size of the full time-series rendered by this query (pre-pagination).\nAlready known in memory — the resolver materializes every bucket\nbefore slicing — so cheap to surface.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -1499,7 +1531,7 @@
       },
       {
         "kind": "OBJECT",
-        "name": "AccountStatsEdge",
+        "name": "AccountStatEdge",
         "description": null,
         "fields": [
           {
@@ -1542,7 +1574,7 @@
       },
       {
         "kind": "INPUT_OBJECT",
-        "name": "AccountStatsFilter",
+        "name": "AccountStatFilter",
         "description": null,
         "fields": null,
         "inputFields": [
@@ -1559,6 +1591,62 @@
         ],
         "interfaces": null,
         "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "AccountStatOrder",
+        "description": null,
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "AccountStatOrderField",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "OrderDirection",
+                "ofType": null
+              }
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "ENUM",
+        "name": "AccountStatOrderField",
+        "description": null,
+        "fields": null,
+        "inputFields": null,
+        "interfaces": null,
+        "enumValues": [
+          {
+            "name": "TIMESTAMP",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
         "possibleTypes": null
       },
       {
@@ -1790,62 +1878,6 @@
           },
           {
             "name": "VOLUME",
-            "description": null,
-            "isDeprecated": false,
-            "deprecationReason": null
-          }
-        ],
-        "possibleTypes": null
-      },
-      {
-        "kind": "INPUT_OBJECT",
-        "name": "AccountStatsOrder",
-        "description": null,
-        "fields": null,
-        "inputFields": [
-          {
-            "name": "field",
-            "description": null,
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "ENUM",
-                "name": "AccountStatsOrderField",
-                "ofType": null
-              }
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "direction",
-            "description": null,
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "ENUM",
-                "name": "OrderDirection",
-                "ofType": null
-              }
-            },
-            "defaultValue": null
-          }
-        ],
-        "interfaces": null,
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
-        "kind": "ENUM",
-        "name": "AccountStatsOrderField",
-        "description": null,
-        "fields": null,
-        "inputFields": null,
-        "interfaces": null,
-        "enumValues": [
-          {
-            "name": "TIMESTAMP",
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null
@@ -3531,6 +3563,27 @@
       },
       {
         "kind": "INPUT_OBJECT",
+        "name": "CategoryFilter",
+        "description": "Filter input for `categoriesConnection`. Intentionally narrow — the\ncategory table is tiny, so the only meaningful filter dimension is\nsubstring match for autocomplete / lookup UIs.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "search",
+            "description": "Case-insensitive substring search against the category name.",
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
         "name": "CategoryNullableRelationFilter",
         "description": null,
         "fields": null,
@@ -4576,6 +4629,38 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "index",
+            "description": "Position of this snapshot in the returned series, starting at 0 for the\nmost-recent boundary. Carried over from the legacy `CollateralBalanceSnapshotType`.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Index is incidental to the returned list order; rely on `timestamp` (or array position) instead."
+          },
+          {
+            "name": "balance",
+            "description": "Same value as `amount`. Carried over from the legacy `CollateralBalanceSnapshotType`.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `amount` — same value, drops the wallet-balance framing for consistency with `CollateralTransfer.amount`."
           }
         ],
         "inputFields": null,
@@ -4946,6 +5031,22 @@
               "ofType": {
                 "kind": "OBJECT",
                 "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
                 "ofType": null
               }
             },
@@ -5615,8 +5716,8 @@
             "deprecationReason": null
           },
           {
-            "name": "resolver",
-            "description": "Canonical resolver address for this condition (required)",
+            "name": "marketAddress",
+            "description": "On-chain market contract address that owns this condition (case-insensitive,\n0x-prefixed lowercase). The canonical client-facing name for the address\nsurfaced as `resolver` on the legacy fragment.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -5629,6 +5730,22 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "resolver",
+            "description": "Canonical resolver address for this condition (required).",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `marketAddress` — same value, drops the protocol-jargon name to match `Prediction.marketAddress` / `PickConfig.marketAddress` and the `ConditionFilter.marketAddress` filter."
           },
           {
             "name": "settled",
@@ -5988,6 +6105,22 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -6125,7 +6258,7 @@
           },
           {
             "name": "chainId",
-            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.",
+            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present.",
             "type": {
               "kind": "SCALAR",
               "name": "Int",
@@ -6134,8 +6267,8 @@
             "defaultValue": null
           },
           {
-            "name": "contractAddress",
-            "description": "Match the on-chain contract address stored in the DB `resolver` column (case-insensitive).",
+            "name": "marketAddress",
+            "description": "Match the on-chain market contract address that owns the condition\n(case-insensitive). Maps to the DB `resolver` column.",
             "type": {
               "kind": "SCALAR",
               "name": "String",
@@ -6144,8 +6277,8 @@
             "defaultValue": null
           },
           {
-            "name": "contractAddressIn",
-            "description": "Match any on-chain contract address stored in the DB `resolver` column (case-insensitive).",
+            "name": "marketAddressIn",
+            "description": "Match any of these on-chain market contract addresses (case-insensitive).\nSame semantics as `marketAddress`.",
             "type": {
               "kind": "LIST",
               "name": null,
@@ -6767,6 +6900,22 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "title",
+            "description": "Compatibility alias mirroring `name`. Kept so external clients still\nselecting `ConditionGroup.title` keep working through one release.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `name` — same value, the alias exists only to absorb in-flight queries from older clients."
           }
         ],
         "inputFields": null,
@@ -6877,6 +7026,22 @@
               "ofType": {
                 "kind": "OBJECT",
                 "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
                 "ofType": null
               }
             },
@@ -12490,7 +12655,7 @@
       {
         "kind": "INPUT_OBJECT",
         "name": "LeaderboardFilter",
-        "description": "Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a\nconfigurable window; ACCURACY is lifetime-aggregated (the time-weighted\nBrier-derived score already weights by recency) and ignores the window.\nOperator-pattern shape matches `AccountStatsFilter`.",
+        "description": "Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a\nconfigurable window; ACCURACY is lifetime-aggregated (the time-weighted\nBrier-derived score already weights by recency) and ignores the window.\nOperator-pattern shape matches `AccountStatFilter`.",
         "fields": null,
         "inputFields": [
           {
@@ -14553,6 +14718,22 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -15060,6 +15241,22 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -15413,6 +15610,18 @@
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "createdAt",
+            "description": null,
+            "isDeprecated": true,
+            "deprecationReason": "Use `CREATED_AT` — camelCase value kept for compatibility with older clients."
+          },
+          {
+            "name": "updatedAt",
+            "description": null,
+            "isDeprecated": true,
+            "deprecationReason": "Use `UPDATED_AT` — camelCase kept for older clients."
           }
         ],
         "possibleTypes": null
@@ -16268,6 +16477,18 @@
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "createdAt",
+            "description": null,
+            "isDeprecated": true,
+            "deprecationReason": "Use `CREATED_AT` — camelCase value kept for compatibility with older clients."
+          },
+          {
+            "name": "settledAt",
+            "description": null,
+            "isDeprecated": true,
+            "deprecationReason": "Use `SETTLED_AT` — camelCase kept for older clients."
           }
         ],
         "possibleTypes": null
@@ -16357,7 +16578,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "ProtocolStatsFilter",
+                  "name": "ProtocolStatFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -16368,7 +16589,7 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "ProtocolStatsConnection",
+                "name": "ProtocolStatConnection",
                 "ofType": null
               }
             },
@@ -16554,7 +16775,7 @@
       },
       {
         "kind": "OBJECT",
-        "name": "ProtocolStatsConnection",
+        "name": "ProtocolStatConnection",
         "description": null,
         "fields": [
           {
@@ -16572,7 +16793,7 @@
                   "name": null,
                   "ofType": {
                     "kind": "OBJECT",
-                    "name": "ProtocolStatsEdge",
+                    "name": "ProtocolStatEdge",
                     "ofType": null
                   }
                 }
@@ -16620,6 +16841,22 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Size of the full snapshot series rendered by this query (pre-pagination).\nAlready known in memory — the resolver materializes every snapshot\nbefore slicing — so cheap to surface.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -16629,7 +16866,7 @@
       },
       {
         "kind": "OBJECT",
-        "name": "ProtocolStatsEdge",
+        "name": "ProtocolStatEdge",
         "description": null,
         "fields": [
           {
@@ -16672,7 +16909,7 @@
       },
       {
         "kind": "INPUT_OBJECT",
-        "name": "ProtocolStatsFilter",
+        "name": "ProtocolStatFilter",
         "description": null,
         "fields": null,
         "inputFields": [
@@ -18037,6 +18274,16 @@
                 "type": {
                   "kind": "SCALAR",
                   "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "filter",
+                "description": null,
+                "type": {
+                  "kind": "INPUT_OBJECT",
+                  "name": "CategoryFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -21230,7 +21477,7 @@
         "inputFields": [
           {
             "name": "chainId",
-            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.",
+            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present.",
             "type": {
               "kind": "SCALAR",
               "name": "Int",
@@ -21239,8 +21486,8 @@
             "defaultValue": null
           },
           {
-            "name": "contractAddress",
-            "description": "Match the on-chain contract address that owns the underlying condition (case-insensitive).",
+            "name": "marketAddress",
+            "description": "Match the on-chain market contract address that owns the underlying condition (case-insensitive).",
             "type": {
               "kind": "SCALAR",
               "name": "String",
@@ -21249,8 +21496,8 @@
             "defaultValue": null
           },
           {
-            "name": "contractAddressIn",
-            "description": "Match any on-chain contract address that owns the underlying condition (case-insensitive).",
+            "name": "marketAddressIn",
+            "description": "Match any of these on-chain market contract addresses that own the underlying condition (case-insensitive).",
             "type": {
               "kind": "LIST",
               "name": null,
@@ -22224,6 +22471,18 @@
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "ASC",
+            "description": null,
+            "isDeprecated": true,
+            "deprecationReason": "Use `asc` — uppercase value kept for compatibility with older clients passing `OrderDirection`-shaped values."
+          },
+          {
+            "name": "DESC",
+            "description": null,
+            "isDeprecated": true,
+            "deprecationReason": "Use `desc` — uppercase value kept for compatibility with older clients passing `OrderDirection`-shaped values."
           }
         ],
         "possibleTypes": null
@@ -23040,6 +23299,22 @@
               "ofType": {
                 "kind": "OBJECT",
                 "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
                 "ofType": null
               }
             },
@@ -24307,7 +24582,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "VaultStatsFilter",
+                  "name": "VaultStatFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -24318,7 +24593,7 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "VaultStatsConnection",
+                "name": "VaultStatConnection",
                 "ofType": null
               }
             },
@@ -24755,7 +25030,7 @@
       },
       {
         "kind": "OBJECT",
-        "name": "VaultStatsConnection",
+        "name": "VaultStatConnection",
         "description": null,
         "fields": [
           {
@@ -24773,7 +25048,7 @@
                   "name": null,
                   "ofType": {
                     "kind": "OBJECT",
-                    "name": "VaultStatsEdge",
+                    "name": "VaultStatEdge",
                     "ofType": null
                   }
                 }
@@ -24821,6 +25096,22 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Size of the full per-vault snapshot series (pre-pagination). Already\nknown in memory — the resolver materializes every snapshot before\nslicing — so cheap to surface.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "inputFields": null,
@@ -24830,7 +25121,7 @@
       },
       {
         "kind": "OBJECT",
-        "name": "VaultStatsEdge",
+        "name": "VaultStatEdge",
         "description": null,
         "fields": [
           {
@@ -24873,7 +25164,7 @@
       },
       {
         "kind": "INPUT_OBJECT",
-        "name": "VaultStatsFilter",
+        "name": "VaultStatFilter",
         "description": null,
         "fields": null,
         "inputFields": [

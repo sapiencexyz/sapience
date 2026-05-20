@@ -43,8 +43,8 @@ export interface ConditionFilter {
   publicOnly?: boolean;
   ungroupedOnly?: boolean;
   visibility?: 'all' | 'public' | 'private';
-  contractAddress?: string;
-  contractAddressIn?: string[];
+  marketAddress?: string;
+  marketAddressIn?: string[];
 }
 
 export type ConditionFilters = ConditionFilter;
@@ -123,9 +123,9 @@ export function buildConditionsFilters(
     };
   }
   if (filters?.ungroupedOnly) out.conditionGroupId = { isNull: true };
-  if (filters?.contractAddress) out.contractAddress = filters.contractAddress;
-  if (filters?.contractAddressIn?.length)
-    out.contractAddressIn = filters.contractAddressIn;
+  if (filters?.marketAddress) out.marketAddress = filters.marketAddress;
+  if (filters?.marketAddressIn?.length)
+    out.marketAddressIn = filters.marketAddressIn;
 
   return out;
 }

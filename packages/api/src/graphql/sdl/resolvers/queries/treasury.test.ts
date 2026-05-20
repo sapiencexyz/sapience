@@ -74,13 +74,13 @@ describe('treasury — SDL guardrails', () => {
 
   it('does not expose unimplemented stats pagination or ordering args yet', () => {
     expect(SCHEMA).toMatch(
-      /stats\(filter: ProtocolStatsFilter\): ProtocolStatConnection!/
+      /stats\(filter: ProtocolStatFilter\): ProtocolStatConnection!/
     );
     expect(SCHEMA).toMatch(
-      /stats\(filter: VaultStatsFilter\): VaultStatConnection!/
+      /stats\(filter: VaultStatFilter\): VaultStatConnection!/
     );
-    expect(SCHEMA).not.toContain('input ProtocolStatsOrder');
-    expect(SCHEMA).not.toContain('input VaultStatsOrder');
+    expect(SCHEMA).not.toContain('input ProtocolStatOrder');
+    expect(SCHEMA).not.toContain('input VaultStatOrder');
   });
 
   it('uses flat collateral transfer filters and only index-backed block-number ordering', () => {

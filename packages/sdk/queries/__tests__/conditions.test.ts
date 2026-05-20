@@ -130,31 +130,31 @@ describe('buildConditionsFilters', () => {
     });
   });
 
-  describe('contractAddress filter', () => {
-    test('forwards contractAddress as-is (case preserved here; server lowercases)', () => {
+  describe('marketAddress filter', () => {
+    test('forwards marketAddress as-is (case preserved here; server lowercases)', () => {
       expect(
-        buildConditionsFilters(undefined, { contractAddress: '0xCAFE' })
-      ).toEqual({ contractAddress: '0xCAFE' });
+        buildConditionsFilters(undefined, { marketAddress: '0xCAFE' })
+      ).toEqual({ marketAddress: '0xCAFE' });
     });
 
-    test('forwards contractAddressIn array', () => {
+    test('forwards marketAddressIn array', () => {
       expect(
         buildConditionsFilters(undefined, {
-          contractAddressIn: ['0xAAA', '0xBBB'],
+          marketAddressIn: ['0xAAA', '0xBBB'],
         })
-      ).toEqual({ contractAddressIn: ['0xAAA', '0xBBB'] });
+      ).toEqual({ marketAddressIn: ['0xAAA', '0xBBB'] });
     });
 
-    test('ignores empty contractAddressIn array', () => {
+    test('ignores empty marketAddressIn array', () => {
       expect(
-        buildConditionsFilters(undefined, { contractAddressIn: [] })
+        buildConditionsFilters(undefined, { marketAddressIn: [] })
       ).toEqual({});
     });
 
     test('pairs with explicit chainId when supplied', () => {
-      expect(
-        buildConditionsFilters(8453, { contractAddress: '0xCAFE' })
-      ).toEqual({ chainId: 8453, contractAddress: '0xCAFE' });
+      expect(buildConditionsFilters(8453, { marketAddress: '0xCAFE' })).toEqual(
+        { chainId: 8453, marketAddress: '0xCAFE' }
+      );
     });
   });
 

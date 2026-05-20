@@ -90,39 +90,39 @@ describe('fetchQuestionsSorted', () => {
     expect(call[1].filter.resolutionStatus).toBe('unresolved');
   });
 
-  test('forwards contractAddress as-is (server lowercases)', async () => {
+  test('forwards marketAddress as-is (server lowercases)', async () => {
     await fetchQuestionsSorted({
       ...baseParams,
-      contractAddress: '0xCAFE',
+      marketAddress: '0xCAFE',
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filter.contractAddress).toBe('0xCAFE');
-    expect(call[1].filter.contractAddressIn).toBeNull();
+    expect(call[1].filter.marketAddress).toBe('0xCAFE');
+    expect(call[1].filter.marketAddressIn).toBeNull();
   });
 
-  test('forwards contractAddressIn array', async () => {
+  test('forwards marketAddressIn array', async () => {
     await fetchQuestionsSorted({
       ...baseParams,
-      contractAddressIn: ['0xAAA', '0xBBB'],
+      marketAddressIn: ['0xAAA', '0xBBB'],
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filter.contractAddressIn).toEqual(['0xAAA', '0xBBB']);
+    expect(call[1].filter.marketAddressIn).toEqual(['0xAAA', '0xBBB']);
   });
 
-  test('normalizes empty contractAddressIn to null', async () => {
+  test('normalizes empty marketAddressIn to null', async () => {
     await fetchQuestionsSorted({
       ...baseParams,
-      contractAddressIn: [],
+      marketAddressIn: [],
     });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filter.contractAddressIn).toBeNull();
+    expect(call[1].filter.marketAddressIn).toBeNull();
   });
 
-  test('normalizes missing contract-address fields to null', async () => {
+  test('normalizes missing market-address fields to null', async () => {
     await fetchQuestionsSorted(baseParams);
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].filter.contractAddress).toBeNull();
-    expect(call[1].filter.contractAddressIn).toBeNull();
+    expect(call[1].filter.marketAddress).toBeNull();
+    expect(call[1].filter.marketAddressIn).toBeNull();
   });
 
   test('returns questions from response', async () => {

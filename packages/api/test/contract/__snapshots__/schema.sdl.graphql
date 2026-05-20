@@ -81,7 +81,7 @@ type Account implements Node {
 
   """Accounts referred by this account (via this account's referral code)."""
   referrals: [Account!]!
-  stats(first: Int = 50, after: String, filter: AccountStatsFilter, orderBy: AccountStatsOrder): AccountStatConnection!
+  stats(first: Int = 50, after: String, filter: AccountStatFilter, orderBy: AccountStatOrder): AccountStatConnection!
   rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRanking
   predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
   trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
@@ -504,7 +504,7 @@ enum LeaderboardMetric {
 Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a
 configurable window; ACCURACY is lifetime-aggregated (the time-weighted
 Brier-derived score already weights by recency) and ignores the window.
-Operator-pattern shape matches `AccountStatsFilter`.
+Operator-pattern shape matches `AccountStatFilter`.
 """
 input LeaderboardFilter {
   """
@@ -515,16 +515,16 @@ input LeaderboardFilter {
   timestamp: IntFilter
 }
 
-input AccountStatsFilter {
+input AccountStatFilter {
   timestamp: IntFilter
 }
 
-input AccountStatsOrder {
-  field: AccountStatsOrderField!
+input AccountStatOrder {
+  field: AccountStatOrderField!
   direction: OrderDirection!
 }
 
-enum AccountStatsOrderField {
+enum AccountStatOrderField {
   TIMESTAMP
 }
 
@@ -585,6 +585,17 @@ type CollateralBalanceSnapshot {
   amount: String!
   blockNumber: BigInt!
   timestamp: DateTimeISO!
+
+  """
+  Position of this snapshot in the returned series, starting at 0 for the
+  most-recent boundary. Carried over from the legacy `CollateralBalanceSnapshotType`.
+  """
+  index: Int! @deprecated(reason: "Index is incidental to the returned list order; rely on `timestamp` (or array position) instead.")
+
+  """
+  Same value as `amount`. Carried over from the legacy `CollateralBalanceSnapshotType`.
+  """
+  balance: String! @deprecated(reason: "Use `amount` — same value, drops the wallet-balance framing for consistency with `CollateralTransfer.amount`.")
 }
 
 type CollateralBalance {
@@ -655,8 +666,15 @@ type Condition {
   question: String!
   resolvedToYes: Boolean!
 
-  """Canonical resolver address for this condition (required)"""
-  resolver: String!
+  """
+  On-chain market contract address that owns this condition (case-insensitive,
+  0x-prefixed lowercase). The canonical client-facing name for the address
+  surfaced as `resolver` on the legacy fragment.
+  """
+  marketAddress: String!
+
+  """Canonical resolver address for this condition (required)."""
+  resolver: String! @deprecated(reason: "Use `marketAddress` — same value, drops the protocol-jargon name to match `Prediction.marketAddress` / `PickConfig.marketAddress` and the `ConditionFilter.marketAddress` filter.")
   settled: Boolean!
   settledAt: UnixSeconds
   shortName: String
@@ -1726,11 +1744,11 @@ enum CollateralTransferOrderField {
   BLOCK_NUMBER
 }
 
-input ProtocolStatsFilter {
+input ProtocolStatFilter {
   timestamp: IntFilter
 }
 
-input VaultStatsFilter {
+input VaultStatFilter {
   timestamp: IntFilter
 }
 
@@ -1880,19 +1898,21 @@ input ConditionFilter {
   ids: [ID!]
 
   """
-  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present.
   """
   chainId: Int
 
   """
-  Match the on-chain contract address stored in the DB `resolver` column (case-insensitive).
+  Match the on-chain market contract address that owns the condition
+  (case-insensitive). Maps to the DB `resolver` column.
   """
-  contractAddress: String
+  marketAddress: String
 
   """
-  Match any on-chain contract address stored in the DB `resolver` column (case-insensitive).
+  Match any of these on-chain market contract addresses (case-insensitive).
+  Same semantics as `marketAddress`.
   """
-  contractAddressIn: [String!]
+  marketAddressIn: [String!]
 
   """
   Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups.
@@ -1987,19 +2007,19 @@ with AND. For outcome-based filtering today, use
 """
 input QuestionFilter {
   """
-  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present.
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present.
   """
   chainId: Int
 
   """
-  Match the on-chain contract address that owns the underlying condition (case-insensitive).
+  Match the on-chain market contract address that owns the underlying condition (case-insensitive).
   """
-  contractAddress: String
+  marketAddress: String
 
   """
-  Match any on-chain contract address that owns the underlying condition (case-insensitive).
+  Match any of these on-chain market contract addresses that own the underlying condition (case-insensitive).
   """
-  contractAddressIn: [String!]
+  marketAddressIn: [String!]
 
   """Restrict to questions whose category slug is in this set."""
   categorySlugs: [String!]
@@ -2308,7 +2328,7 @@ type TimeToResolutionBucket {
 }
 
 type Protocol {
-  stats(filter: ProtocolStatsFilter): ProtocolStatConnection!
+  stats(filter: ProtocolStatFilter): ProtocolStatConnection!
   openInterestByCategory: [CategoryOpenInterest!]!
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 }
@@ -2319,7 +2339,7 @@ type Vault implements Node {
   chainId: Int!
   collateral: CollateralToken!
   account: Account!
-  stats(filter: VaultStatsFilter): VaultStatConnection!
+  stats(filter: VaultStatFilter): VaultStatConnection!
 }
 
 type VaultConnection {

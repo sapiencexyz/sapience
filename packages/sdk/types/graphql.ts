@@ -148,9 +148,9 @@ export type AccountRankArgs = {
  */
 export type AccountStatsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<AccountStatsFilter>;
+  filter?: InputMaybe<AccountStatFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<AccountStatsOrder>;
+  orderBy?: InputMaybe<AccountStatOrder>;
 };
 
 
@@ -336,9 +336,17 @@ export type AccountStatEdge = {
   node: AccountStat;
 };
 
-export type AccountStatsFilter = {
+export type AccountStatFilter = {
   timestamp?: InputMaybe<IntFilter>;
 };
+
+export type AccountStatOrder = {
+  direction: OrderDirection;
+  field: AccountStatOrderField;
+};
+
+export type AccountStatOrderField =
+  | 'TIMESTAMP';
 
 /**
  * Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields
@@ -385,14 +393,6 @@ export type AccountStatsMetric =
   | 'LOSSES'
   | 'NET_PNL'
   | 'VOLUME';
-
-export type AccountStatsOrder = {
-  direction: OrderDirection;
-  field: AccountStatsOrderField;
-};
-
-export type AccountStatsOrderField =
-  | 'TIMESTAMP';
 
 /**
  * Stats + rank for a single address against the same ranked set the
@@ -764,9 +764,20 @@ export type CollateralBalanceSnapshot = {
   __typename?: 'CollateralBalanceSnapshot';
   account: Account;
   amount: Scalars['String']['output'];
+  /**
+   * Same value as `amount`. Carried over from the legacy `CollateralBalanceSnapshotType`.
+   * @deprecated Use `amount` — same value, drops the wallet-balance framing for consistency with `CollateralTransfer.amount`.
+   */
+  balance: Scalars['String']['output'];
   blockNumber: Scalars['BigInt']['output'];
   chainId: Scalars['Int']['output'];
   collateral: CollateralToken;
+  /**
+   * Position of this snapshot in the returned series, starting at 0 for the
+   * most-recent boundary. Carried over from the legacy `CollateralBalanceSnapshotType`.
+   * @deprecated Index is incidental to the returned list order; rely on `timestamp` (or array position) instead.
+   */
+  index: Scalars['Int']['output'];
   timestamp: Scalars['DateTimeISO']['output'];
 };
 
@@ -843,6 +854,12 @@ export type Condition = {
   estimatedPrice?: Maybe<Scalars['Float']['output']>;
   forecasts: ForecastConnection;
   id: Scalars['String']['output'];
+  /**
+   * On-chain market contract address that owns this condition (case-insensitive,
+   * 0x-prefixed lowercase). The canonical client-facing name for the address
+   * surfaced as `resolver` on the legacy fragment.
+   */
+  marketAddress: Scalars['String']['output'];
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
   optionName?: Maybe<Scalars['String']['output']>;
@@ -863,7 +880,10 @@ export type Condition = {
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
-  /** Canonical resolver address for this condition (required) */
+  /**
+   * Canonical resolver address for this condition (required).
+   * @deprecated Use `marketAddress` — same value, drops the protocol-jargon name to match `Prediction.marketAddress` / `PickConfig.marketAddress` and the `ConditionFilter.marketAddress` filter.
+   */
   resolver: Scalars['String']['output'];
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
@@ -971,14 +991,10 @@ export type ConditionFilter = {
   categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
   /** Restrict to conditions whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present. */
+  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions. */
   conditionGroupId?: InputMaybe<IdFilter>;
-  /** Match the on-chain contract address stored in the DB `resolver` column (case-insensitive). */
-  contractAddress?: InputMaybe<Scalars['String']['input']>;
-  /** Match any on-chain contract address stored in the DB `resolver` column (case-insensitive). */
-  contractAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Engagement status based on open interest or forecasts. */
   engagement?: InputMaybe<ConditionEngagement>;
   /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
@@ -987,6 +1003,16 @@ export type ConditionFilter = {
   hasSimilarMarkets?: InputMaybe<Scalars['Boolean']['input']>;
   /** Restrict to these condition IDs (case-insensitive). */
   ids?: InputMaybe<Array<Scalars['ID']['input']>>;
+  /**
+   * Match the on-chain market contract address that owns the condition
+   * (case-insensitive). Maps to the DB `resolver` column.
+   */
+  marketAddress?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Match any of these on-chain market contract addresses (case-insensitive).
+   * Same semantics as `marketAddress`.
+   */
+  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /**
    * Filter by resolution state. `{ isNull: true }` selects unsettled
    * conditions; `{ isNull: false }` selects settled (any outcome);
@@ -1876,7 +1902,7 @@ export type IntNullableFilter = {
  * Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a
  * configurable window; ACCURACY is lifetime-aggregated (the time-weighted
  * Brier-derived score already weights by recency) and ignores the window.
- * Operator-pattern shape matches `AccountStatsFilter`.
+ * Operator-pattern shape matches `AccountStatFilter`.
  */
 export type LeaderboardFilter = {
   /**
@@ -2493,7 +2519,7 @@ export type Protocol = {
 
 
 export type ProtocolStatsArgs = {
-  filter?: InputMaybe<ProtocolStatsFilter>;
+  filter?: InputMaybe<ProtocolStatFilter>;
 };
 
 /** Protocol-wide stats snapshot — no vault scoping. */
@@ -2531,7 +2557,7 @@ export type ProtocolStatEdge = {
   node: ProtocolStat;
 };
 
-export type ProtocolStatsFilter = {
+export type ProtocolStatFilter = {
   timestamp?: InputMaybe<IntFilter>;
 };
 
@@ -3592,14 +3618,14 @@ export type QuestionEdge = {
 export type QuestionFilter = {
   /** Restrict to questions whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a contract-address filter is present. */
+  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  /** Match the on-chain contract address that owns the underlying condition (case-insensitive). */
-  contractAddress?: InputMaybe<Scalars['String']['input']>;
-  /** Match any on-chain contract address that owns the underlying condition (case-insensitive). */
-  contractAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
   estimatedPrice?: InputMaybe<FloatFilter>;
+  /** Match the on-chain market contract address that owns the underlying condition (case-insensitive). */
+  marketAddress?: InputMaybe<Scalars['String']['input']>;
+  /** Match any of these on-chain market contract addresses that own the underlying condition (case-insensitive). */
+  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Resolution-status filter; defaults to all when omitted. */
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
@@ -4080,7 +4106,7 @@ export type Vault = Node & {
 
 
 export type VaultStatsArgs = {
-  filter?: InputMaybe<VaultStatsFilter>;
+  filter?: InputMaybe<VaultStatFilter>;
 };
 
 export type VaultConnection = {
@@ -4160,7 +4186,7 @@ export type VaultStatEdge = {
   node: VaultStat;
 };
 
-export type VaultStatsFilter = {
+export type VaultStatFilter = {
   timestamp?: InputMaybe<IntFilter>;
 };
 

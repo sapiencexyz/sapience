@@ -156,27 +156,27 @@ const buildConditionsConnectionWhere = (
     and.push({ id: { in: filter.ids.map((id) => String(id).toLowerCase()) } });
   }
 
-  const contractAddress = filter.contractAddress?.toLowerCase() ?? null;
-  const contractAddressIn =
-    filter.contractAddressIn && filter.contractAddressIn.length > 0
-      ? filter.contractAddressIn.map((address) => address.toLowerCase())
+  const marketAddress = filter.marketAddress?.toLowerCase() ?? null;
+  const marketAddressIn =
+    filter.marketAddressIn && filter.marketAddressIn.length > 0
+      ? filter.marketAddressIn.map((address) => address.toLowerCase())
       : null;
-  const hasContractAddressFilter =
-    contractAddress != null || contractAddressIn != null;
+  const hasMarketAddressFilter =
+    marketAddress != null || marketAddressIn != null;
   const effectiveChainId =
     filter.chainId != null
       ? filter.chainId
-      : hasContractAddressFilter
+      : hasMarketAddressFilter
         ? DEFAULT_CHAIN_ID
         : null;
   if (effectiveChainId != null) {
     and.push({ chainId: { equals: effectiveChainId } });
   }
-  if (contractAddress) {
-    and.push({ resolver: { equals: contractAddress } });
+  if (marketAddress) {
+    and.push({ resolver: { equals: marketAddress } });
   }
-  if (contractAddressIn) {
-    and.push({ resolver: { in: contractAddressIn } });
+  if (marketAddressIn) {
+    and.push({ resolver: { in: marketAddressIn } });
   }
 
   if (filter.search?.trim()) {
