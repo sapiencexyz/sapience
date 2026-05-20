@@ -22,22 +22,24 @@ interface CountableModel<W> {
   count(args?: { where?: W }): Promise<number>;
 }
 
+type CountableModelGetter<W> = () => CountableModel<W>;
+
 type LazyTotalCountParent<W> = {
   totalCount?: number | null;
   _countWhere?: W;
 };
 
 /**
- * Returns a `totalCount` field resolver bound to a Prisma model. The
+ * Returns a `totalCount` field resolver bound to a Prisma model getter. The
  * concrete `*Page` resolver then becomes a single line:
  *
- *     export const PositionsPage = { totalCount: lazyTotalCount(prisma.position) };
+ *     export const PositionsPage = { totalCount: lazyTotalCount(() => prisma.position) };
  */
 export const lazyTotalCount =
-  <W, M extends CountableModel<W>>(model: M) =>
+  <W>(getModel: CountableModelGetter<W>) =>
   async (parent: unknown): Promise<number | null> => {
     const p = parent as LazyTotalCountParent<W>;
     if (typeof p.totalCount === 'number') return p.totalCount;
     if (!p._countWhere) return null;
-    return model.count({ where: p._countWhere });
+    return getModel().count({ where: p._countWhere });
   };
