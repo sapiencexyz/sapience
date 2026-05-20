@@ -7,10 +7,6 @@
  *    (`categoryId` / `conditionGroupId`), so a per-request DataLoader
  *    batches the lookup by integer pk. Pre-loaded relations (Prisma
  *    `include`) still take the fast path via `loadRelation`.
- *  - `attestations`: to-many relation. A batched
- *    `findMany({ where: { conditionId: { in } } })` loader fans out the
- *    parent ids when the caller doesn't supply per-row pagination/filter
- *    args. With args present the loader falls through to the per-row path.
  *  - `predictionsConnection` / `trades` / `forecasts`: Relay-shaped child
  *    connections; we delegate to the root connection resolvers with the
  *    parent scope merged into `filter`.
@@ -61,27 +57,8 @@ type PrismaCondition = {
   nonDecisive?: boolean;
   category?: unknown;
   conditionGroup?: unknown;
-  attestations?: unknown;
   [k: string]: unknown;
 };
-
-type RelationListArgs = {
-  cursor?: unknown;
-  distinct?: unknown;
-  orderBy?: unknown;
-  skip?: number | null;
-  take?: number | null;
-  where?: unknown;
-};
-
-const isBatchableListArgs = (args: RelationListArgs | undefined | null) =>
-  !args ||
-  (args.where == null &&
-    args.orderBy == null &&
-    args.cursor == null &&
-    args.distinct == null &&
-    args.skip == null &&
-    args.take == null);
 
 export const Condition: ConditionResolvers = {
   /**
@@ -120,20 +97,6 @@ export const Condition: ConditionResolvers = {
       parentModel: 'condition',
       parentWhere: { id: p.id },
       prismaRelationName: 'conditionGroup',
-      args,
-    });
-  },
-
-  attestations: async (parent, args, ctx) => {
-    const p = parent as PrismaCondition;
-    if (Array.isArray(p.attestations)) return p.attestations as never[];
-    if (ctx.loaders && isBatchableListArgs(args as RelationListArgs)) {
-      return ctx.loaders.attestationsByConditionId.load(p.id) as never;
-    }
-    return loadRelation(p, 'attestations', {
-      parentModel: 'condition',
-      parentWhere: { id: p.id },
-      prismaRelationName: 'attestations',
       args,
     });
   },

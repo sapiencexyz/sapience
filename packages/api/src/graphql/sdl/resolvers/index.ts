@@ -21,8 +21,7 @@ import type { Resolvers } from '../__generated__/resolvers';
 import { scalarResolvers } from './scalars';
 
 import { Account } from './Account';
-import { Attestation } from './Attestation';
-import { AttestationScore } from './AttestationScore';
+import { ForecastScore } from './ForecastScore';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
@@ -79,7 +78,7 @@ import {
   forecastsConnection,
   user,
 } from './queries/crud';
-import { attestations, users } from './queries/deprecated/crud';
+import { users } from './queries/deprecated/crud';
 import {
   claims,
   closes,
@@ -182,7 +181,6 @@ export const resolvers: Resolvers = {
     // CRUD passthroughs
     account,
     accountsConnection,
-    attestations,
     forecastsConnection,
     categories,
     categoriesConnection,
@@ -197,8 +195,7 @@ export const resolvers: Resolvers = {
   Activity,
   ActivitySource,
   ActivityItemsPage,
-  Attestation,
-  AttestationScore,
+  ForecastScore,
   Category,
   Condition,
   ConditionGroup,

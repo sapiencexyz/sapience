@@ -9,8 +9,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import type { AttestationData } from '~/lib/data/forecasts';
-import { d18ToPercentage, fetchAttestationByUid } from '~/lib/data/forecasts';
+import type { ForecastData } from '~/lib/data/forecasts';
+import { d18ToPercentage, fetchForecastByUid } from '~/lib/data/forecasts';
 import { formatPercentChance } from '~/lib/format/percentChance';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import ConditionStatus from '~/components/shared/ConditionStatus';
@@ -18,24 +18,24 @@ import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 
 export default function ForecastPageClient({
   uid,
-  serverAttestation,
+  serverForecast,
 }: {
   uid: string;
-  serverAttestation: AttestationData | null;
+  serverForecast: ForecastData | null;
 }) {
   const {
-    data: clientAttestation,
+    data: clientForecast,
     isLoading,
     isError,
   } = useQuery({
     queryKey: ['forecast', uid],
-    queryFn: () => fetchAttestationByUid(uid),
-    enabled: !serverAttestation,
+    queryFn: () => fetchForecastByUid(uid),
+    enabled: !serverForecast,
   });
 
-  const attestation = serverAttestation ?? clientAttestation ?? null;
+  const forecast = serverForecast ?? clientForecast ?? null;
 
-  if (!serverAttestation && isLoading) {
+  if (!serverForecast && isLoading) {
     return (
       <div className="flex min-h-[50dvh] items-center justify-center">
         <div className="animate-pulse text-muted-foreground">
@@ -45,7 +45,7 @@ export default function ForecastPageClient({
     );
   }
 
-  if (!serverAttestation && isError) {
+  if (!serverForecast && isError) {
     return (
       <div className="text-center text-muted-foreground">
         Failed to load forecast. Please check your connection and try again.
@@ -53,7 +53,7 @@ export default function ForecastPageClient({
     );
   }
 
-  if (!attestation) {
+  if (!forecast) {
     return (
       <div className="text-center text-muted-foreground">
         Forecast not found.
@@ -61,15 +61,15 @@ export default function ForecastPageClient({
     );
   }
 
-  const question = attestation.condition?.question ?? 'Question not available';
-  const attester = attestation.attester;
-  const createdAt = new Date(attestation.attestedAt * 1000);
-  const comment = attestation.comment?.trim() || null;
+  const question = forecast.condition?.question ?? 'Question not available';
+  const forecaster = forecast.forecaster;
+  const createdAt = new Date(forecast.attestedAt * 1000);
+  const comment = forecast.comment?.trim() || null;
 
   // Prediction percentage
   let percentage: number | null = null;
   try {
-    percentage = d18ToPercentage(attestation.forecast);
+    percentage = d18ToPercentage(forecast.forecast);
   } catch {
     // ignore
   }
@@ -81,7 +81,7 @@ export default function ForecastPageClient({
   }
 
   // Resolution / horizon
-  const endTime = attestation.condition?.endTime ?? null;
+  const endTime = forecast.condition?.endTime ?? null;
   const resolutionDate = endTime ? new Date(endTime * 1000) : null;
 
   const resolutionStr = resolutionDate
@@ -92,8 +92,8 @@ export default function ForecastPageClient({
     : null;
 
   // Status
-  const isSettled = attestation.condition?.settled ?? false;
-  const resolvedToYes = attestation.condition?.resolvedToYes;
+  const isSettled = forecast.condition?.settled ?? false;
+  const resolvedToYes = forecast.condition?.resolvedToYes;
 
   return (
     <div className="space-y-4 pt-2">
@@ -149,10 +149,10 @@ export default function ForecastPageClient({
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
           Question
         </div>
-        {attestation.condition ? (
+        {forecast.condition ? (
           <ConditionTitleLink
-            conditionId={attestation.condition.id}
-            resolverAddress={attestation.condition.resolver ?? undefined}
+            conditionId={forecast.condition.id}
+            resolverAddress={forecast.condition.resolver ?? undefined}
             title={question}
             className="text-base md:text-lg font-medium"
           />
@@ -171,16 +171,16 @@ export default function ForecastPageClient({
             Forecaster
           </div>
           <Link
-            href={`/profile/${attester}`}
+            href={`/profile/${forecaster}`}
             className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium font-mono text-foreground hover:text-accent-gold transition-colors"
           >
             <EnsAvatar
-              address={attester}
+              address={forecaster}
               className="shrink-0 rounded-sm ring-1 ring-border/50"
               width={16}
               height={16}
             />
-            {`${attester.slice(0, 6)}...${attester.slice(-4)}`}
+            {`${forecaster.slice(0, 6)}...${forecaster.slice(-4)}`}
           </Link>
         </div>
 
