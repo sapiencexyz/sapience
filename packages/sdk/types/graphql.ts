@@ -4110,7 +4110,6 @@ export type Vault = Node & {
   chainId: Scalars['Int']['output'];
   collateral: CollateralToken;
   id: Scalars['ID']['output'];
-  kind: VaultKind;
   stats: VaultStatsConnection;
 };
 
@@ -4118,12 +4117,6 @@ export type Vault = Node & {
 export type VaultStatsArgs = {
   filter?: InputMaybe<VaultStatsFilter>;
 };
-
-export type VaultKind =
-  | 'PROTOCOL'
-  | 'PYTH'
-  | 'SINGLE_LEG'
-  | 'STRATEGY_B';
 
 /** Vault-specific stats snapshot for a single vault address. */
 export type VaultStat = {
