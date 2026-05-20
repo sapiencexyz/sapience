@@ -1043,6 +1043,10 @@ export type Condition = {
    */
   outcome?: Maybe<ConditionOutcome>;
   predictionCount: Scalars['Int']['output'];
+  /**
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `predictions`) in a subsequent migration.
+   */
   predictionsConnection: PredictionConnection;
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
@@ -2720,6 +2724,9 @@ export type Query = {
    * lookups should keep using `account(address:)`, which synthesizes
    * address-backed Accounts for wallets without a User row;
    * `accountsConnection` is for enumeration / search use cases.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `accounts`) in a subsequent migration.
    */
   accountsConnection: AccountConnection;
   /**
@@ -2744,6 +2751,11 @@ export type Query = {
   attestations: Array<Attestation>;
   /** @deprecated Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories. */
   categories: Array<Category>;
+  /**
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `categories`) in a subsequent migration, once the deprecated
+   * bare-array `categories` sibling above is removed.
+   */
   categoriesConnection: CategoryConnection;
   /**
    * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
@@ -2771,6 +2783,10 @@ export type Query = {
    * Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
    *
    * Sorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `collateralTransfers`) in a subsequent migration, once the
+   * deprecated bare-array `collateralTransfers` sibling above is removed.
    */
   collateralTransfersConnection: CollateralTransferConnection;
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape. */
@@ -2789,6 +2805,10 @@ export type Query = {
    * cursor pagination via `first` / `after`. Replaces the deprecated
    * bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
    * (default-off, add per-PR where cheap).
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `conditionGroups`) in a subsequent migration, once the deprecated
+   * bare-array sibling above is removed.
    */
   conditionGroupsConnection: ConditionGroupConnection;
   /**
@@ -2802,10 +2822,20 @@ export type Query = {
    * Relay-shaped connection over `Condition` rows. Forward-only cursor
    * pagination via `first` / `after`. Replaces the deprecated bare
    * `conditions(where:)`. Public conditions only.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `conditions`) in a subsequent migration, once the deprecated
+   * bare-array sibling above is removed.
    */
   conditionsConnection: ConditionConnection;
   forecastByUid?: Maybe<Forecast>;
-  /** Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC. */
+  /**
+   * Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `forecasts`) in a subsequent migration, once the deprecated
+   * `attestations` sibling above is removed.
+   */
   forecastsConnection: ForecastConnection;
   leaderboard: AccountRankingConnection;
   /**
@@ -2843,7 +2873,13 @@ export type Query = {
    * @deprecated Use `pickConfigurationsConnection` — Relay-shaped cursor pagination over the same data.
    */
   pickConfigurations: Array<PickConfiguration>;
-  /** Relay-shaped connection over pick configurations. */
+  /**
+   * Relay-shaped connection over pick configurations.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `pickConfigurations`) in a subsequent migration, once the
+   * deprecated bare-array `pickConfigurations` sibling above is removed.
+   */
   pickConfigurationsConnection: PickConfigurationConnection;
   /** Top 20 most-used tags across public conditions */
   popularTags: Array<Scalars['String']['output']>;
@@ -2857,7 +2893,13 @@ export type Query = {
    * @deprecated Use `positionsConnection` — Relay-shaped cursor pagination over the same data.
    */
   positions: Array<Position>;
-  /** Relay-shaped connection over token positions. */
+  /**
+   * Relay-shaped connection over token positions.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `positions`) in a subsequent migration, once the deprecated
+   * `positions` bare-array / `positionsPage` siblings above are removed.
+   */
   positionsConnection: PositionConnection;
   /**
    * Deprecated page wrapper retained for main/backward compatibility. New callers should use `positionsConnection(first:, after:, filter:, orderBy:)`.
@@ -2881,7 +2923,13 @@ export type Query = {
    * @deprecated Use `predictionsConnection` — same data with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`.
    */
   predictions: Array<Prediction>;
-  /** Relay-style prediction list. Defaults to createdAt DESC. */
+  /**
+   * Relay-style prediction list. Defaults to createdAt DESC.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `predictions`) in a subsequent migration, once the deprecated
+   * `predictions` bare-array sibling above is removed.
+   */
   predictionsConnection: PredictionConnection;
   /**
    * Accounts ranked by an account metric (net PnL, gains, losses, or volume)
@@ -2927,6 +2975,10 @@ export type Query = {
    * `first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on
    * `QuestionConnection` because the underlying SQL UNION cannot produce
    * a single COUNT cheaply.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `questions`) in a subsequent migration, once the deprecated
+   * bare-array sibling above is removed.
    */
   questionsConnection: QuestionConnection;
   /**
@@ -2947,7 +2999,13 @@ export type Query = {
    * @deprecated Use `tradesConnection` — Relay-shaped cursor pagination over the same data.
    */
   trades: Array<Trade>;
-  /** Relay-shaped connection over secondary market trades. */
+  /**
+   * Relay-shaped connection over secondary market trades.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `trades`) in a subsequent migration, once the deprecated
+   * `trades` bare-array sibling above is removed.
+   */
   tradesConnection: TradeConnection;
   /** @deprecated Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains. */
   user?: Maybe<User>;

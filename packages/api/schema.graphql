@@ -741,6 +741,11 @@ type Condition {
   """
   outcome: ConditionOutcome
   predictionCount: Int!
+
+  """
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `predictions`) in a subsequent migration.
+  """
   predictionsConnection(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
   trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
   forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
@@ -2879,10 +2884,20 @@ type Query {
 
   """
   Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
+  
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `forecasts`) in a subsequent migration, once the deprecated
+  `attestations` sibling above is removed.
   """
   forecastsConnection(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
   forecastByUid(uid: String!): Forecast
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories.")
+
+  """
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `categories`) in a subsequent migration, once the deprecated
+  bare-array `categories` sibling above is removed.
+  """
   categoriesConnection(first: Int = 100, after: String): CategoryConnection!
 
   """
@@ -2925,6 +2940,10 @@ type Query {
   Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
   
   Sorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.
+  
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `collateralTransfers`) in a subsequent migration, once the
+  deprecated bare-array `collateralTransfers` sibling above is removed.
   """
   collateralTransfersConnection(first: Int = 100, after: String, filter: CollateralTransferFilter, orderBy: CollateralTransferOrder): CollateralTransferConnection!
 
@@ -2940,6 +2959,9 @@ type Query {
   lookups should keep using `account(address:)`, which synthesizes
   address-backed Accounts for wallets without a User row;
   `accountsConnection` is for enumeration / search use cases.
+  
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `accounts`) in a subsequent migration.
   """
   accountsConnection(first: Int, after: String, filter: AccountFilter, orderBy: AccountOrder): AccountConnection!
   condition(where: ConditionWhereUniqueInput!): Condition @deprecated(reason: "Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape.")
@@ -2957,6 +2979,10 @@ type Query {
   cursor pagination via `first` / `after`. Replaces the deprecated
   bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
   (default-off, add per-PR where cheap).
+  
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `conditionGroups`) in a subsequent migration, once the deprecated
+  bare-array sibling above is removed.
   """
   conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): ConditionGroupConnection!
 
@@ -2971,6 +2997,10 @@ type Query {
   Relay-shaped connection over `Condition` rows. Forward-only cursor
   pagination via `first` / `after`. Replaces the deprecated bare
   `conditions(where:)`. Public conditions only.
+  
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `conditions`) in a subsequent migration, once the deprecated
+  bare-array sibling above is removed.
   """
   conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): ConditionConnection!
 
@@ -2982,7 +3012,13 @@ type Query {
   """
   pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]! @deprecated(reason: "Use `pickConfigurationsConnection` — Relay-shaped cursor pagination over the same data.")
 
-  """Relay-shaped connection over pick configurations."""
+  """
+  Relay-shaped connection over pick configurations.
+  
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `pickConfigurations`) in a subsequent migration, once the
+  deprecated bare-array `pickConfigurations` sibling above is removed.
+  """
   pickConfigurationsConnection(first: Int, after: String, filter: PickConfigurationFilter, orderBy: PickConfigurationOrder): PickConfigurationConnection!
 
   """Top 20 most-used tags across public conditions"""
@@ -3001,7 +3037,13 @@ type Query {
   """
   positionsPage(filters: PositionFilters, orderBy: PositionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `PositionFilters`."), collateralMax: String @deprecated(reason: "Use `filters: { collateralMax: ... }` on `PositionFilters`."), collateralMin: String @deprecated(reason: "Use `filters: { collateralMin: ... }` on `PositionFilters`."), conditionId: String @deprecated(reason: "Use `filters: { conditionId: ... }` on `PositionFilters`."), endsAtMax: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters`."), endsAtMin: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters`."), holder: String @deprecated(reason: "Use `filters: { holder: ... }` on `PositionFilters`."), holderWon: Boolean @deprecated(reason: "Use `filters: { holderWon: ... }` on `PositionFilters`."), pickConfigId: String @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters`."), result: SettlementResult @deprecated(reason: "Use `filters: { result: ... }` on `PositionFilters`."), settled: Boolean @deprecated(reason: "Use `filters: { settled: ... }` on `PositionFilters`.")): PositionsPage! @deprecated(reason: "Use `positionsConnection` instead.")
 
-  """Relay-shaped connection over token positions."""
+  """
+  Relay-shaped connection over token positions.
+  
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `positions`) in a subsequent migration, once the deprecated
+  `positions` bare-array / `positionsPage` siblings above are removed.
+  """
   positionsConnection(first: Int, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
 
   """
@@ -3020,7 +3062,13 @@ type Query {
   """
   predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]! @deprecated(reason: "Use `predictionsConnection` — same data with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`.")
 
-  """Relay-style prediction list. Defaults to createdAt DESC."""
+  """
+  Relay-style prediction list. Defaults to createdAt DESC.
+  
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `predictions`) in a subsequent migration, once the deprecated
+  `predictions` bare-array sibling above is removed.
+  """
   predictionsConnection(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
 
   """
@@ -3069,6 +3117,10 @@ type Query {
   `first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on
   `QuestionConnection` because the underlying SQL UNION cannot produce
   a single COUNT cheaply.
+  
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `questions`) in a subsequent migration, once the deprecated
+  bare-array sibling above is removed.
   """
   questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): QuestionConnection!
 
@@ -3090,7 +3142,13 @@ type Query {
   """Look up a single secondary market trade by its trade hash."""
   tradeByHash(hash: Bytes32!): Trade
 
-  """Relay-shaped connection over secondary market trades."""
+  """
+  Relay-shaped connection over secondary market trades.
+  
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `trades`) in a subsequent migration, once the deprecated
+  `trades` bare-array sibling above is removed.
+  """
   tradesConnection(first: Int, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
   user(where: UserWhereUniqueInput!): User @deprecated(reason: "Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains.")
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. No live consumers — account lookups go through `account(address:)`.")
