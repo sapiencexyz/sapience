@@ -17,7 +17,7 @@ const popularTagsCache = new TtlCache<string, string[]>({
   ttlMs: 60 * 60 * 1000,
 });
 /** Versioned so old caches invalidate when the deny list / SQL changes. */
-const CACHE_KEY = 'popularTags:v1';
+const CACHE_KEY = 'popularTags:v2';
 
 export const popularTags: NonNullable<
   QueryResolvers['popularTags']

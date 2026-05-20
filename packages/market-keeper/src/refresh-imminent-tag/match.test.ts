@@ -165,6 +165,12 @@ describe('questionMentionsImminentDate', () => {
   });
 });
 
+describe('TODAY_TAG', () => {
+  it('is the Title-Cased literal "Today"', () => {
+    expect(TODAY_TAG).toBe('Today');
+  });
+});
+
 describe('computeDesiredTags', () => {
   it('adds the today tag when matched and not already present', () => {
     expect(computeDesiredTags(['Politics'], true)).toEqual([

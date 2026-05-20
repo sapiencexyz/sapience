@@ -66,10 +66,11 @@ const MarketsPage = () => {
     'sapience.markets.searchTerm',
     ''
   );
-  // Key bumped to v2 after tag-case normalization (lowercase values like
-  // "temperature" no longer match; force a reset of stale selections).
+  // Key bumped to v3 after per-word Title Case normalization (e.g. cached
+  // "Primary elections" no longer matches the new "Primary Elections";
+  // force a reset of stale selections).
   const [selectedTag, setSelectedTag] = useSessionState<string | null>(
-    'sapience.markets.selectedTag.v2',
+    'sapience.markets.selectedTag.v3',
     null
   );
   const defaultFilters: FilterState = {

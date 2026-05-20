@@ -134,7 +134,7 @@ describe('conditions routes', () => {
       expect(res.body.message).toMatch(/already exists/i);
     });
 
-    it('stores tags array when provided (first-letter capitalized)', async () => {
+    it('stores tags array when provided (Title-Cased)', async () => {
       mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
 
       const res = await request(app)
@@ -144,6 +144,26 @@ describe('conditions routes', () => {
       expect(res.status).toBe(201);
       const createCall = mockPrisma.condition.create.mock.calls[0][0];
       expect(createCall.data.tags).toEqual(['Bitcoin', 'Crypto', 'UFC']);
+    });
+
+    it('title-cases multi-word lowercase tags on create', async () => {
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(
+          baseBody({
+            tags: ['primary elections', 'highest temperature', 'UFC'],
+          })
+        );
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.condition.create.mock.calls[0][0];
+      expect(createCall.data.tags).toEqual([
+        'Primary Elections',
+        'Highest Temperature',
+        'UFC',
+      ]);
     });
 
     it('defaults tags to empty array when not provided', async () => {
@@ -554,7 +574,7 @@ describe('conditions routes', () => {
       expect(updateCall.data.endTime).toBe(FUTURE_END_TIME + 10000);
     });
 
-    it('updates tags when provided (first-letter capitalized)', async () => {
+    it('updates tags when provided (Title-Cased)', async () => {
       mockPrisma.condition.findUnique.mockResolvedValue(existingCondition());
       mockPrisma.condition.update.mockResolvedValue({
         ...existingCondition(),
@@ -568,6 +588,22 @@ describe('conditions routes', () => {
       expect(res.status).toBe(200);
       const updateCall = mockPrisma.condition.update.mock.calls[0][0];
       expect(updateCall.data.tags).toEqual(['Updated-tag']);
+    });
+
+    it('title-cases multi-word lowercase tags on update', async () => {
+      mockPrisma.condition.findUnique.mockResolvedValue(existingCondition());
+      mockPrisma.condition.update.mockResolvedValue({
+        ...existingCondition(),
+        tags: ['Primary Elections'],
+      });
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        .send({ tags: ['primary elections'] });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.tags).toEqual(['Primary Elections']);
     });
 
     it('does not overwrite tags when not provided', async () => {

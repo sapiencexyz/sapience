@@ -14,7 +14,10 @@
  * other words don't trigger (e.g. "May 1800s" doesn't match "May 18").
  */
 
-export const TODAY_TAG = 'today';
+// The tag is stored Title-Cased to match how the API normalizes tags on
+// write (PUT /admin/conditions/batch-metadata). Comparing with 'today'
+// (lowercase) would fail to strip stored 'Today' values.
+export const TODAY_TAG = 'Today';
 
 const MONTH_NAMES = [
   'January',
