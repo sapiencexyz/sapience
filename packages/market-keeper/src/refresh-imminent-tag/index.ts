@@ -103,89 +103,92 @@ async function fetchAllUnsettledConditions(
   const PAGE_SIZE = 100;
   const out: PageItem[] = [];
   const seen = new Set<string>();
-  let skip = 0;
+  let after: string | null = null;
   let pageCount = 0;
   let lastSize = 0;
   let zeroGrowthStreak = 0;
 
-  while (true) {
-    pageCount++;
-    const pageStart = Date.now();
-    // Uses the legacy `conditions` query because staging's API removed
-    // `conditionsPage` in PR #1744. The new shape is `conditionsConnection`
-    // (Relay-style); legacy `conditions` is still available and simpler
-    // for take/skip pagination. We sort by `createdAt desc` so a --limit
-    // sample biases toward newest markets (most likely to match today/
-    // tomorrow's date). No server-truth `hasMore` — stop on short page.
-    const query = `
-      query ImminentTagCandidates($where: ConditionWhereInput!, $orderBy: [ConditionOrderByWithRelationInput!], $take: Int!, $skip: Int!) {
-        conditions(where: $where, orderBy: $orderBy, take: $take, skip: $skip) {
+  // Relay-shaped `conditionsConnection` with cursor pagination. Sort by
+  // CREATED_AT DESC so a --limit sample biases toward newest markets
+  // (most likely to match today/tomorrow's date).
+  const query = `
+    query ImminentTagCandidates($filter: ConditionFilter!, $first: Int!, $after: String) {
+      conditionsConnection(filter: $filter, first: $first, after: $after, orderBy: { field: CREATED_AT, direction: DESC }) {
+        nodes {
           id
           question
           tags
         }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
       }
-    `;
+    }
+  `;
+
+  while (true) {
+    pageCount++;
+    const pageStart = Date.now();
     const response = await fetchWithRetry(graphqlUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query,
         variables: {
-          where: {
-            public: { equals: true },
-            settled: { equals: false },
-          },
-          orderBy: [{ createdAt: 'desc' }],
-          take: PAGE_SIZE,
-          skip,
+          filter: { visibility: 'PUBLIC', settled: false },
+          first: PAGE_SIZE,
+          after,
         },
       }),
     });
     if (!response.ok) {
       const body = await response.text().catch(() => '(unreadable body)');
       throw new Error(
-        `GraphQL conditions failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
+        `GraphQL conditionsConnection failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
       );
     }
     const result = (await response.json()) as {
       data?: {
-        conditions?: Array<{ id: string; question: string; tags: string[] }>;
+        conditionsConnection?: {
+          nodes?: Array<{ id: string; question: string; tags: string[] }>;
+          pageInfo?: {
+            hasNextPage?: boolean | null;
+            endCursor?: string | null;
+          } | null;
+        };
       };
       errors?: Array<{ message: string }>;
     };
     if (result.errors && result.errors.length > 0) {
       throw new Error(
-        `GraphQL conditions returned errors: ${JSON.stringify(result.errors, null, 2)}`
+        `GraphQL conditionsConnection returned errors: ${JSON.stringify(result.errors, null, 2)}`
       );
     }
-    const items = result.data?.conditions ?? [];
-    // Legacy `conditions` has no `hasMore` — stop when a page is short.
-    const hasMore = items.length === PAGE_SIZE;
-    for (const c of items) {
+    const nodes = result.data?.conditionsConnection?.nodes ?? [];
+    const pageInfo = result.data?.conditionsConnection?.pageInfo;
+    const hasMore = pageInfo?.hasNextPage ?? false;
+    for (const c of nodes) {
       if (seen.has(c.id)) continue;
       seen.add(c.id);
       out.push({ id: c.id, question: c.question, tags: c.tags ?? [] });
       if (maxResults !== null && out.length >= maxResults) {
         log(
-          `[TodayTag]   page ${pageCount}: fetched ${items.length} (cumulative ${out.length}, ${Date.now() - pageStart}ms) — hit --limit ${maxResults}, stopping`
+          `[TodayTag]   page ${pageCount}: fetched ${nodes.length} (cumulative ${out.length}, ${Date.now() - pageStart}ms) — hit --limit ${maxResults}, stopping`
         );
         return out;
       }
     }
     log(
-      `[TodayTag]   page ${pageCount}: fetched ${items.length} (cumulative ${out.length}, ${Date.now() - pageStart}ms, hasMore=${hasMore})`
+      `[TodayTag]   page ${pageCount}: fetched ${nodes.length} (cumulative ${out.length}, ${Date.now() - pageStart}ms, hasMore=${hasMore})`
     );
-    // Safety: if the server keeps saying hasMore=true but the page only
-    // returns duplicates we've already seen, treat that as a server-side
-    // pagination bug and break instead of looping forever (cf.
-    // refresh-metadata's observed infinite loop returning the same 1100
-    // rows across 24k+ pages).
+    // Safety: cursor pagination shouldn't loop, but protect against a
+    // server-side bug where the same endCursor keeps coming back.
     if (out.length === lastSize) {
       zeroGrowthStreak++;
       if (zeroGrowthStreak >= 3) {
         logError(
-          `[TodayTag] WARN: 3 consecutive pages added 0 unique rows (hasMore=${hasMore}, skip=${skip}); aborting pagination to avoid an infinite loop`
+          `[TodayTag] WARN: 3 consecutive pages added 0 unique rows (hasMore=${hasMore}, after=${after}); aborting pagination to avoid an infinite loop`
         );
         break;
       }
@@ -194,7 +197,8 @@ async function fetchAllUnsettledConditions(
     }
     lastSize = out.length;
     if (!hasMore) break;
-    skip += PAGE_SIZE;
+    after = pageInfo?.endCursor ?? null;
+    if (!after) break;
   }
   return out;
 }
