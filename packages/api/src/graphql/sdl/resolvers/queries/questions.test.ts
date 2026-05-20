@@ -100,20 +100,88 @@ describe('runQuestions — page envelope', () => {
 
   it('hasMore=true when take + 1 raw rows came back (probe row dropped from items)', async () => {
     const rows = Array.from({ length: 11 }, (_, i) => ({
-      item_type: 'group' as const,
-      group_id: i + 1,
-      condition_id: null,
+      item_type: 'condition' as const,
+      group_id: null,
+      condition_id: `c-${i + 1}`,
       prediction_count: 0n,
+      sort_value: i + 1,
+      end_time: i + 1,
     }));
     mockPrisma.$queryRaw.mockResolvedValue(rows);
-    // hydrate returns empty arrays; we only care about the envelope shape.
     mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
-    mockPrisma.condition.findMany.mockResolvedValue([]);
+    mockPrisma.condition.findMany.mockResolvedValue(
+      rows.slice(0, 10).map((row) => ({ id: row.condition_id }))
+    );
     const result = await runQuestions({ take: 10, skip: 0 });
     expect(result.hasMore).toBe(true);
+    expect(result.items).toHaveLength(10);
     // hydrate is called with the page slice (not the probe row), so the
     // findMany lookup excludes the 11th id.
-    expect(mockPrisma.conditionGroup.findMany).toHaveBeenCalled();
+    expect(mockPrisma.condition.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: rows.slice(0, 10).map((r) => r.condition_id) } },
+      })
+    );
+  });
+
+  it('backfills when raw rows hydrate to fewer visible questions', async () => {
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          item_type: 'group',
+          group_id: 1,
+          condition_id: null,
+          prediction_count: 0n,
+          sort_value: 100,
+          end_time: 100,
+        },
+        {
+          item_type: 'condition',
+          group_id: null,
+          condition_id: 'c-1',
+          prediction_count: 0n,
+          sort_value: 99,
+          end_time: 99,
+        },
+        {
+          item_type: 'condition',
+          group_id: null,
+          condition_id: 'c-probe',
+          prediction_count: 0n,
+          sort_value: 98,
+          end_time: 98,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          item_type: 'condition',
+          group_id: null,
+          condition_id: 'c-2',
+          prediction_count: 0n,
+          sort_value: 97,
+          end_time: 97,
+        },
+        {
+          item_type: 'condition',
+          group_id: null,
+          condition_id: 'c-3',
+          prediction_count: 0n,
+          sort_value: 97,
+          end_time: 97,
+        },
+      ]);
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+    mockPrisma.condition.findMany
+      .mockResolvedValueOnce([{ id: 'c-1' }])
+      .mockResolvedValueOnce([{ id: 'c-2' }]);
+
+    const result = await runQuestions({ take: 2, skip: 0 });
+    expect(
+      result.items.map(
+        (item) => (item as { condition?: { id?: string } }).condition?.id
+      )
+    ).toEqual(['c-1', 'c-2']);
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
   });
 
   it('clamps take above MAX_TAKE to 100', async () => {

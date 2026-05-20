@@ -760,10 +760,15 @@ const buildConditionWhere = (n: NormalizedArgs): Prisma.ConditionWhereInput => {
   };
 };
 
+type HydratedQuestion = {
+  item: QuestionReturn;
+  pageItem: SortedItemRow;
+};
+
 const hydrateItems = async (
   pageItems: SortedItemRow[],
   conditionWhere: Prisma.ConditionWhereInput
-): Promise<QuestionReturn[]> => {
+): Promise<HydratedQuestion[]> => {
   const groupIds = pageItems
     .filter((r) => r.item_type === 'group' && r.group_id !== null)
     .map((r) => r.group_id as number);
@@ -806,9 +811,10 @@ const hydrateItems = async (
   // `source`, `title`, `description`, etc. from this shape, so the
   // runner only needs to populate the discriminator + the wrapped row +
   // the prediction count.
-  const result: QuestionReturn[] = [];
+  const result: HydratedQuestion[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const push = (item: any) => result.push(item as QuestionReturn);
+  const push = (item: any, pageItem: SortedItemRow) =>
+    result.push({ item: item as QuestionReturn, pageItem });
   for (const item of pageItems) {
     if (item.item_type === 'group' && item.group_id !== null) {
       const group = groupMap.get(item.group_id);
@@ -816,32 +822,41 @@ const hydrateItems = async (
       if (group.condition.length === 1) {
         // Unwrap single-condition groups as standalone conditions so the
         // frontend doesn't render a group shell around a lone item.
-        push({
-          questionType: QuestionItemType.Condition,
-          group: null,
-          condition: group.condition[0] as unknown as ConditionReturn,
-          predictionCount: Number(item.prediction_count),
-        });
+        push(
+          {
+            questionType: QuestionItemType.Condition,
+            group: null,
+            condition: group.condition[0] as unknown as ConditionReturn,
+            predictionCount: Number(item.prediction_count),
+          },
+          item
+        );
       } else if (group.condition.length > 1) {
-        push({
-          questionType: QuestionItemType.Group,
-          group: {
-            ...group,
-            conditions: group.condition,
-          } as unknown as ConditionGroupReturn,
-          condition: null,
-          predictionCount: Number(item.prediction_count),
-        });
+        push(
+          {
+            questionType: QuestionItemType.Group,
+            group: {
+              ...group,
+              conditions: group.condition,
+            } as unknown as ConditionGroupReturn,
+            condition: null,
+            predictionCount: Number(item.prediction_count),
+          },
+          item
+        );
       }
     } else if (item.item_type === 'condition' && item.condition_id !== null) {
       const condition = conditionMap.get(item.condition_id);
       if (!condition) continue;
-      push({
-        questionType: QuestionItemType.Condition,
-        group: null,
-        condition: condition as unknown as ConditionReturn,
-        predictionCount: Number(item.prediction_count),
-      });
+      push(
+        {
+          questionType: QuestionItemType.Condition,
+          group: null,
+          condition: condition as unknown as ConditionReturn,
+          predictionCount: Number(item.prediction_count),
+        },
+        item
+      );
     }
   }
   return result;
@@ -855,13 +870,42 @@ const runQuestionsData = async (
   pageItems: SortedItemRow[];
 }> => {
   const n = normalizeArgs(args);
-  const sortedItems = await fetchSortedItems(n);
-  const hasMore = sortedItems.length > n.take;
-  const pageItems = sortedItems.slice(0, n.take);
-  if (pageItems.length === 0) return { items: [], hasMore, pageItems };
+  const conditionWhere = buildConditionWhere(n);
+  const hydrated: HydratedQuestion[] = [];
+  let afterCursor = n.afterCursor;
+  let skip = n.skip;
+  let hasMore = false;
 
-  const items = await hydrateItems(pageItems, buildConditionWhere(n));
-  return { items, hasMore, pageItems };
+  while (hydrated.length < n.take) {
+    const remaining = n.take - hydrated.length;
+    const sortedItems = await fetchSortedItems({
+      ...n,
+      take: remaining,
+      skip: afterCursor ? 0 : skip,
+      afterCursor,
+    });
+    hasMore = sortedItems.length > remaining;
+    const pageItems = sortedItems.slice(0, remaining);
+    if (pageItems.length === 0) break;
+
+    hydrated.push(...(await hydrateItems(pageItems, conditionWhere)));
+
+    const lastPageItem = pageItems[pageItems.length - 1];
+    afterCursor = {
+      sortValue: String(lastPageItem.sort_value),
+      ...cursorIdentity(lastPageItem),
+    };
+    skip = 0;
+
+    if (!hasMore) break;
+  }
+
+  const page = hydrated.slice(0, n.take);
+  return {
+    items: page.map((entry) => entry.item),
+    hasMore,
+    pageItems: page.map((entry) => entry.pageItem),
+  };
 };
 
 export const runQuestions = async (
