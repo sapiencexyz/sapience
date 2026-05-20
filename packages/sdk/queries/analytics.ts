@@ -50,23 +50,25 @@ export const GET_PROTOCOL_STATS = /* GraphQL */ `
 
 export const GET_VAULT_STATS = /* GraphQL */ `
   query VaultStats($vaultAddress: Address!, $from: Int, $to: Int) {
-    vaultByAddress(address: $vaultAddress) {
-      stats(filter: { timestamp: { gte: $from, lte: $to } }) {
-        nodes {
-          timestamp
-          balance
-          availableAssets
-          deployed
-          cumulativePnL
-          positionsWon
-          positionsLost
-          deposits
-          withdrawals
-          airdropGains
-          secondaryBought
-          secondarySold
-          unredeemedClaim
-          periodPnL
+    vaultsConnection(filter: { address: $vaultAddress }, first: 1) {
+      nodes {
+        stats(filter: { timestamp: { gte: $from, lte: $to } }) {
+          nodes {
+            timestamp
+            balance
+            availableAssets
+            deployed
+            cumulativePnL
+            positionsWon
+            positionsLost
+            deposits
+            withdrawals
+            airdropGains
+            secondaryBought
+            secondarySold
+            unredeemedClaim
+            periodPnL
+          }
         }
       }
     }
@@ -92,13 +94,15 @@ export async function fetchVaultStats(params: {
   to?: Date | string | number | null;
 }): Promise<VaultStat[]> {
   const data = await graphqlRequest<{
-    vaultByAddress?: { stats?: { nodes?: VaultStat[] } | null } | null;
+    vaultsConnection?: {
+      nodes?: Array<{ stats?: { nodes?: VaultStat[] } | null } | null> | null;
+    } | null;
   }>(GET_VAULT_STATS, {
     vaultAddress: params.vaultAddress,
     from: toEpochOrNull(params.from),
     to: toEpochOrNull(params.to),
   });
-  return data?.vaultByAddress?.stats?.nodes ?? [];
+  return data?.vaultsConnection?.nodes?.[0]?.stats?.nodes ?? [];
 }
 
 export interface CategoryOpenInterest {

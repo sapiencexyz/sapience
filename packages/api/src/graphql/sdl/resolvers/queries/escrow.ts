@@ -122,6 +122,7 @@ export type PredictionsEnvelope = {
  * `predictionsConnection` / `PredictionFilter`.
  */
 export type RunPredictionsArgs = QueryPredictionsArgs & {
+  predictionId?: string | null;
   pickConfigId?: string | null;
   conditionGroupId?: string | number | null;
   conditionIds?: string[] | null;
@@ -132,6 +133,7 @@ export type RunPredictionsArgs = QueryPredictionsArgs & {
 };
 
 const buildPredictionWhere = async ({
+  predictionId,
   address,
   conditionId,
   pickConfigId,
@@ -146,6 +148,7 @@ const buildPredictionWhere = async ({
   endsAtMax,
 }: Pick<
   RunPredictionsArgs,
+  | 'predictionId'
   | 'address'
   | 'conditionId'
   | 'pickConfigId'
@@ -162,6 +165,9 @@ const buildPredictionWhere = async ({
   const addr = address?.toLowerCase();
   const where: Prisma.PredictionWhereInput = {};
   const filters: Prisma.PredictionWhereInput[] = [];
+  if (predictionId) {
+    filters.push({ predictionId: predictionId.toLowerCase() });
+  }
   if (addr) filters.push({ OR: [{ predictor: addr }, { counterparty: addr }] });
   if (pickConfigId) {
     filters.push({ pickConfigId: pickConfigId.toLowerCase() });
@@ -232,6 +238,7 @@ const buildPredictionWhere = async ({
 export const runPredictions = async ({
   take,
   skip,
+  predictionId,
   address,
   conditionId,
   pickConfigId,
@@ -249,6 +256,7 @@ export const runPredictions = async ({
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
   const { where, empty } = await buildPredictionWhere({
+    predictionId,
     address,
     conditionId,
     pickConfigId,
@@ -325,6 +333,9 @@ export const predictionsConnection: NonNullable<
   const prismaDir = direction === OrderDirection.Asc ? 'asc' : 'desc';
 
   const { where: filterWhere, empty } = await buildPredictionWhere({
+    predictionId:
+      (filter as { predictionId?: string | null } | null | undefined)
+        ?.predictionId ?? null,
     address: filter?.address ?? null,
     conditionId: filter?.conditionId ?? null,
     pickConfigId:
@@ -406,16 +417,6 @@ export const predictionsConnection: NonNullable<
       endCursor: edges[edges.length - 1]?.cursor ?? null,
     },
   };
-};
-
-export const predictionByOnchainId: NonNullable<
-  QueryResolvers['predictionByOnchainId']
-> = async (_parent, { predictionId }) => {
-  const r = await prisma.prediction.findUnique({
-    where: { predictionId: predictionId.toLowerCase() },
-    include: { pickConfiguration: { include: { picks: true } } },
-  });
-  return r ? mapPrediction(r) : null;
 };
 
 export const prediction: NonNullable<QueryResolvers['prediction']> = async (

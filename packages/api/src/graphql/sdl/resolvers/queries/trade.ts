@@ -55,6 +55,7 @@ export type TradesPageEnvelope = {
  * pipeline for both surfaces.
  */
 export type RunTradesArgs = QueryTradesArgs & {
+  tradeHash?: string | null;
   executedAtMin?: number | null;
   executedAtMax?: number | null;
   orderBy?: 'EXECUTED_AT' | 'BLOCK_NUMBER' | null;
@@ -65,6 +66,7 @@ export type RunTradesArgs = QueryTradesArgs & {
 export const runTrades = async ({
   take,
   skip,
+  tradeHash,
   address,
   seller,
   buyer,
@@ -79,6 +81,7 @@ export const runTrades = async ({
   const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
   const skipVal = clampSkip(skip);
   const where: Prisma.SecondaryTradeWhereInput = {};
+  if (tradeHash) where.tradeHash = tradeHash.toLowerCase();
   if (address && (seller || buyer)) {
     throw new Error(
       'Cannot combine "address" with "seller" or "buyer" filters'
@@ -168,6 +171,9 @@ const mergeTradeFilters = (args: QueryTradesConnectionArgs): RunTradesArgs => {
   return {
     take: args.first ?? 50,
     skip: offsetFromCursor(args.after),
+    tradeHash:
+      (f as { tradeHash?: string | null } | null | undefined)?.tradeHash ??
+      null,
     address: f?.address ?? null,
     seller: f?.seller ?? null,
     buyer: f?.buyer ?? null,
@@ -227,16 +233,6 @@ export const trade: NonNullable<QueryResolvers['trade']> = async (
   }
   const r = await prisma.secondaryTrade.findUnique({
     where: { tradeHash: key.toLowerCase() },
-  });
-  return r ? mapTrade(r) : null;
-};
-
-export const tradeByHash: NonNullable<QueryResolvers['tradeByHash']> = async (
-  _parent,
-  { hash }
-) => {
-  const r = await prisma.secondaryTrade.findUnique({
-    where: { tradeHash: hash.toLowerCase() },
   });
   return r ? mapTrade(r) : null;
 };
