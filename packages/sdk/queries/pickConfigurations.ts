@@ -2,40 +2,40 @@ import { graphqlRequest } from './client/graphqlClient';
 
 export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
   query PickConfigurations(
-    $filter: PickConfigurationFilter
-    $first: Int
-    $after: String
+    $chainId: Int
+    $resolved: Boolean
+    $skip: Int!
+    $take: Int!
   ) {
-    pickConfigurationsConnection(
-      filter: $filter
-      first: $first
-      after: $after
+    pickConfigurations(
+      chainId: $chainId
+      resolved: $resolved
+      skip: $skip
+      take: $take
     ) {
-      nodes {
-        id
-        chainId
-        totalPredictorCollateral
-        totalCounterpartyCollateral
-        resolved
-        picks {
-          conditionId
-          conditionResolver
-          predictedOutcome
-          condition {
-            id
-            shortName
-            optionName
-            question
-            description
-            endTime
-            resolver
-            settled
-            resolvedToYes
-            nonDecisive
-            estimatedPrice
-            category {
-              slug
-            }
+      id
+      chainId
+      totalPredictorCollateral
+      totalCounterpartyCollateral
+      resolved
+      picks {
+        conditionId
+        conditionResolver
+        predictedOutcome
+        condition {
+          id
+          shortName
+          optionName
+          question
+          description
+          endTime
+          resolver
+          settled
+          resolvedToYes
+          nonDecisive
+          estimatedPrice
+          category {
+            slug
           }
         }
       }
@@ -79,19 +79,12 @@ export async function fetchPickConfigurations(opts?: {
   resolved?: boolean;
 }): Promise<PickConfigurationResult[]> {
   const data = await graphqlRequest<{
-    pickConfigurationsConnection: { nodes: PickConfigurationResult[] };
+    pickConfigurations: PickConfigurationResult[];
   }>(GET_PICK_CONFIGURATIONS, {
-    first: opts?.take ?? 10,
-    after: cursorFromSkip(opts?.skip ?? 0),
-    filter: {
-      chainId: opts?.chainId ?? null,
-      resolved: opts?.resolved ?? null,
-    },
+    take: opts?.take ?? 10,
+    skip: opts?.skip ?? 0,
+    chainId: opts?.chainId ?? null,
+    resolved: opts?.resolved ?? null,
   });
-  return data.pickConfigurationsConnection?.nodes ?? [];
+  return data.pickConfigurations ?? [];
 }
-
-const cursorFromSkip = (skip: number): string | null => {
-  if (skip <= 0) return null;
-  return btoa(JSON.stringify({ k: String(skip - 1), id: String(skip - 1) }));
-};
