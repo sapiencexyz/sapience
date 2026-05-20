@@ -2652,8 +2652,8 @@ input PredictionFilter {
 
 """Order input for `predictionsConnection`."""
 input PredictionOrder {
-  field: PredictionOrderField! = CREATED_AT
-  direction: OrderDirection! = DESC
+  field: PredictionOrderField!
+  direction: OrderDirection!
 }
 
 """Sort fields for `predictionsConnection`."""
@@ -2689,8 +2689,8 @@ input ForecastFilter {
 
 """Order input for `forecastsConnection`."""
 input ForecastOrder {
-  field: ForecastOrderField! = ATTESTED_AT
-  direction: OrderDirection! = DESC
+  field: ForecastOrderField!
+  direction: OrderDirection!
 }
 
 """Sort fields for `forecastsConnection`."""

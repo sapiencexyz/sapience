@@ -1583,8 +1583,8 @@ export type ForecastFilter = {
 
 /** Order input for `forecastsConnection`. */
 export type ForecastOrder = {
-  direction?: OrderDirection;
-  field?: ForecastOrderField;
+  direction: OrderDirection;
+  field: ForecastOrderField;
 };
 
 /** Sort fields for `forecastsConnection`. */
@@ -2478,8 +2478,8 @@ export type PredictionFilter = {
 
 /** Order input for `predictionsConnection`. */
 export type PredictionOrder = {
-  direction?: OrderDirection;
-  field?: PredictionOrderField;
+  direction: OrderDirection;
+  field: PredictionOrderField;
 };
 
 /** Sort fields for `predictionsConnection`. */

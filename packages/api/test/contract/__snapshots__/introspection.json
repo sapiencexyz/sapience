@@ -11494,7 +11494,7 @@
                 "ofType": null
               }
             },
-            "defaultValue": "ATTESTED_AT"
+            "defaultValue": null
           },
           {
             "name": "direction",
@@ -11508,7 +11508,7 @@
                 "ofType": null
               }
             },
-            "defaultValue": "DESC"
+            "defaultValue": null
           }
         ],
         "interfaces": null,
@@ -18106,7 +18106,7 @@
                 "ofType": null
               }
             },
-            "defaultValue": "CREATED_AT"
+            "defaultValue": null
           },
           {
             "name": "direction",
@@ -18120,7 +18120,7 @@
                 "ofType": null
               }
             },
-            "defaultValue": "DESC"
+            "defaultValue": null
           }
         ],
         "interfaces": null,
