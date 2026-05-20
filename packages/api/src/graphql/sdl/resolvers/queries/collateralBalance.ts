@@ -196,7 +196,7 @@ type CollateralTransferRow = Awaited<
   ReturnType<typeof prisma.collateralTransfer.findMany>
 >[number];
 
-export type CollateralTransfersPageEnvelope = {
+type CollateralTransfersOffsetEnvelope = {
   items: CollateralTransferRow[];
   hasMore: boolean;
   _countWhere?: Prisma.CollateralTransferWhereInput;
@@ -240,7 +240,7 @@ export const runCollateralTransfers = async ({
   orderDirection?: string | null;
   take?: number | null;
   skip?: number | null;
-}): Promise<CollateralTransfersPageEnvelope> => {
+}): Promise<CollateralTransfersOffsetEnvelope> => {
   const cappedTake = clampTake(take, { defaultTake: 100, maxTake: 500 });
   const skipVal = clampSkip(skip);
   const where = buildCollateralTransfersWhere(
@@ -269,42 +269,50 @@ export const runCollateralTransfers = async ({
   };
 };
 
-export const collateralTransfersPage = async (
-  _parent: unknown,
-  args: Parameters<typeof runCollateralTransfers>[0]
-) => {
-  return runCollateralTransfers(args);
-};
-
 const buildConnectionWhere = (
   filter?: {
-    account?: { equals?: string | null } | null;
-    chainId?: { equals?: number | null } | null;
-    excludeProtocol?: boolean | null;
-    createdAt?: { gte?: Date | null; lte?: Date | null } | null;
+    account?: string | null;
+    chainId?: number | null;
+    timestamp?: { gte?: Date | null; lte?: Date | null } | null;
+    transactionHash?: string | null;
   } | null
 ): Prisma.CollateralTransferWhereInput => {
-  const chainId = filter?.chainId?.equals ?? undefined;
-  const account = filter?.account?.equals?.toLowerCase();
+  const chainId = filter?.chainId ?? undefined;
+  const account = filter?.account?.toLowerCase();
   const where: Prisma.CollateralTransferWhereInput = {};
   if (chainId != null) where.chainId = chainId;
   if (account) where.OR = [{ from: account }, { to: account }];
-  if (filter?.excludeProtocol && chainId != null) {
-    const protocolAddresses = getProtocolAddressesForChain(chainId);
-    if (protocolAddresses.length > 0) {
-      where.AND = [
-        { from: { notIn: protocolAddresses } },
-        { to: { notIn: protocolAddresses } },
-      ];
-    }
+  if (filter?.transactionHash) {
+    where.transactionHash = filter.transactionHash.toLowerCase();
   }
-  if (filter?.createdAt) {
+  if (filter?.timestamp) {
     where.timestamp = {
-      gte: filter.createdAt.gte ?? undefined,
-      lte: filter.createdAt.lte ?? undefined,
+      gte: filter.timestamp.gte ?? undefined,
+      lte: filter.timestamp.lte ?? undefined,
     };
   }
   return where;
+};
+
+const buildTransferCursorPredicate = (
+  k: string,
+  cursorId: string,
+  direction: 'asc' | 'desc'
+): Prisma.CollateralTransferWhereInput => {
+  const op = direction === 'desc' ? 'lt' : 'gt';
+  const blockNumber = Number(k);
+  const id = Number(cursorId);
+  return {
+    OR: [
+      { blockNumber: { [op]: blockNumber } },
+      {
+        AND: [
+          { blockNumber: { equals: blockNumber } },
+          { id: { [op]: id } },
+        ],
+      },
+    ],
+  };
 };
 
 export const collateralTransfersConnection = (async (
@@ -313,10 +321,10 @@ export const collateralTransfersConnection = (async (
     first?: number | null;
     after?: string | null;
     filter?: {
-      account?: { equals?: string | null } | null;
-      chainId?: { equals?: number | null } | null;
-      excludeProtocol?: boolean | null;
-      createdAt?: { gte?: Date | null; lte?: Date | null } | null;
+      account?: string | null;
+      chainId?: number | null;
+      timestamp?: { gte?: Date | null; lte?: Date | null } | null;
+      transactionHash?: string | null;
     } | null;
     orderBy?: { field?: string | null; direction?: string | null } | null;
   }
@@ -326,32 +334,27 @@ export const collateralTransfersConnection = (async (
     maxTake: 500,
   });
   const cursor = args.after ? decodeCursor(args.after) : null;
-  const where = buildConnectionWhere(args.filter);
+  const baseWhere = buildConnectionWhere(args.filter);
   const direction = args.orderBy?.direction === 'ASC' ? 'asc' : 'desc';
-  const orderField = args.orderBy?.field === 'AMOUNT' ? 'value' : 'timestamp';
-  if (cursor) {
-    where.id =
-      direction === 'desc'
-        ? { lt: Number(cursor.id) }
-        : { gt: Number(cursor.id) };
-  }
+  const cursorWhere = cursor
+    ? buildTransferCursorPredicate(cursor.k, cursor.id, direction)
+    : null;
+  const where: Prisma.CollateralTransferWhereInput = cursorWhere
+    ? { AND: [baseWhere, cursorWhere] }
+    : baseWhere;
   const rows = await prisma.collateralTransfer.findMany({
     where,
-    orderBy: [{ [orderField]: direction }, { id: direction }],
+    orderBy: [{ blockNumber: direction }, { id: direction }],
     take: first + 1,
   });
   const pageRows = rows.slice(0, first);
   const nodes = pageRows.map((row) =>
-    mapCollateralTransfer(row, args.filter?.account?.equals ?? undefined)
+    mapCollateralTransfer(row, args.filter?.account ?? undefined)
   );
   const edges = nodes.map((node, i) => ({
     node,
     cursor: encodeCursor({
-      k: String(
-        orderField === 'value'
-          ? pageRows[i].value
-          : pageRows[i].timestamp.toISOString()
-      ),
+      k: String(pageRows[i].blockNumber),
       id: String(pageRows[i].id),
     }),
   }));

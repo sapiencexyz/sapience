@@ -1918,24 +1918,6 @@ type ActivityItemsPage implements Page {
 }
 
 """
-Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag
-"""
-type CollateralTransfersPage implements Page {
-  items: [CollateralTransfer!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""
-Paginated wrapper around Category rows with a server-truth hasMore flag
-"""
-type CategoriesPage implements Page {
-  items: [Category!]!
-  hasMore: Boolean!
-  totalCount: Int
-}
-
-"""
 Legacy condition offset sort fields retained only for generated compatibility.
 """
 enum ConditionSortField {
@@ -2098,10 +2080,10 @@ enum PickConfigurationOrderField {
 }
 
 input CollateralTransferFilter {
-  account: StringFilter
-  chainId: IntFilter
-  excludeProtocol: Boolean
-  createdAt: DateTimeFilter
+  account: Address
+  chainId: Int
+  timestamp: DateTimeFilter
+  transactionHash: Bytes32
 }
 
 input CollateralTransferOrder {
@@ -2110,42 +2092,15 @@ input CollateralTransferOrder {
 }
 
 enum CollateralTransferOrderField {
-  CREATED_AT
-  AMOUNT
+  BLOCK_NUMBER
 }
 
 input ProtocolStatsFilter {
   timestamp: IntFilter
 }
 
-input ProtocolStatsOrder {
-  field: ProtocolStatsOrderField!
-  direction: OrderDirection!
-}
-
-enum ProtocolStatsOrderField {
-  TIMESTAMP
-}
-
 input VaultStatsFilter {
   timestamp: IntFilter
-}
-
-input VaultStatsOrder {
-  field: VaultStatsOrderField!
-  direction: OrderDirection!
-}
-
-enum VaultStatsOrderField {
-  TIMESTAMP
-}
-
-"""
-Sort fields for the `collateralTransfersConnection` query.
-"""
-enum CollateralTransferSortField {
-  BLOCK_NUMBER
-  TIMESTAMP
 }
 
 """
@@ -2809,16 +2764,9 @@ type TimeToResolutionBucket {
 }
 
 type Protocol {
-  stats(
-    first: Int
-    after: String
-    filter: ProtocolStatsFilter
-    orderBy: ProtocolStatsOrder
-  ): ProtocolStatsConnection!
+  stats(filter: ProtocolStatsFilter): ProtocolStatsConnection!
   openInterestByCategory: [CategoryOpenInterest!]!
-    @deprecated(reason: "Use `protocol.openInterestByCategory`.")
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
-    @deprecated(reason: "Use `protocol.openInterestByTimeToResolution`.")
 }
 
 type Vault implements Node {
@@ -2828,12 +2776,7 @@ type Vault implements Node {
   kind: VaultKind!
   collateral: CollateralToken!
   account: Account!
-  stats(
-    first: Int
-    after: String
-    filter: VaultStatsFilter
-    orderBy: VaultStatsOrder
-  ): VaultStatsConnection!
+  stats(filter: VaultStatsFilter): VaultStatsConnection!
 }
 
 enum VaultKind {
@@ -3617,7 +3560,7 @@ type Query {
   """
   Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
 
-  Sorting via `orderBy: { field, direction }`. Defaults to `BLOCK_NUMBER` / `DESC` when omitted.
+  Sorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.
   """
   collateralTransfersConnection(
     first: Int = 100
@@ -3894,11 +3837,13 @@ type Query {
   Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
   """
   openInterestByCategory: [CategoryOpenInterest!]!
+    @deprecated(reason: "Use `protocol.openInterestByCategory`.")
 
   """
   Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
   """
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
+    @deprecated(reason: "Use `protocol.openInterestByTimeToResolution`.")
 
   """
   Protocol-wide statistics time series at the configured snapshot cadence —

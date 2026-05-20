@@ -508,14 +508,6 @@ export type BoolNullableFilter = {
   not?: InputMaybe<NestedBoolNullableFilter>;
 };
 
-/** Paginated wrapper around Category rows with a server-truth hasMore flag */
-export type CategoriesPage = Page & {
-  __typename?: 'CategoriesPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Category>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
-
 export type Category = Node & {
   __typename?: 'Category';
   _count?: Maybe<CategoryCount>;
@@ -724,10 +716,10 @@ export type CollateralTransferEdge = {
 };
 
 export type CollateralTransferFilter = {
-  account?: InputMaybe<StringFilter>;
-  chainId?: InputMaybe<IntFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
+  account?: InputMaybe<Scalars['Address']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  timestamp?: InputMaybe<DateTimeFilter>;
+  transactionHash?: InputMaybe<Scalars['Bytes32']['input']>;
 };
 
 export type CollateralTransferOrder = {
@@ -736,21 +728,7 @@ export type CollateralTransferOrder = {
 };
 
 export type CollateralTransferOrderField =
-  | 'AMOUNT'
-  | 'CREATED_AT';
-
-/** Sort fields for the `collateralTransfersConnection` query. */
-export type CollateralTransferSortField =
-  | 'BLOCK_NUMBER'
-  | 'TIMESTAMP';
-
-/** Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag */
-export type CollateralTransfersPage = Page & {
-  __typename?: 'CollateralTransfersPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<CollateralTransfer>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
+  | 'BLOCK_NUMBER';
 
 export type Condition = {
   __typename?: 'Condition';
@@ -2571,19 +2549,14 @@ export type ProfitRank = {
 
 export type Protocol = {
   __typename?: 'Protocol';
-  /** @deprecated Use `protocol.openInterestByCategory`. */
   openInterestByCategory: Array<CategoryOpenInterest>;
-  /** @deprecated Use `protocol.openInterestByTimeToResolution`. */
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   stats: ProtocolStatsConnection;
 };
 
 
 export type ProtocolStatsArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<ProtocolStatsFilter>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<ProtocolStatsOrder>;
 };
 
 /** Protocol-wide stats snapshot — no vault scoping. */
@@ -2618,14 +2591,6 @@ export type ProtocolStatsEdge = {
 export type ProtocolStatsFilter = {
   timestamp?: InputMaybe<IntFilter>;
 };
-
-export type ProtocolStatsOrder = {
-  direction: OrderDirection;
-  field: ProtocolStatsOrderField;
-};
-
-export type ProtocolStatsOrderField =
-  | 'TIMESTAMP';
 
 export type Query = {
   __typename?: 'Query';
@@ -2777,7 +2742,7 @@ export type Query = {
   /**
    * Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
    *
-   * Sorting via `orderBy: { field, direction }`. Defaults to `BLOCK_NUMBER` / `DESC` when omitted.
+   * Sorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.
    */
   collateralTransfersConnection: CollateralTransferConnection;
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape. */
@@ -2829,9 +2794,15 @@ export type Query = {
    * refresh many entities in one round trip.
    */
   nodes: Array<Maybe<Node>>;
-  /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
+  /**
+   * Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
+   * @deprecated Use `protocol.openInterestByCategory`.
+   */
   openInterestByCategory: Array<CategoryOpenInterest>;
-  /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
+  /**
+   * Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
+   * @deprecated Use `protocol.openInterestByTimeToResolution`.
+   */
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   /**
    * Look up a single pick configuration by ID
@@ -4027,10 +3998,7 @@ export type Vault = Node & {
 
 
 export type VaultStatsArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<VaultStatsFilter>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<VaultStatsOrder>;
 };
 
 export type VaultKind =
@@ -4080,14 +4048,6 @@ export type VaultStatsEdge = {
 export type VaultStatsFilter = {
   timestamp?: InputMaybe<IntFilter>;
 };
-
-export type VaultStatsOrder = {
-  direction: OrderDirection;
-  field: VaultStatsOrderField;
-};
-
-export type VaultStatsOrderField =
-  | 'TIMESTAMP';
 
 /** Time-bucketed volume data point for charts (legacy). */
 export type VolumeDataPoint = {

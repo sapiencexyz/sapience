@@ -1,6 +1,6 @@
 /**
  * Deprecated `collateralTransfers(limit:, offset:)` resolver — replaced
- * by `collateralTransfersPage(take:, skip:)`. The wrapper translates
+ * by `collateralTransfersConnection(first:, after:)`. The wrapper translates
  * limit/offset → take/skip and discards `hasMore`.
  */
 

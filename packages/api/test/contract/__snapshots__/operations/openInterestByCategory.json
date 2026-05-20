@@ -1,3 +1,5 @@
 {
-  "openInterestByCategory": []
+  "protocol": {
+    "openInterestByCategory": []
+  }
 }

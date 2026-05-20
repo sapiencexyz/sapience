@@ -23,12 +23,10 @@ import { scalarResolvers } from './scalars';
 import { Account } from './Account';
 import { Attestation } from './Attestation';
 import { AttestationScore } from './AttestationScore';
-import { CategoriesPage } from './CategoriesPage';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
 import { ActivityItemsPage } from './ActivityItemsPage';
-import { CollateralTransfersPage } from './CollateralTransfersPage';
 import { Forecast } from './Forecast';
 import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
@@ -199,9 +197,7 @@ export const resolvers: Resolvers = {
   ActivityItemsPage,
   Attestation,
   AttestationScore,
-  CategoriesPage,
   Category,
-  CollateralTransfersPage,
   Condition,
   ConditionGroup,
   Forecast,

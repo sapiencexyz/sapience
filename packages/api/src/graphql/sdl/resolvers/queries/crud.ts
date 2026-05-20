@@ -3,8 +3,8 @@
  * passthroughs:
  *
  *   - `categories` (deprecated, but stays here so it shares the
- *     `categoriesCache` with `categoriesPage`)
- *   - `categoriesPage` (live)
+ *     `categoriesCache` with `categoriesConnection`)
+ *   - `categoriesConnection` (live)
  *
  * Plus the live point-lookups (`condition(where:)`, `user(where:)`) and
  * the `forecastsConnection` runner. The other typegraphql-prisma-
@@ -129,39 +129,6 @@ export const account: NonNullable<QueryResolvers['account']> = async (
   ctx
 ) => ctx.loaders!.userByAddress.load(address);
 
-export const categoriesPage = async (
-  _parent: unknown,
-  { take, skip }: { take?: number; skip?: number }
-) => {
-  // Categories is a tiny lookup table (<100 rows). Stick to the
-  // default MAX_TAKE = 100; if it ever grows past a single page we'll
-  // revisit before lifting the cap.
-  const cappedTake = clampTake(take, { defaultTake: 100 });
-  const skipVal = clampSkip(skip);
-  const isFullPage = skipVal === 0 && cappedTake >= 100;
-
-  if (isFullPage) {
-    const cached = categoriesCache.get(CATEGORIES_CACHE_KEY);
-    if (cached) {
-      return {
-        items: cached.slice(0, cappedTake),
-        hasMore: cached.length > cappedTake,
-      };
-    }
-  }
-
-  const rawRows = await prisma.category.findMany({
-    orderBy: { name: 'asc' },
-    take: cappedTake + 1,
-    skip: skipVal,
-  });
-  const hasMore = rawRows.length > cappedTake;
-  const items = rawRows.slice(0, cappedTake);
-
-  if (isFullPage && !hasMore) categoriesCache.set(CATEGORIES_CACHE_KEY, items);
-  return { items, hasMore };
-};
-
 const buildForecastCursorPredicate = (
   k: string,
   cursorId: string,
@@ -278,13 +245,25 @@ export const forecastByUid: NonNullable<
   return row ? mapForecast(row) : null;
 };
 
+const buildCategoryCursorPredicate = (
+  name: string,
+  id: string
+): Prisma.CategoryWhereInput => ({
+  OR: [
+    { name: { gt: name } },
+    { AND: [{ name: { equals: name } }, { id: { gt: Number(id) } }] },
+  ],
+});
+
 export const categoriesConnection = (async (
   _parent: unknown,
   { first, after }: { first?: number | null; after?: string | null }
 ) => {
   const cappedTake = clampTake(first ?? undefined, { defaultTake: 100 });
   const cursor = after ? decodeCursor(after) : null;
-  const where = cursor ? { id: { gt: Number(cursor.id) } } : undefined;
+  const where = cursor
+    ? buildCategoryCursorPredicate(cursor.k, cursor.id)
+    : undefined;
   const [rawRows, totalCount] = await Promise.all([
     prisma.category.findMany({
       where,

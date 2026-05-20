@@ -1,553 +1,557 @@
 {
-  "protocolStats": [
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "0",
-      "cumulativeTradeCount": 0,
-      "periodTradeCount": 0,
-      "periodVolume": "0",
-      "openInterest": "0",
-      "escrowBalance": "521693193690400523047"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "16277543987041452328",
-      "cumulativeTradeCount": 37,
-      "periodTradeCount": 37,
-      "periodVolume": "16277543987041452328",
-      "openInterest": "10426879105397264360",
-      "escrowBalance": "541721866759226731"
-    },
-    {
-      "timestamp": "<UNIX_TIMESTAMP>",
-      "cumulativeVolume": "<LIVE_VALUE>",
-      "cumulativeTradeCount": 42,
-      "periodTradeCount": "<LIVE_VALUE>",
-      "periodVolume": "<LIVE_VALUE>",
-      "openInterest": "<LIVE_VALUE>",
-      "escrowBalance": "<LIVE_VALUE>"
+  "protocol": {
+    "stats": {
+      "nodes": [
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "0",
+          "cumulativeTradeCount": 0,
+          "periodTradeCount": 0,
+          "periodVolume": "0",
+          "openInterest": "0",
+          "escrowBalance": "521693193690400523047"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "16277543987041452328",
+          "cumulativeTradeCount": 37,
+          "periodTradeCount": 37,
+          "periodVolume": "16277543987041452328",
+          "openInterest": "10426879105397264360",
+          "escrowBalance": "541721866759226731"
+        },
+        {
+          "timestamp": "<UNIX_TIMESTAMP>",
+          "cumulativeVolume": "<LIVE_VALUE>",
+          "cumulativeTradeCount": 42,
+          "periodTradeCount": "<LIVE_VALUE>",
+          "periodVolume": "<LIVE_VALUE>",
+          "openInterest": "<LIVE_VALUE>",
+          "escrowBalance": "<LIVE_VALUE>"
+        }
+      ]
     }
-  ]
+  }
 }
