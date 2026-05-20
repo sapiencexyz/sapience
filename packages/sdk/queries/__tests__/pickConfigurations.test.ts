@@ -16,50 +16,50 @@ beforeEach(() => {
 describe('fetchPickConfigurations', () => {
   test('uses default take=10 and skip=0 when no opts provided', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      pickConfigurationsConnection: { nodes: [] },
+      pickConfigurations: [],
     });
     await fetchPickConfigurations();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       GET_PICK_CONFIGURATIONS,
-      expect.objectContaining({ first: 10, after: null })
+      expect.objectContaining({ take: 10, skip: 0 })
     );
   });
 
   test('passes custom take, skip, and chainId', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      pickConfigurationsConnection: { nodes: [] },
+      pickConfigurations: [],
     });
     await fetchPickConfigurations({ take: 50, skip: 5, chainId: 42161 });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       GET_PICK_CONFIGURATIONS,
       expect.objectContaining({
-        first: 50,
-        after: expect.any(String),
-        filter: expect.objectContaining({ chainId: 42161 }),
+        take: 50,
+        skip: 5,
+        chainId: 42161,
       })
     );
   });
 
   test('passes resolved param when provided', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      pickConfigurationsConnection: { nodes: [] },
+      pickConfigurations: [],
     });
     await fetchPickConfigurations({ resolved: false });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       GET_PICK_CONFIGURATIONS,
       expect.objectContaining({
-        filter: expect.objectContaining({ resolved: false }),
+        resolved: false,
       })
     );
   });
 
-  test('does not send resolved key when not provided', async () => {
+  test('sends null resolved when not provided', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      pickConfigurationsConnection: { nodes: [] },
+      pickConfigurations: [],
     });
     await fetchPickConfigurations({ take: 5 });
     const vars = mockGraphqlRequest.mock.calls[0][1];
-    expect(vars.filter.resolved).toBeNull();
+    expect(vars.resolved).toBeNull();
   });
 
   test('returns pickConfigurations from response', async () => {
@@ -76,14 +76,14 @@ describe('fetchPickConfigurations', () => {
       },
     ];
     mockGraphqlRequest.mockResolvedValue({
-      pickConfigurationsConnection: { nodes: configs },
+      pickConfigurations: configs,
     });
     const result = await fetchPickConfigurations();
     expect(result).toEqual(configs);
   });
 
-  test('returns empty array when response pickConfigurationsConnection.nodes is missing', async () => {
-    mockGraphqlRequest.mockResolvedValue({ pickConfigurationsConnection: {} });
+  test('returns empty array when response pickConfigurations is missing', async () => {
+    mockGraphqlRequest.mockResolvedValue({});
     const result = await fetchPickConfigurations();
     expect(result).toEqual([]);
   });
