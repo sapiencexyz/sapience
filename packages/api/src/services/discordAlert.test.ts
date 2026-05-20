@@ -5,7 +5,6 @@ import {
   getChainName,
   buildPositionEmbed,
   sendPositionAlert,
-  _resetRateLimiter,
   STALE_BLOCK_THRESHOLD_S,
   type PositionAlertData,
 } from './discordAlert';
@@ -234,7 +233,6 @@ describe('sendPositionAlert', () => {
   let fetchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    _resetRateLimiter();
     fetchSpy = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal('fetch', fetchSpy);
   });
@@ -262,5 +260,26 @@ describe('sendPositionAlert', () => {
 
   it('does not throw on fresh alert even without webhooks', () => {
     expect(() => sendPositionAlert(makeAlertData())).not.toThrow();
+  });
+
+  it('does not apply an in-process rate limit to fresh alerts', async () => {
+    process.env.DISCORD_WEBHOOK_URLS =
+      'https://discord.com/api/webhooks/test-webhook/test-token';
+    vi.resetModules();
+
+    const fetchWithWebhook = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchWithWebhook);
+
+    const { sendPositionAlert: sendPositionAlertWithWebhook } = await import(
+      './discordAlert'
+    );
+
+    for (let i = 0; i < 11; i += 1) {
+      sendPositionAlertWithWebhook(
+        makeAlertData({ predictionId: `0x${i.toString().padStart(64, '0')}` })
+      );
+    }
+
+    expect(fetchWithWebhook).toHaveBeenCalledTimes(11);
   });
 });
