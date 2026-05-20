@@ -13,5 +13,5 @@ import prisma from '../../../core/db';
 import { lazyTotalCount } from './pageTotalCount';
 
 export const PositionsPage: PositionsPageResolvers = {
-  totalCount: lazyTotalCount(prisma.position),
+  totalCount: lazyTotalCount(() => prisma.position),
 };

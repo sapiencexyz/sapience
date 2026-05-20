@@ -81,12 +81,16 @@ describe('fetchAllExistingConditions', () => {
 
     expect(fetchCalls).toHaveLength(1);
     const body = JSON.parse(fetchCalls[0].init!.body as string);
-    expect(body.variables.where).toEqual({
-      public: { equals: true },
-      settled: { equals: false },
-      similarMarkets: { isEmpty: false },
+    expect(body.variables.filters).toEqual({
+      visibility: 'PUBLIC',
+      settled: false,
+      hasSimilarMarkets: true,
     });
-    expect(body.variables.orderBy).toEqual([{ id: 'asc' }]);
+    expect(body.variables.take).toBe(100);
+    expect(body.query).toContain('conditionsConnection');
+    expect(body.query).toContain(
+      'orderBy: { field: CREATED_AT, direction: ASC }'
+    );
     expect(fetchCalls[0].url.endsWith('/graphql')).toBe(true);
   });
 
@@ -111,9 +115,21 @@ describe('fetchAllExistingConditions', () => {
       },
     ];
 
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page1 } }));
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page2 } }));
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page3 } }));
+    fetchQueue.push(() =>
+      jsonResponse({
+        data: { conditionsConnection: { nodes: page1, hasMore: true } },
+      })
+    );
+    fetchQueue.push(() =>
+      jsonResponse({
+        data: { conditionsConnection: { nodes: page2, hasMore: true } },
+      })
+    );
+    fetchQueue.push(() =>
+      jsonResponse({
+        data: { conditionsConnection: { nodes: page3, hasMore: false } },
+      })
+    );
 
     const result = await fetchAllExistingConditions('https://api.example.com');
 
@@ -134,25 +150,28 @@ describe('fetchAllExistingConditions', () => {
     fetchQueue.push(() =>
       jsonResponse({
         data: {
-          conditions: [
-            {
-              id: '0xabc',
-              endTime: 1700000000,
-              question: 'Will X happen?',
-              shortName: 'X?',
-              optionName: 'Yes side',
-              description: 'A description',
-              similarMarkets: ['https://polymarket.com/event/foo#bar'],
-              tags: ['crypto', 'btc'],
-              similarMarketVolume: 1234,
-              similarMarketImage: 'https://img.example/x.png',
-              conditionGroup: {
-                id: 7,
-                name: 'Group Name',
+          conditionsConnection: {
+            nodes: [
+              {
+                id: '0xabc',
+                endTime: 1700000000,
+                question: 'Will X happen?',
+                shortName: 'X?',
+                optionName: 'Yes side',
+                description: 'A description',
                 similarMarkets: ['https://polymarket.com/event/foo#bar'],
+                tags: ['crypto', 'btc'],
+                similarMarketVolume: 1234,
+                similarMarketImage: 'https://img.example/x.png',
+                conditionGroup: {
+                  id: 7,
+                  name: 'Group Name',
+                  similarMarkets: ['https://polymarket.com/event/foo#bar'],
+                },
               },
-            },
-          ],
+            ],
+            hasMore: false,
+          },
         },
       })
     );
