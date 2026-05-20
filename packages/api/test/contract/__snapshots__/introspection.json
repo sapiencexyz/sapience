@@ -20152,7 +20152,7 @@
           },
           {
             "name": "forecastsConnection",
-            "description": "Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.",
+            "description": "Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.\n\nNote: this field will be renamed to drop the `Connection` suffix\n(→ `forecasts`) in a subsequent migration, once the deprecated\n`attestations` sibling above is removed.",
             "args": [
               {
                 "name": "first",
@@ -20337,7 +20337,7 @@
           },
           {
             "name": "categoriesConnection",
-            "description": null,
+            "description": "Note: this field will be renamed to drop the `Connection` suffix\n(→ `categories`) in a subsequent migration, once the deprecated\nbare-array `categories` sibling above is removed.",
             "args": [
               {
                 "name": "first",
@@ -20771,7 +20771,7 @@
           },
           {
             "name": "collateralTransfersConnection",
-            "description": "Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.\n\nSorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.",
+            "description": "Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.\n\nSorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.\n\nNote: this field will be renamed to drop the `Connection` suffix\n(→ `collateralTransfers`) in a subsequent migration, once the\ndeprecated bare-array `collateralTransfers` sibling above is removed.",
             "args": [
               {
                 "name": "first",
@@ -21010,7 +21010,7 @@
           },
           {
             "name": "conditionGroupsConnection",
-            "description": "Relay-shaped connection over `ConditionGroup` rows. Forward-only\ncursor pagination via `first` / `after`. Replaces the deprecated\nbare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3\n(default-off, add per-PR where cheap).",
+            "description": "Relay-shaped connection over `ConditionGroup` rows. Forward-only\ncursor pagination via `first` / `after`. Replaces the deprecated\nbare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3\n(default-off, add per-PR where cheap).\n\nNote: this field will be renamed to drop the `Connection` suffix\n(→ `conditionGroups`) in a subsequent migration, once the deprecated\nbare-array sibling above is removed.",
             "args": [
               {
                 "name": "first",
@@ -21168,7 +21168,7 @@
           },
           {
             "name": "conditionsConnection",
-            "description": "Relay-shaped connection over `Condition` rows. Forward-only cursor\npagination via `first` / `after`. Replaces the deprecated bare\n`conditions(where:)`. Public conditions only.",
+            "description": "Relay-shaped connection over `Condition` rows. Forward-only cursor\npagination via `first` / `after`. Replaces the deprecated bare\n`conditions(where:)`. Public conditions only.\n\nNote: this field will be renamed to drop the `Connection` suffix\n(→ `conditions`) in a subsequent migration, once the deprecated\nbare-array sibling above is removed.",
             "args": [
               {
                 "name": "first",
@@ -21353,7 +21353,7 @@
           },
           {
             "name": "pickConfigurationsConnection",
-            "description": "Relay-shaped connection over pick configurations.",
+            "description": "Relay-shaped connection over pick configurations.\n\nNote: this field will be renamed to drop the `Connection` suffix\n(→ `pickConfigurations`) in a subsequent migration, once the\ndeprecated bare-array `pickConfigurations` sibling above is removed.",
             "args": [
               {
                 "name": "first",
@@ -21743,7 +21743,7 @@
           },
           {
             "name": "positionsConnection",
-            "description": "Relay-shaped connection over token positions.",
+            "description": "Relay-shaped connection over token positions.\n\nNote: this field will be renamed to drop the `Connection` suffix\n(→ `positions`) in a subsequent migration, once the deprecated\n`positions` bare-array / `positionsPage` siblings above are removed.",
             "args": [
               {
                 "name": "first",
@@ -22014,7 +22014,7 @@
           },
           {
             "name": "predictionsConnection",
-            "description": "Relay-style prediction list. Defaults to createdAt DESC.",
+            "description": "Relay-style prediction list. Defaults to createdAt DESC.\n\nNote: this field will be renamed to drop the `Connection` suffix\n(→ `predictions`) in a subsequent migration, once the deprecated\n`predictions` bare-array sibling above is removed.",
             "args": [
               {
                 "name": "first",
@@ -22418,7 +22418,7 @@
           },
           {
             "name": "questionsConnection",
-            "description": "Relay-shaped connection over `Question` rows — the interleaved\nCondition / ConditionGroup feed. Forward-only cursor pagination via\n`first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on\n`QuestionConnection` because the underlying SQL UNION cannot produce\na single COUNT cheaply.",
+            "description": "Relay-shaped connection over `Question` rows — the interleaved\nCondition / ConditionGroup feed. Forward-only cursor pagination via\n`first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on\n`QuestionConnection` because the underlying SQL UNION cannot produce\na single COUNT cheaply.\n\nNote: this field will be renamed to drop the `Connection` suffix\n(→ `questions`) in a subsequent migration, once the deprecated\nbare-array sibling above is removed.",
             "args": [
               {
                 "name": "first",
@@ -22685,7 +22685,7 @@
           },
           {
             "name": "tradesConnection",
-            "description": "Relay-shaped connection over secondary market trades.",
+            "description": "Relay-shaped connection over secondary market trades.\n\nNote: this field will be renamed to drop the `Connection` suffix\n(→ `trades`) in a subsequent migration, once the deprecated\n`trades` bare-array sibling above is removed.",
             "args": [
               {
                 "name": "first",

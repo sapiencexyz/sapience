@@ -875,6 +875,11 @@ type Condition {
     @deprecated(
       reason: "Use `predictionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data."
     )
+  """
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `predictions`) in a subsequent migration, once the deprecated
+  bare-array sibling above is removed.
+  """
   predictionsConnection(
     first: Int = 50
     after: String
@@ -3754,6 +3759,10 @@ type Query {
 
   """
   Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `forecasts`) in a subsequent migration, once the deprecated
+  `attestations` sibling above is removed.
   """
   forecastsConnection(
     first: Int = 50
@@ -3774,6 +3783,11 @@ type Query {
       reason: "Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories."
     )
 
+  """
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `categories`) in a subsequent migration, once the deprecated
+  bare-array `categories` sibling above is removed.
+  """
   categoriesConnection(first: Int = 100, after: String): CategoryConnection!
 
   """
@@ -3852,6 +3866,10 @@ type Query {
   Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
 
   Sorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `collateralTransfers`) in a subsequent migration, once the
+  deprecated bare-array `collateralTransfers` sibling above is removed.
   """
   collateralTransfersConnection(
     first: Int = 100
@@ -3871,6 +3889,9 @@ type Query {
   lookups should keep using `account(address:)`, which synthesizes
   address-backed Accounts for wallets without a User row;
   `accountsConnection` is for enumeration / search use cases.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `accounts`) in a subsequent migration.
   """
   accountsConnection(
     first: Int
@@ -3908,6 +3929,10 @@ type Query {
   cursor pagination via `first` / `after`. Replaces the deprecated
   bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
   (default-off, add per-PR where cheap).
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `conditionGroups`) in a subsequent migration, once the deprecated
+  bare-array sibling above is removed.
   """
   conditionGroupsConnection(
     first: Int
@@ -3939,6 +3964,10 @@ type Query {
   Relay-shaped connection over `Condition` rows. Forward-only cursor
   pagination via `first` / `after`. Replaces the deprecated bare
   `conditions(where:)`. Public conditions only.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `conditions`) in a subsequent migration, once the deprecated
+  bare-array sibling above is removed.
   """
   conditionsConnection(
     first: Int
@@ -3974,6 +4003,10 @@ type Query {
 
   """
   Relay-shaped connection over pick configurations.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `pickConfigurations`) in a subsequent migration, once the
+  deprecated bare-array `pickConfigurations` sibling above is removed.
   """
   pickConfigurationsConnection(
     first: Int
@@ -4079,6 +4112,10 @@ type Query {
 
   """
   Relay-shaped connection over token positions.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `positions`) in a subsequent migration, once the deprecated
+  `positions` bare-array / `positionsPage` siblings above are removed.
   """
   positionsConnection(
     first: Int
@@ -4129,6 +4166,10 @@ type Query {
 
   """
   Relay-style prediction list. Defaults to createdAt DESC.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `predictions`) in a subsequent migration, once the deprecated
+  `predictions` bare-array sibling above is removed.
   """
   predictionsConnection(
     first: Int = 50
@@ -4225,6 +4266,10 @@ type Query {
   `first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on
   `QuestionConnection` because the underlying SQL UNION cannot produce
   a single COUNT cheaply.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `questions`) in a subsequent migration, once the deprecated
+  bare-array sibling above is removed.
   """
   questionsConnection(
     first: Int
@@ -4279,6 +4324,10 @@ type Query {
 
   """
   Relay-shaped connection over secondary market trades.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `trades`) in a subsequent migration, once the deprecated
+  `trades` bare-array sibling above is removed.
   """
   tradesConnection(
     first: Int
