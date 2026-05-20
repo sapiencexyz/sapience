@@ -685,13 +685,6 @@ export const openInterestByTimeToResolution: NonNullable<
   QueryResolvers['openInterestByTimeToResolution']
 > = () => fetchOpenInterestByTimeToResolution();
 
-const vaultKindToGraphql = (kind: string) =>
-  kind === 'single-leg'
-    ? 'SINGLE_LEG'
-    : kind === 'strategy-b'
-      ? 'STRATEGY_B'
-      : kind.toUpperCase();
-
 const vaultDomainId = (chainId: number, address: string) =>
   `${chainId}:${address.toLowerCase()}`;
 
@@ -709,7 +702,6 @@ const mapVault = (
   id: toGlobalId('Vault', vaultDomainId(chainId, vault.address)),
   address: vault.address,
   chainId,
-  kind: vaultKindToGraphql(vault.kind),
   collateral: vaultCollateral(chainId),
   account: synthesizeAccount(vault.address),
 });

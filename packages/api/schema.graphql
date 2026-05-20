@@ -2665,17 +2665,9 @@ type Vault implements Node {
   id: ID!
   address: Address!
   chainId: Int!
-  kind: VaultKind!
   collateral: CollateralToken!
   account: Account!
   stats(filter: VaultStatsFilter): VaultStatsConnection!
-}
-
-enum VaultKind {
-  PROTOCOL
-  PYTH
-  SINGLE_LEG
-  STRATEGY_B
 }
 
 """Protocol-wide stats snapshot — no vault scoping."""
