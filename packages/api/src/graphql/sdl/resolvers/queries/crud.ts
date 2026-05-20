@@ -378,13 +378,6 @@ export const forecastsConnection: NonNullable<
   };
 };
 
-export const forecastByUid: NonNullable<
-  QueryResolvers['forecastByUid']
-> = async (_parent, { uid }) => {
-  const row = await prisma.attestation.findUnique({ where: { uid } });
-  return row ? mapForecast(row) : null;
-};
-
 const buildCategoryCursorPredicate = (
   name: string,
   id: string

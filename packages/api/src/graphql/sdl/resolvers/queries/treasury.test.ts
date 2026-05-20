@@ -22,7 +22,7 @@ import {
   collateralBalance,
 } from './collateralBalance';
 import { categoriesConnection } from './crud';
-import { protocol, vaultByAddress } from './analytics';
+import { protocol, vaultsConnection } from './analytics';
 
 const TESTNET = 13374202;
 const ACCOUNT = '0x000000000000000000000000000000000000aaaa';
@@ -225,14 +225,23 @@ describe('treasury — protocol/vault/categories surface', () => {
     expect(p).toEqual({});
   });
 
-  it('resolves vaultByAddress with lowercase Vault node id', async () => {
-    const vault = await callResolver(vaultByAddress)(
+  it('vaultsConnection resolves by address with lowercase Vault node id', async () => {
+    const result = await callResolver<{
+      nodes: Array<{
+        id: string;
+        address: string;
+        chainId: number;
+        account: { address: string };
+      }>;
+      totalCount: number;
+    }>(vaultsConnection)(
       null,
-      { address: VAULT.toUpperCase(), chainId: TESTNET },
+      { filter: { address: VAULT.toUpperCase(), chainId: TESTNET } },
       {} as never,
       null as never
     );
-    expect(vault).toMatchObject({
+    expect(result.totalCount).toBe(1);
+    expect(result.nodes[0]).toMatchObject({
       id: toGlobalId('Vault', `${TESTNET}:${VAULT}`),
       address: VAULT,
       chainId: TESTNET,

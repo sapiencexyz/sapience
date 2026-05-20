@@ -2380,6 +2380,38 @@ type Vault implements Node {
   stats(filter: VaultStatsFilter): VaultStatsConnection!
 }
 
+type VaultConnection {
+  edges: [VaultEdge!]!
+  nodes: [Vault!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type VaultEdge {
+  node: Vault!
+  cursor: String!
+}
+
+"""
+Filter input for `vaultsConnection`. Vaults are a small statically
+configured set, so the filter exists primarily to support
+`vaultsConnection(filter: { address: $a })` as the by-address lookup
+pattern — the connection replaces the dedicated `vaultByAddress` query.
+"""
+input VaultFilter {
+  """
+  Restrict to a single vault address (case-insensitive). Matches both
+  the canonical vault address and any of its configured legacy aliases.
+  """
+  address: Address
+
+  """
+  Restrict to a single chain. Defaults to the SDK's `DEFAULT_CHAIN_ID`
+  when omitted.
+  """
+  chainId: Int
+}
+
 """Protocol-wide stats snapshot — no vault scoping."""
 type ProtocolStat {
   """Snapshot boundary, aligned to the snapshot interval."""
@@ -2526,6 +2558,13 @@ Filter input for the Relay-shaped `tradesConnection` query. Combines with AND.
 """
 input TradeFilter {
   """
+  Restrict to a single trade by execution hash. Supports the
+  by-hash single-record lookup pattern — `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
+  replaces the dedicated `tradeByHash` query.
+  """
+  tradeHash: Bytes32
+
+  """
   Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`.
   """
   address: String
@@ -2624,6 +2663,14 @@ Filter input for the `predictionsConnection` query. Each field is optional;
 values combine with AND.
 """
 input PredictionFilter {
+  """
+  Restrict to a single prediction by on-chain id. Supports the
+  by-predictionId single-record lookup pattern —
+  `predictionsConnection(filter: { predictionId: $p }).nodes[0]` replaces
+  the dedicated `predictionByOnchainId` query.
+  """
+  predictionId: String
+
   """
   Restrict to predictions where the address is predictor or counterparty (case-insensitive).
   """
@@ -2741,10 +2788,11 @@ type Query {
   """
   Refetch any `Node`-implementing entity by its opaque global id. Returns
   `null` when the id is malformed, the type is not registered, or the
-  underlying entity has been deleted. Domain-id lookups (e.g.
-  `predictionByOnchainId`, `tradeByHash`) remain the preferred entry point
-  for new traffic; `node(id:)` exists so Relay-style clients can refetch
-  cached entities polymorphically without knowing their concrete type.
+  underlying entity has been deleted. By-attribute lookups go through the
+  matching `*Connection(filter:)` — e.g. `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
+  or `predictionsConnection(filter: { predictionId: $p }).nodes[0]`. `node(id:)`
+  exists so Relay-style clients can refetch cached entities polymorphically
+  without knowing their concrete type.
   """
   node(id: ID!): Node
 
@@ -2853,7 +2901,14 @@ type Query {
   """
   protocol: Protocol!
   vault(id: ID!): Vault
-  vaultByAddress(address: Address!, chainId: Int = 13374202): Vault
+
+  """
+  Paginated vault list, filterable by address / chain. Vaults are a
+  small statically configured set, so this exists mainly as the
+  by-address lookup pattern (`vaultsConnection(filter: { address: $a })`)
+  — replacing the dedicated `vaultByAddress` query.
+  """
+  vaultsConnection(first: Int = 50, after: String, filter: VaultFilter): VaultConnection!
   accountStatsLeaderboardPage(filters: AccountStatsFilters, take: Int! = 25, skip: Int! = 0): AccountStatsLeaderboardPage! @deprecated(reason: "Use `leaderboard(metric: PNL|VOLUME|ROI, first:, after:, filter:)` — Relay-shaped pagination over the same ranked set.")
 
   """
@@ -2890,7 +2945,6 @@ type Query {
   `attestations` sibling above is removed.
   """
   forecastsConnection(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
-  forecastByUid(uid: String!): Forecast
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories.")
 
   """
@@ -3052,7 +3106,6 @@ type Query {
   callers keep working through one release.
   """
   prediction(predictionId: String, id: String @deprecated(reason: "Use `predictionId:` — same value, the new arg name disambiguates it from the `Prediction.id` (Int!) row id surfaced on `predictionsConnection` nodes.")): Prediction
-  predictionByOnchainId(predictionId: String!): Prediction
 
   """Count of escrow predictions involving the given address"""
   predictionCount(address: String!, chainId: Int): Int! @deprecated(reason: "Use `predictionsConnection(...).totalCount` — same number, available alongside the connection payload, no extra query needed.")
@@ -3139,9 +3192,6 @@ type Query {
   """
   trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]! @deprecated(reason: "Use `tradesConnection` — Relay-shaped cursor pagination over the same data.")
 
-  """Look up a single secondary market trade by its trade hash."""
-  tradeByHash(hash: Bytes32!): Trade
-
   """
   Relay-shaped connection over secondary market trades.
   
@@ -3165,7 +3215,7 @@ type Query {
   trailing live candle (anchored to the *current* interval boundary) is
   appended when `toEpoch` covers now.
   """
-  vaultStats(vaultAddress: String!, from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [VaultStat!]! @deprecated(reason: "Use `vaultByAddress(address:).stats(filter:)` — per-vault snapshots now live on Vault.")
+  vaultStats(vaultAddress: String!, from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [VaultStat!]! @deprecated(reason: "Use `vaultsConnection(filter: { address: $a }).nodes[0].stats(filter:)` — per-vault snapshots live on Vault.")
 }
 
 """

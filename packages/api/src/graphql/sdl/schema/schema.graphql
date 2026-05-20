@@ -2714,6 +2714,37 @@ type Vault implements Node {
   stats(filter: VaultStatsFilter): VaultStatsConnection!
 }
 
+type VaultConnection {
+  edges: [VaultEdge!]!
+  nodes: [Vault!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type VaultEdge {
+  node: Vault!
+  cursor: String!
+}
+
+"""
+Filter input for `vaultsConnection`. Vaults are a small statically
+configured set, so the filter exists primarily to support
+`vaultsConnection(filter: { address: $a })` as the by-address lookup
+pattern — the connection replaces the dedicated `vaultByAddress` query.
+"""
+input VaultFilter {
+  """
+  Restrict to a single vault address (case-insensitive). Matches both
+  the canonical vault address and any of its configured legacy aliases.
+  """
+  address: Address
+  """
+  Restrict to a single chain. Defaults to the SDK's `DEFAULT_CHAIN_ID`
+  when omitted.
+  """
+  chainId: Int
+}
+
 """
 Protocol-wide stats snapshot — no vault scoping.
 """
@@ -2908,6 +2939,12 @@ Filter input for the Relay-shaped `tradesConnection` query. Combines with AND.
 """
 input TradeFilter {
   """
+  Restrict to a single trade by execution hash. Supports the
+  by-hash single-record lookup pattern — `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
+  replaces the dedicated `tradeByHash` query.
+  """
+  tradeHash: Bytes32
+  """
   Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`.
   """
   address: String
@@ -3014,6 +3051,13 @@ Filter input for the `predictionsConnection` query. Each field is optional;
 values combine with AND.
 """
 input PredictionFilter {
+  """
+  Restrict to a single prediction by on-chain id. Supports the
+  by-predictionId single-record lookup pattern —
+  `predictionsConnection(filter: { predictionId: $p }).nodes[0]` replaces
+  the dedicated `predictionByOnchainId` query.
+  """
+  predictionId: String
   """
   Restrict to predictions where the address is predictor or counterparty (case-insensitive).
   """
@@ -3145,10 +3189,11 @@ type Query {
   """
   Refetch any `Node`-implementing entity by its opaque global id. Returns
   `null` when the id is malformed, the type is not registered, or the
-  underlying entity has been deleted. Domain-id lookups (e.g.
-  `predictionByOnchainId`, `tradeByHash`) remain the preferred entry point
-  for new traffic; `node(id:)` exists so Relay-style clients can refetch
-  cached entities polymorphically without knowing their concrete type.
+  underlying entity has been deleted. By-attribute lookups go through the
+  matching `*Connection(filter:)` — e.g. `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
+  or `predictionsConnection(filter: { predictionId: $p }).nodes[0]`. `node(id:)`
+  exists so Relay-style clients can refetch cached entities polymorphically
+  without knowing their concrete type.
   """
   node(id: ID!): Node
 
@@ -3358,7 +3403,17 @@ type Query {
   """
   protocol: Protocol!
   vault(id: ID!): Vault
-  vaultByAddress(address: Address!, chainId: Int = 13374202): Vault
+  """
+  Paginated vault list, filterable by address / chain. Vaults are a
+  small statically configured set, so this exists mainly as the
+  by-address lookup pattern (`vaultsConnection(filter: { address: $a })`)
+  — replacing the dedicated `vaultByAddress` query.
+  """
+  vaultsConnection(
+    first: Int = 50
+    after: String
+    filter: VaultFilter
+  ): VaultConnection!
   accountStatsLeaderboardPage(
     filters: AccountStatsFilters
     take: Int! = 25
@@ -3432,7 +3487,6 @@ type Query {
     filter: ForecastFilter
     orderBy: ForecastOrder
   ): ForecastConnection!
-  forecastByUid(uid: String!): Forecast
   categories(
     cursor: CategoryWhereUniqueInput
     distinct: [CategoryScalarFieldEnum!]
@@ -3798,7 +3852,6 @@ type Query {
         reason: "Use `predictionId:` — same value, the new arg name disambiguates it from the `Prediction.id` (Int!) row id surfaced on `predictionsConnection` nodes."
       )
   ): Prediction
-  predictionByOnchainId(predictionId: String!): Prediction
 
   """
   Count of escrow predictions involving the given address
@@ -3980,11 +4033,6 @@ type Query {
     )
 
   """
-  Look up a single secondary market trade by its trade hash.
-  """
-  tradeByHash(hash: Bytes32!): Trade
-
-  """
   Relay-shaped connection over secondary market trades.
 
   Note: this field will be renamed to drop the `Connection` suffix
@@ -4039,7 +4087,7 @@ type Query {
       )
   ): [VaultStat!]!
     @deprecated(
-      reason: "Use `vaultByAddress(address:).stats(filter:)` — per-vault snapshots now live on Vault."
+      reason: "Use `vaultsConnection(filter: { address: $a }).nodes[0].stats(filter:)` — per-vault snapshots live on Vault."
     )
 }
 

@@ -17,7 +17,7 @@ import {
   toGlobalId,
 } from '../../../relay/globalId';
 import { synthesizeAccount } from '../accountSynthesis';
-import { encodeCursor } from '../../../relay/cursor';
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import type {
   QueryResolvers,
   ProtocolStat,
@@ -736,36 +736,70 @@ export const protocol = (async () => ({})) as unknown as NonNullable<
   QueryResolvers['protocol']
 >;
 
-type VaultLookupArgs = {
-  address: string;
-  chainId?: number | null;
-};
-
-const vaultByAddressImpl = async (
-  _parent: unknown,
-  { address, chainId }: VaultLookupArgs
-) => {
-  const resolvedChainId = chainId ?? DEFAULT_CHAIN_ID;
+const findVaultByAddress = (chainId: number, address: string) => {
   const addr = address.toLowerCase();
-  const vault = getConfiguredVaults(resolvedChainId).find(
+  const vault = getConfiguredVaults(chainId).find(
     (v) =>
       v.address === addr ||
       (v.config.legacy ?? []).some(
         (le) => normalizeLegacyEntry(le).address.toLowerCase() === addr
       )
   );
-  return vault ? mapVault({ ...vault, address: addr }, resolvedChainId) : null;
+  return vault ? mapVault({ ...vault, address: addr }, chainId) : null;
 };
-
-export const vaultByAddress = vaultByAddressImpl as unknown as NonNullable<
-  QueryResolvers['vaultByAddress']
->;
 
 export const vault = (async (_parent: unknown, { id }: { id: string }) => {
   const parsed = parseVaultDomainId(fromGlobalId(id).id);
   if (!parsed) return null;
-  return vaultByAddressImpl(null, parsed);
+  return findVaultByAddress(parsed.chainId, parsed.address);
 }) as unknown as NonNullable<QueryResolvers['vault']>;
+
+type VaultsConnectionArgs = {
+  first?: number | null;
+  after?: string | null;
+  filter?: { address?: string | null; chainId?: number | null } | null;
+};
+
+export const vaultsConnection = (async (
+  _parent: unknown,
+  { first, after, filter }: VaultsConnectionArgs
+) => {
+  const cappedFirst = Math.min(Math.max(first ?? 50, 1), 100);
+  const chainId = filter?.chainId ?? DEFAULT_CHAIN_ID;
+
+  // Optimization: when filter.address is set, short-circuit to a direct
+  // lookup — same payload, no list scan.
+  let nodes: ReturnType<typeof mapVault>[];
+  if (filter?.address) {
+    const node = findVaultByAddress(chainId, filter.address);
+    nodes = node ? [node] : [];
+  } else {
+    nodes = getConfiguredVaults(chainId).map((v) => mapVault(v, chainId));
+  }
+
+  const totalCount = nodes.length;
+  const startOffset = (() => {
+    const payload = after ? decodeCursor(after) : null;
+    const offset = payload ? Number(payload.k) : Number.NaN;
+    return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
+  })();
+  const window = nodes.slice(startOffset, startOffset + cappedFirst);
+  const edges = window.map((node, i) => ({
+    node,
+    cursor: encodeCursor({ k: String(startOffset + i), id: node.address }),
+  }));
+  return {
+    edges,
+    nodes: window,
+    totalCount,
+    pageInfo: {
+      hasNextPage: startOffset + window.length < totalCount,
+      hasPreviousPage: startOffset > 0,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
+}) as unknown as NonNullable<QueryResolvers['vaultsConnection']>;
 
 export const Protocol = {
   stats: async (

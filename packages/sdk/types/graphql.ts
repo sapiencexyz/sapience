@@ -2533,6 +2533,13 @@ export type PredictionFilter = {
   /** Restrict to legacy (true) or non-legacy (false) predictions. */
   isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to a single prediction by on-chain id. Supports the
+   * by-predictionId single-record lookup pattern —
+   * `predictionsConnection(filter: { predictionId: $p }).nodes[0]` replaces
+   * the dedicated `predictionByOnchainId` query.
+   */
+  predictionId?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to predictions whose pickConfig settled with this result. */
   result?: InputMaybe<SettlementResult>;
   /** Restrict to settled (true) or unsettled (false) predictions. */
@@ -2828,7 +2835,6 @@ export type Query = {
    * bare-array sibling above is removed.
    */
   conditionsConnection: ConditionConnection;
-  forecastByUid?: Maybe<Forecast>;
   /**
    * Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
    *
@@ -2841,10 +2847,11 @@ export type Query = {
   /**
    * Refetch any `Node`-implementing entity by its opaque global id. Returns
    * `null` when the id is malformed, the type is not registered, or the
-   * underlying entity has been deleted. Domain-id lookups (e.g.
-   * `predictionByOnchainId`, `tradeByHash`) remain the preferred entry point
-   * for new traffic; `node(id:)` exists so Relay-style clients can refetch
-   * cached entities polymorphically without knowing their concrete type.
+   * underlying entity has been deleted. By-attribute lookups go through the
+   * matching `*Connection(filter:)` — e.g. `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
+   * or `predictionsConnection(filter: { predictionId: $p }).nodes[0]`. `node(id:)`
+   * exists so Relay-style clients can refetch cached entities polymorphically
+   * without knowing their concrete type.
    */
   node?: Maybe<Node>;
   /**
@@ -2912,7 +2919,6 @@ export type Query = {
    * callers keep working through one release.
    */
   prediction?: Maybe<Prediction>;
-  predictionByOnchainId?: Maybe<Prediction>;
   /**
    * Count of escrow predictions involving the given address
    * @deprecated Use `predictionsConnection(...).totalCount` — same number, available alongside the connection payload, no extra query needed.
@@ -2987,8 +2993,6 @@ export type Query = {
    * callers keep working through one release.
    */
   trade?: Maybe<Trade>;
-  /** Look up a single secondary market trade by its trade hash. */
-  tradeByHash?: Maybe<Trade>;
   /**
    * Count of secondary market trades matching the given filters
    * @deprecated Use `tradesConnection` — Relay-shaped cursor pagination over the same data.
@@ -3012,7 +3016,6 @@ export type Query = {
   /** @deprecated Unused; will be removed. No live consumers — account lookups go through `account(address:)`. */
   users: Array<User>;
   vault?: Maybe<Vault>;
-  vaultByAddress?: Maybe<Vault>;
   /**
    * Vault-specific statistics time series for a single vault address — vault
    * balance, deployed/available collateral, cumulative PnL, deposits,
@@ -3024,9 +3027,16 @@ export type Query = {
    * bars are labelled at the *start* of the interval they represent, and a
    * trailing live candle (anchored to the *current* interval boundary) is
    * appended when `toEpoch` covers now.
-   * @deprecated Use `vaultByAddress(address:).stats(filter:)` — per-vault snapshots now live on Vault.
+   * @deprecated Use `vaultsConnection(filter: { address: $a }).nodes[0].stats(filter:)` — per-vault snapshots live on Vault.
    */
   vaultStats: Array<VaultStat>;
+  /**
+   * Paginated vault list, filterable by address / chain. Vaults are a
+   * small statically configured set, so this exists mainly as the
+   * by-address lookup pattern (`vaultsConnection(filter: { address: $a })`)
+   * — replacing the dedicated `vaultByAddress` query.
+   */
+  vaultsConnection: VaultConnection;
 };
 
 
@@ -3293,11 +3303,6 @@ export type QueryConditionsConnectionArgs = {
 };
 
 
-export type QueryForecastByUidArgs = {
-  uid: Scalars['String']['input'];
-};
-
-
 export type QueryForecastsConnectionArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<ForecastFilter>;
@@ -3407,11 +3412,6 @@ export type QueryPredictionArgs = {
 };
 
 
-export type QueryPredictionByOnchainIdArgs = {
-  predictionId: Scalars['String']['input'];
-};
-
-
 export type QueryPredictionCountArgs = {
   address: Scalars['String']['input'];
   chainId?: InputMaybe<Scalars['Int']['input']>;
@@ -3489,11 +3489,6 @@ export type QueryTradeArgs = {
 };
 
 
-export type QueryTradeByHashArgs = {
-  hash: Scalars['Bytes32']['input'];
-};
-
-
 export type QueryTradeCountArgs = {
   buyer?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
@@ -3541,18 +3536,19 @@ export type QueryVaultArgs = {
 };
 
 
-export type QueryVaultByAddressArgs = {
-  address: Scalars['Address']['input'];
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-};
-
-
 export type QueryVaultStatsArgs = {
   from?: InputMaybe<Scalars['UnixSeconds']['input']>;
   fromEpoch?: InputMaybe<Scalars['Int']['input']>;
   to?: InputMaybe<Scalars['UnixSeconds']['input']>;
   toEpoch?: InputMaybe<Scalars['Int']['input']>;
   vaultAddress: Scalars['String']['input'];
+};
+
+
+export type QueryVaultsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<VaultFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type QueryMode =
@@ -4007,6 +4003,12 @@ export type TradeFilter = {
   /** Restrict to a single position token address (case-insensitive). */
   token?: InputMaybe<Scalars['String']['input']>;
   tokens?: InputMaybe<Array<Scalars['String']['input']>>;
+  /**
+   * Restrict to a single trade by execution hash. Supports the
+   * by-hash single-record lookup pattern — `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
+   * replaces the dedicated `tradeByHash` query.
+   */
+  tradeHash?: InputMaybe<Scalars['Bytes32']['input']>;
 };
 
 /** Order input for the Relay-shaped `tradesConnection`. */
@@ -4174,6 +4176,39 @@ export type Vault = Node & {
 
 export type VaultStatsArgs = {
   filter?: InputMaybe<VaultStatsFilter>;
+};
+
+export type VaultConnection = {
+  __typename?: 'VaultConnection';
+  edges: Array<VaultEdge>;
+  nodes: Array<Vault>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type VaultEdge = {
+  __typename?: 'VaultEdge';
+  cursor: Scalars['String']['output'];
+  node: Vault;
+};
+
+/**
+ * Filter input for `vaultsConnection`. Vaults are a small statically
+ * configured set, so the filter exists primarily to support
+ * `vaultsConnection(filter: { address: $a })` as the by-address lookup
+ * pattern — the connection replaces the dedicated `vaultByAddress` query.
+ */
+export type VaultFilter = {
+  /**
+   * Restrict to a single vault address (case-insensitive). Matches both
+   * the canonical vault address and any of its configured legacy aliases.
+   */
+  address?: InputMaybe<Scalars['Address']['input']>;
+  /**
+   * Restrict to a single chain. Defaults to the SDK's `DEFAULT_CHAIN_ID`
+   * when omitted.
+   */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 /** Vault-specific stats snapshot for a single vault address. */

@@ -83,19 +83,21 @@ const ALL_TRADES_QUERY = /* GraphQL */ `
 
 const TRADE_QUERY = /* GraphQL */ `
   query Trade($tradeHash: Bytes32!) {
-    tradeByHash(hash: $tradeHash) {
-      id
-      tradeHash
-      chainId
-      token
-      collateral
-      seller
-      buyer
-      tokenAmount
-      price
-      txHash
-      blockNumber
-      executedAt
+    tradesConnection(filter: { tradeHash: $tradeHash }, first: 1) {
+      nodes {
+        id
+        tradeHash
+        chainId
+        token
+        collateral
+        seller
+        buyer
+        tokenAmount
+        price
+        txHash
+        blockNumber
+        executedAt
+      }
     }
   }
 `;
@@ -175,9 +177,9 @@ export function useSecondaryTrade(tradeHash?: string) {
     refetchOnReconnect: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        tradeByHash: SecondaryTrade | null;
+        tradesConnection: { nodes: SecondaryTrade[] };
       }>(TRADE_QUERY, { tradeHash });
-      return resp?.tradeByHash ?? null;
+      return resp?.tradesConnection?.nodes?.[0] ?? null;
     },
   });
 

@@ -52,7 +52,7 @@ import {
   Protocol,
   vault,
   Vault,
-  vaultByAddress,
+  vaultsConnection,
   vaultStats,
 } from './queries/analytics';
 import {
@@ -76,7 +76,6 @@ import {
   categories,
   categoriesConnection,
   condition,
-  forecastByUid,
   forecastsConnection,
   user,
 } from './queries/crud';
@@ -89,7 +88,6 @@ import {
   positionsConnection,
   positionsPage,
   prediction,
-  predictionByOnchainId,
   predictionsConnection,
 } from './queries/escrow';
 import {
@@ -110,7 +108,7 @@ import {
   protocolVolume,
 } from './queries/timeSeries';
 import { node, nodes } from './queries/node';
-import { trade, tradeByHash, tradesConnection } from './queries/trade';
+import { trade, tradesConnection } from './queries/trade';
 import { trades, tradeCount } from './queries/deprecated/trade';
 import { accountTotalVolume } from './queries/volume';
 
@@ -141,7 +139,7 @@ export const resolvers: Resolvers = {
     protocol,
     protocolStats,
     vault,
-    vaultByAddress,
+    vaultsConnection,
     vaultStats,
     // Legacy per-metric time series (DEPRECATED — superseded by accountStats / accountStatsRank.volume / protocolStats).
     accountBalance,
@@ -171,13 +169,11 @@ export const resolvers: Resolvers = {
     positionsConnection,
     positionsPage,
     prediction,
-    predictionByOnchainId,
     predictionCount,
     predictions,
     predictionsConnection,
     // Secondary market trades
     trade,
-    tradeByHash,
     tradeCount,
     trades,
     tradesConnection,
@@ -187,7 +183,6 @@ export const resolvers: Resolvers = {
     account,
     accountsConnection,
     attestations,
-    forecastByUid,
     forecastsConnection,
     categories,
     categoriesConnection,
