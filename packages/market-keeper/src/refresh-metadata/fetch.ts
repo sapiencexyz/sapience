@@ -43,10 +43,13 @@ export async function fetchAllExistingConditions(
 ): Promise<Map<string, ExistingCondition>> {
   const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
+  // Uses the Relay-shaped `conditionsConnection` (the legacy bare
+  // `conditions(where:)` resolver is deprecated per the redesign).
+  // Cursor-paginated via `first` / `after`; reads `pageInfo.endCursor`
+  // and `pageInfo.hasNextPage` to drive the loop.
   const query = `
-    query RefreshMetadataConditions($filters: ConditionFilter!, $take: Int!, $skip: Int!) {
-      conditionsConnection(filter: $filters, first: $take, skip: $skip, orderBy: { field: CREATED_AT, direction: ASC }) {
-        hasMore
+    query RefreshMetadataConditions($filter: ConditionFilter!, $first: Int!, $after: String) {
+      conditionsConnection(filter: $filter, first: $first, after: $after, orderBy: { field: CREATED_AT, direction: ASC }) {
         nodes {
           id
           endTime
@@ -64,12 +67,16 @@ export async function fetchAllExistingConditions(
             similarMarkets
           }
         }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
       }
     }
   `;
 
   const existing = new Map<string, ExistingCondition>();
-  let skip = 0;
+  let after: string | null = null;
   let pageCount = 0;
 
   while (true) {
@@ -81,13 +88,13 @@ export async function fetchAllExistingConditions(
       body: JSON.stringify({
         query,
         variables: {
-          filters: {
+          filter: {
             visibility: 'PUBLIC',
             settled: false,
             hasSimilarMarkets: true,
           },
-          take: SAPIENCE_PAGE_SIZE,
-          skip,
+          first: SAPIENCE_PAGE_SIZE,
+          after,
         },
       }),
     });
@@ -101,11 +108,6 @@ export async function fetchAllExistingConditions(
     const result = (await response.json()) as {
       data?: {
         conditionsConnection?: {
-          hasMore?: boolean | null;
-          pageInfo?: {
-            hasNextPage?: boolean | null;
-            endCursor?: string | null;
-          } | null;
           nodes?: Array<{
             id: string;
             endTime: number;
@@ -123,12 +125,17 @@ export async function fetchAllExistingConditions(
               similarMarkets?: string[] | null;
             } | null;
           }>;
+          pageInfo?: {
+            hasNextPage?: boolean | null;
+            endCursor?: string | null;
+          } | null;
         };
       };
     };
 
     const conditions = result.data?.conditionsConnection?.nodes ?? [];
-    const hasMore = result.data?.conditionsConnection?.hasMore ?? false;
+    const pageInfo = result.data?.conditionsConnection?.pageInfo;
+    const hasMore = pageInfo?.hasNextPage ?? false;
 
     for (const c of conditions) {
       existing.set(c.id, {
@@ -153,7 +160,8 @@ export async function fetchAllExistingConditions(
     );
 
     if (!hasMore) break;
-    skip += SAPIENCE_PAGE_SIZE;
+    after = pageInfo?.endCursor ?? null;
+    if (!after) break;
   }
 
   return existing;

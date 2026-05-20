@@ -11,7 +11,10 @@ import {
   MARKET_FILTERS,
 } from '../generate/pipeline';
 
-const PAGE_SIZE = 500;
+// Polymarket's /markets endpoint silently caps `limit` at 100 server-side;
+// requesting more returns 100 anyway, and the `markets.length < PAGE_SIZE`
+// short-page stop signal below would then misfire after page 1.
+const PAGE_SIZE = 100;
 
 /**
  * Fetch markets whose endDate is in the past (within the lookback window)

@@ -114,38 +114,45 @@ async function fetchUnsettledPmConditions(
   const PAGE_SIZE = 100;
   const out: PageItem[] = [];
   const seen = new Set<string>();
-  let skip = 0;
+  let after: string | null = null;
+  let pageNo = 0;
   let lastSize = 0;
   let zeroGrowthStreak = 0;
 
-  while (true) {
-    // Uses the legacy `conditions` query (Prisma-style where/orderBy)
-    // rather than `conditionsPage`, because staging's API is on the
-    // pre-`conditionsPage` schema. Pagination is take/skip with no
-    // server-truth `hasMore` — we stop when a page returns < PAGE_SIZE.
-    const query = `
-      query BackfillCandidates($where: ConditionWhereInput!, $orderBy: [ConditionOrderByWithRelationInput!], $take: Int!, $skip: Int!) {
-        conditions(where: $where, orderBy: $orderBy, take: $take, skip: $skip) {
+  // Relay-shaped `conditionsConnection` with cursor pagination. We
+  // sort by CREATED_AT ASC so --limit picks the oldest first (most
+  // likely to predate the new pipeline).
+  const query = `
+    query BackfillCandidates($filter: ConditionFilter!, $first: Int!, $after: String) {
+      conditionsConnection(filter: $filter, first: $first, after: $after, orderBy: { field: CREATED_AT, direction: ASC }) {
+        nodes {
           id
           question
           description
           endTime
         }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
       }
-    `;
+    }
+  `;
+
+  while (true) {
+    pageNo++;
     const variables = {
-      where: {
-        public: { equals: true },
-        settled: { equals: false },
-        similarMarkets: { isEmpty: false },
+      filter: {
+        visibility: 'PUBLIC',
+        settled: false,
+        hasSimilarMarkets: true,
       },
-      orderBy: [{ id: 'asc' }],
-      take: PAGE_SIZE,
-      skip,
+      first: PAGE_SIZE,
+      after,
     };
     // Log the exact request variables on the first page so 0-result runs
     // are diagnosable from the script output alone.
-    if (skip === 0) {
+    if (pageNo === 1) {
       log(
         `[Backfill]   GraphQL variables: ${JSON.stringify(variables, null, 2)}`
       );
@@ -158,7 +165,7 @@ async function fetchUnsettledPmConditions(
     if (!response.ok) {
       const body = await response.text().catch(() => '(unreadable body)');
       throw new Error(
-        `GraphQL conditions failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
+        `GraphQL conditionsConnection failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
       );
     }
     // GraphQL returns 200 with `errors: [...]` for query errors (unknown
@@ -166,27 +173,33 @@ async function fetchUnsettledPmConditions(
     // Inspect the parsed body for `errors` and surface them.
     const result = (await response.json()) as {
       data?: {
-        conditions?: Array<{
-          id: string;
-          question: string;
-          description: string | null;
-          endTime: number;
-        }>;
+        conditionsConnection?: {
+          nodes?: Array<{
+            id: string;
+            question: string;
+            description: string | null;
+            endTime: number;
+          }>;
+          pageInfo?: {
+            hasNextPage?: boolean | null;
+            endCursor?: string | null;
+          } | null;
+        };
       };
       errors?: Array<{ message: string; path?: unknown }>;
     };
     if (result.errors && result.errors.length > 0) {
       throw new Error(
-        `GraphQL conditions returned errors: ${JSON.stringify(result.errors, null, 2)}`
+        `GraphQL conditionsConnection returned errors: ${JSON.stringify(result.errors, null, 2)}`
       );
     }
-    const items = result.data?.conditions ?? [];
-    // Legacy `conditions` has no `hasMore`; stop on a short page.
-    const hasMore = items.length === PAGE_SIZE;
+    const nodes = result.data?.conditionsConnection?.nodes ?? [];
+    const pageInfo = result.data?.conditionsConnection?.pageInfo;
+    const hasMore = pageInfo?.hasNextPage ?? false;
     log(
-      `[Backfill]   page (skip=${skip}): fetched ${items.length} (cumulative ${out.length + items.length})`
+      `[Backfill]   page ${pageNo}: fetched ${nodes.length} (cumulative ${out.length + nodes.length})`
     );
-    for (const c of items) {
+    for (const c of nodes) {
       if (seen.has(c.id)) continue;
       seen.add(c.id);
       out.push({
@@ -197,13 +210,13 @@ async function fetchUnsettledPmConditions(
       });
       if (maxResults !== null && out.length >= maxResults) return out;
     }
-    // Safety: same infinite-loop guard as refresh-imminent-tag — break out
-    // if a full page keeps coming back but adds zero unique rows.
+    // Safety: cursor pagination shouldn't loop, but protect against a
+    // server-side bug where the same endCursor keeps coming back.
     if (out.length === lastSize) {
       zeroGrowthStreak++;
       if (zeroGrowthStreak >= 3) {
         logError(
-          `[Backfill] WARN: 3 consecutive pages added 0 unique rows (skip=${skip}); aborting pagination to avoid an infinite loop`
+          `[Backfill] WARN: 3 consecutive pages added 0 unique rows (after=${after}); aborting pagination to avoid an infinite loop`
         );
         break;
       }
@@ -212,7 +225,8 @@ async function fetchUnsettledPmConditions(
     }
     lastSize = out.length;
     if (!hasMore) break;
-    skip += PAGE_SIZE;
+    after = pageInfo?.endCursor ?? null;
+    if (!after) break;
   }
   return out;
 }
