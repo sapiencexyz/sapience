@@ -21,6 +21,8 @@
  * items total" UI badges without paying the offset cost.
  */
 
+import { decodeCursor } from '../../../relay/cursor';
+
 export const MAX_TAKE = 100;
 export const MAX_SKIP = 1000;
 
@@ -41,4 +43,62 @@ export const clampSkip = (
   const value = skip ?? 0;
   if (!Number.isFinite(value) || value <= 0) return 0;
   return Math.min(Math.floor(value), maxSkip);
+};
+
+export const offsetFromCursor = (cursor: string | null | undefined): number => {
+  const payload = cursor ? decodeCursor(cursor) : null;
+  const offset = payload ? Number(payload.k) : Number.NaN;
+  return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
+};
+
+type BuildConnectionArgs<TRow, TNode = TRow> = {
+  rows: readonly TRow[];
+  first: number;
+  getCursor: (row: TRow, index: number) => string;
+  getNode?: (row: TRow, index: number) => TNode;
+  totalCount: number;
+  hasPreviousPage?: boolean;
+};
+
+type ConnectionEdge<TNode> = { node: TNode; cursor: string };
+
+export const buildConnection = <TRow, TNode = TRow>({
+  rows,
+  first,
+  getCursor,
+  getNode,
+  totalCount,
+  hasPreviousPage = false,
+}: BuildConnectionArgs<TRow, TNode>): {
+  edges: ConnectionEdge<TNode>[];
+  nodes: TNode[];
+  totalCount: number;
+  pageInfo: {
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    startCursor: string | null;
+    endCursor: string | null;
+  };
+} => {
+  const hasNextPage = rows.length > first;
+  const pageRows = hasNextPage ? rows.slice(0, first) : rows;
+  const nodes = pageRows.map((row, index) =>
+    getNode ? getNode(row, index) : (row as unknown as TNode)
+  );
+  const edges = pageRows.map((row, index) => ({
+    node: nodes[index],
+    cursor: getCursor(row, index),
+  }));
+
+  return {
+    edges,
+    nodes,
+    totalCount,
+    pageInfo: {
+      hasNextPage,
+      hasPreviousPage,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges.at(-1)?.cursor ?? null,
+    },
+  };
 };

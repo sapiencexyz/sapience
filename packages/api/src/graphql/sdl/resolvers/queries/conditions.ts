@@ -31,7 +31,7 @@ import {
   OrderDirection,
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
-import { clampTake } from './pagination';
+import { buildConnection, clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
 type Where = Prisma.ConditionWhereInput;
@@ -373,25 +373,17 @@ export const conditionsConnection: NonNullable<
     prisma.condition.count({ where: filterWhere }),
   ]);
 
-  const hasNextPage = rawRows.length > cappedFirst;
-  const pageRows = hasNextPage ? rawRows.slice(0, cappedFirst) : rawRows;
-
-  const edges = pageRows.map((row) => ({
-    node: row,
-    cursor: encodeCursor({ k: readOrderKey(row, orderField), id: row.id }),
-  }));
+  const connection = buildConnection({
+    rows: rawRows,
+    first: cappedFirst,
+    totalCount,
+    getCursor: (row) =>
+      encodeCursor({ k: readOrderKey(row, orderField), id: row.id }),
+  });
 
   return {
-    items: pageRows,
-    hasMore: hasNextPage,
-    edges,
-    nodes: pageRows,
-    totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
+    items: connection.nodes,
+    hasMore: connection.pageInfo.hasNextPage,
+    ...connection,
   };
 };

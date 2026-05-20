@@ -18,8 +18,8 @@ import type {
 import { OrderDirection, TradeOrderField } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { clampSkip, clampTake } from './pagination';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
+import { clampSkip, clampTake, offsetFromCursor } from './pagination';
+import { encodeCursor } from '../../../relay/cursor';
 
 export type Trade = NonNullable<
   Awaited<ReturnType<typeof prisma.secondaryTrade.findUnique>>
@@ -191,12 +191,6 @@ const mergeTradeFilters = (args: QueryTradesConnectionArgs): RunTradesArgs => {
     orderDirection:
       args.orderBy?.direction === OrderDirection.Asc ? 'asc' : 'desc',
   };
-};
-
-const offsetFromCursor = (cursor: string | null | undefined): number => {
-  const payload = cursor ? decodeCursor(cursor) : null;
-  const offset = payload ? Number(payload.k) : Number.NaN;
-  return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
 };
 
 export const tradesConnection: NonNullable<

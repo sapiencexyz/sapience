@@ -55,18 +55,12 @@ import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
-import { clampSkip, clampTake } from './pagination';
+import { clampSkip, clampTake, offsetFromCursor } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
 export type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
 }>;
-
-const offsetFromCursor = (cursor: string | null | undefined): number => {
-  const payload = cursor ? decodeCursor(cursor) : null;
-  const offset = payload ? Number(payload.k) : Number.NaN;
-  return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
-};
 
 export const mapPrediction = (
   r: PredictionWithPickConfig
