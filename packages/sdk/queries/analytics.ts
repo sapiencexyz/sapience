@@ -49,7 +49,7 @@ export const GET_PROTOCOL_STATS = /* GraphQL */ `
 `;
 
 export const GET_VAULT_STATS = /* GraphQL */ `
-  query VaultStats($vaultAddress: String!, $from: Int, $to: Int) {
+  query VaultStats($vaultAddress: Address!, $from: Int, $to: Int) {
     vaultByAddress(address: $vaultAddress) {
       stats(filter: { timestamp: { gte: $from, lte: $to } }) {
         nodes {
@@ -130,7 +130,9 @@ export async function fetchOpenInterestByCategory(): Promise<
   CategoryOpenInterest[]
 > {
   const data = await graphqlRequest<{
-    protocol?: { openInterestByCategory?: CategoryOpenInterest[] | null } | null;
+    protocol?: {
+      openInterestByCategory?: CategoryOpenInterest[] | null;
+    } | null;
   }>(GET_OPEN_INTEREST_BY_CATEGORY);
   return data?.protocol?.openInterestByCategory ?? [];
 }
