@@ -30,7 +30,7 @@ import InfiniteScrollFooter from '~/components/shared/InfiniteScrollFooter';
 import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketBadge from '~/components/markets/MarketBadge';
-import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
+import type { FormattedForecast } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
 import ShareDialog from '~/components/shared/ShareDialog';
 import { formatPercentChance } from '~/lib/format/percentChance';
@@ -47,7 +47,7 @@ import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import ConditionStatus from '~/components/shared/ConditionStatus';
 
 interface ForecastsTableProps {
-  attesterAddress: string;
+  forecasterAddress: string;
   leftSlot?: React.ReactNode;
   /** Grow the empty/loading panel via `flex-1` to fill the parent.
    *  Caller is responsible for the flex ancestor chain (page wrapper
@@ -82,7 +82,7 @@ const getCategoryColor = (categorySlug?: string | null): string => {
 const renderSubmittedCell = ({
   row,
 }: {
-  row: { original: FormattedAttestation };
+  row: { original: FormattedForecast };
 }) => {
   const createdDate = new Date(Number(row.original.rawTime) * 1000);
   const createdDisplay = formatDistanceToNow(createdDate, {
@@ -120,7 +120,7 @@ const renderSubmittedCell = ({
 const renderPredictionCell = ({
   row,
 }: {
-  row: { original: FormattedAttestation };
+  row: { original: FormattedForecast };
 }) => {
   const { value } = row.original; // D18 format: percentage * 10^18
 
@@ -147,7 +147,7 @@ const renderQuestionCell = ({
   conditionsMap,
   isConditionsLoading,
 }: {
-  row: { original: FormattedAttestation };
+  row: { original: FormattedForecast };
   conditionsMap?: Record<string, ConditionData>;
   isConditionsLoading: boolean;
 }) => {
@@ -210,7 +210,7 @@ const renderQuestionCell = ({
 };
 
 const ForecastsTable = ({
-  attesterAddress,
+  forecasterAddress,
   leftSlot,
   fill = false,
 }: ForecastsTableProps) => {
@@ -225,9 +225,9 @@ const ForecastsTable = ({
   // Pagination & sorting state
   const ITEMS_PER_PAGE = 20;
   const [after, setAfter] = React.useState<string | null>(null);
-  const [allLoadedData, setAllLoadedData] = React.useState<
-    FormattedAttestation[]
-  >([]);
+  const [allLoadedData, setAllLoadedData] = React.useState<FormattedForecast[]>(
+    []
+  );
   const [hasMore, setHasMore] = React.useState(true);
 
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -252,11 +252,11 @@ const ForecastsTable = ({
     setAllLoadedData([]);
     setHasMore(true);
     processedRef.current = null;
-  }, [sorting, attesterAddress]);
+  }, [sorting, forecasterAddress]);
 
   // Fetch data with Relay cursor pagination
   const { data: rawData, isLoading } = useUserForecasts({
-    attesterAddress,
+    forecasterAddress,
     schemaId: SCHEMA_UID,
     take: ITEMS_PER_PAGE,
     after,
@@ -367,7 +367,7 @@ const ForecastsTable = ({
     },
   });
 
-  const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
+  const columns: ColumnDef<FormattedForecast>[] = React.useMemo(
     () => [
       {
         id: 'question',
@@ -961,7 +961,7 @@ const ForecastsTable = ({
             <ShareDialog
               title="Share Forecast"
               question={questionText}
-              owner={att.attester}
+              owner={att.forecaster}
               imagePath="/og/forecast"
               forecastUid={att.uid}
               extraParams={{

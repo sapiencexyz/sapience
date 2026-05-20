@@ -53,15 +53,15 @@ const config: CodegenConfig = {
         // Map each model-backed GraphQL type to its Prisma row at
         // the resolver-parent level. This lets us return `prisma.x
         // .findMany()` rows directly without TS complaining that
-        // relation fields (attestations, predictions, conditions,
+        // relation fields (forecasts, predictions, conditions,
         // etc.) are missing — those are filled by field resolvers at
         // runtime.
         mappers: {
           Account: '../../../../generated/prisma#User as PrismaUserRow',
-          Attestation:
-            '../../../../generated/prisma#Attestation as PrismaAttestationRow',
-          AttestationScore:
-            '../../../../generated/prisma#AttestationScore as PrismaAttestationScoreRow',
+          Forecast:
+            '../../../../generated/prisma#Attestation as PrismaForecastRow',
+          ForecastScore:
+            '../../../../generated/prisma#AttestationScore as PrismaForecastScoreRow',
           Category:
             '../../../../generated/prisma#Category as PrismaCategoryRow',
           Condition:

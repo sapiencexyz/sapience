@@ -1,3 +1,13 @@
+/**
+ * Forecast model resolvers. Backed by the Prisma `attestation` table
+ * (table name kept for DB compatibility); the public GraphQL surface
+ * uses the `Forecast` / `forecaster` / `attestedAt` naming.
+ *
+ * `condition` rides the existing `conditionById` DataLoader. The legacy
+ * `where: ConditionWhereInput` arg is vestigial — when present, fall
+ * through to the per-row path to preserve filter semantics.
+ */
+
 import type { ForecastResolvers } from '../__generated__/resolvers';
 import { loadRelation } from './relationHelpers';
 

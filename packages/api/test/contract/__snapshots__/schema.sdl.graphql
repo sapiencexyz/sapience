@@ -129,9 +129,10 @@ type ActivityTrade {
   txHash: String!
 }
 
-type Attestation {
-  attestationScore(where: AttestationScoreWhereInput): AttestationScore
-  attester: String!
+"""Public Forecast surface backed by EAS attestation rows."""
+type Forecast {
+  forecastScore(where: ForecastScoreWhereInput): ForecastScore
+  forecaster: String!
   blockNumber: Int!
   comment: String
   condition(where: ConditionWhereInput): Condition
@@ -145,41 +146,9 @@ type Attestation {
   Raw forecast value as recorded on-chain — the `uint256 forecast` field
   on the EAS attestation schema, returned as a decimal string in D18
   fixed-point representing a probability in `[0, 1e18]`. For the
-  canonical normalized probability use `Attestation.attestationScore.probabilityFloat`
-  (0–1 float) or `Attestation.attestationScore.probabilityD18`
+  canonical normalized probability use `Forecast.forecastScore.probabilityFloat`
+  (0–1 float) or `Forecast.forecastScore.probabilityD18`
   (18-decimal fixed-point string).
-  """
-  forecast: String!
-  recipient: String!
-  resolver: String
-  schemaId: String!
-
-  """
-  When the attestation was made on-chain. Replaces the legacy `time`
-  field — same value, the new name follows the `*At` event-timestamp
-  convention used elsewhere in the schema.
-  """
-  attestedAt: UnixSeconds!
-  time: Int! @deprecated(reason: "Use `attestedAt` — same value, name follows the `*At` event-timestamp convention.")
-  transactionHash: String!
-  uid: String!
-}
-
-"""Public Forecast surface backed by EAS attestation rows."""
-type Forecast {
-  forecastScore(where: AttestationScoreWhereInput): AttestationScore
-  forecaster: String!
-  blockNumber: Int!
-  comment: String
-  condition(where: ConditionWhereInput): Condition
-  conditionId: String
-  createdAt: DateTimeISO!
-  data: String!
-  decodedDataJson: String!
-  id: Int!
-
-  """
-  Raw forecast value as recorded on-chain, returned as a decimal string in D18.
   """
   forecast: String!
   recipient: String!
@@ -192,63 +161,25 @@ type Forecast {
   uid: String!
 }
 
-input AttestationListRelationFilter {
-  every: AttestationWhereInput
-  none: AttestationWhereInput
-  some: AttestationWhereInput
+input ForecastListRelationFilter {
+  every: ForecastWhereInput
+  none: ForecastWhereInput
+  some: ForecastWhereInput
 }
 
-input AttestationOrderByRelationAggregateInput {
+input ForecastOrderByRelationAggregateInput {
   _count: SortOrder
 }
 
-input AttestationOrderByWithRelationInput {
-  attestationScore: AttestationScoreOrderByWithRelationInput
-  attester: SortOrder
-  blockNumber: SortOrder
-  comment: SortOrderInput
-  condition: ConditionOrderByWithRelationInput
-  conditionId: SortOrderInput
-  createdAt: SortOrder
-  data: SortOrder
-  decodedDataJson: SortOrder
-  id: SortOrder
-  forecast: SortOrder
-  recipient: SortOrder
-  resolver: SortOrderInput
-  schemaId: SortOrder
-  time: SortOrder
-  transactionHash: SortOrder
-  uid: SortOrder
+input ForecastRelationFilter {
+  is: ForecastWhereInput
+  isNot: ForecastWhereInput
 }
 
-input AttestationRelationFilter {
-  is: AttestationWhereInput
-  isNot: AttestationWhereInput
-}
-
-enum AttestationScalarFieldEnum {
-  attester
-  blockNumber
-  comment
-  conditionId
-  createdAt
-  data
-  decodedDataJson
-  id
-  forecast
-  recipient
-  resolver
-  schemaId
-  time
-  transactionHash
-  uid
-}
-
-type AttestationScore {
-  attestation: Attestation!
-  attestationId: Int!
-  attester: String!
+type ForecastScore {
+  forecast: Forecast!
+  forecastId: Int!
+  forecaster: String!
   createdAt: DateTimeISO!
   errorSquared: Float
   id: Int!
@@ -264,37 +195,18 @@ type AttestationScore {
   used: Boolean!
 }
 
-input AttestationScoreNullableRelationFilter {
-  is: AttestationScoreWhereInput
-  isNot: AttestationScoreWhereInput
+input ForecastScoreNullableRelationFilter {
+  is: ForecastScoreWhereInput
+  isNot: ForecastScoreWhereInput
 }
 
-input AttestationScoreOrderByWithRelationInput {
-  attestation: AttestationOrderByWithRelationInput
-  attestationId: SortOrder
-  attester: SortOrder
-  createdAt: SortOrder
-  errorSquared: SortOrderInput
-  id: SortOrder
-  madeAt: SortOrder
-  marketAddress: SortOrderInput
-  marketId: SortOrderInput
-  outcome: SortOrderInput
-  probabilityD18: SortOrderInput
-  probabilityFloat: SortOrderInput
-  questionId: SortOrderInput
-  resolver: SortOrderInput
-  scoredAt: SortOrderInput
-  used: SortOrder
-}
-
-input AttestationScoreWhereInput {
-  AND: [AttestationScoreWhereInput!]
-  NOT: [AttestationScoreWhereInput!]
-  OR: [AttestationScoreWhereInput!]
-  attestation: AttestationRelationFilter
-  attestationId: IntFilter
-  attester: StringFilter
+input ForecastScoreWhereInput {
+  AND: [ForecastScoreWhereInput!]
+  NOT: [ForecastScoreWhereInput!]
+  OR: [ForecastScoreWhereInput!]
+  forecast: ForecastRelationFilter
+  forecastId: IntFilter
+  forecaster: StringFilter
   createdAt: DateTimeFilter
   errorSquared: FloatNullableFilter
   id: IntFilter
@@ -310,12 +222,12 @@ input AttestationScoreWhereInput {
   used: BoolFilter
 }
 
-input AttestationWhereInput {
-  AND: [AttestationWhereInput!]
-  NOT: [AttestationWhereInput!]
-  OR: [AttestationWhereInput!]
-  attestationScore: AttestationScoreNullableRelationFilter
-  attester: StringFilter
+input ForecastWhereInput {
+  AND: [ForecastWhereInput!]
+  NOT: [ForecastWhereInput!]
+  OR: [ForecastWhereInput!]
+  forecastScore: ForecastScoreNullableRelationFilter
+  forecaster: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
   condition: ConditionNullableRelationFilter
@@ -328,32 +240,9 @@ input AttestationWhereInput {
   recipient: StringFilter
   resolver: StringNullableFilter
   schemaId: StringFilter
-  time: IntFilter
+  attestedAt: IntFilter
   transactionHash: StringFilter
   uid: StringFilter
-}
-
-input AttestationWhereUniqueInput {
-  AND: [AttestationWhereInput!]
-  NOT: [AttestationWhereInput!]
-  OR: [AttestationWhereInput!]
-  attestationScore: AttestationScoreNullableRelationFilter
-  attester: StringFilter
-  blockNumber: IntFilter
-  comment: StringNullableFilter
-  condition: ConditionNullableRelationFilter
-  conditionId: StringNullableFilter
-  createdAt: DateTimeFilter
-  data: StringFilter
-  decodedDataJson: StringFilter
-  id: Int
-  forecast: StringFilter
-  recipient: StringFilter
-  resolver: StringNullableFilter
-  schemaId: StringFilter
-  time: IntFilter
-  transactionHash: StringFilter
-  uid: String
 }
 
 """
@@ -728,7 +617,6 @@ type Condition {
   _count: ConditionCount
   assertionId: String
   assertionTimestamp: UnixSeconds
-  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   category(where: CategoryWhereInput): Category
   categoryId: Int
   chainId: Int!
@@ -791,7 +679,7 @@ type Condition {
 }
 
 type ConditionCount {
-  attestations(where: AttestationWhereInput): Int!
+  forecasts(where: ForecastWhereInput): Int!
 }
 
 """
@@ -954,7 +842,7 @@ input ConditionOrderByRelationAggregateInput {
 input ConditionOrderByWithRelationInput {
   assertionId: SortOrderInput
   assertionTimestamp: SortOrderInput
-  attestations: AttestationOrderByRelationAggregateInput
+  forecasts: ForecastOrderByRelationAggregateInput
   category: CategoryOrderByWithRelationInput
   categoryId: SortOrderInput
   chainId: SortOrder
@@ -1039,7 +927,7 @@ input ConditionWhereInput {
   OR: [ConditionWhereInput!]
   assertionId: StringNullableFilter
   assertionTimestamp: IntNullableFilter
-  attestations: AttestationListRelationFilter
+  forecasts: ForecastListRelationFilter
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
@@ -1082,7 +970,7 @@ input ConditionWhereUniqueInput {
   OR: [ConditionWhereInput!]
   assertionId: StringNullableFilter
   assertionTimestamp: IntNullableFilter
-  attestations: AttestationListRelationFilter
+  forecasts: ForecastListRelationFilter
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
@@ -1196,7 +1084,7 @@ input FloatNullableFilter {
 
 """
 One row of the accuracy leaderboard — an address with its lifetime
-accuracy score aggregated across every scored attestation. Parallel
+accuracy score aggregated across every scored forecast. Parallel
 to `AccountStatsLeaderboardEntry`.
 """
 type AccountAccuracyLeaderboardEntry {
@@ -1849,14 +1737,14 @@ enum ConditionVisibility {
 
 """
 Engagement status for a Condition. A condition has "engagement" if it
-has non-zero open interest OR at least one attestation. Used by
+has non-zero open interest OR at least one forecast. Used by
 cleanup workflows to find dead markets and recheck them.
 """
 enum ConditionEngagement {
-  """`openInterest = 0` AND no attestations."""
+  """`openInterest = 0` AND no forecasts."""
   NONE
 
-  """`openInterest != 0` OR at least one attestation."""
+  """`openInterest != 0` OR at least one forecast."""
   ANY
 }
 
@@ -2016,7 +1904,7 @@ input ConditionFilter {
   """Restrict to conditions that have a non-empty similarMarkets array."""
   hasSimilarMarkets: Boolean
 
-  """Engagement status based on open interest or attestations."""
+  """Engagement status based on open interest or forecasts."""
   engagement: ConditionEngagement
 
   """
@@ -2789,7 +2677,7 @@ input ForecastFilter {
   schemaId: String
 
   """
-  Filter by attestation epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  Filter by forecast epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
   """
   attestedAt: IntFilter
 }
@@ -2860,7 +2748,7 @@ type Query {
 
   """
   Lifetime accuracy score for a single address, or null if no scored
-  attestations exist.
+  forecasts exist.
   """
   accountAccuracy(address: String!): ForecasterScore @deprecated(reason: "Use `accountAccuracyRank` for the rank-and-score shape, or `accuracyLeaderboardPage` for the leaderboard. `ForecasterScore`'s legacy counter fields (numScored, sumErrorSquared, …) were always returned as zeros.")
 
@@ -2979,14 +2867,12 @@ type Query {
   unconditionally (cheap in-memory derivation).
   """
   accuracyLeaderboardPage(take: Int! = 25, skip: Int! = 0): AccountAccuracyLeaderboardPage! @deprecated(reason: "Use `leaderboard(metric: ACCURACY, first:, after:)` — Relay-shaped pagination over the same ranked set.")
-  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]! @deprecated(reason: "Use `forecastsConnection` — purpose-built filters (forecaster, conditionId, schemaId, recipient, time range), paginated with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`.")
 
   """
   Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
   
   Note: this field will be renamed to drop the `Connection` suffix
-  (→ `forecasts`) in a subsequent migration, once the deprecated
-  `attestations` sibling above is removed.
+  (→ `forecasts`) in a subsequent migration.
   """
   forecastsConnection(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories.")

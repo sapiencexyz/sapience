@@ -170,7 +170,7 @@ export type AccountTradesArgs = {
 
 /**
  * One row of the accuracy leaderboard — an address with its lifetime
- * accuracy score aggregated across every scored attestation. Parallel
+ * accuracy score aggregated across every scored forecast. Parallel
  * to `AccountStatsLeaderboardEntry`.
  */
 export type AccountAccuracyLeaderboardEntry = {
@@ -560,216 +560,6 @@ export type ActivityType =
   | 'PREDICTION'
   | 'TRADE';
 
-export type Attestation = {
-  __typename?: 'Attestation';
-  attestationScore?: Maybe<AttestationScore>;
-  /**
-   * When the attestation was made on-chain. Replaces the legacy `time`
-   * field — same value, the new name follows the `*At` event-timestamp
-   * convention used elsewhere in the schema.
-   */
-  attestedAt: Scalars['UnixSeconds']['output'];
-  attester: Scalars['String']['output'];
-  blockNumber: Scalars['Int']['output'];
-  comment?: Maybe<Scalars['String']['output']>;
-  condition?: Maybe<Condition>;
-  conditionId?: Maybe<Scalars['String']['output']>;
-  createdAt: Scalars['DateTimeISO']['output'];
-  data: Scalars['String']['output'];
-  decodedDataJson: Scalars['String']['output'];
-  /**
-   * Raw forecast value as recorded on-chain — the `uint256 forecast` field
-   * on the EAS attestation schema, returned as a decimal string in D18
-   * fixed-point representing a probability in `[0, 1e18]`. For the
-   * canonical normalized probability use `Attestation.attestationScore.probabilityFloat`
-   * (0–1 float) or `Attestation.attestationScore.probabilityD18`
-   * (18-decimal fixed-point string).
-   */
-  forecast: Scalars['String']['output'];
-  id: Scalars['Int']['output'];
-  recipient: Scalars['String']['output'];
-  resolver?: Maybe<Scalars['String']['output']>;
-  schemaId: Scalars['String']['output'];
-  /** @deprecated Use `attestedAt` — same value, name follows the `*At` event-timestamp convention. */
-  time: Scalars['Int']['output'];
-  transactionHash: Scalars['String']['output'];
-  uid: Scalars['String']['output'];
-};
-
-
-export type AttestationAttestationScoreArgs = {
-  where?: InputMaybe<AttestationScoreWhereInput>;
-};
-
-
-export type AttestationConditionArgs = {
-  where?: InputMaybe<ConditionWhereInput>;
-};
-
-export type AttestationListRelationFilter = {
-  every?: InputMaybe<AttestationWhereInput>;
-  none?: InputMaybe<AttestationWhereInput>;
-  some?: InputMaybe<AttestationWhereInput>;
-};
-
-export type AttestationOrderByRelationAggregateInput = {
-  _count?: InputMaybe<SortOrder>;
-};
-
-export type AttestationOrderByWithRelationInput = {
-  attestationScore?: InputMaybe<AttestationScoreOrderByWithRelationInput>;
-  attester?: InputMaybe<SortOrder>;
-  blockNumber?: InputMaybe<SortOrder>;
-  comment?: InputMaybe<SortOrderInput>;
-  condition?: InputMaybe<ConditionOrderByWithRelationInput>;
-  conditionId?: InputMaybe<SortOrderInput>;
-  createdAt?: InputMaybe<SortOrder>;
-  data?: InputMaybe<SortOrder>;
-  decodedDataJson?: InputMaybe<SortOrder>;
-  forecast?: InputMaybe<SortOrder>;
-  id?: InputMaybe<SortOrder>;
-  recipient?: InputMaybe<SortOrder>;
-  resolver?: InputMaybe<SortOrderInput>;
-  schemaId?: InputMaybe<SortOrder>;
-  time?: InputMaybe<SortOrder>;
-  transactionHash?: InputMaybe<SortOrder>;
-  uid?: InputMaybe<SortOrder>;
-};
-
-export type AttestationRelationFilter = {
-  is?: InputMaybe<AttestationWhereInput>;
-  isNot?: InputMaybe<AttestationWhereInput>;
-};
-
-export type AttestationScalarFieldEnum =
-  | 'attester'
-  | 'blockNumber'
-  | 'comment'
-  | 'conditionId'
-  | 'createdAt'
-  | 'data'
-  | 'decodedDataJson'
-  | 'forecast'
-  | 'id'
-  | 'recipient'
-  | 'resolver'
-  | 'schemaId'
-  | 'time'
-  | 'transactionHash'
-  | 'uid';
-
-export type AttestationScore = {
-  __typename?: 'AttestationScore';
-  attestation: Attestation;
-  attestationId: Scalars['Int']['output'];
-  attester: Scalars['String']['output'];
-  createdAt: Scalars['DateTimeISO']['output'];
-  errorSquared?: Maybe<Scalars['Float']['output']>;
-  id: Scalars['Int']['output'];
-  madeAt: Scalars['UnixSeconds']['output'];
-  marketAddress?: Maybe<Scalars['String']['output']>;
-  marketId?: Maybe<Scalars['String']['output']>;
-  outcome?: Maybe<Scalars['Int']['output']>;
-  probabilityD18?: Maybe<Scalars['String']['output']>;
-  probabilityFloat?: Maybe<Scalars['Float']['output']>;
-  questionId?: Maybe<Scalars['String']['output']>;
-  resolver?: Maybe<Scalars['String']['output']>;
-  scoredAt?: Maybe<Scalars['DateTimeISO']['output']>;
-  used: Scalars['Boolean']['output'];
-};
-
-export type AttestationScoreNullableRelationFilter = {
-  is?: InputMaybe<AttestationScoreWhereInput>;
-  isNot?: InputMaybe<AttestationScoreWhereInput>;
-};
-
-export type AttestationScoreOrderByWithRelationInput = {
-  attestation?: InputMaybe<AttestationOrderByWithRelationInput>;
-  attestationId?: InputMaybe<SortOrder>;
-  attester?: InputMaybe<SortOrder>;
-  createdAt?: InputMaybe<SortOrder>;
-  errorSquared?: InputMaybe<SortOrderInput>;
-  id?: InputMaybe<SortOrder>;
-  madeAt?: InputMaybe<SortOrder>;
-  marketAddress?: InputMaybe<SortOrderInput>;
-  marketId?: InputMaybe<SortOrderInput>;
-  outcome?: InputMaybe<SortOrderInput>;
-  probabilityD18?: InputMaybe<SortOrderInput>;
-  probabilityFloat?: InputMaybe<SortOrderInput>;
-  questionId?: InputMaybe<SortOrderInput>;
-  resolver?: InputMaybe<SortOrderInput>;
-  scoredAt?: InputMaybe<SortOrderInput>;
-  used?: InputMaybe<SortOrder>;
-};
-
-export type AttestationScoreWhereInput = {
-  AND?: InputMaybe<Array<AttestationScoreWhereInput>>;
-  NOT?: InputMaybe<Array<AttestationScoreWhereInput>>;
-  OR?: InputMaybe<Array<AttestationScoreWhereInput>>;
-  attestation?: InputMaybe<AttestationRelationFilter>;
-  attestationId?: InputMaybe<IntFilter>;
-  attester?: InputMaybe<StringFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  errorSquared?: InputMaybe<FloatNullableFilter>;
-  id?: InputMaybe<IntFilter>;
-  madeAt?: InputMaybe<IntFilter>;
-  marketAddress?: InputMaybe<StringNullableFilter>;
-  marketId?: InputMaybe<StringNullableFilter>;
-  outcome?: InputMaybe<IntNullableFilter>;
-  probabilityD18?: InputMaybe<StringNullableFilter>;
-  probabilityFloat?: InputMaybe<FloatNullableFilter>;
-  questionId?: InputMaybe<StringNullableFilter>;
-  resolver?: InputMaybe<StringNullableFilter>;
-  scoredAt?: InputMaybe<DateTimeNullableFilter>;
-  used?: InputMaybe<BoolFilter>;
-};
-
-export type AttestationWhereInput = {
-  AND?: InputMaybe<Array<AttestationWhereInput>>;
-  NOT?: InputMaybe<Array<AttestationWhereInput>>;
-  OR?: InputMaybe<Array<AttestationWhereInput>>;
-  attestationScore?: InputMaybe<AttestationScoreNullableRelationFilter>;
-  attester?: InputMaybe<StringFilter>;
-  blockNumber?: InputMaybe<IntFilter>;
-  comment?: InputMaybe<StringNullableFilter>;
-  condition?: InputMaybe<ConditionNullableRelationFilter>;
-  conditionId?: InputMaybe<StringNullableFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  data?: InputMaybe<StringFilter>;
-  decodedDataJson?: InputMaybe<StringFilter>;
-  forecast?: InputMaybe<StringFilter>;
-  id?: InputMaybe<IntFilter>;
-  recipient?: InputMaybe<StringFilter>;
-  resolver?: InputMaybe<StringNullableFilter>;
-  schemaId?: InputMaybe<StringFilter>;
-  time?: InputMaybe<IntFilter>;
-  transactionHash?: InputMaybe<StringFilter>;
-  uid?: InputMaybe<StringFilter>;
-};
-
-export type AttestationWhereUniqueInput = {
-  AND?: InputMaybe<Array<AttestationWhereInput>>;
-  NOT?: InputMaybe<Array<AttestationWhereInput>>;
-  OR?: InputMaybe<Array<AttestationWhereInput>>;
-  attestationScore?: InputMaybe<AttestationScoreNullableRelationFilter>;
-  attester?: InputMaybe<StringFilter>;
-  blockNumber?: InputMaybe<IntFilter>;
-  comment?: InputMaybe<StringNullableFilter>;
-  condition?: InputMaybe<ConditionNullableRelationFilter>;
-  conditionId?: InputMaybe<StringNullableFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  data?: InputMaybe<StringFilter>;
-  decodedDataJson?: InputMaybe<StringFilter>;
-  forecast?: InputMaybe<StringFilter>;
-  id?: InputMaybe<Scalars['Int']['input']>;
-  recipient?: InputMaybe<StringFilter>;
-  resolver?: InputMaybe<StringNullableFilter>;
-  schemaId?: InputMaybe<StringFilter>;
-  time?: InputMaybe<IntFilter>;
-  transactionHash?: InputMaybe<StringFilter>;
-  uid?: InputMaybe<Scalars['String']['input']>;
-};
-
 /** Time-bucketed collateral-balance data point (legacy). */
 export type BalanceDataPoint = {
   __typename?: 'BalanceDataPoint';
@@ -1040,7 +830,6 @@ export type Condition = {
   _count?: Maybe<ConditionCount>;
   assertionId?: Maybe<Scalars['String']['output']>;
   assertionTimestamp?: Maybe<Scalars['UnixSeconds']['output']>;
-  attestations: Array<Attestation>;
   category?: Maybe<Category>;
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId: Scalars['Int']['output'];
@@ -1097,16 +886,6 @@ export type Condition = {
 };
 
 
-export type ConditionAttestationsArgs = {
-  cursor?: InputMaybe<AttestationWhereUniqueInput>;
-  distinct?: InputMaybe<Array<AttestationScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<AttestationOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<AttestationWhereInput>;
-};
-
-
 export type ConditionCategoryArgs = {
   where?: InputMaybe<CategoryWhereInput>;
 };
@@ -1155,12 +934,12 @@ export type ConditionConnection = {
 
 export type ConditionCount = {
   __typename?: 'ConditionCount';
-  attestations: Scalars['Int']['output'];
+  forecasts: Scalars['Int']['output'];
 };
 
 
-export type ConditionCountAttestationsArgs = {
-  where?: InputMaybe<AttestationWhereInput>;
+export type ConditionCountForecastsArgs = {
+  where?: InputMaybe<ForecastWhereInput>;
 };
 
 /** Cursor-bearing edge for `ConditionConnection`. */
@@ -1172,13 +951,13 @@ export type ConditionEdge = {
 
 /**
  * Engagement status for a Condition. A condition has "engagement" if it
- * has non-zero open interest OR at least one attestation. Used by
+ * has non-zero open interest OR at least one forecast. Used by
  * cleanup workflows to find dead markets and recheck them.
  */
 export type ConditionEngagement =
-  /** `openInterest != 0` OR at least one attestation. */
+  /** `openInterest != 0` OR at least one forecast. */
   | 'ANY'
-  /** `openInterest = 0` AND no attestations. */
+  /** `openInterest = 0` AND no forecasts. */
   | 'NONE';
 
 /**
@@ -1200,7 +979,7 @@ export type ConditionFilter = {
   contractAddress?: InputMaybe<Scalars['String']['input']>;
   /** Match any on-chain contract address stored in the DB `resolver` column (case-insensitive). */
   contractAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Engagement status based on open interest or attestations. */
+  /** Engagement status based on open interest or forecasts. */
   engagement?: InputMaybe<ConditionEngagement>;
   /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
   estimatedPrice?: InputMaybe<FloatFilter>;
@@ -1570,7 +1349,6 @@ export type ConditionOrderByRelationAggregateInput = {
 export type ConditionOrderByWithRelationInput = {
   assertionId?: InputMaybe<SortOrderInput>;
   assertionTimestamp?: InputMaybe<SortOrderInput>;
-  attestations?: InputMaybe<AttestationOrderByRelationAggregateInput>;
   category?: InputMaybe<CategoryOrderByWithRelationInput>;
   categoryId?: InputMaybe<SortOrderInput>;
   chainId?: InputMaybe<SortOrder>;
@@ -1581,6 +1359,7 @@ export type ConditionOrderByWithRelationInput = {
   displayOrder?: InputMaybe<SortOrderInput>;
   endTime?: InputMaybe<SortOrder>;
   estimatedPrice?: InputMaybe<SortOrderInput>;
+  forecasts?: InputMaybe<ForecastOrderByRelationAggregateInput>;
   id?: InputMaybe<SortOrder>;
   nonDecisive?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
@@ -1720,7 +1499,6 @@ export type ConditionWhereInput = {
   OR?: InputMaybe<Array<ConditionWhereInput>>;
   assertionId?: InputMaybe<StringNullableFilter>;
   assertionTimestamp?: InputMaybe<IntNullableFilter>;
-  attestations?: InputMaybe<AttestationListRelationFilter>;
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
@@ -1731,6 +1509,7 @@ export type ConditionWhereInput = {
   displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
   estimatedPrice?: InputMaybe<FloatNullableFilter>;
+  forecasts?: InputMaybe<ForecastListRelationFilter>;
   id?: InputMaybe<StringFilter>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
@@ -1763,7 +1542,6 @@ export type ConditionWhereUniqueInput = {
   OR?: InputMaybe<Array<ConditionWhereInput>>;
   assertionId?: InputMaybe<StringNullableFilter>;
   assertionTimestamp?: InputMaybe<IntNullableFilter>;
-  attestations?: InputMaybe<AttestationListRelationFilter>;
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
@@ -1774,6 +1552,7 @@ export type ConditionWhereUniqueInput = {
   displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
   estimatedPrice?: InputMaybe<FloatNullableFilter>;
+  forecasts?: InputMaybe<ForecastListRelationFilter>;
   id?: InputMaybe<Scalars['String']['input']>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
@@ -1867,9 +1646,16 @@ export type Forecast = {
   createdAt: Scalars['DateTimeISO']['output'];
   data: Scalars['String']['output'];
   decodedDataJson: Scalars['String']['output'];
-  /** Raw forecast value as recorded on-chain, returned as a decimal string in D18. */
+  /**
+   * Raw forecast value as recorded on-chain — the `uint256 forecast` field
+   * on the EAS attestation schema, returned as a decimal string in D18
+   * fixed-point representing a probability in `[0, 1e18]`. For the
+   * canonical normalized probability use `Forecast.forecastScore.probabilityFloat`
+   * (0–1 float) or `Forecast.forecastScore.probabilityD18`
+   * (18-decimal fixed-point string).
+   */
   forecast: Scalars['String']['output'];
-  forecastScore?: Maybe<AttestationScore>;
+  forecastScore?: Maybe<ForecastScore>;
   forecaster: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   recipient: Scalars['String']['output'];
@@ -1888,7 +1674,7 @@ export type ForecastConditionArgs = {
 
 /** Public Forecast surface backed by EAS attestation rows. */
 export type ForecastForecastScoreArgs = {
-  where?: InputMaybe<AttestationScoreWhereInput>;
+  where?: InputMaybe<ForecastScoreWhereInput>;
 };
 
 /** Relay-shaped connection over `Forecast` rows. */
@@ -1912,7 +1698,7 @@ export type ForecastEdge = {
  * values combine with AND.
  */
 export type ForecastFilter = {
-  /** Filter by attestation epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  /** Filter by forecast epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
   attestedAt?: InputMaybe<IntFilter>;
   /** Restrict to forecasts on a single condition. */
   conditionId?: InputMaybe<Scalars['String']['input']>;
@@ -1931,16 +1717,101 @@ export type ForecastFilter = {
   uid?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type ForecastListRelationFilter = {
+  every?: InputMaybe<ForecastWhereInput>;
+  none?: InputMaybe<ForecastWhereInput>;
+  some?: InputMaybe<ForecastWhereInput>;
+};
+
 /** Order input for `forecastsConnection`. */
 export type ForecastOrder = {
   direction: OrderDirection;
   field: ForecastOrderField;
 };
 
+export type ForecastOrderByRelationAggregateInput = {
+  _count?: InputMaybe<SortOrder>;
+};
+
 /** Sort fields for `forecastsConnection`. */
 export type ForecastOrderField =
   | 'ATTESTED_AT'
   | 'CREATED_AT';
+
+export type ForecastRelationFilter = {
+  is?: InputMaybe<ForecastWhereInput>;
+  isNot?: InputMaybe<ForecastWhereInput>;
+};
+
+export type ForecastScore = {
+  __typename?: 'ForecastScore';
+  createdAt: Scalars['DateTimeISO']['output'];
+  errorSquared?: Maybe<Scalars['Float']['output']>;
+  forecast: Forecast;
+  forecastId: Scalars['Int']['output'];
+  forecaster: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  madeAt: Scalars['UnixSeconds']['output'];
+  marketAddress?: Maybe<Scalars['String']['output']>;
+  marketId?: Maybe<Scalars['String']['output']>;
+  outcome?: Maybe<Scalars['Int']['output']>;
+  probabilityD18?: Maybe<Scalars['String']['output']>;
+  probabilityFloat?: Maybe<Scalars['Float']['output']>;
+  questionId?: Maybe<Scalars['String']['output']>;
+  resolver?: Maybe<Scalars['String']['output']>;
+  scoredAt?: Maybe<Scalars['DateTimeISO']['output']>;
+  used: Scalars['Boolean']['output'];
+};
+
+export type ForecastScoreNullableRelationFilter = {
+  is?: InputMaybe<ForecastScoreWhereInput>;
+  isNot?: InputMaybe<ForecastScoreWhereInput>;
+};
+
+export type ForecastScoreWhereInput = {
+  AND?: InputMaybe<Array<ForecastScoreWhereInput>>;
+  NOT?: InputMaybe<Array<ForecastScoreWhereInput>>;
+  OR?: InputMaybe<Array<ForecastScoreWhereInput>>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  errorSquared?: InputMaybe<FloatNullableFilter>;
+  forecast?: InputMaybe<ForecastRelationFilter>;
+  forecastId?: InputMaybe<IntFilter>;
+  forecaster?: InputMaybe<StringFilter>;
+  id?: InputMaybe<IntFilter>;
+  madeAt?: InputMaybe<IntFilter>;
+  marketAddress?: InputMaybe<StringNullableFilter>;
+  marketId?: InputMaybe<StringNullableFilter>;
+  outcome?: InputMaybe<IntNullableFilter>;
+  probabilityD18?: InputMaybe<StringNullableFilter>;
+  probabilityFloat?: InputMaybe<FloatNullableFilter>;
+  questionId?: InputMaybe<StringNullableFilter>;
+  resolver?: InputMaybe<StringNullableFilter>;
+  scoredAt?: InputMaybe<DateTimeNullableFilter>;
+  used?: InputMaybe<BoolFilter>;
+};
+
+export type ForecastWhereInput = {
+  AND?: InputMaybe<Array<ForecastWhereInput>>;
+  NOT?: InputMaybe<Array<ForecastWhereInput>>;
+  OR?: InputMaybe<Array<ForecastWhereInput>>;
+  attestedAt?: InputMaybe<IntFilter>;
+  blockNumber?: InputMaybe<IntFilter>;
+  comment?: InputMaybe<StringNullableFilter>;
+  condition?: InputMaybe<ConditionNullableRelationFilter>;
+  conditionId?: InputMaybe<StringNullableFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  data?: InputMaybe<StringFilter>;
+  decodedDataJson?: InputMaybe<StringFilter>;
+  forecast?: InputMaybe<StringFilter>;
+  forecastScore?: InputMaybe<ForecastScoreNullableRelationFilter>;
+  forecaster?: InputMaybe<StringFilter>;
+  id?: InputMaybe<IntFilter>;
+  recipient?: InputMaybe<StringFilter>;
+  resolver?: InputMaybe<StringNullableFilter>;
+  schemaId?: InputMaybe<StringFilter>;
+  transactionHash?: InputMaybe<StringFilter>;
+  uid?: InputMaybe<StringFilter>;
+};
 
 /**
  * DEPRECATED — kept only as the return type of `accountAccuracy`, which is
@@ -2664,7 +2535,7 @@ export type Query = {
   account?: Maybe<Account>;
   /**
    * Lifetime accuracy score for a single address, or null if no scored
-   * attestations exist.
+   * forecasts exist.
    * @deprecated Use `accountAccuracyRank` for the rank-and-score shape, or `accuracyLeaderboardPage` for the leaderboard. `ForecasterScore`'s legacy counter fields (numScored, sumErrorSquared, …) were always returned as zeros.
    */
   accountAccuracy?: Maybe<ForecasterScore>;
@@ -2787,8 +2658,6 @@ export type Query = {
    * @deprecated Use `activity(first:, after:, filter:, orderBy:)` — Relay-shaped pagination over the same merged predictions/trades feed.
    */
   activityPage: ActivityItemsPage;
-  /** @deprecated Use `forecastsConnection` — purpose-built filters (forecaster, conditionId, schemaId, recipient, time range), paginated with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`. */
-  attestations: Array<Attestation>;
   /** @deprecated Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories. */
   categories: Array<Category>;
   /**
@@ -2872,8 +2741,7 @@ export type Query = {
    * Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
    *
    * Note: this field will be renamed to drop the `Connection` suffix
-   * (→ `forecasts`) in a subsequent migration, once the deprecated
-   * `attestations` sibling above is removed.
+   * (→ `forecasts`) in a subsequent migration.
    */
   forecastsConnection: ForecastConnection;
   leaderboard: AccountRankingConnection;
@@ -3202,16 +3070,6 @@ export type QueryActivityPageArgs = {
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
   type?: InputMaybe<ActivityItemType>;
-};
-
-
-export type QueryAttestationsArgs = {
-  cursor?: InputMaybe<AttestationWhereUniqueInput>;
-  distinct?: InputMaybe<Array<AttestationScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<AttestationOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<AttestationWhereInput>;
 };
 
 

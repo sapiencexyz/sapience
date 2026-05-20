@@ -338,7 +338,7 @@ export default function QuestionPageContent({
         (forecast: {
           value: string;
           rawTime: number;
-          attester: string;
+          forecaster: string;
           comment?: string;
         }) => {
           try {
@@ -369,7 +369,7 @@ export default function QuestionPageContent({
               x: timestamp,
               y: predictionPercent,
               time: date.toLocaleString(),
-              attester: forecast.attester,
+              attester: forecast.forecaster,
               comment: forecast.comment || '',
             };
 
