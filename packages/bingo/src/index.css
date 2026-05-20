@@ -1,0 +1,1616 @@
+/* ============================================================
+   PARLAY BINGO — Casa de Sapience
+   Underground casino floor: emerald felt, gold deco trim,
+   neon pink/cyan accents, scarlet ink on cream ticket stubs.
+   ============================================================ */
+
+:root {
+  /* surfaces */
+  --felt: #0d3322;
+  --felt-deep: #051a11;
+  --felt-shadow: #02100a;
+  --surface: #1a0d18;
+  --surface-2: #2a1424;
+  --surface-3: #381a30;
+
+  /* ink */
+  --cream: #f6e9c5;
+  --cream-dim: #c9b988;
+  --cream-shadow: #8c7d52;
+  --muted: #a08e6e;
+  --ink-red: #b8232a;
+  --ink-deep: #2a0d0a;
+
+  /* neon */
+  --gold: #f5c542;
+  --gold-bright: #ffd75e;
+  --gold-deep: #b8862a;
+  --gold-shadow: #5a3f0e;
+  --neon-pink: #ff2d8b;
+  --neon-pink-glow: #ff5fa8;
+  --neon-cyan: #33e6ff;
+  --neon-cyan-glow: #7af3ff;
+  --crimson: #e63946;
+  --crimson-deep: #8c1620;
+
+  /* picks */
+  --yes: #27d398;
+  --yes-deep: #0a5d3e;
+  --no: #ff3344;
+  --no-deep: #6a0d14;
+
+  /* type */
+  --display: 'Bungee', system-ui, sans-serif;
+  --display-shade: 'Bungee Shade', system-ui, sans-serif;
+  --display-inline: 'Bungee Inline', system-ui, sans-serif;
+  --marquee: 'Sansita Swashed', cursive;
+  --numeric: 'Major Mono Display', 'IBM Plex Mono', monospace;
+  --slab: 'Antic Slab', Georgia, serif;
+  --mono: 'DM Mono', 'IBM Plex Mono', monospace;
+
+  color-scheme: dark;
+  font-family: var(--mono);
+  line-height: 1.45;
+  color: var(--cream);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* ============================================================
+   Backdrop: dark felt table with vignette spotlight and grain
+   ============================================================ */
+body {
+  background-color: var(--felt-deep);
+  background-image:
+    /* central stage spotlight */
+    radial-gradient(
+      ellipse 80% 60% at 50% 0%,
+      rgba(245, 197, 66, 0.12),
+      transparent 70%
+    ),
+    /* lower felt warmth */
+      radial-gradient(
+        ellipse 100% 80% at 50% 110%,
+        rgba(255, 45, 139, 0.06),
+        transparent 60%
+      ),
+    /* main felt body */
+      radial-gradient(
+        ellipse at center,
+        var(--felt) 0%,
+        var(--felt-deep) 70%,
+        var(--felt-shadow) 100%
+      );
+  background-attachment: fixed;
+  color: var(--cream);
+  overflow-x: hidden;
+}
+
+/* SVG noise grain layered over everything */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.18;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.95  0 0 0 0 0.92  0 0 0 0 0.77  0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* concentric felt rings for table depth */
+body::after {
+  content: '';
+  position: fixed;
+  inset: -10%;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    circle at 50% 45%,
+    transparent 38%,
+    rgba(0, 0, 0, 0.25) 60%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+main {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+  position: relative;
+  z-index: 2;
+}
+
+/* ============================================================
+   Header — marquee
+   ============================================================ */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.75rem;
+  border-bottom: 2px dashed rgba(245, 197, 66, 0.32);
+  position: relative;
+}
+
+.header::after {
+  /* two gold "rivets" anchor the dashed border */
+  content: '★ ★ ★';
+  position: absolute;
+  bottom: -0.65rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--felt-deep);
+  padding: 0 0.75rem;
+  letter-spacing: 0.35em;
+  color: var(--gold);
+  font-size: 0.7rem;
+  text-shadow: 0 0 12px rgba(245, 197, 66, 0.7);
+}
+
+.title-block {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+h1 {
+  font-family: var(--display-shade);
+  font-size: 2.3rem;
+  margin: 0;
+  letter-spacing: 0.025em;
+  color: var(--gold);
+  text-transform: uppercase;
+  /* shadow layer is crimson so the Bungee Shade letters read as 3D gold-on-red */
+  filter: drop-shadow(0 2px 0 var(--crimson-deep))
+    drop-shadow(0 0 12px rgba(245, 197, 66, 0.35));
+  line-height: 1;
+}
+
+.theme-tag {
+  font-family: var(--display);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cream);
+  background: linear-gradient(
+    135deg,
+    var(--crimson) 0%,
+    var(--ink-red) 60%,
+    var(--crimson-deep) 100%
+  );
+  padding: 0.4rem 0.85rem;
+  border: 2px solid var(--gold);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 1px var(--felt-deep),
+    0 0 16px rgba(230, 57, 70, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  text-shadow: 0 1px 0 var(--ink-deep);
+}
+
+h2 {
+  font-family: var(--marquee);
+  font-weight: 800;
+  font-size: 1.85rem;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.005em;
+  color: var(--cream);
+  text-shadow:
+    0 2px 0 var(--ink-deep),
+    0 0 24px rgba(255, 45, 139, 0.18);
+}
+
+p {
+  margin: 0 0 0.4rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.82rem;
+}
+
+.center {
+  text-align: center;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.break {
+  word-break: break-all;
+}
+
+.big {
+  font-family: var(--numeric);
+  font-size: 1.7rem;
+  letter-spacing: 0.04em;
+  color: var(--neon-cyan);
+  text-shadow:
+    0 0 8px rgba(51, 230, 255, 0.55),
+    0 0 22px rgba(51, 230, 255, 0.35);
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+button {
+  font-family: var(--display);
+  cursor: pointer;
+  border: none;
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+button.primary {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    var(--gold-bright) 0%,
+    var(--gold) 50%,
+    var(--gold-deep) 100%
+  );
+  color: var(--ink-deep);
+  padding: 0.85rem 1.25rem;
+  font-weight: 700;
+  border-radius: 0.5rem;
+  border: 2px solid var(--gold-shadow);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 4px 0 var(--gold-shadow),
+    0 6px 18px rgba(245, 197, 66, 0.35),
+    0 0 24px rgba(245, 197, 66, 0.25);
+  transition:
+    transform 0.08s,
+    box-shadow 0.08s;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+button.primary:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 5px 0 var(--gold-shadow),
+    0 8px 24px rgba(245, 197, 66, 0.55),
+    0 0 32px rgba(245, 197, 66, 0.35);
+}
+
+button.primary:not(:disabled):active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 1px 0 var(--gold-shadow);
+}
+
+button.block {
+  display: block;
+  width: 100%;
+  padding: 1rem 1.25rem;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--cream-dim);
+  border: 1px dashed rgba(245, 197, 66, 0.4);
+  padding: 0.45rem 0.95rem;
+  border-radius: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+
+button.ghost:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: rgba(245, 197, 66, 0.06);
+}
+
+/* ============================================================
+   Screen / layout
+   ============================================================ */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.center-screen {
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+}
+
+/* ============================================================
+   Amount picker — poker chips
+   ============================================================ */
+.tier-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.tier-button {
+  position: relative;
+  background: radial-gradient(
+      circle at 50% 30%,
+      var(--surface-3),
+      var(--surface) 70%
+    ),
+    var(--surface);
+  border: 3px dashed var(--gold);
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--cream);
+  box-shadow:
+    inset 0 0 0 6px var(--felt-deep),
+    inset 0 0 0 8px var(--gold-deep),
+    0 6px 0 var(--ink-deep),
+    0 10px 30px rgba(245, 197, 66, 0.18);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.tier-button:hover {
+  transform: translateY(-4px) rotate(-3deg);
+  box-shadow:
+    inset 0 0 0 6px var(--felt-deep),
+    inset 0 0 0 8px var(--gold-bright),
+    0 10px 0 var(--ink-deep),
+    0 14px 40px rgba(245, 197, 66, 0.4);
+}
+
+.tier-button:nth-child(2) {
+  /* center chip: pink rim */
+  border-color: var(--neon-pink);
+  box-shadow:
+    inset 0 0 0 6px var(--felt-deep),
+    inset 0 0 0 8px var(--neon-pink),
+    0 6px 0 var(--ink-deep),
+    0 10px 30px rgba(255, 45, 139, 0.3);
+}
+
+.tier-button:nth-child(2):hover {
+  box-shadow:
+    inset 0 0 0 6px var(--felt-deep),
+    inset 0 0 0 8px var(--neon-pink-glow),
+    0 10px 0 var(--ink-deep),
+    0 14px 40px rgba(255, 45, 139, 0.5);
+}
+
+.tier-button:nth-child(3) {
+  /* high-roller chip: cyan rim */
+  border-color: var(--neon-cyan);
+  box-shadow:
+    inset 0 0 0 6px var(--felt-deep),
+    inset 0 0 0 8px var(--neon-cyan),
+    0 6px 0 var(--ink-deep),
+    0 10px 30px rgba(51, 230, 255, 0.3);
+}
+
+.tier-button:nth-child(3):hover {
+  box-shadow:
+    inset 0 0 0 6px var(--felt-deep),
+    inset 0 0 0 8px var(--neon-cyan-glow),
+    0 10px 0 var(--ink-deep),
+    0 14px 40px rgba(51, 230, 255, 0.5);
+}
+
+.tier-price {
+  font-family: var(--display-shade);
+  font-size: 2.6rem;
+  letter-spacing: 0.01em;
+  color: var(--gold);
+  filter: drop-shadow(0 2px 0 var(--ink-deep));
+  line-height: 1;
+}
+
+.tier-button:nth-child(2) .tier-price {
+  color: var(--neon-pink);
+  filter: drop-shadow(0 2px 0 var(--ink-deep))
+    drop-shadow(0 0 8px rgba(255, 45, 139, 0.6));
+}
+
+.tier-button:nth-child(3) .tier-price {
+  color: var(--neon-cyan);
+  filter: drop-shadow(0 2px 0 var(--ink-deep))
+    drop-shadow(0 0 8px rgba(51, 230, 255, 0.6));
+}
+
+.tier-label {
+  font-family: var(--display);
+  font-size: 0.62rem;
+  color: var(--cream-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   Checkout — paper receipt with red ink
+   ============================================================ */
+.checkout-card {
+  max-width: 480px;
+  background: repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 26px,
+      rgba(184, 35, 42, 0.06) 26px,
+      rgba(184, 35, 42, 0.06) 27px
+    ),
+    linear-gradient(180deg, var(--cream) 0%, #efdfb3 100%);
+  color: var(--ink-deep);
+  border-radius: 0.25rem;
+  padding: 1.75rem 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: relative;
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 14px 38px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(245, 197, 66, 0.25);
+  /* zig-zag bottom edge: torn receipt */
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - 12px) no-repeat,
+    radial-gradient(circle 7px at 8px 0, transparent 6px, #000 7px) bottom left /
+      16px 12px repeat-x;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - 12px) no-repeat,
+    radial-gradient(circle 7px at 8px 0, transparent 6px, #000 7px) bottom left /
+      16px 12px repeat-x;
+}
+
+.checkout-card::before {
+  /* fake "OFFICIAL RECEIPT" header */
+  content: '※   PARLAY BINGO  ·  OFFICIAL TICKET  ·  NO REFUNDS   ※';
+  display: block;
+  font-family: var(--display);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: var(--ink-red);
+  text-align: center;
+  padding-bottom: 0.5rem;
+  border-bottom: 1.5px dashed var(--ink-red);
+  margin-bottom: 0.5rem;
+}
+
+.checkout-card .muted {
+  color: var(--cream-shadow);
+}
+
+.checkout-card .big {
+  color: var(--ink-red);
+  text-shadow: none;
+  font-family: var(--numeric);
+  font-size: 1.6rem;
+}
+
+.checkout-card button.primary {
+  /* keep gold on receipt */
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.deposit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1.5px dashed var(--ink-red);
+  border-radius: 0.3rem;
+  color: var(--ink-deep);
+}
+
+.deposit-address {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.deposit-address .mono {
+  font-size: 0.78rem;
+  flex: 1;
+  color: var(--ink-deep);
+}
+
+.deposit .muted {
+  color: var(--cream-shadow);
+}
+
+.checkout-card button.ghost {
+  color: var(--ink-red);
+  border-color: var(--ink-red);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.checkout-card button.ghost:hover {
+  background: var(--ink-red);
+  color: var(--cream);
+  border-color: var(--ink-red);
+}
+
+/* Inline Bungee bridge panel — slot-machine style, sits on the receipt */
+.bungee-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.bungee-panel-loading {
+  font-family: var(--display);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-align: center;
+  color: var(--cream-shadow);
+  padding: 1.5rem;
+  border: 1.5px dashed var(--ink-red);
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.bungee-amount-card,
+.bungee-receive-card {
+  background: linear-gradient(180deg, var(--ink-deep) 0%, #160503 100%);
+  border: 2px solid var(--gold);
+  border-radius: 0.45rem;
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--cream);
+  box-shadow:
+    inset 0 1px 0 rgba(245, 197, 66, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.bungee-receive-card {
+  border-color: var(--neon-pink);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 45, 139, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.bungee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bungee-label,
+.bungee-label-muted {
+  font-family: var(--display);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-shadow: 0 0 6px rgba(245, 197, 66, 0.4);
+}
+
+.bungee-label-muted {
+  color: var(--cream-dim);
+  text-shadow: none;
+}
+
+.bungee-max-buttons {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.bungee-frac {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(245, 197, 66, 0.1);
+  color: var(--gold);
+  border: 1px solid var(--gold-deep);
+  padding: 0.18rem 0.5rem;
+  border-radius: 0.25rem;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.bungee-frac:hover:not(:disabled) {
+  background: var(--gold);
+  color: var(--ink-deep);
+}
+
+.bungee-frac:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bungee-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bungee-amount-input {
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--gold-bright);
+  font-family: var(--numeric);
+  font-size: 1.85rem;
+  letter-spacing: 0.03em;
+  text-shadow:
+    0 0 6px rgba(255, 215, 94, 0.6),
+    0 0 16px rgba(245, 197, 66, 0.4);
+  flex: 1;
+  min-width: 0;
+  width: 0;
+}
+
+.bungee-amount-input::placeholder {
+  color: var(--cream-shadow);
+  text-shadow: none;
+  opacity: 0.4;
+}
+
+.bungee-amount-input:disabled {
+  opacity: 0.5;
+}
+
+.bungee-token-select {
+  background: rgba(245, 197, 66, 0.08);
+  color: var(--cream);
+  border: 1px solid var(--gold-deep);
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  max-width: 60%;
+}
+
+.bungee-token-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bungee-receive-amount {
+  font-family: var(--numeric);
+  font-size: 1.85rem;
+  color: var(--neon-pink);
+  text-shadow:
+    0 0 6px rgba(255, 45, 139, 0.6),
+    0 0 16px rgba(255, 45, 139, 0.4);
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.bungee-arrow {
+  text-align: center;
+  font-family: var(--display);
+  font-size: 1.2rem;
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(245, 197, 66, 0.5);
+  margin: -0.15rem 0;
+}
+
+.bungee-breakdown {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0.85rem;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px dashed var(--ink-red);
+  border-radius: 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-deep);
+}
+
+.bungee-breakdown-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.bungee-breakdown-row span:last-child {
+  color: var(--ink-red);
+  font-weight: 600;
+}
+
+.bungee-warning,
+.bungee-error,
+.bungee-status {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  margin: 0;
+  padding: 0.55rem 0.85rem;
+  border-radius: 0.3rem;
+  text-align: center;
+}
+
+.bungee-warning {
+  background: rgba(251, 191, 36, 0.18);
+  color: #7a5300;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+}
+
+.bungee-error {
+  background: rgba(230, 57, 70, 0.18);
+  color: var(--crimson-deep);
+  border: 1px solid var(--crimson);
+}
+
+.bungee-status {
+  background: rgba(39, 211, 152, 0.18);
+  color: var(--yes-deep);
+  border: 1px solid var(--yes);
+}
+
+/* ============================================================
+   Card header (top of card / locked screens)
+   ============================================================ */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.card-header h2 {
+  margin-top: 0.15rem;
+}
+
+.card-header .small.muted {
+  font-family: var(--display);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  color: var(--gold);
+}
+
+/* ============================================================
+   Multiplier — casino chip / medallion
+   ============================================================ */
+.multiplier {
+  text-align: center;
+  min-width: 110px;
+}
+
+.multiplier .small.muted {
+  font-family: var(--display);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-size: 0.58rem;
+  color: var(--cream-dim);
+  margin-bottom: 0.3rem;
+}
+
+.multiplier-value {
+  font-family: var(--display-shade);
+  font-size: 2.4rem;
+  letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 25%,
+    var(--surface-3),
+    var(--surface) 75%
+  );
+  color: var(--gold);
+  border: 3px dashed var(--gold);
+  box-shadow:
+    inset 0 0 0 5px var(--felt-deep),
+    inset 0 0 0 7px var(--gold-deep),
+    0 4px 0 var(--ink-deep),
+    0 0 22px rgba(245, 197, 66, 0.4);
+  filter: drop-shadow(0 2px 0 var(--ink-deep));
+}
+
+.mult-2 {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow:
+    inset 0 0 0 5px var(--felt-deep),
+    inset 0 0 0 7px #0e8aab,
+    0 4px 0 var(--ink-deep),
+    0 0 22px rgba(51, 230, 255, 0.5);
+}
+
+.mult-3 {
+  color: var(--neon-pink);
+  border-color: var(--neon-pink);
+  box-shadow:
+    inset 0 0 0 5px var(--felt-deep),
+    inset 0 0 0 7px #a3175c,
+    0 4px 0 var(--ink-deep),
+    0 0 24px rgba(255, 45, 139, 0.55);
+}
+
+.mult-4 {
+  color: #f0abfc;
+  border-color: #f0abfc;
+  box-shadow:
+    inset 0 0 0 5px var(--felt-deep),
+    inset 0 0 0 7px #8f4dad,
+    0 4px 0 var(--ink-deep),
+    0 0 28px rgba(240, 171, 252, 0.6);
+}
+
+.mult-5 {
+  color: var(--gold-bright);
+  border-color: var(--gold-bright);
+  background: radial-gradient(circle at 30% 25%, #5a3f0e, var(--surface) 75%);
+  animation: jackpot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes jackpot-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 5px var(--felt-deep),
+      inset 0 0 0 7px var(--gold-bright),
+      0 4px 0 var(--ink-deep),
+      0 0 24px rgba(255, 215, 94, 0.5);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 5px var(--felt-deep),
+      inset 0 0 0 7px var(--gold-bright),
+      0 4px 0 var(--ink-deep),
+      0 0 44px rgba(255, 215, 94, 0.95),
+      0 0 80px rgba(255, 45, 139, 0.5);
+  }
+}
+
+/* ============================================================
+   Card grid (picks)
+   ============================================================ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.15));
+  border-radius: 0.5rem;
+  border: 1px solid rgba(245, 197, 66, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(245, 197, 66, 0.15),
+    0 8px 28px rgba(0, 0, 0, 0.5);
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.4rem;
+  aspect-ratio: 1 / 1;
+  padding: 0.55rem 0.45rem 0.45rem;
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
+  border: 1px solid rgba(245, 197, 66, 0.25);
+  border-radius: 0.4rem;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(245, 197, 66, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  transition:
+    border-color 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+
+.cell::before {
+  /* tiny "bingo ball" index number, top-right */
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    var(--gold-bright),
+    var(--gold-deep)
+  );
+  box-shadow:
+    0 0 0 1px var(--ink-deep),
+    0 0 6px rgba(245, 197, 66, 0.4);
+  opacity: 0.7;
+}
+
+.cell-picked {
+  border-color: var(--gold);
+  box-shadow:
+    inset 0 1px 0 rgba(245, 197, 66, 0.2),
+    0 0 0 1px var(--gold),
+    0 0 18px rgba(245, 197, 66, 0.3);
+}
+
+.cell-text {
+  font-family: var(--slab);
+  font-size: 0.83rem;
+  font-weight: 400;
+  line-height: 1.18;
+  color: var(--cream);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  padding-right: 14px; /* leave room for bingo ball */
+}
+
+.pick-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+}
+
+.pick {
+  background: transparent;
+  border: 1.5px solid rgba(245, 197, 66, 0.3);
+  color: var(--cream-dim);
+  padding: 0.3rem;
+  font-family: var(--display);
+  font-size: 0.62rem;
+  font-weight: 400;
+  border-radius: 0.25rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: all 0.1s;
+}
+
+.pick:hover {
+  color: var(--cream);
+  border-color: var(--gold);
+}
+
+.pick.yes.on {
+  background: linear-gradient(
+    180deg,
+    #36e8a8 0%,
+    var(--yes) 60%,
+    var(--yes-deep) 100%
+  );
+  border-color: #1d6b4a;
+  color: #02160c;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 0 12px rgba(39, 211, 152, 0.55);
+}
+
+.pick.no.on {
+  background: linear-gradient(
+    180deg,
+    #ff5e72 0%,
+    var(--no) 60%,
+    var(--no-deep) 100%
+  );
+  border-color: #6a0d14;
+  color: #ffffff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 0 12px rgba(255, 51, 68, 0.55);
+}
+
+/* ============================================================
+   Sticky submit bar
+   ============================================================ */
+.submit-bar {
+  position: sticky;
+  bottom: 0;
+  padding-top: 1.25rem;
+  background: linear-gradient(to top, var(--felt-deep) 70%, transparent);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* ============================================================
+   Quick Pick — lottery-style "surprise me" button
+   ============================================================ */
+button.quick-pick {
+  font-family: var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: 0.45rem;
+  color: var(--cream);
+  background: linear-gradient(
+    135deg,
+    var(--neon-pink) 0%,
+    var(--crimson) 50%,
+    var(--neon-pink) 100%
+  );
+  background-size: 200% 200%;
+  border: 2px solid var(--gold);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
+    0 3px 0 var(--crimson-deep),
+    0 0 22px rgba(255, 45, 139, 0.55);
+  text-shadow:
+    0 1px 0 var(--ink-deep),
+    0 0 12px rgba(255, 215, 94, 0.7);
+  transition:
+    transform 0.08s,
+    box-shadow 0.08s,
+    background-position 0.4s;
+}
+
+button.quick-pick:hover {
+  transform: translateY(-1px);
+  background-position: 100% 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
+    0 4px 0 var(--crimson-deep),
+    0 0 36px rgba(255, 45, 139, 0.85),
+    0 0 60px rgba(245, 197, 66, 0.35);
+}
+
+button.quick-pick:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 1px 0 var(--crimson-deep),
+    0 0 18px rgba(255, 45, 139, 0.6);
+}
+
+/* ============================================================
+   Locked card — TICKET STUB
+   Cream paper with red ink, perforated edges, serial-number watermark.
+   ============================================================ */
+.locked-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 5.25rem repeat(4, 1fr) 5.25rem;
+  grid-template-rows: repeat(4, 1fr) auto;
+  gap: 0.5rem;
+  margin-inline: -5.75rem;
+  padding: 1.5rem 1.5rem 1.25rem;
+  background: repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 32px,
+      rgba(184, 35, 42, 0.05) 32px,
+      rgba(184, 35, 42, 0.05) 33px
+    ),
+    linear-gradient(180deg, var(--cream) 0%, #efdfb3 100%);
+  border-radius: 0.4rem;
+  box-shadow:
+    0 0 0 1px var(--gold-deep),
+    0 0 0 4px var(--cream),
+    0 0 0 5px var(--gold),
+    0 12px 36px rgba(0, 0, 0, 0.6),
+    inset 0 0 80px rgba(184, 35, 42, 0.08);
+}
+
+/* serial-number watermark in the corner */
+.locked-grid::before {
+  content: '№ 0042 · SERIES A';
+  position: absolute;
+  top: 0.5rem;
+  left: 1rem;
+  font-family: var(--display);
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  color: var(--ink-red);
+  opacity: 0.55;
+}
+
+/* "BINGO" stamp watermark, top-right */
+.locked-grid::after {
+  content: '★ BINGO ★';
+  position: absolute;
+  top: 0.5rem;
+  right: 1rem;
+  font-family: var(--display);
+  font-size: 0.55rem;
+  letter-spacing: 0.25em;
+  color: var(--ink-red);
+  opacity: 0.55;
+}
+
+/* perforated edges on the ticket */
+.locked-grid {
+  --notch: 8px;
+  --notch-gap: 14px;
+}
+
+/* OVERRIDE locked cells: white-paper background, red ink */
+.locked-cell {
+  position: relative;
+  background: rgba(255, 252, 240, 0.85);
+  border: 1.5px solid var(--ink-red);
+  border-radius: 0.3rem;
+  color: var(--ink-deep);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.6),
+    0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.locked-cell::before {
+  /* swap bingo-ball badge to red ink stamp */
+  background: var(--ink-red);
+  box-shadow: 0 0 0 1.5px var(--cream);
+  opacity: 0.85;
+}
+
+.locked-cell .cell-text {
+  color: var(--ink-deep);
+  font-family: var(--slab);
+  font-size: 0.78rem;
+}
+
+.locked-cell.pick-yes {
+  border-color: var(--yes-deep);
+  background: linear-gradient(
+    180deg,
+    rgba(39, 211, 152, 0.18) 0%,
+    rgba(255, 252, 240, 0.92) 100%
+  );
+}
+
+.locked-cell.pick-no {
+  border-color: var(--no-deep);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 51, 68, 0.18) 0%,
+    rgba(255, 252, 240, 0.92) 100%
+  );
+}
+
+.locked-cell .locked-pick {
+  font-family: var(--display);
+  font-size: 0.65rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-align: center;
+  padding: 0.22rem 0;
+  border-radius: 0.2rem;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.locked-cell.pick-yes .locked-pick {
+  background: var(--yes);
+  color: #02160c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.locked-cell.pick-no .locked-pick {
+  background: var(--no);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.cell-highlight {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: -1px;
+  transform: scale(1.04);
+  z-index: 4;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.6),
+    0 0 16px rgba(245, 197, 66, 0.7);
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+
+/* ============================================================
+   Payout cells — slot-machine readout panels
+   ============================================================ */
+.payout-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.4rem 0.45rem;
+  background: linear-gradient(180deg, var(--ink-deep) 0%, #160503 100%);
+  border: 1.5px solid var(--gold);
+  border-radius: 0.35rem;
+  cursor: default;
+  box-shadow:
+    inset 0 1px 0 rgba(245, 197, 66, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--ink-deep),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+
+.payout-cell:hover {
+  border-color: var(--gold-bright);
+  transform: scale(1.04);
+  box-shadow:
+    inset 0 1px 0 rgba(245, 197, 66, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--ink-deep),
+    0 0 20px rgba(245, 197, 66, 0.6);
+}
+
+.payout-amount {
+  font-family: var(--numeric);
+  font-weight: 400;
+  color: var(--gold-bright);
+  font-size: 0.92rem;
+  line-height: 1.05;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  text-shadow:
+    0 0 6px rgba(255, 215, 94, 0.7),
+    0 0 14px rgba(245, 197, 66, 0.45);
+}
+
+.payout-meta {
+  font-family: var(--display);
+  font-size: 0.55rem;
+  color: var(--neon-pink);
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 6px rgba(255, 45, 139, 0.6);
+}
+
+.diag-arrow {
+  display: inline-block;
+  margin-right: 0.15rem;
+  color: var(--neon-pink);
+  text-shadow: 0 0 6px rgba(255, 45, 139, 0.6);
+}
+
+.diag-payout {
+  /* corner diagonals get pink trim to distinguish */
+  border-color: var(--neon-pink);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 45, 139, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--ink-deep),
+    0 0 14px rgba(255, 45, 139, 0.4);
+}
+
+.diag-payout:hover {
+  border-color: var(--neon-pink-glow);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 45, 139, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--ink-deep),
+    0 0 26px rgba(255, 45, 139, 0.75);
+}
+
+/* ============================================================
+   Reveal animations
+   ============================================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.65s ease,
+    transform 0.65s ease,
+    box-shadow 0.4s ease,
+    border-color 0.15s ease;
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+  animation: reveal-flash 0.9s ease-out;
+}
+
+@keyframes reveal-flash {
+  0% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 215, 94, 0.6),
+      0 0 0 2px var(--gold-bright),
+      0 0 38px rgba(255, 215, 94, 0.9),
+      0 0 70px rgba(255, 45, 139, 0.5);
+  }
+  100% {
+    /* defer to the cell's own box-shadow */
+  }
+}
+
+/* cells stay dim while waiting */
+.cell-reveal {
+  opacity: 0.42;
+  filter: grayscale(0.3);
+  transition:
+    opacity 0.65s ease,
+    filter 0.65s ease;
+}
+
+.cell-reveal.revealed {
+  opacity: 1;
+  filter: grayscale(0);
+}
+
+/* Failed-line payout cell: dim + crimson outline, no flash */
+.payout-cell.payout-failed {
+  border-color: var(--crimson) !important;
+  opacity: 0.6;
+  box-shadow: inset 0 1px 0 rgba(230, 57, 70, 0.25);
+}
+
+.payout-cell.payout-failed .payout-amount {
+  color: var(--crimson);
+  text-shadow: 0 0 6px rgba(230, 57, 70, 0.5);
+  text-decoration: line-through;
+}
+
+.payout-cell.payout-failed .payout-meta::after {
+  content: ' · failed';
+  color: var(--crimson);
+}
+
+/* In-flight payout cell: visible (not hidden), shows the live status text
+   that pulses to indicate work is happening. Overrides `.reveal`'s opacity:0
+   default so the user always sees what's going on. */
+.payout-cell.payout-inflight {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.payout-status {
+  font-family: var(--display);
+  font-size: 0.5rem;
+  letter-spacing: 0.15em;
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(245, 197, 66, 0.6);
+  text-align: center;
+  animation: status-pulse 1.1s ease-in-out infinite;
+}
+
+.diag-payout .payout-status {
+  color: var(--neon-pink);
+  text-shadow: 0 0 8px rgba(255, 45, 139, 0.6);
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   Summary row — final JACKPOT readout
+   ============================================================ */
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(180deg, var(--ink-deep) 0%, #160503 100%);
+  border: 2px solid var(--gold);
+  border-radius: 0.5rem;
+  box-shadow:
+    inset 0 1px 0 rgba(245, 197, 66, 0.3),
+    0 0 0 1px var(--ink-deep),
+    0 0 28px rgba(245, 197, 66, 0.25);
+  position: relative;
+}
+
+.summary-row::before {
+  content: '◆ JACKPOT ◆';
+  position: absolute;
+  top: -10px;
+  left: 1rem;
+  font-family: var(--display);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: var(--gold-bright);
+  background: var(--felt-deep);
+  padding: 0 0.5rem;
+  text-shadow: 0 0 8px rgba(255, 215, 94, 0.7);
+}
+
+.summary-row .muted {
+  color: var(--cream-dim);
+  font-family: var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+}
+
+.summary-row .big {
+  font-family: var(--numeric);
+  color: var(--gold-bright);
+  font-size: 2rem;
+  letter-spacing: 0.04em;
+  text-shadow:
+    0 0 10px rgba(255, 215, 94, 0.7),
+    0 0 26px rgba(245, 197, 66, 0.45);
+}
+
+/* ============================================================
+   Minting screen — bingo cage tumbler
+   ============================================================ */
+.spinner {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 25%,
+    var(--gold-bright),
+    var(--gold-deep) 60%,
+    var(--gold-shadow)
+  );
+  position: relative;
+  margin: 0 auto 1.25rem;
+  box-shadow:
+    inset 0 0 0 4px var(--felt-deep),
+    inset 0 0 0 6px var(--gold-bright),
+    0 0 0 4px var(--ink-deep),
+    0 0 40px rgba(245, 197, 66, 0.7),
+    0 0 80px rgba(255, 45, 139, 0.3);
+  animation: tumble 1.4s ease-in-out infinite;
+  display: grid;
+  place-items: center;
+  font-family: var(--display-shade);
+  font-size: 1.8rem;
+  color: var(--ink-deep);
+  border: none;
+}
+
+.spinner::before {
+  content: 'B';
+  text-shadow: 0 1px 0 var(--cream);
+  animation: ball-cycle 0.6s steps(5, end) infinite;
+}
+
+@keyframes tumble {
+  0%,
+  100% {
+    transform: rotate(-12deg) scale(1);
+  }
+  50% {
+    transform: rotate(12deg) scale(1.04);
+  }
+}
+
+@keyframes ball-cycle {
+  0% {
+    content: 'B';
+  }
+  20% {
+    content: 'I';
+  }
+  40% {
+    content: 'N';
+  }
+  60% {
+    content: 'G';
+  }
+  80% {
+    content: 'O';
+  }
+  100% {
+    content: 'B';
+  }
+}
+
+.center-screen p.muted {
+  font-family: var(--display);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(245, 197, 66, 0.5);
+  animation: text-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes text-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   Errors
+   ============================================================ */
+.error {
+  color: var(--cream);
+  background: linear-gradient(
+    180deg,
+    var(--crimson) 0%,
+    var(--crimson-deep) 100%
+  );
+  padding: 0.85rem 1rem;
+  border-radius: 0.4rem;
+  border: 2px solid var(--gold);
+  box-shadow:
+    0 0 0 1px var(--ink-deep),
+    0 0 18px rgba(230, 57, 70, 0.4);
+  font-family: var(--display);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   Small responsive nudge
+   ============================================================ */
+@media (max-width: 540px) {
+  main {
+    padding: 1.75rem 1rem 4rem;
+  }
+  h1 {
+    font-size: 1.85rem;
+  }
+  .locked-grid {
+    grid-template-columns: 4rem repeat(4, 1fr) 4rem;
+    margin-inline: -4.5rem;
+    padding: 1.25rem 1rem 1rem;
+  }
+  .tier-price {
+    font-size: 2rem;
+  }
+  .multiplier-value {
+    width: 78px;
+    height: 78px;
+    font-size: 2rem;
+  }
+}
