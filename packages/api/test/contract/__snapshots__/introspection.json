@@ -11462,21 +11462,11 @@
             "defaultValue": null
           },
           {
-            "name": "attestedAtMin",
-            "description": "Restrict to forecasts with `attestedAt >= this` (epoch seconds).",
+            "name": "attestedAt",
+            "description": "Filter by attestation epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.",
             "type": {
-              "kind": "SCALAR",
-              "name": "UnixSeconds",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "attestedAtMax",
-            "description": "Restrict to forecasts with `attestedAt <= this` (epoch seconds).",
-            "type": {
-              "kind": "SCALAR",
-              "name": "UnixSeconds",
+              "kind": "INPUT_OBJECT",
+              "name": "IntFilter",
               "ofType": null
             },
             "defaultValue": null
@@ -18084,21 +18074,11 @@
             "defaultValue": null
           },
           {
-            "name": "endsAtMin",
-            "description": "Restrict to predictions whose pickConfig `endsAt >= this`.",
+            "name": "endsAt",
+            "description": "Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.",
             "type": {
-              "kind": "SCALAR",
-              "name": "UnixSeconds",
-              "ofType": null
-            },
-            "defaultValue": null
-          },
-          {
-            "name": "endsAtMax",
-            "description": "Restrict to predictions whose pickConfig `endsAt <= this`.",
-            "type": {
-              "kind": "SCALAR",
-              "name": "UnixSeconds",
+              "kind": "INPUT_OBJECT",
+              "name": "IntFilter",
               "ofType": null
             },
             "defaultValue": null
@@ -18157,12 +18137,6 @@
         "enumValues": [
           {
             "name": "CREATED_AT",
-            "description": null,
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "SETTLED_AT",
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null

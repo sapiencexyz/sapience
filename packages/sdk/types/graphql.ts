@@ -1567,10 +1567,8 @@ export type ForecastEdge = {
  * values combine with AND.
  */
 export type ForecastFilter = {
-  /** Restrict to forecasts with `attestedAt <= this` (epoch seconds). */
-  attestedAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to forecasts with `attestedAt >= this` (epoch seconds). */
-  attestedAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Filter by attestation epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  attestedAt?: InputMaybe<IntFilter>;
   /** Restrict to forecasts on a single condition. */
   conditionId?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single forecaster address (case-insensitive). */
@@ -2468,10 +2466,8 @@ export type PredictionFilter = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to predictions on a single condition (via the pickConfig join). */
   conditionId?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to predictions whose pickConfig `endsAt <= this`. */
-  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to predictions whose pickConfig `endsAt >= this`. */
-  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  endsAt?: InputMaybe<IntFilter>;
   /** Restrict to legacy (true) or non-legacy (false) predictions. */
   isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
   /** Restrict to predictions whose pickConfig settled with this result. */
@@ -2488,8 +2484,7 @@ export type PredictionOrder = {
 
 /** Sort fields for `predictionsConnection`. */
 export type PredictionOrderField =
-  | 'CREATED_AT'
-  | 'SETTLED_AT';
+  | 'CREATED_AT';
 
 /** Field to sort predictions by */
 export type PredictionSortField =

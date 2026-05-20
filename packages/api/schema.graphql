@@ -2644,11 +2644,10 @@ input PredictionFilter {
   """Restrict to predictions whose pickConfig settled with this result."""
   result: SettlementResult
 
-  """Restrict to predictions whose pickConfig `endsAt >= this`."""
-  endsAtMin: UnixSeconds
-
-  """Restrict to predictions whose pickConfig `endsAt <= this`."""
-  endsAtMax: UnixSeconds
+  """
+  Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
+  endsAt: IntFilter
 }
 
 """Order input for `predictionsConnection`."""
@@ -2660,7 +2659,6 @@ input PredictionOrder {
 """Sort fields for `predictionsConnection`."""
 enum PredictionOrderField {
   CREATED_AT
-  SETTLED_AT
 }
 
 """
@@ -2683,11 +2681,10 @@ input ForecastFilter {
   """Restrict to a single EAS schema ID."""
   schemaId: String
 
-  """Restrict to forecasts with `attestedAt >= this` (epoch seconds)."""
-  attestedAtMin: UnixSeconds
-
-  """Restrict to forecasts with `attestedAt <= this` (epoch seconds)."""
-  attestedAtMax: UnixSeconds
+  """
+  Filter by attestation epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
+  attestedAt: IntFilter
 }
 
 """Order input for `forecastsConnection`."""

@@ -48,7 +48,6 @@ import {
   PickConfigurationOrderField,
   PositionOrderField,
   PositionSortField,
-  PredictionOrderField,
   SortOrder,
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
@@ -119,10 +118,12 @@ export type PredictionsEnvelope = {
 /**
  * Extended args for `runPredictions` — superset of the deprecated bare
  * `predictions(...)` args. The richer filter fields (`result`,
- * `endsAtMin`/`Max`) live only on `predictionsConnection` / `PredictionFilter`.
+ * `result` and the operator-shaped `endsAt`) live only on
+ * `predictionsConnection` / `PredictionFilter`.
  */
 export type RunPredictionsArgs = QueryPredictionsArgs & {
   result?: SettlementResult | null;
+  endsAt?: Prisma.IntFilter | null;
   endsAtMin?: number | null;
   endsAtMax?: number | null;
 };
@@ -134,6 +135,7 @@ const buildPredictionWhere = async ({
   settled,
   isLegacy,
   result,
+  endsAt,
   endsAtMin,
   endsAtMax,
 }: Pick<
@@ -144,6 +146,7 @@ const buildPredictionWhere = async ({
   | 'settled'
   | 'isLegacy'
   | 'result'
+  | 'endsAt'
   | 'endsAtMin'
   | 'endsAtMax'
 >): Promise<{ where: Prisma.PredictionWhereInput; empty: boolean }> => {
@@ -173,7 +176,9 @@ const buildPredictionWhere = async ({
       },
     });
   }
-  if (endsAtMin != null || endsAtMax != null) {
+  if (endsAt) {
+    filters.push({ pickConfiguration: { endsAt } });
+  } else if (endsAtMin != null || endsAtMax != null) {
     const range: Prisma.IntFilter = {};
     if (endsAtMin != null) range.gte = endsAtMin;
     if (endsAtMax != null) range.lte = endsAtMax;
@@ -206,6 +211,7 @@ export const runPredictions = async ({
     settled,
     isLegacy,
     result,
+    endsAt: null,
     endsAtMin,
     endsAtMax,
   });
@@ -241,19 +247,16 @@ export const runPredictions = async ({
 const buildPredictionCursorPredicate = (
   k: string,
   cursorId: string,
-  prismaOrderField: string,
   direction: 'asc' | 'desc'
 ): Prisma.PredictionWhereInput => {
   const op = direction === 'desc' ? 'lt' : 'gt';
-  const keyValue = prismaOrderField === 'createdAt' ? new Date(k) : Number(k);
+  const keyValue = new Date(k);
   return {
     OR: [
-      { [prismaOrderField]: { [op]: keyValue } } as Prisma.PredictionWhereInput,
+      { createdAt: { [op]: keyValue } } as Prisma.PredictionWhereInput,
       {
         AND: [
-          {
-            [prismaOrderField]: { equals: keyValue },
-          } as Prisma.PredictionWhereInput,
+          { createdAt: { equals: keyValue } } as Prisma.PredictionWhereInput,
           { predictionId: { [op]: cursorId } } as Prisma.PredictionWhereInput,
         ],
       },
@@ -261,13 +264,8 @@ const buildPredictionCursorPredicate = (
   };
 };
 
-const readPredictionOrderKey = (
-  row: PredictionWithPickConfig,
-  field: PredictionOrderField
-): string =>
-  field === PredictionOrderField.SettledAt
-    ? String(row.settledAt ?? 0)
-    : row.createdAt.toISOString();
+const readPredictionOrderKey = (row: PredictionWithPickConfig): string =>
+  row.createdAt.toISOString();
 
 export const predictionsConnection: NonNullable<
   QueryResolvers['predictionsConnection']
@@ -276,11 +274,8 @@ export const predictionsConnection: NonNullable<
   { first, after, filter, orderBy }: QueryPredictionsConnectionArgs
 ) => {
   const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
-  const orderField = orderBy?.field ?? PredictionOrderField.CreatedAt;
   const direction = orderBy?.direction ?? OrderDirection.Desc;
   const prismaDir = direction === OrderDirection.Asc ? 'asc' : 'desc';
-  const prismaOrderField =
-    orderField === PredictionOrderField.SettledAt ? 'settledAt' : 'createdAt';
 
   const { where: filterWhere, empty } = await buildPredictionWhere({
     address: filter?.address ?? null,
@@ -289,8 +284,9 @@ export const predictionsConnection: NonNullable<
     settled: filter?.settled ?? null,
     isLegacy: filter?.isLegacy ?? null,
     result: filter?.result ?? null,
-    endsAtMin: filter?.endsAtMin ?? null,
-    endsAtMax: filter?.endsAtMax ?? null,
+    endsAt: (filter?.endsAt ?? null) as Prisma.IntFilter | null,
+    endsAtMin: null,
+    endsAtMax: null,
   });
   if (empty) {
     return {
@@ -311,7 +307,6 @@ export const predictionsConnection: NonNullable<
     ? buildPredictionCursorPredicate(
         cursorPayload.k,
         cursorPayload.id,
-        prismaOrderField,
         prismaDir
       )
     : null;
@@ -322,12 +317,7 @@ export const predictionsConnection: NonNullable<
   const [rawRows, totalCount] = await Promise.all([
     prisma.prediction.findMany({
       where,
-      orderBy: [
-        {
-          [prismaOrderField]: prismaDir,
-        } as Prisma.PredictionOrderByWithRelationInput,
-        { predictionId: prismaDir },
-      ],
+      orderBy: [{ createdAt: prismaDir }, { predictionId: prismaDir }],
       take: cappedFirst + 1,
       include: { pickConfiguration: { include: { picks: true } } },
     }),
@@ -340,7 +330,7 @@ export const predictionsConnection: NonNullable<
   const edges = nodes.map((node, index) => ({
     node,
     cursor: encodeCursor({
-      k: readPredictionOrderKey(pageRows[index], orderField),
+      k: readPredictionOrderKey(pageRows[index]),
       id: pageRows[index].predictionId,
     }),
   }));

@@ -198,17 +198,8 @@ export const forecastsConnection: NonNullable<
   if (filter?.conditionId) where.conditionId = filter.conditionId;
   if (filter?.schemaId) where.schemaId = filter.schemaId;
   if (filter?.recipient) where.recipient = filter.recipient;
-  if (filter?.attestedAtMin != null) {
-    where.time = {
-      ...(where.time as object | undefined),
-      gte: filter.attestedAtMin,
-    };
-  }
-  if (filter?.attestedAtMax != null) {
-    where.time = {
-      ...(where.time as object | undefined),
-      lte: filter.attestedAtMax,
-    };
+  if (filter?.attestedAt) {
+    where.time = filter.attestedAt as Prisma.IntFilter;
   }
 
   const orderField = orderBy?.field ?? ForecastOrderField.AttestedAt;
