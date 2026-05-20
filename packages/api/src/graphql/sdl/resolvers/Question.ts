@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Field resolvers for the derived `Question` view.
  *
@@ -22,6 +23,10 @@ import type {
   QuestionResolvers,
   ConditionOrConditionGroupResolvers,
 } from '../__generated__/resolvers';
+import { predictionsConnection } from './queries/escrow';
+import { tradesConnection } from './queries/trade';
+import { forecastsConnection } from './queries/crud';
+import { activity } from './queries/pr6';
 
 type QuestionParent = {
   questionType: 'condition' | 'group';
@@ -117,6 +122,35 @@ export const Question: QuestionResolvers = {
         ? fromCondition<Date>(p, 'createdAt')
         : fromGroup<Date>(p, 'createdAt');
     return raw as Date;
+  },
+
+
+  predictions: (parent, args, ctx, info) => {
+    const p = parent as QuestionParent;
+    if (p.questionType !== 'condition' || !p.condition?.id) {
+      return { edges: [], nodes: [], totalCount: 0, pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } } as never;
+    }
+    return (predictionsConnection as any)(parent, { ...args, filter: { ...(args.filter ?? {}), conditionId: p.condition.id } }, ctx, info);
+  },
+
+  trades: (parent, args, ctx, info) => {
+    return (tradesConnection as any)(parent, args, ctx, info);
+  },
+
+  forecasts: (parent, args, ctx, info) => {
+    const p = parent as QuestionParent;
+    if (p.questionType !== 'condition' || !p.condition?.id) {
+      return { edges: [], nodes: [], totalCount: 0, pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } } as never;
+    }
+    return (forecastsConnection as any)(parent, { ...args, filter: { ...(args.filter ?? {}), conditionId: p.condition.id } }, ctx, info);
+  },
+
+  activity: (parent, args, ctx, info) => {
+    const p = parent as QuestionParent;
+    if (p.questionType !== 'condition' || !p.condition?.id) {
+      return { edges: [], nodes: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } } as never;
+    }
+    return (activity as any)(parent, { ...args, filter: { ...(args.filter ?? {}), conditionId: p.condition.id } }, ctx, info);
   },
 
   resolvesAt: (parent) => {

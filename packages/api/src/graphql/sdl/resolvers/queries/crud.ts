@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Live CRUD-style queries that share a TtlCache with their deprecated
  * passthroughs:
@@ -27,6 +28,7 @@ import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { clampSkip, clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import { registerNodeType, toGlobalId } from '../../../relay/globalId';
+import { synthesizeAccount } from '../accountSynthesis';
 
 /**
  * Cache only the no-args call (the dominant public path: integrator's
@@ -49,6 +51,22 @@ registerNodeType({
     const numericId = Number(id);
     if (!Number.isInteger(numericId)) return null;
     return prisma.category.findUnique({ where: { id: numericId } });
+  },
+});
+
+registerNodeType({
+  type: 'Account',
+  loader: async (id, ctx) => {
+    const address = id.toLowerCase();
+    const loaders = (ctx as {
+      loaders?: {
+        userByAddress?: { load: (address: string) => Promise<unknown | null> };
+      };
+    }).loaders;
+    const row = loaders?.userByAddress
+      ? await loaders.userByAddress.load(address)
+      : await prisma.user.findUnique({ where: { address } });
+    return row ?? synthesizeAccount(address);
   },
 });
 
@@ -123,11 +141,15 @@ export const user: NonNullable<QueryResolvers['user']> = async (
   });
 };
 
-export const account: NonNullable<QueryResolvers['account']> = async (
-  _parent,
-  { address },
-  ctx
-) => ctx.loaders!.userByAddress.load(address);
+export const account = (async (
+  _parent: unknown,
+  { address }: any,
+  ctx: any
+) => {
+  const addressLc = address.toLowerCase();
+  const row = await ctx.loaders!.userByAddress.load(addressLc);
+  return (row ?? synthesizeAccount(addressLc)) as never;
+}) as any as NonNullable<QueryResolvers['account']>;
 
 const buildForecastCursorPredicate = (
   k: string,

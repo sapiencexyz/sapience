@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 /**
  * Condition model resolvers.
  *
@@ -21,6 +22,9 @@
 import type { ConditionResolvers } from '../__generated__/resolvers';
 import { ConditionOutcome } from '../__generated__/resolvers';
 import { loadRelation } from './relationHelpers';
+import { predictionsConnection } from './queries/escrow';
+import { tradesConnection } from './queries/trade';
+import { forecastsConnection } from './queries/crud';
 
 type PrismaCondition = {
   id: string;
@@ -109,17 +113,18 @@ export const Condition: ConditionResolvers = {
     });
   },
 
-  predictions: async (parent, args, ctx) => {
+  predictions: (parent, args, ctx, info) => {
     const p = parent as PrismaCondition;
-    if (Array.isArray(p.predictions)) return p.predictions as never[];
-    if (ctx.loaders && isBatchableListArgs(args as RelationListArgs)) {
-      return ctx.loaders.predictionsByConditionId.load(p.id) as never;
-    }
-    return loadRelation(p, 'predictions', {
-      parentModel: 'condition',
-      parentWhere: { id: p.id },
-      prismaRelationName: 'predictions',
-      args,
-    });
+    return (predictionsConnection as any)(parent, { ...args, filter: { ...(args.filter ?? {}), conditionId: p.id } }, ctx, info);
+  },
+
+  trades: (parent, args, ctx, info) => {
+    const p = parent as PrismaCondition;
+    return (tradesConnection as any)(parent, { ...args, filter: { ...(args.filter ?? {}), token: null } }, ctx, info);
+  },
+
+  forecasts: (parent, args, ctx, info) => {
+    const p = parent as PrismaCondition;
+    return (forecastsConnection as any)(parent, { ...args, filter: { ...(args.filter ?? {}), conditionId: p.id } }, ctx, info);
   },
 };

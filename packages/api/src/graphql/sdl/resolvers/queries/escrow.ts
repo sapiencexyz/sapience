@@ -58,7 +58,7 @@ import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { clampSkip, clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
-type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
+export type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
 }>;
 
@@ -68,7 +68,7 @@ const offsetFromCursor = (cursor: string | null | undefined): number => {
   return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
 };
 
-const mapPrediction = (
+export const mapPrediction = (
   r: PredictionWithPickConfig
 ): ResolversParentTypes['Prediction'] => ({
   id: r.id,
@@ -122,6 +122,7 @@ export type PredictionsEnvelope = {
  * `predictionsConnection` / `PredictionFilter`.
  */
 export type RunPredictionsArgs = QueryPredictionsArgs & {
+  pickConfigId?: string | null;
   result?: SettlementResult | null;
   endsAt?: Prisma.IntFilter | null;
   endsAtMin?: number | null;
@@ -131,6 +132,7 @@ export type RunPredictionsArgs = QueryPredictionsArgs & {
 const buildPredictionWhere = async ({
   address,
   conditionId,
+  pickConfigId,
   chainId,
   settled,
   isLegacy,
@@ -142,6 +144,7 @@ const buildPredictionWhere = async ({
   RunPredictionsArgs,
   | 'address'
   | 'conditionId'
+  | 'pickConfigId'
   | 'chainId'
   | 'settled'
   | 'isLegacy'
@@ -154,6 +157,9 @@ const buildPredictionWhere = async ({
   const where: Prisma.PredictionWhereInput = {};
   const filters: Prisma.PredictionWhereInput[] = [];
   if (addr) filters.push({ OR: [{ predictor: addr }, { counterparty: addr }] });
+  if (pickConfigId) {
+    filters.push({ pickConfigId: pickConfigId.toLowerCase() });
+  }
   if (conditionId) {
     const matchingPicks = await prisma.pick.findMany({
       where: {
@@ -193,6 +199,7 @@ export const runPredictions = async ({
   skip,
   address,
   conditionId,
+  pickConfigId,
   chainId,
   settled,
   isLegacy,
@@ -207,6 +214,7 @@ export const runPredictions = async ({
   const { where, empty } = await buildPredictionWhere({
     address,
     conditionId,
+    pickConfigId,
     chainId,
     settled,
     isLegacy,
@@ -280,6 +288,7 @@ export const predictionsConnection: NonNullable<
   const { where: filterWhere, empty } = await buildPredictionWhere({
     address: filter?.address ?? null,
     conditionId: filter?.conditionId ?? null,
+    pickConfigId: (filter as { pickConfigId?: string | null } | null | undefined)?.pickConfigId ?? null,
     chainId: filter?.chainId ?? null,
     settled: filter?.settled ?? null,
     isLegacy: filter?.isLegacy ?? null,

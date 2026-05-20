@@ -21,11 +21,11 @@ import prisma from '../../../../core/db';
 import { clampSkip, clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
-type Trade = NonNullable<
+export type Trade = NonNullable<
   Awaited<ReturnType<typeof prisma.secondaryTrade.findUnique>>
 >;
 
-const mapTrade = (r: Trade) => ({
+export const mapTrade = (r: Trade) => ({
   id: r.id,
   chainId: r.chainId,
   tradeHash: r.tradeHash,
@@ -59,6 +59,7 @@ export type RunTradesArgs = QueryTradesArgs & {
   executedAtMax?: number | null;
   orderBy?: 'EXECUTED_AT' | 'BLOCK_NUMBER' | null;
   orderDirection?: 'asc' | 'desc' | null;
+  tokens?: string[] | null;
 };
 
 export const runTrades = async ({
@@ -68,6 +69,7 @@ export const runTrades = async ({
   seller,
   buyer,
   token,
+  tokens,
   chainId,
   executedAtMin,
   executedAtMax,
@@ -89,7 +91,9 @@ export const runTrades = async ({
     if (seller) where.seller = seller.toLowerCase();
     if (buyer) where.buyer = buyer.toLowerCase();
   }
-  if (token) where.token = token.toLowerCase();
+  if (tokens?.length) {
+    where.token = { in: tokens.map((t) => t.toLowerCase()) };
+  } else if (token) where.token = token.toLowerCase();
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (executedAtMin != null || executedAtMax != null) {
     const range: Prisma.IntFilter = {};
@@ -168,6 +172,7 @@ const mergeTradeFilters = (args: QueryTradesConnectionArgs): RunTradesArgs => {
     seller: f?.seller ?? null,
     buyer: f?.buyer ?? null,
     token: f?.token ?? null,
+    tokens: (f as { tokens?: string[] | null } | null)?.tokens ?? null,
     chainId: f?.chainId ?? null,
     executedAtMin: intFilterToBounds(f?.executedAt, 'TradeFilter.executedAt')
       .min,

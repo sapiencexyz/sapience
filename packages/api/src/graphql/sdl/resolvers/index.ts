@@ -26,17 +26,20 @@ import { AttestationScore } from './AttestationScore';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
+import { Activity, ActivitySource } from './Activity';
 import { ActivityItemsPage } from './ActivityItemsPage';
 import { Forecast } from './Forecast';
 import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
+import { PickConfiguration } from './PickConfiguration';
 import { PositionsPage } from './PositionsPage';
 import { Question, ConditionOrConditionGroup } from './Question';
 import { User } from './User';
 
 import { accountActivityPage, activityPage } from './queries/activity';
+import { activity, leaderboard } from './queries/pr6';
 import { accountActivity } from './queries/deprecated/activity';
 import {
   accountStats,
@@ -118,6 +121,8 @@ export const resolvers: Resolvers = {
     // Relay polymorphic refetch
     node,
     nodes,
+    activity,
+    leaderboard,
     // Leaderboards / account scores
     accountAccuracy,
     accountAccuracyRank,
@@ -194,6 +199,8 @@ export const resolvers: Resolvers = {
     users,
   },
   Account,
+  Activity,
+  ActivitySource,
   ActivityItemsPage,
   Attestation,
   AttestationScore,
@@ -205,6 +212,7 @@ export const resolvers: Resolvers = {
   LegacyPrediction,
   LimitOrder,
   Pick,
+  PickConfiguration,
   PositionsPage,
   Question,
   ConditionOrConditionGroup,

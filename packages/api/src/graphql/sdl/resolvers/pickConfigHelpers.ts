@@ -76,4 +76,4 @@ export const mapPickConfig = (
     predictedOutcome: p.predictedOutcome,
   })),
   predictionId: extra?.predictionId ?? null,
-});
+}) as PickConfigurationParent;

@@ -42,7 +42,7 @@
  */
 
 /** Names of types that implement `Node` and have frozen public global-id formats. */
-export type NodeTypeName = 'CollateralTransfer' | 'Vault' | 'Category';
+export type NodeTypeName = 'CollateralTransfer' | 'Vault' | 'Category' | 'Account';
 
 export type GlobalIdParts = {
   type: string;
@@ -82,6 +82,7 @@ export const FROZEN_NODE_TYPES: readonly string[] = [
   'CollateralTransfer',
   'Vault',
   'Category',
+  'Account',
 ];
 
 const SEPARATOR = ':';
