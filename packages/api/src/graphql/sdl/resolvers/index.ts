@@ -29,9 +29,6 @@ import { ConditionGroup } from './ConditionGroup';
 import { Activity, ActivitySource } from './Activity';
 import { ActivityItemsPage } from './ActivityItemsPage';
 import { Forecast } from './Forecast';
-import { LegacyPosition } from './LegacyPosition';
-import { LegacyPrediction } from './LegacyPrediction';
-import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
 import { PickConfiguration } from './PickConfiguration';
 import { PositionsPage } from './PositionsPage';
@@ -211,9 +208,6 @@ export const resolvers: Resolvers = {
   Condition,
   ConditionGroup,
   Forecast,
-  LegacyPosition,
-  LegacyPrediction,
-  LimitOrder,
   Pick,
   PickConfiguration,
   PositionsPage,

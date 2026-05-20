@@ -2,21 +2,18 @@
 /**
  * Condition model resolvers.
  *
- * GraphQL field names match Prisma relation names for Condition —
- * `category`, `conditionGroup`, `attestations`, `predictions` — so no
- * rename bookkeeping. Scalar fields pass through the default field
- * resolver.
- *
  * Relation strategy:
  *  - `category` / `conditionGroup`: FK lives on the parent
  *    (`categoryId` / `conditionGroupId`), so a per-request DataLoader
  *    batches the lookup by integer pk. Pre-loaded relations (Prisma
  *    `include`) still take the fast path via `loadRelation`.
- *  - `attestations` / `predictions`: to-many relations. A batched
+ *  - `attestations`: to-many relation. A batched
  *    `findMany({ where: { conditionId: { in } } })` loader fans out the
  *    parent ids when the caller doesn't supply per-row pagination/filter
- *    args. With args present the loader can't honor per-parent slicing,
- *    so we fall through to the legacy per-row path.
+ *    args. With args present the loader falls through to the per-row path.
+ *  - `predictionsConnection` / `trades` / `forecasts`: Relay-shaped child
+ *    connections; we delegate to the root connection resolvers with the
+ *    parent scope merged into `filter`.
  */
 
 import type { ConditionResolvers } from '../__generated__/resolvers';
@@ -65,7 +62,6 @@ type PrismaCondition = {
   category?: unknown;
   conditionGroup?: unknown;
   attestations?: unknown;
-  predictions?: unknown;
   [k: string]: unknown;
 };
 
@@ -138,20 +134,6 @@ export const Condition: ConditionResolvers = {
       parentModel: 'condition',
       parentWhere: { id: p.id },
       prismaRelationName: 'attestations',
-      args,
-    });
-  },
-
-  predictions: async (parent, args, ctx) => {
-    const p = parent as PrismaCondition;
-    if (Array.isArray(p.predictions)) return p.predictions as never[];
-    if (ctx.loaders && isBatchableListArgs(args as RelationListArgs)) {
-      return ctx.loaders.predictionsByConditionId.load(p.id) as never;
-    }
-    return loadRelation(p, 'predictions', {
-      parentModel: 'condition',
-      parentWhere: { id: p.id },
-      prismaRelationName: 'predictions',
       args,
     });
   },

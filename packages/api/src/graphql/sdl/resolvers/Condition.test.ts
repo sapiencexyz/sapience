@@ -12,7 +12,7 @@ type RelationFn = (
 ) => Promise<unknown>;
 
 const callField = (
-  field: 'category' | 'conditionGroup' | 'attestations' | 'predictions',
+  field: 'category' | 'conditionGroup' | 'attestations',
   parent: unknown,
   args: unknown,
   ctx: unknown
@@ -159,9 +159,6 @@ describe('Condition.attestations', () => {
   });
 });
 
-// `Condition.predictions` (legacy `[LegacyPrediction!]!`) is kept as a
-// `@deprecated` overload alongside `Condition.predictionsConnection`
-// (Relay-shaped) so external clients can migrate over one release. The
-// legacy path delegates to the `predictionsByConditionId` DataLoader (or
-// the per-row `loadRelation` fallback when args are present); the
-// connection-level behavior is covered by `crossStream.test.ts`.
+// `Condition.predictionsConnection` (Relay-shaped) is the only prediction
+// surface on Condition; its behavior (parent-scope merge into `filter`) is
+// covered by `crossStream.test.ts`.

@@ -20,11 +20,10 @@
  *
  *   2. **To-many batch** (`<thing>By<ParentFk>`): one batched `findMany`
  *      that fans out the parent FK and groups the result. Drives
- *      `Condition.attestations` and `Condition.predictions` when the
- *      caller doesn't pass per-row pagination/filter args. With args
- *      (take/skip/where/orderBy/cursor/distinct) the loader can't honor
- *      per-parent slicing, so the field resolver falls through to the
- *      legacy per-row path.
+ *      `Condition.attestations` when the caller doesn't pass per-row
+ *      pagination/filter args. With args (take/skip/where/orderBy/cursor/
+ *      distinct) the loader can't honor per-parent slicing, so the field
+ *      resolver falls through to the per-row path.
  *
  * Loaders that aren't keyed by a single id (list queries with non-id
  * filters — `escrow.ts:runPickConfigurations`, `activity.ts` token-set
@@ -45,7 +44,6 @@ type CategoryRow = Prisma.CategoryGetPayload<true>;
 type ConditionGroupRow = Prisma.ConditionGroupGetPayload<true>;
 type ReferralCodeRow = Prisma.ReferralCodeGetPayload<true>;
 type AttestationRow = Prisma.AttestationGetPayload<true>;
-type LegacyPredictionRow = Prisma.LegacyPredictionGetPayload<true>;
 
 export interface GraphQLLoaders {
   // Single-key loaders
@@ -68,8 +66,6 @@ export interface GraphQLLoaders {
   // empty array for parents with no matching children.
   /** conditionId → Attestation rows for that condition. */
   attestationsByConditionId: DataLoader<string, AttestationRow[]>;
-  /** conditionId → LegacyPrediction rows for that condition. */
-  predictionsByConditionId: DataLoader<string, LegacyPredictionRow[]>;
 }
 
 export const createLoaders = (prisma: typeof prismaClient): GraphQLLoaders => ({
@@ -150,23 +146,6 @@ export const createLoaders = (prisma: typeof prismaClient): GraphQLLoaders => ({
       const byCondId = new Map<string, AttestationRow[]>();
       for (const row of rows) {
         if (!row.conditionId) continue;
-        const k = row.conditionId.toLowerCase();
-        const arr = byCondId.get(k);
-        if (arr) arr.push(row);
-        else byCondId.set(k, [row]);
-      }
-      return conditionIds.map((id) => byCondId.get(id.toLowerCase()) ?? []);
-    }
-  ),
-
-  predictionsByConditionId: new DataLoader<string, LegacyPredictionRow[]>(
-    async (conditionIds) => {
-      const lowered = conditionIds.map((id) => id.toLowerCase());
-      const rows = await prisma.legacyPrediction.findMany({
-        where: { conditionId: { in: Array.from(new Set(lowered)) } },
-      });
-      const byCondId = new Map<string, LegacyPredictionRow[]>();
-      for (const row of rows) {
         const k = row.conditionId.toLowerCase();
         const arr = byCondId.get(k);
         if (arr) arr.push(row);
