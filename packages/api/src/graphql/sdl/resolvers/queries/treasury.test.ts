@@ -10,7 +10,11 @@ import {
 import { encodeCursor } from '../../../relay/cursor';
 
 const mockPrisma = vi.hoisted(() => ({
-  collateralTransfer: { findMany: vi.fn(), findUnique: vi.fn() },
+  collateralTransfer: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    count: vi.fn().mockResolvedValue(0),
+  },
   category: { findMany: vi.fn(), findUnique: vi.fn(), count: vi.fn() },
   $queryRaw: vi.fn(),
 }));
@@ -70,10 +74,10 @@ describe('treasury — SDL guardrails', () => {
 
   it('does not expose unimplemented stats pagination or ordering args yet', () => {
     expect(SCHEMA).toMatch(
-      /stats\(filter: ProtocolStatsFilter\): ProtocolStatsConnection!/
+      /stats\(filter: ProtocolStatsFilter\): ProtocolStatConnection!/
     );
     expect(SCHEMA).toMatch(
-      /stats\(filter: VaultStatsFilter\): VaultStatsConnection!/
+      /stats\(filter: VaultStatsFilter\): VaultStatConnection!/
     );
     expect(SCHEMA).not.toContain('input ProtocolStatsOrder');
     expect(SCHEMA).not.toContain('input VaultStatsOrder');

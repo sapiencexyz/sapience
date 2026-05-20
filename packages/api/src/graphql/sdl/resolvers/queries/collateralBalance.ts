@@ -306,10 +306,7 @@ const buildTransferCursorPredicate = (
     OR: [
       { blockNumber: { [op]: blockNumber } },
       {
-        AND: [
-          { blockNumber: { equals: blockNumber } },
-          { id: { [op]: id } },
-        ],
+        AND: [{ blockNumber: { equals: blockNumber } }, { id: { [op]: id } }],
       },
     ],
   };
@@ -342,11 +339,14 @@ export const collateralTransfersConnection = (async (
   const where: Prisma.CollateralTransferWhereInput = cursorWhere
     ? { AND: [baseWhere, cursorWhere] }
     : baseWhere;
-  const rows = await prisma.collateralTransfer.findMany({
-    where,
-    orderBy: [{ blockNumber: direction }, { id: direction }],
-    take: first + 1,
-  });
+  const [rows, totalCount] = await Promise.all([
+    prisma.collateralTransfer.findMany({
+      where,
+      orderBy: [{ blockNumber: direction }, { id: direction }],
+      take: first + 1,
+    }),
+    prisma.collateralTransfer.count({ where: baseWhere }),
+  ]);
   const pageRows = rows.slice(0, first);
   const nodes = pageRows.map((row) =>
     mapCollateralTransfer(row, args.filter?.account ?? undefined)
@@ -361,6 +361,7 @@ export const collateralTransfersConnection = (async (
   return {
     edges,
     nodes,
+    totalCount,
     pageInfo: {
       hasNextPage: rows.length > first,
       hasPreviousPage: false,

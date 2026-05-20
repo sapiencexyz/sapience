@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockPrisma = vi.hoisted(() => ({
-  condition: { findMany: vi.fn() },
+  condition: { findMany: vi.fn(), count: vi.fn().mockResolvedValue(0) },
 }));
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));

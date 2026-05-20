@@ -135,7 +135,7 @@ type Account implements Node {
     after: String
     filter: AccountStatsFilter
     orderBy: AccountStatsOrder
-  ): AccountStatsConnection!
+  ): AccountStatConnection!
   rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRanking
   predictions(
     first: Int = 50
@@ -762,6 +762,12 @@ type AccountRankingConnection {
   edges: [AccountRankingEdge!]!
   nodes: [AccountRanking!]!
   pageInfo: PageInfo!
+  """
+  Size of the underlying ranked set the page is sliced from. Already
+  computed in memory (the leaderboard materializes the full ranking),
+  so cheap to surface.
+  """
+  totalCount: Int!
   metric: LeaderboardMetric!
 }
 
@@ -770,13 +776,19 @@ type AccountRankingEdge {
   cursor: String!
 }
 
-type AccountStatsConnection {
-  edges: [AccountStatsEdge!]!
+type AccountStatConnection {
+  edges: [AccountStatEdge!]!
   nodes: [AccountStat!]!
   pageInfo: PageInfo!
+  """
+  Size of the full time-series rendered by this query (pre-pagination).
+  Already known in memory — the resolver materializes every bucket
+  before slicing — so cheap to surface.
+  """
+  totalCount: Int!
 }
 
-type AccountStatsEdge {
+type AccountStatEdge {
   node: AccountStat!
   cursor: String!
 }
@@ -1640,6 +1652,7 @@ type ConditionConnection {
   edges: [ConditionEdge!]!
   nodes: [Condition!]!
   pageInfo: PageInfo!
+  totalCount: Int!
 }
 
 """
@@ -1665,6 +1678,7 @@ type ConditionGroupConnection {
   edges: [ConditionGroupEdge!]!
   nodes: [ConditionGroup!]!
   pageInfo: PageInfo!
+  totalCount: Int!
 }
 
 """
@@ -1709,6 +1723,7 @@ type TradeConnection {
   edges: [TradeEdge!]!
   nodes: [Trade!]!
   pageInfo: PageInfo!
+  totalCount: Int!
 }
 
 """
@@ -1726,6 +1741,7 @@ type PositionConnection {
   edges: [PositionEdge!]!
   nodes: [Position!]!
   pageInfo: PageInfo!
+  totalCount: Int!
 }
 
 """
@@ -1743,6 +1759,7 @@ type PickConfigurationConnection {
   edges: [PickConfigurationEdge!]!
   nodes: [PickConfiguration!]!
   pageInfo: PageInfo!
+  totalCount: Int!
 }
 
 """
@@ -1760,6 +1777,7 @@ type CollateralTransferConnection {
   edges: [CollateralTransferEdge!]!
   nodes: [CollateralTransfer!]!
   pageInfo: PageInfo!
+  totalCount: Int!
 }
 
 type CollateralTransferEdge {
@@ -1767,24 +1785,36 @@ type CollateralTransferEdge {
   cursor: String!
 }
 
-type ProtocolStatsConnection {
-  edges: [ProtocolStatsEdge!]!
+type ProtocolStatConnection {
+  edges: [ProtocolStatEdge!]!
   nodes: [ProtocolStat!]!
   pageInfo: PageInfo!
+  """
+  Size of the full snapshot series rendered by this query (pre-pagination).
+  Already known in memory — the resolver materializes every snapshot
+  before slicing — so cheap to surface.
+  """
+  totalCount: Int!
 }
 
-type ProtocolStatsEdge {
+type ProtocolStatEdge {
   node: ProtocolStat!
   cursor: String!
 }
 
-type VaultStatsConnection {
-  edges: [VaultStatsEdge!]!
+type VaultStatConnection {
+  edges: [VaultStatEdge!]!
   nodes: [VaultStat!]!
   pageInfo: PageInfo!
+  """
+  Size of the full per-vault snapshot series (pre-pagination). Already
+  known in memory — the resolver materializes every snapshot before
+  slicing — so cheap to surface.
+  """
+  totalCount: Int!
 }
 
-type VaultStatsEdge {
+type VaultStatEdge {
   node: VaultStat!
   cursor: String!
 }
@@ -1799,6 +1829,18 @@ type CategoryConnection {
 type CategoryEdge {
   node: Category!
   cursor: String!
+}
+
+"""
+Filter input for `categoriesConnection`. Intentionally narrow — the
+category table is tiny, so the only meaningful filter dimension is
+substring match for autocomplete / lookup UIs.
+"""
+input CategoryFilter {
+  """
+  Case-insensitive substring search against the category name.
+  """
+  search: String
 }
 
 """
@@ -2700,7 +2742,7 @@ type TimeToResolutionBucket {
 }
 
 type Protocol {
-  stats(filter: ProtocolStatsFilter): ProtocolStatsConnection!
+  stats(filter: ProtocolStatsFilter): ProtocolStatConnection!
   openInterestByCategory: [CategoryOpenInterest!]!
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 }
@@ -2711,7 +2753,7 @@ type Vault implements Node {
   chainId: Int!
   collateral: CollateralToken!
   account: Account!
-  stats(filter: VaultStatsFilter): VaultStatsConnection!
+  stats(filter: VaultStatsFilter): VaultStatConnection!
 }
 
 type VaultConnection {
@@ -3504,7 +3546,11 @@ type Query {
   (→ `categories`) in a subsequent migration, once the deprecated
   bare-array `categories` sibling above is removed.
   """
-  categoriesConnection(first: Int = 100, after: String): CategoryConnection!
+  categoriesConnection(
+    first: Int = 100
+    after: String
+    filter: CategoryFilter
+  ): CategoryConnection!
 
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain

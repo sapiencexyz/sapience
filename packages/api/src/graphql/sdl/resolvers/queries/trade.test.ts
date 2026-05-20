@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockPrisma = vi.hoisted(() => ({
-  secondaryTrade: { findMany: vi.fn(), findUnique: vi.fn() },
+  secondaryTrade: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    count: vi.fn().mockResolvedValue(0),
+  },
 }));
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));

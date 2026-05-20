@@ -820,6 +820,7 @@ export const Protocol = {
     return {
       edges,
       nodes,
+      totalCount: nodes.length,
       pageInfo: {
         hasNextPage: false,
         hasPreviousPage: false,
@@ -852,6 +853,7 @@ export const Vault = {
     return {
       edges,
       nodes,
+      totalCount: nodes.length,
       pageInfo: {
         hasNextPage: false,
         hasPreviousPage: false,

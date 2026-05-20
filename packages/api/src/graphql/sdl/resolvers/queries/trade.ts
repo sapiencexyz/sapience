@@ -211,9 +211,13 @@ export const tradesConnection: NonNullable<
       id: String(node.id),
     }),
   }));
+  const totalCount = await prisma.secondaryTrade.count({
+    where: result._countWhere ?? {},
+  });
   return {
     edges,
     nodes: result.items,
+    totalCount,
     pageInfo: {
       hasNextPage: result.hasMore,
       hasPreviousPage: false,

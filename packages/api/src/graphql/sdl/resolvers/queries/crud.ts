@@ -390,20 +390,35 @@ const buildCategoryCursorPredicate = (
 
 export const categoriesConnection = (async (
   _parent: unknown,
-  { first, after }: { first?: number | null; after?: string | null }
+  {
+    first,
+    after,
+    filter,
+  }: {
+    first?: number | null;
+    after?: string | null;
+    filter?: { search?: string | null } | null;
+  }
 ) => {
   const cappedTake = clampTake(first ?? undefined, { defaultTake: 100 });
   const cursor = after ? decodeCursor(after) : null;
-  const where = cursor
-    ? buildCategoryCursorPredicate(cursor.k, cursor.id)
+  const searchWhere = filter?.search
+    ? { name: { contains: filter.search, mode: 'insensitive' as const } }
     : undefined;
+  const where = cursor
+    ? searchWhere
+      ? {
+          AND: [searchWhere, buildCategoryCursorPredicate(cursor.k, cursor.id)],
+        }
+      : buildCategoryCursorPredicate(cursor.k, cursor.id)
+    : searchWhere;
   const [rawRows, totalCount] = await Promise.all([
     prisma.category.findMany({
       where,
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
       take: cappedTake + 1,
     }),
-    prisma.category.count(),
+    prisma.category.count({ where: searchWhere }),
   ]);
   const pageRows = rawRows.slice(0, cappedTake);
   const nodes = pageRows.map((row) => ({
