@@ -9,20 +9,12 @@ import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 
 const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
   query RecentCounterpartyPredictions(
-    $filters: PredictionFilters
-    $take: Int
-    $skip: Int
-    $orderBy: PredictionSortField
-    $orderDirection: SortOrder
+    $filter: PredictionFilter
+    $first: Int
+    $orderBy: PredictionOrder
   ) {
-    predictionsPage(
-      filters: $filters
-      take: $take
-      skip: $skip
-      orderBy: $orderBy
-      orderDirection: $orderDirection
-    ) {
-      items {
+    predictionsConnection(filter: $filter, first: $first, orderBy: $orderBy) {
+      nodes {
         id
         predictionId
         chainId
@@ -48,7 +40,7 @@ type Prediction = {
 };
 
 type PredictionsQueryResponse = {
-  predictionsPage: { items: Prediction[] };
+  predictionsConnection: { nodes: Prediction[] };
 };
 
 export function useTradeSettledNotifications() {
@@ -67,14 +59,12 @@ export function useTradeSettledNotifications() {
       const result = await graphqlRequest<PredictionsQueryResponse>(
         RECENT_PREDICTIONS_QUERY,
         {
-          filters: { address: address.toLowerCase() },
-          take: 10,
-          skip: 0,
-          orderBy: 'CREATED_AT',
-          orderDirection: 'desc',
+          filter: { address: address.toLowerCase() },
+          first: 10,
+          orderBy: { field: 'CREATED_AT', direction: 'DESC' },
         }
       );
-      return result.predictionsPage.items;
+      return result.predictionsConnection.nodes;
     },
     enabled: !!address,
     refetchInterval: 3000, // Poll every 3 seconds

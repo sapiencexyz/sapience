@@ -27,10 +27,8 @@ const mockPrisma = vi.hoisted(() => ({
 
 vi.mock('../../../core/db', () => ({ default: mockPrisma }));
 
-import { AttestationsPage } from './AttestationsPage';
 import { CollateralTransfersPage } from './CollateralTransfersPage';
 import { PositionsPage } from './PositionsPage';
-import { PredictionsPage } from './PredictionsPage';
 import { CategoriesPage } from './CategoriesPage';
 import { ActivityItemsPage } from './ActivityItemsPage';
 
@@ -49,21 +47,11 @@ type LazyCase = {
 
 const lazyPageResolvers: LazyCase[] = [
   {
-    name: 'AttestationsPage',
-    resolver: AttestationsPage,
-    mock: mockPrisma.attestation,
-  },
-  {
     name: 'CollateralTransfersPage',
     resolver: CollateralTransfersPage,
     mock: mockPrisma.collateralTransfer,
   },
   { name: 'PositionsPage', resolver: PositionsPage, mock: mockPrisma.position },
-  {
-    name: 'PredictionsPage',
-    resolver: PredictionsPage,
-    mock: mockPrisma.prediction,
-  },
 ];
 
 describe.each(lazyPageResolvers)(

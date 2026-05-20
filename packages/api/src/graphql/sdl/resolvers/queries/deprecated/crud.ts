@@ -1,7 +1,7 @@
 /**
  * Deprecated typegraphql-prisma-style CRUD findMany passthroughs:
  *
- *   - attestations — replaced by `attestationsPage` (flat filters + envelope)
+ *   - attestations — replaced by `forecastsConnection` (Relay cursor connection)
  *   - users        — no longer used by any in-tree consumer; kept until
  *     deprecation telemetry shows zero external callers.
  *

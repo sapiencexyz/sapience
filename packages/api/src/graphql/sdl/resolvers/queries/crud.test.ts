@@ -10,14 +10,12 @@ const mockPrisma = vi.hoisted(() => ({
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
 import type {
-  QueryAttestationsPageArgs,
   QueryCategoriesPageArgs,
   QueryConditionArgs,
   QueryUserArgs,
 } from '../../__generated__/resolvers';
 import {
   __clearCategoriesCache,
-  attestationsPage,
   categoriesPage,
   condition,
   user,
@@ -30,10 +28,6 @@ type ResolverFn<Args, Out> = (
   info: unknown
 ) => Promise<Out>;
 
-const attestationsPageFn = attestationsPage as unknown as ResolverFn<
-  QueryAttestationsPageArgs,
-  { items: unknown[]; hasMore: boolean }
->;
 const categoriesPageFn = categoriesPage as unknown as ResolverFn<
   QueryCategoriesPageArgs,
   { items: unknown[]; hasMore: boolean }
@@ -55,142 +49,6 @@ beforeEach(() => {
   mockPrisma.category.findMany.mockResolvedValue([]);
   mockPrisma.condition.findUnique.mockResolvedValue(null);
   mockPrisma.user.findUnique.mockResolvedValue(null);
-});
-
-describe('attestationsPage — pagination envelope', () => {
-  it('caps take at 100 and probes for hasMore (take + 1)', async () => {
-    await attestationsPageFn(
-      undefined,
-      { take: 9999, skip: 0 } as QueryAttestationsPageArgs,
-      undefined,
-      undefined
-    );
-    const args = mockPrisma.attestation.findMany.mock.calls[0][0];
-    expect(args.take).toBe(101);
-    expect(args.skip).toBe(0);
-  });
-
-  it('hasMore=true when probe row is returned', async () => {
-    const eleven = Array.from({ length: 11 }, (_, i) => ({ uid: `u-${i}` }));
-    mockPrisma.attestation.findMany.mockResolvedValue(eleven);
-    const result = await attestationsPageFn(
-      undefined,
-      { take: 10, skip: 0 } as QueryAttestationsPageArgs,
-      undefined,
-      undefined
-    );
-    expect(result.hasMore).toBe(true);
-    expect(result.items).toHaveLength(10);
-  });
-
-  it('hasMore=false when fewer than take + 1 rows', async () => {
-    mockPrisma.attestation.findMany.mockResolvedValue([{ uid: 'u-1' }]);
-    const result = await attestationsPageFn(
-      undefined,
-      { take: 10, skip: 0 } as QueryAttestationsPageArgs,
-      undefined,
-      undefined
-    );
-    expect(result.hasMore).toBe(false);
-    expect(result.items).toHaveLength(1);
-  });
-});
-
-describe('attestationsPage — filter construction', () => {
-  it('passes single-value filters straight through to Prisma where', async () => {
-    await attestationsPageFn(
-      undefined,
-      {
-        take: 10,
-        skip: 0,
-        uid: 'u',
-        attester: '0xa',
-        conditionId: '0xc',
-        schemaId: '0xs',
-        recipient: '0xr',
-      } as QueryAttestationsPageArgs,
-      undefined,
-      undefined
-    );
-    const where = mockPrisma.attestation.findMany.mock.calls[0][0].where;
-    expect(where).toMatchObject({
-      uid: 'u',
-      attester: '0xa',
-      conditionId: '0xc',
-      schemaId: '0xs',
-      recipient: '0xr',
-    });
-  });
-
-  it('combines minTime and maxTime into a single time-range filter', async () => {
-    await attestationsPageFn(
-      undefined,
-      {
-        take: 10,
-        skip: 0,
-        minTime: 100,
-        maxTime: 200,
-      } as QueryAttestationsPageArgs,
-      undefined,
-      undefined
-    );
-    const where = mockPrisma.attestation.findMany.mock.calls[0][0].where;
-    expect(where.time).toEqual({ gte: 100, lte: 200 });
-  });
-
-  it('only minTime → one-sided range', async () => {
-    await attestationsPageFn(
-      undefined,
-      { take: 10, skip: 0, minTime: 100 } as QueryAttestationsPageArgs,
-      undefined,
-      undefined
-    );
-    const where = mockPrisma.attestation.findMany.mock.calls[0][0].where;
-    expect(where.time).toEqual({ gte: 100 });
-  });
-});
-
-describe('attestationsPage — orderBy mapping', () => {
-  it('defaults to time desc', async () => {
-    await attestationsPageFn(
-      undefined,
-      { take: 10, skip: 0 } as QueryAttestationsPageArgs,
-      undefined,
-      undefined
-    );
-    const args = mockPrisma.attestation.findMany.mock.calls[0][0];
-    expect(args.orderBy).toEqual({ time: 'desc' });
-  });
-
-  it('orderBy=CREATED_AT maps to createdAt field', async () => {
-    await attestationsPageFn(
-      undefined,
-      {
-        take: 10,
-        skip: 0,
-        orderBy: 'CREATED_AT',
-      } as unknown as QueryAttestationsPageArgs,
-      undefined,
-      undefined
-    );
-    const args = mockPrisma.attestation.findMany.mock.calls[0][0];
-    expect(args.orderBy).toEqual({ createdAt: 'desc' });
-  });
-
-  it('orderDirection=asc applies', async () => {
-    await attestationsPageFn(
-      undefined,
-      {
-        take: 10,
-        skip: 0,
-        orderDirection: 'asc',
-      } as unknown as QueryAttestationsPageArgs,
-      undefined,
-      undefined
-    );
-    const args = mockPrisma.attestation.findMany.mock.calls[0][0];
-    expect(args.orderBy).toEqual({ time: 'asc' });
-  });
 });
 
 describe('categoriesPage — pagination envelope', () => {

@@ -167,9 +167,9 @@ const PICK_CONFIG_FRAGMENT = `
 `;
 
 const PREDICTIONS_QUERY = /* GraphQL */ `
-  query Predictions($filters: PredictionFilters, $take: Int, $skip: Int) {
-    predictionsPage(filters: $filters, take: $take, skip: $skip) {
-      items {
+  query Predictions($filter: PredictionFilter, $first: Int) {
+    predictionsConnection(filter: $filter, first: $first) {
+      nodes {
         id
         predictionId
         chainId
@@ -201,13 +201,9 @@ const PREDICTIONS_QUERY = /* GraphQL */ `
 // reads. Keeps server-side query complexity under the 15k limit at take=100;
 // the full PICK_CONFIG_FRAGMENT (with embedded conditions) blew past it.
 const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
-  query PredictionsByCondition(
-    $filters: PredictionFilters
-    $take: Int
-    $skip: Int
-  ) {
-    predictionsPage(filters: $filters, take: $take, skip: $skip) {
-      items {
+  query PredictionsByCondition($filter: PredictionFilter, $first: Int) {
+    predictionsConnection(filter: $filter, first: $first) {
+      nodes {
         id
         predictionId
         marketAddress
@@ -231,8 +227,8 @@ const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
 `;
 
 const PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
-  query PredictionsCount($filters: PredictionFilters) {
-    predictionsPage(filters: $filters, take: 1) {
+  query PredictionsCount($filter: PredictionFilter) {
+    predictionsConnection(filter: $filter, first: 1) {
       totalCount
     }
   }
@@ -339,11 +335,11 @@ export function usePredictionsCount(address?: string, chainId?: number) {
     refetchOnReconnect: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        predictionsPage: { totalCount: number | null };
+        predictionsConnection: { totalCount: number | null };
       }>(PREDICTIONS_COUNT_QUERY, {
-        filters: { address, chainId: chainId ?? null },
+        filter: { address, chainId: chainId ?? null },
       });
-      return resp?.predictionsPage?.totalCount ?? 0;
+      return resp?.predictionsConnection?.totalCount ?? 0;
     },
   });
   return data ?? 0;
@@ -370,13 +366,12 @@ export function usePredictions(params: {
     refetchOnReconnect: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        predictionsPage: { items: Prediction[] };
+        predictionsConnection: { nodes: Prediction[] };
       }>(PREDICTIONS_QUERY, {
-        filters: { address, chainId: chainId ?? null },
-        take,
-        skip,
+        filter: { address, chainId: chainId ?? null },
+        first: take,
       });
-      return resp?.predictionsPage?.items ?? [];
+      return resp?.predictionsConnection?.nodes ?? [];
     },
   });
 
@@ -571,13 +566,12 @@ export function usePredictionsByConditionId(params: {
     refetchOnReconnect: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        predictionsPage: { items: Prediction[] };
+        predictionsConnection: { nodes: Prediction[] };
       }>(PREDICTIONS_BY_CONDITION_QUERY, {
-        filters: { conditionId },
-        take,
-        skip,
+        filter: { conditionId },
+        first: take,
       });
-      return resp?.predictionsPage?.items ?? [];
+      return resp?.predictionsConnection?.nodes ?? [];
     },
   });
 

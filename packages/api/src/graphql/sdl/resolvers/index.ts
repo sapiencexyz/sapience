@@ -23,19 +23,18 @@ import { scalarResolvers } from './scalars';
 import { Account } from './Account';
 import { Attestation } from './Attestation';
 import { AttestationScore } from './AttestationScore';
-import { AttestationsPage } from './AttestationsPage';
 import { CategoriesPage } from './CategoriesPage';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
 import { ActivityItemsPage } from './ActivityItemsPage';
 import { CollateralTransfersPage } from './CollateralTransfersPage';
+import { Forecast } from './Forecast';
 import { LegacyPosition } from './LegacyPosition';
 import { LegacyPrediction } from './LegacyPrediction';
 import { LimitOrder } from './LimitOrder';
 import { Pick } from './Pick';
 import { PositionsPage } from './PositionsPage';
-import { PredictionsPage } from './PredictionsPage';
 import { Question, ConditionOrConditionGroup } from './Question';
 import { User } from './User';
 
@@ -69,10 +68,11 @@ import { conditionGroups } from './queries/deprecated/conditionGroups';
 import { questions } from './queries/deprecated/questions';
 import {
   account,
-  attestationsPage,
   categories,
   categoriesPage,
   condition,
+  forecastByUid,
+  forecastsConnection,
   user,
 } from './queries/crud';
 import { attestations, users } from './queries/deprecated/crud';
@@ -84,7 +84,8 @@ import {
   positionsConnection,
   positionsPage,
   prediction,
-  predictionsPage,
+  predictionByOnchainId,
+  predictionsConnection,
 } from './queries/escrow';
 import {
   pickConfigurations,
@@ -160,9 +161,10 @@ export const resolvers: Resolvers = {
     positionsConnection,
     positionsPage,
     prediction,
+    predictionByOnchainId,
     predictionCount,
     predictions,
-    predictionsPage,
+    predictionsConnection,
     // Secondary market trades
     trade,
     tradeByHash,
@@ -174,7 +176,8 @@ export const resolvers: Resolvers = {
     // CRUD passthroughs
     account,
     attestations,
-    attestationsPage,
+    forecastByUid,
+    forecastsConnection,
     categories,
     categoriesPage,
     condition,
@@ -188,18 +191,17 @@ export const resolvers: Resolvers = {
   ActivityItemsPage,
   Attestation,
   AttestationScore,
-  AttestationsPage,
   CategoriesPage,
   Category,
   CollateralTransfersPage,
   Condition,
   ConditionGroup,
+  Forecast,
   LegacyPosition,
   LegacyPrediction,
   LimitOrder,
   Pick,
   PositionsPage,
-  PredictionsPage,
   Question,
   ConditionOrConditionGroup,
   User,

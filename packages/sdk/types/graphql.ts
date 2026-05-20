@@ -312,27 +312,6 @@ export type AttestationConditionArgs = {
   where?: InputMaybe<ConditionWhereInput>;
 };
 
-/**
- * Flat filter input for the `attestationsPage` query. Each field is optional;
- * values combine with AND.
- */
-export type AttestationFilters = {
-  /** Restrict to a single attester address (case-insensitive). */
-  attester?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to attestations on a single condition. */
-  conditionId?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to attestations with `time <= this` (epoch seconds). */
-  maxTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to attestations with `time >= this` (epoch seconds). */
-  minTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to a single recipient address (case-insensitive). */
-  recipient?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to a single EAS schema ID. */
-  schemaId?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to a single attestation by UID. */
-  uid?: InputMaybe<Scalars['String']['input']>;
-};
-
 export type AttestationListRelationFilter = {
   every?: InputMaybe<AttestationWhereInput>;
   none?: InputMaybe<AttestationWhereInput>;
@@ -451,11 +430,6 @@ export type AttestationScoreWhereInput = {
   used?: InputMaybe<BoolFilter>;
 };
 
-/** Sort fields for the `attestationsPage` query */
-export type AttestationSortField =
-  | 'ATTESTED_AT'
-  | 'CREATED_AT';
-
 export type AttestationWhereInput = {
   AND?: InputMaybe<Array<AttestationWhereInput>>;
   NOT?: InputMaybe<Array<AttestationWhereInput>>;
@@ -500,14 +474,6 @@ export type AttestationWhereUniqueInput = {
   time?: InputMaybe<IntFilter>;
   transactionHash?: InputMaybe<StringFilter>;
   uid?: InputMaybe<Scalars['String']['input']>;
-};
-
-/** Paginated wrapper around Attestation rows with a server-truth hasMore flag */
-export type AttestationsPage = Page & {
-  __typename?: 'AttestationsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Attestation>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** Time-bucketed collateral-balance data point (legacy). */
@@ -1374,7 +1340,7 @@ export type ConditionScalarFieldEnum =
   | 'similarMarkets'
   | 'tags';
 
-/** Legacy offset sort fields retained only for generated compatibility. */
+/** Legacy condition offset sort fields retained only for generated compatibility. */
 export type ConditionSortField =
   | 'CREATED_AT'
   | 'END_TIME'
@@ -1543,6 +1509,88 @@ export type FloatNullableFilter = {
   not?: InputMaybe<NestedFloatNullableFilter>;
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
+
+/** Public Forecast surface backed by EAS attestation rows. */
+export type Forecast = {
+  __typename?: 'Forecast';
+  /** When the forecast was made on-chain. */
+  attestedAt: Scalars['UnixSeconds']['output'];
+  blockNumber: Scalars['Int']['output'];
+  comment?: Maybe<Scalars['String']['output']>;
+  condition?: Maybe<Condition>;
+  conditionId?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTimeISO']['output'];
+  data: Scalars['String']['output'];
+  decodedDataJson: Scalars['String']['output'];
+  /** Raw forecast value as recorded on-chain, returned as a decimal string in D18. */
+  forecast: Scalars['String']['output'];
+  forecastScore?: Maybe<AttestationScore>;
+  forecaster: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  recipient: Scalars['String']['output'];
+  resolver?: Maybe<Scalars['String']['output']>;
+  schemaId: Scalars['String']['output'];
+  transactionHash: Scalars['String']['output'];
+  uid: Scalars['String']['output'];
+};
+
+
+/** Public Forecast surface backed by EAS attestation rows. */
+export type ForecastConditionArgs = {
+  where?: InputMaybe<ConditionWhereInput>;
+};
+
+
+/** Public Forecast surface backed by EAS attestation rows. */
+export type ForecastForecastScoreArgs = {
+  where?: InputMaybe<AttestationScoreWhereInput>;
+};
+
+/** Relay-shaped connection over `Forecast` rows. */
+export type ForecastConnection = {
+  __typename?: 'ForecastConnection';
+  edges: Array<ForecastEdge>;
+  nodes: Array<Forecast>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+/** Cursor-bearing edge for `ForecastConnection`. */
+export type ForecastEdge = {
+  __typename?: 'ForecastEdge';
+  cursor: Scalars['String']['output'];
+  node: Forecast;
+};
+
+/**
+ * Filter input for the `forecastsConnection` query. Each field is optional;
+ * values combine with AND.
+ */
+export type ForecastFilter = {
+  /** Filter by attestation epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  attestedAt?: InputMaybe<IntFilter>;
+  /** Restrict to forecasts on a single condition. */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single forecaster address (case-insensitive). */
+  forecaster?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single recipient address (case-insensitive). */
+  recipient?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single EAS schema ID. */
+  schemaId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single forecast by UID. */
+  uid?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** Order input for `forecastsConnection`. */
+export type ForecastOrder = {
+  direction: OrderDirection;
+  field: ForecastOrderField;
+};
+
+/** Sort fields for `forecastsConnection`. */
+export type ForecastOrderField =
+  | 'ATTESTED_AT'
+  | 'CREATED_AT';
 
 /**
  * DEPRECATED — kept only as the return type of `accountAccuracy`, which is
@@ -2374,6 +2422,15 @@ export type Prediction = {
   settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
 };
 
+/** Relay-shaped connection over `Prediction` rows. */
+export type PredictionConnection = {
+  __typename?: 'PredictionConnection';
+  edges: Array<PredictionEdge>;
+  nodes: Array<Prediction>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
 /** Time-bucketed prediction-count data point with outcome breakdown (legacy). */
 export type PredictionCountDataPoint = {
   __typename?: 'PredictionCountDataPoint';
@@ -2391,17 +2448,26 @@ export type PredictionCountDataPoint = {
   won: Scalars['Int']['output'];
 };
 
-export type PredictionFilters = {
+/** Cursor-bearing edge for `PredictionConnection`. */
+export type PredictionEdge = {
+  __typename?: 'PredictionEdge';
+  cursor: Scalars['String']['output'];
+  node: Prediction;
+};
+
+/**
+ * Filter input for the `predictionsConnection` query. Each field is optional;
+ * values combine with AND.
+ */
+export type PredictionFilter = {
   /** Restrict to predictions where the address is predictor or counterparty (case-insensitive). */
   address?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to predictions on a single condition (via the pickConfig join). */
   conditionId?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to predictions whose pickConfig `endsAt <= this`. */
-  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to predictions whose pickConfig `endsAt >= this`. */
-  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  endsAt?: InputMaybe<IntFilter>;
   /** Restrict to legacy (true) or non-legacy (false) predictions. */
   isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
   /** Restrict to predictions whose pickConfig settled with this result. */
@@ -2410,18 +2476,20 @@ export type PredictionFilters = {
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
+/** Order input for `predictionsConnection`. */
+export type PredictionOrder = {
+  direction: OrderDirection;
+  field: PredictionOrderField;
+};
+
+/** Sort fields for `predictionsConnection`. */
+export type PredictionOrderField =
+  | 'CREATED_AT';
+
 /** Field to sort predictions by */
 export type PredictionSortField =
   | 'CREATED_AT'
   | 'SETTLED_AT';
-
-/** Paginated wrapper around Prediction rows with a server-truth hasMore flag */
-export type PredictionsPage = Page & {
-  __typename?: 'PredictionsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Prediction>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
 
 /**
  * DEPRECATED — kept only as the return type of `accountProfitRank`, which is
@@ -2581,17 +2649,8 @@ export type Query = {
    * breaking; new callers should use `filters:`.
    */
   activityPage: ActivityItemsPage;
-  /** @deprecated Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal. */
+  /** @deprecated Use `forecastsConnection` — purpose-built filters (forecaster, conditionId, schemaId, recipient, time range), paginated with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`. */
   attestations: Array<Attestation>;
-  /**
-   * Same as `attestations`, but with a purpose-built `AttestationFilters` input and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
-   *
-   * Filtering is via `filters: AttestationFilters`. The flat-arg filters
-   * (`uid`, `attester`, `recipient`, `conditionId`, `schemaId`, `minTime`,
-   * `maxTime`) are retained for one release with `@deprecated` so existing
-   * callers can migrate without breaking; new callers should use `filters:`.
-   */
-  attestationsPage: AttestationsPage;
   /** @deprecated Use `categoriesPage` — purpose-built paginated wrapper with server-truth `hasMore`. Shares the same TtlCache as the deprecated path. */
   categories: Array<Category>;
   /** Paginated category list, sorted alphabetically by name. */
@@ -2655,6 +2714,9 @@ export type Query = {
    * `conditions(where:)`. Public conditions only.
    */
   conditionsConnection: ConditionConnection;
+  forecastByUid?: Maybe<Forecast>;
+  /** Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC. */
+  forecastsConnection: ForecastConnection;
   /**
    * Refetch any `Node`-implementing entity by its opaque global id. Returns
    * `null` when the id is malformed, the type is not registered, or the
@@ -2711,25 +2773,19 @@ export type Query = {
    * callers keep working through one release.
    */
   prediction?: Maybe<Prediction>;
+  predictionByOnchainId?: Maybe<Prediction>;
   /**
    * Count of escrow predictions involving the given address
-   * @deprecated Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   * @deprecated Use `predictionsConnection(...).totalCount` — same number, available alongside the connection payload, no extra query needed.
    */
   predictionCount: Scalars['Int']['output'];
   /**
    * Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
-   * @deprecated Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.
+   * @deprecated Use `predictionsConnection` — same data with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`.
    */
   predictions: Array<Prediction>;
-  /**
-   * Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
-   *
-   * Filtering is via `filters: PredictionFilters`. The flat-arg filters
-   * (`address`, `chainId`, `conditionId`, `isLegacy`, `settled`) are
-   * retained for one release with `@deprecated` so existing callers can
-   * migrate without breaking; new callers should use `filters:`.
-   */
-  predictionsPage: PredictionsPage;
+  /** Relay-style prediction list. Defaults to createdAt DESC. */
+  predictionsConnection: PredictionConnection;
   /**
    * Protocol-wide statistics time series at the configured snapshot cadence —
    * cumulative volume, trade count, open interest, escrow balance. Window
@@ -2933,22 +2989,6 @@ export type QueryAttestationsArgs = {
 };
 
 
-export type QueryAttestationsPageArgs = {
-  attester?: InputMaybe<Scalars['String']['input']>;
-  conditionId?: InputMaybe<Scalars['String']['input']>;
-  filters?: InputMaybe<AttestationFilters>;
-  maxTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  minTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  orderBy?: InputMaybe<AttestationSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  recipient?: InputMaybe<Scalars['String']['input']>;
-  schemaId?: InputMaybe<Scalars['String']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-  uid?: InputMaybe<Scalars['String']['input']>;
-};
-
-
 export type QueryCategoriesArgs = {
   cursor?: InputMaybe<CategoryWhereUniqueInput>;
   distinct?: InputMaybe<Array<CategoryScalarFieldEnum>>;
@@ -3069,6 +3109,19 @@ export type QueryConditionsConnectionArgs = {
 };
 
 
+export type QueryForecastByUidArgs = {
+  uid: Scalars['String']['input'];
+};
+
+
+export type QueryForecastsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ForecastFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ForecastOrder>;
+};
+
+
 export type QueryNodeArgs = {
   id: Scalars['ID']['input'];
 };
@@ -3162,6 +3215,11 @@ export type QueryPredictionArgs = {
 };
 
 
+export type QueryPredictionByOnchainIdArgs = {
+  predictionId: Scalars['String']['input'];
+};
+
+
 export type QueryPredictionCountArgs = {
   address: Scalars['String']['input'];
   chainId?: InputMaybe<Scalars['Int']['input']>;
@@ -3181,17 +3239,11 @@ export type QueryPredictionsArgs = {
 };
 
 
-export type QueryPredictionsPageArgs = {
-  address?: InputMaybe<Scalars['String']['input']>;
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  conditionId?: InputMaybe<Scalars['String']['input']>;
-  filters?: InputMaybe<PredictionFilters>;
-  isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
-  orderBy?: InputMaybe<PredictionSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  settled?: InputMaybe<Scalars['Boolean']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
+export type QueryPredictionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
 };
 
 
