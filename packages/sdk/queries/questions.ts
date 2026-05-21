@@ -80,7 +80,6 @@ export const GET_QUESTIONS = /* GraphQL */ `
       orderBy: $orderBy
       filter: $filter
     ) {
-      hasMore
       nodes {
         questionType
         group {

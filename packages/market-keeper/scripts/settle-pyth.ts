@@ -247,7 +247,9 @@ const CONDITIONS_QUERY = /* GraphQL */ `
       first: $take
       skip: $skip
     ) {
-      hasMore
+      pageInfo {
+        hasNextPage
+      }
       nodes {
         id
         endTime
@@ -256,7 +258,6 @@ const CONDITIONS_QUERY = /* GraphQL */ `
         description
         settled
       }
-      hasMore
     }
   }
 `;
@@ -555,7 +556,10 @@ async function main() {
   for (let skip = 0; conditions.length < MAX_CONDITIONS; skip += 50) {
     const take = Math.min(50, MAX_CONDITIONS - conditions.length);
     const data = await gql<{
-      conditionsConnection: { nodes: ConditionRow[]; hasMore: boolean };
+      conditionsConnection: {
+        nodes: ConditionRow[];
+        pageInfo: { hasNextPage: boolean };
+      };
     }>(sapienceApiUrl, CONDITIONS_QUERY, {
       filters: {
         chainId: CHAIN_ID,
@@ -568,7 +572,7 @@ async function main() {
     });
     if (data.conditionsConnection.nodes.length === 0) break;
     conditions.push(...data.conditionsConnection.nodes);
-    if (!data.conditionsConnection.hasMore) break;
+    if (!data.conditionsConnection.pageInfo.hasNextPage) break;
   }
 
   console.log(

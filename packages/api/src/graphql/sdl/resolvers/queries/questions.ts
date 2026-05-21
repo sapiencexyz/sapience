@@ -969,8 +969,8 @@ const rangeMax = (filter: ScalarRangeFilter | null | undefined) =>
 
 export const questionsConnection: NonNullable<
   QueryResolvers['questionsConnection']
-> = async (_parent, { first, after, filter, orderBy, take, skip }) => {
-  const cappedFirst = clampTake(first ?? take ?? 50, {
+> = async (_parent, { first, after, filter, orderBy }) => {
+  const cappedFirst = clampTake(first ?? 50, {
     defaultTake: 50,
     maxTake: 100,
   });
@@ -993,7 +993,7 @@ export const questionsConnection: NonNullable<
 
   const { items, hasMore, pageItems } = await runQuestionsData({
     take: cappedFirst,
-    skip: after ? 0 : (skip ?? 0),
+    skip: 0,
     search: filter?.search ?? null,
     categorySlugs: filter?.categorySlugs ?? null,
     tag: filter?.tag ?? null,
@@ -1020,8 +1020,6 @@ export const questionsConnection: NonNullable<
   }));
 
   return {
-    items,
-    hasMore,
     edges,
     nodes: items,
     pageInfo: {

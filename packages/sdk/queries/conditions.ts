@@ -91,7 +91,6 @@ export const GET_CONDITIONS = /* GraphQL */ `
       filter: $filter
       orderBy: { field: CREATED_AT, direction: DESC }
     ) {
-      hasMore
       nodes {
         ${CONDITION_FIELDS}
       }
@@ -207,9 +206,6 @@ export async function fetchConditionsByIds<T>(
     if (page && typeof page === 'object' && 'nodes' in page) {
       return ((page as { nodes: T[] }).nodes ?? []) as T[];
     }
-    if (page && typeof page === 'object' && 'items' in page) {
-      return ((page as { items: T[] }).items ?? []) as T[];
-    }
     return (r[resultKey] as T[]) ?? [];
   };
 
@@ -253,7 +249,6 @@ type ConditionById = {
 export const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
   query ConditionsByIds($filter: ConditionFilter!) {
     conditionsConnection(filter: $filter, first: 100) {
-      hasMore
       nodes {
         id
         shortName

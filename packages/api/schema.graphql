@@ -1360,13 +1360,6 @@ type ForecastEdge {
 
 """Relay-shaped connection over `Condition` rows."""
 type ConditionConnection {
-  """
-  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
-  """
-  items: [Condition!]!
-
-  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
-  hasMore: Boolean!
   edges: [ConditionEdge!]!
   nodes: [Condition!]!
   pageInfo: PageInfo!
@@ -1381,13 +1374,6 @@ type ConditionEdge {
 
 """Relay-shaped connection over `ConditionGroup` rows."""
 type ConditionGroupConnection {
-  """
-  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
-  """
-  items: [ConditionGroup!]!
-
-  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
-  hasMore: Boolean!
   edges: [ConditionGroupEdge!]!
   nodes: [ConditionGroup!]!
   pageInfo: PageInfo!
@@ -1406,13 +1392,6 @@ intentionally omitted — the underlying SQL UNION over `condition_group`
 and ungrouped `condition` rows cannot produce a single COUNT cheaply.
 """
 type QuestionConnection {
-  """
-  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
-  """
-  items: [Question!]!
-
-  """Deprecated convenience alias for `pageInfo.hasNextPage`."""
-  hasMore: Boolean!
   edges: [QuestionEdge!]!
   nodes: [Question!]!
   pageInfo: PageInfo!
@@ -2998,7 +2977,7 @@ type Query {
   (→ `conditionGroups`) in a subsequent migration, once the deprecated
   bare-array sibling above is removed.
   """
-  conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): ConditionGroupConnection!
+  conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder): ConditionGroupConnection!
 
   """
   Deprecated bare-array form. Retained unchanged for the one-release
@@ -3016,7 +2995,7 @@ type Query {
   (→ `conditions`) in a subsequent migration, once the deprecated
   bare-array sibling above is removed.
   """
-  conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): ConditionConnection!
+  conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder): ConditionConnection!
 
   """Look up a single pick configuration by ID"""
   pickConfiguration(id: String!): PickConfiguration @deprecated(reason: "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsConnection` for list lookups.")
@@ -3135,7 +3114,7 @@ type Query {
   (→ `questions`) in a subsequent migration, once the deprecated
   bare-array sibling above is removed.
   """
-  questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder, take: Int @deprecated(reason: "Use `first`."), skip: Int @deprecated(reason: "Use cursor pagination via `after`.")): QuestionConnection!
+  questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder): QuestionConnection!
 
   """
   Look up a single secondary market trade by its trade hash. Pass

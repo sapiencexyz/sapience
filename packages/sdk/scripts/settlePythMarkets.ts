@@ -181,7 +181,9 @@ const CONDITIONS_QUERY = /* GraphQL */ `
       first: $take
       skip: $skip
     ) {
-      hasMore
+      pageInfo {
+        hasNextPage
+      }
       nodes {
         id
         endTime
@@ -190,7 +192,6 @@ const CONDITIONS_QUERY = /* GraphQL */ `
         description
         settled
       }
-      hasMore
     }
   }
 `;
@@ -207,7 +208,9 @@ const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
       first: $take
       skip: $skip
     ) {
-      hasMore
+      pageInfo {
+        hasNextPage
+      }
       nodes {
         id
         endTime
@@ -775,7 +778,10 @@ async function main() {
   for (let skip = 0; conditions.length < args.maxConditions; skip += 50) {
     const take = Math.min(50, args.maxConditions - conditions.length);
     const data = await gql<{
-      conditionsConnection: { nodes: ConditionRow[]; hasMore: boolean };
+      conditionsConnection: {
+        nodes: ConditionRow[];
+        pageInfo: { hasNextPage: boolean };
+      };
     }>(args.graphqlUrl, CONDITIONS_QUERY, {
       filters: {
         chainId: args.chainId,
@@ -788,7 +794,7 @@ async function main() {
     });
     if (data.conditionsConnection.nodes.length === 0) break;
     conditions.push(...data.conditionsConnection.nodes);
-    if (!data.conditionsConnection.hasMore) break;
+    if (!data.conditionsConnection.pageInfo.hasNextPage) break;
   }
 
   console.log(
