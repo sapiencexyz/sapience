@@ -927,18 +927,20 @@ import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 /**
  * Map the public `QuestionOrderField` enum to the internal
  * `QuestionSortField` (plus a `VolumeWindow` for windowed-volume sorts).
- * `OPEN_INTEREST` is intentionally not in `QuestionOrderField`; if the
- * enum ever grows a value not covered here, fall through to the
- * runner's `CREATED_AT DESC` default.
+ * `OPEN_INTEREST` is supported here because the questions feed already
+ * sorts via raw SQL; the narrower Condition/ConditionGroup connections
+ * still omit it because their Prisma orderBy path cannot cast varchar OI.
  */
 const mapOrderField = (
-  field: QuestionOrderField
+  field: QuestionOrderField | string
 ): { sortField: QuestionSortField; volumeWindow: VolumeWindow | null } => {
-  switch (field) {
+  switch (String(field)) {
     case QuestionOrderField.CreatedAt:
       return { sortField: QuestionSortField.CreatedAt, volumeWindow: null };
     case QuestionOrderField.ResolvesAt:
       return { sortField: QuestionSortField.EndTime, volumeWindow: null };
+    case 'OPEN_INTEREST':
+      return { sortField: QuestionSortField.OpenInterest, volumeWindow: null };
     case QuestionOrderField.PredictionCount:
       return {
         sortField: QuestionSortField.PredictionCount,

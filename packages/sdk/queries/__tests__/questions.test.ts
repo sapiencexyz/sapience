@@ -31,6 +31,18 @@ describe('fetchQuestionsSorted', () => {
     expect(call[1].orderBy).toEqual({ field: 'CREATED_AT', direction: 'DESC' });
   });
 
+  test('requests open-interest ordering when sortField is openInterest', async () => {
+    await fetchQuestionsSorted({
+      ...baseParams,
+      sortField: 'openInterest',
+    });
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].orderBy).toEqual({
+      field: 'OPEN_INTEREST',
+      direction: 'DESC',
+    });
+  });
+
   test('normalizes missing chainId to null', async () => {
     await fetchQuestionsSorted(baseParams);
     const call = mockGraphqlRequest.mock.calls[0];
