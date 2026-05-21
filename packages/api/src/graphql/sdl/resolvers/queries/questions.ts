@@ -37,6 +37,7 @@
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 import type {
+  QueryQuestionsConnectionArgs,
   QueryResolvers,
   ResolversTypes,
 } from '../../__generated__/resolvers';
@@ -617,6 +618,41 @@ const buildQuestionCursorWhere = (n: NormalizedArgs): Prisma.Sql => {
   `;
 };
 
+// Mirrors the UNION ALL in `fetchSortedItems` but discards sort/cursor/LIMIT.
+// The connection field resolver calls this only when clients select
+// `QuestionConnection.totalCount`.
+const fetchTotalCount = async (n: NormalizedArgs): Promise<number> => {
+  const filters = buildConditionFilterFragments(n);
+  const sort = buildSortFragments(n, filters);
+  const search = buildSearchFragments(n);
+
+  const rows = await prisma.$queryRaw<{ total: number | bigint }[]>`
+    WITH combined AS (
+      SELECT 1
+      FROM condition_group cg
+      ${sort.groupConditionJoin}
+      WHERE cg."publicConditionCount" > 0
+        ${search.groupSearch}
+        ${search.groupCategory}
+        ${search.groupTag}
+      ${sort.groupByClause}
+
+      UNION ALL
+
+      SELECT 1
+      FROM condition c
+      WHERE c.public = true
+        AND c."conditionGroupId" IS NULL
+        ${filters.conditionFilters}
+        ${search.condSearch}
+        ${search.condCategory}
+        ${search.condTag}
+    )
+    SELECT COUNT(*)::int AS total FROM combined
+  `;
+  return Number(rows[0]?.total ?? 0);
+};
+
 const fetchSortedItems = async (
   n: NormalizedArgs
 ): Promise<SortedItemRow[]> => {
@@ -991,7 +1027,7 @@ export const questionsConnection: NonNullable<
     similarMarketVolume?: ScalarRangeFilter | null;
   };
 
-  const { items, hasMore, pageItems } = await runQuestionsData({
+  const baseArgs: RunQuestionsInput = {
     take: cappedFirst,
     skip: 0,
     search: filter?.search ?? null,
@@ -1012,7 +1048,9 @@ export const questionsConnection: NonNullable<
     sortField: mapped.sortField,
     sortDirection,
     afterCursor,
-  });
+  };
+
+  const { items, hasMore, pageItems } = await runQuestionsData(baseArgs);
 
   const edges = items.map((item, idx) => ({
     node: item,
@@ -1022,6 +1060,7 @@ export const questionsConnection: NonNullable<
   return {
     edges,
     nodes: items,
+    _totalCount: () => fetchTotalCount(normalizeArgs(baseArgs)),
     pageInfo: {
       hasNextPage: hasMore,
       hasPreviousPage: afterCursor != null,
@@ -1029,4 +1068,4 @@ export const questionsConnection: NonNullable<
       endCursor: edges[edges.length - 1]?.cursor ?? null,
     },
   };
-};
+}) as unknown as NonNullable<QueryResolvers['questionsConnection']>;
