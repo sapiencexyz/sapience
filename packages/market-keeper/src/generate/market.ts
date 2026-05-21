@@ -22,7 +22,10 @@ export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
 
   const allMarkets: PolymarketMarket[] = [];
   const seenConditionIds = new Set<string>(); // Track seen markets to deduplicate
-  const PAGE_SIZE = 500;
+  // Polymarket's /markets endpoint silently caps `limit` at 100 server-side;
+  // requesting more returns 100 anyway, and the `markets.length < PAGE_SIZE`
+  // short-page stop signal below would then misfire after page 1.
+  const PAGE_SIZE = 100;
   let pageCount = 0;
   let offset = 0;
 
