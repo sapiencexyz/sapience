@@ -70,7 +70,10 @@ async function fetchBasketsFor(
       const params = chunk
         .map((id) => `condition_ids=${encodeURIComponent(id)}`)
         .join('&');
-      const url = `${GAMMA_URL}?${params}&closed=${closed}&limit=${chunk.length * 4}`;
+      // Exact condition_ids filters should return at most one market per id for
+      // the requested closed state, so keep the response limit equal to the
+      // chunk size instead of multiplying it and fighting Gamma's 100-row cap.
+      const url = `${GAMMA_URL}?${params}&closed=${closed}&limit=${chunk.length}`;
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!res.ok) {
         console.warn(

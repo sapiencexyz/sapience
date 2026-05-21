@@ -648,28 +648,16 @@ function splitNegRiskMismatchBatch<
   if (!Array.isArray(errorData.mismatches)) return null;
 
   const badHashes = new Set<string>();
-  const badGroups = new Set<string>();
 
   for (const mismatch of errorData.mismatches) {
-    if (mismatch.type === 'NEW_GROUP_INCOHERENT' && mismatch.groupName) {
-      // For a brand-new incoherent group, do not let arbitrary batch order
-      // decide which basket wins. Quarantine the whole group for operators.
-      badGroups.add(mismatch.groupName);
-      continue;
-    }
-
     for (const item of mismatch.mismatched ?? []) {
       if (item.conditionHash) badHashes.add(item.conditionHash);
     }
   }
 
-  if (badHashes.size === 0 && badGroups.size === 0) return null;
+  if (badHashes.size === 0) return null;
 
-  const quarantined = batch.filter(
-    (item) =>
-      badHashes.has(item.conditionHash) ||
-      (item.groupName !== undefined && badGroups.has(item.groupName))
-  );
+  const quarantined = batch.filter((item) => badHashes.has(item.conditionHash));
   const retryable = batch.filter((item) => !quarantined.includes(item));
 
   if (quarantined.length === 0) return null;

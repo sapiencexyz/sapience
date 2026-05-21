@@ -325,7 +325,7 @@ router.post('/batch-create', async (req: Request, res: Response) => {
                 type: 'NEW_GROUP_INCOHERENT',
                 groupName: name,
                 expectedNegRiskMarketId: leaderBasket,
-                mismatched: groupItems.map((item) => ({
+                mismatched: mismatched.map((item) => ({
                   conditionHash: item.conditionHash,
                   actualNegRiskMarketId: normalizeNegRiskMarketId(
                     item.negRiskMarketId
@@ -630,9 +630,23 @@ router.post('/', async (req: Request, res: Response) => {
       !basketsAgree(resolvedGroup.negRiskMarketId, normalizedNegRiskMarketId)
     ) {
       return res.status(400).json({
-        message:
+        ...negRiskMismatchPayload(
           `Cannot add non-matching condition to negRisk group ${resolvedGroup.id}. ` +
-          `Expected negRiskMarketId ${resolvedGroup.negRiskMarketId ?? 'null'}`,
+            `Expected negRiskMarketId ${resolvedGroup.negRiskMarketId ?? 'null'}`,
+          [
+            {
+              type: 'EXISTING_GROUP_MISMATCH',
+              groupName: groupName?.trim() ?? String(resolvedGroup.id),
+              expectedNegRiskMarketId: resolvedGroup.negRiskMarketId,
+              mismatched: [
+                {
+                  conditionHash,
+                  actualNegRiskMarketId: normalizedNegRiskMarketId,
+                },
+              ],
+            },
+          ]
+        ),
       });
     }
 
@@ -970,9 +984,23 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
       const payloadBasket = normalizeNegRiskMarketId(u.fields.negRiskMarketId);
       if (!basketsAgree(group.negRiskMarketId, payloadBasket)) {
         return res.status(400).json({
-          message:
+          ...negRiskMismatchPayload(
             `Cannot add non-matching condition ${u.id} to negRisk group ${group.id}. ` +
-            `Expected negRiskMarketId ${group.negRiskMarketId ?? 'null'}`,
+              `Expected negRiskMarketId ${group.negRiskMarketId ?? 'null'}`,
+            [
+              {
+                type: 'EXISTING_GROUP_MISMATCH',
+                groupName,
+                expectedNegRiskMarketId: group.negRiskMarketId,
+                mismatched: [
+                  {
+                    conditionHash: u.id,
+                    actualNegRiskMarketId: payloadBasket,
+                  },
+                ],
+              },
+            ]
+          ),
         });
       }
     }
@@ -999,10 +1027,24 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
           );
         if (mismatched.length > 0) {
           return res.status(400).json({
-            message:
+            ...negRiskMismatchPayload(
               `Cannot add non-matching condition${mismatched.length > 1 ? 's' : ''} to negRisk group ${name}. ` +
-              `Expected negRiskMarketId ${leaderBasket ?? 'null'}; ` +
-              `mismatched: ${mismatched.map((u) => u.id).join(', ')}`,
+                `Expected negRiskMarketId ${leaderBasket ?? 'null'}; ` +
+                `mismatched: ${mismatched.map((u) => u.id).join(', ')}`,
+              [
+                {
+                  type: 'NEW_GROUP_INCOHERENT',
+                  groupName: name,
+                  expectedNegRiskMarketId: leaderBasket,
+                  mismatched: mismatched.map((u) => ({
+                    conditionHash: u.id,
+                    actualNegRiskMarketId: normalizeNegRiskMarketId(
+                      u.fields.negRiskMarketId
+                    ),
+                  })),
+                },
+              ]
+            ),
           });
         }
         try {
@@ -1325,9 +1367,23 @@ router.put('/:id', async (req: Request, res: Response) => {
         !basketsAgree(targetGroup.negRiskMarketId, normalizedNegRiskMarketId)
       ) {
         return res.status(400).json({
-          message:
+          ...negRiskMismatchPayload(
             `Cannot add non-matching condition to negRisk group ${targetGroup.id}. ` +
-            `Expected negRiskMarketId ${targetGroup.negRiskMarketId ?? 'null'}`,
+              `Expected negRiskMarketId ${targetGroup.negRiskMarketId ?? 'null'}`,
+            [
+              {
+                type: 'EXISTING_GROUP_MISMATCH',
+                groupName: groupName?.trim() ?? String(targetGroup.id),
+                expectedNegRiskMarketId: targetGroup.negRiskMarketId,
+                mismatched: [
+                  {
+                    conditionHash: id,
+                    actualNegRiskMarketId: normalizedNegRiskMarketId,
+                  },
+                ],
+              },
+            ]
+          ),
         });
       }
 
