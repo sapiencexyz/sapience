@@ -15,10 +15,10 @@ import {
 } from '~/components/shared/StackedPredictions';
 import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
 import ResolutionBadge from '~/components/shared/ResolutionBadge';
-import ConditionStatus from '~/components/shared/ConditionStatus';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
+import { EndTimeCell } from '~/components/markets/market-helpers';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 
 interface PicksSummaryProps {
@@ -32,7 +32,7 @@ export interface PicksContentProps {
   positionId: string | number;
   createdAt?: string | number;
   hideHeader?: boolean;
-  /** Position-level status: controls what the "Ends" column shows for settled picks */
+  /** Position-level status retained for compatibility; Ends cells render from pick end time. */
   positionStatus?: 'won' | 'lost' | 'pending' | 'claimed' | 'active';
 }
 
@@ -57,45 +57,18 @@ function PickForecastCell({ pick }: { pick: Pick }) {
   );
 }
 
-function PickEndsCell({
-  pick,
-  positionStatus,
-}: {
-  pick: Pick;
-  positionStatus?: PicksContentProps['positionStatus'];
-}) {
+function PickEndsCell({ pick }: { pick: Pick }) {
   if (!pick.endTime) {
     return <span className="text-muted-foreground">—</span>;
   }
 
-  // Pick not settled → standard condition lifecycle (countdown or pending)
-  if (!pick.settled) {
-    return <ConditionStatus settled={false} endTime={pick.endTime} />;
-  }
-
-  // Pick is settled — show position-level status if available
-  if (
-    positionStatus === 'won' ||
-    positionStatus === 'lost' ||
-    positionStatus === 'claimed'
-  ) {
-    return (
-      <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-        {positionStatus === 'won'
-          ? 'Won'
-          : positionStatus === 'lost'
-            ? 'Lost'
-            : 'Claimed'}
-      </span>
-    );
-  }
-
-  // Fallback: show resolved status per pick
   return (
-    <ResolutionBadge
-      settled
+    <EndTimeCell
+      endTime={pick.endTime}
+      settled={!!pick.settled}
       resolvedToYes={pick.resolvedToYes}
       nonDecisive={pick.nonDecisive}
+      settledDisplay="ended"
     />
   );
 }
@@ -105,7 +78,6 @@ export function PicksContent({
   positionId,
   createdAt,
   hideHeader,
-  positionStatus,
 }: PicksContentProps) {
   return (
     <div>
@@ -128,9 +100,7 @@ export function PicksContent({
             <tr className="border-b border-brand-white/10 text-left text-muted-foreground">
               <th className="pb-2 pr-4 font-medium w-full">Question</th>
               <th className="pb-2 pr-8 font-medium whitespace-nowrap">
-                {picks.every((pick) => pick.settled)
-                  ? 'Resolution'
-                  : 'Forecast'}
+                Forecast
               </th>
               <th className="pb-2 pr-4 font-medium text-right whitespace-nowrap">
                 Prediction
@@ -199,7 +169,7 @@ export function PicksContent({
                   />
                 </td>
                 <td className="py-2 pl-4 text-right whitespace-nowrap">
-                  <PickEndsCell pick={pick} positionStatus={positionStatus} />
+                  <PickEndsCell pick={pick} />
                 </td>
               </tr>
             ))}

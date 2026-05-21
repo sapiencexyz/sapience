@@ -550,6 +550,7 @@ function createColumns(
               settled={!!data.condition.settled}
               resolvedToYes={data.condition.resolvedToYes}
               nonDecisive={data.condition.nonDecisive}
+              settledDisplay="ended"
             />
           );
         }
@@ -561,6 +562,7 @@ function createColumns(
             endTime={endTime}
             settled={allSettled}
             allSettled={allSettled}
+            settledDisplay="ended"
           />
         );
       },
@@ -751,6 +753,7 @@ function ChildConditionRow({
             settled={!!condition.settled}
             resolvedToYes={condition.resolvedToYes}
             nonDecisive={condition.nonDecisive}
+            settledDisplay="ended"
           />
         ) : (
           <span className="text-muted-foreground">—</span>

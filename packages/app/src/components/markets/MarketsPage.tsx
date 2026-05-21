@@ -20,6 +20,7 @@ import QuestionsGrid from '~/components/markets/polymarket/QuestionsGrid';
 import SortControls from '~/components/markets/polymarket/SortControls';
 import TagBar from '~/components/markets/TagBar';
 import type { FilterState } from '~/components/markets/TableFilters';
+import { getCardGridViewportStyle } from '~/components/markets/market-helpers';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import { usePopularTags } from '~/hooks/graphql/usePopularTags';
 import {
@@ -311,11 +312,7 @@ const MarketsPage = () => {
         className={
           useCardGrid ? 'flex-1 min-w-0 max-w-full flex flex-col' : 'contents'
         }
-        style={
-          useCardGrid
-            ? { height: 'calc(100dvh - var(--page-top-offset, 0px))' }
-            : undefined
-        }
+        style={getCardGridViewportStyle(useCardGrid)}
       >
         {useCardGrid && (
           <div className="px-3 lg:px-4 pt-1 pb-2">
@@ -364,10 +361,10 @@ const MarketsPage = () => {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Search prediction markets"
+                    placeholder="Search"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="h-8 w-full sm:w-64 rounded-full bg-white/15 border border-white/20 pl-9 pr-3 text-sm text-white placeholder:text-white/40 font-display focus:outline-none focus:border-white/40"
+                    className="h-8 w-full sm:w-40 rounded-full bg-white/15 border border-white/20 pl-9 pr-3 text-sm text-white placeholder:text-white/40 font-display focus:outline-none focus:border-white/40"
                   />
                 </div>
                 <SortControls
@@ -382,20 +379,18 @@ const MarketsPage = () => {
           {/* Featured combos (table view only) */}
           {!useCardGrid && <ExampleCombos className="mt-4 xl:mt-0" />}
 
-          {/* Predict Prices (shared) */}
-          <div className={`w-full mt-4 mb-2 ${useCardGrid ? 'px-4' : ''}`}>
-            <div className="flex items-center justify-between mb-2 px-1">
-              <h2
-                className={`sc-heading ${useCardGrid ? 'text-white/80' : 'text-foreground'}`}
-              >
-                Predict Prices
-              </h2>
+          {/* Predict Prices (table view only) */}
+          {!useCardGrid && (
+            <div className="w-full mt-4 mb-2">
+              <div className="flex items-center justify-between mb-2 px-1">
+                <h2 className="sc-heading text-foreground">Predict Prices</h2>
+              </div>
+              <CreatePythPredictionForm
+                featuredFeeds={PYTH_FEEDS}
+                onPick={handlePythPick}
+              />
             </div>
-            <CreatePythPredictionForm
-              featuredFeeds={PYTH_FEEDS}
-              onPick={handlePythPick}
-            />
-          </div>
+          )}
 
           {/* Results area */}
           <div className="relative w-full max-w-full overflow-x-hidden flex-1 flex flex-col min-h-0">
