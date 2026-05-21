@@ -211,6 +211,24 @@ const questionsConnectionFn =
   questionsConnection as unknown as ConnectionResolverFn;
 
 describe('questionsConnection — operator filters and keyset cursors', () => {
+  it('maps OPEN_INTEREST ordering to the raw SQL open-interest sort', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+
+    await questionsConnectionFn(
+      {},
+      {
+        take: 10,
+        orderBy: { field: 'OPEN_INTEREST', direction: 'DESC' },
+      },
+      {},
+      {}
+    );
+
+    const sql = queryRawCallJson();
+    expect(sql).toContain('totalOpenInterest');
+    expect(sql).toContain('openInterest');
+  });
+
   it('maps operator gte/lte filters to the underlying SQL ranges', async () => {
     mockPrisma.$queryRaw.mockResolvedValue([]);
 

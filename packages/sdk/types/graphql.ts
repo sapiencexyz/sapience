@@ -3706,13 +3706,13 @@ export type QuestionOrder = {
 /**
  * Sort fields for the Relay-shaped `questions` connection. The runner
  * unions Conditions and ConditionGroups; sort values pick the column on
- * each side. `OPEN_INTEREST` is intentionally omitted (symmetric with
- * `ConditionOrderField`) — the Condition side would sort the varchar
- * column lexicographically; restore together with raw-SQL numeric sort
- * in a follow-up.
+ * each side. Unlike the narrower Condition/ConditionGroup connections,
+ * `OPEN_INTEREST` is available here because this feed uses raw SQL and
+ * casts the varchar-backed open-interest values numerically.
  */
 export type QuestionOrderField =
   | 'CREATED_AT'
+  | 'OPEN_INTEREST'
   | 'PREDICTION_COUNT'
   | 'RESOLVES_AT'
   | 'SIMILAR_MARKET_VOLUME_7D'

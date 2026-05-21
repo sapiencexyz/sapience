@@ -33,7 +33,7 @@ const VOLUME_WINDOW_TO_GQL: Record<VolumeWindow, string> = {
 const SORT_FIELD_TO_ORDER_FIELD: Record<SortField, string> = {
   createdAt: 'CREATED_AT',
   endTime: 'RESOLVES_AT',
-  openInterest: 'CREATED_AT',
+  openInterest: 'OPEN_INTEREST',
   predictionCount: 'PREDICTION_COUNT',
   similarMarketVolume: 'SIMILAR_MARKET_VOLUME_24H',
 };
