@@ -74,7 +74,7 @@ describe('fetchAccountAccuracyRank', () => {
         address: '0xabcdef1234567890',
         accuracyScore: 0.85,
         rank: 5,
-        totalParticipants: 100,
+        totalForecasters: 100,
       },
     });
 
@@ -89,7 +89,7 @@ describe('fetchAccountAccuracyRank', () => {
         address: '0xabc',
         accuracyScore: 0.85,
         rank: 5,
-        totalParticipants: 100,
+        totalForecasters: 100,
       },
     });
 
@@ -98,7 +98,7 @@ describe('fetchAccountAccuracyRank', () => {
       address: '0xabc',
       accuracyScore: 0.85,
       rank: 5,
-      totalParticipants: 100,
+      totalForecasters: 100,
     });
   });
 
@@ -109,7 +109,7 @@ describe('fetchAccountAccuracyRank', () => {
       address: '0xabc',
       accuracyScore: 0,
       rank: null,
-      totalParticipants: 0,
+      totalForecasters: 0,
     });
   });
 });

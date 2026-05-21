@@ -40,9 +40,9 @@ export const PREDICTION_BY_ID_QUERY = `
 `;
 
 export const CONDITIONS_BY_IDS_QUERY = `
-  query ConditionsByIds($filters: ConditionFilters!) {
-    conditionsPage(filters: $filters, take: 100) {
-      items {
+  query ConditionsByIds($filters: ConditionFilter!) {
+    conditionsConnection(filter: $filters, first: 100) {
+      nodes {
         id
         question
         shortName
@@ -143,7 +143,7 @@ export async function fetchPredictionWithConditions(
     });
     if (condResp.ok) {
       const condJson = await condResp.json();
-      conditions = condJson?.data?.conditionsPage?.items ?? [];
+      conditions = condJson?.data?.conditionsConnection?.nodes ?? [];
     }
   } catch {
     // Condition fetch is non-critical

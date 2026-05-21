@@ -12,8 +12,14 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  /** 0x-prefixed lowercase 20-byte Ethereum address. Mixed-case checksum input is accepted and normalized to lowercase. */
+  Address: { input: any; output: any; }
   /** The `BigInt` scalar type represents non-fractional signed whole numeric values. */
   BigInt: { input: any; output: any; }
+  /** 0x-prefixed lowercase 32-byte hex value. Used for transaction hashes, EAS UIDs, and other 32-byte on-chain identifiers. */
+  Bytes32: { input: any; output: any; }
+  /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format. */
+  DateTime: { input: any; output: any; }
   /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format. */
   DateTimeISO: { input: any; output: any; }
   /** Prisma.Decimal — round-tripped as a decimal string with arbitrary precision. */
@@ -29,17 +35,23 @@ export type Scalars = {
  * elsewhere shows up (display name, avatar, settings), it can grow here
  * without renaming.
  */
-export type Account = {
+export type Account = Node & {
   __typename?: 'Account';
   /** Canonical Ethereum wallet address. */
-  address: Scalars['String']['output'];
+  address: Scalars['Address']['output'];
+  collateralBalance: CollateralBalance;
   /** When this account first appeared in the database. */
   createdAt: Scalars['DateTimeISO']['output'];
+  forecasts: ForecastConnection;
+  id: Scalars['ID']['output'];
   /**
    * Maximum number of referrals this account's code allows. Default is 0,
    * so codes are not usable until explicitly configured.
    */
   maxReferrals: Scalars['Int']['output'];
+  positions: PositionConnection;
+  predictions: PredictionConnection;
+  rank?: Maybe<AccountRanking>;
   /**
    * keccak256(utf8(trimmed_lowercase_code)) of the user's referral code, if
    * they own one. 0x-prefixed hex.
@@ -51,11 +63,114 @@ export type Account = {
   referredBy?: Maybe<Account>;
   /** The referral code this account was referred by, if any. */
   referredByCode?: Maybe<ReferralCode>;
+  stats: AccountStatConnection;
+  trades: TradeConnection;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountCollateralBalanceArgs = {
+  atBlock?: InputMaybe<Scalars['BigInt']['input']>;
+  chainId: Scalars['Int']['input'];
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountForecastsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ForecastFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ForecastOrder>;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountPositionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PositionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PositionOrder>;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountPredictionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountRankArgs = {
+  filter?: InputMaybe<AccountRankingFilter>;
+  metric: LeaderboardMetric;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountStatsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AccountStatFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<AccountStatOrder>;
+};
+
+
+/**
+ * Address-keyed account record. The thin replacement for the Prisma-leaked
+ * `User` type — exposes only the fields the public API actually needs (today,
+ * that's referral-graph data). When address-keyed metadata that doesn't fit
+ * elsewhere shows up (display name, avatar, settings), it can grow here
+ * without renaming.
+ */
+export type AccountTradesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
 };
 
 /**
  * One row of the accuracy leaderboard — an address with its lifetime
- * accuracy score aggregated across every scored attestation. Parallel
+ * accuracy score aggregated across every scored forecast. Parallel
  * to `AccountStatsLeaderboardEntry`.
  */
 export type AccountAccuracyLeaderboardEntry = {
@@ -75,18 +190,103 @@ export type AccountAccuracyLeaderboardPage = Page & {
 
 /**
  * Accuracy rank and lifetime score for a single address. Mirrors
- * `AccountStatsRank`'s shape: `address`, the metric (`accuracyScore`),
- * `rank` (1-indexed, null when unranked), and `totalParticipants` (size of
- * the scored-forecaster set). Accuracy is lifetime-aggregated — the
- * time-weighted error already weights by recency, so there's no window
- * filter on this surface.
+ * `AccountStatsRank`'s shape (`address`, the metric (`accuracyScore`),
+ * `rank` 1-indexed and null when unranked) plus `totalForecasters` — the
+ * size of the scored-forecaster set. Named specifically vs the generic
+ * `AccountStatsRank.totalParticipants` because this surface only ranks
+ * forecasters; accuracy is lifetime-aggregated (the time-weighted error
+ * already weights by recency) so there's no window filter.
  */
 export type AccountAccuracyRank = {
   __typename?: 'AccountAccuracyRank';
   accuracyScore: Scalars['Float']['output'];
-  address: Scalars['String']['output'];
+  address: Scalars['Address']['output'];
   rank?: Maybe<Scalars['Int']['output']>;
-  totalParticipants: Scalars['Int']['output'];
+  totalForecasters: Scalars['Int']['output'];
+};
+
+/**
+ * Relay-shaped connection over `Account` rows (User table). Address-only
+ * synthetic accounts are not returned — those are reachable through
+ * `account(address:)` directly. `totalCount` is the row count matching the
+ * filter (cheap — the User table is small).
+ */
+export type AccountConnection = {
+  __typename?: 'AccountConnection';
+  edges: Array<AccountEdge>;
+  nodes: Array<Account>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type AccountEdge = {
+  __typename?: 'AccountEdge';
+  cursor: Scalars['String']['output'];
+  node: Account;
+};
+
+/**
+ * Filter input for `accountsConnection`. Intentionally narrow — the only
+ * meaningful filter dimension for an address-keyed table is substring
+ * match against the address itself.
+ */
+export type AccountFilter = {
+  /**
+   * Substring search against the wallet address (case-insensitive). Useful
+   * for autocomplete / lookup UIs.
+   */
+  search?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AccountOrder = {
+  direction: OrderDirection;
+  field: AccountOrderField;
+};
+
+export type AccountOrderField =
+  | 'CREATED_AT';
+
+export type AccountRanking = {
+  __typename?: 'AccountRanking';
+  account: Account;
+  rank: Scalars['Int']['output'];
+  value: Scalars['String']['output'];
+};
+
+export type AccountRankingConnection = {
+  __typename?: 'AccountRankingConnection';
+  edges: Array<AccountRankingEdge>;
+  metric: LeaderboardMetric;
+  nodes: Array<AccountRanking>;
+  pageInfo: PageInfo;
+  /**
+   * Size of the underlying ranked set the page is sliced from. Already
+   * computed in memory (the leaderboard materializes the full ranking),
+   * so cheap to surface.
+   */
+  totalCount: Scalars['Int']['output'];
+};
+
+export type AccountRankingEdge = {
+  __typename?: 'AccountRankingEdge';
+  cursor: Scalars['String']['output'];
+  node: AccountRanking;
+};
+
+/**
+ * Filter input for the `AccountRankingConnection` returned by
+ * `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a configurable
+ * window; ACCURACY is lifetime-aggregated (the time-weighted Brier-derived
+ * score already weights by recency) and ignores the window. Operator-
+ * pattern shape matches `AccountStatFilter`.
+ */
+export type AccountRankingFilter = {
+  /**
+   * Filter by aggregation epoch seconds. `{ gte }` sets the window's lower
+   * bound, `{ lte }` sets the upper bound; both inclusive. Other operators
+   * reject — this is a window selector, not a point query.
+   */
+  timestamp?: InputMaybe<IntFilter>;
 };
 
 /**
@@ -106,6 +306,7 @@ export type AccountAccuracyRank = {
  */
 export type AccountStat = {
   __typename?: 'AccountStat';
+  account: Account;
   /** Collateral available to claim from settled positions at this bucket (wei, 18 dec) */
   claimableCollateral: Scalars['String']['output'];
   /** Running cumulative realized PnL through this bucket (wei, 18 dec) */
@@ -131,6 +332,37 @@ export type AccountStat = {
   /** Snapshot boundary. */
   timestamp: Scalars['UnixSeconds']['output'];
 };
+
+export type AccountStatConnection = {
+  __typename?: 'AccountStatConnection';
+  edges: Array<AccountStatEdge>;
+  nodes: Array<AccountStat>;
+  pageInfo: PageInfo;
+  /**
+   * Size of the full time-series rendered by this query (pre-pagination).
+   * Already known in memory — the resolver materializes every bucket
+   * before slicing — so cheap to surface.
+   */
+  totalCount: Scalars['Int']['output'];
+};
+
+export type AccountStatEdge = {
+  __typename?: 'AccountStatEdge';
+  cursor: Scalars['String']['output'];
+  node: AccountStat;
+};
+
+export type AccountStatFilter = {
+  timestamp?: InputMaybe<IntFilter>;
+};
+
+export type AccountStatOrder = {
+  direction: OrderDirection;
+  field: AccountStatOrderField;
+};
+
+export type AccountStatOrderField =
+  | 'TIMESTAMP';
 
 /**
  * Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields
@@ -199,6 +431,82 @@ export type AccountStatsRank = {
   volume: Scalars['String']['output'];
 };
 
+export type Activity = {
+  __typename?: 'Activity';
+  account: Account;
+  createdAt: Scalars['DateTimeISO']['output'];
+  source: ActivitySource;
+};
+
+export type ActivityConnection = {
+  __typename?: 'ActivityConnection';
+  edges: Array<ActivityEdge>;
+  nodes: Array<Activity>;
+  pageInfo: PageInfo;
+  /**
+   * Sum of matching Prediction and SecondaryTrade rows for the same filters
+   * the page was sliced from. Resolved lazily via two indexed `COUNT(*)`
+   * queries only when clients select this field.
+   */
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ActivityEdge = {
+  __typename?: 'ActivityEdge';
+  cursor: Scalars['String']['output'];
+  node: Activity;
+};
+
+/**
+ * Filter input for the Relay-shaped `activity(...)` connection. Combines
+ * with AND. `types: []` is an explicit zero-result query — omit `types`
+ * to include both predictions and trades.
+ */
+export type ActivityFilter = {
+  /**
+   * Restrict to a single account's activity (case-insensitive). OR-across
+   * prediction roles (predictor / counterparty) and trade sides (buyer /
+   * seller). Omit for a global feed.
+   */
+  account?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to activity reachable through a ConditionGroup's member conditions.
+   * Expanded server-side into the group's condition ids, then treated as
+   * `conditionIds`.
+   */
+  conditionGroupId?: InputMaybe<Scalars['Int']['input']>;
+  /**
+   * Restrict to activity on a single condition. Walks Pick → PickConfiguration
+   * to derive the matching pickConfigIds (predictions) and predictor /
+   * counterparty tokens (trades).
+   */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to activity on any of these conditions. Union with `conditionId`
+   * when both are supplied; useful for group-backed feeds where the caller
+   * has the condition list pre-resolved.
+   */
+  conditionIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /**
+   * Filter by activity row creation epoch seconds, e.g. `{ gte: 1770000000 }`.
+   * Applied as `createdAt` on Predictions (Postgres timestamp) and
+   * `executedAt` on Trades (Int seconds) — bounds project to each side's
+   * native column type.
+   */
+  createdAt?: InputMaybe<IntFilter>;
+  /**
+   * Restrict to activity tied to a single pick configuration. When combined
+   * with `conditionId`/`conditionIds`, intersects with that condition's
+   * pickConfig set.
+   */
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to one or both ActivityType union members. `[]` is an explicit
+   * zero-result query.
+   */
+  types?: InputMaybe<Array<ActivityType>>;
+};
+
 /**
  * Flat filter input for the `accountActivityPage` query. Each field is
  * optional; values combine with AND. Omit `address` for a global feed.
@@ -242,6 +550,16 @@ export type ActivityItemsPage = Page & {
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
+export type ActivityOrder = {
+  direction: OrderDirection;
+  field: ActivityOrderField;
+};
+
+export type ActivityOrderField =
+  | 'CREATED_AT';
+
+export type ActivitySource = Prediction | Trade;
+
 /** Trade fields embedded in an activity item */
 export type ActivityTrade = {
   __typename?: 'ActivityTrade';
@@ -260,249 +578,9 @@ export type ActivityTrade = {
   txHash: Scalars['String']['output'];
 };
 
-export type Attestation = {
-  __typename?: 'Attestation';
-  attestationScore?: Maybe<AttestationScore>;
-  /**
-   * When the attestation was made on-chain. Replaces the legacy `time`
-   * field — same value, the new name follows the `*At` event-timestamp
-   * convention used elsewhere in the schema.
-   */
-  attestedAt: Scalars['UnixSeconds']['output'];
-  attester: Scalars['String']['output'];
-  blockNumber: Scalars['Int']['output'];
-  comment?: Maybe<Scalars['String']['output']>;
-  condition?: Maybe<Condition>;
-  conditionId?: Maybe<Scalars['String']['output']>;
-  createdAt: Scalars['DateTimeISO']['output'];
-  data: Scalars['String']['output'];
-  decodedDataJson: Scalars['String']['output'];
-  /**
-   * Raw forecast value as recorded on-chain — the `uint256 forecast` field
-   * on the EAS attestation schema, returned as a decimal string in D18
-   * fixed-point representing a probability in `[0, 1e18]`. For the
-   * canonical normalized probability use `Attestation.attestationScore.probabilityFloat`
-   * (0–1 float) or `Attestation.attestationScore.probabilityD18`
-   * (18-decimal fixed-point string).
-   */
-  forecast: Scalars['String']['output'];
-  id: Scalars['Int']['output'];
-  recipient: Scalars['String']['output'];
-  resolver?: Maybe<Scalars['String']['output']>;
-  schemaId: Scalars['String']['output'];
-  /** @deprecated Use `attestedAt` — same value, name follows the `*At` event-timestamp convention. */
-  time: Scalars['Int']['output'];
-  transactionHash: Scalars['String']['output'];
-  uid: Scalars['String']['output'];
-};
-
-
-export type AttestationAttestationScoreArgs = {
-  where?: InputMaybe<AttestationScoreWhereInput>;
-};
-
-
-export type AttestationConditionArgs = {
-  where?: InputMaybe<ConditionWhereInput>;
-};
-
-/**
- * Flat filter input for the `attestationsPage` query. Each field is optional;
- * values combine with AND.
- */
-export type AttestationFilters = {
-  /** Restrict to a single attester address (case-insensitive). */
-  attester?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to attestations on a single condition. */
-  conditionId?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to attestations with `time <= this` (epoch seconds). */
-  maxTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to attestations with `time >= this` (epoch seconds). */
-  minTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to a single recipient address (case-insensitive). */
-  recipient?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to a single EAS schema ID. */
-  schemaId?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to a single attestation by UID. */
-  uid?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type AttestationListRelationFilter = {
-  every?: InputMaybe<AttestationWhereInput>;
-  none?: InputMaybe<AttestationWhereInput>;
-  some?: InputMaybe<AttestationWhereInput>;
-};
-
-export type AttestationOrderByRelationAggregateInput = {
-  _count?: InputMaybe<SortOrder>;
-};
-
-export type AttestationOrderByWithRelationInput = {
-  attestationScore?: InputMaybe<AttestationScoreOrderByWithRelationInput>;
-  attester?: InputMaybe<SortOrder>;
-  blockNumber?: InputMaybe<SortOrder>;
-  comment?: InputMaybe<SortOrderInput>;
-  condition?: InputMaybe<ConditionOrderByWithRelationInput>;
-  conditionId?: InputMaybe<SortOrderInput>;
-  createdAt?: InputMaybe<SortOrder>;
-  data?: InputMaybe<SortOrder>;
-  decodedDataJson?: InputMaybe<SortOrder>;
-  forecast?: InputMaybe<SortOrder>;
-  id?: InputMaybe<SortOrder>;
-  recipient?: InputMaybe<SortOrder>;
-  resolver?: InputMaybe<SortOrderInput>;
-  schemaId?: InputMaybe<SortOrder>;
-  time?: InputMaybe<SortOrder>;
-  transactionHash?: InputMaybe<SortOrder>;
-  uid?: InputMaybe<SortOrder>;
-};
-
-export type AttestationRelationFilter = {
-  is?: InputMaybe<AttestationWhereInput>;
-  isNot?: InputMaybe<AttestationWhereInput>;
-};
-
-export type AttestationScalarFieldEnum =
-  | 'attester'
-  | 'blockNumber'
-  | 'comment'
-  | 'conditionId'
-  | 'createdAt'
-  | 'data'
-  | 'decodedDataJson'
-  | 'forecast'
-  | 'id'
-  | 'recipient'
-  | 'resolver'
-  | 'schemaId'
-  | 'time'
-  | 'transactionHash'
-  | 'uid';
-
-export type AttestationScore = {
-  __typename?: 'AttestationScore';
-  attestation: Attestation;
-  attestationId: Scalars['Int']['output'];
-  attester: Scalars['String']['output'];
-  createdAt: Scalars['DateTimeISO']['output'];
-  errorSquared?: Maybe<Scalars['Float']['output']>;
-  id: Scalars['Int']['output'];
-  madeAt: Scalars['UnixSeconds']['output'];
-  marketAddress?: Maybe<Scalars['String']['output']>;
-  marketId?: Maybe<Scalars['String']['output']>;
-  outcome?: Maybe<Scalars['Int']['output']>;
-  probabilityD18?: Maybe<Scalars['String']['output']>;
-  probabilityFloat?: Maybe<Scalars['Float']['output']>;
-  questionId?: Maybe<Scalars['String']['output']>;
-  resolver?: Maybe<Scalars['String']['output']>;
-  scoredAt?: Maybe<Scalars['DateTimeISO']['output']>;
-  used: Scalars['Boolean']['output'];
-};
-
-export type AttestationScoreNullableRelationFilter = {
-  is?: InputMaybe<AttestationScoreWhereInput>;
-  isNot?: InputMaybe<AttestationScoreWhereInput>;
-};
-
-export type AttestationScoreOrderByWithRelationInput = {
-  attestation?: InputMaybe<AttestationOrderByWithRelationInput>;
-  attestationId?: InputMaybe<SortOrder>;
-  attester?: InputMaybe<SortOrder>;
-  createdAt?: InputMaybe<SortOrder>;
-  errorSquared?: InputMaybe<SortOrderInput>;
-  id?: InputMaybe<SortOrder>;
-  madeAt?: InputMaybe<SortOrder>;
-  marketAddress?: InputMaybe<SortOrderInput>;
-  marketId?: InputMaybe<SortOrderInput>;
-  outcome?: InputMaybe<SortOrderInput>;
-  probabilityD18?: InputMaybe<SortOrderInput>;
-  probabilityFloat?: InputMaybe<SortOrderInput>;
-  questionId?: InputMaybe<SortOrderInput>;
-  resolver?: InputMaybe<SortOrderInput>;
-  scoredAt?: InputMaybe<SortOrderInput>;
-  used?: InputMaybe<SortOrder>;
-};
-
-export type AttestationScoreWhereInput = {
-  AND?: InputMaybe<Array<AttestationScoreWhereInput>>;
-  NOT?: InputMaybe<Array<AttestationScoreWhereInput>>;
-  OR?: InputMaybe<Array<AttestationScoreWhereInput>>;
-  attestation?: InputMaybe<AttestationRelationFilter>;
-  attestationId?: InputMaybe<IntFilter>;
-  attester?: InputMaybe<StringFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  errorSquared?: InputMaybe<FloatNullableFilter>;
-  id?: InputMaybe<IntFilter>;
-  madeAt?: InputMaybe<IntFilter>;
-  marketAddress?: InputMaybe<StringNullableFilter>;
-  marketId?: InputMaybe<StringNullableFilter>;
-  outcome?: InputMaybe<IntNullableFilter>;
-  probabilityD18?: InputMaybe<StringNullableFilter>;
-  probabilityFloat?: InputMaybe<FloatNullableFilter>;
-  questionId?: InputMaybe<StringNullableFilter>;
-  resolver?: InputMaybe<StringNullableFilter>;
-  scoredAt?: InputMaybe<DateTimeNullableFilter>;
-  used?: InputMaybe<BoolFilter>;
-};
-
-/** Sort fields for the `attestationsPage` query */
-export type AttestationSortField =
-  | 'ATTESTED_AT'
-  | 'CREATED_AT';
-
-export type AttestationWhereInput = {
-  AND?: InputMaybe<Array<AttestationWhereInput>>;
-  NOT?: InputMaybe<Array<AttestationWhereInput>>;
-  OR?: InputMaybe<Array<AttestationWhereInput>>;
-  attestationScore?: InputMaybe<AttestationScoreNullableRelationFilter>;
-  attester?: InputMaybe<StringFilter>;
-  blockNumber?: InputMaybe<IntFilter>;
-  comment?: InputMaybe<StringNullableFilter>;
-  condition?: InputMaybe<ConditionNullableRelationFilter>;
-  conditionId?: InputMaybe<StringNullableFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  data?: InputMaybe<StringFilter>;
-  decodedDataJson?: InputMaybe<StringFilter>;
-  forecast?: InputMaybe<StringFilter>;
-  id?: InputMaybe<IntFilter>;
-  recipient?: InputMaybe<StringFilter>;
-  resolver?: InputMaybe<StringNullableFilter>;
-  schemaId?: InputMaybe<StringFilter>;
-  time?: InputMaybe<IntFilter>;
-  transactionHash?: InputMaybe<StringFilter>;
-  uid?: InputMaybe<StringFilter>;
-};
-
-export type AttestationWhereUniqueInput = {
-  AND?: InputMaybe<Array<AttestationWhereInput>>;
-  NOT?: InputMaybe<Array<AttestationWhereInput>>;
-  OR?: InputMaybe<Array<AttestationWhereInput>>;
-  attestationScore?: InputMaybe<AttestationScoreNullableRelationFilter>;
-  attester?: InputMaybe<StringFilter>;
-  blockNumber?: InputMaybe<IntFilter>;
-  comment?: InputMaybe<StringNullableFilter>;
-  condition?: InputMaybe<ConditionNullableRelationFilter>;
-  conditionId?: InputMaybe<StringNullableFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  data?: InputMaybe<StringFilter>;
-  decodedDataJson?: InputMaybe<StringFilter>;
-  forecast?: InputMaybe<StringFilter>;
-  id?: InputMaybe<Scalars['Int']['input']>;
-  recipient?: InputMaybe<StringFilter>;
-  resolver?: InputMaybe<StringNullableFilter>;
-  schemaId?: InputMaybe<StringFilter>;
-  time?: InputMaybe<IntFilter>;
-  transactionHash?: InputMaybe<StringFilter>;
-  uid?: InputMaybe<Scalars['String']['input']>;
-};
-
-/** Paginated wrapper around Attestation rows with a server-truth hasMore flag */
-export type AttestationsPage = Page & {
-  __typename?: 'AttestationsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Attestation>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
+export type ActivityType =
+  | 'PREDICTION'
+  | 'TRADE';
 
 /** Time-bucketed collateral-balance data point (legacy). */
 export type BalanceDataPoint = {
@@ -536,23 +614,15 @@ export type BoolNullableFilter = {
   not?: InputMaybe<NestedBoolNullableFilter>;
 };
 
-/** Paginated wrapper around Category rows with a server-truth hasMore flag */
-export type CategoriesPage = Page & {
-  __typename?: 'CategoriesPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Category>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
-
-export type Category = {
+export type Category = Node & {
   __typename?: 'Category';
   _count?: Maybe<CategoryCount>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
   createdAt: Scalars['DateTimeISO']['output'];
-  id: Scalars['Int']['output'];
+  id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
-  slug: Scalars['String']['output'];
+  slug?: Maybe<Scalars['String']['output']>;
 };
 
 
@@ -575,6 +645,14 @@ export type CategoryConditionsArgs = {
   where?: InputMaybe<ConditionWhereInput>;
 };
 
+export type CategoryConnection = {
+  __typename?: 'CategoryConnection';
+  edges: Array<CategoryEdge>;
+  nodes: Array<Category>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
 export type CategoryCount = {
   __typename?: 'CategoryCount';
   condition: Scalars['Int']['output'];
@@ -589,6 +667,22 @@ export type CategoryCountConditionArgs = {
 
 export type CategoryCountCondition_GroupArgs = {
   where?: InputMaybe<ConditionGroupWhereInput>;
+};
+
+export type CategoryEdge = {
+  __typename?: 'CategoryEdge';
+  cursor: Scalars['String']['output'];
+  node: Category;
+};
+
+/**
+ * Filter input for `categoriesConnection`. Intentionally narrow — the
+ * category table is tiny, so the only meaningful filter dimension is
+ * substring match for autocomplete / lookup UIs.
+ */
+export type CategoryFilter = {
+  /** Case-insensitive substring search against the category name. */
+  search?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CategoryNullableRelationFilter = {
@@ -679,50 +773,96 @@ export type Close = {
 
 export type CollateralBalance = {
   __typename?: 'CollateralBalance';
+  account: Account;
   address: Scalars['String']['output'];
+  amount: Scalars['String']['output'];
   atBlock?: Maybe<Scalars['Int']['output']>;
   balance: Scalars['String']['output'];
   chainId: Scalars['Int']['output'];
+  collateral: CollateralToken;
 };
 
 export type CollateralBalanceSnapshot = {
   __typename?: 'CollateralBalanceSnapshot';
+  account: Account;
+  amount: Scalars['String']['output'];
+  /**
+   * Same value as `amount`. Carried over from the legacy `CollateralBalanceSnapshotType`.
+   * @deprecated Use `amount` — same value, drops the wallet-balance framing for consistency with `CollateralTransfer.amount`.
+   */
   balance: Scalars['String']['output'];
+  blockNumber: Scalars['BigInt']['output'];
+  chainId: Scalars['Int']['output'];
+  collateral: CollateralToken;
+  /**
+   * Position of this snapshot in the returned series, starting at 0 for the
+   * most-recent boundary. Carried over from the legacy `CollateralBalanceSnapshotType`.
+   * @deprecated Index is incidental to the returned list order; rely on `timestamp` (or array position) instead.
+   */
   index: Scalars['Int']['output'];
   timestamp: Scalars['DateTimeISO']['output'];
 };
 
-export type CollateralTransfer = {
+export type CollateralToken = {
+  __typename?: 'CollateralToken';
+  address: Scalars['Address']['output'];
+  chainId: Scalars['Int']['output'];
+  decimals: Scalars['Int']['output'];
+  symbol: Scalars['String']['output'];
+};
+
+export type CollateralTransfer = Node & {
   __typename?: 'CollateralTransfer';
+  account: Account;
+  amount: Scalars['String']['output'];
   blockNumber: Scalars['Int']['output'];
   chainId: Scalars['Int']['output'];
+  collateral: CollateralToken;
+  createdAt: Scalars['DateTimeISO']['output'];
   from: Scalars['String']['output'];
-  id: Scalars['Int']['output'];
+  id: Scalars['ID']['output'];
+  logIndex: Scalars['Int']['output'];
   timestamp: Scalars['DateTimeISO']['output'];
   to: Scalars['String']['output'];
-  transactionHash: Scalars['String']['output'];
+  transactionHash: Scalars['Bytes32']['output'];
   value: Scalars['String']['output'];
 };
 
-/** Sort fields for the `collateralTransfersPage` query. */
-export type CollateralTransferSortField =
-  | 'BLOCK_NUMBER'
-  | 'TIMESTAMP';
-
-/** Paginated wrapper around CollateralTransfer rows with a server-truth hasMore flag */
-export type CollateralTransfersPage = Page & {
-  __typename?: 'CollateralTransfersPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<CollateralTransfer>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
+/** Relay-shaped connection over `CollateralTransfer` rows. */
+export type CollateralTransferConnection = {
+  __typename?: 'CollateralTransferConnection';
+  edges: Array<CollateralTransferEdge>;
+  nodes: Array<CollateralTransfer>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
 };
+
+export type CollateralTransferEdge = {
+  __typename?: 'CollateralTransferEdge';
+  cursor: Scalars['String']['output'];
+  node: CollateralTransfer;
+};
+
+export type CollateralTransferFilter = {
+  account?: InputMaybe<Scalars['Address']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  timestamp?: InputMaybe<DateTimeFilter>;
+  transactionHash?: InputMaybe<Scalars['Bytes32']['input']>;
+};
+
+export type CollateralTransferOrder = {
+  direction: OrderDirection;
+  field: CollateralTransferOrderField;
+};
+
+export type CollateralTransferOrderField =
+  | 'BLOCK_NUMBER';
 
 export type Condition = {
   __typename?: 'Condition';
   _count?: Maybe<ConditionCount>;
   assertionId?: Maybe<Scalars['String']['output']>;
   assertionTimestamp?: Maybe<Scalars['UnixSeconds']['output']>;
-  attestations: Array<Attestation>;
   category?: Maybe<Category>;
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId: Scalars['Int']['output'];
@@ -734,16 +874,38 @@ export type Condition = {
   endTime: Scalars['UnixSeconds']['output'];
   /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket */
   estimatedPrice?: Maybe<Scalars['Float']['output']>;
+  forecasts: ForecastConnection;
   id: Scalars['String']['output'];
+  /**
+   * On-chain market contract address that owns this condition (case-insensitive,
+   * 0x-prefixed lowercase). The canonical client-facing name for the address
+   * surfaced as `resolver` on the legacy fragment.
+   */
+  marketAddress: Scalars['String']['output'];
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
   optionName?: Maybe<Scalars['String']['output']>;
+  /**
+   * Resolution state of this condition. `null` until the on-chain resolver
+   * returns; once settled, carries the resolved value (`YES` / `NO` for
+   * decisive outcomes, `NON_DECISIVE` for voids / ties). Filter "settled
+   * vs unsettled" via `outcome: { isNull: ... }` rather than relying on
+   * the deprecated `settled: Boolean!` field.
+   */
+  outcome?: Maybe<ConditionOutcome>;
   predictionCount: Scalars['Int']['output'];
-  predictions: Array<LegacyPrediction>;
+  /**
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `predictions`) in a subsequent migration.
+   */
+  predictionsConnection: PredictionConnection;
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
-  /** Canonical resolver address for this condition (required) */
+  /**
+   * Canonical resolver address for this condition (required).
+   * @deprecated Use `marketAddress` — same value, drops the protocol-jargon name to match `Prediction.marketAddress` / `PickConfig.marketAddress` and the `ConditionFilter.marketAddress` filter.
+   */
   resolver: Scalars['String']['output'];
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
@@ -762,16 +924,7 @@ export type Condition = {
   similarMarketVolumeFiltered24h: Scalars['Float']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
   tags: Array<Scalars['String']['output']>;
-};
-
-
-export type ConditionAttestationsArgs = {
-  cursor?: InputMaybe<AttestationWhereUniqueInput>;
-  distinct?: InputMaybe<Array<AttestationScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<AttestationOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<AttestationWhereInput>;
+  trades: TradeConnection;
 };
 
 
@@ -785,47 +938,122 @@ export type ConditionConditionGroupArgs = {
 };
 
 
-export type ConditionPredictionsArgs = {
-  cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
-  distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<LegacyPredictionOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<LegacyPredictionWhereInput>;
+export type ConditionForecastsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ForecastFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ForecastOrder>;
+};
+
+
+export type ConditionPredictionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
+};
+
+
+export type ConditionTradesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
+};
+
+/** Relay-shaped connection over `Condition` rows. */
+export type ConditionConnection = {
+  __typename?: 'ConditionConnection';
+  edges: Array<ConditionEdge>;
+  nodes: Array<Condition>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
 };
 
 export type ConditionCount = {
   __typename?: 'ConditionCount';
-  attestations: Scalars['Int']['output'];
-  predictions: Scalars['Int']['output'];
+  forecasts: Scalars['Int']['output'];
 };
 
 
-export type ConditionCountAttestationsArgs = {
-  where?: InputMaybe<AttestationWhereInput>;
+export type ConditionCountForecastsArgs = {
+  where?: InputMaybe<ForecastWhereInput>;
 };
 
-
-export type ConditionCountPredictionsArgs = {
-  where?: InputMaybe<LegacyPredictionWhereInput>;
+/** Cursor-bearing edge for `ConditionConnection`. */
+export type ConditionEdge = {
+  __typename?: 'ConditionEdge';
+  cursor: Scalars['String']['output'];
+  node: Condition;
 };
 
 /**
  * Engagement status for a Condition. A condition has "engagement" if it
- * has non-zero open interest OR at least one attestation. Used by
+ * has non-zero open interest OR at least one forecast. Used by
  * cleanup workflows to find dead markets and recheck them.
  */
 export type ConditionEngagement =
-  /** `openInterest != 0` OR at least one attestation. */
+  /** `openInterest != 0` OR at least one forecast. */
   | 'ANY'
-  /** `openInterest = 0` AND no attestations. */
+  /** `openInterest = 0` AND no forecasts. */
   | 'NONE';
 
 /**
- * Flat filter input for the `conditionsPage` query. Each field is optional;
- * values combine with AND. Replaces the Prisma-derived `ConditionWhereInput`
- * for client-facing access.
+ * Filter input for the Relay-shaped `conditions` connection. Combines
+ * with AND. Public-only — non-public conditions are out of scope here;
+ * admin paths need an explicit replacement surface if private-condition
+ * visibility is still required.
  */
+export type ConditionFilter = {
+  /** Restrict to conditions whose category id is in this set. */
+  categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
+  /** Restrict to conditions whose category slug is in this set. */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions. */
+  conditionGroupId?: InputMaybe<IdFilter>;
+  /** Engagement status based on open interest or forecasts. */
+  engagement?: InputMaybe<ConditionEngagement>;
+  /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
+  estimatedPrice?: InputMaybe<FloatFilter>;
+  /** Restrict to conditions that have a non-empty similarMarkets array. */
+  hasSimilarMarkets?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to these condition IDs (case-insensitive). */
+  ids?: InputMaybe<Array<Scalars['ID']['input']>>;
+  /**
+   * Match the on-chain market contract address that owns the condition
+   * (case-insensitive). Maps to the DB `resolver` column.
+   */
+  marketAddress?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Match any of these on-chain market contract addresses (case-insensitive).
+   * Same semantics as `marketAddress`.
+   */
+  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
+  /**
+   * Filter by resolution state. `{ isNull: true }` selects unsettled
+   * conditions; `{ isNull: false }` selects settled (any outcome);
+   * `{ equals: NON_DECISIVE }` selects voided settlements specifically.
+   */
+  outcome?: InputMaybe<ConditionOutcomeFilter>;
+  /** Restrict to conditions resolved YES (true) or NO (false). Implies settled=true. */
+  resolvedToYes?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
+  resolvesAt?: InputMaybe<IntFilter>;
+  /** Free-text search across `question`, `shortName`, and `description` (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to settled (true) or unsettled (false) conditions. */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`. */
+  similarMarketVolume?: InputMaybe<FloatFilter>;
+  /** Restrict to conditions tagged with any of these values. */
+  tags?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups. */
+  visibility?: InputMaybe<ConditionVisibility>;
+};
+
+/** Legacy flat filter input for removed offset-page condition access. */
 export type ConditionFilters = {
   /** Restrict to conditions whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -893,6 +1121,12 @@ export type ConditionGroup = {
   /** True when every child condition belongs to the same Polymarket negative-risk basket */
   negRisk: Scalars['Boolean']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
+  /**
+   * Compatibility alias mirroring `name`. Kept so external clients still
+   * selecting `ConditionGroup.title` keep working through one release.
+   * @deprecated Use `name` — same value, the alias exists only to absorb in-flight queries from older clients.
+   */
+  title: Scalars['String']['output'];
 };
 
 
@@ -910,6 +1144,15 @@ export type ConditionGroupConditionsArgs = {
   where?: InputMaybe<ConditionWhereInput>;
 };
 
+/** Relay-shaped connection over `ConditionGroup` rows. */
+export type ConditionGroupConnection = {
+  __typename?: 'ConditionGroupConnection';
+  edges: Array<ConditionGroupEdge>;
+  nodes: Array<ConditionGroup>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
 export type ConditionGroupCount = {
   __typename?: 'ConditionGroupCount';
   condition: Scalars['Int']['output'];
@@ -920,10 +1163,38 @@ export type ConditionGroupCountConditionArgs = {
   where?: InputMaybe<ConditionWhereInput>;
 };
 
+/** Cursor-bearing edge for `ConditionGroupConnection`. */
+export type ConditionGroupEdge = {
+  __typename?: 'ConditionGroupEdge';
+  cursor: Scalars['String']['output'];
+  node: ConditionGroup;
+};
+
 /**
- * Flat filter input for the `conditionGroupsPage` query. Each field is optional;
- * values combine with AND.
+ * Filter input for the Relay-shaped `conditionGroups` connection. Combines
+ * with AND. Returns only groups with at least one public condition; the
+ * admin-only finer-grained switches need an explicit replacement surface if still required.
  */
+export type ConditionGroupFilter = {
+  /** Restrict to groups whose category id is in this set. */
+  categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
+  /** Restrict to groups whose category slug is in this set. */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to groups that have at least one condition on this chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to these condition group IDs. */
+  ids?: InputMaybe<Array<Scalars['ID']['input']>>;
+  /** When true, allow groups with no conditions. Defaults false. */
+  includeEmpty?: InputMaybe<Scalars['Boolean']['input']>;
+  /** When true, require at least one public condition on the group. */
+  publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Free-text search across the group's `name` (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to groups whose conditions carry any of these tags. */
+  tags?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+/** Legacy flat filter input for removed offset-page condition group access. */
 export type ConditionGroupFilters = {
   /** Restrict to groups whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -962,6 +1233,12 @@ export type ConditionGroupNullableRelationFilter = {
   isNot?: InputMaybe<ConditionGroupWhereInput>;
 };
 
+/** Order input for the Relay-shaped `conditionGroups` connection. */
+export type ConditionGroupOrder = {
+  direction: OrderDirection;
+  field: ConditionGroupOrderField;
+};
+
 export type ConditionGroupOrderByRelationAggregateInput = {
   _count?: InputMaybe<SortOrder>;
 };
@@ -989,6 +1266,27 @@ export type ConditionGroupOrderByWithRelationInput = {
   totalSimilarMarketVolumeFiltered24h?: InputMaybe<SortOrder>;
 };
 
+/**
+ * Sort fields for the Relay-shaped `conditionGroups` connection. Mirrors
+ * the Condition enum value names; the resolver maps each to the
+ * group-level denormalized aggregate column (`maxCreatedAtEpoch`,
+ * `maxEndTime`, `totalPredictionCount`, `totalSimilarMarketVolume24h`,
+ * `totalSimilarMarketVolume7d`).
+ *
+ * `OPEN_INTEREST` is intentionally omitted — symmetric with
+ * `ConditionOrderField` above. The `totalOpenInterest` column is
+ * Decimal (not varchar), so the numeric-sort issue doesn't apply at the
+ * group level — but listing `OPEN_INTEREST` on `ConditionGroupOrderField`
+ * without listing it on `ConditionOrderField` would be confusingly
+ * asymmetric, so we hold both back together.
+ */
+export type ConditionGroupOrderField =
+  | 'CREATED_AT'
+  | 'PREDICTION_COUNT'
+  | 'RESOLVES_AT'
+  | 'SIMILAR_MARKET_VOLUME_7D'
+  | 'SIMILAR_MARKET_VOLUME_24H';
+
 export type ConditionGroupScalarFieldEnum =
   | 'categoryId'
   | 'createdAt'
@@ -1009,7 +1307,7 @@ export type ConditionGroupScalarFieldEnum =
   | 'totalSimilarMarketVolumeFiltered7d'
   | 'totalSimilarMarketVolumeFiltered24h';
 
-/** Sort fields for the `conditionGroupsPage` query. */
+/** Legacy condition-group offset sort fields retained only for generated compatibility. */
 export type ConditionGroupSortField =
   | 'CREATED_AT'
   | 'MAX_END_TIME'
@@ -1068,14 +1366,6 @@ export type ConditionGroupWhereUniqueInput = {
   totalSimilarMarketVolumeFiltered24h?: InputMaybe<DecimalFilter>;
 };
 
-/** Paginated wrapper around ConditionGroup rows with a server-truth hasMore flag */
-export type ConditionGroupsPage = Page & {
-  __typename?: 'ConditionGroupsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<ConditionGroup>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
-
 export type ConditionListRelationFilter = {
   every?: InputMaybe<ConditionWhereInput>;
   none?: InputMaybe<ConditionWhereInput>;
@@ -1087,6 +1377,19 @@ export type ConditionNullableRelationFilter = {
   isNot?: InputMaybe<ConditionWhereInput>;
 };
 
+/**
+ * Discriminated union over the two backing entities a `Question` can wrap.
+ * Clients use fragment spreads on `Condition` and `ConditionGroup` to read
+ * fields specific to each branch.
+ */
+export type ConditionOrConditionGroup = Condition | ConditionGroup;
+
+/** Order input for the Relay-shaped `conditions` connection. */
+export type ConditionOrder = {
+  direction: OrderDirection;
+  field: ConditionOrderField;
+};
+
 export type ConditionOrderByRelationAggregateInput = {
   _count?: InputMaybe<SortOrder>;
 };
@@ -1094,7 +1397,6 @@ export type ConditionOrderByRelationAggregateInput = {
 export type ConditionOrderByWithRelationInput = {
   assertionId?: InputMaybe<SortOrderInput>;
   assertionTimestamp?: InputMaybe<SortOrderInput>;
-  attestations?: InputMaybe<AttestationOrderByRelationAggregateInput>;
   category?: InputMaybe<CategoryOrderByWithRelationInput>;
   categoryId?: InputMaybe<SortOrderInput>;
   chainId?: InputMaybe<SortOrder>;
@@ -1105,12 +1407,12 @@ export type ConditionOrderByWithRelationInput = {
   displayOrder?: InputMaybe<SortOrderInput>;
   endTime?: InputMaybe<SortOrder>;
   estimatedPrice?: InputMaybe<SortOrderInput>;
+  forecasts?: InputMaybe<ForecastOrderByRelationAggregateInput>;
   id?: InputMaybe<SortOrder>;
   nonDecisive?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
   optionName?: InputMaybe<SortOrderInput>;
   predictionCount?: InputMaybe<SortOrder>;
-  predictions?: InputMaybe<LegacyPredictionOrderByRelationAggregateInput>;
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   resolvedToYes?: InputMaybe<SortOrder>;
@@ -1130,6 +1432,59 @@ export type ConditionOrderByWithRelationInput = {
   similarMarketVolumeFiltered24h?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
   tags?: InputMaybe<SortOrder>;
+};
+
+/**
+ * Sort fields for the Relay-shaped `conditions` connection. All values
+ * map to existing partial indexes on the `condition` table:
+ *
+ * - `CREATED_AT` → `IDX_condition_public_createdat`
+ * - `RESOLVES_AT` → `IDX_condition_public_endtime` (column: `endTime`)
+ * - `PREDICTION_COUNT` → `IDX_condition_prediction_count`
+ * - `SIMILAR_MARKET_VOLUME_24H` → `IDX_condition_public_volume24h`
+ * - `SIMILAR_MARKET_VOLUME_7D` → `IDX_condition_public_volume7d`
+ *
+ * `OPEN_INTEREST` is intentionally omitted. The underlying
+ * `Condition.openInterest` column is varchar; the partial index
+ * `IDX_condition_oi_numeric` is on the `::numeric` cast expression, so
+ * typed Prisma `orderBy` would sort lexicographically (`"9" > "1000"`)
+ * and miss the index. Lands together with raw-SQL numeric sort in a
+ * follow-up — additive, non-breaking.
+ */
+export type ConditionOrderField =
+  | 'CREATED_AT'
+  | 'PREDICTION_COUNT'
+  | 'RESOLVES_AT'
+  | 'SIMILAR_MARKET_VOLUME_7D'
+  | 'SIMILAR_MARKET_VOLUME_24H';
+
+/**
+ * Resolved state of a `Condition`. `YES` and `NO` are decisive resolutions
+ * of the binary outcome; `NON_DECISIVE` covers voided / tied / unresolvable
+ * settlements (which the protocol collapses to `COUNTERPARTY_WINS` at the
+ * Prediction layer). Nullable on the wire — `null` means "not yet settled."
+ *
+ * Derived at the resolver from `settled` / `resolvedToYes` / `nonDecisive`
+ * columns; clients should filter "settled" via `outcome: { isNull: false }`
+ * rather than depending on the legacy boolean fields.
+ */
+export type ConditionOutcome =
+  | 'NO'
+  | 'NON_DECISIVE'
+  | 'YES';
+
+/**
+ * Operator-pattern filter for `ConditionOutcome` enum. `{ isNull: true }`
+ * selects unsettled conditions; `{ isNull: false }` selects settled
+ * (any outcome). `{ equals: NON_DECISIVE }` selects voided/non-decisive
+ * settlements specifically. See `ConditionOutcome`.
+ */
+export type ConditionOutcomeFilter = {
+  equals?: InputMaybe<ConditionOutcome>;
+  in?: InputMaybe<Array<ConditionOutcome>>;
+  isNull?: InputMaybe<Scalars['Boolean']['input']>;
+  not?: InputMaybe<ConditionOutcome>;
+  notIn?: InputMaybe<Array<ConditionOutcome>>;
 };
 
 export type ConditionRelationFilter = {
@@ -1173,14 +1528,14 @@ export type ConditionScalarFieldEnum =
   | 'similarMarkets'
   | 'tags';
 
-/** Sort fields for the `conditionsPage` query */
+/** Legacy condition offset sort fields retained only for generated compatibility. */
 export type ConditionSortField =
   | 'CREATED_AT'
   | 'END_TIME'
   | 'OPEN_INTEREST'
   | 'PREDICTION_COUNT';
 
-/** Visibility filter for the `conditionsPage` query */
+/** Legacy condition visibility filter. */
 export type ConditionVisibility =
   | 'ALL'
   | 'PRIVATE'
@@ -1192,7 +1547,6 @@ export type ConditionWhereInput = {
   OR?: InputMaybe<Array<ConditionWhereInput>>;
   assertionId?: InputMaybe<StringNullableFilter>;
   assertionTimestamp?: InputMaybe<IntNullableFilter>;
-  attestations?: InputMaybe<AttestationListRelationFilter>;
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
@@ -1203,12 +1557,12 @@ export type ConditionWhereInput = {
   displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
   estimatedPrice?: InputMaybe<FloatNullableFilter>;
+  forecasts?: InputMaybe<ForecastListRelationFilter>;
   id?: InputMaybe<StringFilter>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
   optionName?: InputMaybe<StringNullableFilter>;
   predictionCount?: InputMaybe<IntFilter>;
-  predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
   resolvedToYes?: InputMaybe<BoolFilter>;
@@ -1236,7 +1590,6 @@ export type ConditionWhereUniqueInput = {
   OR?: InputMaybe<Array<ConditionWhereInput>>;
   assertionId?: InputMaybe<StringNullableFilter>;
   assertionTimestamp?: InputMaybe<IntNullableFilter>;
-  attestations?: InputMaybe<AttestationListRelationFilter>;
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
@@ -1247,12 +1600,12 @@ export type ConditionWhereUniqueInput = {
   displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
   estimatedPrice?: InputMaybe<FloatNullableFilter>;
+  forecasts?: InputMaybe<ForecastListRelationFilter>;
   id?: InputMaybe<Scalars['String']['input']>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
   optionName?: InputMaybe<StringNullableFilter>;
   predictionCount?: InputMaybe<IntFilter>;
-  predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
   resolvedToYes?: InputMaybe<BoolFilter>;
@@ -1272,14 +1625,6 @@ export type ConditionWhereUniqueInput = {
   similarMarketVolumeFiltered24h?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
-};
-
-/** Paginated wrapper around Condition rows with a server-truth hasMore flag */
-export type ConditionsPage = Page & {
-  __typename?: 'ConditionsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Condition>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type DateTimeFilter = {
@@ -1315,20 +1660,6 @@ export type DecimalFilter = {
   notIn?: InputMaybe<Array<Scalars['Decimal']['input']>>;
 };
 
-export type EnumLegacyPositionStatusFilter = {
-  equals?: InputMaybe<LegacyPositionStatus>;
-  in?: InputMaybe<Array<LegacyPositionStatus>>;
-  not?: InputMaybe<NestedEnumLegacyPositionStatusFilter>;
-  notIn?: InputMaybe<Array<LegacyPositionStatus>>;
-};
-
-export type EnumLimitOrderStatusFilter = {
-  equals?: InputMaybe<LimitOrderStatus>;
-  in?: InputMaybe<Array<LimitOrderStatus>>;
-  not?: InputMaybe<NestedEnumLimitOrderStatusFilter>;
-  notIn?: InputMaybe<Array<LimitOrderStatus>>;
-};
-
 export type FloatFilter = {
   equals?: InputMaybe<Scalars['Float']['input']>;
   gt?: InputMaybe<Scalars['Float']['input']>;
@@ -1351,6 +1682,185 @@ export type FloatNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
+/** Public Forecast surface backed by EAS attestation rows. */
+export type Forecast = {
+  __typename?: 'Forecast';
+  /** When the forecast was made on-chain. */
+  attestedAt: Scalars['UnixSeconds']['output'];
+  blockNumber: Scalars['Int']['output'];
+  comment?: Maybe<Scalars['String']['output']>;
+  condition?: Maybe<Condition>;
+  conditionId?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTimeISO']['output'];
+  data: Scalars['String']['output'];
+  decodedDataJson: Scalars['String']['output'];
+  /**
+   * Raw forecast value as recorded on-chain — the `uint256 forecast` field
+   * on the EAS attestation schema, returned as a decimal string in D18
+   * fixed-point representing a probability in `[0, 1e18]`. For the
+   * canonical normalized probability use `Forecast.forecastScore.probabilityFloat`
+   * (0–1 float) or `Forecast.forecastScore.probabilityD18`
+   * (18-decimal fixed-point string).
+   */
+  forecast: Scalars['String']['output'];
+  forecastScore?: Maybe<ForecastScore>;
+  forecaster: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  recipient: Scalars['String']['output'];
+  resolver?: Maybe<Scalars['String']['output']>;
+  schemaId: Scalars['String']['output'];
+  transactionHash: Scalars['String']['output'];
+  uid: Scalars['String']['output'];
+};
+
+
+/** Public Forecast surface backed by EAS attestation rows. */
+export type ForecastConditionArgs = {
+  where?: InputMaybe<ConditionWhereInput>;
+};
+
+
+/** Public Forecast surface backed by EAS attestation rows. */
+export type ForecastForecastScoreArgs = {
+  where?: InputMaybe<ForecastScoreWhereInput>;
+};
+
+/** Relay-shaped connection over `Forecast` rows. */
+export type ForecastConnection = {
+  __typename?: 'ForecastConnection';
+  edges: Array<ForecastEdge>;
+  nodes: Array<Forecast>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+/** Cursor-bearing edge for `ForecastConnection`. */
+export type ForecastEdge = {
+  __typename?: 'ForecastEdge';
+  cursor: Scalars['String']['output'];
+  node: Forecast;
+};
+
+/**
+ * Filter input for the `forecastsConnection` query. Each field is optional;
+ * values combine with AND.
+ */
+export type ForecastFilter = {
+  /** Filter by forecast epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  attestedAt?: InputMaybe<IntFilter>;
+  /** Restrict to forecasts on a single condition. */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to forecasts on any of these conditions. Useful for group-backed
+   * feeds where the caller already has the condition list resolved.
+   */
+  conditionIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to a single forecaster address (case-insensitive). */
+  forecaster?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single recipient address (case-insensitive). */
+  recipient?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single EAS schema ID. */
+  schemaId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single forecast by UID. */
+  uid?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type ForecastListRelationFilter = {
+  every?: InputMaybe<ForecastWhereInput>;
+  none?: InputMaybe<ForecastWhereInput>;
+  some?: InputMaybe<ForecastWhereInput>;
+};
+
+/** Order input for `forecastsConnection`. */
+export type ForecastOrder = {
+  direction: OrderDirection;
+  field: ForecastOrderField;
+};
+
+export type ForecastOrderByRelationAggregateInput = {
+  _count?: InputMaybe<SortOrder>;
+};
+
+/** Sort fields for `forecastsConnection`. */
+export type ForecastOrderField =
+  | 'ATTESTED_AT'
+  | 'CREATED_AT';
+
+export type ForecastRelationFilter = {
+  is?: InputMaybe<ForecastWhereInput>;
+  isNot?: InputMaybe<ForecastWhereInput>;
+};
+
+export type ForecastScore = {
+  __typename?: 'ForecastScore';
+  createdAt: Scalars['DateTimeISO']['output'];
+  errorSquared?: Maybe<Scalars['Float']['output']>;
+  forecast: Forecast;
+  forecastId: Scalars['Int']['output'];
+  forecaster: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  madeAt: Scalars['UnixSeconds']['output'];
+  marketAddress?: Maybe<Scalars['String']['output']>;
+  marketId?: Maybe<Scalars['String']['output']>;
+  outcome?: Maybe<Scalars['Int']['output']>;
+  probabilityD18?: Maybe<Scalars['String']['output']>;
+  probabilityFloat?: Maybe<Scalars['Float']['output']>;
+  questionId?: Maybe<Scalars['String']['output']>;
+  resolver?: Maybe<Scalars['String']['output']>;
+  scoredAt?: Maybe<Scalars['DateTimeISO']['output']>;
+  used: Scalars['Boolean']['output'];
+};
+
+export type ForecastScoreNullableRelationFilter = {
+  is?: InputMaybe<ForecastScoreWhereInput>;
+  isNot?: InputMaybe<ForecastScoreWhereInput>;
+};
+
+export type ForecastScoreWhereInput = {
+  AND?: InputMaybe<Array<ForecastScoreWhereInput>>;
+  NOT?: InputMaybe<Array<ForecastScoreWhereInput>>;
+  OR?: InputMaybe<Array<ForecastScoreWhereInput>>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  errorSquared?: InputMaybe<FloatNullableFilter>;
+  forecast?: InputMaybe<ForecastRelationFilter>;
+  forecastId?: InputMaybe<IntFilter>;
+  forecaster?: InputMaybe<StringFilter>;
+  id?: InputMaybe<IntFilter>;
+  madeAt?: InputMaybe<IntFilter>;
+  marketAddress?: InputMaybe<StringNullableFilter>;
+  marketId?: InputMaybe<StringNullableFilter>;
+  outcome?: InputMaybe<IntNullableFilter>;
+  probabilityD18?: InputMaybe<StringNullableFilter>;
+  probabilityFloat?: InputMaybe<FloatNullableFilter>;
+  questionId?: InputMaybe<StringNullableFilter>;
+  resolver?: InputMaybe<StringNullableFilter>;
+  scoredAt?: InputMaybe<DateTimeNullableFilter>;
+  used?: InputMaybe<BoolFilter>;
+};
+
+export type ForecastWhereInput = {
+  AND?: InputMaybe<Array<ForecastWhereInput>>;
+  NOT?: InputMaybe<Array<ForecastWhereInput>>;
+  OR?: InputMaybe<Array<ForecastWhereInput>>;
+  attestedAt?: InputMaybe<IntFilter>;
+  blockNumber?: InputMaybe<IntFilter>;
+  comment?: InputMaybe<StringNullableFilter>;
+  condition?: InputMaybe<ConditionNullableRelationFilter>;
+  conditionId?: InputMaybe<StringNullableFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  data?: InputMaybe<StringFilter>;
+  decodedDataJson?: InputMaybe<StringFilter>;
+  forecast?: InputMaybe<StringFilter>;
+  forecastScore?: InputMaybe<ForecastScoreNullableRelationFilter>;
+  forecaster?: InputMaybe<StringFilter>;
+  id?: InputMaybe<IntFilter>;
+  recipient?: InputMaybe<StringFilter>;
+  resolver?: InputMaybe<StringNullableFilter>;
+  schemaId?: InputMaybe<StringFilter>;
+  transactionHash?: InputMaybe<StringFilter>;
+  uid?: InputMaybe<StringFilter>;
+};
+
 /**
  * DEPRECATED — kept only as the return type of `accountAccuracy`, which is
  * itself `@deprecated`. The leaderboard-row shape lives on
@@ -1367,6 +1877,19 @@ export type ForecasterScore = {
   numTimeWeighted: Scalars['Int']['output'];
   sumErrorSquared: Scalars['Float']['output'];
   sumTimeWeightedError: Scalars['Float']['output'];
+};
+
+/**
+ * Operator-pattern filter for `ID` scalar fields. Supports equality,
+ * membership, negation, and null. Resolvers reject unsupported operators
+ * on a per-field basis (e.g., a non-nullable column rejects `isNull`).
+ */
+export type IdFilter = {
+  equals?: InputMaybe<Scalars['ID']['input']>;
+  in?: InputMaybe<Array<Scalars['ID']['input']>>;
+  isNull?: InputMaybe<Scalars['Boolean']['input']>;
+  not?: InputMaybe<Scalars['ID']['input']>;
+  notIn?: InputMaybe<Array<Scalars['ID']['input']>>;
 };
 
 export type IntFilter = {
@@ -1391,311 +1914,11 @@ export type IntNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
-/** Legacy position model (NFT-based, V1) */
-export type LegacyPosition = {
-  __typename?: 'LegacyPosition';
-  _count?: Maybe<LegacyPositionCount>;
-  chainId: Scalars['Int']['output'];
-  counterparty: Scalars['String']['output'];
-  counterpartyCollateral?: Maybe<Scalars['String']['output']>;
-  counterpartyNftTokenId: Scalars['String']['output'];
-  createdAt: Scalars['DateTimeISO']['output'];
-  endsAt?: Maybe<Scalars['Int']['output']>;
-  id: Scalars['Int']['output'];
-  marketAddress: Scalars['String']['output'];
-  mintedAt: Scalars['Int']['output'];
-  /** @deprecated LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead. */
-  predictions: Array<LegacyPrediction>;
-  predictor: Scalars['String']['output'];
-  predictorCollateral?: Maybe<Scalars['String']['output']>;
-  predictorNftTokenId: Scalars['String']['output'];
-  /** True when the predictor's submitted outcomes were correct (previously makerWon) */
-  predictorWon?: Maybe<Scalars['Boolean']['output']>;
-  refCode?: Maybe<Scalars['String']['output']>;
-  settledAt?: Maybe<Scalars['Int']['output']>;
-  status: LegacyPositionStatus;
-  totalCollateral: Scalars['String']['output'];
-};
-
-
-/** Legacy position model (NFT-based, V1) */
-export type LegacyPositionPredictionsArgs = {
-  cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
-  distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<LegacyPredictionOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<LegacyPredictionWhereInput>;
-};
-
-export type LegacyPositionCount = {
-  __typename?: 'LegacyPositionCount';
-  predictions: Scalars['Int']['output'];
-};
-
-
-export type LegacyPositionCountPredictionsArgs = {
-  where?: InputMaybe<LegacyPredictionWhereInput>;
-};
-
-export type LegacyPositionNullableRelationFilter = {
-  is?: InputMaybe<LegacyPositionWhereInput>;
-  isNot?: InputMaybe<LegacyPositionWhereInput>;
-};
-
-export type LegacyPositionOrderByWithRelationInput = {
-  chainId?: InputMaybe<SortOrder>;
-  counterparty?: InputMaybe<SortOrder>;
-  counterpartyCollateral?: InputMaybe<SortOrderInput>;
-  counterpartyNftTokenId?: InputMaybe<SortOrder>;
-  createdAt?: InputMaybe<SortOrder>;
-  endsAt?: InputMaybe<SortOrderInput>;
-  id?: InputMaybe<SortOrder>;
-  marketAddress?: InputMaybe<SortOrder>;
-  mintedAt?: InputMaybe<SortOrder>;
-  predictions?: InputMaybe<LegacyPredictionOrderByRelationAggregateInput>;
-  predictor?: InputMaybe<SortOrder>;
-  predictorCollateral?: InputMaybe<SortOrderInput>;
-  predictorNftTokenId?: InputMaybe<SortOrder>;
-  predictorWon?: InputMaybe<SortOrderInput>;
-  refCode?: InputMaybe<SortOrderInput>;
-  settledAt?: InputMaybe<SortOrderInput>;
-  status?: InputMaybe<SortOrder>;
-  totalCollateral?: InputMaybe<SortOrder>;
-};
-
-export type LegacyPositionStatus =
-  | 'active'
-  | 'consolidated'
-  | 'settled';
-
-export type LegacyPositionWhereInput = {
-  AND?: InputMaybe<Array<LegacyPositionWhereInput>>;
-  NOT?: InputMaybe<Array<LegacyPositionWhereInput>>;
-  OR?: InputMaybe<Array<LegacyPositionWhereInput>>;
-  chainId?: InputMaybe<IntFilter>;
-  counterparty?: InputMaybe<StringFilter>;
-  counterpartyCollateral?: InputMaybe<StringNullableFilter>;
-  counterpartyNftTokenId?: InputMaybe<StringFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  endsAt?: InputMaybe<IntNullableFilter>;
-  id?: InputMaybe<IntFilter>;
-  marketAddress?: InputMaybe<StringFilter>;
-  mintedAt?: InputMaybe<IntFilter>;
-  predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
-  predictor?: InputMaybe<StringFilter>;
-  predictorCollateral?: InputMaybe<StringNullableFilter>;
-  predictorNftTokenId?: InputMaybe<StringFilter>;
-  predictorWon?: InputMaybe<BoolNullableFilter>;
-  refCode?: InputMaybe<StringNullableFilter>;
-  settledAt?: InputMaybe<IntNullableFilter>;
-  status?: InputMaybe<EnumLegacyPositionStatusFilter>;
-  totalCollateral?: InputMaybe<StringFilter>;
-};
-
-export type LegacyPrediction = {
-  __typename?: 'LegacyPrediction';
-  chainId?: Maybe<Scalars['Int']['output']>;
-  condition: Condition;
-  conditionId: Scalars['String']['output'];
-  createdAt: Scalars['DateTimeISO']['output'];
-  id: Scalars['Int']['output'];
-  /** @deprecated LimitOrder is deprecated and being phased out. */
-  limitOrder?: Maybe<LimitOrder>;
-  limitOrderId?: Maybe<Scalars['Int']['output']>;
-  outcomeYes: Scalars['Boolean']['output'];
-  /** @deprecated LegacyPosition is the V1 (NFT-based) holdings model and is being phased out. Use `positionsPage` instead. */
-  position?: Maybe<LegacyPosition>;
-  positionId?: Maybe<Scalars['Int']['output']>;
-};
-
-
-export type LegacyPredictionLimitOrderArgs = {
-  where?: InputMaybe<LimitOrderWhereInput>;
-};
-
-
-export type LegacyPredictionPositionArgs = {
-  where?: InputMaybe<LegacyPositionWhereInput>;
-};
-
-export type LegacyPredictionLimitOrderIdConditionIdCompoundUniqueInput = {
-  conditionId: Scalars['String']['input'];
-  limitOrderId: Scalars['Int']['input'];
-};
-
-export type LegacyPredictionListRelationFilter = {
-  every?: InputMaybe<LegacyPredictionWhereInput>;
-  none?: InputMaybe<LegacyPredictionWhereInput>;
-  some?: InputMaybe<LegacyPredictionWhereInput>;
-};
-
-export type LegacyPredictionOrderByRelationAggregateInput = {
-  _count?: InputMaybe<SortOrder>;
-};
-
-export type LegacyPredictionOrderByWithRelationInput = {
-  chainId?: InputMaybe<SortOrderInput>;
-  condition?: InputMaybe<ConditionOrderByWithRelationInput>;
-  conditionId?: InputMaybe<SortOrder>;
-  createdAt?: InputMaybe<SortOrder>;
-  id?: InputMaybe<SortOrder>;
-  limitOrder?: InputMaybe<LimitOrderOrderByWithRelationInput>;
-  limitOrderId?: InputMaybe<SortOrderInput>;
-  outcomeYes?: InputMaybe<SortOrder>;
-  position?: InputMaybe<LegacyPositionOrderByWithRelationInput>;
-  positionId?: InputMaybe<SortOrderInput>;
-};
-
-export type LegacyPredictionPositionIdConditionIdCompoundUniqueInput = {
-  conditionId: Scalars['String']['input'];
-  positionId: Scalars['Int']['input'];
-};
-
-export type LegacyPredictionScalarFieldEnum =
-  | 'chainId'
-  | 'conditionId'
-  | 'createdAt'
-  | 'id'
-  | 'limitOrderId'
-  | 'outcomeYes'
-  | 'positionId';
-
-export type LegacyPredictionWhereInput = {
-  AND?: InputMaybe<Array<LegacyPredictionWhereInput>>;
-  NOT?: InputMaybe<Array<LegacyPredictionWhereInput>>;
-  OR?: InputMaybe<Array<LegacyPredictionWhereInput>>;
-  chainId?: InputMaybe<IntNullableFilter>;
-  condition?: InputMaybe<ConditionRelationFilter>;
-  conditionId?: InputMaybe<StringFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  id?: InputMaybe<IntFilter>;
-  limitOrder?: InputMaybe<LimitOrderNullableRelationFilter>;
-  limitOrderId?: InputMaybe<IntNullableFilter>;
-  outcomeYes?: InputMaybe<BoolFilter>;
-  position?: InputMaybe<LegacyPositionNullableRelationFilter>;
-  positionId?: InputMaybe<IntNullableFilter>;
-};
-
-export type LegacyPredictionWhereUniqueInput = {
-  AND?: InputMaybe<Array<LegacyPredictionWhereInput>>;
-  NOT?: InputMaybe<Array<LegacyPredictionWhereInput>>;
-  OR?: InputMaybe<Array<LegacyPredictionWhereInput>>;
-  chainId?: InputMaybe<IntNullableFilter>;
-  condition?: InputMaybe<ConditionRelationFilter>;
-  conditionId?: InputMaybe<StringFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  id?: InputMaybe<Scalars['Int']['input']>;
-  limitOrder?: InputMaybe<LimitOrderNullableRelationFilter>;
-  limitOrderId?: InputMaybe<IntNullableFilter>;
-  limitOrderId_conditionId?: InputMaybe<LegacyPredictionLimitOrderIdConditionIdCompoundUniqueInput>;
-  outcomeYes?: InputMaybe<BoolFilter>;
-  position?: InputMaybe<LegacyPositionNullableRelationFilter>;
-  positionId?: InputMaybe<IntNullableFilter>;
-  positionId_conditionId?: InputMaybe<LegacyPredictionPositionIdConditionIdCompoundUniqueInput>;
-};
-
-export type LimitOrder = {
-  __typename?: 'LimitOrder';
-  _count?: Maybe<LimitOrderCount>;
-  cancelledAt?: Maybe<Scalars['Int']['output']>;
-  cancelledTxHash?: Maybe<Scalars['String']['output']>;
-  chainId: Scalars['Int']['output'];
-  counterparty?: Maybe<Scalars['String']['output']>;
-  counterpartyCollateral: Scalars['String']['output'];
-  createdAt: Scalars['DateTimeISO']['output'];
-  filledAt?: Maybe<Scalars['Int']['output']>;
-  filledTxHash?: Maybe<Scalars['String']['output']>;
-  id: Scalars['Int']['output'];
-  marketAddress: Scalars['String']['output'];
-  orderId: Scalars['String']['output'];
-  placedAt: Scalars['Int']['output'];
-  placedTxHash: Scalars['String']['output'];
-  /** @deprecated LimitOrder is deprecated and being phased out. */
-  predictions: Array<LegacyPrediction>;
-  predictor: Scalars['String']['output'];
-  predictorCollateral: Scalars['String']['output'];
-  refCode?: Maybe<Scalars['String']['output']>;
-  resolver: Scalars['String']['output'];
-  status: LimitOrderStatus;
-};
-
-
-export type LimitOrderPredictionsArgs = {
-  cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
-  distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<LegacyPredictionOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<LegacyPredictionWhereInput>;
-};
-
-export type LimitOrderCount = {
-  __typename?: 'LimitOrderCount';
-  predictions: Scalars['Int']['output'];
-};
-
-
-export type LimitOrderCountPredictionsArgs = {
-  where?: InputMaybe<LegacyPredictionWhereInput>;
-};
-
-export type LimitOrderNullableRelationFilter = {
-  is?: InputMaybe<LimitOrderWhereInput>;
-  isNot?: InputMaybe<LimitOrderWhereInput>;
-};
-
-export type LimitOrderOrderByWithRelationInput = {
-  cancelledAt?: InputMaybe<SortOrderInput>;
-  cancelledTxHash?: InputMaybe<SortOrderInput>;
-  chainId?: InputMaybe<SortOrder>;
-  counterparty?: InputMaybe<SortOrderInput>;
-  counterpartyCollateral?: InputMaybe<SortOrder>;
-  createdAt?: InputMaybe<SortOrder>;
-  filledAt?: InputMaybe<SortOrderInput>;
-  filledTxHash?: InputMaybe<SortOrderInput>;
-  id?: InputMaybe<SortOrder>;
-  marketAddress?: InputMaybe<SortOrder>;
-  orderId?: InputMaybe<SortOrder>;
-  placedAt?: InputMaybe<SortOrder>;
-  placedTxHash?: InputMaybe<SortOrder>;
-  predictions?: InputMaybe<LegacyPredictionOrderByRelationAggregateInput>;
-  predictor?: InputMaybe<SortOrder>;
-  predictorCollateral?: InputMaybe<SortOrder>;
-  refCode?: InputMaybe<SortOrderInput>;
-  resolver?: InputMaybe<SortOrder>;
-  status?: InputMaybe<SortOrder>;
-};
-
-export type LimitOrderStatus =
-  | 'cancelled'
-  | 'filled'
-  | 'pending';
-
-export type LimitOrderWhereInput = {
-  AND?: InputMaybe<Array<LimitOrderWhereInput>>;
-  NOT?: InputMaybe<Array<LimitOrderWhereInput>>;
-  OR?: InputMaybe<Array<LimitOrderWhereInput>>;
-  cancelledAt?: InputMaybe<IntNullableFilter>;
-  cancelledTxHash?: InputMaybe<StringNullableFilter>;
-  chainId?: InputMaybe<IntFilter>;
-  counterparty?: InputMaybe<StringNullableFilter>;
-  counterpartyCollateral?: InputMaybe<StringFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  filledAt?: InputMaybe<IntNullableFilter>;
-  filledTxHash?: InputMaybe<StringNullableFilter>;
-  id?: InputMaybe<IntFilter>;
-  marketAddress?: InputMaybe<StringFilter>;
-  orderId?: InputMaybe<StringFilter>;
-  placedAt?: InputMaybe<IntFilter>;
-  placedTxHash?: InputMaybe<StringFilter>;
-  predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
-  predictor?: InputMaybe<StringFilter>;
-  predictorCollateral?: InputMaybe<StringFilter>;
-  refCode?: InputMaybe<StringNullableFilter>;
-  resolver?: InputMaybe<StringFilter>;
-  status?: InputMaybe<EnumLimitOrderStatusFilter>;
-};
+export type LeaderboardMetric =
+  | 'ACCURACY'
+  | 'PNL'
+  | 'ROI'
+  | 'VOLUME';
 
 export type NestedBigIntFilter = {
   equals?: InputMaybe<Scalars['BigInt']['input']>;
@@ -1749,20 +1972,6 @@ export type NestedDecimalFilter = {
   lte?: InputMaybe<Scalars['Decimal']['input']>;
   not?: InputMaybe<NestedDecimalFilter>;
   notIn?: InputMaybe<Array<Scalars['Decimal']['input']>>;
-};
-
-export type NestedEnumLegacyPositionStatusFilter = {
-  equals?: InputMaybe<LegacyPositionStatus>;
-  in?: InputMaybe<Array<LegacyPositionStatus>>;
-  not?: InputMaybe<NestedEnumLegacyPositionStatusFilter>;
-  notIn?: InputMaybe<Array<LegacyPositionStatus>>;
-};
-
-export type NestedEnumLimitOrderStatusFilter = {
-  equals?: InputMaybe<LimitOrderStatus>;
-  in?: InputMaybe<Array<LimitOrderStatus>>;
-  not?: InputMaybe<NestedEnumLimitOrderStatusFilter>;
-  notIn?: InputMaybe<Array<LimitOrderStatus>>;
 };
 
 export type NestedFloatFilter = {
@@ -1837,9 +2046,31 @@ export type NestedStringNullableFilter = {
   startsWith?: InputMaybe<Scalars['String']['input']>;
 };
 
+/**
+ * Relay-style identifiable object. Types that implement `Node` carry a
+ * globally unique opaque `id` and are refetchable through the root
+ * `node(id:)` / `nodes(ids:)` fields. Domain identifiers (predictionId,
+ * hash, uid, address) remain on the entity as separate fields; `id` is a
+ * second identity layer used for cache normalization and polymorphic
+ * refetch.
+ */
+export type Node = {
+  /**
+   * Opaque, globally unique identifier. Clients should treat this as a
+   * refetch token only — do not parse, mint, or compare it to domain ids.
+   * Stable for the lifetime of the entity it identifies.
+   */
+  id: Scalars['ID']['output'];
+};
+
 export type NullsOrder =
   | 'first'
   | 'last';
+
+/** Sort order shared across every `orderBy` input on the redesigned surface. */
+export type OrderDirection =
+  | 'ASC'
+  | 'DESC';
 
 /**
  * Shared shape for `*Page` paginated wrappers. Concrete types add their own
@@ -1862,6 +2093,24 @@ export type Page = {
    *     the client selects it.
    */
   totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
+/**
+ * Cursor-based pagination metadata for Relay-style connections. Sits
+ * alongside the legacy `Page` interface (offset/skip-based pagination)
+ * during the API redesign; new connection types use `PageInfo`, existing
+ * `*Page` types keep `Page`.
+ */
+export type PageInfo = {
+  __typename?: 'PageInfo';
+  /** Cursor of the last edge in the page, or null when the page is empty. */
+  endCursor?: Maybe<Scalars['String']['output']>;
+  /** True if more rows exist after `endCursor` in the current ordering. */
+  hasNextPage: Scalars['Boolean']['output'];
+  /** True if more rows exist before `startCursor` in the current ordering. */
+  hasPreviousPage: Scalars['Boolean']['output'];
+  /** Cursor of the first edge in the page, or null when the page is empty. */
+  startCursor?: Maybe<Scalars['String']['output']>;
 };
 
 /** Individual outcome pick within a pick configuration */
@@ -1888,43 +2137,87 @@ export type PickConfiguration = {
   isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
   picks: Array<Pick>;
+  positions: PositionConnection;
   predictionId?: Maybe<Scalars['String']['output']>;
+  predictions: PredictionConnection;
   predictorToken?: Maybe<Scalars['String']['output']>;
   resolved: Scalars['Boolean']['output'];
   resolvedAt?: Maybe<Scalars['UnixSeconds']['output']>;
   result: SettlementResult;
   totalCounterpartyCollateral: Scalars['String']['output'];
   totalPredictorCollateral: Scalars['String']['output'];
+  trades: TradeConnection;
+};
+
+
+/** Group of outcome picks forming a combined prediction position, with collateral and settlement tracking */
+export type PickConfigurationPositionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PositionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PositionOrder>;
+};
+
+
+/** Group of outcome picks forming a combined prediction position, with collateral and settlement tracking */
+export type PickConfigurationPredictionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
+};
+
+
+/** Group of outcome picks forming a combined prediction position, with collateral and settlement tracking */
+export type PickConfigurationTradesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
+};
+
+/** Relay-shaped connection over `PickConfiguration` rows. */
+export type PickConfigurationConnection = {
+  __typename?: 'PickConfigurationConnection';
+  edges: Array<PickConfigurationEdge>;
+  nodes: Array<PickConfiguration>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+/** Cursor-bearing edge for `PickConfigurationConnection`. */
+export type PickConfigurationEdge = {
+  __typename?: 'PickConfigurationEdge';
+  cursor: Scalars['String']['output'];
+  node: PickConfiguration;
 };
 
 /**
- * Flat filter input for the `pickConfigurationsPage` query. Each field is
- * optional; values combine with AND.
+ * Filter input for the `pickConfigurationsConnection` query. Values combine with AND.
+ * Range-like scalars use operator-pattern inputs; identifier/domain fields stay flat.
  */
-export type PickConfigurationFilters = {
-  /** Restrict to a single chain. */
+export type PickConfigurationFilter = {
+  /** Restrict to a single chain. Chain IDs are identifiers, not range-filtered metrics. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to resolved (true) or unresolved (false) pick configurations. */
   resolved?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Restrict to pick configurations with this settlement result. */
-  result?: InputMaybe<SettlementResult>;
+  /** Filter by settlement result, e.g. `{ equals: PREDICTOR_WINS }`. */
+  result?: InputMaybe<SettlementResultFilter>;
   /** Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request. */
   tokens?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
-/** Sort fields for the `pickConfigurationsPage` query. */
-export type PickConfigurationSortField =
+/** Order input for the Relay-shaped `pickConfigurationsConnection`. */
+export type PickConfigurationOrder = {
+  direction: OrderDirection;
+  field: PickConfigurationOrderField;
+};
+
+/** Sort fields for the Relay-shaped `pickConfigurationsConnection`. */
+export type PickConfigurationOrderField =
   | 'CREATED_AT'
   | 'ENDS_AT'
   | 'RESOLVED_AT';
-
-/** Paginated wrapper around PickConfiguration rows with a server-truth hasMore flag */
-export type PickConfigurationsPage = Page & {
-  __typename?: 'PickConfigurationsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<PickConfiguration>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
 
 /** Time-bucketed PnL data point with cumulative tracking (legacy). */
 export type PnlDataPoint = {
@@ -1991,11 +2284,48 @@ export type Position = {
   userCollateral?: Maybe<Scalars['String']['output']>;
 };
 
+/** Relay-shaped connection over `Position` rows. */
+export type PositionConnection = {
+  __typename?: 'PositionConnection';
+  edges: Array<PositionEdge>;
+  nodes: Array<Position>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+/** Cursor-bearing edge for `PositionConnection`. */
+export type PositionEdge = {
+  __typename?: 'PositionEdge';
+  cursor: Scalars['String']['output'];
+  node: Position;
+};
+
+/** Filter input for the Relay-shaped `positionsConnection` query. Combines with AND. */
+export type PositionFilter = {
+  /** Restrict to a single chain. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Filter by holder collateral on the pickConfig, e.g. `{ gte: "1000000000000000000" }`. */
+  collateral?: InputMaybe<BigIntFilter>;
+  /** Restrict to positions tied to a single condition (via the pickConfig join). */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  endsAt?: InputMaybe<IntFilter>;
+  /** Restrict to a single holder address (case-insensitive). */
+  holder?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions where holder won/lost the settled pickConfig. */
+  holderWon?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to a single pick configuration. */
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions whose pickConfig settled with this result. */
+  result?: InputMaybe<SettlementResult>;
+  /** Restrict to settled (true) or unsettled (false) positions. */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
 /**
- * Flat filter input for the `positionsPage` query. Each field is optional;
- * values combine with AND. Replaces the flat-arg shape on the resolver; the
- * old args remain for one release with `@deprecated` so existing callers can
- * migrate without breaking.
+ * Flat filter input for the deprecated `positionsPage` query. Each field is
+ * optional; values combine with AND. New callers should use the operator-pattern
+ * `PositionFilter` on `positionsConnection`.
  */
 export type PositionFilters = {
   /** Restrict to a single chain. */
@@ -2022,10 +2352,23 @@ export type PositionFilters = {
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
+/** Order input for the Relay-shaped `positionsConnection`. */
+export type PositionOrder = {
+  direction: OrderDirection;
+  field: PositionOrderField;
+};
+
+/** Sort fields for the Relay-shaped `positionsConnection`. */
+export type PositionOrderField =
+  | 'CREATED_AT'
+  | 'UPDATED_AT';
+
 /** Field to sort positions by */
 export type PositionSortField =
   | 'CREATED_AT'
-  | 'UPDATED_AT';
+  | 'UPDATED_AT'
+  | 'createdAt'
+  | 'updatedAt';
 
 /**
  * Paginated wrapper around Position rows with a server-truth hasMore flag.
@@ -2068,6 +2411,15 @@ export type Prediction = {
   settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
 };
 
+/** Relay-shaped connection over `Prediction` rows. */
+export type PredictionConnection = {
+  __typename?: 'PredictionConnection';
+  edges: Array<PredictionEdge>;
+  nodes: Array<Prediction>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
 /** Time-bucketed prediction-count data point with outcome breakdown (legacy). */
 export type PredictionCountDataPoint = {
   __typename?: 'PredictionCountDataPoint';
@@ -2085,41 +2437,64 @@ export type PredictionCountDataPoint = {
   won: Scalars['Int']['output'];
 };
 
+/** Cursor-bearing edge for `PredictionConnection`. */
+export type PredictionEdge = {
+  __typename?: 'PredictionEdge';
+  cursor: Scalars['String']['output'];
+  node: Prediction;
+};
+
 /**
- * Flat filter input for the `predictionsPage` query. Each field is optional;
+ * Filter input for the `predictionsConnection` query. Each field is optional;
  * values combine with AND.
  */
-export type PredictionFilters = {
+export type PredictionFilter = {
   /** Restrict to predictions where the address is predictor or counterparty (case-insensitive). */
   address?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to predictions on a single condition (via the pickConfig join). */
   conditionId?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to predictions whose pickConfig `endsAt <= this`. */
-  endsAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to predictions whose pickConfig `endsAt >= this`. */
-  endsAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /**
+   * Restrict to predictions on any of these conditions (via the pickConfig join).
+   * Useful for group-backed feeds where the caller already has the condition
+   * list resolved.
+   */
+  conditionIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  endsAt?: InputMaybe<IntFilter>;
   /** Restrict to legacy (true) or non-legacy (false) predictions. */
   isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to a single prediction by on-chain id. Supports the
+   * by-predictionId single-record lookup pattern —
+   * `predictionsConnection(filter: { predictionId: $p }).nodes[0]` replaces
+   * the dedicated `predictionByOnchainId` query.
+   */
+  predictionId?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to predictions whose pickConfig settled with this result. */
   result?: InputMaybe<SettlementResult>;
   /** Restrict to settled (true) or unsettled (false) predictions. */
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
+/** Order input for `predictionsConnection`. */
+export type PredictionOrder = {
+  direction: OrderDirection;
+  field: PredictionOrderField;
+};
+
+/** Sort fields for `predictionsConnection`. */
+export type PredictionOrderField =
+  | 'CREATED_AT';
+
 /** Field to sort predictions by */
 export type PredictionSortField =
   | 'CREATED_AT'
-  | 'SETTLED_AT';
-
-/** Paginated wrapper around Prediction rows with a server-truth hasMore flag */
-export type PredictionsPage = Page & {
-  __typename?: 'PredictionsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Prediction>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
+  | 'SETTLED_AT'
+  | 'createdAt'
+  | 'settledAt';
 
 /**
  * DEPRECATED — kept only as the return type of `accountProfitRank`, which is
@@ -2134,6 +2509,18 @@ export type ProfitRank = {
   rank?: Maybe<Scalars['Int']['output']>;
   totalParticipants: Scalars['Int']['output'];
   totalPnL: Scalars['String']['output'];
+};
+
+export type Protocol = {
+  __typename?: 'Protocol';
+  openInterestByCategory: Array<CategoryOpenInterest>;
+  openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
+  stats: ProtocolStatConnection;
+};
+
+
+export type ProtocolStatsArgs = {
+  filter?: InputMaybe<ProtocolStatFilter>;
 };
 
 /** Protocol-wide stats snapshot — no vault scoping. */
@@ -2152,6 +2539,29 @@ export type ProtocolStat = {
   timestamp: Scalars['UnixSeconds']['output'];
 };
 
+export type ProtocolStatConnection = {
+  __typename?: 'ProtocolStatConnection';
+  edges: Array<ProtocolStatEdge>;
+  nodes: Array<ProtocolStat>;
+  pageInfo: PageInfo;
+  /**
+   * Size of the full snapshot series rendered by this query (pre-pagination).
+   * Already known in memory — the resolver materializes every snapshot
+   * before slicing — so cheap to surface.
+   */
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ProtocolStatEdge = {
+  __typename?: 'ProtocolStatEdge';
+  cursor: Scalars['String']['output'];
+  node: ProtocolStat;
+};
+
+export type ProtocolStatFilter = {
+  timestamp?: InputMaybe<IntFilter>;
+};
+
 export type Query = {
   __typename?: 'Query';
   /**
@@ -2162,7 +2572,7 @@ export type Query = {
   account?: Maybe<Account>;
   /**
    * Lifetime accuracy score for a single address, or null if no scored
-   * attestations exist.
+   * forecasts exist.
    * @deprecated Use `accountAccuracyRank` for the rank-and-score shape, or `accuracyLeaderboardPage` for the leaderboard. `ForecasterScore`'s legacy counter fields (numScored, sumErrorSquared, …) were always returned as zeros.
    */
   accountAccuracy?: Maybe<ForecasterScore>;
@@ -2170,8 +2580,9 @@ export type Query = {
    * Accuracy rank and lifetime score for a single address. Mirrors
    * `accountStatsRank`'s shape: stats fields are always populated (zero for
    * unscored addresses), `rank` is null when the address is absent from the
-   * ranked set, and `totalParticipants` is the size of the scored-forecaster
+   * ranked set, and `totalForecasters` is the size of the scored-forecaster
    * set.
+   * @deprecated Use `account(address: $a).rank(metric: ACCURACY)` — returns the same rank + value via the Relay-shaped Account surface.
    */
   accountAccuracyRank: AccountAccuracyRank;
   /**
@@ -2227,15 +2638,10 @@ export type Query = {
    * Implementation today wraps the legacy per-metric SQL helpers and emits
    * one point per day. A follow-up migrates this to a real per-account
    * snapshot table without changing the wire shape.
+   * @deprecated Use `account(address: $a).stats(filter: { timestamp: { gte: $from, lte: $to } })` — same fat-row shape via the Relay-shaped Account surface.
    */
   accountStats: Array<AccountStat>;
-  /**
-   * Accounts ranked by an account metric (net PnL, gains, losses, or volume)
-   * over an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over
-   * all-time. PnL metrics are attributed to settlement time, volume to trade
-   * time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
-   * unconditionally (cheap in-memory derivation).
-   */
+  /** @deprecated Use `leaderboard(metric: PNL|VOLUME|ROI, first:, after:, filter:)` — Relay-shaped pagination over the same ranked set. */
   accountStatsLeaderboardPage: AccountStatsLeaderboardPage;
   /**
    * Stats + rank for a single address against the same ranked set the
@@ -2245,6 +2651,7 @@ export type Query = {
    * ranked set; `totalParticipants` is the ranked-set size (0 when the
    * window has no participants at all — that distinguishes "empty window"
    * from "present window, address unranked").
+   * @deprecated Use `account(address: $a).rank(metric: PNL|VOLUME|ROI, filter:)` — returns the same rank + value via the Relay-shaped Account surface.
    */
   accountStatsRank: AccountStatsRank;
   /**
@@ -2261,39 +2668,41 @@ export type Query = {
    */
   accountVolume: Array<VolumeDataPoint>;
   /**
+   * Relay-shaped connection over accounts (User-table rows). Single-address
+   * lookups should keep using `account(address:)`, which synthesizes
+   * address-backed Accounts for wallets without a User row;
+   * `accountsConnection` is for enumeration / search use cases.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `accounts`) in a subsequent migration.
+   */
+  accountsConnection: AccountConnection;
+  /**
    * Top forecasters ranked by lifetime accuracy. The time-weighted error
    * already weights by recency, so there's no window filter on this surface.
    * Page-shaped with server-truth `hasMore`; `totalCount` is populated
    * unconditionally (cheap in-memory derivation).
+   * @deprecated Use `leaderboard(metric: ACCURACY, first:, after:)` — Relay-shaped pagination over the same ranked set.
    */
   accuracyLeaderboardPage: AccountAccuracyLeaderboardPage;
+  activity: ActivityConnection;
   /**
    * Unified activity feed (predictions + trades merged by timestamp), wrapped
-   * in an `ActivityItemsPage` with a server-truth `hasMore` flag. When
-   * `address` is provided the feed is scoped to that account; otherwise it
-   * returns recent global activity.
-   *
-   * Filtering is via `filters: ActivityFilters`. The flat-arg filters
-   * (`address`, `conditionId`, `pickConfigId`, `type`) are retained for one
-   * release with `@deprecated` so existing callers can migrate without
-   * breaking; new callers should use `filters:`.
+   * in an `ActivityItemsPage` with a server-truth `hasMore` flag. The whole
+   * field is deprecated in favor of `activity(...)`, the Relay-shaped
+   * replacement; flat-arg / `filters:`-arg variants both keep working until
+   * the deprecation window closes.
+   * @deprecated Use `activity(first:, after:, filter:, orderBy:)` — Relay-shaped pagination over the same merged predictions/trades feed.
    */
   activityPage: ActivityItemsPage;
-  /** @deprecated Use `attestationsPage` — purpose-built filters (attester, conditionId, schemaId, recipient, time range), paginated with a server-truth `hasMore` stop signal. */
-  attestations: Array<Attestation>;
-  /**
-   * Same as `attestations`, but with a purpose-built `AttestationFilters` input and a paginated `AttestationsPage` wrapper. Defaults to `time DESC` order.
-   *
-   * Filtering is via `filters: AttestationFilters`. The flat-arg filters
-   * (`uid`, `attester`, `recipient`, `conditionId`, `schemaId`, `minTime`,
-   * `maxTime`) are retained for one release with `@deprecated` so existing
-   * callers can migrate without breaking; new callers should use `filters:`.
-   */
-  attestationsPage: AttestationsPage;
-  /** @deprecated Use `categoriesPage` — purpose-built paginated wrapper with server-truth `hasMore`. Shares the same TtlCache as the deprecated path. */
+  /** @deprecated Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories. */
   categories: Array<Category>;
-  /** Paginated category list, sorted alphabetically by name. */
-  categoriesPage: CategoriesPage;
+  /**
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `categories`) in a subsequent migration, once the deprecated
+   * bare-array `categories` sibling above is removed.
+   */
+  categoriesConnection: CategoryConnection;
   /**
    * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
    * @deprecated Unused; will be removed. No live consumers — claim records are reachable as a side-effect of position settlement.
@@ -2304,6 +2713,7 @@ export type Query = {
    * @deprecated Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement.
    */
   closes: Array<Close>;
+  /** @deprecated Use `collateralBalance(account:, chainId:)`; legacy `address` remains as an argument alias during migration. */
   collateralBalance: CollateralBalance;
   /**
    * Cumulative wUSDe collateral balance for an address at `count + 1`
@@ -2313,77 +2723,132 @@ export type Query = {
    * `intervalSeconds` wins.
    */
   collateralBalanceHistory: Array<CollateralBalanceSnapshot>;
-  /** @deprecated Use `collateralTransfersPage` — same data with standard `take` / `skip` args (replaces `limit` / `offset`) and a server-truth `hasMore` stop signal. */
+  /** @deprecated Use `collateralTransfersConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over collateral transfers. */
   collateralTransfers: Array<CollateralTransfer>;
   /**
-   * Same as `collateralTransfers`, but wraps the result in a `CollateralTransfersPage` with a server-truth `hasMore` flag and standard `take`/`skip` args.
+   * Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
    *
-   * Sorting via `orderBy: CollateralTransferSortField` + `orderDirection: SortOrder`.
-   * Defaults to `BLOCK_NUMBER` / `desc` when omitted.
+   * Sorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `collateralTransfers`) in a subsequent migration, once the
+   * deprecated bare-array `collateralTransfers` sibling above is removed.
    */
-  collateralTransfersPage: CollateralTransfersPage;
+  collateralTransfersConnection: CollateralTransferConnection;
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape. */
   condition?: Maybe<Condition>;
   /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape. */
   conditionGroup?: Maybe<ConditionGroup>;
-  /** @deprecated Use `conditionGroupsPage` — purpose-built filters via `ConditionGroupFilters`, paginated with a server-truth `hasMore` stop signal. */
+  /**
+   * Deprecated bare-array form. Retained unchanged for the one-release
+   * deprecation window so pinned clients keep working. New callers
+   * should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`.
+   * @deprecated Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
+   */
   conditionGroups: Array<ConditionGroup>;
   /**
-   * Same as `conditionGroups`, but wraps the result in a `ConditionGroupsPage` with a server-truth `hasMore` flag.
+   * Relay-shaped connection over `ConditionGroup` rows. Forward-only
+   * cursor pagination via `first` / `after`. Replaces the deprecated
+   * bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
+   * (default-off, add per-PR where cheap).
    *
-   * Sorting via `orderBy: ConditionGroupSortField` + `orderDirection: SortOrder`.
-   * Defaults to `CREATED_AT` / `desc` when omitted.
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `conditionGroups`) in a subsequent migration, once the deprecated
+   * bare-array sibling above is removed.
    */
-  conditionGroupsPage: ConditionGroupsPage;
-  /** @deprecated Use `conditionsPage` — purpose-built filters via `ConditionFilters`, paginated with a server-truth `hasMore` stop signal. */
+  conditionGroupsConnection: ConditionGroupConnection;
+  /**
+   * Deprecated bare-array form. Retained unchanged for the one-release
+   * deprecation window. New callers should use
+   * `conditionsConnection(first:, after:, filter:, orderBy:)`.
+   * @deprecated Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
+   */
   conditions: Array<Condition>;
-  /** Same as `conditions`, but wraps the result in a `ConditionsPage` with a server-truth `hasMore` flag and a purpose-built `ConditionFilters` input. */
-  conditionsPage: ConditionsPage;
-  /** Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending. */
+  /**
+   * Relay-shaped connection over `Condition` rows. Forward-only cursor
+   * pagination via `first` / `after`. Replaces the deprecated bare
+   * `conditions(where:)`. Public conditions only.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `conditions`) in a subsequent migration, once the deprecated
+   * bare-array sibling above is removed.
+   */
+  conditionsConnection: ConditionConnection;
+  /**
+   * Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
+   *
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `forecasts`) in a subsequent migration.
+   */
+  forecastsConnection: ForecastConnection;
+  leaderboard: AccountRankingConnection;
+  /**
+   * Refetch any `Node`-implementing entity by its opaque global id. Returns
+   * `null` when the id is malformed, the type is not registered, or the
+   * underlying entity has been deleted. By-attribute lookups go through the
+   * matching `*Connection(filter:)` — e.g. `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
+   * or `predictionsConnection(filter: { predictionId: $p }).nodes[0]`. `node(id:)`
+   * exists so Relay-style clients can refetch cached entities polymorphically
+   * without knowing their concrete type.
+   */
+  node?: Maybe<Node>;
+  /**
+   * Batched form of `node(id:)`. Preserves input order; each element is
+   * resolved independently and may be null. Useful for client caches that
+   * refresh many entities in one round trip.
+   */
+  nodes: Array<Maybe<Node>>;
+  /**
+   * Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
+   * @deprecated Use `protocol.openInterestByCategory`.
+   */
   openInterestByCategory: Array<CategoryOpenInterest>;
-  /** Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket. */
+  /**
+   * Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
+   * @deprecated Use `protocol.openInterestByTimeToResolution`.
+   */
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   /**
    * Look up a single pick configuration by ID
-   * @deprecated Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsPage` for list lookups.
+   * @deprecated Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsConnection` for list lookups.
    */
   pickConfiguration?: Maybe<PickConfiguration>;
   /**
    * Paginated list of pick configurations, filterable by chain, resolution status, and result
-   * @deprecated Use `pickConfigurationsPage` — same data with a server-truth `hasMore` stop signal.
+   * @deprecated Use `pickConfigurationsConnection` — Relay-shaped cursor pagination over the same data.
    */
   pickConfigurations: Array<PickConfiguration>;
   /**
-   * Same as `pickConfigurations`, but wraps the result in a `PickConfigurationsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+   * Relay-shaped connection over pick configurations.
    *
-   * Filtering is via `filters: PickConfigurationFilters`. The flat-arg
-   * filters (`chainId`, `resolved`, `result`, `tokens`) are retained for
-   * one release with `@deprecated` so existing callers can migrate without
-   * breaking; new callers should use `filters:`.
-   *
-   * Sorting via `orderBy: PickConfigurationSortField` + `orderDirection: SortOrder`.
-   * Defaults to `CREATED_AT` / `desc` when omitted.
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `pickConfigurations`) in a subsequent migration, once the
+   * deprecated bare-array `pickConfigurations` sibling above is removed.
    */
-  pickConfigurationsPage: PickConfigurationsPage;
+  pickConfigurationsConnection: PickConfigurationConnection;
   /** Top 20 most-used tags across public conditions */
   popularTags: Array<Scalars['String']['output']>;
   /**
    * Count of token positions for a given holder
-   * @deprecated Use `positionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   * @deprecated Use `positionsConnection` — Relay-shaped cursor pagination over the same data.
    */
   positionCount: Scalars['Int']['output'];
   /**
    * Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
-   * @deprecated Use `positionsPage` — same data with a server-truth `hasMore` stop signal. The bare-array form can return empty pages mid-stream (synthesized sell rows for zero-balance unresolved positions), so `length === 0` is not a reliable end-of-pagination check.
+   * @deprecated Use `positionsConnection` — Relay-shaped cursor pagination over the same data.
    */
   positions: Array<Position>;
   /**
-   * Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
+   * Relay-shaped connection over token positions.
    *
-   * Filtering is via `filters: PositionFilters`. The flat-arg filters
-   * (`holder`, `chainId`, `conditionId`, …) are retained for one release
-   * with `@deprecated` so existing callers can migrate without breaking;
-   * new callers should use `filters:`.
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `positions`) in a subsequent migration, once the deprecated
+   * `positions` bare-array / `positionsPage` siblings above are removed.
+   */
+  positionsConnection: PositionConnection;
+  /**
+   * Deprecated page wrapper retained for main/backward compatibility. New callers should use `positionsConnection(first:, after:, filter:, orderBy:)`.
+   * @deprecated Use `positionsConnection` instead.
    */
   positionsPage: PositionsPage;
   /**
@@ -2394,23 +2859,30 @@ export type Query = {
   prediction?: Maybe<Prediction>;
   /**
    * Count of escrow predictions involving the given address
-   * @deprecated Use `predictionsPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   * @deprecated Use `predictionsConnection(...).totalCount` — same number, available alongside the connection payload, no extra query needed.
    */
   predictionCount: Scalars['Int']['output'];
   /**
    * Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
-   * @deprecated Use `predictionsPage` — same data with a server-truth `hasMore` stop signal.
+   * @deprecated Use `predictionsConnection` — same data with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`.
    */
   predictions: Array<Prediction>;
   /**
-   * Same as `predictions`, but wraps the result in a `PredictionsPage` with a server-truth `hasMore` flag for paginated infinite scroll.
+   * Relay-style prediction list. Defaults to createdAt DESC.
    *
-   * Filtering is via `filters: PredictionFilters`. The flat-arg filters
-   * (`address`, `chainId`, `conditionId`, `isLegacy`, `settled`) are
-   * retained for one release with `@deprecated` so existing callers can
-   * migrate without breaking; new callers should use `filters:`.
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `predictions`) in a subsequent migration, once the deprecated
+   * `predictions` bare-array sibling above is removed.
    */
-  predictionsPage: PredictionsPage;
+  predictionsConnection: PredictionConnection;
+  /**
+   * Accounts ranked by an account metric (net PnL, gains, losses, or volume)
+   * over an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over
+   * all-time. PnL metrics are attributed to settlement time, volume to trade
+   * time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
+   * unconditionally (cheap in-memory derivation).
+   */
+  protocol: Protocol;
   /**
    * Protocol-wide statistics time series at the configured snapshot cadence —
    * cumulative volume, trade count, open interest, escrow balance. Window
@@ -2424,6 +2896,7 @@ export type Query = {
    * candle's `timestamp` is the *current* interval boundary (not shifted
    * back), so callers can distinguish it as `points[points.length - 1]
    * .timestamp >= floor(now / interval) * interval`.
+   * @deprecated Use `protocol.stats(filter:)` — Relay-shaped stats connection under the protocol namespace.
    */
   protocolStats: Array<ProtocolStat>;
   /**
@@ -2434,19 +2907,24 @@ export type Query = {
    */
   protocolVolume: Array<VolumeDataPoint>;
   /**
-   * Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
-   * @deprecated Use `questionsPage` — same data with a server-truth `hasMore` stop signal.
+   * Deprecated bare-array form. Retained unchanged for the one-release
+   * deprecation window so pinned clients keep working. New callers
+   * should use `questionsConnection(first:, after:, filter:, orderBy:)`.
+   * @deprecated Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed.
    */
   questions: Array<Question>;
   /**
-   * Same as `questions`, but wraps the result in a `QuestionsPage` with a server-truth `hasMore` flag.
+   * Relay-shaped connection over `Question` rows — the interleaved
+   * Condition / ConditionGroup feed. Forward-only cursor pagination via
+   * `first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on
+   * `QuestionConnection` because the underlying SQL UNION cannot produce
+   * a single COUNT cheaply.
    *
-   * Sorting uses `orderBy` / `orderDirection` to match the convention on
-   * every other `*Page` resolver. The original `sortField` / `sortDirection`
-   * args are retained for one release with `@deprecated`; new callers
-   * should use `orderBy:` / `orderDirection:`.
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `questions`) in a subsequent migration, once the deprecated
+   * bare-array sibling above is removed.
    */
-  questionsPage: QuestionsPage;
+  questionsConnection: QuestionConnection;
   /**
    * Look up a single secondary market trade by its trade hash. Pass
    * `tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing
@@ -2455,30 +2933,27 @@ export type Query = {
   trade?: Maybe<Trade>;
   /**
    * Count of secondary market trades matching the given filters
-   * @deprecated Use `tradesPage(...).totalCount` — same number, available alongside the page payload, no extra query needed.
+   * @deprecated Use `tradesConnection` — Relay-shaped cursor pagination over the same data.
    */
   tradeCount: Scalars['Int']['output'];
   /**
    * Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
-   * @deprecated Use `tradesPage` — same data with a server-truth `hasMore` stop signal.
+   * @deprecated Use `tradesConnection` — Relay-shaped cursor pagination over the same data.
    */
   trades: Array<Trade>;
   /**
-   * Same as `trades`, but wraps the result in a `TradesPage` with a server-truth `hasMore` flag.
+   * Relay-shaped connection over secondary market trades.
    *
-   * Filtering is via `filters: TradeFilters`. The flat-arg filters
-   * (`address`, `seller`, `buyer`, `token`, `chainId`) are retained for one
-   * release with `@deprecated` so existing callers can migrate without
-   * breaking; new callers should use `filters:`.
-   *
-   * Sorting via `orderBy: TradeSortField` + `orderDirection: SortOrder`.
-   * Defaults to `EXECUTED_AT` / `desc` when omitted.
+   * Note: this field will be renamed to drop the `Connection` suffix
+   * (→ `trades`) in a subsequent migration, once the deprecated
+   * `trades` bare-array sibling above is removed.
    */
-  tradesPage: TradesPage;
+  tradesConnection: TradeConnection;
   /** @deprecated Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains. */
   user?: Maybe<User>;
   /** @deprecated Unused; will be removed. No live consumers — account lookups go through `account(address:)`. */
   users: Array<User>;
+  vault?: Maybe<Vault>;
   /**
    * Vault-specific statistics time series for a single vault address — vault
    * balance, deployed/available collateral, cumulative PnL, deposits,
@@ -2490,8 +2965,16 @@ export type Query = {
    * bars are labelled at the *start* of the interval they represent, and a
    * trailing live candle (anchored to the *current* interval boundary) is
    * appended when `toEpoch` covers now.
+   * @deprecated Use `vaultsConnection(filter: { address: $a }).nodes[0].stats(filter:)` — per-vault snapshots live on Vault.
    */
   vaultStats: Array<VaultStat>;
+  /**
+   * Paginated vault list, filterable by address / chain. Vaults are a
+   * small statically configured set, so this exists mainly as the
+   * by-address lookup pattern (`vaultsConnection(filter: { address: $a })`)
+   * — replacing the dedicated `vaultByAddress` query.
+   */
+  vaultsConnection: VaultConnection;
 };
 
 
@@ -2594,9 +3077,25 @@ export type QueryAccountVolumeArgs = {
 };
 
 
+export type QueryAccountsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AccountFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<AccountOrder>;
+};
+
+
 export type QueryAccuracyLeaderboardPageArgs = {
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
+};
+
+
+export type QueryActivityArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ActivityFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ActivityOrder>;
 };
 
 
@@ -2611,32 +3110,6 @@ export type QueryActivityPageArgs = {
 };
 
 
-export type QueryAttestationsArgs = {
-  cursor?: InputMaybe<AttestationWhereUniqueInput>;
-  distinct?: InputMaybe<Array<AttestationScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<AttestationOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<AttestationWhereInput>;
-};
-
-
-export type QueryAttestationsPageArgs = {
-  attester?: InputMaybe<Scalars['String']['input']>;
-  conditionId?: InputMaybe<Scalars['String']['input']>;
-  filters?: InputMaybe<AttestationFilters>;
-  maxTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  minTime?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  orderBy?: InputMaybe<AttestationSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  recipient?: InputMaybe<Scalars['String']['input']>;
-  schemaId?: InputMaybe<Scalars['String']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-  uid?: InputMaybe<Scalars['String']['input']>;
-};
-
-
 export type QueryCategoriesArgs = {
   cursor?: InputMaybe<CategoryWhereUniqueInput>;
   distinct?: InputMaybe<Array<CategoryScalarFieldEnum>>;
@@ -2647,9 +3120,10 @@ export type QueryCategoriesArgs = {
 };
 
 
-export type QueryCategoriesPageArgs = {
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
+export type QueryCategoriesConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<CategoryFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2672,16 +3146,20 @@ export type QueryClosesArgs = {
 
 
 export type QueryCollateralBalanceArgs = {
-  address: Scalars['String']['input'];
+  account?: InputMaybe<Scalars['Address']['input']>;
+  address?: InputMaybe<Scalars['String']['input']>;
   atBlock?: InputMaybe<Scalars['Int']['input']>;
   chainId: Scalars['Int']['input'];
 };
 
 
 export type QueryCollateralBalanceHistoryArgs = {
-  address: Scalars['String']['input'];
+  account?: InputMaybe<Scalars['Address']['input']>;
+  address?: InputMaybe<Scalars['String']['input']>;
+  after?: InputMaybe<Scalars['String']['input']>;
   chainId: Scalars['Int']['input'];
-  count?: Scalars['Int']['input'];
+  count?: InputMaybe<Scalars['Int']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
   intervalHours?: Scalars['Int']['input'];
   intervalSeconds?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -2696,14 +3174,11 @@ export type QueryCollateralTransfersArgs = {
 };
 
 
-export type QueryCollateralTransfersPageArgs = {
-  address: Scalars['String']['input'];
-  chainId: Scalars['Int']['input'];
-  excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
-  orderBy?: InputMaybe<CollateralTransferSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
+export type QueryCollateralTransfersConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<CollateralTransferFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<CollateralTransferOrder>;
 };
 
 
@@ -2727,12 +3202,11 @@ export type QueryConditionGroupsArgs = {
 };
 
 
-export type QueryConditionGroupsPageArgs = {
-  filters?: InputMaybe<ConditionGroupFilters>;
-  orderBy?: InputMaybe<ConditionGroupSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
+export type QueryConditionGroupsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ConditionGroupFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ConditionGroupOrder>;
 };
 
 
@@ -2746,12 +3220,37 @@ export type QueryConditionsArgs = {
 };
 
 
-export type QueryConditionsPageArgs = {
-  filters?: InputMaybe<ConditionFilters>;
-  orderBy?: InputMaybe<ConditionSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
+export type QueryConditionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ConditionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ConditionOrder>;
+};
+
+
+export type QueryForecastsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ForecastFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ForecastOrder>;
+};
+
+
+export type QueryLeaderboardArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AccountRankingFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  metric: LeaderboardMetric;
+};
+
+
+export type QueryNodeArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryNodesArgs = {
+  ids: Array<Scalars['ID']['input']>;
 };
 
 
@@ -2770,16 +3269,11 @@ export type QueryPickConfigurationsArgs = {
 };
 
 
-export type QueryPickConfigurationsPageArgs = {
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  filters?: InputMaybe<PickConfigurationFilters>;
-  orderBy?: InputMaybe<PickConfigurationSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  resolved?: InputMaybe<Scalars['Boolean']['input']>;
-  result?: InputMaybe<SettlementResult>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
+export type QueryPickConfigurationsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PickConfigurationFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PickConfigurationOrder>;
 };
 
 
@@ -2806,6 +3300,14 @@ export type QueryPositionsArgs = {
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
+};
+
+
+export type QueryPositionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PositionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PositionOrder>;
 };
 
 
@@ -2854,17 +3356,11 @@ export type QueryPredictionsArgs = {
 };
 
 
-export type QueryPredictionsPageArgs = {
-  address?: InputMaybe<Scalars['String']['input']>;
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  conditionId?: InputMaybe<Scalars['String']['input']>;
-  filters?: InputMaybe<PredictionFilters>;
-  isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
-  orderBy?: InputMaybe<PredictionSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  settled?: InputMaybe<Scalars['Boolean']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
+export type QueryPredictionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
 };
 
 
@@ -2902,14 +3398,11 @@ export type QueryQuestionsArgs = {
 };
 
 
-export type QueryQuestionsPageArgs = {
-  filters?: InputMaybe<QuestionFilters>;
-  orderBy?: InputMaybe<QuestionSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  skip?: Scalars['Int']['input'];
-  sortDirection?: SortOrder;
-  sortField?: InputMaybe<QuestionSortField>;
-  take?: Scalars['Int']['input'];
+export type QueryQuestionsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<QuestionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<QuestionOrder>;
 };
 
 
@@ -2938,17 +3431,11 @@ export type QueryTradesArgs = {
 };
 
 
-export type QueryTradesPageArgs = {
-  address?: InputMaybe<Scalars['String']['input']>;
-  buyer?: InputMaybe<Scalars['String']['input']>;
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  filters?: InputMaybe<TradeFilters>;
-  orderBy?: InputMaybe<TradeSortField>;
-  orderDirection?: InputMaybe<SortOrder>;
-  seller?: InputMaybe<Scalars['String']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-  token?: InputMaybe<Scalars['String']['input']>;
+export type QueryTradesConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
 };
 
 
@@ -2967,6 +3454,11 @@ export type QueryUsersArgs = {
 };
 
 
+export type QueryVaultArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type QueryVaultStatsArgs = {
   from?: InputMaybe<Scalars['UnixSeconds']['input']>;
   fromEpoch?: InputMaybe<Scalars['Int']['input']>;
@@ -2975,22 +3467,179 @@ export type QueryVaultStatsArgs = {
   vaultAddress: Scalars['String']['input'];
 };
 
+
+export type QueryVaultsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<VaultFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
 export type QueryMode =
   | 'default'
   | 'insensitive';
 
-/** A question item — either a group of related conditions or a single ungrouped condition */
+/**
+ * A question — derived view that interleaves grouped and ungrouped markets.
+ * A `Question` is **not** a durable entity (no `Node` membership, no
+ * `question(id:)` lookup). Identity flows through the wrapped `source`
+ * (either a `Condition` or a `ConditionGroup`), each of which already
+ * carries its own primary key.
+ */
 export type Question = {
   __typename?: 'Question';
+  activity: ActivityConnection;
+  category?: Maybe<Category>;
+  /** @deprecated Use `source` (union over Condition | ConditionGroup). */
   condition?: Maybe<Condition>;
+  /** Creation timestamp forwarded from the source. */
+  createdAt: Scalars['DateTimeISO']['output'];
+  /** Long-form description forwarded from the source (`Condition.description`); null for groups. */
+  description?: Maybe<Scalars['String']['output']>;
+  forecasts: ForecastConnection;
+  /** @deprecated Use `source` (union over Condition | ConditionGroup). */
   group?: Maybe<ConditionGroup>;
+  /** Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`. */
+  openInterest?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `source` and read `predictionCount` on the wrapped entity. */
   predictionCount?: Maybe<Scalars['Int']['output']>;
+  predictions: PredictionConnection;
+  /** @deprecated Use `source.__typename`. */
   questionType: QuestionItemType;
+  /** Resolution time forwarded from the source — `Condition.endTime` or `ConditionGroup.maxEndTime`. */
+  resolvesAt?: Maybe<Scalars['UnixSeconds']['output']>;
+  /**
+   * The underlying entity this question wraps. Exactly one of
+   * `Condition` | `ConditionGroup`. `__typename` discriminates between
+   * the two; the legacy `questionType` field is the same information in
+   * scalar form and is now `@deprecated`.
+   */
+  source: ConditionOrConditionGroup;
+  tags: Array<Scalars['String']['output']>;
+  /** Display title forwarded from the source — `Condition.question` or `ConditionGroup.name`. */
+  title: Scalars['String']['output'];
+  trades: TradeConnection;
+  /** 24h similar-market volume forwarded from the source. */
+  volume?: Maybe<Scalars['Float']['output']>;
+};
+
+
+/**
+ * A question — derived view that interleaves grouped and ungrouped markets.
+ * A `Question` is **not** a durable entity (no `Node` membership, no
+ * `question(id:)` lookup). Identity flows through the wrapped `source`
+ * (either a `Condition` or a `ConditionGroup`), each of which already
+ * carries its own primary key.
+ */
+export type QuestionActivityArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ActivityFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ActivityOrder>;
+};
+
+
+/**
+ * A question — derived view that interleaves grouped and ungrouped markets.
+ * A `Question` is **not** a durable entity (no `Node` membership, no
+ * `question(id:)` lookup). Identity flows through the wrapped `source`
+ * (either a `Condition` or a `ConditionGroup`), each of which already
+ * carries its own primary key.
+ */
+export type QuestionForecastsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ForecastFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ForecastOrder>;
+};
+
+
+/**
+ * A question — derived view that interleaves grouped and ungrouped markets.
+ * A `Question` is **not** a durable entity (no `Node` membership, no
+ * `question(id:)` lookup). Identity flows through the wrapped `source`
+ * (either a `Condition` or a `ConditionGroup`), each of which already
+ * carries its own primary key.
+ */
+export type QuestionPredictionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
+};
+
+
+/**
+ * A question — derived view that interleaves grouped and ungrouped markets.
+ * A `Question` is **not** a durable entity (no `Node` membership, no
+ * `question(id:)` lookup). Identity flows through the wrapped `source`
+ * (either a `Condition` or a `ConditionGroup`), each of which already
+ * carries its own primary key.
+ */
+export type QuestionTradesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
+};
+
+/** Relay-shaped connection over `Question` rows. */
+export type QuestionConnection = {
+  __typename?: 'QuestionConnection';
+  edges: Array<QuestionEdge>;
+  nodes: Array<Question>;
+  pageInfo: PageInfo;
+  /**
+   * Size of the underlying ranked set the page is sliced from. Resolved lazily
+   * via a separate `COUNT(*)` over the same `condition_group` / ungrouped
+   * `condition` UNION only when clients select this field.
+   */
+  totalCount: Scalars['Int']['output'];
+};
+
+/** Cursor-bearing edge for `QuestionConnection`. */
+export type QuestionEdge = {
+  __typename?: 'QuestionEdge';
+  cursor: Scalars['String']['output'];
+  node: Question;
 };
 
 /**
- * Flat filter input for the `questionsPage` query. Each field is optional;
- * values combine with AND. Mirrors the inline-arg shape that the deprecated
+ * Filter input for the Relay-shaped `questions` connection. Combines
+ * with AND. For outcome-based filtering today, use
+ * `conditions(filter: { outcome: ... })`.
+ */
+export type QuestionFilter = {
+  /** Restrict to questions whose category slug is in this set. */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
+  estimatedPrice?: InputMaybe<FloatFilter>;
+  /** Match the on-chain market contract address that owns the underlying condition (case-insensitive). */
+  marketAddress?: InputMaybe<Scalars['String']['input']>;
+  /** Match any of these on-chain market contract addresses that own the underlying condition (case-insensitive). */
+  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Resolution-status filter; defaults to all when omitted. */
+  resolutionStatus?: InputMaybe<ResolutionStatus>;
+  /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
+  resolvesAt?: InputMaybe<IntFilter>;
+  /** Free-text search across the wrapped Condition/Group's title and description (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** Filter by all-time or windowed similar-market volume, e.g. `{ gte: 10000 }`. */
+  similarMarketVolume?: InputMaybe<FloatFilter>;
+  /** Window the similar-market-volume filter and sort look at. When omitted, the all-time column is used. */
+  similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
+  /**
+   * Restrict to questions tagged with this value. Single-tag only at
+   * the SDL level — the underlying union runner accepts one tag at a
+   * time. Multi-tag (`[String!]`) will be added when the runner supports
+   * it (additive, non-breaking).
+   */
+  tag?: InputMaybe<Scalars['String']['input']>;
+};
+
+/**
+ * Legacy flat filter input mirroring the inline-arg shape that the deprecated
  * `questions(...)` resolver kept.
  */
 export type QuestionFilters = {
@@ -3041,6 +3690,27 @@ export type QuestionItemType =
   | 'condition'
   | 'group';
 
+/** Order input for the Relay-shaped `questions` connection. */
+export type QuestionOrder = {
+  direction: OrderDirection;
+  field: QuestionOrderField;
+};
+
+/**
+ * Sort fields for the Relay-shaped `questions` connection. The runner
+ * unions Conditions and ConditionGroups; sort values pick the column on
+ * each side. Unlike the narrower Condition/ConditionGroup connections,
+ * `OPEN_INTEREST` is available here because this feed uses raw SQL and
+ * casts the varchar-backed open-interest values numerically.
+ */
+export type QuestionOrderField =
+  | 'CREATED_AT'
+  | 'OPEN_INTEREST'
+  | 'PREDICTION_COUNT'
+  | 'RESOLVES_AT'
+  | 'SIMILAR_MARKET_VOLUME_7D'
+  | 'SIMILAR_MARKET_VOLUME_24H';
+
 /** Field to sort questions by */
 export type QuestionSortField =
   | 'createdAt'
@@ -3048,15 +3718,6 @@ export type QuestionSortField =
   | 'openInterest'
   | 'predictionCount'
   | 'similarMarketVolume';
-
-/** Paginated wrapper around Question rows with a server-truth hasMore flag */
-export type QuestionsPage = Page & {
-  __typename?: 'QuestionsPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Question>;
-  /** May be null: the underlying union/aggregation can't produce a stable total cheaply. */
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
 
 /**
  * Public referral code metadata. Exposed via `User.referredByCode` /
@@ -3125,7 +3786,16 @@ export type SettlementResult =
   | 'PREDICTOR_WINS'
   | 'UNRESOLVED';
 
+export type SettlementResultFilter = {
+  equals?: InputMaybe<SettlementResult>;
+  in?: InputMaybe<Array<SettlementResult>>;
+  not?: InputMaybe<SettlementResult>;
+  notIn?: InputMaybe<Array<SettlementResult>>;
+};
+
 export type SortOrder =
+  | 'ASC'
+  | 'DESC'
   | 'asc'
   | 'desc';
 
@@ -3226,40 +3896,55 @@ export type Trade = {
   txHash: Scalars['String']['output'];
 };
 
-/**
- * Flat filter input for the `tradesPage` query. Each field is optional;
- * values combine with AND. `address` and (`seller` | `buyer`) are mutually
- * exclusive — passing both yields an error.
- */
-export type TradeFilters = {
+/** Relay-shaped connection over `Trade` rows. */
+export type TradeConnection = {
+  __typename?: 'TradeConnection';
+  edges: Array<TradeEdge>;
+  nodes: Array<Trade>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+/** Cursor-bearing edge for `TradeConnection`. */
+export type TradeEdge = {
+  __typename?: 'TradeEdge';
+  cursor: Scalars['String']['output'];
+  node: Trade;
+};
+
+/** Filter input for the Relay-shaped `tradesConnection` query. Combines with AND. */
+export type TradeFilter = {
   /** Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`. */
   address?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single buyer address (case-insensitive). */
   buyer?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  /** Restrict to trades with `executedAt <= this` (epoch seconds, inclusive). */
-  executedAtMax?: InputMaybe<Scalars['UnixSeconds']['input']>;
-  /** Restrict to trades with `executedAt >= this` (epoch seconds, inclusive). */
-  executedAtMin?: InputMaybe<Scalars['UnixSeconds']['input']>;
+  /** Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
+  executedAt?: InputMaybe<IntFilter>;
   /** Restrict to a single seller address (case-insensitive). */
   seller?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single position token address (case-insensitive). */
   token?: InputMaybe<Scalars['String']['input']>;
+  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
+  /**
+   * Restrict to a single trade by execution hash. Supports the
+   * by-hash single-record lookup pattern — `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
+   * replaces the dedicated `tradeByHash` query.
+   */
+  tradeHash?: InputMaybe<Scalars['Bytes32']['input']>;
 };
 
-/** Sort fields for the `tradesPage` query. */
-export type TradeSortField =
+/** Order input for the Relay-shaped `tradesConnection`. */
+export type TradeOrder = {
+  direction: OrderDirection;
+  field: TradeOrderField;
+};
+
+/** Sort fields for the Relay-shaped `tradesConnection`. */
+export type TradeOrderField =
   | 'BLOCK_NUMBER'
   | 'EXECUTED_AT';
-
-/** Paginated wrapper around Trade rows with a server-truth hasMore flag */
-export type TradesPage = Page & {
-  __typename?: 'TradesPage';
-  hasMore: Scalars['Boolean']['output'];
-  items: Array<Trade>;
-  totalCount?: Maybe<Scalars['Int']['output']>;
-};
 
 /**
  * Application-level user record, keyed by wallet address,
@@ -3402,6 +4087,54 @@ export type UserWhereUniqueInput = {
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
 
+export type Vault = Node & {
+  __typename?: 'Vault';
+  account: Account;
+  address: Scalars['Address']['output'];
+  chainId: Scalars['Int']['output'];
+  collateral: CollateralToken;
+  id: Scalars['ID']['output'];
+  stats: VaultStatConnection;
+};
+
+
+export type VaultStatsArgs = {
+  filter?: InputMaybe<VaultStatFilter>;
+};
+
+export type VaultConnection = {
+  __typename?: 'VaultConnection';
+  edges: Array<VaultEdge>;
+  nodes: Array<Vault>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type VaultEdge = {
+  __typename?: 'VaultEdge';
+  cursor: Scalars['String']['output'];
+  node: Vault;
+};
+
+/**
+ * Filter input for `vaultsConnection`. Vaults are a small statically
+ * configured set, so the filter exists primarily to support
+ * `vaultsConnection(filter: { address: $a })` as the by-address lookup
+ * pattern — the connection replaces the dedicated `vaultByAddress` query.
+ */
+export type VaultFilter = {
+  /**
+   * Restrict to a single vault address (case-insensitive). Matches both
+   * the canonical vault address and any of its configured legacy aliases.
+   */
+  address?: InputMaybe<Scalars['Address']['input']>;
+  /**
+   * Restrict to a single chain. Defaults to the SDK's `DEFAULT_CHAIN_ID`
+   * when omitted.
+   */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+};
+
 /** Vault-specific stats snapshot for a single vault address. */
 export type VaultStat = {
   __typename?: 'VaultStat';
@@ -3423,7 +4156,31 @@ export type VaultStat = {
   timestamp: Scalars['UnixSeconds']['output'];
   /** wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins */
   unredeemedClaim: Scalars['String']['output'];
+  vault: Vault;
   withdrawals: Scalars['String']['output'];
+};
+
+export type VaultStatConnection = {
+  __typename?: 'VaultStatConnection';
+  edges: Array<VaultStatEdge>;
+  nodes: Array<VaultStat>;
+  pageInfo: PageInfo;
+  /**
+   * Size of the full per-vault snapshot series (pre-pagination). Already
+   * known in memory — the resolver materializes every snapshot before
+   * slicing — so cheap to surface.
+   */
+  totalCount: Scalars['Int']['output'];
+};
+
+export type VaultStatEdge = {
+  __typename?: 'VaultStatEdge';
+  cursor: Scalars['String']['output'];
+  node: VaultStat;
+};
+
+export type VaultStatFilter = {
+  timestamp?: InputMaybe<IntFilter>;
 };
 
 /** Time-bucketed volume data point for charts (legacy). */

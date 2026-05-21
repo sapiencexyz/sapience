@@ -125,7 +125,7 @@ interface GraphQLResponse<T> {
 }
 
 interface ConditionsQueryResponse {
-  conditionsPage: {
+  conditionsConnection: {
     items: SapienceCondition[];
     hasMore: boolean;
   };
@@ -215,19 +215,18 @@ const CONDITIONS_PAGE_SIZE = 30;
 
 const UNRESOLVED_CONDITIONS_QUERY = `
 query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
-  conditionsPage(
-    filters: {
+  conditionsConnection(
+    filter: {
       settled: false
-      resolver: $resolver
+      marketAddress: $resolver
       # Pick up both public and private — the deprecated resolver's
       # implicit public=true filter would silently exclude privated
       # conditions that still have engagement to settle.
       visibility: ALL
       engagement: ANY
     }
-    orderBy: endTime
-    orderDirection: asc
-    take: $take
+    orderBy: { field: RESOLVES_AT, direction: ASC }
+    first: $take
     skip: $skip
   ) {
     items {
@@ -240,7 +239,7 @@ query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
 
 // ============ API Functions ============
 
-async function fetchConditionsPage(
+async function fetchConditionsConnection(
   apiUrl: string,
   resolver: string,
   take: number,
@@ -294,7 +293,7 @@ async function fetchConditionsPage(
     );
   }
 
-  return result.data?.conditionsPage ?? { items: [], hasMore: false };
+  return result.data?.conditionsConnection ?? { items: [], hasMore: false };
 }
 
 async function fetchUnresolvedConditions(
@@ -307,7 +306,7 @@ async function fetchUnresolvedConditions(
   console.log(`Fetching unresolved conditions from ${apiUrl}...`);
 
   while (true) {
-    const page = await fetchConditionsPage(
+    const page = await fetchConditionsConnection(
       apiUrl,
       resolver,
       CONDITIONS_PAGE_SIZE,

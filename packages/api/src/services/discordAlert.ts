@@ -5,7 +5,6 @@
  * - Fire-and-forget: never blocks the indexer
  * - 5s timeout per webhook call
  * - Skips alerts for old blocks (>5min) to avoid spam on reindex
- * - Rate limited: max 10 alerts per 60s window
  */
 import { formatUnits } from 'viem';
 import {
@@ -34,11 +33,6 @@ const DISCORD_WEBHOOK_URLS: string[] = (process.env.DISCORD_WEBHOOK_URLS || '')
     }
     return true;
   });
-
-// Rate limiting state
-const alertTimestamps: number[] = [];
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 10;
 
 // Staleness threshold: skip alerts for blocks older than 5 minutes.
 // This prevents flooding Discord when reindexing historical blocks.
@@ -101,21 +95,6 @@ export function getChainName(chainId: number): string {
     default:
       return `Chain ${chainId}`;
   }
-}
-
-function isRateLimited(): boolean {
-  const now = Date.now();
-  while (
-    alertTimestamps.length > 0 &&
-    alertTimestamps[0] < now - RATE_LIMIT_WINDOW_MS
-  ) {
-    alertTimestamps.shift();
-  }
-  return alertTimestamps.length >= RATE_LIMIT_MAX;
-}
-
-function recordAlert(): void {
-  alertTimestamps.push(Date.now());
 }
 
 /**
@@ -194,11 +173,6 @@ export function buildPositionEmbed(data: PositionAlertData): object {
   };
 }
 
-/** Reset rate limiter state (for testing only). */
-export function _resetRateLimiter(): void {
-  alertTimestamps.length = 0;
-}
-
 export function sendPositionAlert(data: PositionAlertData): void {
   // Skip stale blocks (reindex safety)
   const nowSec = Math.floor(Date.now() / 1000);
@@ -211,14 +185,6 @@ export function sendPositionAlert(data: PositionAlertData): void {
 
   // Skip if no webhooks configured
   if (DISCORD_WEBHOOK_URLS.length === 0) return;
-
-  // Rate limit check
-  if (isRateLimited()) {
-    log.warn('[discordAlert] Rate limited, skipping position alert');
-    return;
-  }
-
-  recordAlert();
 
   const embed = buildPositionEmbed(data);
   const payload = JSON.stringify({ embeds: [embed] });

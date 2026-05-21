@@ -3,13 +3,13 @@
 
 import { getGraphQLEndpoint } from './graphql';
 
-export const ATTESTATION_BY_UID_QUERY = `
-  query FindAttestationByUid($filters: AttestationFilters) {
-    attestationsPage(filters: $filters, take: 1) {
-      items {
+export const FORECAST_BY_UID_QUERY = `
+  query FindForecastByUid($filter: ForecastFilter) {
+    forecastsConnection(filter: $filter, first: 1) {
+      nodes {
         id
         uid
-        attester
+        forecaster
         attestedAt
         forecast
         comment
@@ -31,7 +31,7 @@ export const ATTESTATION_BY_UID_QUERY = `
   }
 `;
 
-export interface AttestationCondition {
+export interface ForecastCondition {
   id: string;
   question: string;
   shortName?: string | null;
@@ -42,15 +42,15 @@ export interface AttestationCondition {
   category?: { slug: string } | null;
 }
 
-export interface AttestationData {
+export interface ForecastData {
   id: number;
   uid: string;
-  attester: string;
+  forecaster: string;
   attestedAt: number;
   forecast: string;
   comment?: string | null;
   conditionId?: string | null;
-  condition?: AttestationCondition | null;
+  condition?: ForecastCondition | null;
 }
 
 // Convert D18 forecast value to percentage (0-100)
@@ -59,23 +59,23 @@ export function d18ToPercentage(d18Value: string): number {
   return Number(value) / 1e18;
 }
 
-// Fetch attestation by uid from GraphQL API.
-// Returns null if the attestation doesn't exist.
+// Fetch forecast by uid from GraphQL API.
+// Returns null if the forecast doesn't exist.
 // Throws on network/parse errors so callers can distinguish failure from not-found.
-export async function fetchAttestationByUid(
+export async function fetchForecastByUid(
   uid: string
-): Promise<AttestationData | null> {
+): Promise<ForecastData | null> {
   const endpoint = getGraphQLEndpoint();
   const resp = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query: ATTESTATION_BY_UID_QUERY,
-      variables: { filters: { uid } },
+      query: FORECAST_BY_UID_QUERY,
+      variables: { filter: { uid } },
     }),
   });
   if (!resp.ok) return null;
   const json = await resp.json();
-  const items: AttestationData[] = json?.data?.attestationsPage?.items ?? [];
+  const items: ForecastData[] = json?.data?.forecastsConnection?.nodes ?? [];
   return items[0] ?? null;
 }

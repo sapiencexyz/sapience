@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockPrisma = vi.hoisted(() => ({
-  secondaryTrade: { findMany: vi.fn(), findUnique: vi.fn() },
+  secondaryTrade: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    count: vi.fn().mockResolvedValue(0),
+  },
 }));
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
@@ -10,7 +14,15 @@ import type {
   QueryTradesArgs,
   QueryTradeArgs,
 } from '../../__generated__/resolvers';
-import { trade, tradesPage } from './trade';
+import { trade, tradesConnection } from './trade';
+
+const cursorFromSkip = (skip: number): string | null =>
+  skip > 0
+    ? Buffer.from(
+        JSON.stringify({ k: String(skip - 1), id: String(skip - 1) }),
+        'utf-8'
+      ).toString('base64url')
+    : null;
 
 type TradesPageFn = (
   parent: unknown,
@@ -24,7 +36,40 @@ type TradeFn = (
   ctx: unknown,
   info: unknown
 ) => Promise<unknown>;
-const tradesPageFn = tradesPage as unknown as TradesPageFn;
+const tradesPageFn: TradesPageFn = async (parent, args, ctx, info) => {
+  const result = await (
+    tradesConnection as unknown as (
+      parent: unknown,
+      args: unknown,
+      ctx: unknown,
+      info: unknown
+    ) => Promise<{ nodes: unknown[]; pageInfo: { hasNextPage: boolean } }>
+  )(
+    parent,
+    {
+      first: args.take,
+      after: cursorFromSkip(args.skip ?? 0),
+      filter: (args as QueryTradesArgs & { filters?: unknown }).filters ?? {
+        address: args.address ?? null,
+        seller: args.seller ?? null,
+        buyer: args.buyer ?? null,
+        token: args.token ?? null,
+        chainId: args.chainId ?? null,
+      },
+      orderBy: (args as QueryTradesArgs & { orderBy?: unknown }).orderBy
+        ? {
+            field: (args as QueryTradesArgs & { orderBy: unknown }).orderBy,
+            direction:
+              (args as QueryTradesArgs & { orderDirection?: unknown })
+                .orderDirection ?? 'desc',
+          }
+        : null,
+    },
+    ctx,
+    info
+  );
+  return { items: result.nodes, hasMore: result.pageInfo.hasNextPage };
+};
 const tradeFn = trade as unknown as TradeFn;
 
 const ALICE = '0xalice';
@@ -136,6 +181,37 @@ describe('tradesPage — filter construction', () => {
     );
     const where = mockPrisma.secondaryTrade.findMany.mock.calls[0][0].where;
     expect(where.token).toBe('0xtoken');
+  });
+
+  it('maps operator-pattern executedAt filters to legacy inclusive bounds', async () => {
+    await tradesPageFn(
+      undefined,
+      {
+        take: 10,
+        skip: 0,
+        filters: { executedAt: { equals: 12345 } },
+      } as unknown as QueryTradesArgs,
+      undefined,
+      undefined
+    );
+    const where = mockPrisma.secondaryTrade.findMany.mock.calls[0][0].where;
+    expect(where.executedAt).toEqual({ gte: 12345, lte: 12345 });
+
+    vi.clearAllMocks();
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    await tradesPageFn(
+      undefined,
+      {
+        take: 10,
+        skip: 0,
+        filters: { executedAt: { gt: 100, lt: 200 } },
+      } as unknown as QueryTradesArgs,
+      undefined,
+      undefined
+    );
+    const rangeWhere =
+      mockPrisma.secondaryTrade.findMany.mock.calls[0][0].where;
+    expect(rangeWhere.executedAt).toEqual({ gte: 101, lte: 199 });
   });
 
   it('passes chainId through unmodified', async () => {

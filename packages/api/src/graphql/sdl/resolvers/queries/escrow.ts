@@ -8,7 +8,6 @@
  *   pickConfigurations   — paginated picks config list
  *   pickConfiguration    — single lookup by id
  *   positions            — paginated token-balance list with many filters (deprecated; see `queries/deprecated/escrow.ts`)
- *   positionsPage        — same data, server-truth `hasMore` + lazy `totalCount`
  *   closes               — paginated burn records
  *   claims               — paginated redemption records
  *
@@ -34,27 +33,36 @@
 import type {
   QueryResolvers,
   QueryPickConfigurationsArgs,
-  QueryPickConfigurationsPageArgs,
+  QueryPickConfigurationsConnectionArgs,
   QueryPositionsArgs,
+  QueryPositionsConnectionArgs,
   QueryPositionsPageArgs,
   QueryPredictionsArgs,
-  QueryPredictionsPageArgs,
+  QueryPredictionsConnectionArgs,
   Prediction,
   ResolversParentTypes,
   SettlementResult,
+} from '../../__generated__/resolvers';
+import {
+  OrderDirection,
+  PickConfigurationOrderField,
+  PositionOrderField,
+  PositionSortField,
+  SortOrder,
 } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
-import { clampSkip, clampTake } from './pagination';
+import { clampSkip, clampTake, offsetFromCursor } from './pagination';
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
-type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
+export type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
 }>;
 
-const mapPrediction = (
+export const mapPrediction = (
   r: PredictionWithPickConfig
 ): ResolversParentTypes['Prediction'] => ({
   id: r.id,
@@ -82,18 +90,18 @@ const mapPrediction = (
   pickConfig: r.pickConfiguration ? mapPickConfig(r.pickConfiguration) : null,
 });
 
-export type PredictionsPageEnvelope = {
+export type PredictionsEnvelope = {
   items: ResolversParentTypes['Prediction'][];
   hasMore: boolean;
   /**
    * Eagerly populated only on early-return paths where the count is
    * already known (empty pickConfigIds → 0). On the normal path, this
    * is null and `_countWhere` carries the filter for the lazy
-   * PredictionsPage.totalCount field resolver.
+   * predictionsConnection.totalCount field resolver.
    */
   totalCount: number | null;
   /**
-   * Lazy count input — used by the PredictionsPage.totalCount field
+   * Lazy count input — used by the predictionsConnection.totalCount field
    * resolver to issue `prisma.prediction.count({ where })` only when
    * the client actually selects totalCount. Avoids paying for a count
    * query on every page request.
@@ -104,35 +112,60 @@ export type PredictionsPageEnvelope = {
 /**
  * Extended args for `runPredictions` — superset of the deprecated bare
  * `predictions(...)` args. The richer filter fields (`result`,
- * `endsAtMin`/`Max`) live only on `predictionsPage` / `PredictionFilters`.
+ * `result` and the operator-shaped `endsAt`) live only on
+ * `predictionsConnection` / `PredictionFilter`.
  */
 export type RunPredictionsArgs = QueryPredictionsArgs & {
+  predictionId?: string | null;
+  pickConfigId?: string | null;
+  conditionGroupId?: string | number | null;
+  conditionIds?: string[] | null;
   result?: SettlementResult | null;
+  endsAt?: Prisma.IntFilter | null;
   endsAtMin?: number | null;
   endsAtMax?: number | null;
 };
 
-export const runPredictions = async ({
-  take,
-  skip,
+const buildPredictionWhere = async ({
+  predictionId,
   address,
   conditionId,
+  pickConfigId,
+  conditionGroupId,
+  conditionIds,
   chainId,
   settled,
   isLegacy,
   result,
+  endsAt,
   endsAtMin,
   endsAtMax,
-  orderBy,
-  orderDirection,
-}: RunPredictionsArgs): Promise<PredictionsPageEnvelope> => {
-  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
-  const skipVal = clampSkip(skip);
+}: Pick<
+  RunPredictionsArgs,
+  | 'predictionId'
+  | 'address'
+  | 'conditionId'
+  | 'pickConfigId'
+  | 'conditionGroupId'
+  | 'conditionIds'
+  | 'chainId'
+  | 'settled'
+  | 'isLegacy'
+  | 'result'
+  | 'endsAt'
+  | 'endsAtMin'
+  | 'endsAtMax'
+>): Promise<{ where: Prisma.PredictionWhereInput; empty: boolean }> => {
   const addr = address?.toLowerCase();
-
   const where: Prisma.PredictionWhereInput = {};
   const filters: Prisma.PredictionWhereInput[] = [];
+  if (predictionId) {
+    filters.push({ predictionId: predictionId.toLowerCase() });
+  }
   if (addr) filters.push({ OR: [{ predictor: addr }, { counterparty: addr }] });
+  if (pickConfigId) {
+    filters.push({ pickConfigId: pickConfigId.toLowerCase() });
+  }
   if (conditionId) {
     const matchingPicks = await prisma.pick.findMany({
       where: {
@@ -142,14 +175,41 @@ export const runPredictions = async ({
       distinct: ['pickConfigId'],
     });
     const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
-    if (pickConfigIds.length === 0)
-      return { items: [], hasMore: false, totalCount: 0 };
+    if (pickConfigIds.length === 0) return { where, empty: true };
+    filters.push({ pickConfigId: { in: pickConfigIds } });
+  }
+  if (conditionIds?.length) {
+    const ids = conditionIds.map((id) => id.toLowerCase());
+    const matchingPicks = await prisma.pick.findMany({
+      where: { conditionId: { in: ids } },
+      select: { pickConfigId: true },
+      distinct: ['pickConfigId'],
+    });
+    const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+    if (pickConfigIds.length === 0) return { where, empty: true };
+    filters.push({ pickConfigId: { in: pickConfigIds } });
+  }
+  if (conditionGroupId != null) {
+    const conditions = await prisma.condition.findMany({
+      where: { conditionGroupId: Number(conditionGroupId) },
+      select: { id: true },
+    });
+    const conditionIds = conditions.map((condition) =>
+      condition.id.toLowerCase()
+    );
+    if (conditionIds.length === 0) return { where, empty: true };
+    const matchingPicks = await prisma.pick.findMany({
+      where: { conditionId: { in: conditionIds } },
+      select: { pickConfigId: true },
+      distinct: ['pickConfigId'],
+    });
+    const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+    if (pickConfigIds.length === 0) return { where, empty: true };
     filters.push({ pickConfigId: { in: pickConfigIds } });
   }
   if (chainId !== undefined && chainId !== null) filters.push({ chainId });
   if (settled !== undefined && settled !== null) filters.push({ settled });
   if (isLegacy !== undefined && isLegacy !== null) filters.push({ isLegacy });
-  // result / endsAt range filters live on the pickConfig join.
   if (result) {
     filters.push({
       pickConfiguration: {
@@ -157,21 +217,66 @@ export const runPredictions = async ({
       },
     });
   }
-  if (endsAtMin != null || endsAtMax != null) {
+  if (endsAt) {
+    filters.push({ pickConfiguration: { endsAt } });
+  } else if (endsAtMin != null || endsAtMax != null) {
     const range: Prisma.IntFilter = {};
     if (endsAtMin != null) range.gte = endsAtMin;
     if (endsAtMax != null) range.lte = endsAtMax;
     filters.push({ pickConfiguration: { endsAt: range } });
   }
   if (filters.length > 0) where.AND = filters;
+  return { where, empty: false };
+};
 
-  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
+export const runPredictions = async ({
+  take,
+  skip,
+  predictionId,
+  address,
+  conditionId,
+  pickConfigId,
+  conditionGroupId,
+  conditionIds,
+  chainId,
+  settled,
+  isLegacy,
+  result,
+  endsAtMin,
+  endsAtMax,
+  orderBy,
+  orderDirection,
+}: RunPredictionsArgs): Promise<PredictionsEnvelope> => {
+  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
+  const skipVal = clampSkip(skip);
+  const { where, empty } = await buildPredictionWhere({
+    predictionId,
+    address,
+    conditionId,
+    pickConfigId,
+    conditionGroupId,
+    conditionIds,
+    chainId,
+    settled,
+    isLegacy,
+    result,
+    endsAt: null,
+    endsAtMin,
+    endsAtMax,
+  });
+  if (empty) return { items: [], hasMore: false, totalCount: 0 };
+
+  // SortOrder enum carries `asc`/`desc` plus uppercase ASC/DESC aliases
+  // for older clients; PredictionSortField carries SCREAMING_SNAKE plus
+  // camelCase aliases for the same reason.
+  const direction =
+    orderDirection === 'asc' || orderDirection === 'ASC' ? 'asc' : 'desc';
   let orderByClause: Prisma.PredictionOrderByWithRelationInput = {
     createdAt: 'desc',
   };
-  if (orderBy === 'CREATED_AT') {
+  if (orderBy === 'CREATED_AT' || orderBy === 'createdAt') {
     orderByClause = { createdAt: direction };
-  } else if (orderBy === 'SETTLED_AT') {
+  } else if (orderBy === 'SETTLED_AT' || orderBy === 'settledAt') {
     orderByClause = { settledAt: direction };
   }
 
@@ -192,36 +297,124 @@ export const runPredictions = async ({
   };
 };
 
-/**
- * Merge `filters: PredictionFilters` (preferred) with the deprecated flat
- * arg shape, so `runPredictions` sees a single canonical set of fields.
- * When a field appears in both, `filters` wins. The richer filters
- * (`result`, `endsAtMin`/`Max`) live only on `PredictionFilters`.
- */
-const mergePredictionFilters = (
-  args: QueryPredictionsPageArgs
-): RunPredictionsArgs => {
-  const f = args.filters ?? null;
+const buildPredictionCursorPredicate = (
+  k: string,
+  cursorId: string,
+  direction: 'asc' | 'desc'
+): Prisma.PredictionWhereInput => {
+  const op = direction === 'desc' ? 'lt' : 'gt';
+  const keyValue = new Date(k);
   return {
-    take: args.take,
-    skip: args.skip,
-    orderBy: args.orderBy,
-    orderDirection: args.orderDirection,
-    address: f?.address ?? args.address ?? null,
-    chainId: f?.chainId ?? args.chainId ?? null,
-    conditionId: f?.conditionId ?? args.conditionId ?? null,
-    isLegacy: f?.isLegacy ?? args.isLegacy ?? null,
-    settled: f?.settled ?? args.settled ?? null,
-    result: f?.result ?? null,
-    endsAtMin: f?.endsAtMin ?? null,
-    endsAtMax: f?.endsAtMax ?? null,
+    OR: [
+      { createdAt: { [op]: keyValue } } as Prisma.PredictionWhereInput,
+      {
+        AND: [
+          { createdAt: { equals: keyValue } } as Prisma.PredictionWhereInput,
+          { predictionId: { [op]: cursorId } } as Prisma.PredictionWhereInput,
+        ],
+      },
+    ],
   };
 };
 
-export const predictionsPage: NonNullable<
-  QueryResolvers['predictionsPage']
-> = async (_parent, args) => {
-  return runPredictions(mergePredictionFilters(args));
+const readPredictionOrderKey = (row: PredictionWithPickConfig): string =>
+  row.createdAt.toISOString();
+
+export const predictionsConnection: NonNullable<
+  QueryResolvers['predictionsConnection']
+> = async (
+  _parent,
+  { first, after, filter, orderBy }: QueryPredictionsConnectionArgs
+) => {
+  const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const direction = orderBy?.direction ?? OrderDirection.Desc;
+  const prismaDir = direction === OrderDirection.Asc ? 'asc' : 'desc';
+
+  const { where: filterWhere, empty } = await buildPredictionWhere({
+    predictionId:
+      (filter as { predictionId?: string | null } | null | undefined)
+        ?.predictionId ?? null,
+    address: filter?.address ?? null,
+    conditionId: filter?.conditionId ?? null,
+    pickConfigId:
+      (filter as { pickConfigId?: string | null } | null | undefined)
+        ?.pickConfigId ?? null,
+    conditionGroupId:
+      (
+        filter as
+          | { conditionGroupId?: string | number | null }
+          | null
+          | undefined
+      )?.conditionGroupId ?? null,
+    conditionIds:
+      (filter as { conditionIds?: string[] | null } | null | undefined)
+        ?.conditionIds ?? null,
+    chainId: filter?.chainId ?? null,
+    settled: filter?.settled ?? null,
+    isLegacy: filter?.isLegacy ?? null,
+    result: filter?.result ?? null,
+    endsAt: (filter?.endsAt ?? null) as Prisma.IntFilter | null,
+    endsAtMin: null,
+    endsAtMax: null,
+  });
+  if (empty) {
+    return {
+      edges: [],
+      nodes: [],
+      totalCount: 0,
+      pageInfo: {
+        hasNextPage: false,
+        hasPreviousPage: false,
+        startCursor: null,
+        endCursor: null,
+      },
+    };
+  }
+
+  const cursorPayload = after ? decodeCursor(after) : null;
+  const cursorWhere = cursorPayload
+    ? buildPredictionCursorPredicate(
+        cursorPayload.k,
+        cursorPayload.id,
+        prismaDir
+      )
+    : null;
+  const where: Prisma.PredictionWhereInput = cursorWhere
+    ? { AND: [filterWhere, cursorWhere] }
+    : filterWhere;
+
+  const [rawRows, totalCount] = await Promise.all([
+    prisma.prediction.findMany({
+      where,
+      orderBy: [{ createdAt: prismaDir }, { predictionId: prismaDir }],
+      take: cappedFirst + 1,
+      include: { pickConfiguration: { include: { picks: true } } },
+    }),
+    prisma.prediction.count({ where: filterWhere }),
+  ]);
+
+  const hasNextPage = rawRows.length > cappedFirst;
+  const pageRows = hasNextPage ? rawRows.slice(0, cappedFirst) : rawRows;
+  const nodes = pageRows.map(mapPrediction);
+  const edges = nodes.map((node, index) => ({
+    node,
+    cursor: encodeCursor({
+      k: readPredictionOrderKey(pageRows[index]),
+      id: pageRows[index].predictionId,
+    }),
+  }));
+
+  return {
+    edges,
+    nodes,
+    totalCount,
+    pageInfo: {
+      hasNextPage,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
 };
 
 export const prediction: NonNullable<QueryResolvers['prediction']> = async (
@@ -239,7 +432,11 @@ export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   return r ? mapPrediction(r) : null;
 };
 
-export type RunPickConfigurationsArgs = QueryPickConfigurationsArgs & {
+export type RunPickConfigurationsArgs = Omit<
+  QueryPickConfigurationsArgs,
+  'result'
+> & {
+  result?: SettlementResult | Prisma.EnumSettlementResultFilter | null;
   orderBy?: 'CREATED_AT' | 'ENDS_AT' | 'RESOLVED_AT' | null;
   orderDirection?: 'asc' | 'desc' | null;
 };
@@ -302,29 +499,87 @@ export const runPickConfigurations = async ({
 };
 
 /**
- * Merge `filters: PickConfigurationFilters` with the deprecated flat
- * arg shape. `filters` wins on conflicts.
+ * Map the new singular `filter: PickConfigurationFilter` connection shape to
+ * the shared pick-configuration execution args.
  */
+const enumFilterToPrisma = <T extends string>(
+  filter:
+    | {
+        equals?: T | null;
+        in?: T[] | null;
+        not?: T | null;
+        notIn?: T[] | null;
+      }
+    | null
+    | undefined,
+  label: string
+): T | { equals?: T; in?: T[]; not?: T; notIn?: T[] } | null => {
+  if (!filter) return null;
+  const out: { equals?: T; in?: T[]; not?: T; notIn?: T[] } = {};
+  if (filter.equals != null) out.equals = filter.equals;
+  if (filter.in?.length) out.in = filter.in;
+  if (filter.not != null) out.not = filter.not;
+  if (filter.notIn?.length) out.notIn = filter.notIn;
+  if (Object.keys(out).length === 0) return null;
+  if (out.equals != null && (out.in || out.notIn || out.not != null)) {
+    throw new Error(`${label}: equals cannot be combined with in/not/notIn`);
+  }
+  return Object.keys(out).length === 1 && out.equals != null ? out.equals : out;
+};
+
 const mergePickConfigurationFilters = (
-  args: QueryPickConfigurationsPageArgs
+  args: QueryPickConfigurationsConnectionArgs
 ): RunPickConfigurationsArgs => {
-  const f = args.filters ?? null;
+  const f = args.filter ?? null;
   return {
-    take: args.take,
-    skip: args.skip,
-    chainId: f?.chainId ?? args.chainId ?? null,
-    resolved: f?.resolved ?? args.resolved ?? null,
-    result: f?.result ?? args.result ?? null,
-    tokens: f?.tokens ?? args.tokens ?? null,
-    orderBy: args.orderBy ?? null,
-    orderDirection: args.orderDirection ?? null,
+    take: args.first ?? 50,
+    skip: offsetFromCursor(args.after),
+    chainId: f?.chainId ?? null,
+    resolved: f?.resolved ?? null,
+    result: enumFilterToPrisma<SettlementResult>(
+      f?.result,
+      'PickConfigurationFilter.result'
+    ),
+    tokens: f?.tokens ?? null,
+    orderBy:
+      args.orderBy?.field === PickConfigurationOrderField.EndsAt
+        ? 'ENDS_AT'
+        : args.orderBy?.field === PickConfigurationOrderField.ResolvedAt
+          ? 'RESOLVED_AT'
+          : 'CREATED_AT',
+    orderDirection:
+      args.orderBy?.direction === OrderDirection.Asc ? 'asc' : 'desc',
   };
 };
 
-export const pickConfigurationsPage: NonNullable<
-  QueryResolvers['pickConfigurationsPage']
+export const pickConfigurationsConnection: NonNullable<
+  QueryResolvers['pickConfigurationsConnection']
 > = async (_parent, args) => {
-  return runPickConfigurations(mergePickConfigurationFilters(args));
+  const result = await runPickConfigurations(
+    mergePickConfigurationFilters(args)
+  );
+  const startOffset = offsetFromCursor(args.after);
+  const edges = result.items.map((node, index) => ({
+    node,
+    cursor: encodeCursor({
+      k: String(startOffset + index),
+      id: String(node.id),
+    }),
+  }));
+  const totalCount = await prisma.picks.count({
+    where: result._countWhere ?? {},
+  });
+  return {
+    edges,
+    nodes: result.items,
+    totalCount,
+    pageInfo: {
+      hasNextPage: result.hasMore,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
 };
 
 export const pickConfiguration: NonNullable<
@@ -386,7 +641,7 @@ const positionSynthesisCacheKey = (r: {
 export const __clearPositionSynthesisCache = () =>
   positionSynthesisCache.clear();
 
-export type PositionsPageEnvelope = {
+export type PositionsEnvelope = {
   items: PositionShape[];
   hasMore: boolean;
   totalCount: number | null;
@@ -437,9 +692,18 @@ const normalizePositionsArgs = (
   collateralMin: args.collateralMin,
   collateralMax: args.collateralMax,
   // PositionSortField SDL enum values are CREATED_AT / UPDATED_AT; map
-  // to the Prisma column name for orderBy.
-  orderField: args.orderBy === 'CREATED_AT' ? 'createdAt' : 'updatedAt',
-  orderDirection: args.orderDirection === 'asc' ? 'asc' : 'desc',
+  // to the Prisma column name for orderBy. Accept camelCase aliases kept
+  // on the enum for older clients (`createdAt`, `updatedAt`).
+  orderField:
+    args.orderBy === 'CREATED_AT' || args.orderBy === 'createdAt'
+      ? 'createdAt'
+      : 'updatedAt',
+  // SortOrder SDL enum values are `asc` / `desc`; accept uppercase
+  // ASC / DESC aliases kept on the enum for older clients.
+  orderDirection:
+    args.orderDirection === 'asc' || args.orderDirection === 'ASC'
+      ? 'asc'
+      : 'desc',
 });
 
 /**
@@ -868,7 +1132,7 @@ const sortSynthesizedRows = (
   return out;
 };
 
-const EMPTY_POSITIONS_PAGE: PositionsPageEnvelope = {
+const EMPTY_POSITIONS: PositionsEnvelope = {
   items: [],
   hasMore: false,
   totalCount: 0,
@@ -876,7 +1140,7 @@ const EMPTY_POSITIONS_PAGE: PositionsPageEnvelope = {
 
 export const runPositions = async (
   args: QueryPositionsArgs
-): Promise<PositionsPageEnvelope> => {
+): Promise<PositionsEnvelope> => {
   const norm = normalizePositionsArgs(args);
 
   let conditionPickConfigIds: string[] | null = null;
@@ -884,11 +1148,11 @@ export const runPositions = async (
     conditionPickConfigIds = await resolveConditionPickConfigIds(
       norm.conditionId
     );
-    if (conditionPickConfigIds === null) return EMPTY_POSITIONS_PAGE;
+    if (conditionPickConfigIds === null) return EMPTY_POSITIONS;
   }
 
   let where = buildPositionsWhere(norm, conditionPickConfigIds);
-  if (where === null) return EMPTY_POSITIONS_PAGE;
+  if (where === null) return EMPTY_POSITIONS;
 
   if (norm.holderLower && (norm.collateralMin || norm.collateralMax)) {
     const next = await applyCollateralRangeFilter(
@@ -897,7 +1161,7 @@ export const runPositions = async (
       norm.collateralMin,
       norm.collateralMax
     );
-    if (next === null) return EMPTY_POSITIONS_PAGE;
+    if (next === null) return EMPTY_POSITIONS;
     where = next;
   }
 
@@ -925,11 +1189,8 @@ export const runPositions = async (
   // `lastPage.length === 0` is unreliable as a stop signal — we need
   // server-truth pagination.
   //
-  // `totalCount` is left null here; the PositionsPage.totalCount field
-  // resolver lazily issues `prisma.position.count({ where })` only when
-  // the client actually selects the field. The deprecated `positions`
-  // wrapper discards totalCount entirely, so it now skips the count
-  // query for free.
+  // `totalCount` is left null; connection callers use `pageInfo.hasNextPage`
+  // and the deprecated `positions` wrapper discards counts entirely.
   const rawRows = await prisma.position.findMany({
     where,
     orderBy: { [norm.orderField]: norm.orderDirection },
@@ -954,18 +1215,15 @@ export const runPositions = async (
 };
 
 /**
- * Merge `filters: PositionFilters` with the deprecated flat arg shape.
+ * Merge deprecated `positionsPage(filters: PositionFilters)` with the flat arg shape.
  * `filters` wins on conflicts.
  */
-const mergePositionFilters = (
+const mergePositionPageFilters = (
   args: QueryPositionsPageArgs
 ): QueryPositionsArgs => {
   const f = args.filters ?? null;
   return {
-    take: args.take,
-    skip: args.skip,
-    orderBy: args.orderBy,
-    orderDirection: args.orderDirection,
+    ...args,
     holder: f?.holder ?? args.holder ?? null,
     chainId: f?.chainId ?? args.chainId ?? null,
     conditionId: f?.conditionId ?? args.conditionId ?? null,
@@ -982,8 +1240,117 @@ const mergePositionFilters = (
 
 export const positionsPage: NonNullable<
   QueryResolvers['positionsPage']
+> = async (_parent, args) => runPositions(mergePositionPageFilters(args));
+
+/**
+ * Convert operator-pattern numeric filters (`gte`/`lt`/etc.) to the legacy
+ * min/max execution args used by `runPositions`. The underlying values are
+ * integer-like (wei strings and epoch seconds), so exclusive bounds are mapped
+ * by one unit to preserve semantics through the existing inclusive SQL path.
+ */
+const rangeFilterToBounds = (
+  filter:
+    | {
+        equals?: string | number | bigint | null;
+        gt?: string | number | bigint | null;
+        gte?: string | number | bigint | null;
+        lt?: string | number | bigint | null;
+        lte?: string | number | bigint | null;
+        in?: unknown[] | null;
+        notIn?: unknown[] | null;
+        not?: unknown;
+      }
+    | null
+    | undefined,
+  label: string
+): { min: string | null; max: string | null } => {
+  if (!filter) return { min: null, max: null };
+  if (filter.in?.length || filter.notIn?.length || filter.not != null) {
+    throw new Error(`${label}: only equals/gt/gte/lt/lte are supported`);
+  }
+  if (filter.equals != null) {
+    const v = BigInt(filter.equals);
+    return { min: v.toString(), max: v.toString() };
+  }
+  const min =
+    filter.gte != null
+      ? BigInt(filter.gte)
+      : filter.gt != null
+        ? BigInt(filter.gt) + 1n
+        : null;
+  const max =
+    filter.lte != null
+      ? BigInt(filter.lte)
+      : filter.lt != null
+        ? BigInt(filter.lt) - 1n
+        : null;
+  return { min: min?.toString() ?? null, max: max?.toString() ?? null };
+};
+
+/**
+ * Map the singular `filter: PositionFilter` connection shape to the shared
+ * legacy `runPositions` execution args.
+ */
+const mergePositionConnectionFilter = (
+  args: QueryPositionsConnectionArgs
+): QueryPositionsArgs => {
+  const f = args.filter ?? null;
+  const collateral = rangeFilterToBounds(
+    f?.collateral,
+    'PositionFilter.collateral'
+  );
+  const endsAt = rangeFilterToBounds(f?.endsAt, 'PositionFilter.endsAt');
+  return {
+    take: args.first ?? 50,
+    skip: offsetFromCursor(args.after),
+    orderBy:
+      args.orderBy?.field === PositionOrderField.CreatedAt
+        ? PositionSortField.CreatedAt
+        : PositionSortField.UpdatedAt,
+    orderDirection:
+      args.orderBy?.direction === OrderDirection.Asc
+        ? SortOrder.Asc
+        : SortOrder.Desc,
+    holder: f?.holder ?? null,
+    chainId: f?.chainId ?? null,
+    conditionId: f?.conditionId ?? null,
+    pickConfigId: f?.pickConfigId ?? null,
+    result: f?.result ?? null,
+    settled: f?.settled ?? null,
+    holderWon: f?.holderWon ?? null,
+    collateralMin: collateral.min,
+    collateralMax: collateral.max,
+    endsAtMin: endsAt.min == null ? null : Number(endsAt.min),
+    endsAtMax: endsAt.max == null ? null : Number(endsAt.max),
+  };
+};
+
+export const positionsConnection: NonNullable<
+  QueryResolvers['positionsConnection']
 > = async (_parent, args) => {
-  return runPositions(mergePositionFilters(args));
+  const result = await runPositions(mergePositionConnectionFilter(args));
+  const startOffset = offsetFromCursor(args.after);
+  const edges = result.items.map((node, index) => ({
+    node,
+    cursor: encodeCursor({
+      k: String(startOffset + index),
+      id: String(node.id),
+    }),
+  }));
+  const totalCount = await prisma.position.count({
+    where: result._countWhere ?? {},
+  });
+  return {
+    edges,
+    nodes: result.items,
+    totalCount,
+    pageInfo: {
+      hasNextPage: result.hasMore,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
+  };
 };
 
 export const closes: NonNullable<QueryResolvers['closes']> = async (

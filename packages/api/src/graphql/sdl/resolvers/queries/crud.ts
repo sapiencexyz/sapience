@@ -1,27 +1,34 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Live CRUD-style queries that share a TtlCache with their deprecated
  * passthroughs:
  *
  *   - `categories` (deprecated, but stays here so it shares the
- *     `categoriesCache` with `categoriesPage`)
- *   - `categoriesPage` (live)
+ *     `categoriesCache` with `categoriesConnection`)
+ *   - `categoriesConnection` (live)
  *
  * Plus the live point-lookups (`condition(where:)`, `user(where:)`) and
- * the paginated `attestationsPage` runner. The other typegraphql-prisma-
+ * the `forecastsConnection` runner. The other typegraphql-prisma-
  * style passthroughs that don't share state with a live path live in
  * `./deprecated/crud.ts`.
  */
 
 import type {
   QueryResolvers,
-  QueryAttestationsPageArgs,
-  QueryCategoriesPageArgs,
+  QueryForecastsConnectionArgs,
 } from '../../__generated__/resolvers';
-import { Prisma } from '../../../../../generated/prisma';
+import {
+  ForecastOrderField,
+  OrderDirection,
+} from '../../__generated__/resolvers';
+import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
-import { clampSkip, clampTake } from './pagination';
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
+import { registerNodeType, toGlobalId } from '../../../relay/globalId';
+import { synthesizeAccount } from '../accountSynthesis';
+import { buildConnection, clampTake } from './pagination';
 
 /**
  * Cache only the no-args call (the dominant public path: integrator's
@@ -37,6 +44,35 @@ const categoriesCache = new TtlCache<string, CategoryRow>({
   ttlMs: 60 * 60 * 1000,
 });
 const CATEGORIES_CACHE_KEY = 'categories:v1';
+
+registerNodeType({
+  type: 'Category',
+  loader: async (id) => {
+    const numericId = Number(id);
+    if (!Number.isInteger(numericId)) return null;
+    return prisma.category.findUnique({ where: { id: numericId } });
+  },
+});
+
+registerNodeType({
+  type: 'Account',
+  loader: async (id, ctx) => {
+    const address = id.toLowerCase();
+    const loaders = (
+      ctx as {
+        loaders?: {
+          userByAddress?: {
+            load: (address: string) => Promise<unknown | null>;
+          };
+        };
+      }
+    ).loaders;
+    const row = loaders?.userByAddress
+      ? await loaders.userByAddress.load(address)
+      : await prisma.user.findUnique({ where: { address } });
+    return row ?? synthesizeAccount(address);
+  },
+});
 
 /** Test-only: clear cache between test cases. */
 export const __clearCategoriesCache = () => categoriesCache.clear();
@@ -109,120 +145,268 @@ export const user: NonNullable<QueryResolvers['user']> = async (
   });
 };
 
-export const account: NonNullable<QueryResolvers['account']> = async (
-  _parent,
-  { address },
-  ctx
-) => ctx.loaders.userByAddress.load(address);
+export const account = (async (
+  _parent: unknown,
+  { address }: any,
+  ctx: any
+) => {
+  const addressLc = address.toLowerCase();
+  const row = await ctx.loaders!.userByAddress.load(addressLc);
+  return (row ?? synthesizeAccount(addressLc)) as never;
+}) as any as NonNullable<QueryResolvers['account']>;
 
-export const categoriesPage: NonNullable<
-  QueryResolvers['categoriesPage']
-> = async (_parent, { take, skip }: QueryCategoriesPageArgs) => {
-  // Categories is a tiny lookup table (<100 rows). Stick to the
-  // default MAX_TAKE = 100; if it ever grows past a single page we'll
-  // revisit before lifting the cap.
-  const cappedTake = clampTake(take, { defaultTake: 100 });
-  const skipVal = clampSkip(skip);
-  const isFullPage = skipVal === 0 && cappedTake >= 100;
-
-  if (isFullPage) {
-    const cached = categoriesCache.get(CATEGORIES_CACHE_KEY);
-    if (cached) {
-      return {
-        items: cached.slice(0, cappedTake),
-        hasMore: cached.length > cappedTake,
-      };
-    }
-  }
-
-  const rawRows = await prisma.category.findMany({
-    orderBy: { name: 'asc' },
-    take: cappedTake + 1,
-    skip: skipVal,
-  });
-  const hasMore = rawRows.length > cappedTake;
-  const items = rawRows.slice(0, cappedTake);
-
-  if (isFullPage && !hasMore) categoriesCache.set(CATEGORIES_CACHE_KEY, items);
-  return { items, hasMore };
-};
-
-export type AttestationsPageEnvelope = {
-  items: Awaited<ReturnType<typeof prisma.attestation.findMany>>;
-  hasMore: boolean;
-  _countWhere?: Prisma.AttestationWhereInput;
-};
-
-export const runAttestations = async ({
-  uid,
-  attester,
-  conditionId,
-  schemaId,
-  recipient,
-  minTime,
-  maxTime,
-  orderBy,
-  orderDirection,
-  take,
-  skip,
-}: QueryAttestationsPageArgs): Promise<AttestationsPageEnvelope> => {
-  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
-  const skipVal = clampSkip(skip);
-  const where: Prisma.AttestationWhereInput = {};
-  if (uid) where.uid = uid;
-  if (attester) where.attester = attester;
-  if (conditionId) where.conditionId = conditionId;
-  if (schemaId) where.schemaId = schemaId;
-  if (recipient) where.recipient = recipient;
-  if (minTime !== null && minTime !== undefined) {
-    where.time = { ...(where.time as object | undefined), gte: minTime };
-  }
-  if (maxTime !== null && maxTime !== undefined) {
-    where.time = { ...(where.time as object | undefined), lte: maxTime };
-  }
-  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
-  const orderField =
-    orderBy === 'CREATED_AT'
-      ? ({ createdAt: direction } as const)
-      : ({ time: direction } as const);
-
-  const rawRows = await prisma.attestation.findMany({
-    where,
-    orderBy: orderField,
-    take: cappedTake + 1,
-    skip: skipVal,
-  });
-  const hasMore = rawRows.length > cappedTake;
+/**
+ * Keyset cursor predicate for accounts ordered by `(createdAt, id)`.
+ * Stable across pages: `createdAt` alone collides, `id` alone shifts under
+ * inserts. Direction is parameterized for forward (`desc`) and ascending
+ * (`asc`) orderings.
+ */
+const buildAccountCursorPredicate = (
+  k: string,
+  cursorId: string,
+  direction: 'asc' | 'desc'
+): Prisma.UserWhereInput => {
+  const op = direction === 'desc' ? 'lt' : 'gt';
+  const createdAt = new Date(k);
+  const id = Number(cursorId);
   return {
-    items: rawRows.slice(0, cappedTake),
-    hasMore,
-    _countWhere: where,
-  };
+    OR: [
+      { createdAt: { [op]: createdAt } },
+      {
+        AND: [{ createdAt: { equals: createdAt } }, { id: { [op]: id } }],
+      },
+    ],
+  } as Prisma.UserWhereInput;
 };
 
 /**
- * Merge `filters: AttestationFilters` with the deprecated flat arg
- * shape. `filters` wins on conflicts.
+ * Relay-shaped connection over `Account` rows (User table). Accounts
+ * without a User row aren't returned — synthesis only happens at the
+ * single-lookup level (`account(address:)`). Default order is
+ * `CREATED_AT DESC`; `filter.search` substring-matches the wallet
+ * address case-insensitively.
  */
-const mergeAttestationFilters = (
-  args: QueryAttestationsPageArgs
-): QueryAttestationsPageArgs => {
-  const f = args.filters ?? null;
+export const accountsConnection = (async (
+  _parent: unknown,
+  { first, after, filter, orderBy }: any
+) => {
+  const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const direction: 'asc' | 'desc' =
+    orderBy?.direction === 'ASC' ? 'asc' : 'desc';
+  const search = (filter?.search as string | null | undefined)?.trim();
+  const baseWhere: Prisma.UserWhereInput = search
+    ? { address: { contains: search.toLowerCase(), mode: 'insensitive' } }
+    : {};
+  const cursorPayload = after ? decodeCursor(after) : null;
+  const cursorWhere = cursorPayload
+    ? buildAccountCursorPredicate(cursorPayload.k, cursorPayload.id, direction)
+    : null;
+  const pageWhere: Prisma.UserWhereInput = cursorWhere
+    ? { AND: [baseWhere, cursorWhere] }
+    : baseWhere;
+
+  const [rows, totalCount] = await Promise.all([
+    prisma.user.findMany({
+      where: pageWhere,
+      orderBy: [{ createdAt: direction }, { id: direction }],
+      take: cappedFirst + 1,
+    }),
+    prisma.user.count({ where: baseWhere }),
+  ]);
+
+  return buildConnection({
+    rows,
+    first: cappedFirst,
+    totalCount,
+    getCursor: (row) =>
+      encodeCursor({
+        k: row.createdAt.toISOString(),
+        id: String(row.id),
+      }),
+  });
+}) as any as NonNullable<QueryResolvers['accountsConnection']>;
+
+const buildForecastCursorPredicate = (
+  k: string,
+  cursorId: string,
+  prismaOrderField: string,
+  direction: 'asc' | 'desc'
+): Prisma.AttestationWhereInput => {
+  const op = direction === 'desc' ? 'lt' : 'gt';
+  const keyValue = prismaOrderField === 'createdAt' ? new Date(k) : Number(k);
   return {
-    take: args.take,
-    skip: args.skip,
-    orderBy: args.orderBy,
-    orderDirection: args.orderDirection,
-    uid: f?.uid ?? args.uid ?? null,
-    attester: f?.attester ?? args.attester ?? null,
-    recipient: f?.recipient ?? args.recipient ?? null,
-    conditionId: f?.conditionId ?? args.conditionId ?? null,
-    schemaId: f?.schemaId ?? args.schemaId ?? null,
-    minTime: f?.minTime ?? args.minTime ?? null,
-    maxTime: f?.maxTime ?? args.maxTime ?? null,
+    OR: [
+      {
+        [prismaOrderField]: { [op]: keyValue },
+      } as Prisma.AttestationWhereInput,
+      {
+        AND: [
+          {
+            [prismaOrderField]: { equals: keyValue },
+          } as Prisma.AttestationWhereInput,
+          { uid: { [op]: cursorId } } as Prisma.AttestationWhereInput,
+        ],
+      },
+    ],
   };
 };
 
-export const attestationsPage: NonNullable<
-  QueryResolvers['attestationsPage']
-> = async (_parent, args) => runAttestations(mergeAttestationFilters(args));
+const mapForecast = (
+  row: Awaited<ReturnType<typeof prisma.attestation.findMany>>[number]
+) => ({
+  ...row,
+  attestedAt: row.time,
+  forecaster: row.attester,
+});
+
+export const forecastsConnection: NonNullable<
+  QueryResolvers['forecastsConnection']
+> = async (
+  _parent,
+  { first, after, filter, orderBy }: QueryForecastsConnectionArgs
+) => {
+  const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const where: Prisma.AttestationWhereInput = {};
+  if (filter?.uid) where.uid = filter.uid;
+  if (filter?.forecaster) where.attester = filter.forecaster;
+  if (filter?.conditionId) where.conditionId = filter.conditionId;
+  const conditionIdsFilter = (
+    filter as { conditionIds?: string[] | null } | null | undefined
+  )?.conditionIds;
+  if (conditionIdsFilter?.length)
+    where.conditionId = {
+      in: conditionIdsFilter.map((id) => id.toLowerCase()),
+    };
+  const conditionGroupId = (
+    filter as { conditionGroupId?: string | number | null } | null | undefined
+  )?.conditionGroupId;
+  if (conditionGroupId != null) {
+    const conditions = await prisma.condition.findMany({
+      where: { conditionGroupId: Number(conditionGroupId) },
+      select: { id: true },
+    });
+    const conditionIds = conditions.map((condition) =>
+      condition.id.toLowerCase()
+    );
+    if (conditionIds.length === 0) {
+      return {
+        edges: [],
+        nodes: [],
+        totalCount: 0,
+        pageInfo: {
+          hasNextPage: false,
+          hasPreviousPage: false,
+          startCursor: null,
+          endCursor: null,
+        },
+      };
+    }
+    where.conditionId = { in: conditionIds };
+  }
+  if (filter?.schemaId) where.schemaId = filter.schemaId;
+  if (filter?.recipient) where.recipient = filter.recipient;
+  if (filter?.attestedAt) {
+    where.time = filter.attestedAt as Prisma.IntFilter;
+  }
+
+  const orderField = orderBy?.field ?? ForecastOrderField.AttestedAt;
+  const direction = orderBy?.direction ?? OrderDirection.Desc;
+  const prismaDir = direction === OrderDirection.Asc ? 'asc' : 'desc';
+  const prismaOrderField =
+    orderField === ForecastOrderField.CreatedAt ? 'createdAt' : 'time';
+  const cursorPayload = after ? decodeCursor(after) : null;
+  const cursorWhere = cursorPayload
+    ? buildForecastCursorPredicate(
+        cursorPayload.k,
+        cursorPayload.id,
+        prismaOrderField,
+        prismaDir
+      )
+    : null;
+  const pageWhere: Prisma.AttestationWhereInput = cursorWhere
+    ? { AND: [where, cursorWhere] }
+    : where;
+
+  const [rawRows, totalCount] = await Promise.all([
+    prisma.attestation.findMany({
+      where: pageWhere,
+      orderBy: [
+        {
+          [prismaOrderField]: prismaDir,
+        } as Prisma.AttestationOrderByWithRelationInput,
+        { uid: prismaDir },
+      ],
+      take: cappedFirst + 1,
+    }),
+    prisma.attestation.count({ where }),
+  ]);
+
+  return buildConnection({
+    rows: rawRows,
+    first: cappedFirst,
+    totalCount,
+    getNode: mapForecast,
+    getCursor: (row) =>
+      encodeCursor({
+        k:
+          orderField === ForecastOrderField.CreatedAt
+            ? row.createdAt.toISOString()
+            : String(row.time),
+        id: row.uid,
+      }),
+  });
+};
+
+const buildCategoryCursorPredicate = (
+  name: string,
+  id: string
+): Prisma.CategoryWhereInput => ({
+  OR: [
+    { name: { gt: name } },
+    { AND: [{ name: { equals: name } }, { id: { gt: Number(id) } }] },
+  ],
+});
+
+export const categoriesConnection = (async (
+  _parent: unknown,
+  {
+    first,
+    after,
+    filter,
+  }: {
+    first?: number | null;
+    after?: string | null;
+    filter?: { search?: string | null } | null;
+  }
+) => {
+  const cappedTake = clampTake(first ?? undefined, { defaultTake: 100 });
+  const cursor = after ? decodeCursor(after) : null;
+  const searchWhere = filter?.search
+    ? { name: { contains: filter.search, mode: 'insensitive' as const } }
+    : undefined;
+  const where = cursor
+    ? searchWhere
+      ? {
+          AND: [searchWhere, buildCategoryCursorPredicate(cursor.k, cursor.id)],
+        }
+      : buildCategoryCursorPredicate(cursor.k, cursor.id)
+    : searchWhere;
+  const [rawRows, totalCount] = await Promise.all([
+    prisma.category.findMany({
+      where,
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      take: cappedTake + 1,
+    }),
+    prisma.category.count({ where: searchWhere }),
+  ]);
+  return buildConnection({
+    rows: rawRows,
+    first: cappedTake,
+    totalCount,
+    getNode: (row) => ({
+      ...row,
+      id: toGlobalId('Category', row.id),
+    }),
+    getCursor: (row) => encodeCursor({ k: row.name, id: String(row.id) }),
+  });
+}) as unknown as NonNullable<QueryResolvers['categoriesConnection']>;

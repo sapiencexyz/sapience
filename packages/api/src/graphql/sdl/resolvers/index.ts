@@ -21,29 +21,23 @@ import type { Resolvers } from '../__generated__/resolvers';
 import { scalarResolvers } from './scalars';
 
 import { Account } from './Account';
-import { Attestation } from './Attestation';
-import { AttestationScore } from './AttestationScore';
-import { AttestationsPage } from './AttestationsPage';
-import { CategoriesPage } from './CategoriesPage';
+import { ForecastScore } from './ForecastScore';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
+import { Activity, ActivitySource } from './Activity';
+import { ActivityConnection, QuestionConnection } from './ConnectionTotalCount';
 import { ActivityItemsPage } from './ActivityItemsPage';
-import { CollateralTransfersPage } from './CollateralTransfersPage';
-import { ConditionGroupsPage } from './ConditionGroupsPage';
-import { ConditionsPage } from './ConditionsPage';
-import { LegacyPosition } from './LegacyPosition';
-import { LegacyPrediction } from './LegacyPrediction';
-import { LimitOrder } from './LimitOrder';
+import { Forecast } from './Forecast';
 import { Pick } from './Pick';
-import { PickConfigurationsPage } from './PickConfigurationsPage';
+import { PickConfiguration } from './PickConfiguration';
 import { PositionsPage } from './PositionsPage';
-import { PredictionsPage } from './PredictionsPage';
-import { QuestionsPage } from './QuestionsPage';
-import { TradesPage } from './TradesPage';
+import { Question, ConditionOrConditionGroup } from './Question';
 import { User } from './User';
 
-import { accountActivityPage, activityPage } from './queries/activity';
+import { accountActivityPage, activityPage } from './queries/activityPage';
+import { activity } from './queries/activity';
+import { leaderboard } from './queries/leaderboard';
 import { accountActivity } from './queries/deprecated/activity';
 import {
   accountStats,
@@ -53,38 +47,48 @@ import {
 import {
   openInterestByCategory,
   openInterestByTimeToResolution,
+  protocol,
   protocolStats,
+  Protocol,
+  vault,
+  Vault,
+  vaultsConnection,
   vaultStats,
 } from './queries/analytics';
 import {
   collateralBalance,
   collateralBalanceHistory,
-  collateralTransfersPage,
+  collateralTransfersConnection,
 } from './queries/collateralBalance';
 import { collateralTransfers } from './queries/deprecated/collateralBalance';
-import { conditionsPage } from './queries/conditions';
-import { conditionGroup, conditionGroupsPage } from './queries/conditionGroups';
-import { questionsPage } from './queries/questions';
+import { conditionsConnection } from './queries/conditions';
+import {
+  conditionGroup,
+  conditionGroupsConnection,
+} from './queries/conditionGroups';
+import { questionsConnection } from './queries/questions';
+import { conditions } from './queries/deprecated/conditions';
+import { conditionGroups } from './queries/deprecated/conditionGroups';
 import { questions } from './queries/deprecated/questions';
 import {
   account,
-  attestationsPage,
+  accountsConnection,
   categories,
-  categoriesPage,
+  categoriesConnection,
   condition,
+  forecastsConnection,
   user,
 } from './queries/crud';
-import { attestations, users } from './queries/deprecated/crud';
-import { conditions } from './queries/deprecated/conditions';
-import { conditionGroups } from './queries/deprecated/conditionGroups';
+import { users } from './queries/deprecated/crud';
 import {
   claims,
   closes,
   pickConfiguration,
-  pickConfigurationsPage,
+  pickConfigurationsConnection,
+  positionsConnection,
   positionsPage,
   prediction,
-  predictionsPage,
+  predictionsConnection,
 } from './queries/escrow';
 import {
   pickConfigurations,
@@ -104,7 +108,7 @@ import {
   protocolVolume,
 } from './queries/timeSeries';
 import { node, nodes } from './queries/node';
-import { trade, tradesPage } from './queries/trade';
+import { trade, tradesConnection } from './queries/trade';
 import { trades, tradeCount } from './queries/deprecated/trade';
 import { accountTotalVolume } from './queries/volume';
 
@@ -114,6 +118,8 @@ export const resolvers: Resolvers = {
     // Relay polymorphic refetch
     node,
     nodes,
+    activity,
+    leaderboard,
     // Leaderboards / account scores
     accountAccuracy,
     accountAccuracyRank,
@@ -130,7 +136,10 @@ export const resolvers: Resolvers = {
     // Analytics
     openInterestByCategory,
     openInterestByTimeToResolution,
+    protocol,
     protocolStats,
+    vault,
+    vaultsConnection,
     vaultStats,
     // Legacy per-metric time series (DEPRECATED — superseded by accountStats / accountStatsRank.volume / protocolStats).
     accountBalance,
@@ -143,65 +152,63 @@ export const resolvers: Resolvers = {
     collateralBalance,
     collateralBalanceHistory,
     collateralTransfers,
-    collateralTransfersPage,
+    collateralTransfersConnection,
     // Conditions / questions
     conditions,
-    conditionsPage,
+    conditionsConnection,
     questions,
-    questionsPage,
+    questionsConnection,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
     closes,
     pickConfiguration,
     pickConfigurations,
-    pickConfigurationsPage,
+    pickConfigurationsConnection,
     positionCount,
     positions,
+    positionsConnection,
     positionsPage,
     prediction,
     predictionCount,
     predictions,
-    predictionsPage,
+    predictionsConnection,
     // Secondary market trades
     trade,
     tradeCount,
     trades,
-    tradesPage,
+    tradesConnection,
     // Tags
     popularTags,
     // CRUD passthroughs
     account,
-    attestations,
-    attestationsPage,
+    accountsConnection,
+    forecastsConnection,
     categories,
-    categoriesPage,
+    categoriesConnection,
     condition,
     conditionGroup,
     conditionGroups,
-    conditionGroupsPage,
+    conditionGroupsConnection,
     user,
     users,
   },
   Account,
+  Activity,
+  ActivityConnection,
+  ActivitySource,
   ActivityItemsPage,
-  Attestation,
-  AttestationScore,
-  AttestationsPage,
-  CategoriesPage,
+  ForecastScore,
   Category,
-  CollateralTransfersPage,
   Condition,
   ConditionGroup,
-  ConditionGroupsPage,
-  ConditionsPage,
-  LegacyPosition,
-  LegacyPrediction,
-  LimitOrder,
+  Forecast,
   Pick,
-  PickConfigurationsPage,
+  PickConfiguration,
   PositionsPage,
-  PredictionsPage,
-  QuestionsPage,
-  TradesPage,
+  Question,
+  QuestionConnection,
+  ConditionOrConditionGroup,
+  Protocol,
   User,
+  Vault,
 };

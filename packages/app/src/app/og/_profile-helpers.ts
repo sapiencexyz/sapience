@@ -13,15 +13,14 @@ import { SCHEMA_UID } from '~/lib/constants';
 // ---------- GraphQL queries ----------
 
 const ATTESTATIONS_COUNT_QUERY = `
-  query FindAttestationsCount($filters: AttestationFilters, $take: Int!) {
-    attestationsPage(
-      filters: $filters
-      orderBy: ATTESTED_AT
-      orderDirection: desc
-      take: $take
+  query FindAttestationsCount($filter: ForecastFilter, $first: Int!) {
+    forecastsConnection(
+      filter: $filter
+      orderBy: { field: ATTESTED_AT, direction: DESC }
+      first: $first
     ) {
       totalCount
-      items {
+      nodes {
         id
       }
     }
@@ -94,13 +93,13 @@ async function fetchProfitAndVolume(address: string): Promise<{
 async function fetchAccuracyRank(address: string): Promise<{
   accuracyScore: number | null;
   rank: number | null;
-  totalParticipants: number;
+  totalForecasters: number;
 }> {
   const r = await fetchAccountAccuracyRank(address);
   return {
     accuracyScore: r.rank == null ? null : r.accuracyScore,
     rank: r.rank,
-    totalParticipants: r.totalParticipants,
+    totalForecasters: r.totalForecasters,
   };
 }
 
@@ -114,18 +113,18 @@ async function fetchForecastsCount(address: string): Promise<number | null> {
   }
 
   const data = await gqlFetch<{
-    attestationsPage: {
+    forecastsConnection: {
       totalCount: number | null;
-      items: Array<{ id: string }>;
+      nodes: Array<{ id: string }>;
     };
   }>(ATTESTATIONS_COUNT_QUERY, {
-    filters: { schemaId: SCHEMA_UID, attester: normalizedAddress },
-    take: 100,
+    filter: { schemaId: SCHEMA_UID, forecaster: normalizedAddress },
+    first: 100,
   });
 
-  const totalCount = data?.attestationsPage?.totalCount;
+  const totalCount = data?.forecastsConnection?.totalCount;
   if (totalCount != null) return totalCount;
-  const fallbackCount = data?.attestationsPage?.items?.length;
+  const fallbackCount = data?.forecastsConnection?.nodes?.length;
   return fallbackCount != null ? fallbackCount : null;
 }
 
@@ -153,7 +152,7 @@ export async function fetchProfileData(
   const accuracy =
     accuracyResult.status === 'fulfilled'
       ? accuracyResult.value
-      : { accuracyScore: null, rank: null, totalParticipants: 0 };
+      : { accuracyScore: null, rank: null, totalForecasters: 0 };
   const forecastsCount =
     forecastsResult.status === 'fulfilled' ? forecastsResult.value : null;
 
@@ -163,7 +162,7 @@ export async function fetchProfileData(
     totalParticipants: profit.totalParticipants,
     accuracyScore: accuracy.accuracyScore,
     accuracyRank: accuracy.rank,
-    accuracyTotalParticipants: accuracy.totalParticipants,
+    accuracyTotalParticipants: accuracy.totalForecasters,
     volumeDisplay: profit.volumeDisplay,
     forecastsCount,
   };

@@ -18,14 +18,15 @@ function normalizeLegacy(entry: string | { address: string }): string {
   return typeof entry === 'string' ? entry : entry.address;
 }
 
-type LegacyResolverEntry = string | { address: string };
+type ResolverDeployment = {
+  address: Address;
+  legacy?: readonly (string | { address: string })[];
+};
 
-type ResolverMap = Record<
-  number,
-  { address: Address; legacy?: readonly LegacyResolverEntry[] }
->;
-
-const RESOLVER_MAPS: Record<ResolverType, ResolverMap> = {
+const RESOLVER_MAPS: Record<
+  ResolverType,
+  Record<number, ResolverDeployment>
+> = {
   ct: conditionalTokensConditionResolver,
   manual: manualConditionResolver,
 };

@@ -33,8 +33,8 @@ const ProfilePageContent = ({
     addressOverride || (params.address as string)
   ).toLowerCase() as Address;
 
-  const { data: attestations, isLoading: forecastsLoading } = useForecasts({
-    attesterAddress: address,
+  const { data: forecasts, isLoading: forecastsLoading } = useForecasts({
+    forecasterAddress: address,
     schemaId: SCHEMA_UID,
   });
 
@@ -125,7 +125,7 @@ const ProfilePageContent = ({
         {hasLoadedOnce ? (
           <ProfileQuickMetrics
             address={address}
-            forecastsCount={attestations?.length ?? 0}
+            forecastsCount={forecasts?.length ?? 0}
           />
         ) : null}
       </div>
@@ -164,7 +164,7 @@ const ProfilePageContent = ({
               className="mt-0 data-[state=active]:flex-1 data-[state=active]:flex data-[state=active]:flex-col"
             >
               <ForecastsTable
-                attesterAddress={address}
+                forecasterAddress={address}
                 leftSlot={tabSwitcher}
                 fill
               />

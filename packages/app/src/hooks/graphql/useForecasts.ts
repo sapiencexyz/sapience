@@ -5,16 +5,16 @@ import {
   fetchForecasts,
   fetchForecastsPage,
   fetchUserForecasts,
-  formatAttestationData,
+  formatForecastData,
   generateForecastsQueryKey,
-  type FormattedAttestation,
+  type FormattedForecast,
 } from '@sapience/sdk/queries';
 
 import { SCHEMA_UID } from '~/lib/constants';
 
 interface UseForecastsProps {
   schemaId?: string;
-  attesterAddress?: string;
+  forecasterAddress?: string;
   chainId?: number;
   conditionId?: string;
   options?: {
@@ -27,20 +27,20 @@ interface UseForecastsProps {
 
 export const useForecasts = ({
   schemaId = SCHEMA_UID,
-  attesterAddress,
+  forecasterAddress,
   chainId,
   conditionId,
   options,
 }: UseForecastsProps) => {
   const queryKey = generateForecastsQueryKey({
     schemaId,
-    attesterAddress,
+    forecasterAddress,
     chainId,
     conditionId,
   });
 
   const {
-    data: attestationsData,
+    data: forecastsData,
     isLoading,
     error,
     refetch,
@@ -49,7 +49,7 @@ export const useForecasts = ({
     queryFn: () =>
       fetchForecasts({
         schemaId,
-        attesterAddress,
+        forecasterAddress,
         conditionId,
       }),
     enabled: options?.enabled ?? Boolean(schemaId),
@@ -61,12 +61,10 @@ export const useForecasts = ({
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
   });
 
-  const data: FormattedAttestation[] = React.useMemo(() => {
-    if (!attestationsData?.attestations) return [];
-    return attestationsData.attestations.map((att) =>
-      formatAttestationData(att)
-    );
-  }, [attestationsData]);
+  const data: FormattedForecast[] = React.useMemo(() => {
+    if (!forecastsData?.forecasts) return [];
+    return forecastsData.forecasts.map((f) => formatForecastData(f));
+  }, [forecastsData]);
 
   return { data, isLoading, error, refetch };
 };
@@ -85,7 +83,7 @@ export const prefetchForecasts = async (
 
 export const useInfiniteForecasts = ({
   schemaId = SCHEMA_UID,
-  attesterAddress,
+  forecasterAddress,
   chainId,
   conditionId,
 }: UseForecastsProps & { pageSize?: number }) => {
@@ -93,7 +91,7 @@ export const useInfiniteForecasts = ({
   const queryKey = [
     ...generateForecastsQueryKey({
       schemaId,
-      attesterAddress,
+      forecasterAddress,
       chainId,
       conditionId,
     }),
@@ -104,22 +102,22 @@ export const useInfiniteForecasts = ({
     queryKey,
     queryFn: ({ pageParam }) =>
       fetchForecastsPage(
-        { schemaId, attesterAddress, conditionId },
-        { take: pageSize, skip: pageParam }
+        { schemaId, forecasterAddress, conditionId },
+        { take: pageSize, after: pageParam }
       ),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => {
       if (!lastPage.hasMore) return undefined;
-      return allPages.length * pageSize;
+      return lastPage.endCursor;
     },
     retry: 3,
     retryDelay: 1000,
   });
 
-  const data: FormattedAttestation[] = React.useMemo(() => {
+  const data: FormattedForecast[] = React.useMemo(() => {
     if (!query.data?.pages) return [];
     return query.data.pages.flatMap((p) =>
-      (p.attestations || []).map((att) => formatAttestationData(att))
+      (p.forecasts || []).map((f) => formatForecastData(f))
     );
   }, [query.data]);
 
@@ -135,49 +133,55 @@ export const useInfiniteForecasts = ({
 };
 
 interface UseUserForecastsParams {
-  attesterAddress: string;
+  forecasterAddress: string;
   schemaId?: string;
   conditionId?: string;
   take: number;
-  skip: number;
+  after?: string | null;
   orderBy: string;
   orderDirection: 'asc' | 'desc';
 }
 
+interface UserForecastsPage {
+  forecasts: FormattedForecast[];
+  hasMore: boolean;
+  endCursor: string | null;
+}
+
 export const useUserForecasts = ({
-  attesterAddress,
+  forecasterAddress,
   schemaId = SCHEMA_UID,
   conditionId,
   take,
-  skip,
+  after,
   orderBy,
   orderDirection,
 }: UseUserForecastsParams) => {
-  return useQuery<FormattedAttestation[]>({
+  return useQuery<UserForecastsPage>({
     queryKey: [
       'forecasts',
       schemaId,
-      attesterAddress,
+      forecasterAddress,
       conditionId || null,
       take,
-      skip,
+      after ?? null,
       orderBy,
       orderDirection,
     ],
     queryFn: () =>
       fetchUserForecasts({
-        attesterAddress,
+        forecasterAddress,
         schemaId,
         conditionId,
         take,
-        skip,
+        after,
         orderBy,
         orderDirection,
       }),
-    enabled: Boolean(attesterAddress),
+    enabled: Boolean(forecasterAddress),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
   });
 };
 
-export type { FormattedAttestation };
+export type { FormattedForecast };

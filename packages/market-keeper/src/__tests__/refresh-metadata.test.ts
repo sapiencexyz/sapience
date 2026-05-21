@@ -74,31 +74,38 @@ function makeMarket(
 }
 
 describe('fetchAllExistingConditions', () => {
-  it('sends filters for public + unsettled + non-empty similarMarkets via conditionsPage', async () => {
-    fetchQueue.push(() =>
-      jsonResponse({
-        data: { conditionsPage: { hasMore: false, items: [] } },
-      })
-    );
+  // Build a conditionsConnection response page with the given nodes and
+  // an optional next-page cursor. `endCursor` is null on the final page.
+  const connectionPage = (
+    nodes: unknown[],
+    endCursor: string | null
+  ): unknown => ({
+    data: {
+      conditionsConnection: {
+        nodes,
+        pageInfo: { hasNextPage: endCursor !== null, endCursor },
+      },
+    },
+  });
+
+  it('sends a ConditionFilter that filters to public + unsettled + non-empty similarMarkets', async () => {
+    fetchQueue.push(() => jsonResponse(connectionPage([], null)));
 
     await fetchAllExistingConditions('https://api.example.com');
 
     expect(fetchCalls).toHaveLength(1);
     const body = JSON.parse(fetchCalls[0].init!.body as string);
-    expect(body.variables.filters).toEqual({
+    expect(body.variables.filter).toEqual({
       visibility: 'PUBLIC',
       settled: false,
       hasSimilarMarkets: true,
     });
-    expect(body.variables.take).toBe(100);
-    expect(body.variables.skip).toBe(0);
-    expect(body.query).toContain('conditionsPage');
+    expect(body.variables.first).toBe(100);
+    expect(body.variables.after).toBeNull();
     expect(fetchCalls[0].url.endsWith('/graphql')).toBe(true);
   });
 
-  it('paginates via hasMore + take/skip until the page envelope says we are done', async () => {
-    // Two full pages of 100 with hasMore=true, then a short page with
-    // hasMore=false — same envelope contract the resolver implements.
+  it('paginates via pageInfo.endCursor until hasNextPage=false', async () => {
     const page1 = Array.from({ length: 100 }, (_, i) => ({
       id: `0x${(i + 1).toString().padStart(3, '0')}`,
       endTime: 1700000000,
@@ -117,65 +124,52 @@ describe('fetchAllExistingConditions', () => {
       },
     ];
 
-    fetchQueue.push(() =>
-      jsonResponse({
-        data: { conditionsPage: { hasMore: true, items: page1 } },
-      })
-    );
-    fetchQueue.push(() =>
-      jsonResponse({
-        data: { conditionsPage: { hasMore: true, items: page2 } },
-      })
-    );
-    fetchQueue.push(() =>
-      jsonResponse({
-        data: { conditionsPage: { hasMore: false, items: page3 } },
-      })
-    );
+    fetchQueue.push(() => jsonResponse(connectionPage(page1, 'cursor-1')));
+    fetchQueue.push(() => jsonResponse(connectionPage(page2, 'cursor-2')));
+    fetchQueue.push(() => jsonResponse(connectionPage(page3, null)));
 
     const result = await fetchAllExistingConditions('https://api.example.com');
 
     expect(result.size).toBe(201);
     expect(fetchCalls).toHaveLength(3);
-    expect(JSON.parse(fetchCalls[0].init!.body as string).variables.skip).toBe(
-      0
+    expect(JSON.parse(fetchCalls[0].init!.body as string).variables.after).toBe(
+      null
     );
-    expect(JSON.parse(fetchCalls[1].init!.body as string).variables.skip).toBe(
-      100
+    expect(JSON.parse(fetchCalls[1].init!.body as string).variables.after).toBe(
+      'cursor-1'
     );
-    expect(JSON.parse(fetchCalls[2].init!.body as string).variables.skip).toBe(
-      200
+    expect(JSON.parse(fetchCalls[2].init!.body as string).variables.after).toBe(
+      'cursor-2'
     );
   });
 
   it('maps GraphQL fields onto the ExistingCondition shape', async () => {
     fetchQueue.push(() =>
-      jsonResponse({
-        data: {
-          conditionsPage: {
-            hasMore: false,
-            items: [
-              {
-                id: '0xabc',
-                endTime: 1700000000,
-                question: 'Will X happen?',
-                shortName: 'X?',
-                optionName: 'Yes side',
-                description: 'A description',
+      jsonResponse(
+        connectionPage(
+          [
+            {
+              id: '0xabc',
+              endTime: 1700000000,
+              question: 'Will X happen?',
+              shortName: 'X?',
+              optionName: 'Yes side',
+              description: 'A description',
+              similarMarkets: ['https://polymarket.com/event/foo#bar'],
+              tags: ['crypto', 'btc'],
+              similarMarketVolume: 1234,
+              similarMarketImage: 'https://img.example/x.png',
+              conditionGroup: {
+                id: 7,
+                name: 'Group Name',
                 similarMarkets: ['https://polymarket.com/event/foo#bar'],
-                tags: ['crypto', 'btc'],
-                similarMarketVolume: 1234,
-                similarMarketImage: 'https://img.example/x.png',
-                conditionGroup: {
-                  id: 7,
-                  name: 'Group Name',
-                  similarMarkets: ['https://polymarket.com/event/foo#bar'],
-                },
+                negRisk: true,
               },
-            ],
-          },
-        },
-      })
+            },
+          ],
+          null
+        )
+      )
     );
 
     const result = await fetchAllExistingConditions('https://api.example.com');
@@ -194,6 +188,7 @@ describe('fetchAllExistingConditions', () => {
       groupName: 'Group Name',
       conditionGroupId: 7,
       conditionGroupSimilarMarkets: ['https://polymarket.com/event/foo#bar'],
+      conditionGroupNegRisk: true,
     });
   });
 
@@ -243,23 +238,19 @@ describe('fetchMarketsByConditionIds', () => {
     }
   });
 
-  it('batches input into Gamma calls of at most 50 IDs (each batch = 2 requests)', async () => {
+  it('batches input into Gamma calls of at most 25 IDs (each batch = 2 requests)', async () => {
     const ids = Array.from({ length: 75 }, (_, i) => `0x${i + 1}`);
-    // 2 batches × 2 sides = 4 requests
-    fetchQueue.push(() => jsonResponse([])); // batch 1, closed=false
-    fetchQueue.push(() => jsonResponse([])); // batch 1, closed=true
-    fetchQueue.push(() => jsonResponse([])); // batch 2, closed=false
-    fetchQueue.push(() => jsonResponse([])); // batch 2, closed=true
+    // 3 batches × 2 sides = 6 requests. Gamma caps responses at 100 rows;
+    // 25 IDs keeps our defensive 4x response-limit headroom within that cap.
+    for (let i = 0; i < 6; i++) fetchQueue.push(() => jsonResponse([]));
 
     await fetchMarketsByConditionIds(ids);
 
-    expect(fetchCalls).toHaveLength(4);
+    expect(fetchCalls).toHaveLength(6);
     const idCounts = fetchCalls.map(
       (c) => (c.url.match(/condition_ids=/g) || []).length
     );
-    // First two requests are batch 1 (50 IDs each), second two are batch 2 (25 IDs each)
-    expect(idCounts.slice(0, 2).every((n) => n === 50)).toBe(true);
-    expect(idCounts.slice(2, 4).every((n) => n === 25)).toBe(true);
+    expect(idCounts.every((n) => n === 25)).toBe(true);
   });
 
   it('keys the returned Map by conditionId and merges open + closed markets', async () => {
@@ -284,9 +275,9 @@ describe('fetchMarketsByConditionIds', () => {
   });
 
   it('continues batching even if one side of one batch errors', async () => {
-    // Single batch (60 IDs, but limited to 1 batch worth = 50). Open side
-    // errors; closed side succeeds and contributes one market.
-    const ids = Array.from({ length: 50 }, (_, i) => `0x${i + 1}`);
+    // Single batch at the current Gamma batch size. Open side errors;
+    // closed side succeeds and contributes one market.
+    const ids = Array.from({ length: 25 }, (_, i) => `0x${i + 1}`);
     fetchQueue.push(
       () => new Response('oops', { status: 502, statusText: 'Bad Gateway' })
     );

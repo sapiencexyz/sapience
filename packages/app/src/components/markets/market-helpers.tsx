@@ -29,6 +29,18 @@ import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { isPriceSubCategory } from '~/lib/utils/categoryMatcher';
 
 // ---------------------------------------------------------------------------
+// Layout helpers
+// ---------------------------------------------------------------------------
+
+export function getCardGridViewportStyle(
+  useCardGrid: boolean
+): React.CSSProperties | undefined {
+  if (!useCardGrid) return undefined;
+
+  return { minHeight: 'calc(100dvh - var(--page-top-offset, 0px))' };
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -357,6 +369,7 @@ export function EndTimeCell({
   nonDecisive,
   allSettled,
   variant = 'default',
+  settledDisplay = 'resolution',
 }: {
   endTime: number;
   settled: boolean;
@@ -364,6 +377,7 @@ export function EndTimeCell({
   nonDecisive?: boolean | null;
   allSettled?: boolean;
   variant?: 'default' | 'card';
+  settledDisplay?: 'resolution' | 'ended';
 }) {
   const [nowMs, setNowMs] = React.useState<number | null>(null);
 
@@ -385,6 +399,14 @@ export function EndTimeCell({
   const isPastEnd = endTime * 1000 <= nowMs;
 
   if (settled || isPastEnd) {
+    if (settled && settledDisplay === 'ended') {
+      return (
+        <span className="whitespace-nowrap font-mono text-brand-white">
+          ENDED
+        </span>
+      );
+    }
+
     let status: ResolutionBadgeStatus;
     if (allSettled) {
       status = 'settled';
@@ -420,12 +442,15 @@ export function ForecastCell({
   skipViewportCheck?: boolean;
 }) {
   if (condition.settled) {
-    return (
-      <span className="text-muted-foreground h-8 flex items-center justify-end">
-        —
-      </span>
-    );
+    const status: ResolutionBadgeStatus = condition.nonDecisive
+      ? 'nonDecisive'
+      : condition.resolvedToYes
+        ? 'resolvedYes'
+        : 'resolvedNo';
+
+    return <ResolutionBadge status={status} />;
   }
+
   return (
     <MarketPredictionRequest
       conditionId={condition.id}

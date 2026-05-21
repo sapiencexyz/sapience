@@ -6,7 +6,7 @@
 
 import type { QueryResolvers } from '../../../__generated__/resolvers';
 import { logDeprecatedHit } from '../../../../../lib/deprecationTelemetry';
-import { runAccountActivity } from '../activity';
+import { runAccountActivity } from '../activityPage';
 
 export const accountActivity: NonNullable<
   QueryResolvers['accountActivity']

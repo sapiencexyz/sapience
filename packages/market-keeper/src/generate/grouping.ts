@@ -14,6 +14,7 @@ import type {
   SyncableFields,
   GroupSyncableFields,
   GroupMetadataUpdate,
+  LlmEndTimeResult,
 } from '../types';
 import {
   CHAIN_ID,
@@ -26,6 +27,8 @@ import {
 } from '../constants';
 import { inferSapienceCategorySlug } from './category';
 import { transformMatchQuestion, getPolymarketUrl } from './transform';
+import { extractEndTime } from './endtime';
+import { isTemplatedMarket } from './templated';
 import {
   enrichMarketsWithLLM,
   enrichEndTimesWithLLM,
@@ -119,7 +122,7 @@ export function transformToSapienceCondition(
   groupTitle?: string,
   enrichment?: MarketEnrichmentOutput,
   tags: string[] = [],
-  endTimeOverride?: number,
+  llmEndTime?: LlmEndTimeResult,
   negRiskMarketId?: string
 ): SapienceCondition {
   // Transform "X vs Y" questions to "X beats Y?" for clarity
@@ -130,6 +133,10 @@ export function transformToSapienceCondition(
   const optionName = market.groupItemTitle?.trim() || undefined;
 
   const polymarketUrl = getPolymarketUrl(market);
+
+  // Regex extraction is decideEndTime's fallback for templated markets when
+  // Sonar returns UNKNOWN. Always compute it; the combiner decides whether to use it.
+  const regexEndTime = extractEndTime(question, market.description ?? '');
 
   return {
     conditionHash: market.conditionId, // Use Polymarket's conditionId directly
@@ -146,7 +153,9 @@ export function transformToSapienceCondition(
     estimatedPrice: parseYesPrice(market.outcomePrices),
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
-    endTimeOverride,
+    endTimeOverride: regexEndTime ?? undefined,
+    llmEndTime,
+    isTemplated: isTemplatedMarket(market),
     negRisk: negRiskMarketId !== undefined,
     negRiskMarketId,
   };

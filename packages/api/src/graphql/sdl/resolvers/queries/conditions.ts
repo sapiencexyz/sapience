@@ -21,57 +21,166 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import type { Prisma } from '../../../../../generated/prisma';
 import type {
   QueryResolvers,
-  QueryConditionsPageArgs,
-  ConditionFilters,
+  QueryConditionsConnectionArgs,
+  ConditionFilter,
+  ConditionOutcomeFilter,
+  IdFilter,
+} from '../../__generated__/resolvers';
+import {
+  ConditionOrderField,
+  OrderDirection,
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
-import { clampSkip, clampTake } from './pagination';
+import { buildConnection, clampTake } from './pagination';
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
 type Where = Prisma.ConditionWhereInput;
 
-const buildConditionsWhereFromFilters = (
-  filters: ConditionFilters | null | undefined
+// ---------------------------------------------------------------------
+// Relay-shaped `conditions` connection (PR 2)
+// ---------------------------------------------------------------------
+
+/**
+ * Map `ConditionOrderField` enum values to the underlying Prisma column.
+ * `OPEN_INTEREST` is intentionally not represented — the column is
+ * varchar, the partial index `IDX_condition_oi_numeric` is on the
+ * `::numeric` cast, and Prisma's typed `orderBy` can't issue that cast.
+ * Adding it back requires raw SQL; see SDL docs on `ConditionOrderField`.
+ */
+const CONNECTION_ORDER_FIELD_MAP: Record<ConditionOrderField, string> = {
+  [ConditionOrderField.CreatedAt]: 'createdAt',
+  [ConditionOrderField.ResolvesAt]: 'endTime',
+  [ConditionOrderField.PredictionCount]: 'predictionCount',
+  [ConditionOrderField.SimilarMarketVolume_24H]: 'similarMarketVolume24h',
+  [ConditionOrderField.SimilarMarketVolume_7D]: 'similarMarketVolume7d',
+};
+
+/**
+ * Translate `IDFilter` (operator-pattern) to a Prisma where clause for
+ * a foreign-key column. `isNull` maps to `equals: null` / `not: null`
+ * because Prisma's where shape doesn't carry a native `isNull` operator.
+ */
+const buildIdFilterClause = (
+  filter: IdFilter | null | undefined,
+  column: string
+): Where | null => {
+  if (!filter) return null;
+  const clause: Record<string, unknown> = {};
+  if (filter.equals !== undefined && filter.equals !== null) {
+    clause.equals = filter.equals;
+  }
+  if (filter.in && filter.in.length > 0) clause.in = filter.in;
+  if (filter.notIn && filter.notIn.length > 0) clause.notIn = filter.notIn;
+  if (filter.not !== undefined && filter.not !== null) clause.not = filter.not;
+  if (filter.isNull === true) clause.equals = null;
+  if (filter.isNull === false) clause.not = null;
+  if (Object.keys(clause).length === 0) return null;
+  return { [column]: clause } as Where;
+};
+
+type ScalarRangeFilter = {
+  equals?: number | null;
+  gt?: number | null;
+  gte?: number | null;
+  lt?: number | null;
+  lte?: number | null;
+  in?: number[] | null;
+  notIn?: number[] | null;
+  not?: number | null;
+};
+
+const buildScalarRangeClause = (
+  filter: ScalarRangeFilter | null | undefined,
+  column: string
+): Where | null => {
+  if (!filter) return null;
+  const clause: Record<string, unknown> = {};
+  if (filter.equals != null) clause.equals = filter.equals;
+  if (filter.gt != null) clause.gt = filter.gt;
+  if (filter.gte != null) clause.gte = filter.gte;
+  if (filter.lt != null) clause.lt = filter.lt;
+  if (filter.lte != null) clause.lte = filter.lte;
+  if (filter.in && filter.in.length > 0) clause.in = filter.in;
+  if (filter.notIn && filter.notIn.length > 0) clause.notIn = filter.notIn;
+  if (filter.not != null) clause.not = filter.not;
+  if (Object.keys(clause).length === 0) return null;
+  return { [column]: clause } as Where;
+};
+
+/**
+ * Translate `ConditionOutcomeFilter` into a Prisma where clause keyed
+ * off the underlying `settled` / `resolvedToYes` / `nonDecisive`
+ * columns. `outcome` is the public enum derived from those booleans.
+ */
+const buildOutcomeFilterClause = (
+  filter: ConditionOutcomeFilter | null | undefined
+): Where | null => {
+  if (!filter) return null;
+
+  const matchOutcome = (outcome: string): Where => {
+    if (outcome === 'YES')
+      return { settled: true, resolvedToYes: true, nonDecisive: false };
+    if (outcome === 'NO')
+      return { settled: true, resolvedToYes: false, nonDecisive: false };
+    return { settled: true, nonDecisive: true };
+  };
+
+  const clauses: Where[] = [];
+
+  if (filter.isNull === true) clauses.push({ settled: false });
+  if (filter.isNull === false) clauses.push({ settled: true });
+  if (filter.equals) clauses.push(matchOutcome(filter.equals));
+  if (filter.in && filter.in.length > 0) {
+    clauses.push({ OR: filter.in.map(matchOutcome) });
+  }
+  if (filter.notIn && filter.notIn.length > 0) {
+    clauses.push({ NOT: { OR: filter.notIn.map(matchOutcome) } });
+  }
+  if (filter.not) clauses.push({ NOT: matchOutcome(filter.not) });
+
+  if (clauses.length === 0) return null;
+  return clauses.length === 1 ? clauses[0] : { AND: clauses };
+};
+
+/**
+ * Build the Prisma where clause for the new `conditions` connection.
+ * Public-only. Reuses the same default-public safety net.
+ */
+const buildConditionsConnectionWhere = (
+  filter: ConditionFilter | null | undefined
 ): Where => {
-  if (!filters) return { public: { equals: true } };
-
   const and: Where[] = [];
+  if (!filter) return { AND: [{ public: { equals: true } }] };
 
-  if (filters.ids && filters.ids.length > 0) {
-    const lowered = filters.ids.map((id) => id.toLowerCase());
-    and.push({ id: { in: lowered } });
+  if (filter.ids && filter.ids.length > 0) {
+    and.push({ id: { in: filter.ids.map((id) => String(id).toLowerCase()) } });
   }
 
-  // Contract-address filters: `contractAddress` and `contractAddressIn` are
-  // the public-facing names; both map to the DB `resolver` column. The
-  // legacy `resolver` / `resolverIn` inputs are protocol-jargon aliases and
-  // are kept for back-compat. Contract addresses are not a global namespace,
-  // so when a caller filters by address without specifying a chain, we
-  // default to `DEFAULT_CHAIN_ID` to keep lookups single-chain.
-  const contractAddress = filters.contractAddress ?? filters.resolver ?? null;
-  const contractAddressIn =
-    filters.contractAddressIn ?? filters.resolverIn ?? null;
-  const hasContractAddressFilter =
-    contractAddress != null ||
-    (contractAddressIn != null && contractAddressIn.length > 0);
-
+  const marketAddress = filter.marketAddress?.toLowerCase() ?? null;
+  const marketAddressIn =
+    filter.marketAddressIn && filter.marketAddressIn.length > 0
+      ? filter.marketAddressIn.map((address) => address.toLowerCase())
+      : null;
+  const hasMarketAddressFilter =
+    marketAddress != null || marketAddressIn != null;
   const effectiveChainId =
-    filters.chainId != null
-      ? filters.chainId
-      : hasContractAddressFilter
+    filter.chainId != null
+      ? filter.chainId
+      : hasMarketAddressFilter
         ? DEFAULT_CHAIN_ID
         : null;
   if (effectiveChainId != null) {
     and.push({ chainId: { equals: effectiveChainId } });
   }
-  if (contractAddress) {
-    and.push({ resolver: { equals: contractAddress.toLowerCase() } });
+  if (marketAddress) {
+    and.push({ resolver: { equals: marketAddress } });
   }
-  if (contractAddressIn && contractAddressIn.length > 0) {
-    const lowered = contractAddressIn.map((r) => r.toLowerCase());
-    and.push({ resolver: { in: lowered } });
+  if (marketAddressIn) {
+    and.push({ resolver: { in: marketAddressIn } });
   }
-  if (filters.search?.trim()) {
-    const term = filters.search.trim();
+
+  if (filter.search?.trim()) {
+    const term = filter.search.trim();
     and.push({
       OR: [
         { question: { contains: term, mode: 'insensitive' } },
@@ -80,36 +189,58 @@ const buildConditionsWhereFromFilters = (
       ],
     });
   }
-  if (filters.categorySlugs && filters.categorySlugs.length > 0) {
-    and.push({
-      category: { is: { slug: { in: filters.categorySlugs } } },
-    });
+  if (filter.categoryIds && filter.categoryIds.length > 0) {
+    const numericIds = filter.categoryIds
+      .map((id) => Number(id))
+      .filter((n) => Number.isFinite(n));
+    if (numericIds.length > 0) {
+      and.push({ categoryId: { in: numericIds } });
+    }
   }
-  if (filters.minEndTime != null || filters.maxEndTime != null) {
-    const range: Record<string, number> = {};
-    if (filters.minEndTime != null) range.gte = filters.minEndTime;
-    if (filters.maxEndTime != null) range.lte = filters.maxEndTime;
-    and.push({ endTime: range });
+  if (filter.categorySlugs && filter.categorySlugs.length > 0) {
+    and.push({ category: { is: { slug: { in: filter.categorySlugs } } } });
   }
-  if (filters.ungroupedOnly === true) {
-    and.push({ conditionGroupId: null });
+  if (filter.tags && filter.tags.length > 0) {
+    and.push({ tags: { hasSome: filter.tags } });
   }
-  if (filters.conditionGroupId != null) {
-    and.push({ conditionGroupId: { equals: filters.conditionGroupId } });
+  const groupClause = buildIdFilterClause(
+    filter.conditionGroupId,
+    'conditionGroupId'
+  );
+  if (groupClause) and.push(groupClause);
+  const rangeFilter = filter as ConditionFilter & {
+    resolvesAt?: ScalarRangeFilter | null;
+    estimatedPrice?: ScalarRangeFilter | null;
+    similarMarketVolume?: ScalarRangeFilter | null;
+  };
+  const resolvesAtClause = buildScalarRangeClause(
+    rangeFilter.resolvesAt,
+    'endTime'
+  );
+  if (resolvesAtClause) and.push(resolvesAtClause);
+  const estimatedPriceClause = buildScalarRangeClause(
+    rangeFilter.estimatedPrice,
+    'estimatedPrice'
+  );
+  if (estimatedPriceClause) and.push(estimatedPriceClause);
+  const similarMarketVolumeClause = buildScalarRangeClause(
+    rangeFilter.similarMarketVolume,
+    'similarMarketVolume'
+  );
+  if (similarMarketVolumeClause) and.push(similarMarketVolumeClause);
+  if (filter.settled !== null && filter.settled !== undefined) {
+    and.push({ settled: filter.settled });
   }
-  if (filters.settled !== null && filters.settled !== undefined) {
-    and.push({ settled: filters.settled });
+  if (filter.resolvedToYes !== null && filter.resolvedToYes !== undefined) {
+    and.push({ settled: true, resolvedToYes: filter.resolvedToYes });
   }
-  if (filters.resolvedToYes !== null && filters.resolvedToYes !== undefined) {
-    and.push({ settled: true, resolvedToYes: filters.resolvedToYes });
-  }
-  if (filters.hasSimilarMarkets === true) {
+  if (filter.hasSimilarMarkets === true) {
     and.push({ similarMarkets: { isEmpty: false } });
   }
-  if (filters.engagement === 'NONE') {
+  if (filter.engagement === 'NONE') {
     and.push({ openInterest: { equals: '0' } });
     and.push({ attestations: { none: {} } });
-  } else if (filters.engagement === 'ANY') {
+  } else if (filter.engagement === 'ANY') {
     and.push({
       OR: [
         { openInterest: { not: { equals: '0' } } },
@@ -118,53 +249,136 @@ const buildConditionsWhereFromFilters = (
     });
   }
 
-  // Visibility — matches the safety-net behaviour of the bare `conditions`
-  // resolver: when callers pass a list of IDs they bypass the public filter
-  // (so admins / direct links can fetch private conditions); otherwise
-  // default to PUBLIC unless explicitly overridden.
-  const visibility = filters.visibility ?? 'PUBLIC';
-  const hasIdFilterFromInput = filters.ids != null && filters.ids.length > 0;
-  if (!hasIdFilterFromInput) {
+  const outcomeClause = buildOutcomeFilterClause(filter.outcome);
+  if (outcomeClause) and.push(outcomeClause);
+
+  const visibility = filter.visibility ?? 'PUBLIC';
+  const hasIdFilter = filter.ids != null && filter.ids.length > 0;
+  if (!hasIdFilter) {
     if (visibility === 'PUBLIC') and.push({ public: { equals: true } });
     else if (visibility === 'PRIVATE') and.push({ public: { equals: false } });
-    // ALL → no filter
   }
 
   return and.length > 0 ? { AND: and } : {};
 };
 
-const ORDER_FIELD_MAP: Record<string, string> = {
-  CREATED_AT: 'createdAt',
-  END_TIME: 'endTime',
-  OPEN_INTEREST: 'openInterest',
-  PREDICTION_COUNT: 'predictionCount',
+/**
+ * Build the keyset cursor predicate. Pagination uses `(orderField, id)`
+ * lex order: for DESC, "after the cursor" means `(orderField, id) <
+ * (k, id)`, which expands to `orderField < k OR (orderField = k AND
+ * id < id)`. The Prisma OR clause is written explicitly because Prisma
+ * has no compound-key comparison operator.
+ */
+const buildCursorPredicate = (
+  k: string,
+  cursorId: string,
+  prismaOrderField: string,
+  direction: 'asc' | 'desc'
+): Where => {
+  const ltOp = direction === 'desc' ? 'lt' : 'gt';
+  // All currently-supported order fields are numeric (Int / Float /
+  // BigInt / Date). `OPEN_INTEREST` (varchar) is intentionally not in
+  // the connection's supported sort set — see SDL docs.
+  const numeric = Number(k);
+  const keyValue = Number.isFinite(numeric) ? numeric : k;
+  return {
+    OR: [
+      { [prismaOrderField]: { [ltOp]: keyValue } } as Where,
+      {
+        AND: [
+          { [prismaOrderField]: { equals: keyValue } } as Where,
+          { id: { [ltOp]: cursorId } } as Where,
+        ],
+      },
+    ],
+  };
 };
 
-export const conditionsPage: NonNullable<
-  QueryResolvers['conditionsPage']
+/**
+ * Read the order-key value off a Condition row given the chosen
+ * `ConditionOrderField`. Stringified so cursors carry a stable scalar
+ * regardless of the underlying column type.
+ */
+const readOrderKey = (
+  row: PrismaConditionPick,
+  field: ConditionOrderField
+): string => {
+  switch (field) {
+    case ConditionOrderField.CreatedAt:
+      return row.createdAt.toISOString();
+    case ConditionOrderField.ResolvesAt:
+      return String(row.endTime);
+    case ConditionOrderField.PredictionCount:
+      return String(row.predictionCount);
+    case ConditionOrderField.SimilarMarketVolume_24H:
+      return String(row.similarMarketVolume24h);
+    case ConditionOrderField.SimilarMarketVolume_7D:
+      return String(row.similarMarketVolume7d);
+    default:
+      return String(row.createdAt);
+  }
+};
+
+type PrismaConditionPick = {
+  id: string;
+  createdAt: Date;
+  endTime: number;
+  predictionCount: number;
+  similarMarketVolume24h: number;
+  similarMarketVolume7d: number;
+};
+
+export const conditionsConnection: NonNullable<
+  QueryResolvers['conditionsConnection']
 > = async (
   _parent,
-  { filters, orderBy, orderDirection, take, skip }: QueryConditionsPageArgs
+  { first, after, filter, orderBy }: QueryConditionsConnectionArgs
 ) => {
-  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
-  const skipVal = clampSkip(skip);
-  const where = buildConditionsWhereFromFilters(filters);
-  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
-  const orderField = ORDER_FIELD_MAP[orderBy ?? 'CREATED_AT'] ?? 'createdAt';
-  const orderByClause = {
-    [orderField]: direction,
-  } as Prisma.ConditionOrderByWithRelationInput;
-
-  const rawRows = await prisma.condition.findMany({
-    where,
-    orderBy: orderByClause,
-    take: cappedTake + 1,
-    skip: skipVal,
+  const cappedFirst = clampTake(first ?? 50, {
+    defaultTake: 50,
+    maxTake: 100,
   });
-  const hasMore = rawRows.length > cappedTake;
-  return {
-    items: rawRows.slice(0, cappedTake),
-    hasMore,
-    _countWhere: where,
-  };
+  const orderField: ConditionOrderField =
+    orderBy?.field ?? ConditionOrderField.CreatedAt;
+  const direction: OrderDirection = orderBy?.direction ?? OrderDirection.Desc;
+  const prismaDir = direction === OrderDirection.Asc ? 'asc' : 'desc';
+  const prismaOrderField = CONNECTION_ORDER_FIELD_MAP[orderField];
+
+  const filterWhere = buildConditionsConnectionWhere(filter);
+  const cursorPayload = after ? decodeCursor(after) : null;
+  const cursorWhere = cursorPayload
+    ? buildCursorPredicate(
+        cursorPayload.k,
+        cursorPayload.id,
+        prismaOrderField,
+        prismaDir
+      )
+    : null;
+  const where: Where = cursorWhere
+    ? { AND: [filterWhere, cursorWhere] }
+    : filterWhere;
+
+  const [rawRows, totalCount] = await Promise.all([
+    prisma.condition.findMany({
+      where,
+      orderBy: [
+        {
+          [prismaOrderField]: prismaDir,
+        } as Prisma.ConditionOrderByWithRelationInput,
+        { id: prismaDir },
+      ],
+      take: cappedFirst + 1,
+    }),
+    prisma.condition.count({ where: filterWhere }),
+  ]);
+
+  const connection = buildConnection({
+    rows: rawRows,
+    first: cappedFirst,
+    totalCount,
+    getCursor: (row) =>
+      encodeCursor({ k: readOrderKey(row, orderField), id: row.id }),
+  });
+
+  return connection;
 };

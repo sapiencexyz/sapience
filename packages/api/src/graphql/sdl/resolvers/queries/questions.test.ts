@@ -8,9 +8,10 @@ const mockPrisma = vi.hoisted(() => ({
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
-const { resolveVolumeKey, runQuestions, questionsPage } = await import(
+const { resolveVolumeKey, runQuestions, questionsConnection } = await import(
   './questions'
 );
+const { QuestionConnection } = await import('../ConnectionTotalCount');
 
 beforeEach(() => {
   mockPrisma.$queryRaw.mockReset();
@@ -43,7 +44,7 @@ describe('resolveVolumeKey', () => {
   });
 });
 
-// `runQuestions` is the entry point under questionsPage. The raw-SQL
+// `runQuestions` backs the deprecated bare-array resolver and connection. The raw-SQL
 // step (`fetchSortedItems`) returns an array of `{ kind, id, ... }`
 // rows that drive the hydrate step. We mock `$queryRaw` directly so we
 // can pin the envelope contract (hasMore, items, empty short-circuit)
@@ -100,20 +101,88 @@ describe('runQuestions — page envelope', () => {
 
   it('hasMore=true when take + 1 raw rows came back (probe row dropped from items)', async () => {
     const rows = Array.from({ length: 11 }, (_, i) => ({
-      item_type: 'group' as const,
-      group_id: i + 1,
-      condition_id: null,
+      item_type: 'condition' as const,
+      group_id: null,
+      condition_id: `c-${i + 1}`,
       prediction_count: 0n,
+      sort_value: i + 1,
+      end_time: i + 1,
     }));
     mockPrisma.$queryRaw.mockResolvedValue(rows);
-    // hydrate returns empty arrays; we only care about the envelope shape.
     mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
-    mockPrisma.condition.findMany.mockResolvedValue([]);
+    mockPrisma.condition.findMany.mockResolvedValue(
+      rows.slice(0, 10).map((row) => ({ id: row.condition_id }))
+    );
     const result = await runQuestions({ take: 10, skip: 0 });
     expect(result.hasMore).toBe(true);
+    expect(result.items).toHaveLength(10);
     // hydrate is called with the page slice (not the probe row), so the
     // findMany lookup excludes the 11th id.
-    expect(mockPrisma.conditionGroup.findMany).toHaveBeenCalled();
+    expect(mockPrisma.condition.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: rows.slice(0, 10).map((r) => r.condition_id) } },
+      })
+    );
+  });
+
+  it('backfills when raw rows hydrate to fewer visible questions', async () => {
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          item_type: 'group',
+          group_id: 1,
+          condition_id: null,
+          prediction_count: 0n,
+          sort_value: 100,
+          end_time: 100,
+        },
+        {
+          item_type: 'condition',
+          group_id: null,
+          condition_id: 'c-1',
+          prediction_count: 0n,
+          sort_value: 99,
+          end_time: 99,
+        },
+        {
+          item_type: 'condition',
+          group_id: null,
+          condition_id: 'c-probe',
+          prediction_count: 0n,
+          sort_value: 98,
+          end_time: 98,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          item_type: 'condition',
+          group_id: null,
+          condition_id: 'c-2',
+          prediction_count: 0n,
+          sort_value: 97,
+          end_time: 97,
+        },
+        {
+          item_type: 'condition',
+          group_id: null,
+          condition_id: 'c-3',
+          prediction_count: 0n,
+          sort_value: 97,
+          end_time: 97,
+        },
+      ]);
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+    mockPrisma.condition.findMany
+      .mockResolvedValueOnce([{ id: 'c-1' }])
+      .mockResolvedValueOnce([{ id: 'c-2' }]);
+
+    const result = await runQuestions({ take: 2, skip: 0 });
+    expect(
+      result.items.map(
+        (item) => (item as { condition?: { id?: string } }).condition?.id
+      )
+    ).toEqual(['c-1', 'c-2']);
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
   });
 
   it('clamps take above MAX_TAKE to 100', async () => {
@@ -133,64 +202,138 @@ describe('runQuestions — page envelope', () => {
   });
 });
 
-// The `questionsPage` wrapper merges the new `orderBy` / `orderDirection`
-// args with the deprecated `sortField` / `sortDirection` siblings. The two
-// axes fall back independently so a caller can adopt the new args one at
-// a time — e.g. `(orderDirection: asc)` alone must honor `asc` rather
-// than silently falling through to the `sortDirection` default of `desc`.
-describe('questionsPage — sort-arg merge', () => {
-  type WrapperArgs = {
-    filters?: unknown;
-    orderBy?: 'createdAt' | 'endTime' | 'openInterest' | 'predictionCount';
-    orderDirection?: 'asc' | 'desc';
-    sortField?: 'createdAt' | 'endTime' | 'openInterest' | 'predictionCount';
-    sortDirection?: 'asc' | 'desc';
-    take: number;
-    skip: number;
-  };
-  type ResolverFn = (
-    parent: unknown,
-    args: WrapperArgs,
-    ctx: unknown,
-    info: unknown
-  ) => Promise<unknown>;
-  const questionsPageFn = questionsPage as unknown as ResolverFn;
+type ConnectionResolverFn = (
+  parent: unknown,
+  args: Record<string, unknown>,
+  ctx: unknown,
+  info: unknown
+) => Promise<{ edges: { cursor: string; node: unknown }[] }>;
+const questionsConnectionFn =
+  questionsConnection as unknown as ConnectionResolverFn;
 
-  // Read the SQL direction back: `Prisma.raw(...)` wraps `ASC` / `DESC` in a
-  // sql fragment whose serialized form includes the literal string.
-  const directionFromCall = (): string => {
-    const callArgs = mockPrisma.$queryRaw.mock.calls[0];
-    const json = JSON.stringify(callArgs);
-    if (json.includes('"ASC"')) return 'ASC';
-    if (json.includes('"DESC"')) return 'DESC';
-    throw new Error(`could not find direction in SQL call: ${json}`);
-  };
-
-  const invoke = async (args: Partial<WrapperArgs>) => {
+describe('questionsConnection — operator filters and keyset cursors', () => {
+  it('maps OPEN_INTEREST ordering to the raw SQL open-interest sort', async () => {
     mockPrisma.$queryRaw.mockResolvedValue([]);
-    await questionsPageFn({}, { take: 10, skip: 0, ...args }, {}, {});
-  };
 
-  it('uses orderDirection when only the new direction arg is passed', async () => {
-    // Regression: previously the wrapper ignored orderDirection unless
-    // orderBy was also set, which silently broke `(orderDirection: asc)`.
-    await invoke({ orderDirection: 'asc' });
-    expect(directionFromCall()).toBe('ASC');
+    await questionsConnectionFn(
+      {},
+      {
+        take: 10,
+        orderBy: { field: 'OPEN_INTEREST', direction: 'DESC' },
+      },
+      {},
+      {}
+    );
+
+    const sql = queryRawCallJson();
+    expect(sql).toContain('totalOpenInterest');
+    expect(sql).toContain('openInterest');
   });
 
-  it('uses sortDirection when only the deprecated direction arg is passed', async () => {
-    await invoke({ sortDirection: 'asc' });
-    expect(directionFromCall()).toBe('ASC');
+  it('maps operator gte/lte filters to the underlying SQL ranges', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+
+    await questionsConnectionFn(
+      {},
+      {
+        take: 10,
+        filter: {
+          resolvesAt: { gte: 1000, lte: 2000 },
+          estimatedPrice: { gte: 0.2, lte: 0.8 },
+          similarMarketVolume: { gte: 100, lte: 900 },
+        },
+      },
+      {},
+      {}
+    );
+
+    const sql = queryRawCallJson();
+    expect(sql).toContain('1000');
+    expect(sql).toContain('2000');
+    expect(sql).toContain('0.2');
+    expect(sql).toContain('0.8');
+    expect(sql).toContain('100');
+    expect(sql).toContain('900');
   });
 
-  it('prefers orderDirection over sortDirection when both are set', async () => {
-    await invoke({ orderDirection: 'asc', sortDirection: 'desc' });
-    expect(directionFromCall()).toBe('ASC');
+  it('encodes the SQL ordering tuple in edge cursors instead of an offset', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'c-1',
+        prediction_count: 0n,
+        sort_value: 123,
+        end_time: 456,
+      },
+    ]);
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+    mockPrisma.condition.findMany.mockResolvedValue([
+      { id: 'c-1', createdAt: new Date('2026-01-01T00:00:00Z') },
+    ]);
+
+    const result = await questionsConnectionFn({}, { take: 10 }, {}, {});
+    const { decodeCursor } = await import('../../../relay/cursor');
+    const payload = decodeCursor(result.edges[0].cursor);
+    expect(payload?.k).toBe('123');
+    expect(JSON.parse(payload?.id ?? '{}')).toEqual({
+      groupId: 0,
+      conditionId: 'c-1',
+      itemType: 'condition',
+      endTime: 456,
+    });
   });
 
-  it('defaults to desc when neither direction arg is set', async () => {
-    await invoke({});
-    expect(directionFromCall()).toBe('DESC');
+  it('uses a keyset predicate, not OFFSET, when an after cursor is supplied', async () => {
+    const { encodeCursor } = await import('../../../relay/cursor');
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+
+    await questionsConnectionFn(
+      {},
+      {
+        take: 10,
+        after: encodeCursor({
+          k: '123',
+          id: JSON.stringify({
+            itemType: 'condition',
+            groupId: 0,
+            conditionId: 'c-1',
+            endTime: 456,
+          }),
+        }),
+      },
+      {},
+      {}
+    );
+
+    const sql = queryRawCallJson();
+    expect(sql).not.toContain('OFFSET');
+    expect(sql).toContain('sort_value');
+    expect(sql).toContain('123');
+    expect(sql).toContain('c-1');
+  });
+
+  it('defers totalCount raw SQL until the field resolver is selected', async () => {
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          item_type: 'condition',
+          group_id: null,
+          condition_id: 'c-1',
+          prediction_count: 0n,
+          sort_value: 123,
+          end_time: 456,
+        },
+      ])
+      .mockResolvedValueOnce([{ total: 9 }]);
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+    mockPrisma.condition.findMany.mockResolvedValue([{ id: 'c-1' }]);
+
+    const result = await questionsConnectionFn({}, { take: 10 }, {}, {});
+
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    await expect(QuestionConnection.totalCount(result)).resolves.toBe(9);
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
   });
 });
 

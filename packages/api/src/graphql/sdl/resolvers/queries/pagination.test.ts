@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { MAX_SKIP, MAX_TAKE, clampSkip, clampTake } from './pagination';
+import {
+  MAX_SKIP,
+  MAX_TAKE,
+  buildConnection,
+  clampSkip,
+  clampTake,
+  offsetFromCursor,
+} from './pagination';
 
 describe('clampTake', () => {
   it('returns defaultTake when value is null', () => {
@@ -81,12 +88,78 @@ describe('clampSkip', () => {
     expect(clampSkip(9_999_999, { maxSkip: 10_000 })).toBe(10_000);
   });
 
+  it('removes the ceiling when maxSkip is Infinity', () => {
+    // callers can pass maxSkip: Infinity when a bulk
+    // pagination path needs to read past the default MAX_SKIP=1000.
+    expect(clampSkip(9_999_999, { maxSkip: Number.POSITIVE_INFINITY })).toBe(
+      9_999_999
+    );
+  });
+
   it('floors fractional input', () => {
     expect(clampSkip(50.9)).toBe(50);
   });
 
   it('passes through 0', () => {
     expect(clampSkip(0)).toBe(0);
+  });
+});
+
+describe('offsetFromCursor', () => {
+  it('returns 0 when after is missing or malformed', () => {
+    expect(offsetFromCursor(undefined)).toBe(0);
+    expect(offsetFromCursor(null)).toBe(0);
+    expect(offsetFromCursor('not-a-cursor')).toBe(0);
+  });
+
+  it('advances one row past an offset cursor payload', () => {
+    expect(
+      offsetFromCursor(
+        Buffer.from('{"k":"41","id":"ignored"}').toString('base64url')
+      )
+    ).toBe(42);
+  });
+});
+
+describe('buildConnection', () => {
+  it('slices first-plus-one rows and wires nodes, edges, and pageInfo', () => {
+    const result = buildConnection({
+      rows: [
+        { id: 1, name: 'first' },
+        { id: 2, name: 'second' },
+        { id: 3, name: 'third' },
+      ],
+      first: 2,
+      totalCount: 3,
+      hasPreviousPage: true,
+      getCursor: (row) => `cursor-${row.id}`,
+    });
+
+    expect(result.nodes).toEqual([
+      { id: 1, name: 'first' },
+      { id: 2, name: 'second' },
+    ]);
+    expect(result.edges).toEqual([
+      { node: { id: 1, name: 'first' }, cursor: 'cursor-1' },
+      { node: { id: 2, name: 'second' }, cursor: 'cursor-2' },
+    ]);
+    expect(result.pageInfo).toEqual({
+      hasNextPage: true,
+      hasPreviousPage: true,
+      startCursor: 'cursor-1',
+      endCursor: 'cursor-2',
+    });
+  });
+
+  it('preserves totalCount on connection envelopes', () => {
+    expect(
+      buildConnection({
+        rows: [{ id: 1 }],
+        first: 10,
+        totalCount: 7,
+        getCursor: (row) => String(row.id),
+      }).totalCount
+    ).toBe(7);
   });
 });
 

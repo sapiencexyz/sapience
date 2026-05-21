@@ -53,33 +53,42 @@ const config: CodegenConfig = {
         // Map each model-backed GraphQL type to its Prisma row at
         // the resolver-parent level. This lets us return `prisma.x
         // .findMany()` rows directly without TS complaining that
-        // relation fields (attestations, predictions, conditions,
+        // relation fields (forecasts, predictions, conditions,
         // etc.) are missing — those are filled by field resolvers at
         // runtime.
         mappers: {
           Account: '../../../../generated/prisma#User as PrismaUserRow',
-          Attestation:
-            '../../../../generated/prisma#Attestation as PrismaAttestationRow',
-          AttestationScore:
-            '../../../../generated/prisma#AttestationScore as PrismaAttestationScoreRow',
+          Forecast:
+            '../../../../generated/prisma#Attestation as PrismaForecastRow',
+          ForecastScore:
+            '../../../../generated/prisma#AttestationScore as PrismaForecastScoreRow',
           Category:
             '../../../../generated/prisma#Category as PrismaCategoryRow',
           Condition:
             '../../../../generated/prisma#Condition as PrismaConditionRow',
           ConditionGroup:
             '../../../../generated/prisma#ConditionGroup as PrismaConditionGroupRow',
-          LegacyPosition:
-            '../../../../generated/prisma#LegacyPosition as PrismaLegacyPositionRow',
-          LegacyPrediction:
-            '../../../../generated/prisma#LegacyPrediction as PrismaLegacyPredictionRow',
-          LimitOrder:
-            '../../../../generated/prisma#LimitOrder as PrismaLimitOrderRow',
           ReferralCode:
             '../../../../generated/prisma#ReferralCode as PrismaReferralCodeRow',
           User: '../../../../generated/prisma#User as PrismaUserRow',
         },
         avoidOptionals: false,
         enumsAsTypes: false,
+        // Replace generated TS enums with hand-written ones for the
+        // three enums that intentionally carry both SCREAMING_SNAKE
+        // and camelCase (or lowercase/uppercase) wire values for
+        // older-client compatibility. graphql-codegen's default
+        // PascalCase transformation collides across casings; the
+        // hand-written enums in enumOverrides.ts give each member a
+        // unique TS identifier while preserving the original wire
+        // values for the canonical members so existing resolver
+        // references like `SortOrder.Asc` keep compiling.
+        enumValues: {
+          PredictionSortField:
+            '../enumOverrides#PredictionSortField',
+          PositionSortField: '../enumOverrides#PositionSortField',
+          SortOrder: '../enumOverrides#SortOrder',
+        },
         // Let `makeExecutableSchema` do the typename work at runtime
         // via prisma-model mappers; we don't need __resolveType here
         // unless we introduce a union/interface later in the port.

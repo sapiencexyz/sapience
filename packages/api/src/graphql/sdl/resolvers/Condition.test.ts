@@ -12,7 +12,7 @@ type RelationFn = (
 ) => Promise<unknown>;
 
 const callField = (
-  field: 'category' | 'conditionGroup' | 'attestations' | 'predictions',
+  field: 'category' | 'conditionGroup',
   parent: unknown,
   args: unknown,
   ctx: unknown
@@ -102,82 +102,6 @@ describe('Condition.conditionGroup', () => {
   });
 });
 
-describe('Condition.attestations', () => {
-  it('uses attestationsByConditionId loader when args are absent', async () => {
-    const load = vi.fn().mockResolvedValue([{ id: 1 }, { id: 2 }]);
-    const result = await callField(
-      'attestations',
-      { id: '0xcond' },
-      undefined,
-      { loaders: { attestationsByConditionId: { load } } }
-    );
-    expect(load).toHaveBeenCalledWith('0xcond');
-    expect(result).toEqual([{ id: 1 }, { id: 2 }]);
-    expect(helperMock.loadRelation).not.toHaveBeenCalled();
-  });
-
-  it('falls back to loadRelation when args contain a where clause', async () => {
-    helperMock.loadRelation.mockResolvedValue([]);
-    const load = vi.fn();
-    await callField(
-      'attestations',
-      { id: '0xcond' },
-      { where: { schemaId: '0xs' } },
-      { loaders: { attestationsByConditionId: { load } } }
-    );
-    expect(load).not.toHaveBeenCalled();
-    expect(helperMock.loadRelation).toHaveBeenCalledTimes(1);
-  });
-
-  it.each([
-    ['take', { take: 5 }],
-    ['skip', { skip: 5 }],
-    ['orderBy', { orderBy: [{ time: 'desc' }] }],
-    ['cursor', { cursor: { id: 1 } }],
-    ['distinct', { distinct: ['conditionId'] }],
-  ])('falls back when args contain %s', async (_label, args) => {
-    helperMock.loadRelation.mockResolvedValue([]);
-    const load = vi.fn();
-    await callField('attestations', { id: '0xcond' }, args, {
-      loaders: { attestationsByConditionId: { load } },
-    });
-    expect(load).not.toHaveBeenCalled();
-    expect(helperMock.loadRelation).toHaveBeenCalledTimes(1);
-  });
-
-  it('returns the pre-loaded array directly without touching loaders', async () => {
-    const preloaded = [{ id: 99 }];
-    const load = vi.fn();
-    const result = await callField(
-      'attestations',
-      { id: '0xcond', attestations: preloaded },
-      undefined,
-      { loaders: { attestationsByConditionId: { load } } }
-    );
-    expect(result).toBe(preloaded);
-    expect(load).not.toHaveBeenCalled();
-  });
-});
-
-describe('Condition.predictions', () => {
-  it('uses predictionsByConditionId loader when args are absent', async () => {
-    const load = vi.fn().mockResolvedValue([{ id: 1 }]);
-    await callField('predictions', { id: '0xcond' }, undefined, {
-      loaders: { predictionsByConditionId: { load } },
-    });
-    expect(load).toHaveBeenCalledWith('0xcond');
-  });
-
-  it('falls back to loadRelation when args contain a take', async () => {
-    helperMock.loadRelation.mockResolvedValue([]);
-    const load = vi.fn();
-    await callField(
-      'predictions',
-      { id: '0xcond' },
-      { take: 10 },
-      { loaders: { predictionsByConditionId: { load } } }
-    );
-    expect(load).not.toHaveBeenCalled();
-    expect(helperMock.loadRelation).toHaveBeenCalledTimes(1);
-  });
-});
+// `Condition.predictionsConnection` (Relay-shaped) is the only prediction
+// surface on Condition; its behavior (parent-scope merge into `filter`) is
+// covered by `crossStream.test.ts`.

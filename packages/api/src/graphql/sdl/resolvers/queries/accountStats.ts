@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Account-stats queries — three surfaces, two pipelines:
  *
@@ -22,10 +23,7 @@
  * over all-time. Inside `filters`: `fromEpoch` omitted ⇒ no lower bound
  * (all-time); `toEpoch` omitted ⇒ now.
  */
-import type {
-  QueryResolvers,
-  AccountStat,
-} from '../../__generated__/resolvers';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import { AccountStatsMetric } from '../../__generated__/resolvers';
 import { TtlCache } from '../../../../lib/ttlCache';
 import {
@@ -41,7 +39,7 @@ import {
 import { TimeInterval as HelperTimeInterval } from '../../../../services/timeSeriesTypes';
 import { clampSkip, clampTake } from './pagination';
 
-interface AccountStatsLeaderboardEntry {
+export interface AccountStatsLeaderboardEntry {
   address: string;
   netPnL: string;
   gains: string;
@@ -60,7 +58,7 @@ const num = (wei: string): number => {
   return Number.isFinite(v) ? v : 0;
 };
 
-const getMerged = async (
+export const getMerged = async (
   fromEpoch: number | undefined,
   toEpoch: number
 ): Promise<AccountStatsLeaderboardEntry[]> => {
@@ -102,7 +100,7 @@ const getMerged = async (
  * Order a merged set by the chosen metric. Returns a new array so callers
  * sharing the cached `entries` don't see mutated ordering on next sort.
  */
-const rankedFor = (
+export const rankedFor = (
   entries: AccountStatsLeaderboardEntry[],
   metric: AccountStatsMetric
 ): AccountStatsLeaderboardEntry[] =>
@@ -125,7 +123,7 @@ const rankedFor = (
 const floorToMinute = (epochSeconds: number): number =>
   Math.floor(epochSeconds / 60) * 60;
 
-const resolveWindow = (
+export const resolveWindow = (
   fromEpoch: number | null | undefined,
   toEpoch: number | null | undefined
 ): { fromEpoch: number | undefined; toEpochResolved: number } => {
@@ -264,10 +262,10 @@ const epochToDate = (epoch: number): Date => new Date(epoch * 1000);
  * use the `cumulative…` prefix (`cumulativePnL`, `cumulativeVolume`).
  * `PnL` is capitalized to match `netPnL` on the leaderboard surfaces.
  */
-export const accountStats: NonNullable<QueryResolvers['accountStats']> = async (
-  _parent,
-  { address, from, to, fromEpoch, toEpoch }
-) => {
+export const accountStats = (async (
+  _parent: unknown,
+  { address, from, to, fromEpoch, toEpoch }: any
+): Promise<any[]> => {
   const addr = address.toLowerCase();
 
   const nowEpoch = Math.floor(Date.now() / 1000);
@@ -327,7 +325,7 @@ export const accountStats: NonNullable<QueryResolvers['accountStats']> = async (
   // computed here as a running sum so the fat row matches the
   // `cumulativePnL` shape. (`queryAccountPnl` already supplies cumulative.)
   let runningVolume = 0n;
-  const results: AccountStat[] = allTimestamps.map((ts) => {
+  const results: any[] = allTimestamps.map((ts) => {
     const v = volumeByTs.get(ts);
     const p = pnlByTs.get(ts);
     const b = balanceByTs.get(ts);
@@ -337,6 +335,16 @@ export const accountStats: NonNullable<QueryResolvers['accountStats']> = async (
     runningVolume += BigInt(bucketVolume);
 
     return {
+      account: {
+        address: addr,
+        id: '0',
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+        refCodeHash: null,
+        maxReferrals: 0,
+        referredById: null,
+        referredByCodeId: null,
+      },
       timestamp: ts,
       periodPnL: p?.pnl ?? '0',
       cumulativePnL: p?.cumulativePnl ?? '0',
@@ -353,4 +361,4 @@ export const accountStats: NonNullable<QueryResolvers['accountStats']> = async (
   });
 
   return results;
-};
+}) as any as NonNullable<QueryResolvers['accountStats']>;

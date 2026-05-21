@@ -109,14 +109,16 @@ async function main(): Promise<void> {
     `[backfill] ${APPLY ? 'APPLY mode — UPDATEs will be written' : 'dry-run — pass --apply to write'}`
   );
 
-  // Only consider groups that have at least one public condition. Groups
-  // with no public members aren't in the keeper's sync path so day-1 drops
-  // don't apply; leaving their null basket alone is safe.
+  // Consider every group with members, not only groups that already have a
+  // public member. A previously-private group can still be matched by name
+  // during keeper batch-create; if it really belongs to a basket but remains
+  // null here, the first public basket condition would be rejected as a
+  // null-vs-basket mismatch before metadata refresh ever gets a chance to
+  // promote it.
   const groups = await prisma.conditionGroup.findMany({
-    where: { condition: { some: { public: true } } },
+    where: { condition: { some: {} } },
     include: {
       condition: {
-        where: { public: true },
         select: { id: true },
       },
     },
@@ -205,7 +207,7 @@ async function main(): Promise<void> {
   console.log(`\n[backfill] done${APPLY ? '' : ' (dry-run)'}`);
   console.log(`  scanned                       : ${counters.groupsScanned}`);
   console.log(`  already had basket id         : ${counters.groupsAlreadySet}`);
-  console.log(`  no public members             : ${counters.groupsNoMembers}`);
+  console.log(`  groups with no members          : ${counters.groupsNoMembers}`);
   console.log(`  members unknown to Polymarket : ${counters.groupsAllUnknown}`);
   console.log(`  members all non-basket        : ${counters.groupsAllNonBasket}`);
   console.log(

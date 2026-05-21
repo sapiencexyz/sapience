@@ -43,9 +43,10 @@ export async function checkExistingConditions(
     const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
     const query = `
-      query CheckConditions($filters: ConditionFilters!) {
-        conditionsPage(filters: $filters, take: 100) {
-          items {
+      query CheckConditions($filters: ConditionFilter!) {
+        conditionsConnection(filter: $filters, first: 100) {
+          hasMore
+          nodes {
             id
             endTime
             question
@@ -91,7 +92,7 @@ export async function checkExistingConditions(
       }
 
       const result = await response.json();
-      for (const condition of result.data?.conditionsPage?.items ?? []) {
+      for (const condition of result.data?.conditionsConnection?.nodes ?? []) {
         existing.set(condition.id, {
           endTime: condition.endTime,
           question: condition.question ?? undefined,

@@ -1,6 +1,8 @@
 /**
- * Deprecated `conditionGroups(where:)` resolver — accepts Prisma-style
- * args and passes through. Replaced by `conditionGroupsPage(filters:)`.
+ * `Query.conditionGroups` — original bare `conditionGroups(where:)`
+ * Prisma-style resolver, renamed to free the canonical `conditionGroups`
+ * name for the Relay-shaped connection while honoring the doc's
+ * one-release deprecation window.
  */
 
 import type { QueryResolvers } from '../../../__generated__/resolvers';

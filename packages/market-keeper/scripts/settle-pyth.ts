@@ -237,18 +237,21 @@ Examples:
 
 const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
-    $filters: ConditionFilters
+    $filters: ConditionFilter
     $take: Int!
-    $skip: Int!
+    $after: String
   ) {
-    conditionsPage(
-      filters: $filters
-      orderBy: endTime
-      orderDirection: asc
-      take: $take
-      skip: $skip
+    conditionsConnection(
+      filter: $filters
+      orderBy: { field: RESOLVES_AT, direction: ASC }
+      first: $take
+      after: $after
     ) {
-      items {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
         id
         endTime
         chainId
@@ -256,7 +259,6 @@ const CONDITIONS_QUERY = /* GraphQL */ `
         description
         settled
       }
-      hasMore
     }
   }
 `;
@@ -450,6 +452,13 @@ async function recoverSignerFromLazerUpdate(
 
 // ============ Main ============
 
+type ConditionsConnectionResponse = {
+  conditionsConnection: {
+    nodes: ConditionRow[];
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  };
+};
+
 async function main() {
   const options = parseArgs();
 
@@ -552,23 +561,29 @@ async function main() {
 
   console.log('[settle-pyth] Fetching unsettled Pyth conditions...');
 
-  for (let skip = 0; conditions.length < MAX_CONDITIONS; skip += 50) {
+  let after: string | null = null;
+  while (conditions.length < MAX_CONDITIONS) {
     const take = Math.min(50, MAX_CONDITIONS - conditions.length);
-    const data = await gql<{
-      conditionsPage: { items: ConditionRow[]; hasMore: boolean };
-    }>(sapienceApiUrl, CONDITIONS_QUERY, {
-      filters: {
-        chainId: CHAIN_ID,
-        maxEndTime: nowSec,
-        settled: false,
-        resolver: PYTH_RESOLVER_ADDRESS,
-      },
-      take,
-      skip,
-    });
-    if (data.conditionsPage.items.length === 0) break;
-    conditions.push(...data.conditionsPage.items);
-    if (!data.conditionsPage.hasMore) break;
+    const data: ConditionsConnectionResponse =
+      await gql<ConditionsConnectionResponse>(
+        sapienceApiUrl,
+        CONDITIONS_QUERY,
+        {
+          filters: {
+            chainId: CHAIN_ID,
+            resolvesAt: { lte: nowSec },
+            settled: false,
+            marketAddress: PYTH_RESOLVER_ADDRESS,
+          },
+          take,
+          after,
+        }
+      );
+    if (data.conditionsConnection.nodes.length === 0) break;
+    conditions.push(...data.conditionsConnection.nodes);
+    const pageInfo = data.conditionsConnection.pageInfo;
+    if (!pageInfo.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
   }
 
   console.log(

@@ -171,18 +171,21 @@ async function gql<T>(
 
 const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
-    $filters: ConditionFilters
+    $filters: ConditionFilter
     $take: Int!
-    $skip: Int!
+    $after: String
   ) {
-    conditionsPage(
-      filters: $filters
-      orderBy: endTime
-      orderDirection: asc
-      take: $take
-      skip: $skip
+    conditionsConnection(
+      filter: $filters
+      orderBy: { field: RESOLVES_AT, direction: ASC }
+      first: $take
+      after: $after
     ) {
-      items {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
         id
         endTime
         chainId
@@ -190,25 +193,27 @@ const CONDITIONS_QUERY = /* GraphQL */ `
         description
         settled
       }
-      hasMore
     }
   }
 `;
 
 const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
   query PythDebugConditions(
-    $filters: ConditionFilters
+    $filters: ConditionFilter
     $take: Int!
-    $skip: Int!
+    $after: String
   ) {
-    conditionsPage(
-      filters: $filters
-      orderBy: endTime
-      orderDirection: asc
-      take: $take
-      skip: $skip
+    conditionsConnection(
+      filter: $filters
+      orderBy: { field: RESOLVES_AT, direction: ASC }
+      first: $take
+      after: $after
     ) {
-      items {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
         id
         endTime
         chainId
@@ -772,10 +777,14 @@ async function main() {
 
   // 1) Find ended, unsettled conditions whose resolver is this PythResolver.
   const conditions: ConditionRow[] = [];
-  for (let skip = 0; conditions.length < args.maxConditions; skip += 50) {
+  let after: string | null = null;
+  while (conditions.length < args.maxConditions) {
     const take = Math.min(50, args.maxConditions - conditions.length);
     const data = await gql<{
-      conditionsPage: { items: ConditionRow[]; hasMore: boolean };
+      conditionsConnection: {
+        nodes: ConditionRow[];
+        pageInfo: { hasNextPage: boolean; endCursor: string | null };
+      };
     }>(args.graphqlUrl, CONDITIONS_QUERY, {
       filters: {
         chainId: args.chainId,
@@ -784,11 +793,13 @@ async function main() {
         resolver: args.conditionResolver,
       },
       take,
-      skip,
+      after,
     });
-    if (data.conditionsPage.items.length === 0) break;
-    conditions.push(...data.conditionsPage.items);
-    if (!data.conditionsPage.hasMore) break;
+    if (data.conditionsConnection.nodes.length === 0) break;
+    conditions.push(...data.conditionsConnection.nodes);
+    const pageInfo = data.conditionsConnection.pageInfo;
+    if (!pageInfo.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
   }
 
   console.log(
@@ -800,7 +811,7 @@ async function main() {
   if (conditions.length === 0) {
     try {
       const dbg = await gql<{
-        conditionsPage: { items: DebugConditionRow[] };
+        conditionsConnection: { nodes: DebugConditionRow[] };
       }>(args.graphqlUrl, PYTH_DEBUG_CONDITIONS_QUERY, {
         filters: {
           chainId: args.chainId,
@@ -808,10 +819,10 @@ async function main() {
           search: 'PYTH',
         },
         take: 10,
-        skip: 0,
+        after: null,
       });
 
-      const rows = dbg.conditionsPage?.items ?? [];
+      const rows = dbg.conditionsConnection?.nodes ?? [];
       if (rows.length === 0) {
         console.log(
           '[settle:pyth][debug] No ended PYTH:* conditions found either. Check chain-id / indexer coverage.'

@@ -1,339 +1,245 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ActivityType } from '../../__generated__/resolvers';
 
 const mockPrisma = vi.hoisted(() => ({
-  prediction: { findMany: vi.fn() },
-  secondaryTrade: { findMany: vi.fn() },
   pick: { findMany: vi.fn() },
   picks: { findMany: vi.fn() },
+  prediction: { findMany: vi.fn(), count: vi.fn() },
+  secondaryTrade: { findMany: vi.fn(), count: vi.fn() },
 }));
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
-import type { QueryAccountActivityArgs } from '../../__generated__/resolvers';
-import { accountActivityPage } from './activity';
+import { decodeCursor } from '../../../relay/cursor';
+import { Activity, ActivitySource } from '../Activity';
+import { ActivityConnection } from '../ConnectionTotalCount';
+import { activity } from './activity';
 
-type Fn = (
-  parent: unknown,
-  args: QueryAccountActivityArgs,
-  ctx: unknown,
-  info: unknown
-) => Promise<{
-  items: { type: string; timestamp: number }[];
-  hasMore: boolean;
-}>;
-const accountActivityPageFn = accountActivityPage as unknown as Fn;
+const callResolver = <TResult = unknown>(resolver: unknown) =>
+  resolver as (
+    parent: unknown,
+    args: Record<string, unknown>,
+    ctx: unknown,
+    info: unknown
+  ) => Promise<TResult>;
 
-const ALICE = '0xalice';
-const TOKEN_PRED = '0xtokenpred';
-const TOKEN_CP = '0xtokencp';
-
-const makePrediction = (overrides: Record<string, unknown> = {}) => ({
+const predictionRow = (id: string, createdAt: Date) => ({
   id: 1,
-  predictionId: 'p-1',
-  chainId: 1,
-  marketAddress: '0xm',
-  predictor: ALICE,
-  counterparty: '0xbob',
-  predictorCollateral: '100',
-  counterpartyCollateral: '100',
-  collateralDeposited: null,
-  collateralDepositedAt: null,
+  predictionId: id,
+  chainId: 13374202,
+  marketAddress: '0xmarket',
+  predictor: '0xaaa',
+  counterparty: '0xbbb',
+  predictorCollateral: '10',
+  counterpartyCollateral: '10',
+  collateralDeposited: true,
+  collateralDepositedAt: Math.floor(createdAt.getTime() / 1000),
   settled: false,
   settledAt: null,
   result: 'UNRESOLVED',
   predictorClaimable: null,
   counterpartyClaimable: null,
-  createdAt: new Date(2_000_000 * 1000),
-  createTxHash: '0xtx',
+  createdAt,
+  createTxHash: '0xcreate',
   settleTxHash: null,
   refCode: null,
   isLegacy: false,
   pickConfiguration: {
-    id: 'pc-1',
-    chainId: 1,
-    marketAddress: '0xm',
-    totalPredictorCollateral: '0',
-    totalCounterpartyCollateral: '0',
+    id: 'pc1',
+    chainId: 13374202,
+    marketAddress: '0xmarket',
+    totalPredictorCollateral: '10',
+    totalCounterpartyCollateral: '10',
     claimedPredictorCollateral: '0',
     claimedCounterpartyCollateral: '0',
     resolved: false,
     result: 'UNRESOLVED',
     resolvedAt: null,
-    predictorToken: TOKEN_PRED,
-    counterpartyToken: TOKEN_CP,
+    predictorToken: '0xtokena',
+    counterpartyToken: '0xtokenb',
     endsAt: null,
     isLegacy: false,
     picks: [],
   },
-  ...overrides,
 });
 
-const makeTrade = (overrides: Record<string, unknown> = {}) => ({
-  id: 1,
-  chainId: 1,
-  tradeHash: '0xtrade',
-  seller: ALICE,
-  buyer: '0xcarol',
-  token: TOKEN_PRED,
-  collateral: '0xcoll',
-  tokenAmount: '100',
-  price: '50',
-  executedAt: 1_000_000,
-  txHash: '0xtx',
+const tradeRow = (id: number, executedAt: number) => ({
+  id,
+  chainId: 13374202,
+  tradeHash: `0xtrade${id}`,
+  seller: '0xccc',
+  buyer: '0xaaa',
+  token: '0xtokena',
+  collateral: '5',
+  tokenAmount: '1',
+  price: '5',
+  refCode: null,
+  executedAt,
+  txHash: `0xtx${id}`,
   blockNumber: 1,
-  ...overrides,
 });
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockPrisma.prediction.findMany.mockResolvedValue([]);
-  mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
-  mockPrisma.pick.findMany.mockResolvedValue([]);
-  mockPrisma.picks.findMany.mockResolvedValue([]);
-});
-
-describe('accountActivityPage — argument validation', () => {
-  it('caps take at 100 and clamps skip at MAX_SKIP=1000', async () => {
-    await accountActivityPageFn(
-      undefined,
-      {
-        address: ALICE,
-        take: 9999,
-        skip: 99999,
-      } as QueryAccountActivityArgs,
-      undefined,
-      undefined
-    );
-    const predArgs = mockPrisma.prediction.findMany.mock.calls[0][0];
-    // fetchSize = cappedSkip(1000) + cappedTake(100) + 1 = 1101
-    expect(predArgs.take).toBe(1101);
+describe('activity', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.pick.findMany.mockResolvedValue([]);
+    mockPrisma.picks.findMany.mockResolvedValue([]);
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    mockPrisma.prediction.count.mockResolvedValue(0);
+    mockPrisma.secondaryTrade.count.mockResolvedValue(0);
   });
 
-  it('lower-cases address before querying both tables', async () => {
-    await accountActivityPageFn(
-      undefined,
-      {
-        address: '0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa',
-        take: 10,
-        skip: 0,
-      } as QueryAccountActivityArgs,
-      undefined,
-      undefined
+  it('treats an empty type filter as an explicit zero-result query', async () => {
+    const result = await callResolver<{ nodes: unknown[] }>(activity)(
+      null,
+      { first: 10, filter: { types: [] } },
+      {},
+      null
     );
-    const predWhere = mockPrisma.prediction.findMany.mock.calls[0][0].where;
-    const tradeWhere =
-      mockPrisma.secondaryTrade.findMany.mock.calls[0][0].where;
-    expect(predWhere).toEqual({
-      OR: [
-        { predictor: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
-        { counterparty: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
-      ],
-    });
-    expect(tradeWhere).toEqual({
-      OR: [
-        { seller: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
-        { buyer: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
-      ],
-    });
-  });
 
-  it('omits the address clause when no address is provided (global feed)', async () => {
-    await accountActivityPageFn(
-      undefined,
-      { take: 10, skip: 0 } as QueryAccountActivityArgs,
-      undefined,
-      undefined
-    );
-    const predWhere = mockPrisma.prediction.findMany.mock.calls[0][0].where;
-    expect(predWhere).toEqual({});
-  });
-});
-
-describe('accountActivityPage — type filter', () => {
-  it("type='prediction' skips the trades fetch entirely", async () => {
-    await accountActivityPageFn(
-      undefined,
-      {
-        address: ALICE,
-        take: 10,
-        skip: 0,
-        type: 'prediction',
-      } as QueryAccountActivityArgs,
-      undefined,
-      undefined
-    );
-    expect(mockPrisma.prediction.findMany).toHaveBeenCalledTimes(1);
+    expect(result.nodes).toEqual([]);
+    expect(mockPrisma.prediction.findMany).not.toHaveBeenCalled();
     expect(mockPrisma.secondaryTrade.findMany).not.toHaveBeenCalled();
   });
 
-  it("type='trade' skips the predictions fetch entirely", async () => {
-    await accountActivityPageFn(
-      undefined,
-      {
-        address: ALICE,
-        take: 10,
-        skip: 0,
-        type: 'trade',
-      } as QueryAccountActivityArgs,
-      undefined,
-      undefined
-    );
-    expect(mockPrisma.prediction.findMany).not.toHaveBeenCalled();
-    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
-  });
-
-  it('omitted type fetches both', async () => {
-    await accountActivityPageFn(
-      undefined,
-      { address: ALICE, take: 10, skip: 0 } as QueryAccountActivityArgs,
-      undefined,
-      undefined
-    );
-    expect(mockPrisma.prediction.findMany).toHaveBeenCalledTimes(1);
-    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('accountActivityPage — interleave by timestamp', () => {
-  it('sorts the merged feed by timestamp desc (newer first)', async () => {
+  it('interleaves prediction and trade sources and exposes union typenames', async () => {
     mockPrisma.prediction.findMany.mockResolvedValue([
-      makePrediction({
-        id: 1,
-        createdAt: new Date(3_000_000 * 1000), // newer
-      }),
+      predictionRow('100', new Date('2026-01-02T00:00:00Z')),
     ]);
     mockPrisma.secondaryTrade.findMany.mockResolvedValue([
-      makeTrade({ id: 2, executedAt: 1_000_000 }), // older
+      tradeRow(7, Date.parse('2026-01-01T00:00:00Z') / 1000),
     ]);
-    const result = await accountActivityPageFn(
-      undefined,
-      { address: ALICE, take: 10, skip: 0 } as QueryAccountActivityArgs,
-      undefined,
-      undefined
-    );
-    expect(result.items.map((i) => i.type)).toEqual(['prediction', 'trade']);
-    expect(result.items.map((i) => i.timestamp)).toEqual([
-      3_000_000, 1_000_000,
-    ]);
-  });
 
-  it('uses collateralDepositedAt over createdAt for prediction timestamp when present', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([
-      makePrediction({
-        collateralDepositedAt: 4_000_000, // wins over createdAt
-        createdAt: new Date(2_000_000 * 1000),
-      }),
-    ]);
-    const result = await accountActivityPageFn(
-      undefined,
-      { address: ALICE, take: 10, skip: 0 } as QueryAccountActivityArgs,
-      undefined,
-      undefined
-    );
-    expect(result.items[0].timestamp).toBe(4_000_000);
-  });
-});
+    const result = await callResolver<{
+      nodes: Array<{ source: Record<string, unknown> }>;
+      edges: Array<{ cursor: string }>;
+    }>(activity)(null, { first: 10 }, {}, null);
 
-describe('accountActivityPage — pagination envelope', () => {
-  it('hasMore=true when merged total exceeds skip + take', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue(
-      Array.from({ length: 11 }, (_, i) =>
-        makePrediction({ id: i + 1, predictionId: `p-${i}` })
+    expect(result.nodes).toHaveLength(2);
+    expect(
+      ActivitySource.__resolveType?.(
+        result.nodes[0].source as never,
+        {} as never,
+        {} as never
       )
-    );
-    const result = await accountActivityPageFn(
-      undefined,
-      { address: ALICE, take: 10, skip: 0 } as QueryAccountActivityArgs,
-      undefined,
-      undefined
-    );
-    expect(result.hasMore).toBe(true);
-    expect(result.items).toHaveLength(10);
-  });
-
-  it('hasMore=false when merged total fits within the page', async () => {
-    mockPrisma.prediction.findMany.mockResolvedValue([makePrediction()]);
-    const result = await accountActivityPageFn(
-      undefined,
-      { address: ALICE, take: 10, skip: 0 } as QueryAccountActivityArgs,
-      undefined,
-      undefined
-    );
-    expect(result.hasMore).toBe(false);
-    expect(result.items).toHaveLength(1);
-  });
-});
-
-describe('accountActivityPage — scoping (pickConfigId / conditionId)', () => {
-  it('conditionId resolves to a pickConfig set; trades fetched on that token set', async () => {
-    mockPrisma.pick.findMany.mockResolvedValue([{ pickConfigId: 'pc-1' }]);
-    mockPrisma.picks.findMany.mockResolvedValue([
-      {
-        id: 'pc-1',
-        predictorToken: TOKEN_PRED,
-        counterpartyToken: TOKEN_CP,
-      },
-    ]);
-
-    await accountActivityPageFn(
-      undefined,
-      {
-        take: 10,
-        skip: 0,
-        conditionId: '0xCOND',
-      } as QueryAccountActivityArgs,
-      undefined,
-      undefined
-    );
-
-    expect(mockPrisma.pick.findMany).toHaveBeenCalledWith({
-      where: { conditionId: '0xcond' },
-      select: { pickConfigId: true },
-      distinct: ['pickConfigId'],
+    ).toBe('Prediction');
+    expect(
+      ActivitySource.__resolveType?.(
+        result.nodes[1].source as never,
+        {} as never,
+        {} as never
+      )
+    ).toBe('Trade');
+    expect(decodeCursor(result.edges[0].cursor)).toMatchObject({
+      k: '2026-01-02T00:00:00.000Z',
+      id: 'PREDICTION:100',
     });
-    const tradeWhere =
-      mockPrisma.secondaryTrade.findMany.mock.calls[0][0].where;
-    expect(tradeWhere).toEqual({ token: { in: [TOKEN_PRED, TOKEN_CP] } });
   });
 
-  it('returns an empty page early when conditionId yields no pick configs (avoids unnecessary fetches)', async () => {
-    mockPrisma.pick.findMany.mockResolvedValue([]);
-    const result = await accountActivityPageFn(
-      undefined,
+  it('applies account scope as OR across prediction roles and trade sides', async () => {
+    await callResolver(activity)(
+      null,
       {
-        take: 10,
-        skip: 0,
-        conditionId: '0xnope',
-      } as QueryAccountActivityArgs,
-      undefined,
-      undefined
+        first: 10,
+        filter: {
+          account: '0xAAA',
+          types: [ActivityType.Prediction, ActivityType.Trade],
+        },
+      },
+      {},
+      null
     );
-    expect(result.items).toEqual([]);
-    expect(result.hasMore).toBe(false);
-    expect(mockPrisma.prediction.findMany).not.toHaveBeenCalled();
-    expect(mockPrisma.secondaryTrade.findMany).not.toHaveBeenCalled();
+
+    expect(mockPrisma.prediction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { OR: [{ predictor: '0xaaa' }, { counterparty: '0xaaa' }] },
+      })
+    );
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { OR: [{ buyer: '0xaaa' }, { seller: '0xaaa' }] },
+      })
+    );
   });
 
-  it('pickConfigId filter scopes predictions directly by pickConfigId', async () => {
-    mockPrisma.picks.findMany.mockResolvedValue([
+  it('uses seller as the Activity.account actor when the scoped account sold the trade', async () => {
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
       {
-        id: 'pc-1',
-        predictorToken: TOKEN_PRED,
-        counterpartyToken: TOKEN_CP,
+        ...tradeRow(7, Date.parse('2026-01-01T00:00:00Z') / 1000),
+        seller: '0xaaa',
+        buyer: '0xbbb',
       },
     ]);
 
-    await accountActivityPageFn(
-      undefined,
-      {
-        take: 10,
-        skip: 0,
-        pickConfigId: '0xPC1',
-      } as QueryAccountActivityArgs,
-      undefined,
-      undefined
+    const result = await callResolver<{
+      nodes: Array<{
+        account: { address: string };
+        source: Record<string, unknown>;
+      }>;
+    }>(activity)(
+      null,
+      { first: 10, filter: { account: '0xAAA', types: [ActivityType.Trade] } },
+      {},
+      null
     );
-    const predWhere = mockPrisma.prediction.findMany.mock.calls[0][0].where;
-    expect(predWhere).toEqual({ pickConfigId: '0xpc1' });
+
+    expect(result.nodes[0].account.address).toBe('0xaaa');
+    const accountResolver = Activity.account as unknown as (
+      parent: unknown,
+      args: Record<string, unknown>,
+      ctx: unknown,
+      info: unknown
+    ) => unknown;
+    expect(accountResolver(result.nodes[0], {}, {}, {})).toEqual(
+      expect.objectContaining({ address: '0xaaa' })
+    );
+  });
+
+  it('pushes activity keyset cursors into both source queries before taking rows', async () => {
+    mockPrisma.prediction.findMany.mockResolvedValue([
+      predictionRow('100', new Date('2026-01-02T00:00:00Z')),
+    ]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
+      tradeRow(7, Date.parse('2026-01-01T00:00:00Z') / 1000),
+    ]);
+
+    const firstPage = await callResolver<{ edges: Array<{ cursor: string }> }>(
+      activity
+    )(null, { first: 1 }, {}, null);
+
+    await callResolver(activity)(
+      null,
+      { first: 1, after: firstPage.edges[0].cursor },
+      {},
+      null
+    );
+
+    expect(mockPrisma.prediction.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ AND: expect.any(Array) }),
+      })
+    );
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ AND: expect.any(Array) }),
+      })
+    );
+  });
+
+  it('defers totalCount counts until the field resolver is selected', async () => {
+    mockPrisma.prediction.count.mockResolvedValue(3);
+    mockPrisma.secondaryTrade.count.mockResolvedValue(4);
+
+    const result = await callResolver(activity)(null, { first: 10 }, {}, null);
+
+    expect(mockPrisma.prediction.count).not.toHaveBeenCalled();
+    expect(mockPrisma.secondaryTrade.count).not.toHaveBeenCalled();
+
+    const totalCount = await ActivityConnection.totalCount(result);
+
+    expect(totalCount).toBe(7);
+    expect(mockPrisma.prediction.count).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.secondaryTrade.count).toHaveBeenCalledTimes(1);
   });
 });

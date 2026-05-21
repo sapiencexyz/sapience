@@ -1,6 +1,6 @@
 {
-  "conditionsPage": {
-    "items": [
+  "conditionsConnection": {
+    "nodes": [
       {
         "id": "0xa93a85108d1bda42a235b0b85c71b2e4636165ca87a2df89fd8fb0d879a3d8cf",
         "createdAt": "<ISO_TIMESTAMP>",
@@ -12,6 +12,12 @@
         "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Jamal Murray scores more than 25.5 points during the game.\nThis market will resolve to \"No\" if Jamal Murray scores 25.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
         "similarMarkets": [
           "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-points-jamal-murray-25pt5"
+        ],
+        "tags": [
+          "Sports",
+          "NBA",
+          "Games",
+          "Basketball"
         ],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
@@ -30,7 +36,7 @@
           "name": "Nuggets vs. Timberwolves"
         },
         "category": {
-          "id": 6,
+          "id": "Q2F0ZWdvcnk6Ng",
           "name": "Sports",
           "slug": "sports"
         }
@@ -46,6 +52,12 @@
         "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Nikola Jokić scores more than 27.5 points during the game.\nThis market will resolve to \"No\" if Nikola Jokić scores 27.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
         "similarMarkets": [
           "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-points-nikola-jokic-27pt5"
+        ],
+        "tags": [
+          "Sports",
+          "NBA",
+          "Games",
+          "Basketball"
         ],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
@@ -64,7 +76,7 @@
           "name": "Nuggets vs. Timberwolves"
         },
         "category": {
-          "id": 6,
+          "id": "Q2F0ZWdvcnk6Ng",
           "name": "Sports",
           "slug": "sports"
         }
@@ -80,6 +92,12 @@
         "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Over\" if the Nuggets and Timberwolves combine to score 233 or more points in this game.\nIf the combined total is less than 233, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
         "similarMarkets": [
           "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-total-232pt5"
+        ],
+        "tags": [
+          "Sports",
+          "NBA",
+          "Games",
+          "Basketball"
         ],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
@@ -98,7 +116,7 @@
           "name": "Nuggets vs. Timberwolves"
         },
         "category": {
-          "id": 6,
+          "id": "Q2F0ZWdvcnk6Ng",
           "name": "Sports",
           "slug": "sports"
         }
@@ -114,6 +132,12 @@
         "description": "In the first half of the NBA game between Cavaliers and Raptors, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Over\" if the Cavaliers and Raptors combine to score 108 or more points in the first half.\nIf the combined first half total is less than 108, this market will resolve to \"Under\".\nThe result will be determined based on the score at halftime only.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
         "similarMarkets": [
           "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-1h-total-107pt5"
+        ],
+        "tags": [
+          "Sports",
+          "NBA",
+          "Games",
+          "Basketball"
         ],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
@@ -132,7 +156,7 @@
           "name": "Cavaliers vs. Raptors"
         },
         "category": {
-          "id": 6,
+          "id": "Q2F0ZWdvcnk6Ng",
           "name": "Sports",
           "slug": "sports"
         }
@@ -149,6 +173,7 @@
         "similarMarkets": [
           "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-somali-or-somalia-or-somalian-during-healthcare-event"
         ],
+        "tags": [],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "settled": false,
@@ -166,7 +191,7 @@
           "name": "What will Trump say during the Health Care Affordability event?"
         },
         "category": {
-          "id": 4,
+          "id": "Q2F0ZWdvcnk6NA",
           "name": "Geopolitics",
           "slug": "geopolitics"
         }
@@ -182,6 +207,12 @@
         "description": "In the upcoming NBA game, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Yes\" if James Harden scores more than 20.5 points during the game.\nThis market will resolve to \"No\" if James Harden scores 20.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
         "similarMarkets": [
           "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-points-james-harden-20pt5"
+        ],
+        "tags": [
+          "Sports",
+          "NBA",
+          "Games",
+          "Basketball"
         ],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
@@ -200,7 +231,7 @@
           "name": "Cavaliers vs. Raptors"
         },
         "category": {
-          "id": 6,
+          "id": "Q2F0ZWdvcnk6Ng",
           "name": "Sports",
           "slug": "sports"
         }
@@ -217,6 +248,7 @@
         "similarMarkets": [
           "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-veteran-during-healthcare-event"
         ],
+        "tags": [],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "settled": false,
@@ -234,7 +266,7 @@
           "name": "What will Trump say during the Health Care Affordability event?"
         },
         "category": {
-          "id": 4,
+          "id": "Q2F0ZWdvcnk6NA",
           "name": "Geopolitics",
           "slug": "geopolitics"
         }
@@ -251,6 +283,7 @@
         "similarMarkets": [
           "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-go-ahead-3-times-during-healthcare-event"
         ],
+        "tags": [],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "settled": false,
@@ -268,7 +301,7 @@
           "name": "What will Trump say during the Health Care Affordability event?"
         },
         "category": {
-          "id": 4,
+          "id": "Q2F0ZWdvcnk6NA",
           "name": "Geopolitics",
           "slug": "geopolitics"
         }
@@ -285,6 +318,7 @@
         "similarMarkets": [
           "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-unaffordable-care-act-during-healthcare-event"
         ],
+        "tags": [],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "settled": false,
@@ -302,7 +336,7 @@
           "name": "What will Trump say during the Health Care Affordability event?"
         },
         "category": {
-          "id": 4,
+          "id": "Q2F0ZWdvcnk6NA",
           "name": "Geopolitics",
           "slug": "geopolitics"
         }
@@ -319,6 +353,7 @@
         "similarMarkets": [
           "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-maha-during-healthcare-event"
         ],
+        "tags": [],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "settled": false,
@@ -336,11 +371,15 @@
           "name": "What will Trump say during the Health Care Affordability event?"
         },
         "category": {
-          "id": 4,
+          "id": "Q2F0ZWdvcnk6NA",
           "name": "Geopolitics",
           "slug": "geopolitics"
         }
       }
-    ]
+    ],
+    "pageInfo": {
+      "hasNextPage": true,
+      "endCursor": "<CURSOR>"
+    }
   }
 }

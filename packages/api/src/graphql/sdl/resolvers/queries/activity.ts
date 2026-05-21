@@ -1,298 +1,333 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * Query.accountActivity — unified feed interleaving predictions and
- * secondary-market trades by timestamp. When `address` is omitted the
- * feed is global; `type` filters to just predictions or just trades.
+ * `Query.activity` — Relay-shaped unified feed interleaving Predictions and
+ * secondary-market Trades, sorted by `createdAt` (predictions) /
+ * `executedAt` (trades) descending. The activity feed is a derived view
+ * (no `Node` membership); identity within a page is the cursor.
  *
- * Supports optional scoping by `pickConfigId` and/or `conditionId`.
- * Predictions filter directly by pickConfigId; trades filter via the
- * in-scope pick config token set because secondary trades have no
- * pickConfigId foreign key.
+ * Cursor format: opaque base64 over `{ k: ISO timestamp, id: "<TYPE>:<rowId>" }`.
+ * The keyset predicate is pushed into Prisma on each side so deep pagination
+ * doesn't re-fetch the whole history every page; the subsecond branch on
+ * the cross-type case (`Math.floor(predictionMs / 1000)`) prevents a
+ * trade at the same second from being skipped after a subsecond prediction
+ * cursor.
+ *
+ * Filter scoping:
+ *  - `account`: OR across `predictor`/`counterparty` for predictions and
+ *    `buyer`/`seller` for trades.
+ *  - `conditionId` / `conditionIds`: walk Condition → Pick →
+ *    PickConfiguration to derive the pickConfigId set (for predictions)
+ *    and the predictor/counterparty token set (for trades).
+ *  - `conditionGroupId`: expanded into its member condition ids, then
+ *    treated as above.
+ *  - `pickConfigId`: intersect with the condition-derived set if both
+ *    are present.
+ *  - `createdAt`: epoch-seconds range applied via Prisma to both sides
+ *    (Predictions store DateTime, Trades store Int — bounds project to
+ *    the right type per side).
+ *  - `types: []` is an explicit zero-result query.
+ *
+ * `Forecast` is intentionally not in the union (see the redesign doc's
+ * "Activity model" section).
  */
-
-import type {
-  QueryResolvers,
-  QueryActivityPageArgs,
-  ResolversParentTypes,
-} from '../../__generated__/resolvers';
+import type { QueryResolvers } from '../../__generated__/resolvers';
+import { ActivityType } from '../../__generated__/resolvers';
+import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { mapPickConfig } from '../pickConfigHelpers';
-import { clampSkip, clampTake } from './pagination';
+import { encodeCursor, decodeCursor } from '../../../relay/cursor';
+import { synthesizeAccount } from '../accountSynthesis';
+import { mapPrediction, type PredictionWithPickConfig } from './escrow';
+import { mapTrade, type Trade } from './trade';
+import { clampTake } from './pagination';
 
-/**
- * Loose args for the shared runner. The deprecated `accountActivity(type:
- * String)` and the new `accountActivityPage(type: ActivityItemType)` flow
- * through here; the runner only does string-equality checks, so accepting
- * `string | null | undefined` works for both (string-valued enum members
- * widen to `string`).
- */
-interface RunAccountActivityArgs {
-  address?: string | null;
-  take: number;
-  skip: number;
-  type?: string | null;
-  pickConfigId?: string | null;
-  conditionId?: string | null;
-}
+const emptyPageInfo = {
+  hasNextPage: false,
+  hasPreviousPage: false,
+  startCursor: null,
+  endCursor: null,
+};
 
-export const runAccountActivity = async ({
-  address,
-  take,
-  skip,
-  type,
-  pickConfigId,
-  conditionId,
-}: RunAccountActivityArgs): Promise<{
-  items: ResolversParentTypes['ActivityItem'][];
-  hasMore: boolean;
-}> => {
-  const cappedTake = clampTake(take, { defaultTake: 20, maxTake: 100 });
-  const cappedSkip = clampSkip(skip);
-  const addr = address?.toLowerCase();
-  const pickConfigIdLower = pickConfigId?.toLowerCase();
-  const conditionIdLower = conditionId?.toLowerCase();
+const activityCursorPredicate = (
+  cursor: { k?: string; id?: string } | null,
+  sourceType: ActivityType
+): Prisma.PredictionWhereInput | Prisma.SecondaryTradeWhereInput | null => {
+  if (!cursor?.k || !cursor.id) return null;
+  const createdAt = new Date(cursor.k);
+  const [cursorType, ...idParts] = String(cursor.id).split(':');
+  const cursorSourceId = idParts.join(':');
+  if (!Number.isFinite(createdAt.getTime()) || !cursorType || !cursorSourceId)
+    return null;
+  const sourceTypeIsAfterCursorType = sourceType < (cursorType as ActivityType);
+  const sameSourceType = sourceType === cursorType;
+  if (sourceType === ActivityType.Prediction) {
+    return {
+      OR: [
+        { createdAt: { lt: createdAt } },
+        ...(sourceTypeIsAfterCursorType
+          ? [
+              {
+                createdAt: { equals: createdAt },
+              } as Prisma.PredictionWhereInput,
+            ]
+          : []),
+        ...(sameSourceType
+          ? [
+              {
+                AND: [
+                  { createdAt: { equals: createdAt } },
+                  { predictionId: { lt: cursorSourceId } },
+                ],
+              } as Prisma.PredictionWhereInput,
+            ]
+          : []),
+      ],
+    };
+  }
+  const executedAt = Math.floor(createdAt.getTime() / 1000);
+  const hasSubsecondCursor = createdAt.getTime() % 1000 !== 0;
+  return {
+    OR: [
+      {
+        executedAt: hasSubsecondCursor
+          ? { lte: executedAt }
+          : { lt: executedAt },
+      },
+      ...(sourceTypeIsAfterCursorType
+        ? [
+            {
+              executedAt: { equals: executedAt },
+            } as Prisma.SecondaryTradeWhereInput,
+          ]
+        : []),
+      ...(sameSourceType
+        ? [
+            {
+              AND: [
+                { executedAt: { equals: executedAt } },
+                { id: { lt: Number(cursorSourceId) } },
+              ],
+            } as Prisma.SecondaryTradeWhereInput,
+          ]
+        : []),
+    ],
+  };
+};
 
-  const includePredictions = !type || type === 'prediction';
-  const includeTrades = !type || type === 'trade';
-  // Fetch one extra row from each side to detect hasMore via the merged set
-  const fetchSize = cappedSkip + cappedTake + 1;
+type ActivityRow =
+  | {
+      sourceType: ActivityType.Prediction;
+      sourceId: string;
+      createdAt: Date;
+      source: ReturnType<typeof mapPrediction>;
+    }
+  | {
+      sourceType: ActivityType.Trade;
+      sourceId: string;
+      createdAt: Date;
+      source: ReturnType<typeof mapTrade>;
+    };
 
-  let scopedPickConfigIds: string[] | null = null;
-  if (conditionIdLower) {
-    const matchingPicks = await prisma.pick.findMany({
-      where: { conditionId: conditionIdLower },
+type CreatedAtFilterShape = {
+  gte?: number | null;
+  gt?: number | null;
+  lte?: number | null;
+  lt?: number | null;
+  equals?: number | null;
+} | null;
+
+const projectPredictionCreatedAt = (
+  raw: CreatedAtFilterShape
+): Prisma.DateTimeFilter | null => {
+  if (!raw) return null;
+  const out: Prisma.DateTimeFilter = {};
+  if (raw.gte != null) out.gte = new Date(raw.gte * 1000);
+  if (raw.gt != null) out.gt = new Date(raw.gt * 1000);
+  if (raw.lte != null) out.lte = new Date(raw.lte * 1000);
+  if (raw.lt != null) out.lt = new Date(raw.lt * 1000);
+  if (raw.equals != null) out.equals = new Date(raw.equals * 1000);
+  return Object.keys(out).length ? out : null;
+};
+
+const projectTradeExecutedAt = (
+  raw: CreatedAtFilterShape
+): Prisma.IntFilter | null => {
+  if (!raw) return null;
+  const out: Prisma.IntFilter = {};
+  if (raw.gte != null) out.gte = raw.gte;
+  if (raw.gt != null) out.gt = raw.gt;
+  if (raw.lte != null) out.lte = raw.lte;
+  if (raw.lt != null) out.lt = raw.lt;
+  if (raw.equals != null) out.equals = raw.equals;
+  return Object.keys(out).length ? out : null;
+};
+
+export const activity = (async (
+  _parent: unknown,
+  { first, after, filter }: any
+) => {
+  const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const types = filter?.types ?? [ActivityType.Prediction, ActivityType.Trade];
+  if (types.length === 0)
+    return { edges: [], nodes: [], totalCount: 0, pageInfo: emptyPageInfo };
+  const includePredictions = types.includes(ActivityType.Prediction);
+  const includeTrades = types.includes(ActivityType.Trade);
+  const address = filter?.account?.toLowerCase();
+  const pickConfigId = filter?.pickConfigId?.toLowerCase();
+  const conditionId = filter?.conditionId?.toLowerCase();
+  const conditionIds = (filter?.conditionIds ?? []).map((id: string) =>
+    id.toLowerCase()
+  );
+  const conditionGroupId = filter?.conditionGroupId ?? null;
+  const createdAtFilter = (filter?.createdAt ?? null) as CreatedAtFilterShape;
+  let pickConfigIds: string[] | null = pickConfigId ? [pickConfigId] : null;
+  if (conditionGroupId != null) {
+    const conditions = await prisma.condition.findMany({
+      where: { conditionGroupId: Number(conditionGroupId) },
+      select: { id: true },
+    });
+    conditionIds.push(
+      ...conditions.map((condition) => condition.id.toLowerCase())
+    );
+  }
+  if (conditionId) conditionIds.push(conditionId);
+  if (conditionIds.length > 0) {
+    const picks = await prisma.pick.findMany({
+      where: { conditionId: { in: Array.from(new Set(conditionIds)) } },
       select: { pickConfigId: true },
       distinct: ['pickConfigId'],
     });
-    scopedPickConfigIds = matchingPicks.map((p) => p.pickConfigId);
-    if (pickConfigIdLower) {
-      scopedPickConfigIds = scopedPickConfigIds.filter(
-        (id) => id === pickConfigIdLower
-      );
-    }
-  } else if (pickConfigIdLower) {
-    scopedPickConfigIds = [pickConfigIdLower];
+    const fromCondition = picks.map((p) => p.pickConfigId.toLowerCase());
+    pickConfigIds = pickConfigIds
+      ? pickConfigIds.filter((id) => fromCondition.includes(id))
+      : fromCondition;
   }
-
-  if (scopedPickConfigIds !== null && scopedPickConfigIds.length === 0) {
-    return { items: [], hasMore: false };
+  if (pickConfigIds && pickConfigIds.length === 0) {
+    return { edges: [], nodes: [], totalCount: 0, pageInfo: emptyPageInfo };
   }
+  const configs = pickConfigIds
+    ? await prisma.picks.findMany({
+        where: { id: { in: pickConfigIds } },
+        select: { predictorToken: true, counterpartyToken: true },
+      })
+    : [];
+  const tokens = configs
+    .flatMap((c) => [c.predictorToken, c.counterpartyToken])
+    .filter(Boolean)
+    .map((t) => t!.toLowerCase());
 
-  const scopedTokens: string[] = [];
-  if (scopedPickConfigIds !== null) {
-    const configs = await prisma.picks.findMany({
-      where: { id: { in: scopedPickConfigIds } },
-      select: { predictorToken: true, counterpartyToken: true },
-    });
-    const seen = new Set<string>();
-    for (const c of configs) {
-      for (const raw of [c.predictorToken, c.counterpartyToken]) {
-        if (!raw) continue;
-        const token = raw.toLowerCase();
-        if (!seen.has(token)) {
-          seen.add(token);
-          scopedTokens.push(token);
-        }
-      }
-    }
-  }
+  const predictionCreatedAt = projectPredictionCreatedAt(createdAtFilter);
+  const tradeExecutedAt = projectTradeExecutedAt(createdAtFilter);
+  const predictionWhere: Prisma.PredictionWhereInput = {
+    ...(address
+      ? { OR: [{ predictor: address }, { counterparty: address }] }
+      : {}),
+    ...(pickConfigIds ? { pickConfigId: { in: pickConfigIds } } : {}),
+    ...(predictionCreatedAt ? { createdAt: predictionCreatedAt } : {}),
+  };
+  const tradeWhere: Prisma.SecondaryTradeWhereInput = {
+    ...(address ? { OR: [{ buyer: address }, { seller: address }] } : {}),
+    ...(pickConfigIds ? { token: { in: tokens } } : {}),
+    ...(tradeExecutedAt ? { executedAt: tradeExecutedAt } : {}),
+  };
 
-  const addressPredictionClause = addr
-    ? { OR: [{ predictor: addr }, { counterparty: addr }] }
-    : null;
-  const addressTradeClause = addr
-    ? { OR: [{ seller: addr }, { buyer: addr }] }
-    : null;
-
-  const pickConfigIdClause =
-    scopedPickConfigIds !== null
-      ? scopedPickConfigIds.length === 1
-        ? { pickConfigId: scopedPickConfigIds[0] }
-        : { pickConfigId: { in: scopedPickConfigIds } }
-      : null;
-
-  const tokenClause =
-    scopedPickConfigIds !== null ? { token: { in: scopedTokens } } : null;
-
-  const predictionWhere = pickConfigIdClause
-    ? addressPredictionClause
-      ? { AND: [addressPredictionClause, pickConfigIdClause] }
-      : pickConfigIdClause
-    : (addressPredictionClause ?? {});
-
-  const tradeWhere = tokenClause
-    ? addressTradeClause
-      ? { AND: [addressTradeClause, tokenClause] }
-      : tokenClause
-    : (addressTradeClause ?? {});
-
-  const shouldFetchTrades =
-    includeTrades && (scopedPickConfigIds === null || scopedTokens.length > 0);
+  const cursor = after ? decodeCursor(after) : null;
+  const predictionCursorWhere = activityCursorPredicate(
+    cursor,
+    ActivityType.Prediction
+  ) as Prisma.PredictionWhereInput | null;
+  const tradeCursorWhere = activityCursorPredicate(
+    cursor,
+    ActivityType.Trade
+  ) as Prisma.SecondaryTradeWhereInput | null;
+  const pagePredictionWhere: Prisma.PredictionWhereInput = predictionCursorWhere
+    ? { AND: [predictionWhere, predictionCursorWhere] }
+    : predictionWhere;
+  const pageTradeWhere: Prisma.SecondaryTradeWhereInput = tradeCursorWhere
+    ? { AND: [tradeWhere, tradeCursorWhere] }
+    : tradeWhere;
 
   const [predictions, trades] = await Promise.all([
     includePredictions
       ? prisma.prediction.findMany({
-          where: predictionWhere,
-          orderBy: { createdAt: 'desc' },
-          take: fetchSize,
+          where: pagePredictionWhere,
+          orderBy: [{ createdAt: 'desc' }, { predictionId: 'desc' }],
+          take: cappedFirst + 1,
           include: { pickConfiguration: { include: { picks: true } } },
         })
       : Promise.resolve([]),
-    shouldFetchTrades
+    includeTrades
       ? prisma.secondaryTrade.findMany({
-          where: tradeWhere,
-          orderBy: { executedAt: 'desc' },
-          take: fetchSize,
+          where: pageTradeWhere,
+          orderBy: [{ executedAt: 'desc' }, { id: 'desc' }],
+          take: cappedFirst + 1,
         })
       : Promise.resolve([]),
   ]);
 
-  const tradeTokens = [...new Set(trades.map((t) => t.token.toLowerCase()))];
-  const tradePickConfigs =
-    tradeTokens.length > 0
-      ? await prisma.picks.findMany({
-          where: {
-            OR: [
-              { predictorToken: { in: tradeTokens } },
-              { counterpartyToken: { in: tradeTokens } },
-            ],
-          },
-          include: { picks: true },
-        })
-      : [];
-
-  // Pick.condition lookups for this page batch through the request's
-  // `conditionById` DataLoader at field-resolution time, so no eager
-  // pre-load is needed here.
-
-  const pickConfigsByToken = new Map<
-    string,
-    ResolversParentTypes['PickConfiguration']
-  >();
-  for (const pc of tradePickConfigs) {
-    const mapped = mapPickConfig(pc);
+  const rows: ActivityRow[] = [
+    ...predictions.map((p: PredictionWithPickConfig) => ({
+      sourceType: ActivityType.Prediction as const,
+      sourceId: p.predictionId,
+      createdAt: p.createdAt,
+      source: mapPrediction(p),
+    })),
+    ...trades.map((t: Trade) => ({
+      sourceType: ActivityType.Trade as const,
+      sourceId: String(t.id),
+      createdAt: new Date(t.executedAt * 1000),
+      source: mapTrade(t),
+    })),
+  ].sort((a, b) => {
+    const byTime = b.createdAt.getTime() - a.createdAt.getTime();
+    if (byTime !== 0) return byTime;
+    const byType = b.sourceType.localeCompare(a.sourceType);
+    return byType !== 0 ? byType : b.sourceId.localeCompare(a.sourceId);
+  });
+  const pageRows = rows.slice(0, cappedFirst);
+  const nodes = pageRows.map((r) => {
+    let actor = 'predictor' in r.source ? r.source.predictor : r.source.buyer;
     if (
-      pc.predictorToken &&
-      tradeTokens.includes(pc.predictorToken.toLowerCase())
+      address &&
+      'seller' in r.source &&
+      (r.source.seller as string).toLowerCase() === address
     ) {
-      pickConfigsByToken.set(pc.predictorToken.toLowerCase(), mapped);
+      actor = r.source.seller;
     }
-    if (
-      pc.counterpartyToken &&
-      tradeTokens.includes(pc.counterpartyToken.toLowerCase())
-    ) {
-      pickConfigsByToken.set(pc.counterpartyToken.toLowerCase(), mapped);
-    }
-  }
-
-  const items: ResolversParentTypes['ActivityItem'][] = [];
-
-  for (const r of predictions) {
-    const ts =
-      r.collateralDepositedAt ?? Math.floor(r.createdAt.getTime() / 1000);
-    const prediction: ResolversParentTypes['Prediction'] = {
-      id: r.id,
-      predictionId: r.predictionId,
-      chainId: r.chainId,
-      marketAddress: r.marketAddress,
-      predictor: r.predictor,
-      counterparty: r.counterparty,
-      predictorToken: r.pickConfiguration?.predictorToken ?? '',
-      counterpartyToken: r.pickConfiguration?.counterpartyToken ?? '',
-      predictorCollateral: r.predictorCollateral,
-      counterpartyCollateral: r.counterpartyCollateral,
-      collateralDeposited: r.collateralDeposited ?? null,
-      collateralDepositedAt: r.collateralDepositedAt ?? null,
-      settled: r.settled,
-      settledAt: r.settledAt ?? null,
-      result: r.result as ResolversParentTypes['Prediction']['result'],
-      predictorClaimable: r.predictorClaimable ?? null,
-      counterpartyClaimable: r.counterpartyClaimable ?? null,
+    return {
+      source: r.source,
       createdAt: r.createdAt,
-      createTxHash: r.createTxHash,
-      settleTxHash: r.settleTxHash ?? null,
-      refCode: r.refCode ?? null,
-      isLegacy: r.isLegacy,
-      pickConfig: r.pickConfiguration
-        ? mapPickConfig(r.pickConfiguration)
-        : null,
+      account: synthesizeAccount(actor) as never,
     };
-    items.push({
-      type: 'prediction',
-      timestamp: ts,
-      prediction,
-      trade: null,
-    });
-  }
-
-  for (const t of trades) {
-    items.push({
-      type: 'trade',
-      timestamp: t.executedAt,
-      trade: {
-        id: t.id,
-        chainId: t.chainId,
-        tradeHash: t.tradeHash,
-        seller: t.seller,
-        buyer: t.buyer,
-        token: t.token,
-        collateral: t.collateral,
-        tokenAmount: t.tokenAmount,
-        price: t.price,
-        executedAt: t.executedAt,
-        txHash: t.txHash,
-        blockNumber: t.blockNumber,
-        pickConfig: pickConfigsByToken.get(t.token.toLowerCase()) ?? null,
-      },
-      prediction: null,
-    });
-  }
-
-  items.sort((a, b) => b.timestamp - a.timestamp);
-  const hasMore = items.length > cappedSkip + cappedTake;
+  });
+  const edges = nodes.map((node, index) => {
+    const r = pageRows[index];
+    return {
+      node,
+      cursor: encodeCursor({
+        k: r.createdAt.toISOString(),
+        id: `${r.sourceType}:${r.sourceId}`,
+      }),
+    };
+  });
   return {
-    items: items.slice(cappedSkip, cappedSkip + cappedTake),
-    hasMore,
+    edges,
+    nodes,
+    _totalCount: async () => {
+      const [predictionTotal, tradeTotal] = await Promise.all([
+        includePredictions
+          ? prisma.prediction.count({ where: predictionWhere })
+          : Promise.resolve(0),
+        includeTrades
+          ? prisma.secondaryTrade.count({ where: tradeWhere })
+          : Promise.resolve(0),
+      ]);
+      return predictionTotal + tradeTotal;
+    },
+    pageInfo: {
+      hasNextPage: rows.length > cappedFirst,
+      hasPreviousPage: false,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges[edges.length - 1]?.cursor ?? null,
+    },
   };
-};
-
-/**
- * Merge `filters: ActivityFilters` with the deprecated flat arg shape.
- * `filters` wins on conflicts. Takes the RequireFields'd resolver shape
- * (`take`/`skip` non-null because the schema declares defaults).
- */
-type ActivityPageResolverArgs = QueryActivityPageArgs & {
-  take: number;
-  skip: number;
-};
-
-const mergeActivityFilters = (
-  args: ActivityPageResolverArgs
-): RunAccountActivityArgs => {
-  const f = args.filters ?? null;
-  return {
-    take: args.take,
-    skip: args.skip,
-    address: f?.address ?? args.address ?? null,
-    conditionId: f?.conditionId ?? args.conditionId ?? null,
-    pickConfigId: f?.pickConfigId ?? args.pickConfigId ?? null,
-    type: f?.type ?? args.type ?? null,
-  };
-};
-
-export const activityPage: NonNullable<QueryResolvers['activityPage']> = async (
-  _parent,
-  args
-) => {
-  return runAccountActivity(mergeActivityFilters(args));
-};
-
-/**
- * Deprecated alias kept for one release while consumers migrate to
- * `activityPage`. Stays on the flat-arg shape — callers wanting the
- * `filters:` input should migrate to `activityPage` directly.
- */
-export const accountActivityPage: NonNullable<
-  QueryResolvers['accountActivityPage']
-> = async (_parent, args) => {
-  return runAccountActivity(args);
-};
+}) as unknown as NonNullable<QueryResolvers['activity']>;

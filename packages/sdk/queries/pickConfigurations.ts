@@ -2,42 +2,40 @@ import { graphqlRequest } from './client/graphqlClient';
 
 export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
   query PickConfigurations(
-    $take: Int
-    $skip: Int
     $chainId: Int
     $resolved: Boolean
+    $skip: Int!
+    $take: Int!
   ) {
-    pickConfigurationsPage(
-      take: $take
-      skip: $skip
+    pickConfigurations(
       chainId: $chainId
       resolved: $resolved
+      skip: $skip
+      take: $take
     ) {
-      items {
-        id
-        chainId
-        totalPredictorCollateral
-        totalCounterpartyCollateral
-        resolved
-        picks {
-          conditionId
-          conditionResolver
-          predictedOutcome
-          condition {
-            id
-            shortName
-            optionName
-            question
-            description
-            endTime
-            resolver
-            settled
-            resolvedToYes
-            nonDecisive
-            estimatedPrice
-            category {
-              slug
-            }
+      id
+      chainId
+      totalPredictorCollateral
+      totalCounterpartyCollateral
+      resolved
+      picks {
+        conditionId
+        conditionResolver
+        predictedOutcome
+        condition {
+          id
+          shortName
+          optionName
+          question
+          description
+          endTime
+          resolver
+          settled
+          resolvedToYes
+          nonDecisive
+          estimatedPrice
+          category {
+            slug
           }
         }
       }
@@ -81,12 +79,12 @@ export async function fetchPickConfigurations(opts?: {
   resolved?: boolean;
 }): Promise<PickConfigurationResult[]> {
   const data = await graphqlRequest<{
-    pickConfigurationsPage: { items: PickConfigurationResult[] };
+    pickConfigurations: PickConfigurationResult[];
   }>(GET_PICK_CONFIGURATIONS, {
     take: opts?.take ?? 10,
     skip: opts?.skip ?? 0,
-    chainId: opts?.chainId,
-    resolved: opts?.resolved,
+    chainId: opts?.chainId ?? null,
+    resolved: opts?.resolved ?? null,
   });
-  return data.pickConfigurationsPage?.items ?? [];
+  return data.pickConfigurations ?? [];
 }

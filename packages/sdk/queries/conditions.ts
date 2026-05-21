@@ -35,7 +35,7 @@ export interface ConditionType {
   similarMarketVolumeFiltered7d?: number;
 }
 
-export interface ConditionFilters {
+export interface ConditionFilter {
   search?: string;
   categorySlugs?: string[];
   endTimeGte?: number;
@@ -43,166 +43,159 @@ export interface ConditionFilters {
   publicOnly?: boolean;
   ungroupedOnly?: boolean;
   visibility?: 'all' | 'public' | 'private';
-  /**
-   * On-chain contract address (case-insensitive). When set without `chainId`,
-   * the API defaults the chain to its `DEFAULT_CHAIN_ID` — addresses are not
-   * a global namespace, so cross-chain lookups have to be opt-in.
-   */
-  contractAddress?: string;
-  /** Same as `contractAddress` but matches any address in the list. */
-  contractAddressIn?: string[];
+  marketAddress?: string;
+  marketAddressIn?: string[];
 }
 
+export type ConditionFilters = ConditionFilter;
+
+const CONDITION_FIELDS = /* GraphQL */ `
+  id
+  createdAt
+  question
+  shortName
+  optionName
+  endTime
+  public
+  description
+  similarMarkets
+  tags
+  chainId
+  resolver
+  settled
+  resolvedToYes
+  nonDecisive
+  assertionId
+  assertionTimestamp
+  openInterest
+  similarMarketVolume
+  similarMarketImage
+  estimatedPrice
+  conditionGroupId
+  conditionGroup {
+    id
+    name
+  }
+  category {
+    id
+    name
+    slug
+  }
+`;
+
 export const GET_CONDITIONS = /* GraphQL */ `
-  query Conditions($take: Int, $skip: Int, $filters: ConditionFilters) {
-    conditionsPage(
-      orderBy: CREATED_AT
-      orderDirection: desc
-      take: $take
-      skip: $skip
-      filters: $filters
+  query Conditions($take: Int, $after: String, $filter: ConditionFilter) {
+    conditionsConnection(
+      first: $take
+      after: $after
+      filter: $filter
+      orderBy: { field: CREATED_AT, direction: DESC }
     ) {
-      items {
-        id
-        createdAt
-        question
-        shortName
-        optionName
-        endTime
-        public
-        description
-        similarMarkets
-        chainId
-        resolver
-        settled
-        resolvedToYes
-        nonDecisive
-        assertionId
-        assertionTimestamp
-        openInterest
-        similarMarketVolume
-        similarMarketImage
-        estimatedPrice
-        conditionGroupId
-        conditionGroup {
-          id
-          name
-        }
-        category {
-          id
-          name
-          slug
-        }
+      nodes {
+        ${CONDITION_FIELDS}
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
 `;
 
-/**
- * Build a flat `ConditionFilters` input for the `conditionsPage` query.
- * Replaces the old Prisma-style WhereInput builder.
- */
 export function buildConditionsFilters(
   chainId?: number,
-  filters?: ConditionFilters
+  filters?: ConditionFilter
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
 
-  if (chainId !== undefined) {
-    out.chainId = chainId;
-  }
-
-  if (filters?.visibility === 'all') {
-    out.visibility = 'ALL';
-  } else if (filters?.visibility === 'private') {
-    out.visibility = 'PRIVATE';
-  } else if (filters?.visibility === 'public' || filters?.publicOnly) {
+  if (chainId !== undefined) out.chainId = chainId;
+  if (filters?.visibility === 'all') out.visibility = 'ALL';
+  else if (filters?.visibility === 'private') out.visibility = 'PRIVATE';
+  else if (filters?.visibility === 'public' || filters?.publicOnly)
     out.visibility = 'PUBLIC';
+  if (filters?.search?.trim()) out.search = filters.search.trim();
+  if (filters?.categorySlugs?.length) out.categorySlugs = filters.categorySlugs;
+  if (filters?.endTimeGte !== undefined || filters?.endTimeLte !== undefined) {
+    out.resolvesAt = {
+      ...(filters.endTimeGte !== undefined ? { gte: filters.endTimeGte } : {}),
+      ...(filters.endTimeLte !== undefined ? { lte: filters.endTimeLte } : {}),
+    };
   }
-
-  if (filters?.search?.trim()) {
-    out.search = filters.search.trim();
-  }
-
-  if (filters?.categorySlugs && filters.categorySlugs.length > 0) {
-    out.categorySlugs = filters.categorySlugs;
-  }
-
-  if (filters?.endTimeGte !== undefined) {
-    out.minEndTime = filters.endTimeGte;
-  }
-  if (filters?.endTimeLte !== undefined) {
-    out.maxEndTime = filters.endTimeLte;
-  }
-
-  if (filters?.ungroupedOnly) {
-    out.ungroupedOnly = true;
-  }
-
-  if (filters?.contractAddress) {
-    out.contractAddress = filters.contractAddress;
-  }
-  if (filters?.contractAddressIn && filters.contractAddressIn.length > 0) {
-    out.contractAddressIn = filters.contractAddressIn;
-  }
+  if (filters?.ungroupedOnly) out.conditionGroupId = { isNull: true };
+  if (filters?.marketAddress) out.marketAddress = filters.marketAddress;
+  if (filters?.marketAddressIn?.length)
+    out.marketAddressIn = filters.marketAddressIn;
 
   return out;
 }
 
-/**
- * @deprecated Kept as a back-compat alias. Use `buildConditionsFilters`.
- */
+/** @deprecated Kept as a back-compat alias. Use `buildConditionsFilters`. */
 export function buildConditionsWhereClause(
   chainId?: number,
-  filters?: ConditionFilters
+  filters?: ConditionFilter
 ): Record<string, unknown> {
   return buildConditionsFilters(chainId, filters);
+}
+
+type ConditionsConnectionResult = {
+  conditionsConnection?: {
+    nodes?: ConditionType[] | null;
+    pageInfo?: {
+      hasNextPage?: boolean | null;
+      endCursor?: string | null;
+    } | null;
+  } | null;
+};
+
+async function fetchConditionsWindow(
+  first: number,
+  skip: number,
+  filter: Record<string, unknown> | undefined
+): Promise<ConditionType[]> {
+  const target = skip + first;
+  const collected: ConditionType[] = [];
+  let after: string | null | undefined = null;
+
+  while (collected.length < target) {
+    const batchSize = Math.min(100, target - collected.length);
+    const data: ConditionsConnectionResult =
+      await graphqlRequest<ConditionsConnectionResult>(GET_CONDITIONS, {
+        take: batchSize,
+        after,
+        filter,
+      });
+    const conn = data.conditionsConnection;
+    collected.push(...(conn?.nodes ?? []));
+    if (!conn?.pageInfo?.hasNextPage || !conn.pageInfo.endCursor) break;
+    after = conn.pageInfo.endCursor;
+  }
+
+  return collected.slice(skip, target);
 }
 
 export async function fetchConditions(opts?: {
   take?: number;
   skip?: number;
   chainId?: number;
-  filters?: ConditionFilters;
+  filters?: ConditionFilter;
 }): Promise<ConditionType[]> {
   const take = opts?.take ?? 50;
   const skip = opts?.skip ?? 0;
   const filters = buildConditionsFilters(opts?.chainId, opts?.filters);
-
-  type ConditionsQueryResult = {
-    conditionsPage: { items: ConditionType[] };
-  };
-  const variables = {
+  return fetchConditionsWindow(
     take,
     skip,
-    filters: Object.keys(filters).length > 0 ? filters : undefined,
-  };
-
-  const data = await graphqlRequest<ConditionsQueryResult>(
-    GET_CONDITIONS,
-    variables
+    Object.keys(filters).length > 0 ? filters : undefined
   );
-
-  return data.conditionsPage?.items ?? [];
 }
-
-// --- fetchConditionsByIds ---
 
 const PAGE_SIZE = 100;
 const MAX_CONCURRENT_REQUESTS = 3;
 
-/**
- * Fetch conditions by ID set, using a query that selects from
- * `conditionsPage { items { ... } }` and accepts a `$filters: ConditionFilters`.
- *
- * Note: the resultKey parameter is kept for backward compatibility but
- * the caller's query must select via `conditionsPage`; results are unwrapped
- * from `items` automatically.
- */
 export async function fetchConditionsByIds<T>(
   query: string,
   ids: string[],
-  resultKey = 'conditionsPage'
+  resultKey = 'conditionsConnection'
 ): Promise<T[]> {
   if (ids.length === 0) return [];
 
@@ -210,19 +203,18 @@ export async function fetchConditionsByIds<T>(
     if (!resp || typeof resp !== 'object') return [];
     const r = resp as Record<string, unknown>;
     const page = r[resultKey];
-    if (page && typeof page === 'object' && 'items' in page) {
-      return ((page as { items: T[] }).items ?? []) as T[];
+    if (page && typeof page === 'object' && 'nodes' in page) {
+      return ((page as { nodes: T[] }).nodes ?? []) as T[];
     }
-    // Back-compat: caller passed a bare-array query key
     return (r[resultKey] as T[]) ?? [];
   };
 
-  if (ids.length <= PAGE_SIZE) {
-    const resp = await graphqlRequest<Record<string, unknown>>(query, {
-      filters: { ids },
-    });
-    return unwrap(resp);
-  }
+  const runChunk = (chunk: string[]) =>
+    graphqlRequest<Record<string, unknown>>(query, {
+      filter: { ids: chunk },
+    }).then(unwrap);
+
+  if (ids.length <= PAGE_SIZE) return runChunk(ids);
 
   const chunks: string[][] = [];
   for (let i = 0; i < ids.length; i += PAGE_SIZE) {
@@ -232,20 +224,11 @@ export async function fetchConditionsByIds<T>(
   const results: T[][] = [];
   for (let i = 0; i < chunks.length; i += MAX_CONCURRENT_REQUESTS) {
     const batch = chunks.slice(i, i + MAX_CONCURRENT_REQUESTS);
-    const batchResults = await Promise.all(
-      batch.map((chunk) =>
-        graphqlRequest<Record<string, unknown>>(query, {
-          filters: { ids: chunk },
-        })
-      )
-    );
-    results.push(...batchResults.map((r) => unwrap(r)));
+    results.push(...(await Promise.all(batch.map(runChunk))));
   }
 
   return results.flat();
 }
-
-// --- fetchConditionsByIdsQuery (for useConditionsByIds) ---
 
 type ConditionById = {
   id: string;
@@ -264,9 +247,9 @@ type ConditionById = {
 };
 
 export const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
-  query ConditionsByIds($filters: ConditionFilters!) {
-    conditionsPage(filters: $filters, take: 100) {
-      items {
+  query ConditionsByIds($filter: ConditionFilter!) {
+    conditionsConnection(filter: $filter, first: 100) {
+      nodes {
         id
         shortName
         optionName

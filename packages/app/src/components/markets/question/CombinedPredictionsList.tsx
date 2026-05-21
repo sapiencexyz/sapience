@@ -18,9 +18,9 @@ type CombinedConditionDetail = {
 };
 
 const COMBINED_CONDITIONS_QUERY = /* GraphQL */ `
-  query CombinedConditions($filters: ConditionFilters!) {
-    conditionsPage(filters: $filters, take: 100) {
-      items {
+  query CombinedConditions($filters: ConditionFilter!) {
+    conditionsConnection(filter: $filters, first: 100) {
+      nodes {
         id
         question
         shortName

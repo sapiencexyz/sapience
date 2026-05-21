@@ -187,12 +187,20 @@ describe('resolveNodes (batch)', () => {
 });
 
 describe('frozen node types — public-API stability', () => {
-  it('PR 1 ships zero registrations and zero frozen types', () => {
-    expect(FROZEN_NODE_TYPES).toHaveLength(0);
+  it('freezes the public list of Node type names', () => {
+    expect(FROZEN_NODE_TYPES).toEqual([
+      'CollateralTransfer',
+      'Vault',
+      'Category',
+      'Account',
+    ]);
     expect(registeredNodeTypes()).toHaveLength(0);
   });
 
   it('verifyFrozenNodeTypes passes when registry matches the frozen list', () => {
+    for (const type of FROZEN_NODE_TYPES) {
+      register(type, async (id) => ({ id }));
+    }
     expect(verifyFrozenNodeTypes()).toEqual({ ok: true });
   });
 

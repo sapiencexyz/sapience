@@ -4,21 +4,21 @@ import { graphqlRequest } from './client/graphqlClient';
 
 const DEFAULT_SCHEMA_UID = FORECAST_SCHEMA_UID;
 
-interface RawAttestation {
+interface RawForecast {
   id: string;
   uid: string;
-  attester: string;
+  forecaster: string;
   attestedAt: number;
   forecast: string;
   comment: string;
   conditionId?: string;
 }
 
-export type FormattedAttestation = {
+export type FormattedForecast = {
   id: string;
   uid: string;
-  attester: string;
-  shortAttester: string;
+  forecaster: string;
+  shortForecaster: string;
   value: string;
   comment: string;
   time: string;
@@ -26,191 +26,192 @@ export type FormattedAttestation = {
   conditionId?: string;
 };
 
-type AttestationsQueryResponse = {
-  attestations: RawAttestation[];
+type ForecastsQueryResponse = {
+  forecasts: RawForecast[];
 };
 
-/**
- * Top-level fetch — uses the new offset-based `attestationsPage` and
- * unwraps its `items` into the legacy `{ attestations }` shape callers
- * already consume.
- */
-export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
-  query FindAttestations($filters: AttestationFilters, $take: Int!) {
-    attestationsPage(
-      filters: $filters
-      orderBy: ATTESTED_AT
-      orderDirection: desc
-      take: $take
+export const GET_FORECASTS_QUERY = /* GraphQL */ `
+  query FindForecasts($filters: ForecastFilter, $take: Int!) {
+    forecastsConnection(
+      filter: $filters
+      orderBy: { field: ATTESTED_AT, direction: DESC }
+      first: $take
     ) {
-      items {
+      nodes {
         id
         uid
-        attester
+        forecaster
         attestedAt
         forecast
         comment
         conditionId
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
 `;
 
 /**
- * Offset-based infinite-scroll query. `attestationsPage` is offset-only,
- * so consumers translate "next page" into a running `skip`. See
- * `useInfiniteForecasts` for the caller side.
- *
- * Trade-off vs. cursor pagination on a moving table: a new attestation
- * inserted at the top of the list while the user is mid-scroll will
- * shift subsequent pages by one row, so the same attestation can
- * appear on adjacent pages. Acceptable for the forecasts feed (rare
- * insertion rate at typical session length).
+ * Cursor-based infinite-scroll query. Callers pass the previous page's
+ * `pageInfo.endCursor` to fetch the next slice.
  */
-export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
-  query FindAttestationsPaginated(
-    $filters: AttestationFilters
+export const GET_FORECASTS_PAGINATED_QUERY = /* GraphQL */ `
+  query FindForecastsPaginated(
+    $filters: ForecastFilter
     $take: Int! = 10
-    $skip: Int! = 0
+    $after: String
   ) {
-    attestationsPage(
-      filters: $filters
-      orderBy: ATTESTED_AT
-      orderDirection: desc
-      take: $take
-      skip: $skip
+    forecastsConnection(
+      filter: $filters
+      orderBy: { field: ATTESTED_AT, direction: DESC }
+      first: $take
+      after: $after
     ) {
-      items {
+      nodes {
         id
         uid
-        attester
+        forecaster
         attestedAt
         forecast
         comment
         conditionId
       }
-      hasMore
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
 
-export const formatAttestationData = (
-  attestation: RawAttestation
-): FormattedAttestation => {
+export const formatForecastData = (
+  forecast: RawForecast
+): FormattedForecast => {
   const formattedTime = new Date(
-    Number(attestation.attestedAt) * 1000
+    Number(forecast.attestedAt) * 1000
   ).toLocaleString();
 
   return {
-    id: attestation.id.toString(),
-    uid: attestation.uid,
-    attester: attestation.attester,
-    shortAttester: `${attestation.attester.slice(
+    id: forecast.id.toString(),
+    uid: forecast.uid,
+    forecaster: forecast.forecaster,
+    shortForecaster: `${forecast.forecaster.slice(
       0,
       6
-    )}...${attestation.attester.slice(-4)}`,
-    value: attestation.forecast,
+    )}...${forecast.forecaster.slice(-4)}`,
+    value: forecast.forecast,
     time: formattedTime,
-    rawTime: attestation.attestedAt,
-    comment: attestation.comment,
-    conditionId: attestation.conditionId,
+    rawTime: forecast.attestedAt,
+    comment: forecast.comment,
+    conditionId: forecast.conditionId,
   };
 };
 
 export interface FetchForecastsParams {
   schemaId?: string;
-  attesterAddress?: string;
+  forecasterAddress?: string;
   conditionId?: string;
 }
 
-function normalizeAttester(attester?: string): string | undefined {
-  if (!attester) return undefined;
+function normalizeForecaster(forecaster?: string): string | undefined {
+  if (!forecaster) return undefined;
   try {
-    return getAddress(attester);
+    return getAddress(forecaster);
   } catch {
-    return attester;
+    return forecaster;
   }
 }
 
 export async function fetchForecasts(
   params: FetchForecastsParams
-): Promise<AttestationsQueryResponse> {
+): Promise<ForecastsQueryResponse> {
   const {
     schemaId = DEFAULT_SCHEMA_UID,
-    attesterAddress,
+    forecasterAddress,
     conditionId,
   } = params;
 
   const data = await graphqlRequest<{
-    attestationsPage: { items: RawAttestation[] };
-  }>(GET_ATTESTATIONS_QUERY, {
+    forecastsConnection: { nodes: RawForecast[] };
+  }>(GET_FORECASTS_QUERY, {
     filters: {
       schemaId,
-      attester: normalizeAttester(attesterAddress) ?? null,
+      forecaster: normalizeForecaster(forecasterAddress) ?? null,
       conditionId: conditionId ?? null,
     },
     take: 100,
   });
 
-  return { attestations: data.attestationsPage?.items ?? [] };
+  return { forecasts: data.forecastsConnection?.nodes ?? [] };
 }
 
 /**
- * Offset-based infinite-scroll page fetch. Returns `{ attestations, hasMore }`
- * so callers can stop paging on the server-truth flag instead of
- * `items.length < take`.
+ * Cursor-based infinite-scroll page fetch. Returns the server-provided
+ * `endCursor` so callers can request the next page via `after`.
  */
 export async function fetchForecastsPage(
   params: FetchForecastsParams,
-  page: { take: number; skip: number }
-): Promise<AttestationsQueryResponse & { hasMore: boolean }> {
+  page: { take: number; after?: string | null }
+): Promise<
+  ForecastsQueryResponse & { hasMore: boolean; endCursor: string | null }
+> {
   const {
     schemaId = DEFAULT_SCHEMA_UID,
-    attesterAddress,
+    forecasterAddress,
     conditionId,
   } = params;
 
   const data = await graphqlRequest<{
-    attestationsPage: { items: RawAttestation[]; hasMore: boolean };
-  }>(GET_ATTESTATIONS_PAGINATED_QUERY, {
+    forecastsConnection: {
+      nodes: RawForecast[];
+      pageInfo: { hasNextPage: boolean; endCursor: string | null };
+    };
+  }>(GET_FORECASTS_PAGINATED_QUERY, {
     filters: {
       schemaId,
-      attester: normalizeAttester(attesterAddress) ?? null,
+      forecaster: normalizeForecaster(forecasterAddress) ?? null,
       conditionId: conditionId ?? null,
     },
     take: page.take,
-    skip: page.skip,
+    after: page.after ?? null,
   });
 
   return {
-    attestations: data.attestationsPage?.items ?? [],
-    hasMore: data.attestationsPage?.hasMore ?? false,
+    forecasts: data.forecastsConnection?.nodes ?? [],
+    hasMore: data.forecastsConnection?.pageInfo?.hasNextPage ?? false,
+    endCursor: data.forecastsConnection?.pageInfo?.endCursor ?? null,
   };
 }
 
 const USER_FORECASTS_QUERY = /* GraphQL */ `
   query UserForecasts(
-    $filters: AttestationFilters
+    $filters: ForecastFilter
     $take: Int!
-    $skip: Int!
-    $orderBy: AttestationSortField
-    $orderDirection: SortOrder
+    $after: String
+    $orderBy: ForecastOrderField
+    $orderDirection: OrderDirection
   ) {
-    attestationsPage(
-      filters: $filters
-      take: $take
-      skip: $skip
-      orderBy: $orderBy
-      orderDirection: $orderDirection
+    forecastsConnection(
+      filter: $filters
+      first: $take
+      after: $after
+      orderBy: { field: $orderBy, direction: $orderDirection }
     ) {
-      items {
+      nodes {
         id
         uid
-        attester
+        forecaster
         attestedAt
         forecast
         comment
         conditionId
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -223,20 +224,24 @@ const USER_FORECAST_ORDER_BY_GQL: Record<string, string> = {
 };
 
 export async function fetchUserForecasts(params: {
-  attesterAddress: string;
+  forecasterAddress?: string;
   schemaId?: string;
   conditionId?: string;
   take: number;
-  skip: number;
+  after?: string | null;
   orderBy: string;
   orderDirection: 'asc' | 'desc';
-}): Promise<FormattedAttestation[]> {
+}): Promise<{
+  forecasts: FormattedForecast[];
+  hasMore: boolean;
+  endCursor: string | null;
+}> {
   const {
-    attesterAddress,
+    forecasterAddress,
     schemaId = DEFAULT_SCHEMA_UID,
     conditionId,
     take,
-    skip,
+    after,
     orderBy,
     orderDirection,
   } = params;
@@ -244,35 +249,42 @@ export async function fetchUserForecasts(params: {
   const variables = {
     filters: {
       schemaId,
-      attester: normalizeAttester(attesterAddress) ?? null,
+      forecaster: normalizeForecaster(forecasterAddress) ?? null,
       conditionId: conditionId ?? null,
     },
     take,
-    skip,
+    after: after ?? null,
     // Fall back to ATTESTED_AT if the caller passes an unmapped field —
-    // the old resolver accepted arbitrary Prisma fields, but
-    // `attestationsPage` only exposes ATTESTED_AT and CREATED_AT today.
+    // `forecastsConnection` only exposes ATTESTED_AT and CREATED_AT today.
     orderBy: USER_FORECAST_ORDER_BY_GQL[orderBy] ?? 'ATTESTED_AT',
-    orderDirection,
+    orderDirection: orderDirection.toUpperCase(),
   };
   const data = await graphqlRequest<{
-    attestationsPage: { items: RawAttestation[] };
+    forecastsConnection: {
+      nodes: RawForecast[] | null;
+      pageInfo: { hasNextPage: boolean; endCursor: string | null };
+    };
   }>(USER_FORECASTS_QUERY, variables);
-  return (data.attestationsPage?.items ?? []).map((att) =>
-    formatAttestationData(att)
-  );
+
+  return {
+    forecasts: (data.forecastsConnection?.nodes ?? []).map((f) =>
+      formatForecastData(f)
+    ),
+    hasMore: data.forecastsConnection?.pageInfo?.hasNextPage ?? false,
+    endCursor: data.forecastsConnection?.pageInfo?.endCursor ?? null,
+  };
 }
 
 export function generateForecastsQueryKey(params: {
   schemaId?: string;
-  attesterAddress?: string;
+  forecasterAddress?: string;
   chainId?: number;
   conditionId?: string;
 }) {
   return [
-    'attestations',
+    'forecasts',
     params.schemaId ?? DEFAULT_SCHEMA_UID,
-    params.attesterAddress || null,
+    params.forecasterAddress || null,
     params.chainId || null,
     params.conditionId || null,
   ];

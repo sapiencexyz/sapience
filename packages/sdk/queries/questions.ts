@@ -19,7 +19,6 @@ export type VolumeWindow =
   | '24hFiltered'
   | '7dFiltered';
 
-/** Map friendly VolumeWindow values to GraphQL enum keys */
 const VOLUME_WINDOW_TO_GQL: Record<VolumeWindow, string> = {
   '1h': 'oneHour',
   '4h': 'fourHours',
@@ -30,6 +29,31 @@ const VOLUME_WINDOW_TO_GQL: Record<VolumeWindow, string> = {
   '24hFiltered': 'twentyFourHoursFiltered',
   '7dFiltered': 'sevenDaysFiltered',
 };
+
+const SORT_FIELD_TO_ORDER_FIELD: Record<SortField, string> = {
+  createdAt: 'CREATED_AT',
+  endTime: 'RESOLVES_AT',
+  openInterest: 'OPEN_INTEREST',
+  predictionCount: 'PREDICTION_COUNT',
+  similarMarketVolume: 'SIMILAR_MARKET_VOLUME_24H',
+};
+
+const getQuestionOrderField = (
+  sortField: SortField,
+  similarMarketVolumeWindow?: VolumeWindow
+): string => {
+  if (sortField !== 'similarMarketVolume') {
+    return SORT_FIELD_TO_ORDER_FIELD[sortField];
+  }
+
+  // The API exposes 24h and 7d volume sort keys today. Keep unsupported
+  // 1h/4h windows on the previous 24h sort while preserving their filter.
+  return similarMarketVolumeWindow === '7d' ||
+    similarMarketVolumeWindow === '7dFiltered'
+    ? 'SIMILAR_MARKET_VOLUME_7D'
+    : 'SIMILAR_MARKET_VOLUME_24H';
+};
+
 export type ResolutionStatusValue =
   | 'all'
   | 'unresolved'
@@ -46,19 +70,17 @@ export interface QuestionType {
 export const GET_QUESTIONS = /* GraphQL */ `
   query Questions(
     $take: Int!
-    $skip: Int!
-    $orderBy: QuestionSortField!
-    $orderDirection: SortOrder!
-    $filters: QuestionFilters
+    $after: String
+    $orderBy: QuestionOrder
+    $filter: QuestionFilter
   ) {
-    questionsPage(
-      take: $take
-      skip: $skip
+    questionsConnection(
+      first: $take
+      after: $after
       orderBy: $orderBy
-      orderDirection: $orderDirection
-      filters: $filters
+      filter: $filter
     ) {
-      items {
+      nodes {
         questionType
         group {
           id
@@ -145,6 +167,10 @@ export const GET_QUESTIONS = /* GraphQL */ `
           }
         }
       }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
@@ -153,13 +179,8 @@ export interface FetchQuestionsSortedParams {
   take: number;
   skip: number;
   chainId?: number;
-  /**
-   * On-chain contract address (case-insensitive). When set without `chainId`,
-   * the API defaults the chain to its `DEFAULT_CHAIN_ID`.
-   */
-  contractAddress?: string;
-  /** Same as `contractAddress` but matches any address in the list. */
-  contractAddressIn?: string[];
+  marketAddress?: string;
+  marketAddressIn?: string[];
   sortField: SortField;
   sortDirection: SortDirection;
   search?: string;
@@ -174,42 +195,102 @@ export interface FetchQuestionsSortedParams {
   similarMarketVolumeWindow?: VolumeWindow;
 }
 
+type QuestionsQueryResult = {
+  questionsConnection?: {
+    nodes?: QuestionType[] | null;
+    pageInfo?: {
+      hasNextPage?: boolean | null;
+      endCursor?: string | null;
+    } | null;
+  } | null;
+};
+
+export interface QuestionsPageResult {
+  items: QuestionType[];
+  hasMore: boolean;
+}
+
+function buildQuestionFilter(params: FetchQuestionsSortedParams) {
+  return {
+    chainId: params.chainId ?? null,
+    marketAddress: params.marketAddress ?? null,
+    marketAddressIn: params.marketAddressIn?.length
+      ? params.marketAddressIn
+      : null,
+    search: params.search?.trim() || null,
+    categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
+    resolvesAt: params.minEndTime != null ? { gte: params.minEndTime } : null,
+    resolutionStatus: params.resolutionStatus ?? null,
+    estimatedPrice:
+      params.minEstimatedPrice != null || params.maxEstimatedPrice != null
+        ? {
+            ...(params.minEstimatedPrice != null
+              ? { gte: params.minEstimatedPrice }
+              : {}),
+            ...(params.maxEstimatedPrice != null
+              ? { lte: params.maxEstimatedPrice }
+              : {}),
+          }
+        : null,
+    similarMarketVolume:
+      params.minSimilarMarketVolume != null ||
+      params.maxSimilarMarketVolume != null
+        ? {
+            ...(params.minSimilarMarketVolume != null
+              ? { gte: params.minSimilarMarketVolume }
+              : {}),
+            ...(params.maxSimilarMarketVolume != null
+              ? { lte: params.maxSimilarMarketVolume }
+              : {}),
+          }
+        : null,
+    tag: params.tag ?? null,
+    similarMarketVolumeWindow: params.similarMarketVolumeWindow
+      ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
+      : null,
+  };
+}
+
+export async function fetchQuestionsPage(
+  params: FetchQuestionsSortedParams
+): Promise<QuestionsPageResult> {
+  const target = params.skip + params.take;
+  const collected: QuestionType[] = [];
+  let after: string | null | undefined = null;
+  let hasMore = false;
+
+  while (collected.length < target) {
+    const first = Math.min(100, target - collected.length);
+    const data: QuestionsQueryResult =
+      await graphqlRequest<QuestionsQueryResult>(GET_QUESTIONS, {
+        take: first,
+        after,
+        orderBy: {
+          field: getQuestionOrderField(
+            params.sortField,
+            params.similarMarketVolumeWindow
+          ),
+          direction: params.sortDirection.toUpperCase(),
+        },
+        filter: buildQuestionFilter(params),
+      });
+    const conn = data.questionsConnection;
+    const nodes = conn?.nodes ?? [];
+    collected.push(...nodes);
+    hasMore = Boolean(conn?.pageInfo?.hasNextPage);
+    if (!hasMore || !conn?.pageInfo?.endCursor || nodes.length === 0) break;
+    after = conn.pageInfo.endCursor;
+  }
+
+  return {
+    items: collected.slice(params.skip, target),
+    hasMore,
+  };
+}
+
 export async function fetchQuestionsSorted(
   params: FetchQuestionsSortedParams
 ): Promise<QuestionType[]> {
-  type QuestionsQueryResult = {
-    questionsPage: { items: QuestionType[] };
-  };
-  const variables = {
-    take: params.take,
-    skip: params.skip,
-    orderBy: params.sortField,
-    orderDirection: params.sortDirection,
-    filters: {
-      chainId: params.chainId ?? null,
-      contractAddress: params.contractAddress ?? null,
-      contractAddressIn: params.contractAddressIn?.length
-        ? params.contractAddressIn
-        : null,
-      search: params.search?.trim() || null,
-      categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
-      minEndTime: params.minEndTime ?? null,
-      resolutionStatus: params.resolutionStatus ?? null,
-      minEstimatedPrice: params.minEstimatedPrice ?? null,
-      maxEstimatedPrice: params.maxEstimatedPrice ?? null,
-      minSimilarMarketVolume: params.minSimilarMarketVolume ?? null,
-      maxSimilarMarketVolume: params.maxSimilarMarketVolume ?? null,
-      tag: params.tag ?? null,
-      similarMarketVolumeWindow: params.similarMarketVolumeWindow
-        ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
-        : null,
-    },
-  };
-
-  const data = await graphqlRequest<QuestionsQueryResult>(
-    GET_QUESTIONS,
-    variables
-  );
-
-  return data.questionsPage?.items ?? [];
+  const page = await fetchQuestionsPage(params);
+  return page.items;
 }

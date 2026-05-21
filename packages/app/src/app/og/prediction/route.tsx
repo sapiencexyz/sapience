@@ -92,7 +92,7 @@ export async function GET(req: Request) {
                 if (condResp.ok) {
                   const condResult = await condResp.json();
                   const conditions: ConditionData[] =
-                    condResult?.data?.conditionsPage?.items ?? [];
+                    condResult?.data?.conditionsConnection?.nodes ?? [];
                   for (const c of conditions) {
                     conditionsMap.set(c.id, c);
                   }

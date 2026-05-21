@@ -97,9 +97,9 @@ export default function QuestionPageContent({
     queryFn: async () => {
       if (!conditionId) return null;
       const QUERY = /* GraphQL */ `
-        query ConditionsByIds($filters: ConditionFilters!) {
-          conditionsPage(filters: $filters, take: 1) {
-            items {
+        query ConditionsByIds($filters: ConditionFilter!) {
+          conditionsConnection(filter: $filters, first: 1) {
+            nodes {
               id
               question
               shortName
@@ -122,11 +122,11 @@ export default function QuestionPageContent({
       `;
       const filters: Record<string, unknown> = { ids: [conditionId] };
       if (resolverAddressFromUrl) {
-        filters.resolver = resolverAddressFromUrl;
+        filters.marketAddress = resolverAddressFromUrl;
       }
       const resp = await graphqlRequest<{
-        conditionsPage: {
-          items: Array<{
+        conditionsConnection: {
+          nodes: Array<{
             id: string;
             question: string;
             shortName?: string | null;
@@ -143,7 +143,7 @@ export default function QuestionPageContent({
           }>;
         };
       }>(QUERY, { filters });
-      return resp?.conditionsPage?.items?.[0] || null;
+      return resp?.conditionsConnection?.nodes?.[0] || null;
     },
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
@@ -338,7 +338,7 @@ export default function QuestionPageContent({
         (forecast: {
           value: string;
           rawTime: number;
-          attester: string;
+          forecaster: string;
           comment?: string;
         }) => {
           try {
@@ -369,7 +369,7 @@ export default function QuestionPageContent({
               x: timestamp,
               y: predictionPercent,
               time: date.toLocaleString(),
-              attester: forecast.attester,
+              attester: forecast.forecaster,
               comment: forecast.comment || '',
             };
 

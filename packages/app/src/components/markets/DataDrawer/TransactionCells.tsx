@@ -19,7 +19,7 @@ import {
   CHART_SERIES_COLORS,
 } from '~/lib/theme/chartColors';
 import { d18ToPercentage } from '~/lib/utils/util';
-import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
+import type { FormattedForecast } from '~/hooks/graphql/useForecasts';
 
 export interface UiTransaction {
   id: number;
@@ -104,13 +104,13 @@ export function TransactionOwnerCell({ tx }: { tx: UiTransaction }) {
 export function TransactionAmountCell({
   tx,
   collateralAssetTicker,
-  attestation,
+  forecast,
   sortedMarketsForColors,
   showForecastBadgesInAmount = true,
 }: {
   tx: UiTransaction;
   collateralAssetTicker?: string | null;
-  attestation?: FormattedAttestation;
+  forecast?: FormattedForecast;
   sortedMarketsForColors?: Array<{
     marketId?: string | number | null;
     question?: string;
@@ -168,10 +168,10 @@ export function TransactionAmountCell({
   const shouldShowBadgesInAmount =
     showForecastBadgesInAmount && normalizedType.includes('forecast');
   let predictionBadge: React.ReactNode = null;
-  if (shouldShowBadgesInAmount && attestation && attestation.value) {
+  if (shouldShowBadgesInAmount && forecast && forecast.value) {
     try {
       // Convert D18 to percentage (0-100)
-      const percentage = Math.round(d18ToPercentage(attestation.value));
+      const percentage = Math.round(d18ToPercentage(forecast.value));
       const shouldColor = percentage !== 50;
       const isGreen = shouldColor && percentage > 50;
       const isRed = shouldColor && percentage < 50;

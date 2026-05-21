@@ -83,10 +83,10 @@ export const initializeApolloServer = async () => {
       return formattedError;
     },
     introspection: true,
-    // accountActivity → prediction → pickConfig → picks → condition →
-    // category → slug naturally needs depth 6. Limit kept tight enough to
-    // still block fan-out like conditions(take: 200) with 5+ relations.
-    validationRules: [depthLimit(6)],
+    // activityPage → items → prediction → pickConfig → picks → condition →
+    // category naturally needs depth 7. Limit kept tight enough to still
+    // block fan-out like conditions(take: 200) with 5+ relations.
+    validationRules: [depthLimit(7)],
     plugins: [
       ApolloServerPluginLandingPageLocalDefault({
         embed: true,

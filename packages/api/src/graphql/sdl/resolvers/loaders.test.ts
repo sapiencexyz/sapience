@@ -8,8 +8,6 @@ const makePrisma = (overrides: {
   categories?: { id: number; name?: string }[];
   conditionGroups?: { id: number; name?: string }[];
   referralCodes?: { id: number }[];
-  attestations?: { id: number; conditionId: string | null }[];
-  predictions?: { id: number; conditionId: string }[];
 }) => {
   const picksFindMany = vi.fn().mockResolvedValue(overrides.picks ?? []);
   const conditionFindMany = vi
@@ -25,12 +23,6 @@ const makePrisma = (overrides: {
   const referralCodeFindMany = vi
     .fn()
     .mockResolvedValue(overrides.referralCodes ?? []);
-  const attestationFindMany = vi
-    .fn()
-    .mockResolvedValue(overrides.attestations ?? []);
-  const legacyPredictionFindMany = vi
-    .fn()
-    .mockResolvedValue(overrides.predictions ?? []);
   return {
     picksFindMany,
     conditionFindMany,
@@ -38,8 +30,6 @@ const makePrisma = (overrides: {
     categoryFindMany,
     conditionGroupFindMany,
     referralCodeFindMany,
-    attestationFindMany,
-    legacyPredictionFindMany,
     client: {
       picks: { findMany: picksFindMany },
       condition: { findMany: conditionFindMany },
@@ -47,8 +37,6 @@ const makePrisma = (overrides: {
       category: { findMany: categoryFindMany },
       conditionGroup: { findMany: conditionGroupFindMany },
       referralCode: { findMany: referralCodeFindMany },
-      attestation: { findMany: attestationFindMany },
-      legacyPrediction: { findMany: legacyPredictionFindMany },
     } as unknown as Parameters<typeof createLoaders>[0],
   };
 };
@@ -289,68 +277,5 @@ describe('createLoaders.referralCodeById', () => {
     expect((a as { id: number }).id).toBe(5);
     expect((b as { id: number }).id).toBe(7);
     expect(missing).toBeNull();
-  });
-});
-
-describe('createLoaders.attestationsByConditionId', () => {
-  it('groups one batched findMany result by conditionId', async () => {
-    const { attestationFindMany, client } = makePrisma({
-      attestations: [
-        { id: 1, conditionId: '0xcond1' },
-        { id: 2, conditionId: '0xcond1' },
-        { id: 3, conditionId: '0xcond2' },
-      ],
-    });
-    const loaders = createLoaders(client);
-
-    const [forCond1, forCond2, forCond3] = await Promise.all([
-      loaders.attestationsByConditionId.load('0xcond1'),
-      loaders.attestationsByConditionId.load('0xcond2'),
-      loaders.attestationsByConditionId.load('0xcond3'),
-    ]);
-
-    expect(attestationFindMany).toHaveBeenCalledTimes(1);
-    expect(
-      attestationFindMany.mock.calls[0][0].where.conditionId.in.sort()
-    ).toEqual(['0xcond1', '0xcond2', '0xcond3']);
-    expect(forCond1.map((a) => a.id)).toEqual([1, 2]);
-    expect(forCond2.map((a) => a.id)).toEqual([3]);
-    expect(forCond3).toEqual([]);
-  });
-
-  it('lowercases conditionIds for the lookup map', async () => {
-    const { attestationFindMany, client } = makePrisma({
-      attestations: [{ id: 1, conditionId: '0xcond1' }],
-    });
-    const loaders = createLoaders(client);
-
-    const [mixed] = await Promise.all([
-      loaders.attestationsByConditionId.load('0xCOND1'),
-    ]);
-
-    expect(attestationFindMany).toHaveBeenCalledTimes(1);
-    expect(mixed.map((a) => a.id)).toEqual([1]);
-  });
-});
-
-describe('createLoaders.predictionsByConditionId', () => {
-  it('groups predictions by conditionId in a single findMany', async () => {
-    const { legacyPredictionFindMany, client } = makePrisma({
-      predictions: [
-        { id: 100, conditionId: '0xcond1' },
-        { id: 101, conditionId: '0xcond2' },
-        { id: 102, conditionId: '0xcond1' },
-      ],
-    });
-    const loaders = createLoaders(client);
-
-    const [forCond1, forCond2] = await Promise.all([
-      loaders.predictionsByConditionId.load('0xcond1'),
-      loaders.predictionsByConditionId.load('0xcond2'),
-    ]);
-
-    expect(legacyPredictionFindMany).toHaveBeenCalledTimes(1);
-    expect(forCond1.map((p) => p.id).sort()).toEqual([100, 102]);
-    expect(forCond2.map((p) => p.id)).toEqual([101]);
   });
 });

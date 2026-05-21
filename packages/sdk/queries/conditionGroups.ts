@@ -42,21 +42,23 @@ export interface ConditionGroupType {
   conditions: ConditionGroupConditionType[];
 }
 
-export interface ConditionGroupFilters {
+export interface ConditionGroupFilter {
   search?: string;
   categorySlugs?: string[];
   publicOnly?: boolean;
 }
 
+export type ConditionGroupFilters = ConditionGroupFilter;
+
 export const GET_CONDITION_GROUPS = /* GraphQL */ `
   query ConditionGroups(
     $take: Int!
-    $skip: Int!
-    $filters: ConditionGroupFilters
+    $after: String
+    $filter: ConditionGroupFilter
     $conditionsWhere: ConditionWhereInput
   ) {
-    conditionGroupsPage(take: $take, skip: $skip, filters: $filters) {
-      items {
+    conditionGroupsConnection(first: $take, after: $after, filter: $filter) {
+      nodes {
         id
         createdAt
         name
@@ -98,50 +100,63 @@ export const GET_CONDITION_GROUPS = /* GraphQL */ `
           displayOrder
         }
       }
-      hasMore
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
+
+type ConditionGroupsQueryResult = {
+  conditionGroupsConnection?: {
+    nodes?: ConditionGroupType[] | null;
+    pageInfo?: {
+      hasNextPage?: boolean | null;
+      endCursor?: string | null;
+    } | null;
+  } | null;
+};
 
 export async function fetchConditionGroups(opts?: {
   take?: number;
   skip?: number;
   chainId?: number;
-  filters?: ConditionGroupFilters;
+  filters?: ConditionGroupFilter;
   includeEmptyGroups?: boolean;
 }): Promise<ConditionGroupType[]> {
   const take = opts?.take ?? 100;
   const skip = opts?.skip ?? 0;
+  const target = skip + take;
   const chainId = opts?.chainId;
   const filters = opts?.filters;
   const includeEmpty = opts?.includeEmptyGroups ?? false;
-
-  // The top-level filter prunes the page server-side (search, category,
-  // chain, public, non-empty). The nested `conditions(where:)` selection
-  // still narrows which Condition rows we show inside each group — we
-  // ask the server only for the chain we care about so the UI doesn't
-  // have to filter the inner list.
   const conditionsWhere =
     chainId !== undefined ? { chainId: { equals: chainId } } : undefined;
-
-  type ConditionGroupsQueryResult = {
-    conditionGroupsPage: { items: ConditionGroupType[]; hasMore: boolean };
+  const filter = {
+    search: filters?.search,
+    categorySlugs: filters?.categorySlugs,
+    chainId,
+    publicOnly: filters?.publicOnly === true,
+    includeEmpty,
   };
-  const data = await graphqlRequest<ConditionGroupsQueryResult>(
-    GET_CONDITION_GROUPS,
-    {
-      take,
-      skip,
-      filters: {
-        search: filters?.search,
-        categorySlugs: filters?.categorySlugs,
-        chainId,
-        publicOnly: filters?.publicOnly === true,
-        includeEmpty,
-      },
-      conditionsWhere,
-    }
-  );
 
-  return data.conditionGroupsPage?.items ?? [];
+  const collected: ConditionGroupType[] = [];
+  let after: string | null | undefined = null;
+  while (collected.length < target) {
+    const first = Math.min(100, target - collected.length);
+    const data: ConditionGroupsQueryResult =
+      await graphqlRequest<ConditionGroupsQueryResult>(GET_CONDITION_GROUPS, {
+        take: first,
+        after,
+        filter,
+        conditionsWhere,
+      });
+    const conn = data.conditionGroupsConnection;
+    collected.push(...(conn?.nodes ?? []));
+    if (!conn?.pageInfo?.hasNextPage || !conn.pageInfo.endCursor) break;
+    after = conn.pageInfo.endCursor;
+  }
+
+  return collected.slice(skip, target);
 }

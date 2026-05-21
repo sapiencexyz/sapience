@@ -63,12 +63,12 @@ export const accountAccuracyRank: NonNullable<
 > = async (_parent, { address }) => {
   const target = address.toLowerCase();
   const scores = await getLeaderboardScores();
-  const totalParticipants = scores.length;
+  const totalForecasters = scores.length;
   const idx = scores.findIndex((s) => s.attester === target);
   return {
     address: target,
     accuracyScore: idx >= 0 ? scores[idx].accuracyScore : 0,
     rank: idx >= 0 ? idx + 1 : null,
-    totalParticipants,
+    totalForecasters,
   };
 };

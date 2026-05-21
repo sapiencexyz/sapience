@@ -12,7 +12,7 @@ type RelationFn = (
 ) => Promise<unknown>;
 
 const callField = (
-  field: 'category' | 'conditions',
+  field: 'category' | 'conditions' | 'title',
   parent: unknown,
   args: unknown,
   ctx: unknown
@@ -61,6 +61,18 @@ describe('ConditionGroup.category', () => {
     );
     expect(result).toBe(preloaded);
     expect(helperMock.loadRelation).not.toHaveBeenCalled();
+  });
+});
+
+describe('ConditionGroup.title', () => {
+  it('mirrors `name` so older clients selecting `title` keep working', async () => {
+    const result = await callField('title', { id: 1, name: 'Crypto' }, {}, {});
+    expect(result).toBe('Crypto');
+  });
+
+  it('returns empty string when name is missing rather than null', async () => {
+    const result = await callField('title', { id: 1, name: null }, {}, {});
+    expect(result).toBe('');
   });
 });
 

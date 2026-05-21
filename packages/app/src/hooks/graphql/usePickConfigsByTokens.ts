@@ -7,46 +7,45 @@ import type { PickConfigData, PickData } from '~/hooks/graphql/usePositions';
 
 // tokens arg on pickConfigurations added in PR #1440. `picks.condition`
 // is fetched inline so callers can build their conditionsMap from a
-// single round trip — see Pick resolver + pickConfigurationsPage resolver.
-const PICK_CONFIGS_BY_TOKENS_QUERY = `
-  query PickConfigsByTokens($filters: PickConfigurationFilters) {
-    pickConfigurationsPage(filters: $filters, take: 100) {
-      items {
+// single round trip. Use the deprecated bare-list field here for staging
+// compatibility while API/app deploys can be briefly out of sync.
+const PICK_CONFIGS_BY_TOKENS_QUERY = /* GraphQL */ `
+  query PickConfigsByTokens($tokens: [String!]) {
+    pickConfigurations(tokens: $tokens, take: 100) {
+      id
+      chainId
+      marketAddress
+      totalPredictorCollateral
+      totalCounterpartyCollateral
+      claimedPredictorCollateral
+      claimedCounterpartyCollateral
+      resolved
+      result
+      resolvedAt
+      predictorToken
+      counterpartyToken
+      endsAt
+      isLegacy
+      picks {
         id
-        chainId
-        marketAddress
-        totalPredictorCollateral
-        totalCounterpartyCollateral
-        claimedPredictorCollateral
-        claimedCounterpartyCollateral
-        resolved
-        result
-        resolvedAt
-        predictorToken
-        counterpartyToken
-        endsAt
-        isLegacy
-        picks {
+        pickConfigId
+        conditionResolver
+        conditionId
+        predictedOutcome
+        condition {
           id
-          pickConfigId
-          conditionResolver
-          conditionId
-          predictedOutcome
-          condition {
-            id
-            shortName
-            optionName
-            question
-            description
-            endTime
-            resolver
-            settled
-            resolvedToYes
-            nonDecisive
-            estimatedPrice
-            category {
-              slug
-            }
+          shortName
+          optionName
+          question
+          description
+          endTime
+          resolver
+          settled
+          resolvedToYes
+          nonDecisive
+          estimatedPrice
+          category {
+            slug
           }
         }
       }
@@ -75,9 +74,9 @@ export function usePickConfigsByTokens(tokens: string[]) {
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        pickConfigurationsPage: { items: PickConfigData[] };
-      }>(PICK_CONFIGS_BY_TOKENS_QUERY, { filters: { tokens: sorted } });
-      return resp?.pickConfigurationsPage?.items ?? [];
+        pickConfigurations: PickConfigData[];
+      }>(PICK_CONFIGS_BY_TOKENS_QUERY, { tokens: sorted });
+      return resp?.pickConfigurations ?? [];
     },
   });
 
