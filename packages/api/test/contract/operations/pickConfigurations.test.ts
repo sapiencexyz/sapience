@@ -6,9 +6,10 @@ import { stabilize } from '../../helpers/stableSerializer';
 describe('PickConfigurations query', () => {
   it('matches the recorded contract', async () => {
     const result = await executeOperation(GET_PICK_CONFIGURATIONS, {
-      first: 10,
-      after: null,
-      filter: {},
+      take: 10,
+      skip: 0,
+      chainId: null,
+      resolved: null,
     });
     expect(result.errors).toBeUndefined();
     await expect(

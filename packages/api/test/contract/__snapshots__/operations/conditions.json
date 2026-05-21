@@ -1,5 +1,6 @@
 {
   "conditionsConnection": {
+    "hasMore": true,
     "nodes": [
       {
         "id": "0xa93a85108d1bda42a235b0b85c71b2e4636165ca87a2df89fd8fb0d879a3d8cf",
@@ -12,6 +13,12 @@
         "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Jamal Murray scores more than 25.5 points during the game.\nThis market will resolve to \"No\" if Jamal Murray scores 25.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
         "similarMarkets": [
           "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-points-jamal-murray-25pt5"
+        ],
+        "tags": [
+          "Sports",
+          "NBA",
+          "Games",
+          "Basketball"
         ],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
@@ -30,7 +37,7 @@
           "name": "Nuggets vs. Timberwolves"
         },
         "category": {
-          "id": 6,
+          "id": "Q2F0ZWdvcnk6Ng",
           "name": "Sports",
           "slug": "sports"
         }
@@ -38,14 +45,20 @@
       {
         "id": "0xa553a62dad12df974b39406710949b4d88d8f7b7155eb7ebd3da36169823ab63",
         "createdAt": "<ISO_TIMESTAMP>",
-        "question": "Nikola Joki\u0107: Points O/U 27.5",
-        "shortName": "Nikola Joki\u0107: Points O/U 27.5",
-        "optionName": "Nikola Joki\u0107: Points O/U 27.5",
+        "question": "Nikola Jokić: Points O/U 27.5",
+        "shortName": "Nikola Jokić: Points O/U 27.5",
+        "optionName": "Nikola Jokić: Points O/U 27.5",
         "endTime": 1777019400,
         "public": true,
-        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Nikola Joki\u0107 scores more than 27.5 points during the game.\nThis market will resolve to \"No\" if Nikola Joki\u0107 scores 27.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+        "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Yes\" if Nikola Jokić scores more than 27.5 points during the game.\nThis market will resolve to \"No\" if Nikola Jokić scores 27.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
         "similarMarkets": [
           "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-points-nikola-jokic-27pt5"
+        ],
+        "tags": [
+          "Sports",
+          "NBA",
+          "Games",
+          "Basketball"
         ],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
@@ -64,7 +77,7 @@
           "name": "Nuggets vs. Timberwolves"
         },
         "category": {
-          "id": 6,
+          "id": "Q2F0ZWdvcnk6Ng",
           "name": "Sports",
           "slug": "sports"
         }
@@ -80,6 +93,12 @@
         "description": "In the upcoming NBA game, scheduled for April 23 at 9:30 PM ET:\nThis market will resolve to \"Over\" if the Nuggets and Timberwolves combine to score 233 or more points in this game.\nIf the combined total is less than 233, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
         "similarMarkets": [
           "https://polymarket.com/event/nba-den-min-2026-04-23#nba-den-min-2026-04-23-total-232pt5"
+        ],
+        "tags": [
+          "Sports",
+          "NBA",
+          "Games",
+          "Basketball"
         ],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
@@ -98,7 +117,7 @@
           "name": "Nuggets vs. Timberwolves"
         },
         "category": {
-          "id": 6,
+          "id": "Q2F0ZWdvcnk6Ng",
           "name": "Sports",
           "slug": "sports"
         }
@@ -114,6 +133,12 @@
         "description": "In the first half of the NBA game between Cavaliers and Raptors, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Over\" if the Cavaliers and Raptors combine to score 108 or more points in the first half.\nIf the combined first half total is less than 108, this market will resolve to \"Under\".\nThe result will be determined based on the score at halftime only.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
         "similarMarkets": [
           "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-1h-total-107pt5"
+        ],
+        "tags": [
+          "Sports",
+          "NBA",
+          "Games",
+          "Basketball"
         ],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
@@ -132,7 +157,7 @@
           "name": "Cavaliers vs. Raptors"
         },
         "category": {
-          "id": 6,
+          "id": "Q2F0ZWdvcnk6Ng",
           "name": "Sports",
           "slug": "sports"
         }
@@ -145,10 +170,11 @@
         "optionName": "Somali / Somalia / Somalian",
         "endTime": 1777017540,
         "public": true,
-        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person\u2019s first or last name, a full-name mention will count as one mention (e.g., if a market is about \u201cJoe / Biden 5+ times,\u201d a mention of \u201cJoe Biden\u201d will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
         "similarMarkets": [
           "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-somali-or-somalia-or-somalian-during-healthcare-event"
         ],
+        "tags": [],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "settled": false,
@@ -166,7 +192,7 @@
           "name": "What will Trump say during the Health Care Affordability event?"
         },
         "category": {
-          "id": 4,
+          "id": "Q2F0ZWdvcnk6NA",
           "name": "Geopolitics",
           "slug": "geopolitics"
         }
@@ -182,6 +208,12 @@
         "description": "In the upcoming NBA game, scheduled for April 23 at 8:00 PM ET:\nThis market will resolve to \"Yes\" if James Harden scores more than 20.5 points during the game.\nThis market will resolve to \"No\" if James Harden scores 20.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
         "similarMarkets": [
           "https://polymarket.com/event/nba-cle-tor-2026-04-23#nba-cle-tor-2026-04-23-points-james-harden-20pt5"
+        ],
+        "tags": [
+          "Sports",
+          "NBA",
+          "Games",
+          "Basketball"
         ],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
@@ -200,7 +232,7 @@
           "name": "Cavaliers vs. Raptors"
         },
         "category": {
-          "id": 6,
+          "id": "Q2F0ZWdvcnk6Ng",
           "name": "Sports",
           "slug": "sports"
         }
@@ -213,10 +245,11 @@
         "optionName": "Veteran",
         "endTime": 1777017540,
         "public": true,
-        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person\u2019s first or last name, a full-name mention will count as one mention (e.g., if a market is about \u201cJoe / Biden 5+ times,\u201d a mention of \u201cJoe Biden\u201d will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
         "similarMarkets": [
           "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-veteran-during-healthcare-event"
         ],
+        "tags": [],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "settled": false,
@@ -234,7 +267,7 @@
           "name": "What will Trump say during the Health Care Affordability event?"
         },
         "category": {
-          "id": 4,
+          "id": "Q2F0ZWdvcnk6NA",
           "name": "Geopolitics",
           "slug": "geopolitics"
         }
@@ -247,10 +280,11 @@
         "optionName": "Go ahead 3+ times",
         "endTime": 1777017540,
         "public": true,
-        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person\u2019s first or last name, a full-name mention will count as one mention (e.g., if a market is about \u201cJoe / Biden 5+ times,\u201d a mention of \u201cJoe Biden\u201d will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
         "similarMarkets": [
           "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-go-ahead-3-times-during-healthcare-event"
         ],
+        "tags": [],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "settled": false,
@@ -268,7 +302,7 @@
           "name": "What will Trump say during the Health Care Affordability event?"
         },
         "category": {
-          "id": 4,
+          "id": "Q2F0ZWdvcnk6NA",
           "name": "Geopolitics",
           "slug": "geopolitics"
         }
@@ -281,10 +315,11 @@
         "optionName": "Unaffordable Care Act",
         "endTime": 1777017540,
         "public": true,
-        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person\u2019s first or last name, a full-name mention will count as one mention (e.g., if a market is about \u201cJoe / Biden 5+ times,\u201d a mention of \u201cJoe Biden\u201d will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
         "similarMarkets": [
           "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-unaffordable-care-act-during-healthcare-event"
         ],
+        "tags": [],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "settled": false,
@@ -302,7 +337,7 @@
           "name": "What will Trump say during the Health Care Affordability event?"
         },
         "category": {
-          "id": 4,
+          "id": "Q2F0ZWdvcnk6NA",
           "name": "Geopolitics",
           "slug": "geopolitics"
         }
@@ -315,10 +350,11 @@
         "optionName": "MAHA",
         "endTime": 1777017540,
         "public": true,
-        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person\u2019s first or last name, a full-name mention will count as one mention (e.g., if a market is about \u201cJoe / Biden 5+ times,\u201d a mention of \u201cJoe Biden\u201d will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+        "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Health Care Affordability Event\" on April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the healthcare affordability event scheduled for April 23, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Health Care Affordability Event\" scheduled for April 23, 2026, 3PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 23, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
         "similarMarkets": [
           "https://polymarket.com/event/what-will-trump-say-during-the-health-care-affordability-event#will-trump-say-maha-during-healthcare-event"
         ],
+        "tags": [],
         "chainId": 13374202,
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "settled": false,
@@ -336,14 +372,14 @@
           "name": "What will Trump say during the Health Care Affordability event?"
         },
         "category": {
-          "id": 4,
+          "id": "Q2F0ZWdvcnk6NA",
           "name": "Geopolitics",
           "slug": "geopolitics"
         }
       }
     ],
     "pageInfo": {
-      "hasNextPage": false,
+      "hasNextPage": true,
       "endCursor": "<CURSOR>"
     }
   }

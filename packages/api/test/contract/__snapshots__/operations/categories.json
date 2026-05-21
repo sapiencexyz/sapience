@@ -2,52 +2,52 @@
   "categoriesConnection": {
     "nodes": [
       {
-        "id": "Q2F0ZWdvcnk6MTYz",
+        "id": "Q2F0ZWdvcnk6UTJGMFpXZHZjbms2TVRZeg",
         "name": "Commodities",
         "slug": "prices-commodities"
       },
       {
-        "id": "Q2F0ZWdvcnk6MQ==",
+        "id": "Q2F0ZWdvcnk6UTJGMFpXZHZjbms2TVE",
         "name": "Crypto",
         "slug": "crypto"
       },
       {
-        "id": "Q2F0ZWdvcnk6MTYy",
+        "id": "Q2F0ZWdvcnk6UTJGMFpXZHZjbms2TVRZeQ",
         "name": "Crypto",
         "slug": "prices-crypto"
       },
       {
-        "id": "Q2F0ZWdvcnk6Nw==",
+        "id": "Q2F0ZWdvcnk6UTJGMFpXZHZjbms2Tnc",
         "name": "Culture",
         "slug": "culture"
       },
       {
-        "id": "Q2F0ZWdvcnk6NQ==",
+        "id": "Q2F0ZWdvcnk6UTJGMFpXZHZjbms2TlE",
         "name": "Economy & Finance",
         "slug": "economy-finance"
       },
       {
-        "id": "Q2F0ZWdvcnk6MTY0",
+        "id": "Q2F0ZWdvcnk6UTJGMFpXZHZjbms2TVRZMA",
         "name": "Equity",
         "slug": "prices-equity"
       },
       {
-        "id": "Q2F0ZWdvcnk6NA==",
+        "id": "Q2F0ZWdvcnk6UTJGMFpXZHZjbms2TkE",
         "name": "Geopolitics",
         "slug": "geopolitics"
       },
       {
-        "id": "Q2F0ZWdvcnk6Ng==",
+        "id": "Q2F0ZWdvcnk6UTJGMFpXZHZjbms2Tmc",
         "name": "Sports",
         "slug": "sports"
       },
       {
-        "id": "Q2F0ZWdvcnk6Mw==",
+        "id": "Q2F0ZWdvcnk6UTJGMFpXZHZjbms2TXc",
         "name": "Tech & Science",
         "slug": "tech-science"
       },
       {
-        "id": "Q2F0ZWdvcnk6Mg==",
+        "id": "Q2F0ZWdvcnk6UTJGMFpXZHZjbms2TWc",
         "name": "Weather",
         "slug": "weather"
       }

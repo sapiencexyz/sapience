@@ -21828,7 +21828,7 @@
       {
         "kind": "ENUM",
         "name": "QuestionOrderField",
-        "description": "Sort fields for the Relay-shaped `questions` connection. The runner\nunions Conditions and ConditionGroups; sort values pick the column on\neach side. `OPEN_INTEREST` is intentionally omitted (symmetric with\n`ConditionOrderField`) — the Condition side would sort the varchar\ncolumn lexicographically; restore together with raw-SQL numeric sort\nin a follow-up.",
+        "description": "Sort fields for the Relay-shaped `questions` connection. The runner\nunions Conditions and ConditionGroups; sort values pick the column on\neach side. Unlike the narrower Condition/ConditionGroup connections,\n`OPEN_INTEREST` is available here because this feed uses raw SQL and\ncasts the varchar-backed open-interest values numerically.",
         "fields": null,
         "inputFields": null,
         "interfaces": null,
@@ -21841,6 +21841,12 @@
           },
           {
             "name": "RESOLVES_AT",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "OPEN_INTEREST",
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null

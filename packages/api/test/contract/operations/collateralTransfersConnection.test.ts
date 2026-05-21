@@ -18,7 +18,7 @@ const COLLATERAL_TRANSFERS_CONNECTION_QUERY = /* GraphQL */ `
     collateralTransfersConnection(
       first: $first
       filter: { account: $account, chainId: $chainId }
-      orderBy: { field: TIMESTAMP, direction: DESC }
+      orderBy: { field: BLOCK_NUMBER, direction: DESC }
     ) {
       edges {
         cursor
@@ -51,11 +51,14 @@ const COLLATERAL_TRANSFERS_CONNECTION_QUERY = /* GraphQL */ `
 
 describe('collateralTransfersConnection query', () => {
   it('matches the recorded contract', async () => {
-    const result = await executeOperation(COLLATERAL_TRANSFERS_CONNECTION_QUERY, {
-      account: '0x0000000000000000000000000000000000000000',
-      chainId: 1,
-      first: 10,
-    });
+    const result = await executeOperation(
+      COLLATERAL_TRANSFERS_CONNECTION_QUERY,
+      {
+        account: '0x0000000000000000000000000000000000000000',
+        chainId: 1,
+        first: 10,
+      }
+    );
     expect(result.errors).toBeUndefined();
     await expect(
       JSON.stringify(stabilize(result.data), null, 2)
