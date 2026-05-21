@@ -5447,7 +5447,7 @@
           },
           {
             "name": "id",
-            "description": "Natural-key condition id (on-chain identifier), returned verbatim — NOT\na `toGlobalId`-wrapped opaque blob. The type is `ID!` so the schema\nformally satisfies `Node`, but `node(id:)` does not currently route to\n`Condition`; use the dedicated `condition(...)` lookup. Full Node\nregistry integration is a follow-up.",
+            "description": "Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`\nfor the on-chain condition identifier.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -5455,6 +5455,22 @@
               "ofType": {
                 "kind": "SCALAR",
                 "name": "ID",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Natural-key condition id (on-chain identifier), returned verbatim.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
                 "ofType": null
               }
             },
@@ -14260,7 +14276,7 @@
           },
           {
             "name": "id",
-            "description": "Natural-key pick-configuration id, returned verbatim — NOT a\n`toGlobalId`-wrapped opaque blob. The type is `ID!` so the schema\nformally satisfies `Node`, but `node(id:)` does not currently route to\n`PickConfiguration`; use the dedicated `pickConfiguration(id:)` lookup.\nFull Node registry integration is a follow-up.",
+            "description": "Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`\nfor the natural pick-configuration identifier.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -14268,6 +14284,22 @@
               "ofType": {
                 "kind": "SCALAR",
                 "name": "ID",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pickConfigId",
+            "description": "Natural-key pick-configuration id, returned verbatim.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
                 "ofType": null
               }
             },
@@ -15004,7 +15036,7 @@
           },
           {
             "name": "id",
-            "description": "Synthetic row id. Open rows use the underlying Position row id\nserialized as a string; synthesized sell rows append `\"-sell-<tradeHash>\"`.\n\nReturned verbatim — NOT a `toGlobalId`-wrapped opaque blob. The type is\n`ID!` so the schema formally satisfies `Node`, but `node(id:)` does not\ncurrently route to `Position`. Full Node registry integration is a\nfollow-up.",
+            "description": "Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`\nfor the synthetic position row identifier.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -15012,6 +15044,22 @@
               "ofType": {
                 "kind": "SCALAR",
                 "name": "ID",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "positionId",
+            "description": "Synthetic row id. Open rows use the underlying Position row id\nserialized as a string; synthesized sell rows append `\"-sell-<tradeHash>\"`.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "String",
                 "ofType": null
               }
             },

@@ -597,6 +597,7 @@ export const pickConfiguration: NonNullable<
 
 type PositionShape = ResolversParentTypes['Position'] & {
   id: string;
+  positionId: string;
   chainId: number;
   tokenAddress: string;
   pickConfigId: string;
@@ -1003,6 +1004,7 @@ const synthesizePositionRow = (
     for (const d of disposalRows) {
       out.push({
         id: `${r.id}-sell-${d.tradeHash}`,
+        positionId: `${r.id}-sell-${d.tradeHash}`,
         chainId: r.chainId,
         tokenAddress: r.tokenAddress,
         pickConfigId: r.pickConfigId,
@@ -1028,6 +1030,7 @@ const synthesizePositionRow = (
       !isResolved && disposalRows.length > 0 ? costPool : totalUserCollateral;
     out.push({
       id: String(r.id),
+      positionId: String(r.id),
       chainId: r.chainId,
       tokenAddress: r.tokenAddress,
       pickConfigId: r.pickConfigId,
@@ -1112,6 +1115,30 @@ const synthesizePositionsPage = async (
     out.push(...synthesized);
   }
   return out;
+};
+
+const basePositionRowId = (positionNodeId: string): number | null => {
+  const [rawRowId] = positionNodeId.split('-sell-');
+  const numericId = Number(rawRowId);
+  return Number.isInteger(numericId) ? numericId : null;
+};
+
+export const resolvePositionNode = async (
+  positionNodeId: string
+): Promise<PositionShape | null> => {
+  const rowId = basePositionRowId(positionNodeId);
+  if (rowId == null) return null;
+  const row = await prisma.position.findUnique({
+    where: { id: rowId },
+    include: {
+      pickConfiguration: {
+        include: { picks: true, predictions: true },
+      },
+    },
+  });
+  if (!row) return null;
+  const rows = await synthesizePositionsPage([row]);
+  return rows.find((r) => r.id === positionNodeId) ?? null;
 };
 
 /**

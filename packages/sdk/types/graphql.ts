@@ -875,14 +875,10 @@ export type Condition = Node & {
   /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket */
   estimatedPrice?: Maybe<Scalars['Float']['output']>;
   forecasts: ForecastConnection;
-  /**
-   * Natural-key condition id (on-chain identifier), returned verbatim — NOT
-   * a `toGlobalId`-wrapped opaque blob. The type is `ID!` so the schema
-   * formally satisfies `Node`, but `node(id:)` does not currently route to
-   * `Condition`; use the dedicated `condition(...)` lookup. Full Node
-   * registry integration is a follow-up.
-   */
+  /** Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId` for the on-chain condition identifier. */
   id: Scalars['ID']['output'];
+  /** Natural-key condition id (on-chain identifier), returned verbatim. */
+  conditionId: Scalars['String']['output'];
   /**
    * On-chain market contract address that owns this condition (case-insensitive,
    * 0x-prefixed lowercase). The canonical client-facing name for the address
@@ -2191,14 +2187,10 @@ export type PickConfiguration = Node & {
   claimedPredictorCollateral: Scalars['String']['output'];
   counterpartyToken?: Maybe<Scalars['String']['output']>;
   endsAt?: Maybe<Scalars['UnixSeconds']['output']>;
-  /**
-   * Natural-key pick-configuration id, returned verbatim — NOT a
-   * `toGlobalId`-wrapped opaque blob. The type is `ID!` so the schema
-   * formally satisfies `Node`, but `node(id:)` does not currently route to
-   * `PickConfiguration`; use the dedicated `pickConfiguration(id:)` lookup.
-   * Full Node registry integration is a follow-up.
-   */
+  /** Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId` for the natural pick-configuration identifier. */
   id: Scalars['ID']['output'];
+  /** Natural-key pick-configuration id, returned verbatim. */
+  pickConfigId: Scalars['String']['output'];
   isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
   picks: Array<Pick>;
@@ -2313,16 +2305,13 @@ export type Position = Node & {
   createdAt: Scalars['DateTimeISO']['output'];
   /** Holder wallet address (lowercase 0x-hex). */
   holder: Scalars['String']['output'];
+  /** Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId` for the synthetic position row identifier. */
+  id: Scalars['ID']['output'];
   /**
    * Synthetic row id. Open rows use the underlying Position row id
    * serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
-   *
-   * Returned verbatim — NOT a `toGlobalId`-wrapped opaque blob. The type is
-   * `ID!` so the schema formally satisfies `Node`, but `node(id:)` does not
-   * currently route to `Position`. Full Node registry integration is a
-   * follow-up.
    */
-  id: Scalars['ID']['output'];
+  positionId: Scalars['String']['output'];
   /** True if this is the predictor token side; false for counterparty. */
   isPredictorToken: Scalars['Boolean']['output'];
   pickConfig?: Maybe<PickConfiguration>;

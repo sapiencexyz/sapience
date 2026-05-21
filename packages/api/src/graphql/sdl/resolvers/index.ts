@@ -31,6 +31,7 @@ import { ActivityItemsPage } from './ActivityItemsPage';
 import { Forecast } from './Forecast';
 import { Pick } from './Pick';
 import { PickConfiguration } from './PickConfiguration';
+import { Position } from './Position';
 import { PositionsPage } from './PositionsPage';
 import { Question, ConditionOrConditionGroup } from './Question';
 import { User } from './User';
@@ -204,6 +205,7 @@ export const resolvers: Resolvers = {
   Forecast,
   Pick,
   PickConfiguration,
+  Position,
   PositionsPage,
   Question,
   QuestionConnection,

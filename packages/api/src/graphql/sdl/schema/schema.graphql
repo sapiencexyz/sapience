@@ -758,13 +758,14 @@ type Condition implements Node {
   """
   estimatedPrice: Float
   """
-  Natural-key condition id (on-chain identifier), returned verbatim — NOT
-  a `toGlobalId`-wrapped opaque blob. The type is `ID!` so the schema
-  formally satisfies `Node`, but `node(id:)` does not currently route to
-  `Condition`; use the dedicated `condition(...)` lookup. Full Node
-  registry integration is a follow-up.
+  Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`
+  for the on-chain condition identifier.
   """
   id: ID!
+  """
+  Natural-key condition id (on-chain identifier), returned verbatim.
+  """
+  conditionId: String!
   nonDecisive: Boolean!
   openInterest: String!
   optionName: String
@@ -1483,13 +1484,14 @@ type PickConfiguration implements Node {
   counterpartyToken: String
   endsAt: UnixSeconds
   """
-  Natural-key pick-configuration id, returned verbatim — NOT a
-  `toGlobalId`-wrapped opaque blob. The type is `ID!` so the schema
-  formally satisfies `Node`, but `node(id:)` does not currently route to
-  `PickConfiguration`; use the dedicated `pickConfiguration(id:)` lookup.
-  Full Node registry integration is a follow-up.
+  Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`
+  for the natural pick-configuration identifier.
   """
   id: ID!
+  """
+  Natural-key pick-configuration id, returned verbatim.
+  """
+  pickConfigId: String!
   isLegacy: Boolean!
   marketAddress: String!
   picks: [Pick!]!
@@ -2387,15 +2389,15 @@ type Position implements Node {
   """
   holder: String!
   """
-  Synthetic row id. Open rows use the underlying Position row id
-  serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
-
-  Returned verbatim — NOT a `toGlobalId`-wrapped opaque blob. The type is
-  `ID!` so the schema formally satisfies `Node`, but `node(id:)` does not
-  currently route to `Position`. Full Node registry integration is a
-  follow-up.
+  Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`
+  for the synthetic position row identifier.
   """
   id: ID!
+  """
+  Synthetic row id. Open rows use the underlying Position row id
+  serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
+  """
+  positionId: String!
   """
   True if this is the predictor token side; false for counterparty.
   """
