@@ -28,7 +28,6 @@ COPY packages/protocol/package.json packages/protocol/
 COPY packages/docs/package.json packages/docs/
 COPY packages/edge-cache/package.json packages/edge-cache/
 COPY packages/market-keeper/package.json packages/market-keeper/
-COPY packages/benchmarks/package.json packages/benchmarks/
 
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
