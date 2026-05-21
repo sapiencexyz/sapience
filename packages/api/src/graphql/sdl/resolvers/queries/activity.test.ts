@@ -12,6 +12,7 @@ vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 
 import { decodeCursor } from '../../../relay/cursor';
 import { Activity, ActivitySource } from '../Activity';
+import { ActivityConnection } from '../ConnectionTotalCount';
 import { activity } from './activity';
 
 const callResolver = <TResult = unknown>(resolver: unknown) =>
@@ -224,5 +225,21 @@ describe('activity', () => {
         where: expect.objectContaining({ AND: expect.any(Array) }),
       })
     );
+  });
+
+  it('defers totalCount counts until the field resolver is selected', async () => {
+    mockPrisma.prediction.count.mockResolvedValue(3);
+    mockPrisma.secondaryTrade.count.mockResolvedValue(4);
+
+    const result = await callResolver(activity)(null, { first: 10 }, {}, null);
+
+    expect(mockPrisma.prediction.count).not.toHaveBeenCalled();
+    expect(mockPrisma.secondaryTrade.count).not.toHaveBeenCalled();
+
+    const totalCount = await ActivityConnection.totalCount(result);
+
+    expect(totalCount).toBe(7);
+    expect(mockPrisma.prediction.count).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.secondaryTrade.count).toHaveBeenCalledTimes(1);
   });
 });

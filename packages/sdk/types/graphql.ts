@@ -445,9 +445,8 @@ export type ActivityConnection = {
   pageInfo: PageInfo;
   /**
    * Sum of matching Prediction and SecondaryTrade rows for the same filters
-   * the page was sliced from. Computed via two indexed `COUNT(*)` queries in
-   * parallel with the data query — not cheap enough to make load-bearing for
-   * every request, but stable and lazy.
+   * the page was sliced from. Resolved lazily via two indexed `COUNT(*)`
+   * queries only when clients select this field.
    */
   totalCount: Scalars['Int']['output'];
 };
@@ -3606,10 +3605,9 @@ export type QuestionConnection = {
   nodes: Array<Question>;
   pageInfo: PageInfo;
   /**
-   * Size of the underlying ranked set the page is sliced from. Computed via
-   * a separate `COUNT(*)` over the same `condition_group` / ungrouped
-   * `condition` UNION (no LIMIT, no cursor predicate), so it costs one
-   * extra query alongside the data fetch.
+   * Size of the underlying ranked set the page is sliced from. Resolved lazily
+   * via a separate `COUNT(*)` over the same `condition_group` / ungrouped
+   * `condition` UNION only when clients select this field.
    */
   totalCount: Scalars['Int']['output'];
 };

@@ -2155,7 +2155,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Sum of matching Prediction and SecondaryTrade rows for the same filters\nthe page was sliced from. Computed via two indexed `COUNT(*)` queries in\nparallel with the data query — not cheap enough to make load-bearing for\nevery request, but stable and lazy.",
+            "description": "Sum of matching Prediction and SecondaryTrade rows for the same filters\nthe page was sliced from. Resolved lazily via two indexed `COUNT(*)`\nqueries only when clients select this field.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -21438,7 +21438,7 @@
           },
           {
             "name": "totalCount",
-            "description": "Size of the underlying ranked set the page is sliced from. Computed via\na separate `COUNT(*)` over the same `condition_group` / ungrouped\n`condition` UNION (no LIMIT, no cursor predicate), so it costs one\nextra query alongside the data fetch.",
+            "description": "Size of the underlying ranked set the page is sliced from. Resolved lazily\nvia a separate `COUNT(*)` over the same `condition_group` / ungrouped\n`condition` UNION only when clients select this field.",
             "args": [],
             "type": {
               "kind": "NON_NULL",

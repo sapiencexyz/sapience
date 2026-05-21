@@ -246,11 +246,7 @@ export const activity = (async (
     ? { AND: [tradeWhere, tradeCursorWhere] }
     : tradeWhere;
 
-  // `predictionWhere` / `tradeWhere` (no cursor predicate) define the
-  // underlying ranked set; the cursor-aware variants are only for slicing
-  // this page. Counts run against the unfiltered-by-cursor predicates so
-  // `totalCount` matches the filter, not the current page position.
-  const [predictions, trades, predictionTotal, tradeTotal] = await Promise.all([
+  const [predictions, trades] = await Promise.all([
     includePredictions
       ? prisma.prediction.findMany({
           where: pagePredictionWhere,
@@ -266,14 +262,7 @@ export const activity = (async (
           take: cappedFirst + 1,
         })
       : Promise.resolve([]),
-    includePredictions
-      ? prisma.prediction.count({ where: predictionWhere })
-      : Promise.resolve(0),
-    includeTrades
-      ? prisma.secondaryTrade.count({ where: tradeWhere })
-      : Promise.resolve(0),
   ]);
-  const totalCount = predictionTotal + tradeTotal;
 
   const rows: ActivityRow[] = [
     ...predictions.map((p: PredictionWithPickConfig) => ({
@@ -323,7 +312,17 @@ export const activity = (async (
   return {
     edges,
     nodes,
-    totalCount,
+    _totalCount: async () => {
+      const [predictionTotal, tradeTotal] = await Promise.all([
+        includePredictions
+          ? prisma.prediction.count({ where: predictionWhere })
+          : Promise.resolve(0),
+        includeTrades
+          ? prisma.secondaryTrade.count({ where: tradeWhere })
+          : Promise.resolve(0),
+      ]);
+      return predictionTotal + tradeTotal;
+    },
     pageInfo: {
       hasNextPage: rows.length > cappedFirst,
       hasPreviousPage: false,
@@ -331,4 +330,4 @@ export const activity = (async (
       endCursor: edges[edges.length - 1]?.cursor ?? null,
     },
   };
-}) as any as NonNullable<QueryResolvers['activity']>;
+}) as unknown as NonNullable<QueryResolvers['activity']>;
