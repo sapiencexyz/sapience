@@ -11,6 +11,7 @@ vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
 const { resolveVolumeKey, runQuestions, questionsConnection } = await import(
   './questions'
 );
+const { QuestionConnection } = await import('../ConnectionTotalCount');
 
 beforeEach(() => {
   mockPrisma.$queryRaw.mockReset();
@@ -310,6 +311,29 @@ describe('questionsConnection — operator filters and keyset cursors', () => {
     expect(sql).toContain('sort_value');
     expect(sql).toContain('123');
     expect(sql).toContain('c-1');
+  });
+
+  it('defers totalCount raw SQL until the field resolver is selected', async () => {
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          item_type: 'condition',
+          group_id: null,
+          condition_id: 'c-1',
+          prediction_count: 0n,
+          sort_value: 123,
+          end_time: 456,
+        },
+      ])
+      .mockResolvedValueOnce([{ total: 9 }]);
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+    mockPrisma.condition.findMany.mockResolvedValue([{ id: 'c-1' }]);
+
+    const result = await questionsConnectionFn({}, { take: 10 }, {}, {});
+
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    await expect(QuestionConnection.totalCount(result)).resolves.toBe(9);
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
   });
 });
 

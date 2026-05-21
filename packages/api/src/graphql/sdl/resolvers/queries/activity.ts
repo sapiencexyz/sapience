@@ -168,7 +168,7 @@ export const activity = (async (
   const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
   const types = filter?.types ?? [ActivityType.Prediction, ActivityType.Trade];
   if (types.length === 0)
-    return { edges: [], nodes: [], pageInfo: emptyPageInfo };
+    return { edges: [], nodes: [], totalCount: 0, pageInfo: emptyPageInfo };
   const includePredictions = types.includes(ActivityType.Prediction);
   const includeTrades = types.includes(ActivityType.Trade);
   const address = filter?.account?.toLowerCase();
@@ -202,7 +202,7 @@ export const activity = (async (
       : fromCondition;
   }
   if (pickConfigIds && pickConfigIds.length === 0) {
-    return { edges: [], nodes: [], pageInfo: emptyPageInfo };
+    return { edges: [], nodes: [], totalCount: 0, pageInfo: emptyPageInfo };
   }
   const configs = pickConfigIds
     ? await prisma.picks.findMany({
@@ -312,6 +312,17 @@ export const activity = (async (
   return {
     edges,
     nodes,
+    _totalCount: async () => {
+      const [predictionTotal, tradeTotal] = await Promise.all([
+        includePredictions
+          ? prisma.prediction.count({ where: predictionWhere })
+          : Promise.resolve(0),
+        includeTrades
+          ? prisma.secondaryTrade.count({ where: tradeWhere })
+          : Promise.resolve(0),
+      ]);
+      return predictionTotal + tradeTotal;
+    },
     pageInfo: {
       hasNextPage: rows.length > cappedFirst,
       hasPreviousPage: false,
@@ -319,4 +330,4 @@ export const activity = (async (
       endCursor: edges[edges.length - 1]?.cursor ?? null,
     },
   };
-}) as any as NonNullable<QueryResolvers['activity']>;
+}) as unknown as NonNullable<QueryResolvers['activity']>;
