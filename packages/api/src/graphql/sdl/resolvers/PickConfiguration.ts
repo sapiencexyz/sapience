@@ -17,7 +17,10 @@ export const PickConfiguration: PickConfigurationResolvers = {
   predictions: (parent, args, ctx, info) =>
     (predictionsConnection as any)(
       parent,
-      { ...args, filter: { ...(args.filter ?? {}), pickConfigId: idOf(parent) } },
+      {
+        ...args,
+        filter: { ...(args.filter ?? {}), pickConfigId: idOf(parent) },
+      },
       ctx,
       info
     ),
@@ -33,7 +36,10 @@ export const PickConfiguration: PickConfigurationResolvers = {
   positions: (parent, args, ctx, info) =>
     (positionsConnection as any)(
       parent,
-      { ...args, filter: { ...(args.filter ?? {}), pickConfigId: idOf(parent) } },
+      {
+        ...args,
+        filter: { ...(args.filter ?? {}), pickConfigId: idOf(parent) },
+      },
       ctx,
       info
     ),

@@ -62,6 +62,7 @@ type PrismaCondition = {
 };
 
 export const Condition: ConditionResolvers = {
+  resolverAddress: (parent) => (parent as PrismaCondition).resolver ?? '',
   marketAddress: (parent) => (parent as PrismaCondition).resolver ?? '',
 
   /**

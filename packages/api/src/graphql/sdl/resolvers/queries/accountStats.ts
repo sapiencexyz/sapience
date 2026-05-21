@@ -23,9 +23,7 @@
  * over all-time. Inside `filters`: `fromEpoch` omitted ⇒ no lower bound
  * (all-time); `toEpoch` omitted ⇒ now.
  */
-import type {
-  QueryResolvers,
-} from '../../__generated__/resolvers';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import { AccountStatsMetric } from '../../__generated__/resolvers';
 import { TtlCache } from '../../../../lib/ttlCache';
 import {
@@ -337,7 +335,16 @@ export const accountStats = (async (
     runningVolume += BigInt(bucketVolume);
 
     return {
-      account: { address: addr, id: '0', createdAt: new Date(0), updatedAt: new Date(0), refCodeHash: null, maxReferrals: 0, referredById: null, referredByCodeId: null },
+      account: {
+        address: addr,
+        id: '0',
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+        refCodeHash: null,
+        maxReferrals: 0,
+        referredById: null,
+        referredByCodeId: null,
+      },
       timestamp: ts,
       periodPnL: p?.pnl ?? '0',
       cumulativePnL: p?.cumulativePnl ?? '0',

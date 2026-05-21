@@ -122,7 +122,7 @@ export default function QuestionPageContent({
       `;
       const filters: Record<string, unknown> = { ids: [conditionId] };
       if (resolverAddressFromUrl) {
-        filters.marketAddress = resolverAddressFromUrl;
+        filters.resolverAddress = resolverAddressFromUrl;
       }
       const resp = await graphqlRequest<{
         conditionsConnection: {

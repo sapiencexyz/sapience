@@ -184,7 +184,7 @@ async function fetchConditionData(
 
     const filters: Record<string, unknown> = { ids: [conditionId] };
     if (resolver) {
-      filters.marketAddress = resolver;
+      filters.resolverAddress = resolver;
     }
 
     const response = await fetch(getGraphQLEndpoint(), {

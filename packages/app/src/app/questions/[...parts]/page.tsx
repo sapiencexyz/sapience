@@ -41,7 +41,7 @@ async function fetchQuestionTitle(
 
     const filters: Record<string, unknown> = { ids: [conditionId] };
     if (resolverAddress) {
-      filters.marketAddress = resolverAddress;
+      filters.resolverAddress = resolverAddress;
     }
 
     const response = await fetch(getGraphQLEndpoint(), {

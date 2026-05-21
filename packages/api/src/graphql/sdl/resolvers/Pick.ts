@@ -13,7 +13,7 @@
 import type { PickResolvers } from '../__generated__/resolvers';
 import prisma from '../../../core/db';
 
-type PrismaPick = { conditionId: string };
+type PrismaPick = { conditionId: string; conditionResolver?: string };
 
 export const Pick: PickResolvers = {
   condition: async (parent, _args, ctx) => {
@@ -25,4 +25,6 @@ export const Pick: PickResolvers = {
       include: { category: true },
     });
   },
+  conditionResolverAddress: (parent) =>
+    (parent as PrismaPick).conditionResolver ?? '',
 };

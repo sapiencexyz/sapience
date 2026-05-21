@@ -720,10 +720,10 @@ export type Claim = {
   __typename?: 'Claim';
   chainId: Scalars['Int']['output'];
   collateralPaid: Scalars['String']['output'];
-  holder: Scalars['String']['output'];
+  holder: Scalars['Address']['output'];
   id: Scalars['Int']['output'];
-  marketAddress: Scalars['String']['output'];
-  positionToken: Scalars['String']['output'];
+  marketAddress: Scalars['Address']['output'];
+  positionToken: Scalars['Address']['output'];
   predictionId: Scalars['String']['output'];
   redeemedAt: Scalars['UnixSeconds']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
@@ -736,13 +736,13 @@ export type Close = {
   __typename?: 'Close';
   burnedAt: Scalars['UnixSeconds']['output'];
   chainId: Scalars['Int']['output'];
-  counterpartyHolder: Scalars['String']['output'];
+  counterpartyHolder: Scalars['Address']['output'];
   counterpartyPayout: Scalars['String']['output'];
   counterpartyTokensBurned: Scalars['String']['output'];
   id: Scalars['Int']['output'];
-  marketAddress: Scalars['String']['output'];
+  marketAddress: Scalars['Address']['output'];
   pickConfigId: Scalars['String']['output'];
-  predictorHolder: Scalars['String']['output'];
+  predictorHolder: Scalars['Address']['output'];
   predictorPayout: Scalars['String']['output'];
   predictorTokensBurned: Scalars['String']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
@@ -752,7 +752,7 @@ export type Close = {
 export type CollateralBalance = {
   __typename?: 'CollateralBalance';
   account: Account;
-  address: Scalars['String']['output'];
+  address: Scalars['Address']['output'];
   amount: Scalars['String']['output'];
   atBlock?: Maybe<Scalars['Int']['output']>;
   balance: Scalars['String']['output'];
@@ -855,11 +855,12 @@ export type Condition = {
   forecasts: ForecastConnection;
   id: Scalars['String']['output'];
   /**
-   * On-chain market contract address that owns this condition (case-insensitive,
-   * 0x-prefixed lowercase). The canonical client-facing name for the address
-   * surfaced as `resolver` on the legacy fragment.
+   * Mislabeled alias of `resolverAddress`. Holds the resolver contract address,
+   * not the PredictionMarketEscrow address. The recent `resolver → marketAddress`
+   * migration collapsed a real distinction; `resolverAddress` is the corrected name.
+   * @deprecated Use `resolverAddress` — same value, but accurately named. This field holds the resolver (oracle) contract address, not the market/escrow address that `Prediction.marketAddress` / `PickConfiguration.marketAddress` carry.
    */
-  marketAddress: Scalars['String']['output'];
+  marketAddress: Scalars['Address']['output'];
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
   optionName?: Maybe<Scalars['String']['output']>;
@@ -882,9 +883,16 @@ export type Condition = {
   resolvedToYes: Scalars['Boolean']['output'];
   /**
    * Canonical resolver address for this condition (required).
-   * @deprecated Use `marketAddress` — same value, drops the protocol-jargon name to match `Prediction.marketAddress` / `PickConfig.marketAddress` and the `ConditionFilter.marketAddress` filter.
+   * @deprecated Use `resolverAddress` — same value, Address-typed and consistent with `Forecast.resolverAddress` / `Pick.conditionResolverAddress`.
    */
   resolver: Scalars['String']['output'];
+  /**
+   * Resolver contract address — the oracle that settles this condition's outcome.
+   * Distinct from the PredictionMarketEscrow address (which is `Prediction.marketAddress` /
+   * `PickConfiguration.marketAddress`); one resolver contract can settle conditions
+   * referenced by many escrow markets.
+   */
+  resolverAddress: Scalars['Address']['output'];
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
@@ -991,7 +999,7 @@ export type ConditionFilter = {
   categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
   /** Restrict to conditions whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present. */
+  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions. */
   conditionGroupId?: InputMaybe<IdFilter>;
@@ -1004,16 +1012,6 @@ export type ConditionFilter = {
   /** Restrict to these condition IDs (case-insensitive). */
   ids?: InputMaybe<Array<Scalars['ID']['input']>>;
   /**
-   * Match the on-chain market contract address that owns the condition
-   * (case-insensitive). Maps to the DB `resolver` column.
-   */
-  marketAddress?: InputMaybe<Scalars['String']['input']>;
-  /**
-   * Match any of these on-chain market contract addresses (case-insensitive).
-   * Same semantics as `marketAddress`.
-   */
-  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
-  /**
    * Filter by resolution state. `{ isNull: true }` selects unsettled
    * conditions; `{ isNull: false }` selects settled (any outcome);
    * `{ equals: NON_DECISIVE }` selects voided settlements specifically.
@@ -1021,6 +1019,15 @@ export type ConditionFilter = {
   outcome?: InputMaybe<ConditionOutcomeFilter>;
   /** Restrict to conditions resolved YES (true) or NO (false). Implies settled=true. */
   resolvedToYes?: InputMaybe<Scalars['Boolean']['input']>;
+  /**
+   * Match the on-chain resolver (oracle) contract address. Maps to the DB
+   * `condition.resolver` column. Distinct from `Prediction.marketAddress` /
+   * `PickConfiguration.marketAddress`, which carry the PredictionMarketEscrow
+   * contract.
+   */
+  resolverAddress?: InputMaybe<Scalars['Address']['input']>;
+  /** Match any of these resolver contract addresses. Same semantics as `resolverAddress`. */
+  resolverAddressIn?: InputMaybe<Array<Scalars['Address']['input']>>;
   /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
   resolvesAt?: InputMaybe<IntFilter>;
   /** Free-text search across `question`, `shortName`, and `description` (case-insensitive). */
@@ -1691,7 +1698,13 @@ export type Forecast = {
   forecaster: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   recipient: Scalars['String']['output'];
-  resolver?: Maybe<Scalars['String']['output']>;
+  /**
+   * Resolver contract address from the on-chain EAS attestation (`address resolver`
+   * on the forecast schema). Identifies which oracle the forecaster is predicting
+   * against — same address as `Condition.resolverAddress` when the forecast
+   * matches a tracked condition.
+   */
+  resolverAddress?: Maybe<Scalars['Address']['output']>;
   schemaId: Scalars['String']['output'];
   transactionHash: Scalars['String']['output'];
   uid: Scalars['String']['output'];
@@ -1784,13 +1797,18 @@ export type ForecastScore = {
   forecaster: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   madeAt: Scalars['UnixSeconds']['output'];
-  marketAddress?: Maybe<Scalars['String']['output']>;
   marketId?: Maybe<Scalars['String']['output']>;
   outcome?: Maybe<Scalars['Int']['output']>;
   probabilityD18?: Maybe<Scalars['String']['output']>;
   probabilityFloat?: Maybe<Scalars['Float']['output']>;
   questionId?: Maybe<Scalars['String']['output']>;
-  resolver?: Maybe<Scalars['String']['output']>;
+  /**
+   * Resolver contract address this score is keyed against. Mirrors
+   * `Condition.resolverAddress` for the scored forecast. The DB row carries two
+   * legacy columns (`marketAddress`, `resolver`) that hold the same value; the
+   * GraphQL surface exposes the single corrected name.
+   */
+  resolverAddress?: Maybe<Scalars['Address']['output']>;
   scoredAt?: Maybe<Scalars['DateTimeISO']['output']>;
   used: Scalars['Boolean']['output'];
 };
@@ -2118,7 +2136,13 @@ export type Pick = {
   /** The condition this pick references. May be null if the conditionId is dangling. */
   condition?: Maybe<Condition>;
   conditionId: Scalars['String']['output'];
+  /** @deprecated Use `conditionResolverAddress` — same value, Address-typed and consistent with `Condition.resolverAddress`. */
   conditionResolver: Scalars['String']['output'];
+  /**
+   * Resolver (oracle) contract address for the referenced condition — mirrors
+   * `Condition.resolverAddress`. Replaces the loosely-typed `conditionResolver`.
+   */
+  conditionResolverAddress: Scalars['Address']['output'];
   id: Scalars['Int']['output'];
   pickConfigId: Scalars['String']['output'];
   predictedOutcome: Scalars['Int']['output'];
@@ -2134,7 +2158,7 @@ export type PickConfiguration = {
   endsAt?: Maybe<Scalars['UnixSeconds']['output']>;
   id: Scalars['String']['output'];
   isLegacy: Scalars['Boolean']['output'];
-  marketAddress: Scalars['String']['output'];
+  marketAddress: Scalars['Address']['output'];
   picks: Array<Pick>;
   positions: PositionConnection;
   predictionId?: Maybe<Scalars['String']['output']>;
@@ -2263,8 +2287,11 @@ export type Position = {
    * holder-wide aggregate.
    */
   realizedPnL?: Maybe<Scalars['String']['output']>;
-  /** ERC-20 position token address (lowercase 0x-hex). */
-  tokenAddress: Scalars['String']['output'];
+  /**
+   * ERC-20 position token address. Validated via the `Address` scalar
+   * (lowercased 0x-hex).
+   */
+  tokenAddress: Scalars['Address']['output'];
   /**
    * Cumulative payout the contract would owe this position if every
    * matched prediction resolved in the holder's favour (wei, 18 dec).
@@ -2396,7 +2423,7 @@ export type Prediction = {
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
   isLegacy: Scalars['Boolean']['output'];
-  marketAddress: Scalars['String']['output'];
+  marketAddress: Scalars['Address']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   predictionId: Scalars['String']['output'];
   predictor: Scalars['String']['output'];
@@ -2448,8 +2475,8 @@ export type PredictionEdge = {
  * values combine with AND.
  */
 export type PredictionFilter = {
-  /** Restrict to predictions where the address is predictor or counterparty (case-insensitive). */
-  address?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to predictions where the address is predictor or counterparty. */
+  address?: InputMaybe<Scalars['Address']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to predictions on a single condition (via the pickConfig join). */
@@ -2565,7 +2592,7 @@ export type Query = {
   __typename?: 'Query';
   /**
    * Look up a single account by canonical wallet address. Replacement for
-   * `user(where:)` — accepts a flat `address: String!` arg instead of the
+   * `user(where:)` — accepts a flat `address: Address!` arg instead of the
    * Prisma-shaped `UserWhereUniqueInput`.
    */
   account?: Maybe<Account>;
@@ -2978,7 +3005,7 @@ export type Query = {
 
 
 export type QueryAccountArgs = {
-  address: Scalars['String']['input'];
+  address: Scalars['Address']['input'];
 };
 
 
@@ -3618,16 +3645,19 @@ export type QuestionEdge = {
 export type QuestionFilter = {
   /** Restrict to questions whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present. */
+  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
   estimatedPrice?: InputMaybe<FloatFilter>;
-  /** Match the on-chain market contract address that owns the underlying condition (case-insensitive). */
-  marketAddress?: InputMaybe<Scalars['String']['input']>;
-  /** Match any of these on-chain market contract addresses that own the underlying condition (case-insensitive). */
-  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Resolution-status filter; defaults to all when omitted. */
   resolutionStatus?: InputMaybe<ResolutionStatus>;
+  /**
+   * Match the on-chain resolver (oracle) contract address for the underlying condition.
+   * Distinct from the PredictionMarketEscrow address; see `Condition.resolverAddress`.
+   */
+  resolverAddress?: InputMaybe<Scalars['Address']['input']>;
+  /** Match any of these resolver contract addresses. Same semantics as `resolverAddress`. */
+  resolverAddressIn?: InputMaybe<Array<Scalars['Address']['input']>>;
   /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
   resolvesAt?: InputMaybe<IntFilter>;
   /** Free-text search across the wrapped Condition/Group's title and description (case-insensitive). */
@@ -3921,19 +3951,19 @@ export type TradeEdge = {
 
 /** Filter input for the Relay-shaped `tradesConnection` query. Combines with AND. */
 export type TradeFilter = {
-  /** Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`. */
-  address?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to a single buyer address (case-insensitive). */
-  buyer?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`. */
+  address?: InputMaybe<Scalars['Address']['input']>;
+  /** Restrict to a single buyer address. */
+  buyer?: InputMaybe<Scalars['Address']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
   executedAt?: InputMaybe<IntFilter>;
-  /** Restrict to a single seller address (case-insensitive). */
-  seller?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to a single position token address (case-insensitive). */
-  token?: InputMaybe<Scalars['String']['input']>;
-  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to a single seller address. */
+  seller?: InputMaybe<Scalars['Address']['input']>;
+  /** Restrict to a single position token address. */
+  token?: InputMaybe<Scalars['Address']['input']>;
+  tokens?: InputMaybe<Array<Scalars['Address']['input']>>;
   /**
    * Restrict to a single trade by execution hash. Supports the
    * by-hash single-record lookup pattern — `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
