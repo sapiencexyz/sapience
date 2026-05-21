@@ -239,16 +239,17 @@ const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
     $filters: ConditionFilter
     $take: Int!
-    $skip: Int!
+    $after: String
   ) {
     conditionsConnection(
       filter: $filters
       orderBy: { field: RESOLVES_AT, direction: ASC }
       first: $take
-      skip: $skip
+      after: $after
     ) {
       pageInfo {
         hasNextPage
+        endCursor
       }
       nodes {
         id
@@ -553,12 +554,13 @@ async function main() {
 
   console.log('[settle-pyth] Fetching unsettled Pyth conditions...');
 
-  for (let skip = 0; conditions.length < MAX_CONDITIONS; skip += 50) {
+  let after: string | null = null;
+  while (conditions.length < MAX_CONDITIONS) {
     const take = Math.min(50, MAX_CONDITIONS - conditions.length);
     const data = await gql<{
       conditionsConnection: {
         nodes: ConditionRow[];
-        pageInfo: { hasNextPage: boolean };
+        pageInfo: { hasNextPage: boolean; endCursor: string | null };
       };
     }>(sapienceApiUrl, CONDITIONS_QUERY, {
       filters: {
@@ -568,11 +570,13 @@ async function main() {
         marketAddress: PYTH_RESOLVER_ADDRESS,
       },
       take,
-      skip,
+      after,
     });
     if (data.conditionsConnection.nodes.length === 0) break;
     conditions.push(...data.conditionsConnection.nodes);
-    if (!data.conditionsConnection.pageInfo.hasNextPage) break;
+    const pageInfo = data.conditionsConnection.pageInfo;
+    if (!pageInfo.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
   }
 
   console.log(
