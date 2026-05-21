@@ -42,7 +42,6 @@ export const PREDICTION_BY_ID_QUERY = `
 export const CONDITIONS_BY_IDS_QUERY = `
   query ConditionsByIds($filters: ConditionFilter!) {
     conditionsConnection(filter: $filters, first: 100) {
-      hasMore
       nodes {
         id
         question

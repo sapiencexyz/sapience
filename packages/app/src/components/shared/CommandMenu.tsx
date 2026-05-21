@@ -52,11 +52,9 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
   query CommandMenuSearch($take: Int!, $filters: QuestionFilter) {
     questionsConnection(
       first: $take
-      skip: 0
       filter: $filters
       orderBy: { field: RESOLVES_AT, direction: ASC }
     ) {
-      hasMore
       nodes {
         questionType
         group {

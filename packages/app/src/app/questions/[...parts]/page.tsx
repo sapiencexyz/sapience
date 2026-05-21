@@ -30,7 +30,6 @@ async function fetchQuestionTitle(
     const query = `
       query ConditionForMeta($filters: ConditionFilter!) {
         conditionsConnection(filter: $filters, first: 1) {
-          hasMore
           nodes {
             shortName
             question
