@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "pnpm run build:backend",
-    "build:backend": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/api run prisma:generate",
+    "build:backend": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/api run prisma:generate && pnpm --filter @sapience/market-keeper run build",
     "build:web": "pnpm --filter @sapience/app run build && pnpm --filter docs run build",
     "test": "pnpm run test --recursive",
     "dev:app": "pnpm --filter @sapience/app run dev",
