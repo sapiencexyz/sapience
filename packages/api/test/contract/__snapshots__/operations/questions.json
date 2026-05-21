@@ -1,6 +1,5 @@
 {
   "questionsConnection": {
-    "hasMore": true,
     "nodes": [
       {
         "questionType": "group",

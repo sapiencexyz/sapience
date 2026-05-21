@@ -58,7 +58,6 @@ export const GET_CONDITION_GROUPS = /* GraphQL */ `
     $conditionsWhere: ConditionWhereInput
   ) {
     conditionGroupsConnection(first: $take, after: $after, filter: $filter) {
-      hasMore
       nodes {
         id
         createdAt

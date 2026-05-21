@@ -4,13 +4,13 @@ RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 
 # Native module build deps (usb, node-hid, secp256k1) + openssl for Prisma
 RUN apt-get update && apt-get install -y \
-    openssl \
-    python3 \
-    make \
-    g++ \
-    libusb-1.0-0-dev \
-    libudev-dev \
-    && rm -rf /var/lib/apt/lists/*
+ openssl \
+ python3 \
+ make \
+ g++ \
+ libusb-1.0-0-dev \
+ libudev-dev \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -49,3 +49,6 @@ RUN pnpm install --frozen-lockfile --offline
 
 # Generate Prisma client
 RUN pnpm --filter @sapience/api run prisma:generate
+
+# Runtime default; deployment environments can override this (e.g. staging).
+ENV NODE_ENV=production

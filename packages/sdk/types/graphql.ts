@@ -965,10 +965,6 @@ export type ConditionTradesArgs = {
 export type ConditionConnection = {
   __typename?: 'ConditionConnection';
   edges: Array<ConditionEdge>;
-  /** Deprecated convenience alias for `pageInfo.hasNextPage`. */
-  hasMore: Scalars['Boolean']['output'];
-  /** Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape. */
-  items: Array<Condition>;
   nodes: Array<Condition>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
@@ -1150,10 +1146,6 @@ export type ConditionGroupConditionsArgs = {
 export type ConditionGroupConnection = {
   __typename?: 'ConditionGroupConnection';
   edges: Array<ConditionGroupEdge>;
-  /** Deprecated convenience alias for `pageInfo.hasNextPage`. */
-  hasMore: Scalars['Boolean']['output'];
-  /** Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape. */
-  items: Array<ConditionGroup>;
   nodes: Array<ConditionGroup>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
@@ -3213,8 +3205,6 @@ export type QueryConditionGroupsConnectionArgs = {
   filter?: InputMaybe<ConditionGroupFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ConditionGroupOrder>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3233,8 +3223,6 @@ export type QueryConditionsConnectionArgs = {
   filter?: InputMaybe<ConditionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ConditionOrder>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3413,8 +3401,6 @@ export type QueryQuestionsConnectionArgs = {
   filter?: InputMaybe<QuestionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<QuestionOrder>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3598,10 +3584,6 @@ export type QuestionTradesArgs = {
 export type QuestionConnection = {
   __typename?: 'QuestionConnection';
   edges: Array<QuestionEdge>;
-  /** Deprecated convenience alias for `pageInfo.hasNextPage`. */
-  hasMore: Scalars['Boolean']['output'];
-  /** Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape. */
-  items: Array<Question>;
   nodes: Array<Question>;
   pageInfo: PageInfo;
   /**

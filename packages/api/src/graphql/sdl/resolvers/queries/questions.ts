@@ -1003,12 +1003,10 @@ const rangeMin = (filter: ScalarRangeFilter | null | undefined) =>
 const rangeMax = (filter: ScalarRangeFilter | null | undefined) =>
   filter?.lte ?? filter?.lt ?? filter?.equals ?? null;
 
-export const questionsConnection = (async (
-  _parent: unknown,
-  args: QueryQuestionsConnectionArgs
-) => {
-  const { first, after, filter, orderBy, take, skip } = args;
-  const cappedFirst = clampTake(first ?? take ?? 50, {
+export const questionsConnection: NonNullable<
+  QueryResolvers['questionsConnection']
+> = async (_parent, { first, after, filter, orderBy }) => {
+  const cappedFirst = clampTake(first ?? 50, {
     defaultTake: 50,
     maxTake: 100,
   });
@@ -1031,7 +1029,7 @@ export const questionsConnection = (async (
 
   const baseArgs: RunQuestionsInput = {
     take: cappedFirst,
-    skip: after ? 0 : (skip ?? 0),
+    skip: 0,
     search: filter?.search ?? null,
     categorySlugs: filter?.categorySlugs ?? null,
     tag: filter?.tag ?? null,
@@ -1060,8 +1058,6 @@ export const questionsConnection = (async (
   }));
 
   return {
-    items,
-    hasMore,
     edges,
     nodes: items,
     _totalCount: () => fetchTotalCount(normalizeArgs(baseArgs)),
