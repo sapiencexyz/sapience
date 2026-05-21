@@ -478,6 +478,20 @@ describe('conditions routes', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.message).toMatch(/non-matching negRisk/i);
+      expect(res.body.code).toBe('NEG_RISK_BASKET_MISMATCH');
+      expect(res.body.mismatches).toEqual([
+        {
+          type: 'EXISTING_GROUP_MISMATCH',
+          groupName: 'NBA champion',
+          expectedNegRiskMarketId: 'basket-a',
+          mismatched: [
+            {
+              conditionHash: '0x' + '33'.repeat(32),
+              actualNegRiskMarketId: null,
+            },
+          ],
+        },
+      ]);
       expect(mockPrisma.condition.create).not.toHaveBeenCalled();
     });
 

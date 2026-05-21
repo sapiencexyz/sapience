@@ -53,6 +53,29 @@ function basketsAgree(
   return payloadBasket === groupBasket;
 }
 
+type NegRiskMismatchType = 'EXISTING_GROUP_MISMATCH' | 'NEW_GROUP_INCOHERENT';
+
+type NegRiskMismatch = {
+  type: NegRiskMismatchType;
+  groupName: string;
+  expectedNegRiskMarketId: string | null;
+  mismatched: Array<{
+    conditionHash: string;
+    actualNegRiskMarketId: string | null;
+  }>;
+};
+
+function negRiskMismatchPayload(
+  message: string,
+  mismatches: NegRiskMismatch[]
+) {
+  return {
+    code: 'NEG_RISK_BASKET_MISMATCH',
+    message,
+    mismatches,
+  };
+}
+
 // GET route removed in favor of GraphQL. Use GraphQL `conditions` query for reads.
 
 interface BatchCreateConditionInput {
@@ -179,10 +202,24 @@ router.post('/batch-create', async (req: Request, res: Response) => {
               .join(', ')
         );
         return res.status(400).json({
-          message:
+          ...negRiskMismatchPayload(
             `Cannot add non-matching negRisk conditions to negRisk group ${name}. ` +
-            `Expected negRiskMarketId ${existingGroup.negRiskMarketId ?? 'null'}; ` +
-            `mismatched: ${mismatched.map((item) => item.conditionHash).join(', ')}`,
+              `Expected negRiskMarketId ${existingGroup.negRiskMarketId ?? 'null'}; ` +
+              `mismatched: ${mismatched.map((item) => item.conditionHash).join(', ')}`,
+            [
+              {
+                type: 'EXISTING_GROUP_MISMATCH',
+                groupName: name,
+                expectedNegRiskMarketId: existingGroup.negRiskMarketId,
+                mismatched: mismatched.map((item) => ({
+                  conditionHash: item.conditionHash,
+                  actualNegRiskMarketId: normalizeNegRiskMarketId(
+                    item.negRiskMarketId
+                  ),
+                })),
+              },
+            ]
+          ),
         });
       }
     }
@@ -218,10 +255,24 @@ router.post('/batch-create', async (req: Request, res: Response) => {
               .join(', ')
         );
         return res.status(400).json({
-          message:
+          ...negRiskMismatchPayload(
             `Cannot add non-matching negRisk conditions to negRisk group ${name}. ` +
-            `Expected negRiskMarketId ${leaderBasket ?? 'null'}; ` +
-            `mismatched: ${mismatched.map((item) => item.conditionHash).join(', ')}`,
+              `Expected negRiskMarketId ${leaderBasket ?? 'null'}; ` +
+              `mismatched: ${mismatched.map((item) => item.conditionHash).join(', ')}`,
+            [
+              {
+                type: 'NEW_GROUP_INCOHERENT',
+                groupName: name,
+                expectedNegRiskMarketId: leaderBasket,
+                mismatched: groupItems.map((item) => ({
+                  conditionHash: item.conditionHash,
+                  actualNegRiskMarketId: normalizeNegRiskMarketId(
+                    item.negRiskMarketId
+                  ),
+                })),
+              },
+            ]
+          ),
         });
       }
       const categoryId = firstItem?.categorySlug
@@ -254,12 +305,26 @@ router.post('/batch-create', async (req: Request, res: Response) => {
             );
             if (raceMismatched.length > 0) {
               return res.status(400).json({
-                message:
+                ...negRiskMismatchPayload(
                   `Cannot add non-matching negRisk conditions to negRisk group ${name}. ` +
-                  `Expected negRiskMarketId ${existing.negRiskMarketId ?? 'null'}; ` +
-                  `mismatched: ${raceMismatched
-                    .map((item) => item.conditionHash)
-                    .join(', ')}`,
+                    `Expected negRiskMarketId ${existing.negRiskMarketId ?? 'null'}; ` +
+                    `mismatched: ${raceMismatched
+                      .map((item) => item.conditionHash)
+                      .join(', ')}`,
+                  [
+                    {
+                      type: 'EXISTING_GROUP_MISMATCH',
+                      groupName: name,
+                      expectedNegRiskMarketId: existing.negRiskMarketId,
+                      mismatched: raceMismatched.map((item) => ({
+                        conditionHash: item.conditionHash,
+                        actualNegRiskMarketId: normalizeNegRiskMarketId(
+                          item.negRiskMarketId
+                        ),
+                      })),
+                    },
+                  ]
+                ),
               });
             }
             groupIdByName.set(name, existing.id);
