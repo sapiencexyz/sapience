@@ -5410,14 +5410,14 @@
           },
           {
             "name": "id",
-            "description": null,
+            "description": "Natural-key condition id (on-chain identifier), returned verbatim — NOT\na `toGlobalId`-wrapped opaque blob. The type is `ID!` so the schema\nformally satisfies `Node`, but `node(id:)` does not currently route to\n`Condition`; use the dedicated `condition(...)` lookup. Full Node\nregistry integration is a follow-up.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "ID",
                 "ofType": null
               }
             },
@@ -5993,7 +5993,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Node",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -6679,7 +6685,7 @@
       {
         "kind": "OBJECT",
         "name": "ConditionGroup",
-        "description": null,
+        "description": "TODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "_count",
@@ -10852,7 +10858,7 @@
       {
         "kind": "OBJECT",
         "name": "Forecast",
-        "description": "Public Forecast surface backed by EAS attestation rows.",
+        "description": "Public Forecast surface backed by EAS attestation rows.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "forecastScore",
@@ -13943,6 +13949,21 @@
           },
           {
             "kind": "OBJECT",
+            "name": "Condition",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "PickConfiguration",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "Position",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
             "name": "Vault",
             "ofType": null
           }
@@ -14124,7 +14145,7 @@
       {
         "kind": "OBJECT",
         "name": "Pick",
-        "description": "Individual outcome pick within a pick configuration",
+        "description": "Individual outcome pick within a pick configuration.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "condition",
@@ -14303,14 +14324,14 @@
           },
           {
             "name": "id",
-            "description": null,
+            "description": "Natural-key pick-configuration id, returned verbatim — NOT a\n`toGlobalId`-wrapped opaque blob. The type is `ID!` so the schema\nformally satisfies `Node`, but `node(id:)` does not currently route to\n`PickConfiguration`; use the dedicated `pickConfiguration(id:)` lookup.\nFull Node registry integration is a follow-up.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "ID",
                 "ofType": null
               }
             },
@@ -14646,7 +14667,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Node",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -15041,14 +15068,14 @@
           },
           {
             "name": "id",
-            "description": "Synthetic row id. Open rows use the underlying Position row id\nserialized as a string; synthesized sell rows append `\"-sell-<tradeHash>\"`.",
+            "description": "Synthetic row id. Open rows use the underlying Position row id\nserialized as a string; synthesized sell rows append `\"-sell-<tradeHash>\"`.\n\nReturned verbatim — NOT a `toGlobalId`-wrapped opaque blob. The type is\n`ID!` so the schema formally satisfies `Node`, but `node(id:)` does not\ncurrently route to `Position`. Full Node registry integration is a\nfollow-up.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "ID",
                 "ofType": null
               }
             },
@@ -15169,7 +15196,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Node",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -15698,7 +15731,7 @@
       {
         "kind": "OBJECT",
         "name": "Prediction",
-        "description": "Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking",
+        "description": "Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "chainId",
@@ -21916,7 +21949,7 @@
       {
         "kind": "OBJECT",
         "name": "ReferralCode",
-        "description": "Public referral code metadata. Exposed via `User.referredByCode` /\n`Account.referredByCode` so clients can render an account's referrer.\n\nReferral codes are low-security attribution hints: using someone else's code\nonly credits that referrer; it does not grant access to funds or privileged\nactions. `codeHash` is intentionally omitted from GraphQL — public clients\nidentify codes by integer `id`. Aggregate analytics (claim count, volume,\nclaimants) live on the public REST endpoint `GET /referrals/codes`.",
+        "description": "Public referral code metadata. Exposed via `User.referredByCode` /\n`Account.referredByCode` so clients can render an account's referrer.\n\nReferral codes are low-security attribution hints: using someone else's code\nonly credits that referrer; it does not grant access to funds or privileged\nactions. `codeHash` is intentionally omitted from GraphQL — public clients\nidentify codes by integer `id`. Aggregate analytics (claim count, volume,\nclaimants) live on the public REST endpoint `GET /referrals/codes`.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "id",
@@ -23030,7 +23063,7 @@
       {
         "kind": "OBJECT",
         "name": "Trade",
-        "description": "Secondary market trade record where position tokens are exchanged\nbetween users. The on-chain reference is `tradeHash`; `id` is an\ninternal row id (see schema-preamble conventions).",
+        "description": "Secondary market trade record where position tokens are exchanged\nbetween users. The on-chain reference is `tradeHash`; `id` is an\ninternal row id (see schema-preamble conventions).\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "blockNumber",

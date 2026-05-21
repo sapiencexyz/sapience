@@ -836,7 +836,7 @@ export type CollateralTransferOrder = {
 export type CollateralTransferOrderField =
   | 'BLOCK_NUMBER';
 
-export type Condition = {
+export type Condition = Node & {
   __typename?: 'Condition';
   _count?: Maybe<ConditionCount>;
   assertionId?: Maybe<Scalars['String']['output']>;
@@ -853,7 +853,14 @@ export type Condition = {
   /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket */
   estimatedPrice?: Maybe<Scalars['Float']['output']>;
   forecasts: ForecastConnection;
-  id: Scalars['String']['output'];
+  /**
+   * Natural-key condition id (on-chain identifier), returned verbatim — NOT
+   * a `toGlobalId`-wrapped opaque blob. The type is `ID!` so the schema
+   * formally satisfies `Node`, but `node(id:)` does not currently route to
+   * `Condition`; use the dedicated `condition(...)` lookup. Full Node
+   * registry integration is a follow-up.
+   */
+  id: Scalars['ID']['output'];
   /**
    * On-chain market contract address that owns this condition (case-insensitive,
    * 0x-prefixed lowercase). The canonical client-facing name for the address
@@ -1091,6 +1098,13 @@ export type ConditionFilters = {
   visibility?: InputMaybe<ConditionVisibility>;
 };
 
+/**
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type ConditionGroup = {
   __typename?: 'ConditionGroup';
   _count?: Maybe<ConditionGroupCount>;
@@ -1110,11 +1124,25 @@ export type ConditionGroup = {
 };
 
 
+/**
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type ConditionGroupCategoryArgs = {
   where?: InputMaybe<CategoryWhereInput>;
 };
 
 
+/**
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type ConditionGroupConditionsArgs = {
   cursor?: InputMaybe<ConditionWhereUniqueInput>;
   distinct?: InputMaybe<Array<ConditionScalarFieldEnum>>;
@@ -1666,7 +1694,15 @@ export type FloatNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
-/** Public Forecast surface backed by EAS attestation rows. */
+/**
+ * Public Forecast surface backed by EAS attestation rows.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type Forecast = {
   __typename?: 'Forecast';
   /** When the forecast was made on-chain. */
@@ -1698,13 +1734,29 @@ export type Forecast = {
 };
 
 
-/** Public Forecast surface backed by EAS attestation rows. */
+/**
+ * Public Forecast surface backed by EAS attestation rows.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type ForecastConditionArgs = {
   where?: InputMaybe<ConditionWhereInput>;
 };
 
 
-/** Public Forecast surface backed by EAS attestation rows. */
+/**
+ * Public Forecast surface backed by EAS attestation rows.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type ForecastForecastScoreArgs = {
   where?: InputMaybe<ForecastScoreWhereInput>;
 };
@@ -2112,7 +2164,15 @@ export type PageInfo = {
   startCursor?: Maybe<Scalars['String']['output']>;
 };
 
-/** Individual outcome pick within a pick configuration */
+/**
+ * Individual outcome pick within a pick configuration.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type Pick = {
   __typename?: 'Pick';
   /** The condition this pick references. May be null if the conditionId is dangling. */
@@ -2125,14 +2185,21 @@ export type Pick = {
 };
 
 /** Group of outcome picks forming a combined prediction position, with collateral and settlement tracking */
-export type PickConfiguration = {
+export type PickConfiguration = Node & {
   __typename?: 'PickConfiguration';
   chainId: Scalars['Int']['output'];
   claimedCounterpartyCollateral: Scalars['String']['output'];
   claimedPredictorCollateral: Scalars['String']['output'];
   counterpartyToken?: Maybe<Scalars['String']['output']>;
   endsAt?: Maybe<Scalars['UnixSeconds']['output']>;
-  id: Scalars['String']['output'];
+  /**
+   * Natural-key pick-configuration id, returned verbatim — NOT a
+   * `toGlobalId`-wrapped opaque blob. The type is `ID!` so the schema
+   * formally satisfies `Node`, but `node(id:)` does not currently route to
+   * `PickConfiguration`; use the dedicated `pickConfiguration(id:)` lookup.
+   * Full Node registry integration is a follow-up.
+   */
+  id: Scalars['ID']['output'];
   isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
   picks: Array<Pick>;
@@ -2235,7 +2302,7 @@ export type PnlDataPoint = {
  * "open" row carrying remaining cost basis, plus one synthesized "sell"
  * row per secondary-market disposal (so PnL realizes incrementally).
  */
-export type Position = {
+export type Position = Node & {
   __typename?: 'Position';
   /**
    * Number of position tokens still held (decimal string, 18 decimals on
@@ -2250,8 +2317,13 @@ export type Position = {
   /**
    * Synthetic row id. Open rows use the underlying Position row id
    * serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
+   *
+   * Returned verbatim — NOT a `toGlobalId`-wrapped opaque blob. The type is
+   * `ID!` so the schema formally satisfies `Node`, but `node(id:)` does not
+   * currently route to `Position`. Full Node registry integration is a
+   * follow-up.
    */
-  id: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
   /** True if this is the predictor token side; false for counterparty. */
   isPredictorToken: Scalars['Boolean']['output'];
   pickConfig?: Maybe<PickConfiguration>;
@@ -2382,7 +2454,15 @@ export type PositionsPage = Page & {
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
-/** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
+/**
+ * Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type Prediction = {
   __typename?: 'Prediction';
   chainId: Scalars['Int']['output'];
@@ -3735,6 +3815,12 @@ export type QuestionSortField =
  * actions. `codeHash` is intentionally omitted from GraphQL — public clients
  * identify codes by integer `id`. Aggregate analytics (claim count, volume,
  * claimants) live on the public REST endpoint `GET /referrals/codes`.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
  */
 export type ReferralCode = {
   __typename?: 'ReferralCode';
@@ -3878,6 +3964,12 @@ export type TimeToResolutionBucket = {
  * Secondary market trade record where position tokens are exchanged
  * between users. The on-chain reference is `tradeHash`; `id` is an
  * internal row id (see schema-preamble conventions).
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
  */
 export type Trade = {
   __typename?: 'Trade';
