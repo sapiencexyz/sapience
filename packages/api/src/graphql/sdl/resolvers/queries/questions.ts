@@ -617,6 +617,43 @@ const buildQuestionCursorWhere = (n: NormalizedArgs): Prisma.Sql => {
   `;
 };
 
+// Mirrors the UNION ALL in `fetchSortedItems` but discards sort/cursor/LIMIT
+// and selects COUNT(*) — used to populate `QuestionConnection.totalCount` in
+// parallel with the data query. Keeps the same group `GROUP BY ... HAVING`
+// shape so a group with zero matching conditions doesn't get double-counted
+// against `cg."publicConditionCount" > 0`.
+const fetchTotalCount = async (n: NormalizedArgs): Promise<number> => {
+  const filters = buildConditionFilterFragments(n);
+  const sort = buildSortFragments(n, filters);
+  const search = buildSearchFragments(n);
+
+  const rows = await prisma.$queryRaw<{ total: number | bigint }[]>`
+    WITH combined AS (
+      SELECT 1
+      FROM condition_group cg
+      ${sort.groupConditionJoin}
+      WHERE cg."publicConditionCount" > 0
+        ${search.groupSearch}
+        ${search.groupCategory}
+        ${search.groupTag}
+      ${sort.groupByClause}
+
+      UNION ALL
+
+      SELECT 1
+      FROM condition c
+      WHERE c.public = true
+        AND c."conditionGroupId" IS NULL
+        ${filters.conditionFilters}
+        ${search.condSearch}
+        ${search.condCategory}
+        ${search.condTag}
+    )
+    SELECT COUNT(*)::int AS total FROM combined
+  `;
+  return Number(rows[0]?.total ?? 0);
+};
+
 const fetchSortedItems = async (
   n: NormalizedArgs
 ): Promise<SortedItemRow[]> => {
@@ -991,7 +1028,7 @@ export const questionsConnection: NonNullable<
     similarMarketVolume?: ScalarRangeFilter | null;
   };
 
-  const { items, hasMore, pageItems } = await runQuestionsData({
+  const baseArgs: RunQuestionsInput = {
     take: cappedFirst,
     skip: after ? 0 : (skip ?? 0),
     search: filter?.search ?? null,
@@ -1012,7 +1049,12 @@ export const questionsConnection: NonNullable<
     sortField: mapped.sortField,
     sortDirection,
     afterCursor,
-  });
+  };
+
+  const [{ items, hasMore, pageItems }, totalCount] = await Promise.all([
+    runQuestionsData(baseArgs),
+    fetchTotalCount(normalizeArgs(baseArgs)),
+  ]);
 
   const edges = items.map((item, idx) => ({
     node: item,
@@ -1024,6 +1066,7 @@ export const questionsConnection: NonNullable<
     hasMore,
     edges,
     nodes: items,
+    totalCount,
     pageInfo: {
       hasNextPage: hasMore,
       hasPreviousPage: afterCursor != null,

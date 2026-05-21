@@ -4,8 +4,8 @@ import { ActivityType } from '../../__generated__/resolvers';
 const mockPrisma = vi.hoisted(() => ({
   pick: { findMany: vi.fn() },
   picks: { findMany: vi.fn() },
-  prediction: { findMany: vi.fn() },
-  secondaryTrade: { findMany: vi.fn() },
+  prediction: { findMany: vi.fn(), count: vi.fn() },
+  secondaryTrade: { findMany: vi.fn(), count: vi.fn() },
 }));
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));
@@ -85,6 +85,8 @@ describe('activity', () => {
     mockPrisma.picks.findMany.mockResolvedValue([]);
     mockPrisma.prediction.findMany.mockResolvedValue([]);
     mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    mockPrisma.prediction.count.mockResolvedValue(0);
+    mockPrisma.secondaryTrade.count.mockResolvedValue(0);
   });
 
   it('treats an empty type filter as an explicit zero-result query', async () => {

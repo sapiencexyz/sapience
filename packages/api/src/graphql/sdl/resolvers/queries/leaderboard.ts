@@ -76,7 +76,7 @@ const numericMetricValue = (
 type WindowFilter = { from?: number | null; to?: number | null } | null;
 
 /**
- * Translate the SDL `LeaderboardFilter.timestamp` operator-pattern shape
+ * Translate the SDL `AccountRankingFilter.timestamp` operator-pattern shape
  * to the legacy `{ from, to }` window. `gte`/`lte` map directly; other
  * operators reject so callers don't silently get the full-history
  * aggregation when they pass `equals` / `in`. ACCURACY ignores the window

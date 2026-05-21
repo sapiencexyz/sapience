@@ -134,7 +134,7 @@ export type AccountPredictionsArgs = {
  * without renaming.
  */
 export type AccountRankArgs = {
-  filter?: InputMaybe<LeaderboardFilter>;
+  filter?: InputMaybe<AccountRankingFilter>;
   metric: LeaderboardMetric;
 };
 
@@ -271,6 +271,22 @@ export type AccountRankingEdge = {
   __typename?: 'AccountRankingEdge';
   cursor: Scalars['String']['output'];
   node: AccountRanking;
+};
+
+/**
+ * Filter input for the `AccountRankingConnection` returned by
+ * `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a configurable
+ * window; ACCURACY is lifetime-aggregated (the time-weighted Brier-derived
+ * score already weights by recency) and ignores the window. Operator-
+ * pattern shape matches `AccountStatFilter`.
+ */
+export type AccountRankingFilter = {
+  /**
+   * Filter by aggregation epoch seconds. `{ gte }` sets the window's lower
+   * bound, `{ lte }` sets the upper bound; both inclusive. Other operators
+   * reject — this is a window selector, not a point query.
+   */
+  timestamp?: InputMaybe<IntFilter>;
 };
 
 /**
@@ -427,6 +443,13 @@ export type ActivityConnection = {
   edges: Array<ActivityEdge>;
   nodes: Array<Activity>;
   pageInfo: PageInfo;
+  /**
+   * Sum of matching Prediction and SecondaryTrade rows for the same filters
+   * the page was sliced from. Computed via two indexed `COUNT(*)` queries in
+   * parallel with the data query — not cheap enough to make load-bearing for
+   * every request, but stable and lazy.
+   */
+  totalCount: Scalars['Int']['output'];
 };
 
 export type ActivityEdge = {
@@ -1898,21 +1921,6 @@ export type IntNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
-/**
- * Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a
- * configurable window; ACCURACY is lifetime-aggregated (the time-weighted
- * Brier-derived score already weights by recency) and ignores the window.
- * Operator-pattern shape matches `AccountStatFilter`.
- */
-export type LeaderboardFilter = {
-  /**
-   * Filter by aggregation epoch seconds. `{ gte }` sets the window's lower
-   * bound, `{ lte }` sets the upper bound; both inclusive. Other operators
-   * reject — this is a window selector, not a point query.
-   */
-  timestamp?: InputMaybe<IntFilter>;
-};
-
 export type LeaderboardMetric =
   | 'ACCURACY'
   | 'PNL'
@@ -3241,7 +3249,7 @@ export type QueryForecastsConnectionArgs = {
 
 export type QueryLeaderboardArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<LeaderboardFilter>;
+  filter?: InputMaybe<AccountRankingFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   metric: LeaderboardMetric;
 };
@@ -3587,11 +3595,7 @@ export type QuestionTradesArgs = {
   orderBy?: InputMaybe<TradeOrder>;
 };
 
-/**
- * Relay-shaped connection over `Question` rows. `totalCount` is
- * intentionally omitted — the underlying SQL UNION over `condition_group`
- * and ungrouped `condition` rows cannot produce a single COUNT cheaply.
- */
+/** Relay-shaped connection over `Question` rows. */
 export type QuestionConnection = {
   __typename?: 'QuestionConnection';
   edges: Array<QuestionEdge>;
@@ -3601,6 +3605,13 @@ export type QuestionConnection = {
   items: Array<Question>;
   nodes: Array<Question>;
   pageInfo: PageInfo;
+  /**
+   * Size of the underlying ranked set the page is sliced from. Computed via
+   * a separate `COUNT(*)` over the same `condition_group` / ungrouped
+   * `condition` UNION (no LIMIT, no cursor predicate), so it costs one
+   * extra query alongside the data fetch.
+   */
+  totalCount: Scalars['Int']['output'];
 };
 
 /** Cursor-bearing edge for `QuestionConnection`. */

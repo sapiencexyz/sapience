@@ -82,7 +82,7 @@ type Account implements Node {
   """Accounts referred by this account (via this account's referral code)."""
   referrals: [Account!]!
   stats(first: Int = 50, after: String, filter: AccountStatFilter, orderBy: AccountStatOrder): AccountStatConnection!
-  rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRanking
+  rank(metric: LeaderboardMetric!, filter: AccountRankingFilter): AccountRanking
   predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
   trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
   forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
@@ -421,6 +421,14 @@ type ActivityConnection {
   edges: [ActivityEdge!]!
   nodes: [Activity!]!
   pageInfo: PageInfo!
+
+  """
+  Sum of matching Prediction and SecondaryTrade rows for the same filters
+  the page was sliced from. Computed via two indexed `COUNT(*)` queries in
+  parallel with the data query — not cheap enough to make load-bearing for
+  every request, but stable and lazy.
+  """
+  totalCount: Int!
 }
 
 type ActivityEdge {
@@ -501,12 +509,13 @@ enum LeaderboardMetric {
 }
 
 """
-Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a
-configurable window; ACCURACY is lifetime-aggregated (the time-weighted
-Brier-derived score already weights by recency) and ignores the window.
-Operator-pattern shape matches `AccountStatFilter`.
+Filter input for the `AccountRankingConnection` returned by
+`leaderboard(...)`. PNL / VOLUME / ROI aggregate over a configurable
+window; ACCURACY is lifetime-aggregated (the time-weighted Brier-derived
+score already weights by recency) and ignores the window. Operator-
+pattern shape matches `AccountStatFilter`.
 """
-input LeaderboardFilter {
+input AccountRankingFilter {
   """
   Filter by aggregation epoch seconds. `{ gte }` sets the window's lower
   bound, `{ lte }` sets the upper bound; both inclusive. Other operators
@@ -1400,11 +1409,7 @@ type ConditionGroupEdge {
   cursor: String!
 }
 
-"""
-Relay-shaped connection over `Question` rows. `totalCount` is
-intentionally omitted — the underlying SQL UNION over `condition_group`
-and ungrouped `condition` rows cannot produce a single COUNT cheaply.
-"""
+"""Relay-shaped connection over `Question` rows."""
 type QuestionConnection {
   """
   Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
@@ -1416,6 +1421,14 @@ type QuestionConnection {
   edges: [QuestionEdge!]!
   nodes: [Question!]!
   pageInfo: PageInfo!
+
+  """
+  Size of the underlying ranked set the page is sliced from. Computed via
+  a separate `COUNT(*)` over the same `condition_group` / ungrouped
+  `condition` UNION (no LIMIT, no cursor predicate), so it costs one
+  extra query alongside the data fetch.
+  """
+  totalCount: Int!
 }
 
 """Cursor-bearing edge for `QuestionConnection`."""
@@ -2765,7 +2778,7 @@ type Query {
   """
   nodes(ids: [ID!]!): [Node]!
   activity(first: Int = 50, after: String, filter: ActivityFilter, orderBy: ActivityOrder): ActivityConnection!
-  leaderboard(metric: LeaderboardMetric!, first: Int = 25, after: String, filter: LeaderboardFilter): AccountRankingConnection!
+  leaderboard(metric: LeaderboardMetric!, first: Int = 25, after: String, filter: AccountRankingFilter): AccountRankingConnection!
 
   """
   Accuracy rank and lifetime score for a single address. Mirrors
