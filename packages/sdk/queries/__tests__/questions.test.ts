@@ -43,6 +43,32 @@ describe('fetchQuestionsSorted', () => {
     });
   });
 
+  test('requests seven-day volume ordering when sorting by a seven-day volume window', async () => {
+    await fetchQuestionsSorted({
+      ...baseParams,
+      sortField: 'similarMarketVolume',
+      similarMarketVolumeWindow: '7d',
+    });
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].orderBy).toEqual({
+      field: 'SIMILAR_MARKET_VOLUME_7D',
+      direction: 'DESC',
+    });
+  });
+
+  test('keeps twenty-four-hour volume ordering for unsupported volume sort windows', async () => {
+    await fetchQuestionsSorted({
+      ...baseParams,
+      sortField: 'similarMarketVolume',
+      similarMarketVolumeWindow: '4h',
+    });
+    const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[1].orderBy).toEqual({
+      field: 'SIMILAR_MARKET_VOLUME_24H',
+      direction: 'DESC',
+    });
+  });
+
   test('normalizes missing chainId to null', async () => {
     await fetchQuestionsSorted(baseParams);
     const call = mockGraphqlRequest.mock.calls[0];

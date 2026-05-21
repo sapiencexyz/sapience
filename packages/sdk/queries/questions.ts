@@ -38,6 +38,22 @@ const SORT_FIELD_TO_ORDER_FIELD: Record<SortField, string> = {
   similarMarketVolume: 'SIMILAR_MARKET_VOLUME_24H',
 };
 
+const getQuestionOrderField = (
+  sortField: SortField,
+  similarMarketVolumeWindow?: VolumeWindow
+): string => {
+  if (sortField !== 'similarMarketVolume') {
+    return SORT_FIELD_TO_ORDER_FIELD[sortField];
+  }
+
+  // The API exposes 24h and 7d volume sort keys today. Keep unsupported
+  // 1h/4h windows on the previous 24h sort while preserving their filter.
+  return similarMarketVolumeWindow === '7d' ||
+    similarMarketVolumeWindow === '7dFiltered'
+    ? 'SIMILAR_MARKET_VOLUME_7D'
+    : 'SIMILAR_MARKET_VOLUME_24H';
+};
+
 export type ResolutionStatusValue =
   | 'all'
   | 'unresolved'
@@ -251,7 +267,10 @@ export async function fetchQuestionsPage(
         take: first,
         after,
         orderBy: {
-          field: SORT_FIELD_TO_ORDER_FIELD[params.sortField],
+          field: getQuestionOrderField(
+            params.sortField,
+            params.similarMarketVolumeWindow
+          ),
           direction: params.sortDirection.toUpperCase(),
         },
         filter: buildQuestionFilter(params),
