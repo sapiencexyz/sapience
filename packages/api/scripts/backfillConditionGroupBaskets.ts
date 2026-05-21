@@ -30,7 +30,7 @@
 import prisma from '../src/core/db';
 
 const APPLY = process.argv.includes('--apply');
-const POLYMARKET_BATCH = 50;
+const POLYMARKET_BATCH = 25;
 const GAMMA_URL = 'https://gamma-api.polymarket.com/markets';
 
 interface PolymarketMarket {

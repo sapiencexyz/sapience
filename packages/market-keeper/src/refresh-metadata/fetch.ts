@@ -17,7 +17,7 @@ import { normalizeTagLabel } from '../generate/tags';
 import type { ExistingCondition } from '../generate/pipeline';
 
 const SAPIENCE_PAGE_SIZE = 100;
-const GAMMA_BATCH_SIZE = 25;
+const GAMMA_BATCH_SIZE = 50;
 const GAMMA_CONCURRENCY = 10;
 const EVENT_TAGS_BATCH_SIZE = 50;
 const EVENT_TAGS_CONCURRENCY = 10;

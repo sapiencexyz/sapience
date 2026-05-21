@@ -238,19 +238,18 @@ describe('fetchMarketsByConditionIds', () => {
     }
   });
 
-  it('batches input into Gamma calls of at most 25 IDs (each batch = 2 requests)', async () => {
+  it('batches input into Gamma calls of at most 50 IDs (each batch = 2 requests)', async () => {
     const ids = Array.from({ length: 75 }, (_, i) => `0x${i + 1}`);
-    // 3 batches × 2 sides = 6 requests. Gamma caps responses at 100 rows;
-    // 25 IDs keeps our defensive 4x response-limit headroom within that cap.
-    for (let i = 0; i < 6; i++) fetchQueue.push(() => jsonResponse([]));
+    // 2 batches × 2 sides = 4 requests.
+    for (let i = 0; i < 4; i++) fetchQueue.push(() => jsonResponse([]));
 
     await fetchMarketsByConditionIds(ids);
 
-    expect(fetchCalls).toHaveLength(6);
+    expect(fetchCalls).toHaveLength(4);
     const idCounts = fetchCalls.map(
       (c) => (c.url.match(/condition_ids=/g) || []).length
     );
-    expect(idCounts.every((n) => n === 25)).toBe(true);
+    expect(idCounts).toEqual([50, 50, 25, 25]);
   });
 
   it('keys the returned Map by conditionId and merges open + closed markets', async () => {
@@ -277,7 +276,7 @@ describe('fetchMarketsByConditionIds', () => {
   it('continues batching even if one side of one batch errors', async () => {
     // Single batch at the current Gamma batch size. Open side errors;
     // closed side succeeds and contributes one market.
-    const ids = Array.from({ length: 25 }, (_, i) => `0x${i + 1}`);
+    const ids = Array.from({ length: 50 }, (_, i) => `0x${i + 1}`);
     fetchQueue.push(
       () => new Response('oops', { status: 502, statusText: 'Bad Gateway' })
     );
