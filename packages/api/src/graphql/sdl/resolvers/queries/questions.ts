@@ -1003,9 +1003,10 @@ const rangeMin = (filter: ScalarRangeFilter | null | undefined) =>
 const rangeMax = (filter: ScalarRangeFilter | null | undefined) =>
   filter?.lte ?? filter?.lt ?? filter?.equals ?? null;
 
-export const questionsConnection: NonNullable<
-  QueryResolvers['questionsConnection']
-> = async (_parent, { first, after, filter, orderBy }) => {
+const questionsConnectionResolver = async (
+  _parent: unknown,
+  { first, after, filter, orderBy }: Partial<QueryQuestionsConnectionArgs>
+) => {
   const cappedFirst = clampTake(first ?? 50, {
     defaultTake: 50,
     maxTake: 100,
@@ -1068,4 +1069,9 @@ export const questionsConnection: NonNullable<
       endCursor: edges[edges.length - 1]?.cursor ?? null,
     },
   };
-}) as unknown as NonNullable<QueryResolvers['questionsConnection']>;
+};
+
+export const questionsConnection =
+  questionsConnectionResolver as unknown as NonNullable<
+    QueryResolvers['questionsConnection']
+  >;
