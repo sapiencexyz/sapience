@@ -20,7 +20,6 @@ type CombinedConditionDetail = {
 const COMBINED_CONDITIONS_QUERY = /* GraphQL */ `
   query CombinedConditions($filters: ConditionFilter!) {
     conditionsConnection(filter: $filters, first: 100) {
-      hasMore
       nodes {
         id
         question

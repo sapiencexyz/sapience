@@ -136,7 +136,7 @@ type Account implements Node {
     filter: AccountStatFilter
     orderBy: AccountStatOrder
   ): AccountStatConnection!
-  rank(metric: LeaderboardMetric!, filter: LeaderboardFilter): AccountRanking
+  rank(metric: LeaderboardMetric!, filter: AccountRankingFilter): AccountRanking
   predictions(
     first: Int = 50
     after: String
@@ -539,6 +539,12 @@ type ActivityConnection {
   edges: [ActivityEdge!]!
   nodes: [Activity!]!
   pageInfo: PageInfo!
+  """
+  Sum of matching Prediction and SecondaryTrade rows for the same filters
+  the page was sliced from. Resolved lazily via two indexed `COUNT(*)`
+  queries only when clients select this field.
+  """
+  totalCount: Int!
 }
 
 type ActivityEdge {
@@ -613,12 +619,13 @@ enum LeaderboardMetric {
 }
 
 """
-Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a
-configurable window; ACCURACY is lifetime-aggregated (the time-weighted
-Brier-derived score already weights by recency) and ignores the window.
-Operator-pattern shape matches `AccountStatFilter`.
+Filter input for the `AccountRankingConnection` returned by
+`leaderboard(...)`. PNL / VOLUME / ROI aggregate over a configurable
+window; ACCURACY is lifetime-aggregated (the time-weighted Brier-derived
+score already weights by recency) and ignores the window. Operator-
+pattern shape matches `AccountStatFilter`.
 """
-input LeaderboardFilter {
+input AccountRankingFilter {
   """
   Filter by aggregation epoch seconds. `{ gte }` sets the window's lower
   bound, `{ lte }` sets the upper bound; both inclusive. Other operators
@@ -1572,14 +1579,6 @@ type ForecastEdge {
 Relay-shaped connection over `Condition` rows.
 """
 type ConditionConnection {
-  """
-  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
-  """
-  items: [Condition!]!
-  """
-  Deprecated convenience alias for `pageInfo.hasNextPage`.
-  """
-  hasMore: Boolean!
   edges: [ConditionEdge!]!
   nodes: [Condition!]!
   pageInfo: PageInfo!
@@ -1598,14 +1597,6 @@ type ConditionEdge {
 Relay-shaped connection over `ConditionGroup` rows.
 """
 type ConditionGroupConnection {
-  """
-  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
-  """
-  items: [ConditionGroup!]!
-  """
-  Deprecated convenience alias for `pageInfo.hasNextPage`.
-  """
-  hasMore: Boolean!
   edges: [ConditionGroupEdge!]!
   nodes: [ConditionGroup!]!
   pageInfo: PageInfo!
@@ -1621,22 +1612,18 @@ type ConditionGroupEdge {
 }
 
 """
-Relay-shaped connection over `Question` rows. `totalCount` is
-intentionally omitted — the underlying SQL UNION over `condition_group`
-and ungrouped `condition` rows cannot produce a single COUNT cheaply.
+Relay-shaped connection over `Question` rows.
 """
 type QuestionConnection {
-  """
-  Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.
-  """
-  items: [Question!]!
-  """
-  Deprecated convenience alias for `pageInfo.hasNextPage`.
-  """
-  hasMore: Boolean!
   edges: [QuestionEdge!]!
   nodes: [Question!]!
   pageInfo: PageInfo!
+  """
+  Size of the underlying ranked set the page is sliced from. Resolved lazily
+  via a separate `COUNT(*)` over the same `condition_group` / ungrouped
+  `condition` UNION only when clients select this field.
+  """
+  totalCount: Int!
 }
 
 """
@@ -3212,7 +3199,7 @@ type Query {
     metric: LeaderboardMetric!
     first: Int = 25
     after: String
-    filter: LeaderboardFilter
+    filter: AccountRankingFilter
   ): AccountRankingConnection!
 
   """
@@ -3644,8 +3631,6 @@ type Query {
     after: String
     filter: ConditionGroupFilter
     orderBy: ConditionGroupOrder
-    take: Int @deprecated(reason: "Use `first`.")
-    skip: Int @deprecated(reason: "Use cursor pagination via `after`.")
   ): ConditionGroupConnection!
 
   """
@@ -3679,8 +3664,6 @@ type Query {
     after: String
     filter: ConditionFilter
     orderBy: ConditionOrder
-    take: Int @deprecated(reason: "Use `first`.")
-    skip: Int @deprecated(reason: "Use cursor pagination via `after`.")
   ): ConditionConnection!
 
   """
@@ -3980,8 +3963,6 @@ type Query {
     after: String
     filter: QuestionFilter
     orderBy: QuestionOrder
-    take: Int @deprecated(reason: "Use `first`.")
-    skip: Int @deprecated(reason: "Use cursor pagination via `after`.")
   ): QuestionConnection!
 
   """

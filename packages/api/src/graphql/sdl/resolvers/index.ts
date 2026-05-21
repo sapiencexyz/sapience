@@ -26,6 +26,7 @@ import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
 import { Activity, ActivitySource } from './Activity';
+import { ActivityConnection, QuestionConnection } from './ConnectionTotalCount';
 import { ActivityItemsPage } from './ActivityItemsPage';
 import { Forecast } from './Forecast';
 import { Pick } from './Pick';
@@ -193,6 +194,7 @@ export const resolvers: Resolvers = {
   },
   Account,
   Activity,
+  ActivityConnection,
   ActivitySource,
   ActivityItemsPage,
   ForecastScore,
@@ -204,6 +206,7 @@ export const resolvers: Resolvers = {
   PickConfiguration,
   PositionsPage,
   Question,
+  QuestionConnection,
   ConditionOrConditionGroup,
   Protocol,
   User,

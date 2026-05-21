@@ -144,16 +144,9 @@ export const conditionGroupsConnection: NonNullable<
   QueryResolvers['conditionGroupsConnection']
 > = async (
   _parent,
-  {
-    first,
-    after,
-    filter,
-    orderBy,
-    take,
-    skip,
-  }: QueryConditionGroupsConnectionArgs
+  { first, after, filter, orderBy }: QueryConditionGroupsConnectionArgs
 ) => {
-  const cappedFirst = clampTake(first ?? take ?? 50, {
+  const cappedFirst = clampTake(first ?? 50, {
     defaultTake: 50,
     maxTake: 100,
   });
@@ -187,7 +180,6 @@ export const conditionGroupsConnection: NonNullable<
         { id: prismaDir },
       ],
       take: cappedFirst + 1,
-      ...(after ? {} : { skip: skip ?? 0 }),
     }),
     prisma.conditionGroup.count({ where: filterWhere }),
   ]);
@@ -204,8 +196,6 @@ export const conditionGroupsConnection: NonNullable<
   }));
 
   return {
-    items: pageRows,
-    hasMore: hasNextPage,
     edges,
     nodes: pageRows,
     totalCount,

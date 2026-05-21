@@ -134,7 +134,7 @@ export type AccountPredictionsArgs = {
  * without renaming.
  */
 export type AccountRankArgs = {
-  filter?: InputMaybe<LeaderboardFilter>;
+  filter?: InputMaybe<AccountRankingFilter>;
   metric: LeaderboardMetric;
 };
 
@@ -271,6 +271,22 @@ export type AccountRankingEdge = {
   __typename?: 'AccountRankingEdge';
   cursor: Scalars['String']['output'];
   node: AccountRanking;
+};
+
+/**
+ * Filter input for the `AccountRankingConnection` returned by
+ * `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a configurable
+ * window; ACCURACY is lifetime-aggregated (the time-weighted Brier-derived
+ * score already weights by recency) and ignores the window. Operator-
+ * pattern shape matches `AccountStatFilter`.
+ */
+export type AccountRankingFilter = {
+  /**
+   * Filter by aggregation epoch seconds. `{ gte }` sets the window's lower
+   * bound, `{ lte }` sets the upper bound; both inclusive. Other operators
+   * reject — this is a window selector, not a point query.
+   */
+  timestamp?: InputMaybe<IntFilter>;
 };
 
 /**
@@ -427,6 +443,12 @@ export type ActivityConnection = {
   edges: Array<ActivityEdge>;
   nodes: Array<Activity>;
   pageInfo: PageInfo;
+  /**
+   * Sum of matching Prediction and SecondaryTrade rows for the same filters
+   * the page was sliced from. Resolved lazily via two indexed `COUNT(*)`
+   * queries only when clients select this field.
+   */
+  totalCount: Scalars['Int']['output'];
 };
 
 export type ActivityEdge = {
@@ -950,10 +972,6 @@ export type ConditionTradesArgs = {
 export type ConditionConnection = {
   __typename?: 'ConditionConnection';
   edges: Array<ConditionEdge>;
-  /** Deprecated convenience alias for `pageInfo.hasNextPage`. */
-  hasMore: Scalars['Boolean']['output'];
-  /** Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape. */
-  items: Array<Condition>;
   nodes: Array<Condition>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
@@ -1156,10 +1174,6 @@ export type ConditionGroupConditionsArgs = {
 export type ConditionGroupConnection = {
   __typename?: 'ConditionGroupConnection';
   edges: Array<ConditionGroupEdge>;
-  /** Deprecated convenience alias for `pageInfo.hasNextPage`. */
-  hasMore: Scalars['Boolean']['output'];
-  /** Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape. */
-  items: Array<ConditionGroup>;
   nodes: Array<ConditionGroup>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
@@ -1948,21 +1962,6 @@ export type IntNullableFilter = {
   lte?: InputMaybe<Scalars['Int']['input']>;
   not?: InputMaybe<NestedIntNullableFilter>;
   notIn?: InputMaybe<Array<Scalars['Int']['input']>>;
-};
-
-/**
- * Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a
- * configurable window; ACCURACY is lifetime-aggregated (the time-weighted
- * Brier-derived score already weights by recency) and ignores the window.
- * Operator-pattern shape matches `AccountStatFilter`.
- */
-export type LeaderboardFilter = {
-  /**
-   * Filter by aggregation epoch seconds. `{ gte }` sets the window's lower
-   * bound, `{ lte }` sets the upper bound; both inclusive. Other operators
-   * reject — this is a window selector, not a point query.
-   */
-  timestamp?: InputMaybe<IntFilter>;
 };
 
 export type LeaderboardMetric =
@@ -3286,8 +3285,6 @@ export type QueryConditionGroupsConnectionArgs = {
   filter?: InputMaybe<ConditionGroupFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ConditionGroupOrder>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3306,8 +3303,6 @@ export type QueryConditionsConnectionArgs = {
   filter?: InputMaybe<ConditionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ConditionOrder>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3321,7 +3316,7 @@ export type QueryForecastsConnectionArgs = {
 
 export type QueryLeaderboardArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<LeaderboardFilter>;
+  filter?: InputMaybe<AccountRankingFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   metric: LeaderboardMetric;
 };
@@ -3486,8 +3481,6 @@ export type QueryQuestionsConnectionArgs = {
   filter?: InputMaybe<QuestionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<QuestionOrder>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3667,20 +3660,18 @@ export type QuestionTradesArgs = {
   orderBy?: InputMaybe<TradeOrder>;
 };
 
-/**
- * Relay-shaped connection over `Question` rows. `totalCount` is
- * intentionally omitted — the underlying SQL UNION over `condition_group`
- * and ungrouped `condition` rows cannot produce a single COUNT cheaply.
- */
+/** Relay-shaped connection over `Question` rows. */
 export type QuestionConnection = {
   __typename?: 'QuestionConnection';
   edges: Array<QuestionEdge>;
-  /** Deprecated convenience alias for `pageInfo.hasNextPage`. */
-  hasMore: Scalars['Boolean']['output'];
-  /** Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape. */
-  items: Array<Question>;
   nodes: Array<Question>;
   pageInfo: PageInfo;
+  /**
+   * Size of the underlying ranked set the page is sliced from. Resolved lazily
+   * via a separate `COUNT(*)` over the same `condition_group` / ungrouped
+   * `condition` UNION only when clients select this field.
+   */
+  totalCount: Scalars['Int']['output'];
 };
 
 /** Cursor-bearing edge for `QuestionConnection`. */

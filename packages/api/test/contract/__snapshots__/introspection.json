@@ -321,7 +321,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "LeaderboardFilter",
+                  "name": "AccountRankingFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -1216,6 +1216,27 @@
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "AccountRankingFilter",
+        "description": "Filter input for the `AccountRankingConnection` returned by\n`leaderboard(...)`. PNL / VOLUME / ROI aggregate over a configurable\nwindow; ACCURACY is lifetime-aggregated (the time-weighted Brier-derived\nscore already weights by recency) and ignores the window. Operator-\npattern shape matches `AccountStatFilter`.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "timestamp",
+            "description": "Filter by aggregation epoch seconds. `{ gte }` sets the window's lower\nbound, `{ lte }` sets the upper bound; both inclusive. Other operators\nreject — this is a window selector, not a point query.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "IntFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },
@@ -2126,6 +2147,22 @@
               "ofType": {
                 "kind": "OBJECT",
                 "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Sum of matching Prediction and SecondaryTrade rows for the same filters\nthe page was sliced from. Resolved lazily via two indexed `COUNT(*)`\nqueries only when clients select this field.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
                 "ofType": null
               }
             },
@@ -6009,46 +6046,6 @@
         "description": "Relay-shaped connection over `Condition` rows.",
         "fields": [
           {
-            "name": "items",
-            "description": "Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "Condition",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": "Deprecated convenience alias for `pageInfo.hasNextPage`.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
             "name": "edges",
             "description": null,
             "args": [],
@@ -6934,46 +6931,6 @@
         "name": "ConditionGroupConnection",
         "description": "Relay-shaped connection over `ConditionGroup` rows.",
         "fields": [
-          {
-            "name": "items",
-            "description": "Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "ConditionGroup",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": "Deprecated convenience alias for `pageInfo.hasNextPage`.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
           {
             "name": "edges",
             "description": null,
@@ -12659,27 +12616,6 @@
         "possibleTypes": null
       },
       {
-        "kind": "INPUT_OBJECT",
-        "name": "LeaderboardFilter",
-        "description": "Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a\nconfigurable window; ACCURACY is lifetime-aggregated (the time-weighted\nBrier-derived score already weights by recency) and ignores the window.\nOperator-pattern shape matches `AccountStatFilter`.",
-        "fields": null,
-        "inputFields": [
-          {
-            "name": "timestamp",
-            "description": "Filter by aggregation epoch seconds. `{ gte }` sets the window's lower\nbound, `{ lte }` sets the upper bound; both inclusive. Other operators\nreject — this is a window selector, not a point query.",
-            "type": {
-              "kind": "INPUT_OBJECT",
-              "name": "IntFilter",
-              "ofType": null
-            },
-            "defaultValue": null
-          }
-        ],
-        "interfaces": null,
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
         "kind": "ENUM",
         "name": "LeaderboardMetric",
         "description": null,
@@ -17136,7 +17072,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "LeaderboardFilter",
+                  "name": "AccountRankingFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -21347,48 +21283,8 @@
       {
         "kind": "OBJECT",
         "name": "QuestionConnection",
-        "description": "Relay-shaped connection over `Question` rows. `totalCount` is\nintentionally omitted — the underlying SQL UNION over `condition_group`\nand ungrouped `condition` rows cannot produce a single COUNT cheaply.",
+        "description": "Relay-shaped connection over `Question` rows.",
         "fields": [
-          {
-            "name": "items",
-            "description": "Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "Question",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": "Deprecated convenience alias for `pageInfo.hasNextPage`.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
           {
             "name": "edges",
             "description": null,
@@ -21447,6 +21343,22 @@
               "ofType": {
                 "kind": "OBJECT",
                 "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Size of the underlying ranked set the page is sliced from. Resolved lazily\nvia a separate `COUNT(*)` over the same `condition_group` / ungrouped\n`condition` UNION only when clients select this field.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
                 "ofType": null
               }
             },
