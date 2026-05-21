@@ -112,6 +112,8 @@ describe('parseEndTimeResponse', () => {
   });
 
   it('returns null endTime for UNKNOWN', () => {
+    // Far-future date so the parseEndTimeValue past-date guard doesn't
+    // discard id2's endTime and break the assertion as wall-clock advances.
     const content = `${id1},UNKNOWN\n${id2},2099-05-15T23:59:59Z`;
     const results = parseEndTimeResponse(content, markets);
 
@@ -139,6 +141,8 @@ describe('parseEndTimeResponse', () => {
   });
 
   it('handles invalid dates gracefully', () => {
+    // Far-future date so the parseEndTimeValue past-date guard doesn't
+    // mask the "valid date" path under test as wall-clock advances.
     const content = `${id1},not-a-date\n${id2},2099-05-15T23:59:59Z`;
     const results = parseEndTimeResponse(content, markets);
 
