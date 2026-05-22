@@ -21,7 +21,7 @@ const COMBINED_CONDITIONS_QUERY = /* GraphQL */ `
   query CombinedConditions($filters: ConditionFilter!) {
     conditionsConnection(filter: $filters, first: 100) {
       nodes {
-        id
+        id: conditionId
         question
         shortName
         resolver

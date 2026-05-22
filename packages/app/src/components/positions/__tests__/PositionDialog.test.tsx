@@ -76,6 +76,7 @@ import PositionDialog from '../PositionDialog';
 
 const pickConfig: PickConfigData = {
   id: 'pc-1',
+  pickConfigId: 'pc-1',
   chainId: 42161,
   marketAddress: '0xmarket',
   // Aggregate across 10 predictions of ~100 USDe each.
@@ -98,7 +99,8 @@ const pickConfig: PickConfigData = {
 // This holder holds the counterparty side of 10 predictions →
 // userCollateral = 979.79, totalPayout = 1,000 (sum across the combos).
 const counterpartyPosition: PositionBalance = {
-  id: 1,
+  id: 'position-node-1',
+  positionId: '1',
   chainId: 42161,
   tokenAddress: '0xcp-token',
   pickConfigId: 'pc-1',

@@ -92,7 +92,8 @@ export const GET_QUESTIONS = /* GraphQL */ `
             slug
           }
           conditions {
-            id
+            id: conditionId
+            conditionId
             createdAt
             question
             shortName
@@ -131,7 +132,8 @@ export const GET_QUESTIONS = /* GraphQL */ `
           }
         }
         condition {
-          id
+          id: conditionId
+          conditionId
           createdAt
           question
           shortName

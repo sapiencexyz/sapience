@@ -333,7 +333,7 @@ const ForecastsTable = ({
         query ConditionsByIds($filters: ConditionFilter!) {
           conditionsConnection(filter: $filters, first: 100) {
             nodes {
-              id
+              id: conditionId
               question
               shortName
               endTime

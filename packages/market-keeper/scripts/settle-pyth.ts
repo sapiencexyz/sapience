@@ -252,7 +252,7 @@ const CONDITIONS_QUERY = /* GraphQL */ `
         endCursor
       }
       nodes {
-        id
+        id: conditionId
         endTime
         chainId
         resolver

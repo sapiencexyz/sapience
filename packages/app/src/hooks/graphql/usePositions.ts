@@ -41,6 +41,7 @@ export type Prediction = {
  *  without a follow-up query. */
 export type PickConditionData = {
   id: string;
+  conditionId: string;
   shortName?: string | null;
   optionName?: string | null;
   question?: string | null;
@@ -67,6 +68,7 @@ export type PickData = {
 /** Pick Configuration data */
 export type PickConfigData = {
   id: string;
+  pickConfigId: string;
   chainId: number;
   marketAddress: string;
   totalPredictorCollateral: string;
@@ -99,6 +101,7 @@ export type PositionBalancePage = {
  */
 export type PositionBalance = {
   id: string;
+  positionId: string;
   chainId: number;
   tokenAddress: string;
   pickConfigId: string;
@@ -121,7 +124,8 @@ export type PositionBalance = {
 // resolvers.
 const PICK_CONDITION_FRAGMENT = `
   condition {
-    id
+    id: conditionId
+    conditionId
     shortName
     optionName
     question
@@ -140,7 +144,8 @@ const PICK_CONDITION_FRAGMENT = `
 
 const PICK_CONFIG_FRAGMENT = `
   pickConfig {
-    id
+    id: pickConfigId
+    pickConfigId
     chainId
     marketAddress
     totalPredictorCollateral
@@ -214,7 +219,8 @@ const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
         collateralDepositedAt
         createdAt
         pickConfig {
-          id
+          id: pickConfigId
+          pickConfigId
           picks {
             conditionId
             conditionResolver
@@ -275,6 +281,7 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
       }
       nodes {
         id
+        positionId
         chainId
         tokenAddress
         pickConfigId
@@ -304,6 +311,7 @@ const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
       }
       nodes {
         id
+        positionId
         chainId
         tokenAddress
         pickConfigId

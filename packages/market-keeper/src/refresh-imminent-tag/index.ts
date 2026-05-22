@@ -115,7 +115,7 @@ async function fetchAllUnsettledConditions(
     query ImminentTagCandidates($filter: ConditionFilter!, $first: Int!, $after: String) {
       conditionsConnection(filter: $filter, first: $first, after: $after, orderBy: { field: CREATED_AT, direction: DESC }) {
         nodes {
-          id
+          id: conditionId
           question
           tags
         }

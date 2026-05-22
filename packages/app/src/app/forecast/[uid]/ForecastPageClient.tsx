@@ -151,7 +151,7 @@ export default function ForecastPageClient({
         </div>
         {forecast.condition ? (
           <ConditionTitleLink
-            conditionId={forecast.condition.id}
+            conditionId={forecast.conditionId ?? forecast.condition.conditionId}
             resolverAddress={forecast.condition.resolver ?? undefined}
             title={question}
             className="text-base md:text-lg font-medium"
