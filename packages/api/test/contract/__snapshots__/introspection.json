@@ -15569,20 +15569,16 @@
       {
         "kind": "INPUT_OBJECT",
         "name": "PositionOrder",
-        "description": "Order input for the Relay-shaped `positionsConnection`.",
+        "description": "Order input for the Relay-shaped `positionsConnection`.\nBoth `field` and `direction` are nullable so external clients passing\nnullable `$orderDirection: OrderDirection` / `$orderBy: PositionOrderField`\nvariables continue to validate against this schema. Resolver defaults to\n`UPDATED_AT` / `DESC`.",
         "fields": null,
         "inputFields": [
           {
             "name": "field",
             "description": null,
             "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "ENUM",
-                "name": "PositionOrderField",
-                "ofType": null
-              }
+              "kind": "ENUM",
+              "name": "PositionOrderField",
+              "ofType": null
             },
             "defaultValue": null
           },
@@ -15590,13 +15586,9 @@
             "name": "direction",
             "description": null,
             "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "ENUM",
-                "name": "OrderDirection",
-                "ofType": null
-              }
+              "kind": "ENUM",
+              "name": "OrderDirection",
+              "ofType": null
             },
             "defaultValue": null
           }
@@ -16690,7 +16682,7 @@
       {
         "kind": "OBJECT",
         "name": "ProtocolStat",
-        "description": "Protocol-wide stats snapshot — no vault scoping.",
+        "description": "Protocol-wide stats snapshot. When the deprecated `Query.protocolStats(vaultAddress:)`\narg is set, vault-scoped fields (the `vault*` block below) are populated alongside the\nprotocol-wide counters from the same fat-row pipeline that backs `vaultStats`.",
         "fields": [
           {
             "name": "timestamp",
@@ -16803,6 +16795,174 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalTradeCount",
+            "description": "DEPRECATED — pre-split alias for `cumulativeTradeCount`. Kept so pinned external\nqueries keep validating; new callers should read `cumulativeTradeCount`.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `cumulativeTradeCount`."
+          },
+          {
+            "name": "periodPnL",
+            "description": "DEPRECATED — realized PnL delta. Lives on `VaultStat.periodPnL` now and is\nonly populated here when the row is vault-scoped (`protocolStats(vaultAddress:)`).",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).periodPnL` — only populated on vault-scoped rows."
+          },
+          {
+            "name": "vaultBalance",
+            "description": "DEPRECATED — vault collateral balance. Only populated when the row is vault-scoped\nvia `protocolStats(vaultAddress:)`.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).balance`."
+          },
+          {
+            "name": "vaultAvailableAssets",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).availableAssets`."
+          },
+          {
+            "name": "vaultDeployed",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).deployed`."
+          },
+          {
+            "name": "vaultCumulativePnL",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).cumulativePnL`."
+          },
+          {
+            "name": "vaultPositionsWon",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).positionsWon`."
+          },
+          {
+            "name": "vaultPositionsLost",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).positionsLost`."
+          },
+          {
+            "name": "vaultDeposits",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).deposits`."
+          },
+          {
+            "name": "vaultWithdrawals",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).withdrawals`."
+          },
+          {
+            "name": "vaultAirdropGains",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).airdropGains`."
+          },
+          {
+            "name": "vaultSecondaryBought",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).secondaryBought`."
+          },
+          {
+            "name": "vaultSecondarySold",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).secondarySold`."
+          },
+          {
+            "name": "vaultUnredeemedClaim",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).unredeemedClaim`."
           }
         ],
         "inputFields": null,
