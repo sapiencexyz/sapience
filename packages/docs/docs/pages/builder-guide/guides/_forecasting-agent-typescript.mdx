@@ -41,10 +41,10 @@ async function fetchRandomCondition() {
   const query = gql`
     query Conditions($nowSec: Int!) {
       conditionsConnection(
-        filters: { visibility: PUBLIC, minEndTime: $nowSec }
+        filter: { visibility: PUBLIC, resolvesAt: { gte: $nowSec } }
         first: 50
       ) {
-        items {
+        nodes {
           id
           question
           shortName

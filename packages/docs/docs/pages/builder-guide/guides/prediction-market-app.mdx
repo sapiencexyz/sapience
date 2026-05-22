@@ -150,8 +150,10 @@ const client = new GraphQLClient('https://api.sapience.xyz/graphql');
 
 const QuestionsQuery = gql`
   query Questions {
-    questionsConnection(first: 10, sortField: endTime, sortDirection: desc) {
-      hasMore
+    questionsConnection(
+      first: 10
+      orderBy: { field: RESOLVES_AT, direction: DESC }
+    ) {
       nodes {
         questionType
         predictionCount
@@ -162,6 +164,10 @@ const QuestionsQuery = gql`
         group {
           id
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }

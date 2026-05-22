@@ -80,11 +80,15 @@ async function fetchCondition() {
   const query = gql`
     query Conditions($chainId: Int!, $nowSec: Int!) {
       conditionsConnection(
-        filters: { chainId: $chainId, visibility: PUBLIC, minEndTime: $nowSec }
+        filter: {
+          chainId: $chainId
+          visibility: PUBLIC
+          resolvesAt: { gte: $nowSec }
+        }
         orderBy: { field: RESOLVES_AT, direction: ASC }
         first: 1
       ) {
-        items {
+        nodes {
           id
           question
           shortName
