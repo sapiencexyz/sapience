@@ -1,4 +1,11 @@
 import { graphqlRequest } from './client/graphqlClient';
+import {
+  clampConnectionTake,
+  fetchConnectionPage,
+  fetchConnectionWindow,
+  shouldFetchConnectionWindow,
+  type ConnectionPage,
+} from './connectionPage';
 
 export interface ConditionType {
   id: string;
@@ -139,56 +146,64 @@ export function buildConditionsWhereClause(
   return buildConditionsFilters(chainId, filters);
 }
 
-type ConditionsConnectionResult = {
-  conditionsConnection?: {
-    nodes?: ConditionType[] | null;
-    pageInfo?: {
-      hasNextPage?: boolean | null;
-      endCursor?: string | null;
-    } | null;
-  } | null;
-};
-
-async function fetchConditionsWindow(
-  first: number,
-  skip: number,
-  filter: Record<string, unknown> | undefined
-): Promise<ConditionType[]> {
-  const target = skip + first;
-  const collected: ConditionType[] = [];
-  let after: string | null | undefined = null;
-
-  while (collected.length < target) {
-    const batchSize = Math.min(100, target - collected.length);
-    const data: ConditionsConnectionResult =
-      await graphqlRequest<ConditionsConnectionResult>(GET_CONDITIONS, {
-        take: batchSize,
-        after,
-        filter,
-      });
-    const conn = data.conditionsConnection;
-    collected.push(...(conn?.nodes ?? []));
-    if (!conn?.pageInfo?.hasNextPage || !conn.pageInfo.endCursor) break;
-    after = conn.pageInfo.endCursor;
-  }
-
-  return collected.slice(skip, target);
+function buildConditionsVariables(
+  filters: Record<string, unknown>,
+  take: number,
+  after: string | null
+) {
+  return {
+    take,
+    after,
+    filter: Object.keys(filters).length > 0 ? filters : undefined,
+  };
 }
 
+export async function fetchConditionsPage(opts?: {
+  take?: number;
+  after?: string | null;
+  chainId?: number;
+  filters?: ConditionFilter;
+}): Promise<ConnectionPage<ConditionType>> {
+  const filters = buildConditionsFilters(opts?.chainId, opts?.filters);
+  return fetchConnectionPage<ConditionType>(
+    GET_CONDITIONS,
+    buildConditionsVariables(
+      filters,
+      clampConnectionTake(opts?.take),
+      opts?.after ?? null
+    ),
+    'conditionsConnection'
+  );
+}
+
+/**
+ * Single-page convenience wrapper. Use `fetchConditionsPage` when you
+ * need `hasMore` / `endCursor` for paginating.
+ */
 export async function fetchConditions(opts?: {
   take?: number;
+  /** @deprecated Use `after` with `endCursor` from `fetchConditionsPage`. */
   skip?: number;
+  after?: string | null;
   chainId?: number;
   filters?: ConditionFilter;
 }): Promise<ConditionType[]> {
-  const take = opts?.take ?? 50;
-  const skip = opts?.skip ?? 0;
-  const filters = buildConditionsFilters(opts?.chainId, opts?.filters);
-  return fetchConditionsWindow(
-    take,
-    skip,
-    Object.keys(filters).length > 0 ? filters : undefined
-  );
+  if (shouldFetchConnectionWindow(opts?.take, opts?.skip, opts?.after, 50)) {
+    const filters = buildConditionsFilters(opts?.chainId, opts?.filters);
+    const page = await fetchConnectionWindow<ConditionType>(
+      GET_CONDITIONS,
+      (take, after) => buildConditionsVariables(filters, take, after),
+      'conditionsConnection',
+      {
+        take: opts?.take,
+        skip: opts?.skip,
+        defaultTake: 50,
+      }
+    );
+    return page.items;
+  }
+
+  return (await fetchConditionsPage(opts)).items;
 }
 
 const PAGE_SIZE = 100;

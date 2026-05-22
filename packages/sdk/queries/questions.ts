@@ -1,4 +1,9 @@
-import { graphqlRequest } from './client/graphqlClient';
+import {
+  clampConnectionTake,
+  fetchConnectionPage,
+  fetchConnectionWindow,
+  shouldFetchConnectionWindow,
+} from './connectionPage';
 import type { ConditionType } from './conditions';
 import type { ConditionGroupType } from './conditionGroups';
 
@@ -179,7 +184,16 @@ export const GET_QUESTIONS = /* GraphQL */ `
 
 export interface FetchQuestionsSortedParams {
   take: number;
-  skip: number;
+  /** @deprecated Use `after` with `endCursor` from `fetchQuestionsPage`. */
+  skip?: number;
+  /**
+   * Opaque cursor from the previous page's `endCursor`. Pass `null` (or
+   * omit) to fetch the first page. Cursor pagination keeps server cost
+   * constant per page — the resolver enforces a query-complexity ceiling
+   * that an offset-style "refetch with larger first" pattern blows past
+   * within a couple of scrolls.
+   */
+  after?: string | null;
   chainId?: number;
   marketAddress?: string;
   marketAddressIn?: string[];
@@ -197,19 +211,10 @@ export interface FetchQuestionsSortedParams {
   similarMarketVolumeWindow?: VolumeWindow;
 }
 
-type QuestionsQueryResult = {
-  questionsConnection?: {
-    nodes?: QuestionType[] | null;
-    pageInfo?: {
-      hasNextPage?: boolean | null;
-      endCursor?: string | null;
-    } | null;
-  } | null;
-};
-
 export interface QuestionsPageResult {
   items: QuestionType[];
   hasMore: boolean;
+  endCursor: string | null;
 }
 
 function buildQuestionFilter(params: FetchQuestionsSortedParams) {
@@ -253,41 +258,46 @@ function buildQuestionFilter(params: FetchQuestionsSortedParams) {
   };
 }
 
+function buildQuestionsVariables(
+  params: FetchQuestionsSortedParams,
+  take: number,
+  after: string | null
+) {
+  return {
+    take,
+    after,
+    orderBy: {
+      field: getQuestionOrderField(
+        params.sortField,
+        params.similarMarketVolumeWindow
+      ),
+      direction: params.sortDirection.toUpperCase(),
+    },
+    filter: buildQuestionFilter(params),
+  };
+}
+
 export async function fetchQuestionsPage(
   params: FetchQuestionsSortedParams
 ): Promise<QuestionsPageResult> {
-  const target = params.skip + params.take;
-  const collected: QuestionType[] = [];
-  let after: string | null | undefined = null;
-  let hasMore = false;
-
-  while (collected.length < target) {
-    const first = Math.min(100, target - collected.length);
-    const data: QuestionsQueryResult =
-      await graphqlRequest<QuestionsQueryResult>(GET_QUESTIONS, {
-        take: first,
-        after,
-        orderBy: {
-          field: getQuestionOrderField(
-            params.sortField,
-            params.similarMarketVolumeWindow
-          ),
-          direction: params.sortDirection.toUpperCase(),
-        },
-        filter: buildQuestionFilter(params),
-      });
-    const conn = data.questionsConnection;
-    const nodes = conn?.nodes ?? [];
-    collected.push(...nodes);
-    hasMore = Boolean(conn?.pageInfo?.hasNextPage);
-    if (!hasMore || !conn?.pageInfo?.endCursor || nodes.length === 0) break;
-    after = conn.pageInfo.endCursor;
+  if (shouldFetchConnectionWindow(params.take, params.skip, params.after, 50)) {
+    return fetchConnectionWindow<QuestionType>(
+      GET_QUESTIONS,
+      (take, after) => buildQuestionsVariables(params, take, after),
+      'questionsConnection',
+      { take: params.take, skip: params.skip, defaultTake: 50 }
+    );
   }
 
-  return {
-    items: collected.slice(params.skip, target),
-    hasMore,
-  };
+  return fetchConnectionPage<QuestionType>(
+    GET_QUESTIONS,
+    buildQuestionsVariables(
+      params,
+      clampConnectionTake(params.take),
+      params.after ?? null
+    ),
+    'questionsConnection'
+  );
 }
 
 export async function fetchQuestionsSorted(
