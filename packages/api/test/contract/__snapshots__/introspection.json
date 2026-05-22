@@ -4095,7 +4095,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4127,7 +4127,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4143,7 +4143,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4278,7 +4278,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4342,7 +4342,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4374,7 +4374,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4537,7 +4537,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -5769,20 +5769,36 @@
             "deprecationReason": null
           },
           {
-            "name": "marketAddress",
-            "description": "On-chain market contract address that owns this condition (case-insensitive,\n0x-prefixed lowercase). The canonical client-facing name for the address\nsurfaced as `resolver` on the legacy fragment.",
+            "name": "resolverAddress",
+            "description": "Resolver contract address — the oracle that settles this condition's outcome.\nDistinct from the PredictionMarketEscrow address (which is `Prediction.marketAddress` /\n`PickConfiguration.marketAddress`); one resolver contract can settle conditions\nreferenced by many escrow markets.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "marketAddress",
+            "description": "Mislabeled alias of `resolverAddress`. Holds the resolver contract address,\nnot the PredictionMarketEscrow address. The recent `resolver → marketAddress`\nmigration collapsed a real distinction; `resolverAddress` is the corrected name.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Address",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `resolverAddress` — same value, but accurately named. This field holds the resolver (oracle) contract address, not the market/escrow address that `Prediction.marketAddress` / `PickConfiguration.marketAddress` carry."
           },
           {
             "name": "resolver",
@@ -5798,7 +5814,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `marketAddress` — same value, drops the protocol-jargon name to match `Prediction.marketAddress` / `PickConfig.marketAddress` and the `ConditionFilter.marketAddress` filter."
+            "deprecationReason": "Use `resolverAddress` — same value, Address-typed and consistent with `Forecast.resolverAddress` / `Pick.conditionResolverAddress`."
           },
           {
             "name": "settled",
@@ -6277,7 +6293,7 @@
           },
           {
             "name": "chainId",
-            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present.",
+            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.",
             "type": {
               "kind": "SCALAR",
               "name": "Int",
@@ -6286,18 +6302,18 @@
             "defaultValue": null
           },
           {
-            "name": "marketAddress",
-            "description": "Match the on-chain market contract address that owns the condition\n(case-insensitive). Maps to the DB `resolver` column.",
+            "name": "resolverAddress",
+            "description": "Match the on-chain resolver (oracle) contract address. Maps to the DB\n`condition.resolver` column. Distinct from `Prediction.marketAddress` /\n`PickConfiguration.marketAddress`, which carry the PredictionMarketEscrow\ncontract.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
           },
           {
-            "name": "marketAddressIn",
-            "description": "Match any of these on-chain market contract addresses (case-insensitive).\nSame semantics as `marketAddress`.",
+            "name": "resolverAddressIn",
+            "description": "Match any of these resolver contract addresses. Same semantics as `resolverAddress`.",
             "type": {
               "kind": "LIST",
               "name": null,
@@ -6306,7 +6322,7 @@
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "String",
+                  "name": "Address",
                   "ofType": null
                 }
               }
@@ -11032,12 +11048,12 @@
             "deprecationReason": null
           },
           {
-            "name": "resolver",
-            "description": null,
+            "name": "resolverAddress",
+            "description": "Resolver contract address from the on-chain EAS attestation (`address resolver`\non the forecast schema). Identifies which oracle the forecaster is predicting\nagainst — same address as `Condition.resolverAddress` when the forecast\nmatches a tracked condition.",
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "isDeprecated": false,
@@ -11712,12 +11728,12 @@
             "deprecationReason": null
           },
           {
-            "name": "marketAddress",
-            "description": null,
+            "name": "resolverAddress",
+            "description": "Resolver contract address this score is keyed against. Mirrors\n`Condition.resolverAddress` for the scored forecast. The DB row carries two\nlegacy columns (`marketAddress`, `resolver`) that hold the same value; the\nGraphQL surface exposes the single corrected name.",
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "isDeprecated": false,
@@ -11773,18 +11789,6 @@
           },
           {
             "name": "questionId",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "String",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "resolver",
             "description": null,
             "args": [],
             "type": {
@@ -14128,6 +14132,22 @@
             "deprecationReason": null
           },
           {
+            "name": "conditionResolverAddress",
+            "description": "Resolver (oracle) contract address for the referenced condition — mirrors\n`Condition.resolverAddress`. Replaces the loosely-typed `conditionResolver`.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Address",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "conditionResolver",
             "description": null,
             "args": [],
@@ -14140,8 +14160,8 @@
                 "ofType": null
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `conditionResolverAddress` — same value, Address-typed and consistent with `Condition.resolverAddress`."
           },
           {
             "name": "id",
@@ -14331,7 +14351,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -15124,14 +15144,14 @@
           },
           {
             "name": "tokenAddress",
-            "description": "ERC-20 position token address (lowercase 0x-hex).",
+            "description": "ERC-20 position token address. Validated via the `Address` scalar\n(lowercased 0x-hex).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -15890,7 +15910,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -16318,10 +16338,10 @@
           },
           {
             "name": "address",
-            "description": "Restrict to predictions where the address is predictor or counterparty (case-insensitive).",
+            "description": "Restrict to predictions where the address is predictor or counterparty.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
@@ -18774,7 +18794,7 @@
           },
           {
             "name": "account",
-            "description": "Look up a single account by canonical wallet address. Replacement for\n`user(where:)` — accepts a flat `address: String!` arg instead of the\nPrisma-shaped `UserWhereUniqueInput`.",
+            "description": "Look up a single account by canonical wallet address. Replacement for\n`user(where:)` — accepts a flat `address: Address!` arg instead of the\nPrisma-shaped `UserWhereUniqueInput`.",
             "args": [
               {
                 "name": "address",
@@ -18784,7 +18804,7 @@
                   "name": null,
                   "ofType": {
                     "kind": "SCALAR",
-                    "name": "String",
+                    "name": "Address",
                     "ofType": null
                   }
                 },
@@ -21470,7 +21490,7 @@
         "inputFields": [
           {
             "name": "chainId",
-            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present.",
+            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.",
             "type": {
               "kind": "SCALAR",
               "name": "Int",
@@ -21479,18 +21499,18 @@
             "defaultValue": null
           },
           {
-            "name": "marketAddress",
-            "description": "Match the on-chain market contract address that owns the underlying condition (case-insensitive).",
+            "name": "resolverAddress",
+            "description": "Match the on-chain resolver (oracle) contract address for the underlying condition.\nDistinct from the PredictionMarketEscrow address; see `Condition.resolverAddress`.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
           },
           {
-            "name": "marketAddressIn",
-            "description": "Match any of these on-chain market contract addresses that own the underlying condition (case-insensitive).",
+            "name": "resolverAddressIn",
+            "description": "Match any of these resolver contract addresses. Same semantics as `resolverAddress`.",
             "type": {
               "kind": "LIST",
               "name": null,
@@ -21499,7 +21519,7 @@
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "String",
+                  "name": "Address",
                   "ofType": null
                 }
               }
@@ -23387,40 +23407,40 @@
           },
           {
             "name": "address",
-            "description": "Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`.",
+            "description": "Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "seller",
-            "description": "Restrict to a single seller address (case-insensitive).",
+            "description": "Restrict to a single seller address.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "buyer",
-            "description": "Restrict to a single buyer address (case-insensitive).",
+            "description": "Restrict to a single buyer address.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "token",
-            "description": "Restrict to a single position token address (case-insensitive).",
+            "description": "Restrict to a single position token address.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
@@ -23436,7 +23456,7 @@
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "String",
+                  "name": "Address",
                   "ofType": null
                 }
               }
