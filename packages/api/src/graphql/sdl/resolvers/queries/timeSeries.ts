@@ -1,15 +1,14 @@
 /**
- * Time-series queries: per-account volume/PnL/balance/predictionCount
- * plus protocol-wide volume. All heavy lifting lives in
- * `helpers/timeSeriesQueries.ts` (shared with the deployed path);
- * these resolvers are thin wrappers.
+ * Legacy time-series queries — every export below is `@deprecated`
+ * (superseded by `accountStats` / `accountStatsRank` / `protocolStats`).
+ * Kept live until the deprecation-telemetry window confirms no
+ * remaining consumers; deletion happens in the final cleanup PR.
  *
- * The existing helper module still imports its TimeInterval from the
- * type-graphql-decorated TimeSeriesTypes.ts. Codegen emits its own
- * TimeInterval enum with the same values — we cast across since the
- * TS-level enum identities differ but the runtime string values are
- * identical (`HOUR`/`DAY`/`WEEK`/`MONTH`). Once Phase 5 tears out the
- * type-graphql path, the two collapse.
+ * Heavy lifting lives in `services/timeSeriesQueries.ts` (shared with
+ * the deployed path); these resolvers are thin wrappers.
+ *
+ * Each hit emits `logDeprecatedHit(name)` so the cleanup PR can gate
+ * deletion on per-resolver call-count telemetry.
  */
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
@@ -21,56 +20,67 @@ import {
   queryAccountPredictionCount,
 } from '../../../../services/timeSeriesQueries';
 import { TimeInterval as HelperTimeInterval } from '../../../../services/timeSeriesTypes';
+import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 
 const toHelperInterval = (i: string): HelperTimeInterval =>
   i as HelperTimeInterval;
 
 export const accountVolume: NonNullable<
   QueryResolvers['accountVolume']
-> = async (_parent, { address, interval, from, to }) =>
-  queryAccountVolume(
+> = async (_parent, { address, interval, from, to }) => {
+  logDeprecatedHit('accountVolume');
+  return queryAccountVolume(
     address,
     toHelperInterval(interval),
     from instanceof Date ? from : from ? new Date(from) : undefined,
     to instanceof Date ? to : to ? new Date(to) : undefined
   );
+};
 
 export const accountPnl: NonNullable<QueryResolvers['accountPnl']> = async (
   _parent,
   { address, interval, from, to }
-) =>
-  queryAccountPnl(
+) => {
+  logDeprecatedHit('accountPnl');
+  return queryAccountPnl(
     address,
     toHelperInterval(interval),
     from instanceof Date ? from : from ? new Date(from) : undefined,
     to instanceof Date ? to : to ? new Date(to) : undefined
   );
+};
 
 export const accountBalance: NonNullable<
   QueryResolvers['accountBalance']
-> = async (_parent, { address, interval, from, to }) =>
-  queryAccountBalance(
+> = async (_parent, { address, interval, from, to }) => {
+  logDeprecatedHit('accountBalance');
+  return queryAccountBalance(
     address,
     toHelperInterval(interval),
     from instanceof Date ? from : from ? new Date(from) : undefined,
     to instanceof Date ? to : to ? new Date(to) : undefined
   );
+};
 
 export const accountPredictionCount: NonNullable<
   QueryResolvers['accountPredictionCount']
-> = async (_parent, { address, interval, from, to }) =>
-  queryAccountPredictionCount(
+> = async (_parent, { address, interval, from, to }) => {
+  logDeprecatedHit('accountPredictionCount');
+  return queryAccountPredictionCount(
     address,
     toHelperInterval(interval),
     from instanceof Date ? from : from ? new Date(from) : undefined,
     to instanceof Date ? to : to ? new Date(to) : undefined
   );
+};
 
 export const protocolVolume: NonNullable<
   QueryResolvers['protocolVolume']
-> = async (_parent, { interval, from, to }) =>
-  queryProtocolVolume(
+> = async (_parent, { interval, from, to }) => {
+  logDeprecatedHit('protocolVolume');
+  return queryProtocolVolume(
     toHelperInterval(interval),
     from instanceof Date ? from : from ? new Date(from) : undefined,
     to instanceof Date ? to : to ? new Date(to) : undefined
   );
+};

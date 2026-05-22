@@ -1,27 +1,28 @@
 /**
- * Accuracy-score queries: `accountAccuracy`, `accuracyLeaderboard`,
- * `accountAccuracyRank`.
+ * Accuracy-score queries: `accuracyLeaderboardPage` and `accountAccuracyRank`.
  *
- * twError in `attester_market_tw_error` now stores (1 - brier) * tau,
+ * `twError` in `attester_market_tw_error` now stores `(1 - brier) * tau`,
  * i.e. an accuracy score where higher is better. The aggregate per
- * attester is averaged across their scored markets; the leaderboard
- * is sorted descending.
+ * attester is averaged across their scored markets; the leaderboard is
+ * sorted descending. The time-weighted error already weights by recency,
+ * so there's no window filter on either of these resolvers — accuracy is
+ * lifetime-aggregated by design.
  *
  * A small module-scope TTL cache protects the DB from bursts on the
- * leaderboard aggregation (shared between `accuracyLeaderboard` and
- * `accountAccuracyRank`).
+ * leaderboard aggregation (shared between the two resolvers).
  */
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
+import { clampSkip, clampTake } from './pagination';
 
 const leaderboardCache = new TtlCache<
   string,
   { attester: string; accuracyScore: number }[]
 >({ ttlMs: 60_000, maxSize: 1 });
 
-const getLeaderboardScores = async (): Promise<
+export const getLeaderboardScores = async (): Promise<
   { attester: string; accuracyScore: number }[]
 > => {
   const cached = leaderboardCache.get('leaderboard');
@@ -40,43 +41,21 @@ const getLeaderboardScores = async (): Promise<
   return scores;
 };
 
-export const accountAccuracy: NonNullable<
-  QueryResolvers['accountAccuracy']
-> = async (_parent, { address }) => {
-  const a = address.toLowerCase();
-  const rows = await prisma.attesterMarketTwError.findMany({
-    where: { attester: a },
-    select: { twError: true },
-  });
-  if (rows.length === 0) return null;
-  const numTimeWeighted = rows.length;
-  const sumTimeWeightedError = rows.reduce(
-    (acc, r) => acc + (r.twError || 0),
-    0
-  );
-  return {
-    address: a,
-    numScored: 0,
-    sumErrorSquared: 0,
-    numTimeWeighted,
-    sumTimeWeightedError,
-    accuracyScore: sumTimeWeightedError / numTimeWeighted,
-  };
-};
+const DEFAULT_LEADERBOARD_TAKE = 25;
 
-export const accuracyLeaderboard: NonNullable<
-  QueryResolvers['accuracyLeaderboard']
-> = async (_parent, { limit }) => {
-  const capped = Math.max(1, Math.min(limit, 100));
+export const accuracyLeaderboardPage: NonNullable<
+  QueryResolvers['accuracyLeaderboardPage']
+> = async (_parent, { take, skip }) => {
+  const cappedTake = clampTake(take, { defaultTake: DEFAULT_LEADERBOARD_TAKE });
+  const cappedSkip = clampSkip(skip);
   const scores = await getLeaderboardScores();
-  return scores.slice(0, capped).map((s) => ({
-    address: s.attester,
-    numScored: 0,
-    sumErrorSquared: 0,
-    numTimeWeighted: 0,
-    sumTimeWeightedError: 0,
-    accuracyScore: s.accuracyScore,
-  }));
+  const items = scores
+    .slice(cappedSkip, cappedSkip + cappedTake)
+    .map((s) => ({ address: s.attester, accuracyScore: s.accuracyScore }));
+  const hasMore = cappedSkip + items.length < scores.length;
+  // totalCount is cheap (the in-memory cached array's length), so populate
+  // unconditionally — no field-resolver lazy gate needed for this surface.
+  return { items, hasMore, totalCount: scores.length };
 };
 
 export const accountAccuracyRank: NonNullable<

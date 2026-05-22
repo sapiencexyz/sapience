@@ -97,54 +97,53 @@ export default function QuestionPageContent({
     queryFn: async () => {
       if (!conditionId) return null;
       const QUERY = /* GraphQL */ `
-        query ConditionsByIds($where: ConditionWhereInput!) {
-          conditions(where: $where, take: 1) {
-            id
-            question
-            shortName
-            endTime
-            settled
-            resolvedToYes
-            nonDecisive
-            description
-            chainId
-            resolver
-            openInterest
-            estimatedPrice
-            similarMarkets
-            category {
-              slug
+        query ConditionsByIds($filters: ConditionFilter!) {
+          conditionsConnection(filter: $filters, first: 1) {
+            nodes {
+              id: conditionId
+              question
+              shortName
+              endTime
+              settled
+              resolvedToYes
+              nonDecisive
+              description
+              chainId
+              resolver
+              openInterest
+              estimatedPrice
+              similarMarkets
+              category {
+                slug
+              }
             }
           }
         }
       `;
-      // Build where clause with conditionId and optional resolver filter
-      const whereClause: { AND: Array<Record<string, unknown>> } = {
-        AND: [{ id: { in: [conditionId] } }],
-      };
+      const filters: Record<string, unknown> = { ids: [conditionId] };
       if (resolverAddressFromUrl) {
-        whereClause.AND.push({
-          resolver: { equals: resolverAddressFromUrl, mode: 'insensitive' },
-        });
+        filters.resolverAddress = resolverAddressFromUrl;
       }
       const resp = await graphqlRequest<{
-        conditions: Array<{
-          id: string;
-          question: string;
-          shortName?: string | null;
-          endTime?: number | null;
-          settled?: boolean | null;
-          resolvedToYes?: boolean | null;
-          nonDecisive?: boolean | null;
-          description?: string | null;
-          category?: { slug: string } | null;
-          chainId?: number | null;
-          resolver?: string | null;
-          openInterest?: string | null;
-          estimatedPrice?: number | null;
-        }>;
-      }>(QUERY, { where: whereClause });
-      return resp?.conditions?.[0] || null;
+        conditionsConnection: {
+          nodes: Array<{
+            id: string;
+            question: string;
+            shortName?: string | null;
+            endTime?: number | null;
+            settled?: boolean | null;
+            resolvedToYes?: boolean | null;
+            nonDecisive?: boolean | null;
+            description?: string | null;
+            category?: { slug: string } | null;
+            chainId?: number | null;
+            resolver?: string | null;
+            openInterest?: string | null;
+            estimatedPrice?: number | null;
+          }>;
+        };
+      }>(QUERY, { filters });
+      return resp?.conditionsConnection?.nodes?.[0] || null;
     },
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
@@ -339,7 +338,7 @@ export default function QuestionPageContent({
         (forecast: {
           value: string;
           rawTime: number;
-          attester: string;
+          forecaster: string;
           comment?: string;
         }) => {
           try {
@@ -370,7 +369,7 @@ export default function QuestionPageContent({
               x: timestamp,
               y: predictionPercent,
               time: date.toLocaleString(),
-              attester: forecast.attester,
+              attester: forecast.forecaster,
               comment: forecast.comment || '',
             };
 

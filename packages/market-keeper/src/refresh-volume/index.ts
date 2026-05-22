@@ -96,31 +96,36 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
   const PAGE_SIZE = 100;
   const allIds: string[] = [];
   const seen = new Set<string>();
-  let skip = 0;
+  let after: string | null = null;
 
-  while (true) {
-    const query = `
-      query ActiveConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!, $orderBy: [ConditionOrderByWithRelationInput!]) {
-        conditions(where: $where, take: $take, skip: $skip, orderBy: $orderBy) {
-          id
+  const query = `
+    query ActiveConditions($filter: ConditionFilter!, $first: Int!, $after: String) {
+      conditionsConnection(filter: $filter, first: $first, after: $after, orderBy: { field: CREATED_AT, direction: ASC }) {
+        nodes {
+          id: conditionId
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
         }
       }
-    `;
+    }
+  `;
 
+  while (true) {
     const response = await fetchWithRetry(graphqlUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query,
         variables: {
-          where: {
-            settled: { equals: false },
-            public: { equals: true },
-            similarMarkets: { isEmpty: false },
+          filter: {
+            settled: false,
+            visibility: 'PUBLIC',
+            hasSimilarMarkets: true,
           },
-          take: PAGE_SIZE,
-          skip,
-          orderBy: [{ id: 'asc' }],
+          first: PAGE_SIZE,
+          after,
         },
       }),
     });
@@ -132,9 +137,19 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
     }
 
     const result = (await response.json()) as {
-      data?: { conditions?: Array<{ id: string }> };
+      data?: {
+        conditionsConnection?: {
+          nodes?: Array<{ id: string }>;
+          pageInfo?: {
+            hasNextPage?: boolean | null;
+            endCursor?: string | null;
+          } | null;
+        };
+      };
     };
-    const conditions = result.data?.conditions ?? [];
+    const conditions = result.data?.conditionsConnection?.nodes ?? [];
+    const pageInfo = result.data?.conditionsConnection?.pageInfo;
+    const hasMore = pageInfo?.hasNextPage ?? false;
 
     for (const c of conditions) {
       if (!seen.has(c.id)) {
@@ -143,8 +158,9 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
       }
     }
 
-    if (conditions.length < PAGE_SIZE) break;
-    skip += PAGE_SIZE;
+    if (!hasMore) break;
+    after = pageInfo?.endCursor ?? null;
+    if (!after) break;
   }
 
   return allIds;

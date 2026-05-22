@@ -1,10 +1,14 @@
 /**
  * ConditionGroup model resolvers.
  *
- * The `conditions` field carries the deployed behaviour that hidden
- * conditions never leak: the parent always filters `public: true` even
- * if the caller didn't pass a `where` clause. Default ordering is
- * `displayOrder ASC` to match the frontend's expectation.
+ * `category`: FK on parent (`categoryId`) → batched via `categoryById`
+ * DataLoader.
+ *
+ * `conditions`: deployed behaviour is that hidden conditions never
+ * leak — the parent always filters `public: true` even if the caller
+ * didn't pass a `where` clause, with `displayOrder ASC` as the default
+ * order. The custom args make this field unsafe to batch through a
+ * DataLoader, so it stays on the legacy per-row path.
  *
  * GraphQL `conditions` maps to Prisma `condition` (the rename was
  * carried via `@TypeGraphQL.field(name: "conditions")` in
@@ -14,16 +18,28 @@
 import type { ConditionGroupResolvers } from '../__generated__/resolvers';
 import { loadRelation } from './relationHelpers';
 
-type PrismaConditionGroup = { id: number; [k: string]: unknown };
+type PrismaConditionGroup = {
+  id: number;
+  name?: string | null;
+  categoryId?: number | null;
+  category?: unknown;
+  [k: string]: unknown;
+};
 
 export const ConditionGroup: ConditionGroupResolvers = {
-  category: async (parent, args) =>
-    loadRelation(parent as PrismaConditionGroup, 'category', {
+  title: (parent) => (parent as PrismaConditionGroup).name ?? '',
+  category: async (parent, args, ctx) => {
+    const p = parent as PrismaConditionGroup;
+    if (p.category !== undefined) return p.category as never;
+    if (p.categoryId == null) return null;
+    if (ctx.loaders) return ctx.loaders.categoryById.load(p.categoryId);
+    return loadRelation(p, 'category', {
       parentModel: 'conditionGroup',
-      parentWhere: { id: (parent as PrismaConditionGroup).id },
+      parentWhere: { id: p.id },
       prismaRelationName: 'category',
       args,
-    }),
+    });
+  },
 
   conditions: async (parent, args) => {
     const p = parent as PrismaConditionGroup;

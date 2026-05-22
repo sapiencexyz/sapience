@@ -168,7 +168,7 @@ curl -X POST https://api.sapience.xyz/graphql \
 ```bash
 curl -X POST https://api.sapience.xyz/graphql \
   -H "Content-Type: application/json" \
-  -d '{"query":"query($limit:Int!){ accuracyLeaderboard(limit:$limit){ address accuracyScore numTimeWeighted }}","variables":{"limit":50}}'
+  -d '{"query":"query($take:Int!){ accuracyLeaderboardPage(take:$take){ items{ address accuracyScore } hasMore totalCount }}","variables":{"take":50}}'
 ```
 
 ### Your Forecasting Rank

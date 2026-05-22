@@ -11,7 +11,7 @@ const BATCH_SIZE = 1000;
 export async function backfillAccuracy(): Promise<void> {
   await initializeDataSource();
 
-  // 1) Build/refresh attestation_score for all attestations
+  // 1) Build/refresh attestationScore for all attestations
   let lastId = 0;
   for (;;) {
     const atts = await prisma.attestation.findMany({

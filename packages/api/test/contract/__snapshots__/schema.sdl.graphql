@@ -1,9 +1,93 @@
-"""Accuracy rank for an address on the forecasting leaderboard"""
-type AccuracyRank {
+"""
+Accuracy rank and lifetime score for a single address. Mirrors
+`AccountStatsRank`'s shape (`address`, the metric (`accuracyScore`),
+`rank` 1-indexed and null when unranked) plus `totalForecasters` — the
+size of the scored-forecaster set. Named specifically vs the generic
+`AccountStatsRank.totalParticipants` because this surface only ranks
+forecasters; accuracy is lifetime-aggregated (the time-weighted error
+already weights by recency) so there's no window filter.
+"""
+type AccountAccuracyRank {
+  address: Address!
   accuracyScore: Float!
-  address: String!
   rank: Int
   totalForecasters: Int!
+}
+
+"""
+DEPRECATED — kept only as the return type of `accountAccuracy`, which is
+itself `@deprecated`. The leaderboard-row shape lives on
+`AccountAccuracyLeaderboardEntry` (address + accuracyScore); the legacy aggregation
+counters (`numScored`, `numTimeWeighted`, `sumErrorSquared`,
+`sumTimeWeightedError`) were always returned as zeros from the resolver
+even on main, so callers should treat them as non-load-bearing.
+"""
+type ForecasterScore {
+  accuracyScore: Float!
+  address: String!
+  numScored: Int!
+  numTimeWeighted: Int!
+  sumErrorSquared: Float!
+  sumTimeWeightedError: Float!
+}
+
+"""
+DEPRECATED — kept only as the return type of `accountProfitRank`, which is
+itself `@deprecated`. The replacement `AccountStatsRank` carries the same
+rank / totalParticipants plus a richer per-metric stat breakdown
+(`netPnL` / `gains` / `losses` / `volume`); `totalPnL` here maps to
+`AccountStatsRank.netPnL`.
+"""
+type ProfitRank {
+  address: String!
+  rank: Int
+  totalParticipants: Int!
+  totalPnL: String!
+}
+
+"""
+Address-keyed account record. The thin replacement for the Prisma-leaked
+`User` type — exposes only the fields the public API actually needs (today,
+that's referral-graph data). When address-keyed metadata that doesn't fit
+elsewhere shows up (display name, avatar, settings), it can grow here
+without renaming.
+"""
+type Account implements Node {
+  id: ID!
+
+  """Canonical Ethereum wallet address."""
+  address: Address!
+
+  """When this account first appeared in the database."""
+  createdAt: DateTimeISO!
+
+  """
+  keccak256(utf8(trimmed_lowercase_code)) of the user's referral code, if
+  they own one. 0x-prefixed hex.
+  """
+  refCodeHash: String
+
+  """
+  Maximum number of referrals this account's code allows. Default is 0,
+  so codes are not usable until explicitly configured.
+  """
+  maxReferrals: Int!
+
+  """The account that referred this one (via their referral code), if any."""
+  referredBy: Account
+
+  """The referral code this account was referred by, if any."""
+  referredByCode: ReferralCode
+
+  """Accounts referred by this account (via this account's referral code)."""
+  referrals: [Account!]!
+  stats(first: Int = 50, after: String, filter: AccountStatFilter, orderBy: AccountStatOrder): AccountStatConnection!
+  rank(metric: LeaderboardMetric!, filter: AccountRankingFilter): AccountRanking
+  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
+  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
+  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
+  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
 }
 
 """
@@ -12,10 +96,20 @@ A single activity entry — either a prediction or a trade, sorted by timestamp
 type ActivityItem {
   prediction: Prediction
 
-  """Unix seconds timestamp for sorting"""
-  timestamp: Int!
+  """Unix seconds timestamp for sorting."""
+  timestamp: UnixSeconds!
   trade: ActivityTrade
   type: String!
+}
+
+"""
+Discriminator for which side of `ActivityItem` is populated. Wire values
+are lowercase to preserve compatibility with the deprecated `accountActivity`
+path that shipped before the enum tightening.
+"""
+enum ActivityItemType {
+  prediction
+  trade
 }
 
 """Trade fields embedded in an activity item"""
@@ -24,7 +118,7 @@ type ActivityTrade {
   buyer: String!
   chainId: Int!
   collateral: String!
-  executedAt: Int!
+  executedAt: UnixSeconds!
   id: Int!
   pickConfig: PickConfiguration
   price: String!
@@ -35,9 +129,18 @@ type ActivityTrade {
   txHash: String!
 }
 
-type Attestation {
-  attestation_score(where: AttestationScoreWhereInput): AttestationScore
-  attester: String!
+"""
+Public Forecast surface backed by EAS attestation rows.
+
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
+"""
+type Forecast {
+  forecastScore(where: ForecastScoreWhereInput): ForecastScore
+  forecaster: String!
   blockNumber: Int!
   comment: String
   condition(where: ConditionWhereInput): Condition
@@ -46,118 +149,85 @@ type Attestation {
   data: String!
   decodedDataJson: String!
   id: Int!
-  prediction: String!
+
+  """
+  Raw forecast value as recorded on-chain — the `uint256 forecast` field
+  on the EAS attestation schema, returned as a decimal string in D18
+  fixed-point representing a probability in `[0, 1e18]`. For the
+  canonical normalized probability use `Forecast.forecastScore.probabilityFloat`
+  (0–1 float) or `Forecast.forecastScore.probabilityD18`
+  (18-decimal fixed-point string).
+  """
+  forecast: String!
   recipient: String!
-  resolver: String
+
+  """
+  Resolver contract address from the on-chain EAS attestation (`address resolver`
+  on the forecast schema). Identifies which oracle the forecaster is predicting
+  against — same address as `Condition.resolverAddress` when the forecast
+  matches a tracked condition.
+  """
+  resolverAddress: Address
   schemaId: String!
-  time: Int!
+
+  """When the forecast was made on-chain."""
+  attestedAt: UnixSeconds!
   transactionHash: String!
   uid: String!
 }
 
-input AttestationListRelationFilter {
-  every: AttestationWhereInput
-  none: AttestationWhereInput
-  some: AttestationWhereInput
+input ForecastListRelationFilter {
+  every: ForecastWhereInput
+  none: ForecastWhereInput
+  some: ForecastWhereInput
 }
 
-input AttestationOrderByRelationAggregateInput {
+input ForecastOrderByRelationAggregateInput {
   _count: SortOrder
 }
 
-input AttestationOrderByWithRelationInput {
-  attestation_score: AttestationScoreOrderByWithRelationInput
-  attester: SortOrder
-  blockNumber: SortOrder
-  comment: SortOrderInput
-  condition: ConditionOrderByWithRelationInput
-  conditionId: SortOrderInput
-  createdAt: SortOrder
-  data: SortOrder
-  decodedDataJson: SortOrder
-  id: SortOrder
-  prediction: SortOrder
-  recipient: SortOrder
-  resolver: SortOrderInput
-  schemaId: SortOrder
-  time: SortOrder
-  transactionHash: SortOrder
-  uid: SortOrder
+input ForecastRelationFilter {
+  is: ForecastWhereInput
+  isNot: ForecastWhereInput
 }
 
-input AttestationRelationFilter {
-  is: AttestationWhereInput
-  isNot: AttestationWhereInput
-}
-
-enum AttestationScalarFieldEnum {
-  attester
-  blockNumber
-  comment
-  conditionId
-  createdAt
-  data
-  decodedDataJson
-  id
-  prediction
-  recipient
-  resolver
-  schemaId
-  time
-  transactionHash
-  uid
-}
-
-type AttestationScore {
-  attestation: Attestation!
-  attestationId: Int!
-  attester: String!
+type ForecastScore {
+  forecast: Forecast!
+  forecastId: Int!
+  forecaster: String!
   createdAt: DateTimeISO!
   errorSquared: Float
   id: Int!
-  madeAt: Int!
-  marketAddress: String
+  madeAt: UnixSeconds!
+
+  """
+  Resolver contract address this score is keyed against. Mirrors
+  `Condition.resolverAddress` for the scored forecast. The DB row carries two
+  legacy columns (`marketAddress`, `resolver`) that hold the same value; the
+  GraphQL surface exposes the single corrected name.
+  """
+  resolverAddress: Address
   marketId: String
   outcome: Int
   probabilityD18: String
   probabilityFloat: Float
   questionId: String
-  resolver: String
   scoredAt: DateTimeISO
   used: Boolean!
 }
 
-input AttestationScoreNullableRelationFilter {
-  is: AttestationScoreWhereInput
-  isNot: AttestationScoreWhereInput
+input ForecastScoreNullableRelationFilter {
+  is: ForecastScoreWhereInput
+  isNot: ForecastScoreWhereInput
 }
 
-input AttestationScoreOrderByWithRelationInput {
-  attestation: AttestationOrderByWithRelationInput
-  attestationId: SortOrder
-  attester: SortOrder
-  createdAt: SortOrder
-  errorSquared: SortOrderInput
-  id: SortOrder
-  madeAt: SortOrder
-  marketAddress: SortOrderInput
-  marketId: SortOrderInput
-  outcome: SortOrderInput
-  probabilityD18: SortOrderInput
-  probabilityFloat: SortOrderInput
-  questionId: SortOrderInput
-  resolver: SortOrderInput
-  scoredAt: SortOrderInput
-  used: SortOrder
-}
-
-input AttestationScoreWhereInput {
-  AND: [AttestationScoreWhereInput!]
-  NOT: [AttestationScoreWhereInput!]
-  OR: [AttestationScoreWhereInput!]
-  attestation: AttestationRelationFilter
-  attestationId: IntFilter
-  attester: StringFilter
+input ForecastScoreWhereInput {
+  AND: [ForecastScoreWhereInput!]
+  NOT: [ForecastScoreWhereInput!]
+  OR: [ForecastScoreWhereInput!]
+  forecast: ForecastRelationFilter
+  forecastId: IntFilter
+  forecaster: StringFilter
   createdAt: DateTimeFilter
   errorSquared: FloatNullableFilter
   id: IntFilter
@@ -173,12 +243,12 @@ input AttestationScoreWhereInput {
   used: BoolFilter
 }
 
-input AttestationWhereInput {
-  AND: [AttestationWhereInput!]
-  NOT: [AttestationWhereInput!]
-  OR: [AttestationWhereInput!]
-  attestation_score: AttestationScoreNullableRelationFilter
-  attester: StringFilter
+input ForecastWhereInput {
+  AND: [ForecastWhereInput!]
+  NOT: [ForecastWhereInput!]
+  OR: [ForecastWhereInput!]
+  forecastScore: ForecastScoreNullableRelationFilter
+  forecaster: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
   condition: ConditionNullableRelationFilter
@@ -187,56 +257,29 @@ input AttestationWhereInput {
   data: StringFilter
   decodedDataJson: StringFilter
   id: IntFilter
-  prediction: StringFilter
+  forecast: StringFilter
   recipient: StringFilter
   resolver: StringNullableFilter
   schemaId: StringFilter
-  time: IntFilter
+  attestedAt: IntFilter
   transactionHash: StringFilter
   uid: StringFilter
 }
 
-input AttestationWhereUniqueInput {
-  AND: [AttestationWhereInput!]
-  NOT: [AttestationWhereInput!]
-  OR: [AttestationWhereInput!]
-  attestation_score: AttestationScoreNullableRelationFilter
-  attester: StringFilter
-  blockNumber: IntFilter
-  comment: StringNullableFilter
-  condition: ConditionNullableRelationFilter
-  conditionId: StringNullableFilter
-  createdAt: DateTimeFilter
-  data: StringFilter
-  decodedDataJson: StringFilter
-  id: Int
-  prediction: StringFilter
-  recipient: StringFilter
-  resolver: StringNullableFilter
-  schemaId: StringFilter
-  time: IntFilter
-  transactionHash: StringFilter
-  uid: String
-}
-
 """
-Time-bucketed balance snapshot showing deployed and claimable collateral
+0x-prefixed lowercase 20-byte Ethereum address. Mixed-case checksum input is accepted and normalized to lowercase.
 """
-type BalanceDataPoint {
-  """Collateral available to claim from settled positions (wei)"""
-  claimableCollateral: String!
-
-  """Active collateral deployed in open positions (wei)"""
-  deployedCollateral: String!
-
-  """Unix epoch timestamp (seconds) for the start of this bucket"""
-  timestamp: Int!
-}
+scalar Address
 
 """
 The `BigInt` scalar type represents non-fractional signed whole numeric values.
 """
 scalar BigInt
+
+"""
+0x-prefixed lowercase 32-byte hex value. Used for transaction hashes, EAS UIDs, and other 32-byte on-chain identifiers.
+"""
+scalar Bytes32
 
 input BigIntFilter {
   equals: BigInt
@@ -249,6 +292,33 @@ input BigIntFilter {
   notIn: [BigInt!]
 }
 
+"""
+Operator-pattern filter for `ID` scalar fields. Supports equality,
+membership, negation, and null. Resolvers reject unsupported operators
+on a per-field basis (e.g., a non-nullable column rejects `isNull`).
+"""
+input IDFilter {
+  equals: ID
+  in: [ID!]
+  notIn: [ID!]
+  not: ID
+  isNull: Boolean
+}
+
+"""
+Operator-pattern filter for `ConditionOutcome` enum. `{ isNull: true }`
+selects unsettled conditions; `{ isNull: false }` selects settled
+(any outcome). `{ equals: NON_DECISIVE }` selects voided/non-decisive
+settlements specifically. See `ConditionOutcome`.
+"""
+input ConditionOutcomeFilter {
+  equals: ConditionOutcome
+  in: [ConditionOutcome!]
+  notIn: [ConditionOutcome!]
+  not: ConditionOutcome
+  isNull: Boolean
+}
+
 input BoolFilter {
   equals: Boolean
   not: NestedBoolFilter
@@ -259,14 +329,14 @@ input BoolNullableFilter {
   not: NestedBoolNullableFilter
 }
 
-type Category {
+type Category implements Node {
   _count: CategoryCount
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
   createdAt: DateTimeISO!
-  id: Int!
+  id: ID!
   name: String!
-  slug: String!
+  slug: String
 }
 
 type CategoryCount {
@@ -277,14 +347,6 @@ type CategoryCount {
 input CategoryNullableRelationFilter {
   is: CategoryWhereInput
   isNot: CategoryWhereInput
-}
-
-"""Open-interest aggregated for a single category."""
-type CategoryOpenInterest {
-  category: Category!
-
-  """Open interest in wei (decimal string)"""
-  openInterest: String!
 }
 
 input CategoryOrderByWithRelationInput {
@@ -333,12 +395,12 @@ Record of a settled prediction redemption where a holder burns tokens for collat
 type Claim {
   chainId: Int!
   collateralPaid: String!
-  holder: String!
+  holder: Address!
   id: Int!
-  marketAddress: String!
-  positionToken: String!
+  marketAddress: Address!
+  positionToken: Address!
   predictionId: String!
-  redeemedAt: Int!
+  redeemedAt: UnixSeconds!
   refCode: String
   tokensBurned: String!
   txHash: String!
@@ -348,50 +410,253 @@ type Claim {
 Record of a position close where both sides burn tokens and receive payouts
 """
 type Close {
-  burnedAt: Int!
+  burnedAt: UnixSeconds!
   chainId: Int!
-  counterpartyHolder: String!
+  counterpartyHolder: Address!
   counterpartyPayout: String!
   counterpartyTokensBurned: String!
   id: Int!
-  marketAddress: String!
+  marketAddress: Address!
   pickConfigId: String!
-  predictorHolder: String!
+  predictorHolder: Address!
   predictorPayout: String!
   predictorTokensBurned: String!
   refCode: String
   txHash: String!
 }
 
-type CollateralBalanceSnapshotType {
-  balance: String!
-  index: Int!
-  timestamp: DateTimeISO!
+type Activity {
+  source: ActivitySource!
+  account: Account!
+  createdAt: DateTimeISO!
 }
 
-type CollateralBalanceType {
-  address: String!
-  atBlock: Int
-  balance: String!
-  chainId: Int!
+union ActivitySource = Prediction | Trade
+
+enum ActivityType {
+  PREDICTION
+  TRADE
 }
 
-type CollateralTransferType {
-  blockNumber: Int!
-  chainId: Int!
-  from: String!
-  id: Int!
-  timestamp: DateTimeISO!
-  to: String!
-  transactionHash: String!
+type ActivityConnection {
+  edges: [ActivityEdge!]!
+  nodes: [Activity!]!
+  pageInfo: PageInfo!
+
+  """
+  Sum of matching Prediction and SecondaryTrade rows for the same filters
+  the page was sliced from. Resolved lazily via two indexed `COUNT(*)`
+  queries only when clients select this field.
+  """
+  totalCount: Int!
+}
+
+type ActivityEdge {
+  node: Activity!
+  cursor: String!
+}
+
+enum ActivityOrderField {
+  CREATED_AT
+}
+
+input ActivityOrder {
+  field: ActivityOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Filter input for the Relay-shaped `activity(...)` connection. Combines
+with AND. `types: []` is an explicit zero-result query — omit `types`
+to include both predictions and trades.
+"""
+input ActivityFilter {
+  """
+  Restrict to a single account's activity (case-insensitive). OR-across
+  prediction roles (predictor / counterparty) and trade sides (buyer /
+  seller). Omit for a global feed.
+  """
+  account: String
+
+  """
+  Restrict to activity on a single condition. Walks Pick → PickConfiguration
+  to derive the matching pickConfigIds (predictions) and predictor /
+  counterparty tokens (trades).
+  """
+  conditionId: String
+
+  """
+  Restrict to activity on any of these conditions. Union with `conditionId`
+  when both are supplied; useful for group-backed feeds where the caller
+  has the condition list pre-resolved.
+  """
+  conditionIds: [String!]
+
+  """
+  Restrict to activity reachable through a ConditionGroup's member conditions.
+  Expanded server-side into the group's condition ids, then treated as
+  `conditionIds`.
+  """
+  conditionGroupId: Int
+
+  """
+  Restrict to activity tied to a single pick configuration. When combined
+  with `conditionId`/`conditionIds`, intersects with that condition's
+  pickConfig set.
+  """
+  pickConfigId: String
+
+  """
+  Restrict to one or both ActivityType union members. `[]` is an explicit
+  zero-result query.
+  """
+  types: [ActivityType!]
+
+  """
+  Filter by activity row creation epoch seconds, e.g. `{ gte: 1770000000 }`.
+  Applied as `createdAt` on Predictions (Postgres timestamp) and
+  `executedAt` on Trades (Int seconds) — bounds project to each side's
+  native column type.
+  """
+  createdAt: IntFilter
+}
+
+enum LeaderboardMetric {
+  ACCURACY
+  PNL
+  VOLUME
+  ROI
+}
+
+"""
+Filter input for the `AccountRankingConnection` returned by
+`leaderboard(...)`. PNL / VOLUME / ROI aggregate over a configurable
+window; ACCURACY is lifetime-aggregated (the time-weighted Brier-derived
+score already weights by recency) and ignores the window. Operator-
+pattern shape matches `AccountStatFilter`.
+"""
+input AccountRankingFilter {
+  """
+  Filter by aggregation epoch seconds. `{ gte }` sets the window's lower
+  bound, `{ lte }` sets the upper bound; both inclusive. Other operators
+  reject — this is a window selector, not a point query.
+  """
+  timestamp: IntFilter
+}
+
+input AccountStatFilter {
+  timestamp: IntFilter
+}
+
+input AccountStatOrder {
+  field: AccountStatOrderField!
+  direction: OrderDirection!
+}
+
+enum AccountStatOrderField {
+  TIMESTAMP
+}
+
+type AccountRanking {
+  account: Account!
+  rank: Int!
   value: String!
 }
 
-type Condition {
+type AccountRankingConnection {
+  edges: [AccountRankingEdge!]!
+  nodes: [AccountRanking!]!
+  pageInfo: PageInfo!
+
+  """
+  Size of the underlying ranked set the page is sliced from. Already
+  computed in memory (the leaderboard materializes the full ranking),
+  so cheap to surface.
+  """
+  totalCount: Int!
+  metric: LeaderboardMetric!
+}
+
+type AccountRankingEdge {
+  node: AccountRanking!
+  cursor: String!
+}
+
+type AccountStatConnection {
+  edges: [AccountStatEdge!]!
+  nodes: [AccountStat!]!
+  pageInfo: PageInfo!
+
+  """
+  Size of the full time-series rendered by this query (pre-pagination).
+  Already known in memory — the resolver materializes every bucket
+  before slicing — so cheap to surface.
+  """
+  totalCount: Int!
+}
+
+type AccountStatEdge {
+  node: AccountStat!
+  cursor: String!
+}
+
+type CollateralToken {
+  symbol: String!
+  address: Address!
+  decimals: Int!
+  chainId: Int!
+}
+
+type CollateralBalanceSnapshot {
+  account: Account!
+  chainId: Int!
+  collateral: CollateralToken!
+  amount: String!
+  blockNumber: BigInt!
+  timestamp: DateTimeISO!
+
+  """
+  Position of this snapshot in the returned series, starting at 0 for the
+  most-recent boundary. Carried over from the legacy `CollateralBalanceSnapshotType`.
+  """
+  index: Int! @deprecated(reason: "Index is incidental to the returned list order; rely on `timestamp` (or array position) instead.")
+
+  """
+  Same value as `amount`. Carried over from the legacy `CollateralBalanceSnapshotType`.
+  """
+  balance: String! @deprecated(reason: "Use `amount` — same value, drops the wallet-balance framing for consistency with `CollateralTransfer.amount`.")
+}
+
+type CollateralBalance {
+  account: Account!
+  chainId: Int!
+  collateral: CollateralToken!
+  amount: String!
+  atBlock: Int
+  address: Address!
+  balance: String!
+}
+
+type CollateralTransfer implements Node {
+  id: ID!
+  account: Account!
+  chainId: Int!
+  collateral: CollateralToken!
+  amount: String!
+  transactionHash: Bytes32!
+  createdAt: DateTimeISO!
+  blockNumber: Int!
+  from: String!
+  timestamp: DateTimeISO!
+  to: String!
+  value: String!
+  logIndex: Int!
+}
+
+type Condition implements Node {
   _count: ConditionCount
   assertionId: String
-  assertionTimestamp: Int
-  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
+  assertionTimestamp: UnixSeconds
   category(where: CategoryWhereInput): Category
   categoryId: Int
   chainId: Int!
@@ -400,24 +665,63 @@ type Condition {
   createdAt: DateTimeISO!
   description: String!
   displayOrder: Int
-  endTime: Int!
+  endTime: UnixSeconds!
 
   """YES probability from Polymarket (0.0–1.0), null for non-Polymarket"""
   estimatedPrice: Float
-  id: String!
+
+  """
+  Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`
+  for the on-chain condition identifier.
+  """
+  id: ID!
+
+  """Natural-key condition id (on-chain identifier), returned verbatim."""
+  conditionId: String!
   nonDecisive: Boolean!
   openInterest: String!
   optionName: String
+
+  """
+  Resolution state of this condition. `null` until the on-chain resolver
+  returns; once settled, carries the resolved value (`YES` / `NO` for
+  decisive outcomes, `NON_DECISIVE` for voids / ties). Filter "settled
+  vs unsettled" via `outcome: { isNull: ... }` rather than relying on
+  the deprecated `settled: Boolean!` field.
+  """
+  outcome: ConditionOutcome
   predictionCount: Int!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+
+  """
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `predictions`) in a subsequent migration.
+  """
+  predictionsConnection(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
+  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
+  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
   public: Boolean!
   question: String!
   resolvedToYes: Boolean!
 
-  """Canonical resolver address for this condition (required)"""
-  resolver: String!
+  """
+  Resolver contract address — the oracle that settles this condition's outcome.
+  Distinct from the PredictionMarketEscrow address (which is `Prediction.marketAddress` /
+  `PickConfiguration.marketAddress`); one resolver contract can settle conditions
+  referenced by many escrow markets.
+  """
+  resolverAddress: Address!
+
+  """
+  Mislabeled alias of `resolverAddress`. Holds the resolver contract address,
+  not the PredictionMarketEscrow address. The recent `resolver → marketAddress`
+  migration collapsed a real distinction; `resolverAddress` is the corrected name.
+  """
+  marketAddress: Address! @deprecated(reason: "Use `resolverAddress` — same value, but accurately named. This field holds the resolver (oracle) contract address, not the market/escrow address that `Prediction.marketAddress` / `PickConfiguration.marketAddress` carry.")
+
+  """Canonical resolver address for this condition (required)."""
+  resolver: String! @deprecated(reason: "Use `resolverAddress` — same value, Address-typed and consistent with `Forecast.resolverAddress` / `Pick.conditionResolverAddress`.")
   settled: Boolean!
-  settledAt: Int
+  settledAt: UnixSeconds
   shortName: String
 
   """Image URL from Polymarket similar market"""
@@ -438,10 +742,32 @@ type Condition {
 }
 
 type ConditionCount {
-  attestations(where: AttestationWhereInput): Int!
-  predictions(where: LegacyPredictionWhereInput): Int!
+  forecasts(where: ForecastWhereInput): Int!
 }
 
+"""
+Resolved state of a `Condition`. `YES` and `NO` are decisive resolutions
+of the binary outcome; `NON_DECISIVE` covers voided / tied / unresolvable
+settlements (which the protocol collapses to `COUNTERPARTY_WINS` at the
+Prediction layer). Nullable on the wire — `null` means "not yet settled."
+
+Derived at the resolver from `settled` / `resolvedToYes` / `nonDecisive`
+columns; clients should filter "settled" via `outcome: { isNull: false }`
+rather than depending on the legacy boolean fields.
+"""
+enum ConditionOutcome {
+  YES
+  NO
+  NON_DECISIVE
+}
+
+"""
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
+"""
 type ConditionGroup {
   _count: ConditionGroupCount
   category(where: CategoryWhereInput): Category
@@ -451,6 +777,12 @@ type ConditionGroup {
   id: Int!
   name: String!
   similarMarkets: [String!]!
+
+  """
+  Compatibility alias mirroring `name`. Kept so external clients still
+  selecting `ConditionGroup.title` keep working through one release.
+  """
+  title: String! @deprecated(reason: "Use `name` — same value, the alias exists only to absorb in-flight queries from older clients.")
 }
 
 type ConditionGroupCount {
@@ -586,7 +918,7 @@ input ConditionOrderByRelationAggregateInput {
 input ConditionOrderByWithRelationInput {
   assertionId: SortOrderInput
   assertionTimestamp: SortOrderInput
-  attestations: AttestationOrderByRelationAggregateInput
+  forecasts: ForecastOrderByRelationAggregateInput
   category: CategoryOrderByWithRelationInput
   categoryId: SortOrderInput
   chainId: SortOrder
@@ -602,7 +934,6 @@ input ConditionOrderByWithRelationInput {
   openInterest: SortOrder
   optionName: SortOrderInput
   predictionCount: SortOrder
-  predictions: LegacyPredictionOrderByRelationAggregateInput
   public: SortOrder
   question: SortOrder
   resolvedToYes: SortOrder
@@ -672,7 +1003,7 @@ input ConditionWhereInput {
   OR: [ConditionWhereInput!]
   assertionId: StringNullableFilter
   assertionTimestamp: IntNullableFilter
-  attestations: AttestationListRelationFilter
+  forecasts: ForecastListRelationFilter
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
@@ -688,7 +1019,6 @@ input ConditionWhereInput {
   openInterest: StringFilter
   optionName: StringNullableFilter
   predictionCount: IntFilter
-  predictions: LegacyPredictionListRelationFilter
   public: BoolFilter
   question: StringFilter
   resolvedToYes: BoolFilter
@@ -716,7 +1046,7 @@ input ConditionWhereUniqueInput {
   OR: [ConditionWhereInput!]
   assertionId: StringNullableFilter
   assertionTimestamp: IntNullableFilter
-  attestations: AttestationListRelationFilter
+  forecasts: ForecastListRelationFilter
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
@@ -732,7 +1062,6 @@ input ConditionWhereUniqueInput {
   openInterest: StringFilter
   optionName: StringNullableFilter
   predictionCount: IntFilter
-  predictions: LegacyPredictionListRelationFilter
   public: BoolFilter
   question: StringFilter
   resolvedToYes: BoolFilter
@@ -768,6 +1097,11 @@ input DateTimeFilter {
 """
 A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
 """
+scalar DateTime
+
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
+"""
 scalar DateTimeISO
 
 input DateTimeNullableFilter {
@@ -786,6 +1120,11 @@ Prisma.Decimal — round-tripped as a decimal string with arbitrary precision.
 """
 scalar Decimal
 
+"""
+Integer Unix timestamp in seconds (UTC). Wire format is Int; the scalar carries the unit/TZ contract in the type system rather than the field name.
+"""
+scalar UnixSeconds
+
 input DecimalFilter {
   equals: Decimal
   gt: Decimal
@@ -795,20 +1134,6 @@ input DecimalFilter {
   lte: Decimal
   not: NestedDecimalFilter
   notIn: [Decimal!]
-}
-
-input EnumLegacyPositionStatusFilter {
-  equals: LegacyPositionStatus
-  in: [LegacyPositionStatus!]
-  not: NestedEnumLegacyPositionStatusFilter
-  notIn: [LegacyPositionStatus!]
-}
-
-input EnumLimitOrderStatusFilter {
-  equals: LimitOrderStatus
-  in: [LimitOrderStatus!]
-  not: NestedEnumLimitOrderStatusFilter
-  notIn: [LimitOrderStatus!]
 }
 
 input FloatFilter {
@@ -833,14 +1158,25 @@ input FloatNullableFilter {
   notIn: [Float!]
 }
 
-"""Accuracy score for a forecaster, aggregated across all scored markets"""
-type ForecasterScore {
-  accuracyScore: Float!
+"""
+One row of the accuracy leaderboard — an address with its lifetime
+accuracy score aggregated across every scored forecast. Parallel
+to `AccountStatsLeaderboardEntry`.
+"""
+type AccountAccuracyLeaderboardEntry {
   address: String!
-  numScored: Int!
-  numTimeWeighted: Int!
-  sumErrorSquared: Float!
-  sumTimeWeightedError: Float!
+  accuracyScore: Float!
+}
+
+"""
+Paginated wrapper around `AccountAccuracyLeaderboardEntry` rows with a server-truth hasMore flag.
+"""
+type AccountAccuracyLeaderboardPage implements Page {
+  items: [AccountAccuracyLeaderboardEntry!]!
+  hasMore: Boolean!
+
+  """Eagerly populated: derived from the in-memory leaderboard array."""
+  totalCount: Int
 }
 
 input IntFilter {
@@ -863,268 +1199,6 @@ input IntNullableFilter {
   lte: Int
   not: NestedIntNullableFilter
   notIn: [Int!]
-}
-
-"""Legacy position model (NFT-based, V1)"""
-type LegacyPosition {
-  _count: LegacyPositionCount
-  chainId: Int!
-  counterparty: String!
-  counterpartyCollateral: String
-  counterpartyNftTokenId: String!
-  createdAt: DateTimeISO!
-  endsAt: Int
-  id: Int!
-  marketAddress: String!
-  mintedAt: Int!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
-  predictor: String!
-  predictorCollateral: String
-  predictorNftTokenId: String!
-
-  """
-  True when the predictor's submitted outcomes were correct (previously makerWon)
-  """
-  predictorWon: Boolean
-  refCode: String
-  settledAt: Int
-  status: LegacyPositionStatus!
-  totalCollateral: String!
-}
-
-type LegacyPositionCount {
-  predictions(where: LegacyPredictionWhereInput): Int!
-}
-
-input LegacyPositionNullableRelationFilter {
-  is: LegacyPositionWhereInput
-  isNot: LegacyPositionWhereInput
-}
-
-input LegacyPositionOrderByWithRelationInput {
-  chainId: SortOrder
-  counterparty: SortOrder
-  counterpartyCollateral: SortOrderInput
-  counterpartyNftTokenId: SortOrder
-  createdAt: SortOrder
-  endsAt: SortOrderInput
-  id: SortOrder
-  marketAddress: SortOrder
-  mintedAt: SortOrder
-  predictions: LegacyPredictionOrderByRelationAggregateInput
-  predictor: SortOrder
-  predictorCollateral: SortOrderInput
-  predictorNftTokenId: SortOrder
-  predictorWon: SortOrderInput
-  refCode: SortOrderInput
-  settledAt: SortOrderInput
-  status: SortOrder
-  totalCollateral: SortOrder
-}
-
-enum LegacyPositionStatus {
-  active
-  consolidated
-  settled
-}
-
-input LegacyPositionWhereInput {
-  AND: [LegacyPositionWhereInput!]
-  NOT: [LegacyPositionWhereInput!]
-  OR: [LegacyPositionWhereInput!]
-  chainId: IntFilter
-  counterparty: StringFilter
-  counterpartyCollateral: StringNullableFilter
-  counterpartyNftTokenId: StringFilter
-  createdAt: DateTimeFilter
-  endsAt: IntNullableFilter
-  id: IntFilter
-  marketAddress: StringFilter
-  mintedAt: IntFilter
-  predictions: LegacyPredictionListRelationFilter
-  predictor: StringFilter
-  predictorCollateral: StringNullableFilter
-  predictorNftTokenId: StringFilter
-  predictorWon: BoolNullableFilter
-  refCode: StringNullableFilter
-  settledAt: IntNullableFilter
-  status: EnumLegacyPositionStatusFilter
-  totalCollateral: StringFilter
-}
-
-type LegacyPrediction {
-  chainId: Int
-  condition: Condition!
-  conditionId: String!
-  createdAt: DateTimeISO!
-  id: Int!
-  limitOrder(where: LimitOrderWhereInput): LimitOrder
-  limitOrderId: Int
-  outcomeYes: Boolean!
-  position(where: LegacyPositionWhereInput): LegacyPosition
-  positionId: Int
-}
-
-input LegacyPredictionLimitOrderIdConditionIdCompoundUniqueInput {
-  conditionId: String!
-  limitOrderId: Int!
-}
-
-input LegacyPredictionListRelationFilter {
-  every: LegacyPredictionWhereInput
-  none: LegacyPredictionWhereInput
-  some: LegacyPredictionWhereInput
-}
-
-input LegacyPredictionOrderByRelationAggregateInput {
-  _count: SortOrder
-}
-
-input LegacyPredictionOrderByWithRelationInput {
-  chainId: SortOrderInput
-  condition: ConditionOrderByWithRelationInput
-  conditionId: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  limitOrder: LimitOrderOrderByWithRelationInput
-  limitOrderId: SortOrderInput
-  outcomeYes: SortOrder
-  position: LegacyPositionOrderByWithRelationInput
-  positionId: SortOrderInput
-}
-
-input LegacyPredictionPositionIdConditionIdCompoundUniqueInput {
-  conditionId: String!
-  positionId: Int!
-}
-
-enum LegacyPredictionScalarFieldEnum {
-  chainId
-  conditionId
-  createdAt
-  id
-  limitOrderId
-  outcomeYes
-  positionId
-}
-
-input LegacyPredictionWhereInput {
-  AND: [LegacyPredictionWhereInput!]
-  NOT: [LegacyPredictionWhereInput!]
-  OR: [LegacyPredictionWhereInput!]
-  chainId: IntNullableFilter
-  condition: ConditionRelationFilter
-  conditionId: StringFilter
-  createdAt: DateTimeFilter
-  id: IntFilter
-  limitOrder: LimitOrderNullableRelationFilter
-  limitOrderId: IntNullableFilter
-  outcomeYes: BoolFilter
-  position: LegacyPositionNullableRelationFilter
-  positionId: IntNullableFilter
-}
-
-input LegacyPredictionWhereUniqueInput {
-  AND: [LegacyPredictionWhereInput!]
-  NOT: [LegacyPredictionWhereInput!]
-  OR: [LegacyPredictionWhereInput!]
-  chainId: IntNullableFilter
-  condition: ConditionRelationFilter
-  conditionId: StringFilter
-  createdAt: DateTimeFilter
-  id: Int
-  limitOrder: LimitOrderNullableRelationFilter
-  limitOrderId: IntNullableFilter
-  limitOrderId_conditionId: LegacyPredictionLimitOrderIdConditionIdCompoundUniqueInput
-  outcomeYes: BoolFilter
-  position: LegacyPositionNullableRelationFilter
-  positionId: IntNullableFilter
-  positionId_conditionId: LegacyPredictionPositionIdConditionIdCompoundUniqueInput
-}
-
-type LimitOrder {
-  _count: LimitOrderCount
-  cancelledAt: Int
-  cancelledTxHash: String
-  chainId: Int!
-  counterparty: String
-  counterpartyCollateral: String!
-  createdAt: DateTimeISO!
-  filledAt: Int
-  filledTxHash: String
-  id: Int!
-  marketAddress: String!
-  orderId: String!
-  placedAt: Int!
-  placedTxHash: String!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
-  predictor: String!
-  predictorCollateral: String!
-  refCode: String
-  resolver: String!
-  status: LimitOrderStatus!
-}
-
-type LimitOrderCount {
-  predictions(where: LegacyPredictionWhereInput): Int!
-}
-
-input LimitOrderNullableRelationFilter {
-  is: LimitOrderWhereInput
-  isNot: LimitOrderWhereInput
-}
-
-input LimitOrderOrderByWithRelationInput {
-  cancelledAt: SortOrderInput
-  cancelledTxHash: SortOrderInput
-  chainId: SortOrder
-  counterparty: SortOrderInput
-  counterpartyCollateral: SortOrder
-  createdAt: SortOrder
-  filledAt: SortOrderInput
-  filledTxHash: SortOrderInput
-  id: SortOrder
-  marketAddress: SortOrder
-  orderId: SortOrder
-  placedAt: SortOrder
-  placedTxHash: SortOrder
-  predictions: LegacyPredictionOrderByRelationAggregateInput
-  predictor: SortOrder
-  predictorCollateral: SortOrder
-  refCode: SortOrderInput
-  resolver: SortOrder
-  status: SortOrder
-}
-
-enum LimitOrderStatus {
-  cancelled
-  filled
-  pending
-}
-
-input LimitOrderWhereInput {
-  AND: [LimitOrderWhereInput!]
-  NOT: [LimitOrderWhereInput!]
-  OR: [LimitOrderWhereInput!]
-  cancelledAt: IntNullableFilter
-  cancelledTxHash: StringNullableFilter
-  chainId: IntFilter
-  counterparty: StringNullableFilter
-  counterpartyCollateral: StringFilter
-  createdAt: DateTimeFilter
-  filledAt: IntNullableFilter
-  filledTxHash: StringNullableFilter
-  id: IntFilter
-  marketAddress: StringFilter
-  orderId: StringFilter
-  placedAt: IntFilter
-  placedTxHash: StringFilter
-  predictions: LegacyPredictionListRelationFilter
-  predictor: StringFilter
-  predictorCollateral: StringFilter
-  refCode: StringNullableFilter
-  resolver: StringFilter
-  status: EnumLimitOrderStatusFilter
 }
 
 input NestedBigIntFilter {
@@ -1179,20 +1253,6 @@ input NestedDecimalFilter {
   lte: Decimal
   not: NestedDecimalFilter
   notIn: [Decimal!]
-}
-
-input NestedEnumLegacyPositionStatusFilter {
-  equals: LegacyPositionStatus
-  in: [LegacyPositionStatus!]
-  not: NestedEnumLegacyPositionStatusFilter
-  notIn: [LegacyPositionStatus!]
-}
-
-input NestedEnumLimitOrderStatusFilter {
-  equals: LimitOrderStatus
-  in: [LimitOrderStatus!]
-  not: NestedEnumLimitOrderStatusFilter
-  notIn: [LimitOrderStatus!]
 }
 
 input NestedFloatFilter {
@@ -1272,14 +1332,28 @@ enum NullsOrder {
   last
 }
 
-"""Individual outcome pick within a pick configuration"""
+"""
+Individual outcome pick within a pick configuration.
+
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
+"""
 type Pick {
   """
   The condition this pick references. May be null if the conditionId is dangling.
   """
   condition: Condition
   conditionId: String!
-  conditionResolver: String!
+
+  """
+  Resolver (oracle) contract address for the referenced condition — mirrors
+  `Condition.resolverAddress`. Replaces the loosely-typed `conditionResolver`.
+  """
+  conditionResolverAddress: Address!
+  conditionResolver: String! @deprecated(reason: "Use `conditionResolverAddress` — same value, Address-typed and consistent with `Condition.resolverAddress`.")
   id: Int!
   pickConfigId: String!
   predictedOutcome: Int!
@@ -1288,26 +1362,1938 @@ type Pick {
 """
 Group of outcome picks forming a combined prediction position, with collateral and settlement tracking
 """
-type PickConfiguration {
+type PickConfiguration implements Node {
   chainId: Int!
   claimedCounterpartyCollateral: String!
   claimedPredictorCollateral: String!
   counterpartyToken: String
-  endsAt: Int
-  id: String!
+  endsAt: UnixSeconds
+
+  """
+  Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`
+  for the natural pick-configuration identifier.
+  """
+  id: ID!
+
+  """Natural-key pick-configuration id, returned verbatim."""
+  pickConfigId: String!
   isLegacy: Boolean!
-  marketAddress: String!
+  marketAddress: Address!
   picks: [Pick!]!
+  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
+  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
+  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
   predictionId: String
   predictorToken: String
   resolved: Boolean!
-  resolvedAt: Int
+  resolvedAt: UnixSeconds
   result: SettlementResult!
   totalCounterpartyCollateral: String!
   totalPredictorCollateral: String!
 }
 
-"""Time-bucketed PnL data point with cumulative tracking"""
+"""
+Paginated wrapper around Position rows with a server-truth hasMore flag.
+`totalCount` counts underlying Position rows matching the filters (not the
+rendered event-stream rows, which can be larger due to per-sell synthetic
+expansion).
+"""
+type PositionsPage implements Page {
+  items: [Position!]!
+  hasMore: Boolean!
+  totalCount: Int
+}
+
+"""Relay-shaped connection over `Prediction` rows."""
+type PredictionConnection {
+  edges: [PredictionEdge!]!
+  nodes: [Prediction!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Cursor-bearing edge for `PredictionConnection`."""
+type PredictionEdge {
+  node: Prediction!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `Forecast` rows."""
+type ForecastConnection {
+  edges: [ForecastEdge!]!
+  nodes: [Forecast!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Cursor-bearing edge for `ForecastConnection`."""
+type ForecastEdge {
+  node: Forecast!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `Condition` rows."""
+type ConditionConnection {
+  edges: [ConditionEdge!]!
+  nodes: [Condition!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Cursor-bearing edge for `ConditionConnection`."""
+type ConditionEdge {
+  node: Condition!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `ConditionGroup` rows."""
+type ConditionGroupConnection {
+  edges: [ConditionGroupEdge!]!
+  nodes: [ConditionGroup!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Cursor-bearing edge for `ConditionGroupConnection`."""
+type ConditionGroupEdge {
+  node: ConditionGroup!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `Question` rows."""
+type QuestionConnection {
+  edges: [QuestionEdge!]!
+  nodes: [Question!]!
+  pageInfo: PageInfo!
+
+  """
+  Size of the underlying ranked set the page is sliced from. Resolved lazily
+  via a separate `COUNT(*)` over the same `condition_group` / ungrouped
+  `condition` UNION only when clients select this field.
+  """
+  totalCount: Int!
+}
+
+"""Cursor-bearing edge for `QuestionConnection`."""
+type QuestionEdge {
+  node: Question!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `Trade` rows."""
+type TradeConnection {
+  edges: [TradeEdge!]!
+  nodes: [Trade!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Cursor-bearing edge for `TradeConnection`."""
+type TradeEdge {
+  node: Trade!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `Position` rows."""
+type PositionConnection {
+  edges: [PositionEdge!]!
+  nodes: [Position!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Cursor-bearing edge for `PositionConnection`."""
+type PositionEdge {
+  node: Position!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `PickConfiguration` rows."""
+type PickConfigurationConnection {
+  edges: [PickConfigurationEdge!]!
+  nodes: [PickConfiguration!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Cursor-bearing edge for `PickConfigurationConnection`."""
+type PickConfigurationEdge {
+  node: PickConfiguration!
+  cursor: String!
+}
+
+"""Relay-shaped connection over `CollateralTransfer` rows."""
+type CollateralTransferConnection {
+  edges: [CollateralTransferEdge!]!
+  nodes: [CollateralTransfer!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type CollateralTransferEdge {
+  node: CollateralTransfer!
+  cursor: String!
+}
+
+type ProtocolStatConnection {
+  edges: [ProtocolStatEdge!]!
+  nodes: [ProtocolStat!]!
+  pageInfo: PageInfo!
+
+  """
+  Size of the full snapshot series rendered by this query (pre-pagination).
+  Already known in memory — the resolver materializes every snapshot
+  before slicing — so cheap to surface.
+  """
+  totalCount: Int!
+}
+
+type ProtocolStatEdge {
+  node: ProtocolStat!
+  cursor: String!
+}
+
+type VaultStatConnection {
+  edges: [VaultStatEdge!]!
+  nodes: [VaultStat!]!
+  pageInfo: PageInfo!
+
+  """
+  Size of the full per-vault snapshot series (pre-pagination). Already
+  known in memory — the resolver materializes every snapshot before
+  slicing — so cheap to surface.
+  """
+  totalCount: Int!
+}
+
+type VaultStatEdge {
+  node: VaultStat!
+  cursor: String!
+}
+
+type CategoryConnection {
+  edges: [CategoryEdge!]!
+  nodes: [Category!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type CategoryEdge {
+  node: Category!
+  cursor: String!
+}
+
+"""
+Filter input for `categoriesConnection`. Intentionally narrow — the
+category table is tiny, so the only meaningful filter dimension is
+substring match for autocomplete / lookup UIs.
+"""
+input CategoryFilter {
+  """Case-insensitive substring search against the category name."""
+  search: String
+}
+
+"""
+Relay-shaped connection over `Account` rows (User table). Address-only
+synthetic accounts are not returned — those are reachable through
+`account(address:)` directly. `totalCount` is the row count matching the
+filter (cheap — the User table is small).
+"""
+type AccountConnection {
+  edges: [AccountEdge!]!
+  nodes: [Account!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AccountEdge {
+  node: Account!
+  cursor: String!
+}
+
+"""
+Filter input for `accountsConnection`. Intentionally narrow — the only
+meaningful filter dimension for an address-keyed table is substring
+match against the address itself.
+"""
+input AccountFilter {
+  """
+  Substring search against the wallet address (case-insensitive). Useful
+  for autocomplete / lookup UIs.
+  """
+  search: String
+}
+
+input AccountOrder {
+  field: AccountOrderField!
+  direction: OrderDirection!
+}
+
+enum AccountOrderField {
+  CREATED_AT
+}
+
+"""
+Paginated wrapper around ActivityItem rows with a server-truth hasMore flag
+"""
+type ActivityItemsPage implements Page {
+  items: [ActivityItem!]!
+  hasMore: Boolean!
+
+  """
+  May be null: the merged predictions/trades feed doesn't compute a unified count.
+  """
+  totalCount: Int
+}
+
+"""
+Legacy condition offset sort fields retained only for generated compatibility.
+"""
+enum ConditionSortField {
+  CREATED_AT
+  END_TIME
+  OPEN_INTEREST
+  PREDICTION_COUNT
+}
+
+"""
+Legacy condition-group offset sort fields retained only for generated compatibility.
+"""
+enum ConditionGroupSortField {
+  CREATED_AT
+  MAX_END_TIME
+  TOTAL_OPEN_INTEREST
+  TOTAL_PREDICTION_COUNT
+}
+
+"""Order input for the Relay-shaped `conditions` connection."""
+input ConditionOrder {
+  field: ConditionOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Sort fields for the Relay-shaped `conditions` connection. All values
+map to existing partial indexes on the `condition` table:
+
+- `CREATED_AT` → `IDX_condition_public_createdat`
+- `RESOLVES_AT` → `IDX_condition_public_endtime` (column: `endTime`)
+- `PREDICTION_COUNT` → `IDX_condition_prediction_count`
+- `SIMILAR_MARKET_VOLUME_24H` → `IDX_condition_public_volume24h`
+- `SIMILAR_MARKET_VOLUME_7D` → `IDX_condition_public_volume7d`
+
+`OPEN_INTEREST` is intentionally omitted. The underlying
+`Condition.openInterest` column is varchar; the partial index
+`IDX_condition_oi_numeric` is on the `::numeric` cast expression, so
+typed Prisma `orderBy` would sort lexicographically (`"9" > "1000"`)
+and miss the index. Lands together with raw-SQL numeric sort in a
+follow-up — additive, non-breaking.
+"""
+enum ConditionOrderField {
+  CREATED_AT
+  RESOLVES_AT
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
+}
+
+"""Order input for the Relay-shaped `conditionGroups` connection."""
+input ConditionGroupOrder {
+  field: ConditionGroupOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Sort fields for the Relay-shaped `conditionGroups` connection. Mirrors
+the Condition enum value names; the resolver maps each to the
+group-level denormalized aggregate column (`maxCreatedAtEpoch`,
+`maxEndTime`, `totalPredictionCount`, `totalSimilarMarketVolume24h`,
+`totalSimilarMarketVolume7d`).
+
+`OPEN_INTEREST` is intentionally omitted — symmetric with
+`ConditionOrderField` above. The `totalOpenInterest` column is
+Decimal (not varchar), so the numeric-sort issue doesn't apply at the
+group level — but listing `OPEN_INTEREST` on `ConditionGroupOrderField`
+without listing it on `ConditionOrderField` would be confusingly
+asymmetric, so we hold both back together.
+"""
+enum ConditionGroupOrderField {
+  CREATED_AT
+  RESOLVES_AT
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
+}
+
+"""Order input for the Relay-shaped `questions` connection."""
+input QuestionOrder {
+  field: QuestionOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Sort fields for the Relay-shaped `questions` connection. The runner
+unions Conditions and ConditionGroups; sort values pick the column on
+each side. Unlike the narrower Condition/ConditionGroup connections,
+`OPEN_INTEREST` is available here because this feed uses raw SQL and
+casts the varchar-backed open-interest values numerically.
+"""
+enum QuestionOrderField {
+  CREATED_AT
+  RESOLVES_AT
+  OPEN_INTEREST
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
+}
+
+"""Order input for the Relay-shaped `tradesConnection`."""
+input TradeOrder {
+  field: TradeOrderField!
+  direction: OrderDirection!
+}
+
+"""Sort fields for the Relay-shaped `tradesConnection`."""
+enum TradeOrderField {
+  EXECUTED_AT
+  BLOCK_NUMBER
+}
+
+"""Order input for the Relay-shaped `positionsConnection`."""
+input PositionOrder {
+  field: PositionOrderField!
+  direction: OrderDirection!
+}
+
+"""Sort fields for the Relay-shaped `positionsConnection`."""
+enum PositionOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+
+"""Order input for the Relay-shaped `pickConfigurationsConnection`."""
+input PickConfigurationOrder {
+  field: PickConfigurationOrderField!
+  direction: OrderDirection!
+}
+
+"""Sort fields for the Relay-shaped `pickConfigurationsConnection`."""
+enum PickConfigurationOrderField {
+  CREATED_AT
+  ENDS_AT
+  RESOLVED_AT
+}
+
+input CollateralTransferFilter {
+  account: Address
+  chainId: Int
+  timestamp: DateTimeFilter
+  transactionHash: Bytes32
+}
+
+input CollateralTransferOrder {
+  field: CollateralTransferOrderField!
+  direction: OrderDirection!
+}
+
+enum CollateralTransferOrderField {
+  BLOCK_NUMBER
+}
+
+input ProtocolStatFilter {
+  timestamp: IntFilter
+}
+
+input VaultStatFilter {
+  timestamp: IntFilter
+}
+
+"""Legacy condition visibility filter."""
+enum ConditionVisibility {
+  PUBLIC
+  PRIVATE
+  ALL
+}
+
+"""
+Engagement status for a Condition. A condition has "engagement" if it
+has non-zero open interest OR at least one forecast. Used by
+cleanup workflows to find dead markets and recheck them.
+"""
+enum ConditionEngagement {
+  """`openInterest = 0` AND no forecasts."""
+  NONE
+
+  """`openInterest != 0` OR at least one forecast."""
+  ANY
+}
+
+"""Legacy flat filter input for removed offset-page condition access."""
+input ConditionFilters {
+  """Restrict to these condition IDs (case-insensitive)."""
+  ids: [String!]
+
+  """
+  Restrict to a single chain. When omitted and a `contractAddress*` filter is
+  present, defaults to the API's `DEFAULT_CHAIN_ID` so address lookups are not
+  silently cross-chain (contract addresses are not a global namespace).
+  """
+  chainId: Int
+
+  """
+  Match the on-chain contract address that owns the condition
+  (case-insensitive). Maps to the DB `resolver` column. Pair with `chainId`
+  for a fully-qualified `(chainId, address)` lookup; if omitted, `chainId`
+  defaults to `DEFAULT_CHAIN_ID`.
+  """
+  contractAddress: String
+
+  """
+  Match any of these on-chain contract addresses (case-insensitive). Same
+  semantics as `contractAddress` — see its docs for `chainId` defaulting.
+  """
+  contractAddressIn: [String!]
+
+  """
+  Match the resolver address (case-insensitive). Protocol-jargon alias of
+  `contractAddress`; new callers should prefer `contractAddress`.
+  """
+  resolver: String
+
+  """
+  Match any of these resolver addresses (case-insensitive). Protocol-jargon
+  alias of `contractAddressIn`; new callers should prefer `contractAddressIn`.
+  """
+  resolverIn: [String!]
+
+  """
+  Free-text search across question, shortName, and description (case-insensitive).
+  """
+  search: String
+
+  """Restrict to conditions whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """Restrict to conditions with `endTime >= this`."""
+  minEndTime: UnixSeconds
+
+  """Restrict to conditions with `endTime <= this`."""
+  maxEndTime: UnixSeconds
+
+  """Visibility filter. Defaults to `PUBLIC` when omitted."""
+  visibility: ConditionVisibility
+
+  """Restrict to conditions not assigned to any condition group."""
+  ungroupedOnly: Boolean
+
+  """Restrict to a single condition group."""
+  conditionGroupId: Int
+
+  """Restrict to settled (true) or unsettled (false) conditions."""
+  settled: Boolean
+
+  """
+  Restrict to conditions resolved YES (true) or NO (false). Implies settled=true.
+  """
+  resolvedToYes: Boolean
+
+  """
+  When true, only return conditions that have a non-empty `similarMarkets` array.
+  """
+  hasSimilarMarkets: Boolean
+
+  """
+  Engagement filter (used by cleanup workflows). See `ConditionEngagement`.
+  """
+  engagement: ConditionEngagement
+}
+
+"""
+Legacy flat filter input for removed offset-page condition group access.
+"""
+input ConditionGroupFilters {
+  """Restrict to these condition group IDs."""
+  ids: [Int!]
+
+  """Free-text search across the group's `name` (case-insensitive)."""
+  search: String
+
+  """Restrict to groups whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """
+  Restrict to groups that have at least one Condition on this chain.
+  Implemented as a `conditions: { some: { chainId: $chainId } }` filter, so
+  groups whose conditions live on other chains drop out of the page.
+  """
+  chainId: Int
+
+  """
+  When true, restrict to groups that have at least one *public* Condition.
+  Defaults to false — matches the deprecated bare-array surface, which had
+  no visibility filter on the group itself.
+  """
+  publicOnly: Boolean
+
+  """
+  When false (default), groups with no Conditions are filtered out — this
+  matches what every UI consumer wants. When true, empty groups are
+  included (admin-style use cases only).
+  """
+  includeEmpty: Boolean
+}
+
+"""
+Filter input for the Relay-shaped `conditions` connection. Combines
+with AND. Public-only — non-public conditions are out of scope here;
+admin paths need an explicit replacement surface if private-condition
+visibility is still required.
+"""
+input ConditionFilter {
+  """Restrict to these condition IDs (case-insensitive)."""
+  ids: [ID!]
+
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.
+  """
+  chainId: Int
+
+  """
+  Match the on-chain resolver (oracle) contract address. Maps to the DB
+  `condition.resolver` column. Distinct from `Prediction.marketAddress` /
+  `PickConfiguration.marketAddress`, which carry the PredictionMarketEscrow
+  contract.
+  """
+  resolverAddress: Address
+
+  """
+  Match any of these resolver contract addresses. Same semantics as `resolverAddress`.
+  """
+  resolverAddressIn: [Address!]
+
+  """
+  Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+  """
+  marketAddress: Address @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
+
+  """
+  Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+  """
+  marketAddressIn: [Address!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
+
+  """
+  Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups.
+  """
+  visibility: ConditionVisibility
+
+  """Restrict to settled (true) or unsettled (false) conditions."""
+  settled: Boolean
+
+  """
+  Restrict to conditions resolved YES (true) or NO (false). Implies settled=true.
+  """
+  resolvedToYes: Boolean
+
+  """Restrict to conditions that have a non-empty similarMarkets array."""
+  hasSimilarMarkets: Boolean
+
+  """Engagement status based on open interest or forecasts."""
+  engagement: ConditionEngagement
+
+  """
+  Free-text search across `question`, `shortName`, and `description` (case-insensitive).
+  """
+  search: String
+
+  """
+  Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions.
+  """
+  conditionGroupId: IDFilter
+
+  """Restrict to conditions whose category id is in this set."""
+  categoryIds: [ID!]
+
+  """Restrict to conditions whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """Restrict to conditions tagged with any of these values."""
+  tags: [String!]
+
+  """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
+  resolvesAt: IntFilter
+
+  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  estimatedPrice: FloatFilter
+
+  """Filter by all-time similar-market volume, e.g. `{ gte: 10000 }`."""
+  similarMarketVolume: FloatFilter
+
+  """
+  Filter by resolution state. `{ isNull: true }` selects unsettled
+  conditions; `{ isNull: false }` selects settled (any outcome);
+  `{ equals: NON_DECISIVE }` selects voided settlements specifically.
+  """
+  outcome: ConditionOutcomeFilter
+}
+
+"""
+Filter input for the Relay-shaped `conditionGroups` connection. Combines
+with AND. Returns only groups with at least one public condition; the
+admin-only finer-grained switches need an explicit replacement surface if still required.
+"""
+input ConditionGroupFilter {
+  """Restrict to these condition group IDs."""
+  ids: [ID!]
+
+  """Restrict to groups that have at least one condition on this chain."""
+  chainId: Int
+
+  """When true, require at least one public condition on the group."""
+  publicOnly: Boolean
+
+  """When true, allow groups with no conditions. Defaults false."""
+  includeEmpty: Boolean
+
+  """Free-text search across the group's `name` (case-insensitive)."""
+  search: String
+
+  """Restrict to groups whose category id is in this set."""
+  categoryIds: [ID!]
+
+  """Restrict to groups whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """Restrict to groups whose conditions carry any of these tags."""
+  tags: [String!]
+}
+
+"""
+Filter input for the Relay-shaped `questions` connection. Combines
+with AND. For outcome-based filtering today, use
+`conditions(filter: { outcome: ... })`.
+"""
+input QuestionFilter {
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.
+  """
+  chainId: Int
+
+  """
+  Match the on-chain resolver (oracle) contract address for the underlying condition.
+  Distinct from the PredictionMarketEscrow address; see `Condition.resolverAddress`.
+  """
+  resolverAddress: Address
+
+  """
+  Match any of these resolver contract addresses. Same semantics as `resolverAddress`.
+  """
+  resolverAddressIn: [Address!]
+
+  """
+  Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+  """
+  marketAddress: Address @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
+
+  """
+  Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+  """
+  marketAddressIn: [Address!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
+
+  """Restrict to questions whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """Resolution-status filter; defaults to all when omitted."""
+  resolutionStatus: ResolutionStatus
+
+  """Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`."""
+  estimatedPrice: FloatFilter
+
+  """
+  Filter by all-time or windowed similar-market volume, e.g. `{ gte: 10000 }`.
+  """
+  similarMarketVolume: FloatFilter
+
+  """
+  Window the similar-market-volume filter and sort look at. When omitted, the all-time column is used.
+  """
+  similarMarketVolumeWindow: VolumeWindow
+
+  """
+  Free-text search across the wrapped Condition/Group's title and description (case-insensitive).
+  """
+  search: String
+
+  """
+  Restrict to questions tagged with this value. Single-tag only at
+  the SDL level — the underlying union runner accepts one tag at a
+  time. Multi-tag (`[String!]`) will be added when the runner supports
+  it (additive, non-breaking).
+  """
+  tag: String
+
+  """Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`."""
+  resolvesAt: IntFilter
+}
+
+"""
+ERC-20 token balance representing one side of a prediction position. The
+underlying Position row may surface as multiple `*Page` items: one
+"open" row carrying remaining cost basis, plus one synthesized "sell"
+row per secondary-market disposal (so PnL realizes incrementally).
+"""
+type Position implements Node {
+  """
+  Number of position tokens still held (decimal string, 18 decimals on
+  Sapience). Synthesized sell rows carry `"0"` here — the realized PnL
+  delta from that sell lives on `realizedPnL`.
+  """
+  balance: String!
+  chainId: Int!
+  createdAt: DateTimeISO!
+
+  """Holder wallet address (lowercase 0x-hex)."""
+  holder: String!
+
+  """
+  Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`
+  for the synthetic position row identifier.
+  """
+  id: ID!
+
+  """
+  Synthetic row id. Open rows use the underlying Position row id
+  serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
+  """
+  positionId: String!
+
+  """True if this is the predictor token side; false for counterparty."""
+  isPredictorToken: Boolean!
+  pickConfig: PickConfiguration
+  pickConfigId: String!
+
+  """
+  Realized PnL delta for a synthesized sell row (wei, 18 decimals;
+  signed — negative when sold below cost basis). Null on open rows;
+  use `cumulativePnL` on the bucketed `accountStats` series for the
+  holder-wide aggregate.
+  """
+  realizedPnL: String
+
+  """
+  ERC-20 position token address. Validated via the `Address` scalar
+  (lowercased 0x-hex).
+  """
+  tokenAddress: Address!
+
+  """
+  Cumulative payout the contract would owe this position if every
+  matched prediction resolved in the holder's favour (wei, 18 dec).
+  Equal to the total collateral pool across the holder's matched
+  predictions, NOT the net profit. Null when the holder has no matched
+  predictions on this pickConfig.
+  """
+  totalPayout: String
+  updatedAt: DateTimeISO!
+
+  """
+  Cost basis remaining on the holder's open balance (wei, 18 dec). For
+  synthesized sell rows this is the basis allocated to the shares
+  disposed of, computed via running WAC. Null when there is no basis to
+  surface (zero-balance settled position, etc.).
+  """
+  userCollateral: String
+}
+
+"""Field to sort positions by"""
+enum PositionSortField {
+  CREATED_AT
+  UPDATED_AT
+  createdAt @deprecated(reason: "Use `CREATED_AT` — camelCase value kept for compatibility with older clients.")
+  updatedAt @deprecated(reason: "Use `UPDATED_AT` — camelCase kept for older clients.")
+}
+
+"""
+Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking.
+
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
+"""
+type Prediction {
+  chainId: Int!
+  collateralDeposited: String
+  collateralDepositedAt: UnixSeconds
+  counterparty: String!
+  counterpartyClaimable: String
+  counterpartyCollateral: String!
+  counterpartyToken: String!
+  createTxHash: String!
+  createdAt: DateTimeISO!
+  id: Int!
+  isLegacy: Boolean!
+  marketAddress: Address!
+  pickConfig: PickConfiguration
+  predictionId: String!
+  predictor: String!
+  predictorClaimable: String
+  predictorCollateral: String!
+  predictorToken: String!
+  refCode: String
+  result: SettlementResult!
+  settleTxHash: String
+  settled: Boolean!
+  settledAt: UnixSeconds
+}
+
+"""Field to sort predictions by"""
+enum PredictionSortField {
+  CREATED_AT
+  SETTLED_AT
+  createdAt @deprecated(reason: "Use `CREATED_AT` — camelCase value kept for compatibility with older clients.")
+  settledAt @deprecated(reason: "Use `SETTLED_AT` — camelCase kept for older clients.")
+}
+
+"""Metric an account-stats leaderboard is ranked by."""
+enum AccountStatsMetric {
+  NET_PNL
+  GAINS
+  LOSSES
+  VOLUME
+}
+
+"""
+One row of the account-stats leaderboard — an address with its net PnL,
+gross gains, gross losses, and trading volume over a window. All amounts
+are wei strings (18 decimals); `losses` is negative.
+"""
+type AccountStatsLeaderboardEntry {
+  address: String!
+  netPnL: String!
+  gains: String!
+  losses: String!
+  volume: String!
+}
+
+"""
+Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All fields
+are optional: omit the input entirely to rank by `NET_PNL` over all time.
+`from` omitted ⇒ no lower bound (all-time); `to` omitted ⇒ now. Both bounds
+are inclusive.
+"""
+input AccountStatsFilters {
+  metric: AccountStatsMetric = NET_PNL
+  from: UnixSeconds
+  to: UnixSeconds
+  fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format (Int seconds), the new field drops the unit-suffix in favor of carrying the contract on the scalar type.")
+  toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format (Int seconds), the new field drops the unit-suffix in favor of carrying the contract on the scalar type.")
+}
+
+"""
+Relay-style identifiable object. Types that implement `Node` carry a
+globally unique opaque `id` and are refetchable through the root
+`node(id:)` / `nodes(ids:)` fields. Domain identifiers (predictionId,
+hash, uid, address) remain on the entity as separate fields; `id` is a
+second identity layer used for cache normalization and polymorphic
+refetch.
+"""
+interface Node {
+  """
+  Opaque, globally unique identifier. Clients should treat this as a
+  refetch token only — do not parse, mint, or compare it to domain ids.
+  Stable for the lifetime of the entity it identifies.
+  """
+  id: ID!
+}
+
+"""
+Cursor-based pagination metadata for Relay-style connections. Sits
+alongside the legacy `Page` interface (offset/skip-based pagination)
+during the API redesign; new connection types use `PageInfo`, existing
+`*Page` types keep `Page`.
+"""
+type PageInfo {
+  """True if more rows exist after `endCursor` in the current ordering."""
+  hasNextPage: Boolean!
+
+  """True if more rows exist before `startCursor` in the current ordering."""
+  hasPreviousPage: Boolean!
+
+  """Cursor of the first edge in the page, or null when the page is empty."""
+  startCursor: String
+
+  """Cursor of the last edge in the page, or null when the page is empty."""
+  endCursor: String
+}
+
+"""
+Sort order shared across every `orderBy` input on the redesigned surface.
+"""
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+"""
+Shared shape for `*Page` paginated wrappers. Concrete types add their own
+strongly-typed `items` field; `hasMore` and `totalCount` live here so generic
+clients can read them across page types.
+"""
+interface Page {
+  """
+  Server-truth signal that more rows exist beyond this page. Always populated.
+  """
+  hasMore: Boolean!
+
+  """
+  Total rows matching the same filters as `items`.
+
+  Lazy by default — the count query only fires when this field is selected
+  in the operation, so paginated requests that don't need a total don't pay
+  for one. Concrete `*Page` types call out the two exceptions to this:
+    - **Eagerly populated**: the count is cheap (e.g. derived from the same
+      in-memory array `items` was sliced from), so it's always set.
+    - **May be null**: the underlying query (unions, merged feeds) cannot
+      efficiently produce a stable total, so the field is null even when
+      the client selects it.
+  """
+  totalCount: Int
+}
+
+"""
+Paginated wrapper around `AccountStatsLeaderboardEntry` rows with a server-truth hasMore flag.
+"""
+type AccountStatsLeaderboardPage implements Page {
+  items: [AccountStatsLeaderboardEntry!]!
+  hasMore: Boolean!
+
+  """Eagerly populated: derived from the in-memory merged-stats array."""
+  totalCount: Int
+}
+
+"""
+Stats + rank for a single address against the same ranked set the
+leaderboard slices. Stat fields mirror `AccountStatsLeaderboardEntry` and
+are always populated (zero when the address has no activity in the window).
+`rank` is 1-indexed against the ranked set for the chosen metric, or null
+when the address is absent from it. `totalParticipants` is the size of the
+ranked set in the window (0 when the window has no participants at all,
+distinguishing an empty-window stub from an unranked address in a
+populated window).
+"""
+type AccountStatsRank {
+  address: String!
+  netPnL: String!
+  gains: String!
+  losses: String!
+  volume: String!
+  rank: Int
+  totalParticipants: Int!
+}
+
+"""Open-interest aggregated for a single category."""
+type CategoryOpenInterest {
+  category: Category!
+
+  """Open interest in wei (decimal string)"""
+  openInterest: String!
+}
+
+"""
+Open-interest aggregated by time-to-resolution bucket. Each unsettled
+prediction's collateral is bucketed by the latest endTime among the conditions
+it touches (the moment its OI can finally be claimed). One row per non-empty
+bucket, ordered from soonest (bucket = 1) to furthest out.
+"""
+type TimeToResolutionBucket {
+  """Sort order: 1 = soonest, increasing for further-out buckets"""
+  bucket: Int!
+
+  """Display label, e.g. ≤1d / 2-7d / 1-2mo"""
+  label: String!
+
+  """Open interest in wei (decimal string)"""
+  openInterest: String!
+
+  """Number of predictions contributing to this bucket"""
+  predictionCount: Int!
+}
+
+type Protocol {
+  stats(filter: ProtocolStatFilter): ProtocolStatConnection!
+  openInterestByCategory: [CategoryOpenInterest!]!
+  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
+}
+
+type Vault implements Node {
+  id: ID!
+  address: Address!
+  chainId: Int!
+  collateral: CollateralToken!
+  account: Account!
+  stats(filter: VaultStatFilter): VaultStatConnection!
+}
+
+type VaultConnection {
+  edges: [VaultEdge!]!
+  nodes: [Vault!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type VaultEdge {
+  node: Vault!
+  cursor: String!
+}
+
+"""
+Filter input for `vaultsConnection`. Vaults are a small statically
+configured set, so the filter exists primarily to support
+`vaultsConnection(filter: { address: $a })` as the by-address lookup
+pattern — the connection replaces the dedicated `vaultByAddress` query.
+"""
+input VaultFilter {
+  """
+  Restrict to a single vault address (case-insensitive). Matches both
+  the canonical vault address and any of its configured legacy aliases.
+  """
+  address: Address
+
+  """
+  Restrict to a single chain. Defaults to the SDK's `DEFAULT_CHAIN_ID`
+  when omitted.
+  """
+  chainId: Int
+}
+
+"""Protocol-wide stats snapshot — no vault scoping."""
+type ProtocolStat {
+  """Snapshot boundary, aligned to the snapshot interval."""
+  timestamp: UnixSeconds!
+  cumulativeVolume: String!
+
+  """Cumulative count of predictions and secondary trades/sales"""
+  cumulativeTradeCount: Int!
+
+  """Trade-count delta over the snapshot interval"""
+  periodTradeCount: Int!
+
+  """Cumulative-volume delta over the snapshot interval"""
+  periodVolume: String!
+  openInterest: String!
+  escrowBalance: String!
+}
+
+"""
+One row of the per-account stats time series — wallet collateral
+position, settlement PnL, trade volume, and prediction outcome counts
+at a single snapshot boundary. Mirrors the fat-row pattern used by
+`ProtocolStat` / `VaultStat`: per-bucket deltas use the `period…`
+prefix, cumulative-through-bucket values use the `cumulative…` prefix.
+Wei amounts are 18-decimal decimal strings; counts are integers.
+
+Today this is assembled on-demand from the same SQL helpers that back
+the deprecated `accountBalance` / `accountPnl` / `accountPredictionCount` /
+`accountVolume` resolvers, projected to a fixed daily cadence. A
+follow-up will introduce a real per-account snapshot table and swap
+the resolver to read from it — the wire shape is the destination, so
+clients are forward-compatible across that swap.
+"""
+type AccountStat {
+  account: Account!
+
+  """Snapshot boundary."""
+  timestamp: UnixSeconds!
+
+  """Realized PnL delta over this bucket (wei, 18 dec)"""
+  periodPnL: String!
+
+  """Running cumulative realized PnL through this bucket (wei, 18 dec)"""
+  cumulativePnL: String!
+
+  """Trade volume delta over this bucket (wei, 18 dec)"""
+  periodVolume: String!
+
+  """Running cumulative trade volume through this bucket (wei, 18 dec)"""
+  cumulativeVolume: String!
+
+  """Active collateral in open positions at this bucket (wei, 18 dec)"""
+  deployedCollateral: String!
+
+  """
+  Collateral available to claim from settled positions at this bucket (wei, 18 dec)
+  """
+  claimableCollateral: String!
+
+  """Predictions opened in this bucket, total"""
+  predictionsTotal: Int!
+
+  """Predictions won (settled in caller's favour) in this bucket"""
+  predictionsWon: Int!
+
+  """Predictions lost in this bucket"""
+  predictionsLost: Int!
+
+  """Predictions still pending at the bucket boundary"""
+  predictionsPending: Int!
+
+  """Predictions settled non-decisively in this bucket"""
+  predictionsNonDecisive: Int!
+}
+
+"""Vault-specific stats snapshot for a single vault address."""
+type VaultStat {
+  """Snapshot boundary, aligned to the snapshot interval."""
+  timestamp: UnixSeconds!
+  vault: Vault!
+  balance: String!
+  availableAssets: String!
+  deployed: String!
+  cumulativePnL: String!
+  positionsWon: Int!
+  positionsLost: Int!
+  deposits: String!
+  withdrawals: String!
+  airdropGains: String!
+
+  """Cumulative wUSDe paid by the vault on secondary-market buys"""
+  secondaryBought: String!
+
+  """Cumulative wUSDe received by the vault on secondary-market sells"""
+  secondarySold: String!
+
+  """wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins"""
+  unredeemedClaim: String!
+
+  """Realized PnL delta over the snapshot interval"""
+  periodPnL: String!
+}
+
+"""
+Filter input for the Relay-shaped `positionsConnection` query. Combines with AND.
+"""
+input PositionFilter {
+  """Restrict to a single holder address (case-insensitive)."""
+  holder: String
+
+  """Restrict to a single chain."""
+  chainId: Int
+
+  """
+  Restrict to positions tied to a single condition (via the pickConfig join).
+  """
+  conditionId: String
+
+  """Restrict to a single pick configuration."""
+  pickConfigId: String
+
+  """Restrict to positions whose pickConfig settled with this result."""
+  result: SettlementResult
+
+  """Restrict to settled (true) or unsettled (false) positions."""
+  settled: Boolean
+
+  """Restrict to positions where holder won/lost the settled pickConfig."""
+  holderWon: Boolean
+
+  """
+  Filter by holder collateral on the pickConfig, e.g. `{ gte: "1000000000000000000" }`.
+  """
+  collateral: BigIntFilter
+
+  """
+  Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
+  endsAt: IntFilter
+}
+
+"""
+Filter input for the Relay-shaped `tradesConnection` query. Combines with AND.
+"""
+input TradeFilter {
+  """
+  Restrict to a single trade by execution hash. Supports the
+  by-hash single-record lookup pattern — `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
+  replaces the dedicated `tradeByHash` query.
+  """
+  tradeHash: Bytes32
+
+  """
+  Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.
+  """
+  address: Address
+
+  """Restrict to a single seller address."""
+  seller: Address
+
+  """Restrict to a single buyer address."""
+  buyer: Address
+
+  """Restrict to a single position token address."""
+  token: Address
+  tokens: [Address!]
+
+  """Restrict to a single chain."""
+  chainId: Int
+
+  """
+  Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
+  executedAt: IntFilter
+}
+
+"""
+Filter input for the `pickConfigurationsConnection` query. Values combine with AND.
+Range-like scalars use operator-pattern inputs; identifier/domain fields stay flat.
+"""
+input PickConfigurationFilter {
+  """
+  Restrict to a single chain. Chain IDs are identifiers, not range-filtered metrics.
+  """
+  chainId: Int
+
+  """Restrict to resolved (true) or unresolved (false) pick configurations."""
+  resolved: Boolean
+
+  """Filter by settlement result, e.g. `{ equals: PREDICTOR_WINS }`."""
+  result: SettlementResultFilter
+
+  """
+  Restrict to pick configurations whose predictor or counterparty token is in this set (case-insensitive). Max 100 addresses per request.
+  """
+  tokens: [String!]
+}
+
+"""
+Flat filter input for the deprecated `positionsPage` query. Each field is
+optional; values combine with AND. New callers should use the operator-pattern
+`PositionFilter` on `positionsConnection`.
+"""
+input PositionFilters {
+  """Restrict to a single holder address (case-insensitive)."""
+  holder: String
+
+  """Restrict to a single chain."""
+  chainId: Int
+
+  """
+  Restrict to positions tied to a single condition (via the pickConfig join).
+  """
+  conditionId: String
+
+  """Restrict to a single pick configuration."""
+  pickConfigId: String
+
+  """Restrict to positions whose pickConfig settled with this result."""
+  result: SettlementResult
+
+  """Restrict to settled (true) or unsettled (false) positions."""
+  settled: Boolean
+
+  """
+  Restrict to positions where the holder won (true) or lost (false). Combines side with settlement result.
+  """
+  holderWon: Boolean
+
+  """
+  Restrict to positions whose holder collateral on the pickConfig is `>= this` (wei).
+  """
+  collateralMin: String
+
+  """
+  Restrict to positions whose holder collateral on the pickConfig is `<= this` (wei).
+  """
+  collateralMax: String
+
+  """Restrict to positions whose pickConfig `endsAt >= this`."""
+  endsAtMin: UnixSeconds
+
+  """Restrict to positions whose pickConfig `endsAt <= this`."""
+  endsAtMax: UnixSeconds
+}
+
+"""
+Filter input for the `predictionsConnection` query. Each field is optional;
+values combine with AND.
+"""
+input PredictionFilter {
+  """
+  Restrict to a single prediction by on-chain id. Supports the
+  by-predictionId single-record lookup pattern —
+  `predictionsConnection(filter: { predictionId: $p }).nodes[0]` replaces
+  the dedicated `predictionByOnchainId` query.
+  """
+  predictionId: String
+
+  """
+  Restrict to predictions where the address is predictor or counterparty.
+  """
+  address: Address
+
+  """Restrict to a single chain."""
+  chainId: Int
+
+  """
+  Restrict to predictions on a single condition (via the pickConfig join).
+  """
+  conditionId: String
+
+  """
+  Restrict to predictions on any of these conditions (via the pickConfig join).
+  Useful for group-backed feeds where the caller already has the condition
+  list resolved.
+  """
+  conditionIds: [String!]
+  pickConfigId: String
+
+  """Restrict to legacy (true) or non-legacy (false) predictions."""
+  isLegacy: Boolean
+
+  """Restrict to settled (true) or unsettled (false) predictions."""
+  settled: Boolean
+
+  """Restrict to predictions whose pickConfig settled with this result."""
+  result: SettlementResult
+
+  """
+  Filter by pickConfig end epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
+  endsAt: IntFilter
+}
+
+"""Order input for `predictionsConnection`."""
+input PredictionOrder {
+  field: PredictionOrderField!
+  direction: OrderDirection!
+}
+
+"""Sort fields for `predictionsConnection`."""
+enum PredictionOrderField {
+  CREATED_AT
+}
+
+"""
+Filter input for the `forecastsConnection` query. Each field is optional;
+values combine with AND.
+"""
+input ForecastFilter {
+  """Restrict to a single forecast by UID."""
+  uid: String
+
+  """Restrict to a single forecaster address (case-insensitive)."""
+  forecaster: String
+
+  """Restrict to a single recipient address (case-insensitive)."""
+  recipient: String
+
+  """Restrict to forecasts on a single condition."""
+  conditionId: String
+
+  """
+  Restrict to forecasts on any of these conditions. Useful for group-backed
+  feeds where the caller already has the condition list resolved.
+  """
+  conditionIds: [String!]
+
+  """Restrict to a single EAS schema ID."""
+  schemaId: String
+
+  """
+  Filter by forecast epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`.
+  """
+  attestedAt: IntFilter
+}
+
+"""Order input for `forecastsConnection`."""
+input ForecastOrder {
+  field: ForecastOrderField!
+  direction: OrderDirection!
+}
+
+"""Sort fields for `forecastsConnection`."""
+enum ForecastOrderField {
+  ATTESTED_AT
+  CREATED_AT
+}
+
+"""
+Flat filter input for the `accountActivityPage` query. Each field is
+optional; values combine with AND. Omit `address` for a global feed.
+"""
+input ActivityFilters {
+  """
+  Restrict to a single account's activity (case-insensitive). Omit for a global feed.
+  """
+  address: String
+
+  """Restrict to activity on a single condition."""
+  conditionId: String
+
+  """Restrict to activity tied to a single pick configuration."""
+  pickConfigId: String
+
+  """
+  Restrict to just prediction events or just trade events. Omit for both.
+  """
+  type: ActivityItemType
+}
+
+type Query {
+  """
+  Refetch any `Node`-implementing entity by its opaque global id. Returns
+  `null` when the id is malformed, the type is not registered, or the
+  underlying entity has been deleted. By-attribute lookups go through the
+  matching `*Connection(filter:)` — e.g. `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
+  or `predictionsConnection(filter: { predictionId: $p }).nodes[0]`. `node(id:)`
+  exists so Relay-style clients can refetch cached entities polymorphically
+  without knowing their concrete type.
+  """
+  node(id: ID!): Node
+
+  """
+  Batched form of `node(id:)`. Preserves input order; each element is
+  resolved independently and may be null. Useful for client caches that
+  refresh many entities in one round trip.
+  """
+  nodes(ids: [ID!]!): [Node]!
+  activity(first: Int = 50, after: String, filter: ActivityFilter, orderBy: ActivityOrder): ActivityConnection!
+  leaderboard(metric: LeaderboardMetric!, first: Int = 25, after: String, filter: AccountRankingFilter): AccountRankingConnection!
+
+  """
+  Accuracy rank and lifetime score for a single address. Mirrors
+  `accountStatsRank`'s shape: stats fields are always populated (zero for
+  unscored addresses), `rank` is null when the address is absent from the
+  ranked set, and `totalForecasters` is the size of the scored-forecaster
+  set.
+  """
+  accountAccuracyRank(address: String!): AccountAccuracyRank! @deprecated(reason: "Use `account(address: $a).rank(metric: ACCURACY)` — returns the same rank + value via the Relay-shaped Account surface.")
+
+  """
+  Lifetime accuracy score for a single address, or null if no scored
+  forecasts exist.
+  """
+  accountAccuracy(address: String!): ForecasterScore @deprecated(reason: "Use `accountAccuracyRank` for the rank-and-score shape, or `accuracyLeaderboardPage` for the leaderboard. `ForecasterScore`'s legacy counter fields (numScored, sumErrorSquared, …) were always returned as zeros.")
+
+  """
+  Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
+  """
+  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]! @deprecated(reason: "Use `activityPage` — same data with a server-truth `hasMore` stop signal.")
+
+  """
+  Unified activity feed (predictions + trades merged by timestamp), wrapped
+  in an `ActivityItemsPage` with a server-truth `hasMore` flag. The whole
+  field is deprecated in favor of `activity(...)`, the Relay-shaped
+  replacement; flat-arg / `filters:`-arg variants both keep working until
+  the deprecation window closes.
+  """
+  activityPage(filters: ActivityFilters, take: Int! = 20, skip: Int! = 0, address: String, conditionId: String, pickConfigId: String, type: ActivityItemType): ActivityItemsPage! @deprecated(reason: "Use `activity(first:, after:, filter:, orderBy:)` — Relay-shaped pagination over the same merged predictions/trades feed.")
+
+  """
+  Deprecated alias for `activityPage` — the `account*` prefix predates the
+  global-feed mode (added when `address` became optional). Kept on the
+  flat-arg shape; callers wanting the `filters:` input should migrate
+  to `activityPage`.
+  """
+  accountActivityPage(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: ActivityItemType): ActivityItemsPage! @deprecated(reason: "Use `activityPage` — same resolver, the name reflects that the resolver also serves the global feed when `address` is omitted.")
+
+  """
+  Per-account stats time series — wallet collateral position, PnL, volume,
+  and prediction outcome counts across snapshots in a window. Mirrors the
+  `protocolStats` / `vaultStats` fat-row shape: no `interval` arg, server
+  picks the cadence; `fromEpoch` / `toEpoch` are optional epoch seconds
+  (inclusive). Both omitted ⇒ last 365 days (the DAY-bucket cap in the
+  helper layer until the snapshot table lands).
+
+  Implementation today wraps the legacy per-metric SQL helpers and emits
+  one point per day. A follow-up migrates this to a real per-account
+  snapshot table without changing the wire shape.
+  """
+  accountStats(address: String!, from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [AccountStat!]! @deprecated(reason: "Use `account(address: $a).stats(filter: { timestamp: { gte: $from, lte: $to } })` — same fat-row shape via the Relay-shaped Account surface.")
+
+  """
+  Time-bucketed collateral balance for a single address — deployed (in open
+  positions) and claimable (settled but unredeemed). DEPRECATED: use
+  `accountStats`; the fat row carries `deployedCollateral` /
+  `claimableCollateral` per snapshot.
+  """
+  accountBalance(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [BalanceDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `deployedCollateral` / `claimableCollateral` per snapshot.")
+
+  """
+  Time-bucketed profit-and-loss for a single address with cumulative tracking.
+  DEPRECATED: use `accountStats`; the fat row carries `periodPnL` /
+  `cumulativePnL` per snapshot.
+  """
+  accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `periodPnL` / `cumulativePnL` per snapshot.")
+
+  """
+  Time-bucketed prediction count with outcome breakdown for a single address,
+  bucketed by creation time. DEPRECATED: use `accountStats`; the fat row carries
+  `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending`
+  / `predictionsNonDecisive` per snapshot.
+  """
+  accountPredictionCount(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PredictionCountDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `predictionsTotal` / `predictionsWon` / `predictionsLost` / `predictionsPending` / `predictionsNonDecisive` per snapshot.")
+
+  """
+  Time-bucketed trading volume for a single address. DEPRECATED: use
+  `accountStats`; the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.
+  """
+  accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated(reason: "Use `accountStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.")
+
+  """
+  Lifetime trading volume for a single address as a wei-decimal string.
+  DEPRECATED: use `accountStatsRank(address: $a).volume` (omit `filters` for
+  all-time).
+  """
+  accountTotalVolume(address: String!): String! @deprecated(reason: "Use `accountStatsRank(address: $a).volume` (omit `filters` for all-time).")
+
+  """
+  Accounts ranked by an account metric (net PnL, gains, losses, or volume)
+  over an optional date window. `filters` omitted ⇒ rank by `NET_PNL` over
+  all-time. PnL metrics are attributed to settlement time, volume to trade
+  time. Page-shaped with server-truth `hasMore`; `totalCount` is populated
+  unconditionally (cheap in-memory derivation).
+  """
+  protocol: Protocol!
+  vault(id: ID!): Vault
+
+  """
+  Paginated vault list, filterable by address / chain. Vaults are a
+  small statically configured set, so this exists mainly as the
+  by-address lookup pattern (`vaultsConnection(filter: { address: $a })`)
+  — replacing the dedicated `vaultByAddress` query.
+  """
+  vaultsConnection(first: Int = 50, after: String, filter: VaultFilter): VaultConnection!
+  accountStatsLeaderboardPage(filters: AccountStatsFilters, take: Int! = 25, skip: Int! = 0): AccountStatsLeaderboardPage! @deprecated(reason: "Use `leaderboard(metric: PNL|VOLUME|ROI, first:, after:, filter:)` — Relay-shaped pagination over the same ranked set.")
+
+  """
+  Stats + rank for a single address against the same ranked set the
+  leaderboard slices. `filters` omitted ⇒ rank by `NET_PNL` over all-time.
+  Stats fields are always present (zero when the address has no activity
+  in the window). `rank` is null when the address is absent from the
+  ranked set; `totalParticipants` is the ranked-set size (0 when the
+  window has no participants at all — that distinguishes "empty window"
+  from "present window, address unranked").
+  """
+  accountStatsRank(address: String!, filters: AccountStatsFilters): AccountStatsRank! @deprecated(reason: "Use `account(address: $a).rank(metric: PNL|VOLUME|ROI, filter:)` — returns the same rank + value via the Relay-shaped Account surface.")
+
+  """
+  Profit rank and total PnL for a single address relative to all
+  participants. Lifetime (no window).
+  """
+  accountProfitRank(address: String!): ProfitRank! @deprecated(reason: "Use `accountStatsRank(address:)` — same rank + totalParticipants, plus a richer stat breakdown. `ProfitRank.totalPnL` maps to `AccountStatsRank.netPnL`.")
+
+  """
+  Top forecasters ranked by lifetime accuracy. The time-weighted error
+  already weights by recency, so there's no window filter on this surface.
+  Page-shaped with server-truth `hasMore`; `totalCount` is populated
+  unconditionally (cheap in-memory derivation).
+  """
+  accuracyLeaderboardPage(take: Int! = 25, skip: Int! = 0): AccountAccuracyLeaderboardPage! @deprecated(reason: "Use `leaderboard(metric: ACCURACY, first:, after:)` — Relay-shaped pagination over the same ranked set.")
+
+  """
+  Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `forecasts`) in a subsequent migration.
+  """
+  forecastsConnection(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
+  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories.")
+
+  """
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `categories`) in a subsequent migration, once the deprecated
+  bare-array `categories` sibling above is removed.
+  """
+  categoriesConnection(first: Int = 100, after: String, filter: CategoryFilter): CategoryConnection!
+
+  """
+  Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
+  """
+  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated(reason: "Unused; will be removed. No live consumers — claim records are reachable as a side-effect of position settlement.")
+
+  """
+  Paginated list of position close (burn) records, filterable by address, pick config, and chain
+  """
+  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated(reason: "Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement.")
+  collateralBalance(account: Address, address: String @deprecated(reason: "Use `account`."), atBlock: Int, chainId: Int!): CollateralBalance! @deprecated(reason: "Use `collateralBalance(account:, chainId:)`; legacy `address` remains as an argument alias during migration.")
+
+  """
+  Cumulative wUSDe collateral balance for an address at `count + 1`
+  evenly-spaced snapshot boundaries going back from now. The snapshot
+  cadence is `intervalSeconds` (preferred); the legacy `intervalHours`
+  arg is retained as a deprecated alias — when both are supplied,
+  `intervalSeconds` wins.
+  """
+  collateralBalanceHistory(
+    account: Address
+    address: String @deprecated(reason: "Use `account`.")
+    chainId: Int!
+    first: Int = 12
+    after: String
+    count: Int = 12
+
+    """
+    Snapshot cadence in seconds. Replaces the deprecated `intervalHours`
+    arg; when omitted (and `intervalHours` is also omitted) defaults to
+    168 hours (7 days), matching the previous default.
+    """
+    intervalSeconds: Int
+    intervalHours: Int! = 168 @deprecated(reason: "Use `intervalSeconds:` — drops the unit-suffix to match the unit-on-scalar convention used elsewhere. When both are supplied, `intervalSeconds` wins.")
+  ): [CollateralBalanceSnapshot!]!
+  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransfer!]! @deprecated(reason: "Use `collateralTransfersConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over collateral transfers.")
+
+  """
+  Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
+
+  Sorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `collateralTransfers`) in a subsequent migration, once the
+  deprecated bare-array `collateralTransfers` sibling above is removed.
+  """
+  collateralTransfersConnection(first: Int = 100, after: String, filter: CollateralTransferFilter, orderBy: CollateralTransferOrder): CollateralTransferConnection!
+
+  """
+  Look up a single account by canonical wallet address. Replacement for
+  `user(where:)` — accepts a flat `address: Address!` arg instead of the
+  Prisma-shaped `UserWhereUniqueInput`.
+  """
+  account(address: Address!): Account
+
+  """
+  Relay-shaped connection over accounts (User-table rows). Single-address
+  lookups should keep using `account(address:)`, which synthesizes
+  address-backed Accounts for wallets without a User row;
+  `accountsConnection` is for enumeration / search use cases.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `accounts`) in a subsequent migration.
+  """
+  accountsConnection(first: Int, after: String, filter: AccountFilter, orderBy: AccountOrder): AccountConnection!
+  condition(where: ConditionWhereUniqueInput!): Condition @deprecated(reason: "Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape.")
+  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated(reason: "Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape.")
+
+  """
+  Deprecated bare-array form. Retained unchanged for the one-release
+  deprecation window so pinned clients keep working. New callers
+  should use `conditionGroupsConnection(first:, after:, filter:, orderBy:)`.
+  """
+  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]! @deprecated(reason: "Use `conditionGroupsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
+
+  """
+  Relay-shaped connection over `ConditionGroup` rows. Forward-only
+  cursor pagination via `first` / `after`. Replaces the deprecated
+  bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
+  (default-off, add per-PR where cheap).
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `conditionGroups`) in a subsequent migration, once the deprecated
+  bare-array sibling above is removed.
+  """
+  conditionGroupsConnection(first: Int, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder): ConditionGroupConnection!
+
+  """
+  Deprecated bare-array form. Retained unchanged for the one-release
+  deprecation window. New callers should use
+  `conditionsConnection(first:, after:, filter:, orderBy:)`.
+  """
+  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]! @deprecated(reason: "Use `conditionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
+
+  """
+  Relay-shaped connection over `Condition` rows. Forward-only cursor
+  pagination via `first` / `after`. Replaces the deprecated bare
+  `conditions(where:)`. Public conditions only.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `conditions`) in a subsequent migration, once the deprecated
+  bare-array sibling above is removed.
+  """
+  conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder): ConditionConnection!
+
+  """Look up a single pick configuration by ID"""
+  pickConfiguration(id: String!): PickConfiguration @deprecated(reason: "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsConnection` for list lookups.")
+
+  """
+  Paginated list of pick configurations, filterable by chain, resolution status, and result
+  """
+  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]! @deprecated(reason: "Use `pickConfigurationsConnection` — Relay-shaped cursor pagination over the same data.")
+
+  """
+  Relay-shaped connection over pick configurations.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `pickConfigurations`) in a subsequent migration, once the
+  deprecated bare-array `pickConfigurations` sibling above is removed.
+  """
+  pickConfigurationsConnection(first: Int, after: String, filter: PickConfigurationFilter, orderBy: PickConfigurationOrder): PickConfigurationConnection!
+
+  """Top 20 most-used tags across public conditions"""
+  popularTags: [String!]!
+
+  """Count of token positions for a given holder"""
+  positionCount(chainId: Int, holder: String!, settled: Boolean): Int! @deprecated(reason: "Use `positionsConnection` — Relay-shaped cursor pagination over the same data.")
+
+  """
+  Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
+  """
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]! @deprecated(reason: "Use `positionsConnection` — Relay-shaped cursor pagination over the same data.")
+
+  """
+  Deprecated page wrapper retained for main/backward compatibility. New callers should use `positionsConnection(first:, after:, filter:, orderBy:)`.
+  """
+  positionsPage(filters: PositionFilters, orderBy: PositionSortField, orderDirection: SortOrder, take: Int! = 50, skip: Int! = 0, chainId: Int @deprecated(reason: "Use `filters: { chainId: ... }` on `PositionFilters`."), collateralMax: String @deprecated(reason: "Use `filters: { collateralMax: ... }` on `PositionFilters`."), collateralMin: String @deprecated(reason: "Use `filters: { collateralMin: ... }` on `PositionFilters`."), conditionId: String @deprecated(reason: "Use `filters: { conditionId: ... }` on `PositionFilters`."), endsAtMax: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMax: ... }` on `PositionFilters`."), endsAtMin: UnixSeconds @deprecated(reason: "Use `filters: { endsAtMin: ... }` on `PositionFilters`."), holder: String @deprecated(reason: "Use `filters: { holder: ... }` on `PositionFilters`."), holderWon: Boolean @deprecated(reason: "Use `filters: { holderWon: ... }` on `PositionFilters`."), pickConfigId: String @deprecated(reason: "Use `filters: { pickConfigId: ... }` on `PositionFilters`."), result: SettlementResult @deprecated(reason: "Use `filters: { result: ... }` on `PositionFilters`."), settled: Boolean @deprecated(reason: "Use `filters: { settled: ... }` on `PositionFilters`.")): PositionsPage! @deprecated(reason: "Use `positionsConnection` instead.")
+
+  """
+  Relay-shaped connection over token positions.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `positions`) in a subsequent migration, once the deprecated
+  `positions` bare-array / `positionsPage` siblings above are removed.
+  """
+  positionsConnection(first: Int, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+
+  """
+  Look up a single prediction by its on-chain prediction ID. Pass
+  `predictionId:` — the legacy `id:` arg is kept (deprecated) so existing
+  callers keep working through one release.
+  """
+  prediction(predictionId: String, id: String @deprecated(reason: "Use `predictionId:` — same value, the new arg name disambiguates it from the `Prediction.id` (Int!) row id surfaced on `predictionsConnection` nodes.")): Prediction
+
+  """Count of escrow predictions involving the given address"""
+  predictionCount(address: String!, chainId: Int): Int! @deprecated(reason: "Use `predictionsConnection(...).totalCount` — same number, available alongside the connection payload, no extra query needed.")
+
+  """
+  Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
+  """
+  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]! @deprecated(reason: "Use `predictionsConnection` — same data with Relay `pageInfo.hasNextPage` and `pageInfo.endCursor`.")
+
+  """
+  Relay-style prediction list. Defaults to createdAt DESC.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `predictions`) in a subsequent migration, once the deprecated
+  `predictions` bare-array sibling above is removed.
+  """
+  predictionsConnection(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
+
+  """
+  Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
+  """
+  openInterestByCategory: [CategoryOpenInterest!]! @deprecated(reason: "Use `protocol.openInterestByCategory`.")
+
+  """
+  Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
+  """
+  openInterestByTimeToResolution: [TimeToResolutionBucket!]! @deprecated(reason: "Use `protocol.openInterestByTimeToResolution`.")
+
+  """
+  Protocol-wide statistics time series at the configured snapshot cadence —
+  cumulative volume, trade count, open interest, escrow balance. Window
+  with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
+  returns full history.
+
+  Bar timestamps: closed bars are labelled at *the start* of the interval
+  they represent (capture time minus one interval), so a bar at
+  `2026-01-01 00:00` summarizes activity ending `2026-01-02 00:00`. When
+  `toEpoch` covers now, a trailing live candle is appended; the live
+  candle's `timestamp` is the *current* interval boundary (not shifted
+  back), so callers can distinguish it as `points[points.length - 1]
+  .timestamp >= floor(now / interval) * interval`.
+  """
+  protocolStats(from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [ProtocolStat!]! @deprecated(reason: "Use `protocol.stats(filter:)` — Relay-shaped stats connection under the protocol namespace.")
+
+  """
+  Time-bucketed total protocol trading volume across all users. DEPRECATED:
+  use `protocolStats`; the fat row carries `periodVolume` / `cumulativeVolume`
+  per snapshot.
+  """
+  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated(reason: "Use `protocolStats` — the fat row carries `periodVolume` / `cumulativeVolume` per snapshot.")
+
+  """
+  Deprecated bare-array form. Retained unchanged for the one-release
+  deprecation window so pinned clients keep working. New callers
+  should use `questionsConnection(first:, after:, filter:, orderBy:)`.
+  """
+  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]! @deprecated(reason: "Use `questionsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same interleaved feed.")
+
+  """
+  Relay-shaped connection over `Question` rows — the interleaved
+  Condition / ConditionGroup feed. Forward-only cursor pagination via
+  `first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on
+  `QuestionConnection` because the underlying SQL UNION cannot produce
+  a single COUNT cheaply.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `questions`) in a subsequent migration, once the deprecated
+  bare-array sibling above is removed.
+  """
+  questionsConnection(first: Int, after: String, filter: QuestionFilter, orderBy: QuestionOrder): QuestionConnection!
+
+  """
+  Look up a single secondary market trade by its trade hash. Pass
+  `tradeHash:` — the legacy `id:` arg is kept (deprecated) so existing
+  callers keep working through one release.
+  """
+  trade(tradeHash: String, id: String @deprecated(reason: "Use `tradeHash:` — same value, the new arg name disambiguates it from the `Trade.id` (Int!) row id surfaced on trade rows.")): Trade
+
+  """Count of secondary market trades matching the given filters"""
+  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated(reason: "Use `tradesConnection` — Relay-shaped cursor pagination over the same data.")
+
+  """
+  Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
+  """
+  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]! @deprecated(reason: "Use `tradesConnection` — Relay-shaped cursor pagination over the same data.")
+
+  """
+  Relay-shaped connection over secondary market trades.
+
+  Note: this field will be renamed to drop the `Connection` suffix
+  (→ `trades`) in a subsequent migration, once the deprecated
+  `trades` bare-array sibling above is removed.
+  """
+  tradesConnection(first: Int, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
+  user(where: UserWhereUniqueInput!): User @deprecated(reason: "Use `account(address:)` — flat address arg, returns the same address-keyed referral data via the new public-API-shaped `Account` type. The Prisma-leaked `User` type will be removed once telemetry on this path drains.")
+  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated(reason: "Unused; will be removed. No live consumers — account lookups go through `account(address:)`.")
+
+  """
+  Vault-specific statistics time series for a single vault address — vault
+  balance, deployed/available collateral, cumulative PnL, deposits,
+  withdrawals, airdrop gains, secondary flows, unredeemed claims. Window
+  with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
+  returns full history.
+
+  Bar timestamps follow the same convention as `protocolStats`: closed
+  bars are labelled at the *start* of the interval they represent, and a
+  trailing live candle (anchored to the *current* interval boundary) is
+  appended when `toEpoch` covers now.
+  """
+  vaultStats(vaultAddress: String!, from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [VaultStat!]! @deprecated(reason: "Use `vaultsConnection(filter: { address: $a }).nodes[0].stats(filter:)` — per-vault snapshots live on Vault.")
+}
+
+"""
+Time interval for bucketing the legacy per-account time-series resolvers.
+"""
+enum TimeInterval {
+  DAY
+  HOUR
+  MONTH
+  WEEK
+}
+
+"""Time-bucketed collateral-balance data point (legacy)."""
+type BalanceDataPoint {
+  """Collateral available to claim from settled positions (wei)"""
+  claimableCollateral: String!
+
+  """Active collateral deployed in open positions (wei)"""
+  deployedCollateral: String!
+
+  """Unix epoch timestamp (seconds) for the start of this bucket"""
+  timestamp: Int!
+}
+
+"""Time-bucketed PnL data point with cumulative tracking (legacy)."""
 type PnlDataPoint {
   """Running cumulative PnL in wei"""
   cumulativePnl: String!
@@ -1319,68 +3305,8 @@ type PnlDataPoint {
   timestamp: Int!
 }
 
-"""ERC-20 token balance representing a side of a prediction position"""
-type Position {
-  balance: String!
-  chainId: Int!
-  createdAt: DateTimeISO!
-  holder: String!
-  id: String!
-  isPredictorToken: Boolean!
-  pickConfig: PickConfiguration
-  pickConfigId: String!
-  realizedPnL: String
-  tokenAddress: String!
-  totalPayout: String
-  updatedAt: DateTimeISO!
-  userCollateral: String
-}
-
-"""Field to sort positions by"""
-enum PositionSortField {
-  CREATED_AT
-  UPDATED_AT
-}
-
 """
-Paginated wrapper around Position rows with a server-truth hasMore flag
-"""
-type PositionsPage {
-  hasMore: Boolean!
-  items: [Position!]!
-}
-
-"""
-Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking
-"""
-type Prediction {
-  chainId: Int!
-  collateralDeposited: String
-  collateralDepositedAt: Int
-  counterparty: String!
-  counterpartyClaimable: String
-  counterpartyCollateral: String!
-  counterpartyToken: String!
-  createTxHash: String!
-  createdAt: DateTimeISO!
-  id: Int!
-  isLegacy: Boolean!
-  marketAddress: String!
-  pickConfig: PickConfiguration
-  predictionId: String!
-  predictor: String!
-  predictorClaimable: String
-  predictorCollateral: String!
-  predictorToken: String!
-  refCode: String
-  result: SettlementResult!
-  settleTxHash: String
-  settled: Boolean!
-  settledAt: Int
-}
-
-"""
-Time-bucketed prediction count with outcome breakdown, bucketed by creation time
+Time-bucketed prediction-count data point with outcome breakdown (legacy).
 """
 type PredictionCountDataPoint {
   """Predictions lost in this bucket"""
@@ -1395,232 +3321,20 @@ type PredictionCountDataPoint {
   """Unix epoch timestamp (seconds) for the start of this bucket"""
   timestamp: Int!
 
-  """Total predictions created in this bucket"""
+  """Total predictions opened in this bucket"""
   total: Int!
 
   """Predictions won in this bucket"""
   won: Int!
 }
 
-"""Field to sort predictions by"""
-enum PredictionSortField {
-  CREATED_AT
-  SETTLED_AT
-}
-
-"""Aggregated profit/loss entry for a single address across all positions"""
-type ProfitEntry {
-  address: String!
-  totalPnL: String!
-}
-
-"""Profit rank and total PnL for an address on the leaderboard"""
-type ProfitRank {
-  address: String!
-  rank: Int
-  totalParticipants: Int!
-  totalPnL: String!
-}
-
-"""
-Protocol-wide statistics snapshot including vault metrics, volume, and PnL.
-Cadence is controlled by the snapshot cron; periodPnL and periodVolume are
-deltas over that interval.
-"""
-type ProtocolStat {
-  cumulativeVolume: String!
-  escrowBalance: String!
-  openInterest: String!
-
-  """Realized PnL delta over the snapshot interval"""
-  periodPnL: String!
-
-  """Trade-count delta over the snapshot interval"""
-  periodTradeCount: Int!
-
-  """Cumulative-volume delta over the snapshot interval"""
-  periodVolume: String!
-
-  """
-  Unix epoch timestamp (seconds) aligned to the snapshot interval boundary
-  """
+"""Time-bucketed volume data point for charts (legacy)."""
+type VolumeDataPoint {
+  """Unix epoch timestamp (seconds) for the start of this bucket"""
   timestamp: Int!
 
-  """Cumulative count of predictions and secondary trades/sales"""
-  totalTradeCount: Int!
-  vaultAirdropGains: String!
-  vaultAvailableAssets: String!
-  vaultBalance: String!
-  vaultCumulativePnL: String!
-  vaultDeployed: String!
-  vaultDeposits: String!
-  vaultPositionsLost: Int!
-  vaultPositionsWon: Int!
-
-  """Cumulative wUSDe paid by the vault on secondary-market buys"""
-  vaultSecondaryBought: String!
-
-  """Cumulative wUSDe received by the vault on secondary-market sells"""
-  vaultSecondarySold: String!
-
-  """wUSDe earmarked for the vault from resolved-but-not-yet-redeemed wins"""
-  vaultUnredeemedClaim: String!
-  vaultWithdrawals: String!
-}
-
-type Query {
-  """
-  Accuracy score for a single forecaster address, or null if no scored attestations exist
-  """
-  accountAccuracy(address: String!): ForecasterScore @deprecated
-
-  """
-  Accuracy rank and score for a single address relative to all forecasters
-  """
-  accountAccuracyRank(address: String!): AccuracyRank!
-
-  """
-  Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
-  """
-  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
-
-  """
-  Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
-  """
-  accountBalance(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [BalanceDataPoint!]!
-
-  """
-  Time-bucketed profit and loss for a single address with cumulative tracking
-  """
-  accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]!
-
-  """
-  Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time
-  """
-  accountPredictionCount(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PredictionCountDataPoint!]!
-
-  """
-  Profit rank and total PnL for a single address relative to all participants
-  """
-  accountProfitRank(address: String!): ProfitRank! @deprecated
-
-  """
-  Total lifetime trading volume in wei for the given address across all prediction types
-  """
-  accountTotalVolume(address: String!): String!
-
-  """Time-bucketed trading volume for a single address"""
-  accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
-
-  """Top forecasters ranked by accuracy score"""
-  accuracyLeaderboard(limit: Int! = 10): [ForecasterScore!]!
-  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
-  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
-
-  """
-  Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
-  """
-  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated
-
-  """
-  Paginated list of position close (burn) records, filterable by address, pick config, and chain
-  """
-  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated
-  collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
-  collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
-  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
-  condition(where: ConditionWhereUniqueInput!): Condition
-  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated
-  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
-  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
-
-  """
-  Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.
-  """
-  openInterestByCategory: [CategoryOpenInterest!]!
-
-  """
-  Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.
-  """
-  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
-
-  """Look up a single pick configuration by ID"""
-  pickConfiguration(id: String!): PickConfiguration @deprecated
-
-  """
-  Paginated list of pick configurations, filterable by chain, resolution status, and result
-  """
-  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]!
-
-  """Top 20 most-used tags across public conditions"""
-  popularTags: [String!]!
-
-  """Count of token positions for a given holder"""
-  positionCount(chainId: Int, holder: String!, settled: Boolean): Int!
-
-  """
-  Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
-  """
-  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
-
-  """
-  Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
-  """
-  positionsPage(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): PositionsPage!
-
-  """Look up a single prediction by its on-chain prediction ID"""
-  prediction(id: String!): Prediction
-
-  """Count of escrow predictions involving the given address"""
-  predictionCount(address: String!, chainId: Int): Int!
-
-  """
-  Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
-  """
-  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
-
-  """
-  Profit leaderboard — addresses ranked by total PnL across all positions
-  """
-  profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
-
-  """
-  Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest
-  """
-  protocolStats(vaultAddress: String): [ProtocolStat!]!
-
-  """Time-bucketed total protocol trading volume across all users"""
-  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]! @deprecated
-
-  """
-  Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
-  """
-  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, maxSimilarMarketVolume: Float, minEndTime: Int, minEstimatedPrice: Float, minSimilarMarketVolume: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
-
-  """
-  Public referral analytics. Referral codes are attribution hints, not
-  authorization credentials: using someone else's code credits that referrer's
-  volume/claims, but does not grant access to funds or admin capabilities.
-  
-  Returns paginated referral codes with claim count and aggregate trading volume /
-  position count baked in. Pass `id` to filter to a single code (e.g. for the
-  analytics dialog). Per-claimant breakdown is available via the nested
-  `claimants` field.
-  """
-  referralCodes(cursor: Int, id: Int, limit: Int = 100): ReferralCodesPage!
-
-  """Look up a single secondary market trade by its trade hash"""
-  trade(id: String!): Trade
-
-  """Count of secondary market trades matching the given filters"""
-  tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int! @deprecated
-
-  """
-  Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
-  """
-  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
-  user(where: UserWhereUniqueInput!): User
-  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]! @deprecated
+  """Total volume in wei for this bucket"""
+  volume: String!
 }
 
 enum QueryMode {
@@ -1629,14 +3343,64 @@ enum QueryMode {
 }
 
 """
-A question item — either a group of related conditions or a single ungrouped condition
+A question — derived view that interleaves grouped and ungrouped markets.
+A `Question` is **not** a durable entity (no `Node` membership, no
+`question(id:)` lookup). Identity flows through the wrapped `source`
+(either a `Condition` or a `ConditionGroup`), each of which already
+carries its own primary key.
 """
 type Question {
-  condition: Condition
-  group: ConditionGroup
-  predictionCount: Int
-  questionType: QuestionItemType!
+  """
+  The underlying entity this question wraps. Exactly one of
+  `Condition` | `ConditionGroup`. `__typename` discriminates between
+  the two; the legacy `questionType` field is the same information in
+  scalar form and is now `@deprecated`.
+  """
+  source: ConditionOrConditionGroup!
+
+  """
+  Display title forwarded from the source — `Condition.question` or `ConditionGroup.name`.
+  """
+  title: String!
+
+  """
+  Long-form description forwarded from the source (`Condition.description`); null for groups.
+  """
+  description: String
+  category: Category
+  tags: [String!]!
+  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
+  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
+  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
+  activity(first: Int = 50, after: String, filter: ActivityFilter, orderBy: ActivityOrder): ActivityConnection!
+
+  """
+  Open interest forwarded from the source — `Condition.openInterest` or `ConditionGroup.totalOpenInterest`.
+  """
+  openInterest: String
+
+  """24h similar-market volume forwarded from the source."""
+  volume: Float
+
+  """Creation timestamp forwarded from the source."""
+  createdAt: DateTimeISO!
+
+  """
+  Resolution time forwarded from the source — `Condition.endTime` or `ConditionGroup.maxEndTime`.
+  """
+  resolvesAt: UnixSeconds
+  condition: Condition @deprecated(reason: "Use `source` (union over Condition | ConditionGroup).")
+  group: ConditionGroup @deprecated(reason: "Use `source` (union over Condition | ConditionGroup).")
+  predictionCount: Int @deprecated(reason: "Use `source` and read `predictionCount` on the wrapped entity.")
+  questionType: QuestionItemType! @deprecated(reason: "Use `source.__typename`.")
 }
+
+"""
+Discriminated union over the two backing entities a `Question` can wrap.
+Clients use fragment spreads on `Condition` and `ConditionGroup` to read
+fields specific to each branch.
+"""
+union ConditionOrConditionGroup = Condition | ConditionGroup
 
 """
 Whether a question is a group of related conditions or a single condition
@@ -1656,57 +3420,93 @@ enum QuestionSortField {
 }
 
 """
-Public referral code metadata and analytics. This intentionally includes creator,
-claim counts, aggregate volume/position stats, and claimant breakdowns.
+Legacy flat filter input mirroring the inline-arg shape that the deprecated
+`questions(...)` resolver kept.
+"""
+input QuestionFilters {
+  """
+  Restrict to a single chain. When omitted and a `contractAddress*` filter is
+  present, defaults to the API's `DEFAULT_CHAIN_ID` so address lookups are not
+  silently cross-chain.
+  """
+  chainId: Int
 
-Referral codes are low-security attribution hints: using someone else's code only
-credits that referrer; it does not grant access to funds or privileged actions.
+  """
+  Match the on-chain contract address that owns the underlying condition
+  (case-insensitive). Maps to the DB `condition.resolver` column. Pair with
+  `chainId`; if omitted, `chainId` defaults to `DEFAULT_CHAIN_ID`.
+  """
+  contractAddress: String
 
-`codeHash` is intentionally omitted from GraphQL because public clients should
-not need it, and referral-code identity in this API is the integer `id`.
-Credentialed create/update REST paths may still return hashes to the caller that
-created or administers the code.
+  """
+  Match any of these on-chain contract addresses (case-insensitive). Same
+  semantics as `contractAddress`.
+  """
+  contractAddressIn: [String!]
+
+  """
+  Free-text search across the group/condition's `name`, `question`, `shortName`, and `tags` (case-insensitive).
+  """
+  search: String
+
+  """Restrict to questions whose category slug is in this set."""
+  categorySlugs: [String!]
+
+  """
+  Single-tag filter (case-sensitive against the condition's `tags` array).
+  """
+  tag: String
+
+  """Restrict to conditions with `endTime >= this`."""
+  minEndTime: UnixSeconds
+
+  """Resolution-status filter; defaults to `all` when omitted."""
+  resolutionStatus: ResolutionStatus
+
+  """Restrict to conditions with `estimatedPrice >= this`."""
+  minEstimatedPrice: Float
+
+  """Restrict to conditions with `estimatedPrice <= this`."""
+  maxEstimatedPrice: Float
+
+  """Restrict to conditions with similar-market volume `>= this`."""
+  minSimilarMarketVolume: Float
+
+  """Restrict to conditions with similar-market volume `<= this`."""
+  maxSimilarMarketVolume: Float
+
+  """
+  Window the similar-market-volume filter and sort look at. When omitted,
+  the all-time `similarMarketVolume` column is used.
+  """
+  similarMarketVolumeWindow: VolumeWindow
+}
+
+"""
+Public referral code metadata. Exposed via `User.referredByCode` /
+`Account.referredByCode` so clients can render an account's referrer.
+
+Referral codes are low-security attribution hints: using someone else's code
+only credits that referrer; it does not grant access to funds or privileged
+actions. `codeHash` is intentionally omitted from GraphQL — public clients
+identify codes by integer `id`. Aggregate analytics (claim count, volume,
+claimants) live on the public REST endpoint `GET /referrals/codes`.
+
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
 """
 type ReferralCode {
-  """Total number of users who have claimed this code, across all pages."""
-  claimCount: Int!
-
-  """Paginated per-claimant breakdown with trading volume + position count."""
-  claimants(cursor: Int, limit: Int = 100): ReferralCodeClaimantsPage!
+  id: Int!
   createdAt: DateTimeISO!
+  updatedAt: DateTimeISO!
   createdBy: String!
   creatorType: String!
-  expiresAt: Int
-  id: Int!
-  isActive: Boolean!
   maxClaims: Int!
-
-  """
-  Total position count across every claimant. A position with both predictor
-  and counterparty in the claimant set is counted twice, matching the
-  per-side semantics.
-  """
-  totalPositions: Int!
-
-  """
-  Sum of trading volume across every claimant's positions (predictor +
-  counterparty sides), as a stringified bigint. Aggregated server-side.
-  """
-  totalVolume: String!
-  updatedAt: DateTimeISO!
-}
-
-type ReferralCodeClaimant {
-  address: String!
-  claimedAt: DateTimeISO!
-  id: Int!
-  positionCount: Int!
-  tradingVolume: String!
-}
-
-type ReferralCodeClaimantsPage {
-  items: [ReferralCodeClaimant!]!
-  nextCursor: Int
+  isActive: Boolean!
+  expiresAt: UnixSeconds
 }
 
 input ReferralCodeNullableRelationFilter {
@@ -1739,11 +3539,6 @@ input ReferralCodeWhereInput {
   updatedAt: DateTimeFilter
 }
 
-type ReferralCodesPage {
-  items: [ReferralCode!]!
-  nextCursor: Int
-}
-
 """Filter questions by their resolution status"""
 enum ResolutionStatus {
   all
@@ -1761,9 +3556,18 @@ enum SettlementResult {
   UNRESOLVED
 }
 
+input SettlementResultFilter {
+  equals: SettlementResult
+  in: [SettlementResult!]
+  not: SettlementResult
+  notIn: [SettlementResult!]
+}
+
 enum SortOrder {
   asc
   desc
+  ASC @deprecated(reason: "Use `asc` — uppercase value kept for compatibility with older clients passing `OrderDirection`-shaped values.")
+  DESC @deprecated(reason: "Use `desc` — uppercase value kept for compatibility with older clients passing `OrderDirection`-shaped values.")
 }
 
 input SortOrderInput {
@@ -1809,49 +3613,45 @@ input StringNullableListFilter {
   isEmpty: Boolean
 }
 
-"""Time interval for bucketing time-series data"""
-enum TimeInterval {
-  DAY
-  HOUR
-  MONTH
-  WEEK
-}
-
 """
-Open-interest aggregated by time-to-resolution bucket. Each unsettled
-prediction's collateral is bucketed by the latest endTime among the conditions
-it touches (the moment its OI can finally be claimed). One row per non-empty
-bucket, ordered from soonest (bucket = 1) to furthest out.
-"""
-type TimeToResolutionBucket {
-  """Sort order: 1 = soonest, increasing for further-out buckets"""
-  bucket: Int!
+Secondary market trade record where position tokens are exchanged
+between users. The on-chain reference is `tradeHash`; `id` is an
+internal row id (see schema-preamble conventions).
 
-  """Display label, e.g. ≤1d / 2-7d / 1-2mo"""
-  label: String!
-
-  """Open interest in wei (decimal string)"""
-  openInterest: String!
-
-  """Number of predictions contributing to this bucket"""
-  predictionCount: Int!
-}
-
-"""
-Secondary market trade record where position tokens are exchanged between users
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
 """
 type Trade {
   blockNumber: Int!
+
+  """Buyer wallet address (lowercase 0x-hex)."""
   buyer: String!
   chainId: Int!
+
+  """Collateral asset address paid in this trade (lowercase 0x-hex)."""
   collateral: String!
-  executedAt: Int!
+  executedAt: UnixSeconds!
   id: Int!
+
+  """
+  Total collateral paid by buyer (wei, 18 dec). `price / tokenAmount` is the per-share price.
+  """
   price: String!
   refCode: String
+
+  """Seller wallet address (lowercase 0x-hex)."""
   seller: String!
+
+  """Position token address being exchanged (lowercase 0x-hex)."""
   token: String!
+
+  """Quantity of position tokens transferred (wei, 18 dec on Sapience)."""
   tokenAmount: String!
+
+  """Canonical trade hash — the on-chain identifier (0x-prefixed)."""
   tradeHash: String!
   txHash: String!
 }
@@ -1960,15 +3760,6 @@ input UserWhereUniqueInput {
   referredByCodeId: IntNullableFilter
   referredById: IntNullableFilter
   updatedAt: DateTimeFilter
-}
-
-"""Time-bucketed volume data point for charts"""
-type VolumeDataPoint {
-  """Unix epoch timestamp (seconds) for the start of this bucket"""
-  timestamp: Int!
-
-  """Total volume in wei for this bucket"""
-  volume: String!
 }
 
 """Time window for volume-based sorting"""

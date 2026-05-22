@@ -571,18 +571,17 @@ export function createComplexityEstimators(
       if (fieldName === 'questions') return 500;
       if (fieldName === 'accountActivity') return 500;
       if (fieldName === 'protocolStats') return 2000;
-      if (fieldName === 'profitLeaderboard') return 2000;
-      if (fieldName === 'accountTotalVolume') return 500;
-      if (fieldName === 'accountProfitRank') return 500;
-      // Time-series analytics — heavy SQL with generate_series + aggregation
-      if (fieldName === 'accountVolume') return 1000;
-      if (fieldName === 'accountPnl') return 1500;
-      if (fieldName === 'accountBalance') return 2000;
-      if (fieldName === 'accountPredictionCount') return 1000;
-      if (fieldName === 'protocolVolume') return 1500;
+      if (fieldName === 'vaultStats') return 2000;
       // Full-table groupBy aggregates (no cache)
-      if (fieldName === 'accuracyLeaderboard') return 1500;
+      if (fieldName === 'accuracyLeaderboardPage') return 1500;
       if (fieldName === 'accountAccuracyRank') return 1500;
+      // Single-address lookup against the merged account-stats set the
+      // leaderboard slices. Same backing aggregation + TTL cache, so the
+      // worst-case fan-out matches the leaderboard.
+      if (fieldName === 'accountStatsRank') return 2000;
+      // Page-shaped leaderboard over the same merged account-stats set —
+      // identical cost class (cache lookup + array slice).
+      if (fieldName === 'accountStatsLeaderboardPage') return 2000;
       // Introspection fields — cost for mixed queries
       if (fieldName === '__schema') return 100;
       if (fieldName === '__type') return 50;

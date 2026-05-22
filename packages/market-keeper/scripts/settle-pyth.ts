@@ -119,6 +119,13 @@ interface GraphQLResponse<T> {
   errors?: Array<{ message: string }>;
 }
 
+interface ConditionsConnectionResponse {
+  conditionsConnection: {
+    nodes: ConditionRow[];
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  };
+}
+
 // ============ ABIs ============
 
 const pythResolverAbi = [
@@ -237,17 +244,28 @@ Examples:
 
 const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
-    $where: ConditionWhereInput
-    $take: Int
-    $skip: Int
+    $filters: ConditionFilter
+    $take: Int!
+    $after: String
   ) {
-    conditions(where: $where, take: $take, skip: $skip) {
-      id
-      endTime
-      chainId
-      resolver
-      description
-      settled
+    conditionsConnection(
+      filter: $filters
+      orderBy: { field: RESOLVES_AT, direction: ASC }
+      first: $take
+      after: $after
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id: conditionId
+        endTime
+        chainId
+        resolver
+        description
+        settled
+      }
     }
   }
 `;
@@ -543,27 +561,29 @@ async function main() {
 
   console.log('[settle-pyth] Fetching unsettled Pyth conditions...');
 
-  for (let skip = 0; conditions.length < MAX_CONDITIONS; skip += 50) {
+  let after: string | null = null;
+  while (conditions.length < MAX_CONDITIONS) {
     const take = Math.min(50, MAX_CONDITIONS - conditions.length);
-    const data = await gql<{ conditions: ConditionRow[] }>(
-      sapienceApiUrl,
-      CONDITIONS_QUERY,
-      {
-        where: {
-          chainId: { equals: CHAIN_ID },
-          endTime: { lte: nowSec },
-          settled: { equals: false },
-          resolver: {
-            equals: PYTH_RESOLVER_ADDRESS,
-            mode: 'insensitive',
+    const data: ConditionsConnectionResponse =
+      await gql<ConditionsConnectionResponse>(
+        sapienceApiUrl,
+        CONDITIONS_QUERY,
+        {
+          filters: {
+            chainId: CHAIN_ID,
+            resolvesAt: { lte: nowSec },
+            settled: false,
+            resolverAddress: PYTH_RESOLVER_ADDRESS,
           },
-        },
-        take,
-        skip,
-      }
-    );
-    if (data.conditions.length === 0) break;
-    conditions.push(...data.conditions);
+          take,
+          after,
+        }
+      );
+    if (data.conditionsConnection.nodes.length === 0) break;
+    conditions.push(...data.conditionsConnection.nodes);
+    const pageInfo = data.conditionsConnection.pageInfo;
+    if (!pageInfo.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
   }
 
   console.log(

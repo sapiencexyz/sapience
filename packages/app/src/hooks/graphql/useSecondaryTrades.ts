@@ -19,85 +19,93 @@ export type SecondaryTrade = {
 };
 
 const TRADES_BY_SELLER_QUERY = /* GraphQL */ `
-  query TradesBySeller(
-    $seller: String!
-    $chainId: Int
-    $take: Int
-    $skip: Int
-  ) {
-    trades(seller: $seller, chainId: $chainId, take: $take, skip: $skip) {
-      id
-      tradeHash
-      chainId
-      token
-      collateral
-      seller
-      buyer
-      tokenAmount
-      price
-      txHash
-      blockNumber
-      executedAt
+  query TradesBySeller($filter: TradeFilter, $first: Int, $after: String) {
+    tradesConnection(filter: $filter, first: $first, after: $after) {
+      nodes {
+        id
+        tradeHash
+        chainId
+        token
+        collateral
+        seller
+        buyer
+        tokenAmount
+        price
+        txHash
+        blockNumber
+        executedAt
+      }
     }
   }
 `;
 
 const TRADES_BY_BUYER_QUERY = /* GraphQL */ `
-  query TradesByBuyer($buyer: String!, $chainId: Int, $take: Int, $skip: Int) {
-    trades(buyer: $buyer, chainId: $chainId, take: $take, skip: $skip) {
-      id
-      tradeHash
-      chainId
-      token
-      collateral
-      seller
-      buyer
-      tokenAmount
-      price
-      txHash
-      blockNumber
-      executedAt
+  query TradesByBuyer($filter: TradeFilter, $first: Int, $after: String) {
+    tradesConnection(filter: $filter, first: $first, after: $after) {
+      nodes {
+        id
+        tradeHash
+        chainId
+        token
+        collateral
+        seller
+        buyer
+        tokenAmount
+        price
+        txHash
+        blockNumber
+        executedAt
+      }
     }
   }
 `;
 
 const ALL_TRADES_QUERY = /* GraphQL */ `
-  query AllTrades($chainId: Int, $take: Int, $skip: Int) {
-    trades(chainId: $chainId, take: $take, skip: $skip) {
-      id
-      tradeHash
-      chainId
-      token
-      collateral
-      seller
-      buyer
-      tokenAmount
-      price
-      txHash
-      blockNumber
-      executedAt
+  query AllTrades($filter: TradeFilter, $first: Int, $after: String) {
+    tradesConnection(filter: $filter, first: $first, after: $after) {
+      nodes {
+        id
+        tradeHash
+        chainId
+        token
+        collateral
+        seller
+        buyer
+        tokenAmount
+        price
+        txHash
+        blockNumber
+        executedAt
+      }
     }
   }
 `;
 
 const TRADE_QUERY = /* GraphQL */ `
-  query Trade($id: String!) {
-    trade(id: $id) {
-      id
-      tradeHash
-      chainId
-      token
-      collateral
-      seller
-      buyer
-      tokenAmount
-      price
-      txHash
-      blockNumber
-      executedAt
+  query Trade($tradeHash: Bytes32!) {
+    tradesConnection(filter: { tradeHash: $tradeHash }, first: 1) {
+      nodes {
+        id
+        tradeHash
+        chainId
+        token
+        collateral
+        seller
+        buyer
+        tokenAmount
+        price
+        txHash
+        blockNumber
+        executedAt
+      }
     }
   }
 `;
+
+const cursorFromSkip = (skip: number): string | null =>
+  skip > 0
+    ? btoa(JSON.stringify({ k: String(skip - 1), id: String(skip - 1) }))
+    : null;
 
 export function useSecondaryTradesByAddress(params: {
   address?: string;
@@ -117,24 +125,28 @@ export function useSecondaryTradesByAddress(params: {
     refetchOnReconnect: false,
     queryFn: async () => {
       const [sellResp, buyResp] = await Promise.all([
-        graphqlRequest<{ trades: SecondaryTrade[] }>(TRADES_BY_SELLER_QUERY, {
-          seller: address,
-          chainId: chainId ?? null,
-          take,
-          skip,
-        }),
-        graphqlRequest<{ trades: SecondaryTrade[] }>(TRADES_BY_BUYER_QUERY, {
-          buyer: address,
-          chainId: chainId ?? null,
-          take,
-          skip,
-        }),
+        graphqlRequest<{ tradesConnection: { nodes: SecondaryTrade[] } }>(
+          TRADES_BY_SELLER_QUERY,
+          {
+            filter: { seller: address, chainId: chainId ?? null },
+            first: take,
+            after: cursorFromSkip(skip),
+          }
+        ),
+        graphqlRequest<{ tradesConnection: { nodes: SecondaryTrade[] } }>(
+          TRADES_BY_BUYER_QUERY,
+          {
+            filter: { buyer: address, chainId: chainId ?? null },
+            first: take,
+            after: cursorFromSkip(skip),
+          }
+        ),
       ]);
       const seen = new Set<number>();
       const merged: SecondaryTrade[] = [];
       for (const t of [
-        ...(sellResp?.trades ?? []),
-        ...(buyResp?.trades ?? []),
+        ...(sellResp?.tradesConnection?.nodes ?? []),
+        ...(buyResp?.tradesConnection?.nodes ?? []),
       ]) {
         if (!seen.has(t.id)) {
           seen.add(t.id);
@@ -165,9 +177,9 @@ export function useSecondaryTrade(tradeHash?: string) {
     refetchOnReconnect: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        trade: SecondaryTrade | null;
-      }>(TRADE_QUERY, { id: tradeHash });
-      return resp?.trade ?? null;
+        tradesConnection: { nodes: SecondaryTrade[] };
+      }>(TRADE_QUERY, { tradeHash });
+      return resp?.tradesConnection?.nodes?.[0] ?? null;
     },
   });
 
@@ -192,11 +204,14 @@ export function useSecondaryTrades(params: {
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{ trades: SecondaryTrade[] }>(
-        ALL_TRADES_QUERY,
-        { chainId: chainId ?? null, take, skip }
-      );
-      return resp?.trades ?? [];
+      const resp = await graphqlRequest<{
+        tradesConnection: { nodes: SecondaryTrade[] };
+      }>(ALL_TRADES_QUERY, {
+        filter: { chainId: chainId ?? null },
+        first: take,
+        after: cursorFromSkip(skip),
+      });
+      return resp?.tradesConnection?.nodes ?? [];
     },
   });
 

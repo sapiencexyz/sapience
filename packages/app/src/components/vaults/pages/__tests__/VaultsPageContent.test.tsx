@@ -39,13 +39,13 @@ vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
 
 vi.mock('~/hooks/graphql/useAnalytics', () => ({
   useProtocolStats: () => mockUseProtocolStats(),
+  useVaultStats: () => mockUseProtocolStats(),
   getProtocolTvlWei: (
-    stat: { escrowBalance?: string; vaultAvailableAssets?: string } | null
+    protocolStat: { escrowBalance?: string } | null,
+    vaultStat: { availableAssets?: string } | null
   ) =>
-    stat
-      ? BigInt(stat.escrowBalance || '0') +
-        BigInt(stat.vaultAvailableAssets || '0')
-      : 0n,
+    BigInt(protocolStat?.escrowBalance || '0') +
+    BigInt(vaultStat?.availableAssets || '0'),
 }));
 
 vi.mock('~/lib/context/ConnectDialogContext', () => ({

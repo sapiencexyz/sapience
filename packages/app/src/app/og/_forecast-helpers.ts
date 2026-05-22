@@ -1,10 +1,10 @@
 // Re-exports from shared data layer for backward compatibility with OG routes.
 export {
-  type AttestationCondition,
-  type AttestationData,
-  ATTESTATION_BY_UID_QUERY,
+  type ForecastCondition,
+  type ForecastData,
+  FORECAST_BY_UID_QUERY,
   d18ToPercentage,
-  fetchAttestationByUid,
+  fetchForecastByUid,
 } from '~/lib/data/forecasts';
 
 export { getGraphQLEndpoint } from '~/lib/data/graphql';

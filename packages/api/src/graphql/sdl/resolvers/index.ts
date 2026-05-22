@@ -10,7 +10,7 @@
  *    type that has relation fields requiring a custom resolver
  *    (Category, Condition, ConditionGroup, etc.).
  *
- * Scalar-only GraphQL types (Pick, Trade, ActivityItem, PnlDataPoint,
+ * Scalar-only GraphQL types (Pick, Trade, ActivityItem,
  * …) don't need an entry here; graphql-js's default field resolver
  * reads the property off the parent directly, which is already what
  * every root resolver returns.
@@ -20,59 +20,86 @@ import type { Resolvers } from '../__generated__/resolvers';
 
 import { scalarResolvers } from './scalars';
 
-import { Attestation } from './Attestation';
-import { AttestationScore } from './AttestationScore';
+import { Account } from './Account';
+import { ForecastScore } from './ForecastScore';
 import { Category } from './Category';
 import { Condition } from './Condition';
 import { ConditionGroup } from './ConditionGroup';
-import { LegacyPosition } from './LegacyPosition';
-import { LegacyPrediction } from './LegacyPrediction';
-import { LimitOrder } from './LimitOrder';
+import { Activity, ActivitySource } from './Activity';
+import { ActivityConnection, QuestionConnection } from './ConnectionTotalCount';
+import { ActivityItemsPage } from './ActivityItemsPage';
+import { Forecast } from './Forecast';
 import { Pick } from './Pick';
-import { ReferralCode } from './ReferralCode';
+import { PickConfiguration } from './PickConfiguration';
+import { Position } from './Position';
+import { PositionsPage } from './PositionsPage';
+import { Question, ConditionOrConditionGroup } from './Question';
 import { User } from './User';
 
-import { accountActivity } from './queries/activity';
+import { accountActivityPage, activityPage } from './queries/activityPage';
+import { activity } from './queries/activity';
+import { leaderboard } from './queries/leaderboard';
+import { accountActivity } from './queries/deprecated/activity';
+import {
+  accountStats,
+  accountStatsLeaderboardPage,
+  accountStatsRank,
+} from './queries/accountStats';
 import {
   openInterestByCategory,
   openInterestByTimeToResolution,
+  protocol,
   protocolStats,
+  Protocol,
+  vault,
+  Vault,
+  vaultsConnection,
+  vaultStats,
 } from './queries/analytics';
 import {
   collateralBalance,
   collateralBalanceHistory,
-  collateralTransfers,
+  collateralTransfersConnection,
 } from './queries/collateralBalance';
-import { conditions } from './queries/conditions';
+import { collateralTransfers } from './queries/deprecated/collateralBalance';
+import { conditionsConnection } from './queries/conditions';
 import {
-  attestations,
-  categories,
-  condition,
   conditionGroup,
-  conditionGroups,
+  conditionGroupsConnection,
+} from './queries/conditionGroups';
+import { questionsConnection } from './queries/questions';
+import { conditions } from './queries/deprecated/conditions';
+import { conditionGroups } from './queries/deprecated/conditionGroups';
+import { questions } from './queries/deprecated/questions';
+import {
+  account,
+  accountsConnection,
+  categories,
+  categoriesConnection,
+  condition,
+  forecastsConnection,
   user,
-  users,
 } from './queries/crud';
+import { users } from './queries/deprecated/crud';
 import {
   claims,
   closes,
   pickConfiguration,
-  pickConfigurations,
-  positionCount,
-  positions,
+  pickConfigurationsConnection,
+  positionsConnection,
   positionsPage,
   prediction,
-  predictionCount,
-  predictions,
+  predictionsConnection,
 } from './queries/escrow';
-import { accountProfitRank, profitLeaderboard } from './queries/pnl';
-import { questions } from './queries/questions';
 import {
-  accountAccuracy,
-  accountAccuracyRank,
-  accuracyLeaderboard,
-} from './queries/score';
-import { referralCodes } from './queries/referrals';
+  pickConfigurations,
+  positions,
+  positionCount,
+  predictions,
+  predictionCount,
+} from './queries/deprecated/escrow';
+import { accountAccuracyRank, accuracyLeaderboardPage } from './queries/score';
+import { accountAccuracy, accountProfitRank } from './queries/deprecated/score';
 import { popularTags } from './queries/tags';
 import {
   accountBalance,
@@ -81,75 +108,109 @@ import {
   accountVolume,
   protocolVolume,
 } from './queries/timeSeries';
-import { trade, tradeCount, trades } from './queries/trade';
+import { node, nodes } from './queries/node';
+import { trade, tradesConnection } from './queries/trade';
+import { trades, tradeCount } from './queries/deprecated/trade';
 import { accountTotalVolume } from './queries/volume';
 
 export const resolvers: Resolvers = {
   ...scalarResolvers,
   Query: {
+    // Relay polymorphic refetch
+    node,
+    nodes,
+    activity,
+    leaderboard,
     // Leaderboards / account scores
     accountAccuracy,
     accountAccuracyRank,
-    accuracyLeaderboard,
     accountProfitRank,
-    profitLeaderboard,
-    // Time series
+    accuracyLeaderboardPage,
+    accountStatsLeaderboardPage,
+    accountStatsRank,
+    // Per-account stats time series (fat row)
+    accountStats,
+    // Activity + unified feeds
+    accountActivity,
+    accountActivityPage,
+    activityPage,
+    // Analytics
+    openInterestByCategory,
+    openInterestByTimeToResolution,
+    protocol,
+    protocolStats,
+    vault,
+    vaultsConnection,
+    vaultStats,
+    // Legacy per-metric time series (DEPRECATED — superseded by accountStats / accountStatsRank.volume / protocolStats).
     accountBalance,
     accountPnl,
     accountPredictionCount,
     accountVolume,
-    protocolVolume,
-    // Activity + unified feeds
-    accountActivity,
-    // Analytics
-    openInterestByCategory,
-    openInterestByTimeToResolution,
-    protocolStats,
-    // Collateral
     accountTotalVolume,
+    protocolVolume,
+    // Collateral
     collateralBalance,
     collateralBalanceHistory,
     collateralTransfers,
+    collateralTransfersConnection,
     // Conditions / questions
     conditions,
+    conditionsConnection,
     questions,
+    questionsConnection,
     // Escrow (predictions / positions / claims / closes / pick configs)
     claims,
     closes,
     pickConfiguration,
     pickConfigurations,
+    pickConfigurationsConnection,
     positionCount,
     positions,
+    positionsConnection,
     positionsPage,
     prediction,
     predictionCount,
     predictions,
+    predictionsConnection,
     // Secondary market trades
     trade,
     tradeCount,
     trades,
-    // Referrals
-    referralCodes,
+    tradesConnection,
     // Tags
     popularTags,
     // CRUD passthroughs
-    attestations,
+    account,
+    accountsConnection,
+    forecastsConnection,
     categories,
+    categoriesConnection,
     condition,
     conditionGroup,
     conditionGroups,
+    conditionGroupsConnection,
     user,
     users,
   },
-  Attestation,
-  AttestationScore,
+  Account,
+  Activity,
+  ActivityConnection,
+  ActivitySource,
+  ActivityItemsPage,
+  ForecastScore,
   Category,
   Condition,
   ConditionGroup,
-  LegacyPosition,
-  LegacyPrediction,
-  LimitOrder,
+  Forecast,
   Pick,
-  ReferralCode,
+  PickConfiguration,
+  Position,
+  PositionsPage,
+  Question,
+  QuestionConnection,
+  ConditionOrConditionGroup,
+  Protocol,
   User,
+  Vault,
 };

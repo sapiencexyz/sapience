@@ -95,62 +95,119 @@ export async function adminAuth(
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 
-const corsOptions: cors.CorsOptions = {
-  origin: (
-    origin: string | undefined,
-    callback: (error: Error | null, allow?: boolean) => void,
-    request?: Request
-  ) => {
-    // Allow all requests unless in production
-    if (!config.isProd) {
-      callback(null, true);
-      return;
-    }
+const PRIVATE_LAN_DEV_PORTS = new Set(['5173']);
 
-    // Check for API token in production
-    const authHeader = request?.headers?.authorization;
-    const apiToken = process.env.API_ACCESS_TOKEN;
-
-    // If API token is provided and matches, allow the request regardless of origin
-    if (
-      apiToken &&
-      authHeader?.startsWith('Bearer ') &&
-      authHeader.slice(7) === apiToken
-    ) {
-      callback(null, true);
-      return;
-    }
-
-    // Otherwise, only allow specific domains
-    if (
-      !origin || // Allow same-origin requests
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*sapience\.xyz$/.test(origin) ||
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*ethereal\.trade$/.test(origin) ||
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealtest\.net$/.test(origin) ||
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealdev\.net$/.test(origin) ||
-      /^https?:\/\/(app|docs)\.vercel\.app$/.test(origin) || // production Vercel
-      /^https?:\/\/(app|docs)-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(
-        origin
-      ) || // preview deploys (git branches and hash-based)
-      /^https?:\/\/([a-zA-Z0-9-]+-)?meridianxyz\.vercel\.app$/.test(origin) || // Meridian Vercel deploys
-      /^https?:\/\/localhost(:\d+)?$/.test(origin) // Allow localhost with optional port
-    ) {
-      callback(null, true);
-    } else {
-      // Reject without throwing — omits CORS headers so browsers still block,
-      // but avoids Sentry noise from originless requests (bots/crawlers/SSR).
-      callback(null, false);
-    }
-  },
-  optionsSuccessStatus: 200,
-  allowedHeaders: [
-    'Authorization',
-    'Content-Type',
-    'x-admin-signature',
-    'x-admin-signature-timestamp',
-    'X-Request-ID',
-  ],
+type CorsOriginOptions = {
+  allowPrivateLanDevOrigins?: boolean;
 };
+
+function isPrivateIpv4(hostname: string): boolean {
+  const octets = hostname.split('.').map((part) => Number(part));
+  if (
+    octets.length !== 4 ||
+    octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)
+  ) {
+    return false;
+  }
+
+  const [first, second] = octets;
+  return (
+    first === 10 ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168)
+  );
+}
+
+export function isAllowedCorsOrigin(
+  origin: string | undefined,
+  options: CorsOriginOptions = {}
+): boolean {
+  if (!origin) {
+    return true;
+  }
+
+  if (
+    /^https?:\/\/([a-zA-Z0-9-]+\.)*sapience\.xyz$/.test(origin) ||
+    /^https?:\/\/([a-zA-Z0-9-]+\.)*ethereal\.trade$/.test(origin) ||
+    /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealtest\.net$/.test(origin) ||
+    /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealdev\.net$/.test(origin) ||
+    /^https?:\/\/(app|docs)\.vercel\.app$/.test(origin) ||
+    /^https?:\/\/(app|docs)-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(
+      origin
+    ) ||
+    /^https?:\/\/([a-zA-Z0-9-]+-)?meridianxyz\.vercel\.app$/.test(origin) ||
+    /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+    /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
+  ) {
+    return true;
+  }
+
+  try {
+    const url = new URL(origin);
+    return (
+      options.allowPrivateLanDevOrigins === true &&
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      PRIVATE_LAN_DEV_PORTS.has(url.port) &&
+      isPrivateIpv4(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isStagingRequest(request: Request): boolean {
+  const host = request.hostname.toLowerCase();
+  return config.NODE_ENV === 'staging' || host === 'api.staging.sapience.xyz';
+}
+
+function createCorsOptions(request: Request): cors.CorsOptions {
+  return {
+    origin: (
+      origin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void
+    ) => {
+      // Allow all requests unless in production
+      if (!config.isProd) {
+        callback(null, true);
+        return;
+      }
+
+      // Check for API token in production
+      const authHeader = request.headers.authorization;
+      const apiToken = process.env.API_ACCESS_TOKEN;
+
+      // If API token is provided and matches, allow the request regardless of origin
+      if (
+        apiToken &&
+        authHeader?.startsWith('Bearer ') &&
+        authHeader.slice(7) === apiToken
+      ) {
+        callback(null, true);
+        return;
+      }
+
+      if (
+        isAllowedCorsOrigin(origin, {
+          allowPrivateLanDevOrigins: isStagingRequest(request),
+        })
+      ) {
+        callback(null, true);
+      } else {
+        // Reject without throwing — omits CORS headers so browsers still block,
+        // but avoids Sentry noise from originless requests (bots/crawlers/SSR).
+        callback(null, false);
+      }
+    },
+    optionsSuccessStatus: 200,
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'x-admin-signature',
+      'x-admin-signature-timestamp',
+      'X-Request-ID',
+    ],
+  };
+}
 
 // ─── Middleware setup ────────────────────────────────────────────────────────
 
@@ -213,15 +270,56 @@ export function setupMiddleware(app: Express) {
       crossOriginEmbedderPolicy: false,
     })
   );
-  app.use(cors(corsOptions));
+  app.use((req, res, next) => cors(createCorsOptions(req))(req, res, next));
 
-  // Rate limiting runs before body parsing so rejected requests are cheap
+  // Rate limiting runs before body parsing so rejected requests are cheap.
+  // Custom handler emits a structured `gql_shed` log line and returns a
+  // GraphQL-shaped error body with `extensions.code='IP_RATE_LIMIT'` so
+  // clients (and the load-test harness) can distinguish this layer from
+  // the per-IP and global concurrency layers — see concurrencyLimiter.ts.
   app.use(
     rateLimit({
       windowMs: config.RATE_LIMIT_WINDOW_MS,
       max: config.RATE_LIMIT_MAX_REQUESTS,
       standardHeaders: true,
       legacyHeaders: false,
+      handler: (req, res) => {
+        const reqIdRaw = (req as Request & { id?: string | number }).id;
+        const requestId =
+          typeof reqIdRaw === 'string' || typeof reqIdRaw === 'number'
+            ? String(reqIdRaw)
+            : ((req.headers['x-request-id'] as string) ?? undefined);
+        // Body isn't parsed yet — fall back to the client-supplied
+        // `x-operation-name` header. Trustworthy for our own benchmarks
+        // (we control the client); for adversarial traffic the
+        // server-derived occupant snapshot in the concurrency layers
+        // is the source of truth.
+        const operationName =
+          (req.headers['x-operation-name'] as string | undefined) ||
+          (req.headers['apollographql-client-name'] as string | undefined);
+        log.warn(
+          {
+            event: 'gql_shed',
+            layer: 'ip_rate_limit',
+            extensionsCode: 'IP_RATE_LIMIT',
+            ip: req.ip,
+            path: req.path,
+            requestId,
+            operationName,
+            windowMs: config.RATE_LIMIT_WINDOW_MS,
+            maxRequests: config.RATE_LIMIT_MAX_REQUESTS,
+          },
+          'gql_shed ip_rate_limit'
+        );
+        res.status(429).json({
+          errors: [
+            {
+              message: 'Too many requests. Please retry shortly.',
+              extensions: { code: 'IP_RATE_LIMIT' },
+            },
+          ],
+        });
+      },
     })
   );
 

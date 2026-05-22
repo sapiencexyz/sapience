@@ -18,14 +18,16 @@ type CombinedConditionDetail = {
 };
 
 const COMBINED_CONDITIONS_QUERY = /* GraphQL */ `
-  query CombinedConditions($where: ConditionWhereInput!) {
-    conditions(where: $where, take: 100) {
-      id
-      question
-      shortName
-      resolver
-      category {
-        slug
+  query CombinedConditions($filters: ConditionFilter!) {
+    conditionsConnection(filter: $filters, first: 100) {
+      nodes {
+        id: conditionId
+        question
+        shortName
+        resolver
+        category {
+          slug
+        }
       }
     }
   }

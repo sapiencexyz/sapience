@@ -49,7 +49,7 @@ const makePosition = (id: string) => ({
 });
 
 const page = (items: ReturnType<typeof makePosition>[], hasMore: boolean) => ({
-  positionsPage: { items, hasMore },
+  positionsConnection: { nodes: items, pageInfo: { hasNextPage: hasMore } },
 });
 
 beforeEach(() => {
@@ -135,11 +135,9 @@ describe('usePositionBalances — pagination', () => {
       expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
     expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
-      holder: HOLDER,
-      chainId: 42,
-      settled: true,
-      take: 25,
-      skip: 0,
+      filter: { holder: HOLDER, chainId: 42, settled: true },
+      first: 25,
+      after: null,
     });
   });
 

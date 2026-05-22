@@ -8,13 +8,21 @@ import {
 
 export const useConditionGroups = (opts?: {
   take?: number;
+  /** @deprecated Use `after` with a connection page cursor for pagination. */
   skip?: number;
+  /**
+   * Opaque cursor from the previous page's `endCursor`. Connections are
+   * cursor-first; `skip` remains only for legacy compatibility. Prefer
+   * `useInfiniteQuery` with `pageParam` driving `after`.
+   */
+  after?: string | null;
   chainId?: number;
   filters?: ConditionGroupFilters;
   includeEmptyGroups?: boolean;
 }) => {
   const take = opts?.take ?? 100;
-  const skip = opts?.skip ?? 0;
+  const after = opts?.after ?? null;
+  const skip = after == null ? (opts?.skip ?? 0) : 0;
   const chainId = opts?.chainId;
   const filters = opts?.filters;
   const includeEmptyGroups = opts?.includeEmptyGroups ?? false;
@@ -24,6 +32,7 @@ export const useConditionGroups = (opts?: {
       'conditionGroups',
       take,
       skip,
+      after,
       chainId,
       filters,
       includeEmptyGroups,
@@ -32,6 +41,7 @@ export const useConditionGroups = (opts?: {
       fetchConditionGroups({
         take,
         skip,
+        after,
         chainId,
         filters,
         includeEmptyGroups,

@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import {
-  buildConditionsWhereClause,
+  buildConditionsFilters,
   fetchConditions,
   fetchConditionsByIds,
   fetchConditionsByIdsQuery,
@@ -16,186 +16,164 @@ beforeEach(() => {
 });
 
 // ============================================================================
-// buildConditionsWhereClause
+// buildConditionsFilters
 // ============================================================================
 
-describe('buildConditionsWhereClause', () => {
+describe('buildConditionsFilters', () => {
   test('returns empty object when no args provided', () => {
-    expect(buildConditionsWhereClause()).toEqual({});
+    expect(buildConditionsFilters()).toEqual({});
   });
 
   test('returns empty object when filters are empty', () => {
-    expect(buildConditionsWhereClause(undefined, {})).toEqual({});
+    expect(buildConditionsFilters(undefined, {})).toEqual({});
   });
 
   test('filters by chainId', () => {
-    const result = buildConditionsWhereClause(5064014);
-    expect(result).toEqual({
-      AND: [{ chainId: { equals: 5064014 } }],
-    });
+    expect(buildConditionsFilters(5064014)).toEqual({ chainId: 5064014 });
   });
 
   describe('visibility filter', () => {
-    test('visibility=all includes both public and private', () => {
-      const result = buildConditionsWhereClause(undefined, {
-        visibility: 'all',
-      });
-      expect(result).toEqual({
-        AND: [
-          {
-            OR: [{ public: { equals: true } }, { public: { equals: false } }],
-          },
-        ],
+    test('visibility=all maps to ALL', () => {
+      expect(buildConditionsFilters(undefined, { visibility: 'all' })).toEqual({
+        visibility: 'ALL',
       });
     });
 
-    test('visibility=private filters to private only', () => {
-      const result = buildConditionsWhereClause(undefined, {
-        visibility: 'private',
-      });
-      expect(result).toEqual({
-        AND: [{ public: { equals: false } }],
-      });
+    test('visibility=private maps to PRIVATE', () => {
+      expect(
+        buildConditionsFilters(undefined, { visibility: 'private' })
+      ).toEqual({ visibility: 'PRIVATE' });
     });
 
-    test('visibility=public filters to public only', () => {
-      const result = buildConditionsWhereClause(undefined, {
-        visibility: 'public',
-      });
-      expect(result).toEqual({
-        AND: [{ public: { equals: true } }],
-      });
+    test('visibility=public maps to PUBLIC', () => {
+      expect(
+        buildConditionsFilters(undefined, { visibility: 'public' })
+      ).toEqual({ visibility: 'PUBLIC' });
     });
 
-    test('publicOnly fallback works when visibility is not set', () => {
-      const result = buildConditionsWhereClause(undefined, {
-        publicOnly: true,
-      });
-      expect(result).toEqual({
-        AND: [{ public: { equals: true } }],
+    test('publicOnly fallback maps to PUBLIC when visibility is not set', () => {
+      expect(buildConditionsFilters(undefined, { publicOnly: true })).toEqual({
+        visibility: 'PUBLIC',
       });
     });
 
     test('visibility=public takes precedence over publicOnly', () => {
-      const result = buildConditionsWhereClause(undefined, {
+      const result = buildConditionsFilters(undefined, {
         visibility: 'public',
         publicOnly: true,
       });
-      // Should only have one condition, not two
-      expect(result.AND).toHaveLength(1);
+      expect(result).toEqual({ visibility: 'PUBLIC' });
     });
   });
 
   describe('search filter', () => {
-    test('adds multi-field OR search', () => {
-      const result = buildConditionsWhereClause(undefined, {
+    test('passes search as-is to flat filter', () => {
+      expect(buildConditionsFilters(undefined, { search: 'bitcoin' })).toEqual({
         search: 'bitcoin',
-      });
-      expect(result).toEqual({
-        AND: [
-          {
-            OR: [
-              { question: { contains: 'bitcoin', mode: 'insensitive' } },
-              { shortName: { contains: 'bitcoin', mode: 'insensitive' } },
-              { description: { contains: 'bitcoin', mode: 'insensitive' } },
-            ],
-          },
-        ],
       });
     });
 
     test('trims whitespace from search', () => {
-      const result = buildConditionsWhereClause(undefined, {
-        search: '  bitcoin  ',
-      });
-      const orClause = (result.AND as Record<string, unknown>[])[0]
-        .OR as Record<string, unknown>[];
-      expect((orClause[0].question as Record<string, string>).contains).toBe(
-        'bitcoin'
-      );
+      expect(
+        buildConditionsFilters(undefined, { search: '  bitcoin  ' })
+      ).toEqual({ search: 'bitcoin' });
     });
 
     test('ignores empty/whitespace-only search', () => {
-      expect(buildConditionsWhereClause(undefined, { search: '' })).toEqual({});
-      expect(buildConditionsWhereClause(undefined, { search: '   ' })).toEqual(
-        {}
-      );
+      expect(buildConditionsFilters(undefined, { search: '' })).toEqual({});
+      expect(buildConditionsFilters(undefined, { search: '   ' })).toEqual({});
     });
   });
 
   describe('category filter', () => {
     test('filters by category slugs', () => {
-      const result = buildConditionsWhereClause(undefined, {
-        categorySlugs: ['crypto', 'politics'],
-      });
-      expect(result).toEqual({
-        AND: [
-          {
-            category: {
-              is: { slug: { in: ['crypto', 'politics'] } },
-            },
-          },
-        ],
-      });
+      expect(
+        buildConditionsFilters(undefined, {
+          categorySlugs: ['crypto', 'politics'],
+        })
+      ).toEqual({ categorySlugs: ['crypto', 'politics'] });
     });
 
     test('ignores empty categorySlugs array', () => {
-      expect(
-        buildConditionsWhereClause(undefined, { categorySlugs: [] })
-      ).toEqual({});
+      expect(buildConditionsFilters(undefined, { categorySlugs: [] })).toEqual(
+        {}
+      );
     });
   });
 
   describe('time filters', () => {
-    test('endTimeGte only', () => {
-      const result = buildConditionsWhereClause(undefined, {
-        endTimeGte: 1000,
-      });
-      expect(result).toEqual({
-        AND: [{ endTime: { gte: 1000 } }],
+    test('endTimeGte maps to resolvesAt.gte', () => {
+      expect(buildConditionsFilters(undefined, { endTimeGte: 1000 })).toEqual({
+        resolvesAt: { gte: 1000 },
       });
     });
 
-    test('endTimeLte only', () => {
-      const result = buildConditionsWhereClause(undefined, {
-        endTimeLte: 2000,
-      });
-      expect(result).toEqual({
-        AND: [{ endTime: { lte: 2000 } }],
+    test('endTimeLte maps to resolvesAt.lte', () => {
+      expect(buildConditionsFilters(undefined, { endTimeLte: 2000 })).toEqual({
+        resolvesAt: { lte: 2000 },
       });
     });
 
-    test('both endTimeGte and endTimeLte', () => {
-      const result = buildConditionsWhereClause(undefined, {
-        endTimeGte: 1000,
-        endTimeLte: 2000,
-      });
-      expect(result).toEqual({
-        AND: [{ endTime: { gte: 1000, lte: 2000 } }],
-      });
+    test('both bounds combine', () => {
+      expect(
+        buildConditionsFilters(undefined, {
+          endTimeGte: 1000,
+          endTimeLte: 2000,
+        })
+      ).toEqual({ resolvesAt: { gte: 1000, lte: 2000 } });
     });
   });
 
-  test('ungroupedOnly filter', () => {
-    const result = buildConditionsWhereClause(undefined, {
-      ungroupedOnly: true,
-    });
-    expect(result).toEqual({
-      AND: [{ conditionGroupId: { equals: null } }],
+  test('ungroupedOnly maps to conditionGroupId null filter', () => {
+    expect(buildConditionsFilters(undefined, { ungroupedOnly: true })).toEqual({
+      conditionGroupId: { isNull: true },
     });
   });
 
-  test('combines multiple filters with AND', () => {
-    const result = buildConditionsWhereClause(5064014, {
+  describe('marketAddress filter', () => {
+    test('forwards marketAddress as-is (case preserved here; server lowercases)', () => {
+      expect(
+        buildConditionsFilters(undefined, { marketAddress: '0xCAFE' })
+      ).toEqual({ marketAddress: '0xCAFE' });
+    });
+
+    test('forwards marketAddressIn array', () => {
+      expect(
+        buildConditionsFilters(undefined, {
+          marketAddressIn: ['0xAAA', '0xBBB'],
+        })
+      ).toEqual({ marketAddressIn: ['0xAAA', '0xBBB'] });
+    });
+
+    test('ignores empty marketAddressIn array', () => {
+      expect(
+        buildConditionsFilters(undefined, { marketAddressIn: [] })
+      ).toEqual({});
+    });
+
+    test('pairs with explicit chainId when supplied', () => {
+      expect(buildConditionsFilters(8453, { marketAddress: '0xCAFE' })).toEqual(
+        { chainId: 8453, marketAddress: '0xCAFE' }
+      );
+    });
+  });
+
+  test('combines multiple filters as flat object', () => {
+    const result = buildConditionsFilters(5064014, {
       visibility: 'public',
       search: 'bitcoin',
       categorySlugs: ['crypto'],
       endTimeGte: 1000,
       ungroupedOnly: true,
     });
-    const andClauses = result.AND as Record<string, unknown>[];
-    // chainId + visibility + search + categorySlugs + endTime + ungroupedOnly
-    expect(andClauses).toHaveLength(6);
+    expect(result).toEqual({
+      chainId: 5064014,
+      visibility: 'PUBLIC',
+      search: 'bitcoin',
+      categorySlugs: ['crypto'],
+      resolvesAt: { gte: 1000 },
+      conditionGroupId: { isNull: true },
+    });
   });
 });
 
@@ -204,52 +182,156 @@ describe('buildConditionsWhereClause', () => {
 // ============================================================================
 
 describe('fetchConditions', () => {
-  test('uses default take=50 and skip=0', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditions: [] });
+  test('uses default take=50 and after=null', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: [] },
+    });
     await fetchConditions();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ take: 50, skip: 0 })
+      expect.objectContaining({ take: 50, after: null })
     );
   });
 
-  test('passes custom take and skip', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditions: [] });
-    await fetchConditions({ take: 10, skip: 5 });
+  test('passes the cursor through as `after` and does NOT walk pages', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: [] },
+    });
+    await fetchConditions({ take: 10, after: 'cursor-X' });
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ take: 10, skip: 5 })
+      expect.objectContaining({ take: 10, after: 'cursor-X' })
     );
   });
 
-  test('returns conditions from response', async () => {
-    const conditions = [{ id: '1', question: 'test' }];
-    mockGraphqlRequest.mockResolvedValue({ conditions });
-    const result = await fetchConditions();
-    expect(result).toEqual(conditions);
+  test('walks cursor pages for legacy skip windows', async () => {
+    const firstBatch = Array.from({ length: 100 }, (_, i) => ({
+      id: String(i + 1),
+      question: `Condition ${i + 1}`,
+    }));
+    const secondBatch = Array.from({ length: 5 }, (_, i) => ({
+      id: String(i + 101),
+      question: `Condition ${i + 101}`,
+    }));
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        conditionsConnection: {
+          nodes: firstBatch,
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-100' },
+        },
+      })
+      .mockResolvedValueOnce({
+        conditionsConnection: {
+          nodes: secondBatch,
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchConditions({ take: 10, skip: 95 });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
+      take: 100,
+      after: null,
+    });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
+      take: 5,
+      after: 'cursor-100',
+    });
+    expect(result.map((item) => item.id)).toEqual([
+      '96',
+      '97',
+      '98',
+      '99',
+      '100',
+      '101',
+      '102',
+      '103',
+      '104',
+      '105',
+    ]);
   });
 
-  test('returns empty array when conditions is null', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditions: null });
+  test('walks cursor pages for legacy large-take callers', async () => {
+    const firstBatch = Array.from({ length: 100 }, (_, i) => ({
+      id: String(i + 1),
+      question: `Condition ${i + 1}`,
+    }));
+    const secondBatch = Array.from({ length: 50 }, (_, i) => ({
+      id: String(i + 101),
+      question: `Condition ${i + 101}`,
+    }));
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        conditionsConnection: {
+          nodes: firstBatch,
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-100' },
+        },
+      })
+      .mockResolvedValueOnce({
+        conditionsConnection: {
+          nodes: secondBatch,
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchConditions({ take: 150 });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1].take).toBe(100);
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
+      take: 50,
+      after: 'cursor-100',
+    });
+    expect(result).toHaveLength(150);
+  });
+
+  test('caps cursor callers at one server-sized request when `after` is provided', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: [] },
+    });
+    await fetchConditions({ take: 500, after: 'cursor-X' });
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
+      take: 100,
+      after: 'cursor-X',
+    });
+  });
+
+  test('unwraps items from conditionsConnection', async () => {
+    const items = [{ id: '1', question: 'test' }];
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: items },
+    });
+    const result = await fetchConditions();
+    expect(result).toEqual(items);
+  });
+
+  test('returns empty array when conditionsConnection is null', async () => {
+    mockGraphqlRequest.mockResolvedValue({ conditionsConnection: null });
     const result = await fetchConditions();
     expect(result).toEqual([]);
   });
 
-  test('omits where clause when no filters', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditions: [] });
+  test('omits filters when none provided', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: [] },
+    });
     await fetchConditions();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ where: undefined })
+      expect.objectContaining({ filter: undefined })
     );
   });
 
-  test('includes where clause when filters provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditions: [] });
+  test('includes filters when filters provided', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: [] },
+    });
     await fetchConditions({ chainId: 5064014 });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].where).toBeDefined();
-    expect(call[1].where.AND).toEqual([{ chainId: { equals: 5064014 } }]);
+    expect(call[1].filter).toEqual({ chainId: 5064014 });
   });
 });
 
@@ -258,7 +340,7 @@ describe('fetchConditions', () => {
 // ============================================================================
 
 describe('fetchConditionsByIds', () => {
-  const query = 'query { conditions { id } }';
+  const query = 'query { conditionsConnection { items { id } } }';
 
   test('returns empty array for empty ids', async () => {
     const result = await fetchConditionsByIds(query, []);
@@ -269,7 +351,7 @@ describe('fetchConditionsByIds', () => {
   test('single request for ids <= PAGE_SIZE (100)', async () => {
     const ids = Array.from({ length: 50 }, (_, i) => `id-${i}`);
     mockGraphqlRequest.mockResolvedValue({
-      conditions: ids.map((id) => ({ id })),
+      conditionsConnection: { nodes: ids.map((id) => ({ id })) },
     });
 
     const result = await fetchConditionsByIds(query, ids);
@@ -280,7 +362,7 @@ describe('fetchConditionsByIds', () => {
   test('exactly 100 ids uses single request', async () => {
     const ids = Array.from({ length: 100 }, (_, i) => `id-${i}`);
     mockGraphqlRequest.mockResolvedValue({
-      conditions: ids.map((id) => ({ id })),
+      conditionsConnection: { nodes: ids.map((id) => ({ id })) },
     });
 
     await fetchConditionsByIds(query, ids);
@@ -291,44 +373,43 @@ describe('fetchConditionsByIds', () => {
     const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
 
     mockGraphqlRequest.mockResolvedValue({
-      conditions: [{ id: 'result' }],
+      conditionsConnection: { nodes: [{ id: 'result' }] },
     });
 
     const result = await fetchConditionsByIds(query, ids);
 
-    // 250 ids → 3 chunks (100, 100, 50) → all 3 in first concurrent batch
     expect(mockGraphqlRequest).toHaveBeenCalledTimes(3);
-    expect(result).toHaveLength(3); // 3 chunks, 1 result each
+    expect(result).toHaveLength(3);
   });
 
   test('respects MAX_CONCURRENT_REQUESTS (3)', async () => {
     const ids = Array.from({ length: 450 }, (_, i) => `id-${i}`);
-    const callOrder: number[] = [];
 
-    mockGraphqlRequest.mockImplementation(() => {
-      callOrder.push(Date.now());
-      return Promise.resolve({ conditions: [{ id: 'x' }] });
-    });
+    mockGraphqlRequest.mockImplementation(() =>
+      Promise.resolve({ conditionsConnection: { nodes: [{ id: 'x' }] } })
+    );
 
     await fetchConditionsByIds(query, ids);
-
-    // 450 ids → 5 chunks → 2 batches (3 + 2)
     expect(mockGraphqlRequest).toHaveBeenCalledTimes(5);
   });
 
-  test('uses custom resultKey', async () => {
-    const ids = ['id-1'];
+  test('uses filters: { ids } as the variable', async () => {
+    const ids = ['id-1', 'id-2'];
     mockGraphqlRequest.mockResolvedValue({
-      myCustomKey: [{ id: 'id-1' }],
+      conditionsConnection: { nodes: [{ id: 'id-1' }, { id: 'id-2' }] },
     });
 
-    const result = await fetchConditionsByIds(query, ids, 'myCustomKey');
-    expect(result).toEqual([{ id: 'id-1' }]);
+    await fetchConditionsByIds(query, ids);
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(query, {
+      filter: { ids },
+    });
   });
 
   test('handles null response gracefully', async () => {
     const ids = ['id-1'];
-    mockGraphqlRequest.mockResolvedValue({ conditions: null });
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: null },
+    });
 
     const result = await fetchConditionsByIds(query, ids);
     expect(result).toEqual([]);
@@ -338,8 +419,12 @@ describe('fetchConditionsByIds', () => {
     const ids = Array.from({ length: 200 }, (_, i) => `id-${i}`);
 
     mockGraphqlRequest
-      .mockResolvedValueOnce({ conditions: [{ id: 'a' }, { id: 'b' }] })
-      .mockResolvedValueOnce({ conditions: [{ id: 'c' }] });
+      .mockResolvedValueOnce({
+        conditionsConnection: { nodes: [{ id: 'a' }, { id: 'b' }] },
+      })
+      .mockResolvedValueOnce({
+        conditionsConnection: { nodes: [{ id: 'c' }] },
+      });
 
     const result = await fetchConditionsByIds(query, ids);
     expect(result).toEqual([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
@@ -351,19 +436,20 @@ describe('fetchConditionsByIds', () => {
 // ============================================================================
 
 describe('fetchConditionsByIdsQuery', () => {
-  test('delegates to fetchConditionsByIds with correct query', async () => {
-    mockGraphqlRequest.mockResolvedValue({ conditions: [] });
+  test('returns empty array without calling graphql for empty ids', async () => {
     await fetchConditionsByIdsQuery([]);
     expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
-  test('returns typed ConditionById results', async () => {
-    const conditions = [
+  test('returns typed ConditionById results from conditionsConnection', async () => {
+    const items = [
       { id: '1', shortName: 'BTC', question: 'Will BTC hit 100k?' },
     ];
-    mockGraphqlRequest.mockResolvedValue({ conditions });
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: items },
+    });
 
     const result = await fetchConditionsByIdsQuery(['1']);
-    expect(result).toEqual(conditions);
+    expect(result).toEqual(items);
   });
 });

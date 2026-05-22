@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { formatDistanceStrict } from 'date-fns';
-import { fetchAttestationByUid, d18ToPercentage } from '../_forecast-helpers';
+import { fetchForecastByUid, d18ToPercentage } from '../_forecast-helpers';
 import {
   og,
   WIDTH,
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
       return `${days} ${days === 1 ? 'day' : 'days'}`;
     };
 
-    // If uid is provided, fetch attestation data from GraphQL API
+    // If uid is provided, fetch forecast data from GraphQL API
     const uidParam = searchParams.get('uid');
     let question =
       normalizeText(searchParams.get('q'), 160) || 'Forecast on Sapience';
@@ -77,20 +77,17 @@ export async function GET(req: Request) {
     const horizonParam = normalizeText(searchParams.get('hor'), 48);
     let oddsRaw = normalizeText(searchParams.get('odds'), 8);
     if (uidParam) {
-      const attestation = await fetchAttestationByUid(uidParam).catch(
-        () => null
-      );
-      if (attestation) {
+      const forecast = await fetchForecastByUid(uidParam).catch(() => null);
+      if (forecast) {
         question =
-          normalizeText(attestation.condition?.question ?? null, 160) ||
-          question;
-        createdTs = attestation.time || createdTs;
-        if (attestation.condition?.endTime) {
-          endTs = attestation.condition.endTime;
+          normalizeText(forecast.condition?.question ?? null, 160) || question;
+        createdTs = forecast.attestedAt || createdTs;
+        if (forecast.condition?.endTime) {
+          endTs = forecast.condition.endTime;
         }
-        if (attestation.prediction) {
+        if (forecast.forecast) {
           try {
-            const pct = Math.round(d18ToPercentage(attestation.prediction));
+            const pct = Math.round(d18ToPercentage(forecast.forecast));
             oddsRaw = `${pct}`;
           } catch {
             // keep existing oddsRaw

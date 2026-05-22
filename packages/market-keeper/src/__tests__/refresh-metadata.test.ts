@@ -74,25 +74,38 @@ function makeMarket(
 }
 
 describe('fetchAllExistingConditions', () => {
-  it('sends a where clause that filters to public + unsettled + non-empty similarMarkets', async () => {
-    fetchQueue.push(() => jsonResponse({ data: { conditions: [] } }));
+  // Build a conditionsConnection response page with the given nodes and
+  // an optional next-page cursor. `endCursor` is null on the final page.
+  const connectionPage = (
+    nodes: unknown[],
+    endCursor: string | null
+  ): unknown => ({
+    data: {
+      conditionsConnection: {
+        nodes,
+        pageInfo: { hasNextPage: endCursor !== null, endCursor },
+      },
+    },
+  });
+
+  it('sends a ConditionFilter that filters to public + unsettled + non-empty similarMarkets', async () => {
+    fetchQueue.push(() => jsonResponse(connectionPage([], null)));
 
     await fetchAllExistingConditions('https://api.example.com');
 
     expect(fetchCalls).toHaveLength(1);
     const body = JSON.parse(fetchCalls[0].init!.body as string);
-    expect(body.variables.where).toEqual({
-      public: { equals: true },
-      settled: { equals: false },
-      similarMarkets: { isEmpty: false },
+    expect(body.variables.filter).toEqual({
+      visibility: 'PUBLIC',
+      settled: false,
+      hasSimilarMarkets: true,
     });
-    expect(body.variables.orderBy).toEqual([{ id: 'asc' }]);
+    expect(body.variables.first).toBe(100);
+    expect(body.variables.after).toBeNull();
     expect(fetchCalls[0].url.endsWith('/graphql')).toBe(true);
   });
 
-  it('paginates with deterministic orderBy until a page returns < pageSize', async () => {
-    // Two full pages of 100 then an empty short page — same shape
-    // refresh-volume's fetchActiveConditionIds uses.
+  it('paginates via pageInfo.endCursor until hasNextPage=false', async () => {
     const page1 = Array.from({ length: 100 }, (_, i) => ({
       id: `0x${(i + 1).toString().padStart(3, '0')}`,
       endTime: 1700000000,
@@ -111,30 +124,30 @@ describe('fetchAllExistingConditions', () => {
       },
     ];
 
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page1 } }));
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page2 } }));
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page3 } }));
+    fetchQueue.push(() => jsonResponse(connectionPage(page1, 'cursor-1')));
+    fetchQueue.push(() => jsonResponse(connectionPage(page2, 'cursor-2')));
+    fetchQueue.push(() => jsonResponse(connectionPage(page3, null)));
 
     const result = await fetchAllExistingConditions('https://api.example.com');
 
     expect(result.size).toBe(201);
     expect(fetchCalls).toHaveLength(3);
-    expect(JSON.parse(fetchCalls[0].init!.body as string).variables.skip).toBe(
-      0
+    expect(JSON.parse(fetchCalls[0].init!.body as string).variables.after).toBe(
+      null
     );
-    expect(JSON.parse(fetchCalls[1].init!.body as string).variables.skip).toBe(
-      100
+    expect(JSON.parse(fetchCalls[1].init!.body as string).variables.after).toBe(
+      'cursor-1'
     );
-    expect(JSON.parse(fetchCalls[2].init!.body as string).variables.skip).toBe(
-      200
+    expect(JSON.parse(fetchCalls[2].init!.body as string).variables.after).toBe(
+      'cursor-2'
     );
   });
 
   it('maps GraphQL fields onto the ExistingCondition shape', async () => {
     fetchQueue.push(() =>
-      jsonResponse({
-        data: {
-          conditions: [
+      jsonResponse(
+        connectionPage(
+          [
             {
               id: '0xabc',
               endTime: 1700000000,
@@ -153,8 +166,9 @@ describe('fetchAllExistingConditions', () => {
               },
             },
           ],
-        },
-      })
+          null
+        )
+      )
     );
 
     const result = await fetchAllExistingConditions('https://api.example.com');

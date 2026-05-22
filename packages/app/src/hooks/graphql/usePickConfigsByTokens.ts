@@ -7,11 +7,13 @@ import type { PickConfigData, PickData } from '~/hooks/graphql/usePositions';
 
 // tokens arg on pickConfigurations added in PR #1440. `picks.condition`
 // is fetched inline so callers can build their conditionsMap from a
-// single round trip — see Pick resolver + pickConfigurations resolver.
-const PICK_CONFIGS_BY_TOKENS_QUERY = `
+// single round trip. Use the deprecated bare-list field here for staging
+// compatibility while API/app deploys can be briefly out of sync.
+const PICK_CONFIGS_BY_TOKENS_QUERY = /* GraphQL */ `
   query PickConfigsByTokens($tokens: [String!]) {
     pickConfigurations(tokens: $tokens, take: 100) {
-      id
+      id: pickConfigId
+      pickConfigId
       chainId
       marketAddress
       totalPredictorCollateral
@@ -32,7 +34,8 @@ const PICK_CONFIGS_BY_TOKENS_QUERY = `
         conditionId
         predictedOutcome
         condition {
-          id
+          id: conditionId
+          conditionId
           shortName
           optionName
           question

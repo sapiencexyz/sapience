@@ -3,33 +3,27 @@ import { useAccount } from 'wagmi';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { ToastAction } from '@sapience/ui/components/ui/toast';
-import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 import { useRouter } from 'next/navigation';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 
 const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
   query RecentCounterpartyPredictions(
-    $address: String!
-    $take: Int
-    $skip: Int
-    $orderBy: PredictionSortField
-    $orderDirection: SortOrder
+    $filter: PredictionFilter
+    $first: Int
+    $orderBy: PredictionOrder
   ) {
-    predictions(
-      address: $address
-      take: $take
-      skip: $skip
-      orderBy: $orderBy
-      orderDirection: $orderDirection
-    ) {
-      id
-      predictionId
-      chainId
-      predictor
-      counterparty
-      marketAddress
-      createTxHash
-      createdAt
+    predictionsConnection(filter: $filter, first: $first, orderBy: $orderBy) {
+      nodes {
+        id
+        predictionId
+        chainId
+        predictor
+        counterparty
+        marketAddress
+        createTxHash
+        createdAt
+      }
     }
   }
 `;
@@ -46,7 +40,7 @@ type Prediction = {
 };
 
 type PredictionsQueryResponse = {
-  predictions: Prediction[];
+  predictionsConnection: { nodes: Prediction[] };
 };
 
 export function useTradeSettledNotifications() {
@@ -65,14 +59,12 @@ export function useTradeSettledNotifications() {
       const result = await graphqlRequest<PredictionsQueryResponse>(
         RECENT_PREDICTIONS_QUERY,
         {
-          address: address.toLowerCase(),
-          take: 10,
-          skip: 0,
-          orderBy: 'CREATED_AT',
-          orderDirection: 'desc',
+          filter: { address: address.toLowerCase() },
+          first: 10,
+          orderBy: { field: 'CREATED_AT', direction: 'DESC' },
         }
       );
-      return result.predictions;
+      return result.predictionsConnection.nodes;
     },
     enabled: !!address,
     refetchInterval: 3000, // Poll every 3 seconds

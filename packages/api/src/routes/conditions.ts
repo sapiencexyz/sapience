@@ -16,14 +16,75 @@ function isHttpUrl(value: unknown): boolean {
   }
 }
 
-// Polymarket returns some tag labels miscased (e.g. `temperature`). Uppercase
-// the first char and preserve the rest so acronyms like `UFC` stay intact.
+// AP-style title-case "small words" that stay lowercase when they're
+// neither the first nor the last word. Articles, coordinating
+// conjunctions, and prepositions ≤ 3 letters. Includes "vs" (sports
+// journalism convention) and "x" (Polymarket matchup separator).
+const TITLE_CASE_SMALL_WORDS = new Set([
+  // Articles
+  'a',
+  'an',
+  'the',
+  // Coordinating conjunctions
+  'and',
+  'but',
+  'for',
+  'nor',
+  'or',
+  'so',
+  'yet',
+  // Short prepositions (≤3 letters)
+  'as',
+  'at',
+  'by',
+  'in',
+  'of',
+  'off',
+  'on',
+  'per',
+  'to',
+  'up',
+  'via',
+  // Domain-specific
+  'vs',
+  'x',
+]);
+
+// AP-style Title Case. Each word:
+//   1) Acronym/mixed-case preservation — any word containing an
+//      uppercase letter is left alone (UFC, NFL, DeFi, iOS, F1, U.S.).
+//   2) First and last words are always capitalized (even if they're
+//      small words: "Of Mice and Men", "Things to Come To").
+//   3) Small-word skip — articles, coord. conjunctions, ≤3-letter
+//      prepositions stay lowercase. ALL-CAPS forms ("OR" the Oregon
+//      state code) bypass this and are treated as acronyms.
+// Splits on space only — hyphenated tags like "updated-tag" stay as
+// one word ("Updated-tag").
 // Mirrors normalizeTagLabel in packages/market-keeper/src/generate/tags.ts.
 function normalizeTags(tags: unknown): string[] {
   if (!Array.isArray(tags)) return [];
   return tags
     .filter((t): t is string => typeof t === 'string' && t.length > 0)
-    .map((t) => t.charAt(0).toUpperCase() + t.slice(1));
+    .map((t) => {
+      const words = t.split(' ');
+      return words
+        .map((w, i) => {
+          const isFirst = i === 0;
+          const isLast = i === words.length - 1;
+          const isAllUpper = /[A-Z]/.test(w) && w === w.toUpperCase();
+          if (
+            !isFirst &&
+            !isLast &&
+            !isAllUpper &&
+            TITLE_CASE_SMALL_WORDS.has(w.toLowerCase())
+          ) {
+            return w.toLowerCase();
+          }
+          if (/[A-Z]/.test(w)) return w;
+          return w.charAt(0).toUpperCase() + w.slice(1);
+        })
+        .join(' ');
+    });
 }
 
 // GET route removed in favor of GraphQL. Use GraphQL `conditions` query for reads.
@@ -602,6 +663,7 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
           similarMarketVolume?: number;
           similarMarketImage?: string;
           groupName?: string;
+          endTime?: number;
         };
       }>;
     };
@@ -618,6 +680,25 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
         return res.status(400).json({ message: `Invalid id format: ${u.id}` });
       }
     }
+
+    // Pre-fetch existing rows ONLY when at least one update touches endTime.
+    // Mirrors the per-condition PUT /admin/conditions/:id guard at
+    // L832-L836: settled rows reject endTime changes; their other fields
+    // are still updatable. Skipping the query when no endTime is in scope
+    // keeps the common metadata-only flow on one round-trip per row.
+    const touchesEndTime = updates.some(
+      (u) => typeof u.fields.endTime === 'number'
+    );
+    const existingById = touchesEndTime
+      ? new Map(
+          (
+            await prisma.condition.findMany({
+              where: { id: { in: [...new Set(updates.map((u) => u.id))] } },
+              select: { id: true, endTime: true, settled: true },
+            })
+          ).map((r) => [r.id, r])
+        )
+      : new Map<string, { id: string; endTime: number; settled: boolean }>();
 
     // Batch-resolve groupNames: find or create all referenced groups upfront
     const uniqueGroupNames = [
@@ -655,6 +736,7 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
 
     let updated = 0;
     let failed = 0;
+    let endTimeSkippedSettled = 0;
 
     for (const u of updates) {
       const f = u.fields;
@@ -686,6 +768,21 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
           data.displayOrder = 0;
         }
       }
+      if (
+        typeof f.endTime === 'number' &&
+        Number.isInteger(f.endTime) &&
+        f.endTime > 0
+      ) {
+        const existing = existingById.get(u.id);
+        // Skip silently when the row is unknown (the per-row prisma.update
+        // below will then fail). When the row is settled, refuse the
+        // change to mirror PUT /admin/conditions/:id at L832-L836.
+        if (existing && existing.settled && existing.endTime !== f.endTime) {
+          endTimeSkippedSettled++;
+        } else if (!existing || existing.endTime !== f.endTime) {
+          data.endTime = f.endTime;
+        }
+      }
 
       if (Object.keys(data).length === 0) continue;
 
@@ -697,7 +794,12 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
       }
     }
 
-    return res.status(200).json({ updated, failed, requested: updates.length });
+    return res.status(200).json({
+      updated,
+      failed,
+      requested: updates.length,
+      endTimeSkippedSettled,
+    });
   } catch (error: unknown) {
     log.error({ err: error }, 'Error in batch metadata update:');
     return res.status(500).json({ message: 'Internal Server Error' });

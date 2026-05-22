@@ -171,34 +171,56 @@ async function gql<T>(
 
 const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
-    $where: ConditionWhereInput
-    $take: Int
-    $skip: Int
+    $filters: ConditionFilter
+    $take: Int!
+    $after: String
   ) {
-    conditions(where: $where, take: $take, skip: $skip) {
-      id
-      endTime
-      chainId
-      resolver
-      description
-      settled
+    conditionsConnection(
+      filter: $filters
+      orderBy: { field: RESOLVES_AT, direction: ASC }
+      first: $take
+      after: $after
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id: conditionId
+        endTime
+        chainId
+        resolver
+        description
+        settled
+      }
     }
   }
 `;
 
 const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
   query PythDebugConditions(
-    $where: ConditionWhereInput
-    $take: Int
-    $skip: Int
+    $filters: ConditionFilter
+    $take: Int!
+    $after: String
   ) {
-    conditions(where: $where, take: $take, skip: $skip) {
-      id
-      endTime
-      chainId
-      resolver
-      question
-      description
+    conditionsConnection(
+      filter: $filters
+      orderBy: { field: RESOLVES_AT, direction: ASC }
+      first: $take
+      after: $after
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id: conditionId
+        endTime
+        chainId
+        resolver
+        question
+        description
+      }
     }
   }
 `;
@@ -755,24 +777,29 @@ async function main() {
 
   // 1) Find ended, unsettled conditions whose resolver is this PythResolver.
   const conditions: ConditionRow[] = [];
-  for (let skip = 0; conditions.length < args.maxConditions; skip += 50) {
+  let after: string | null = null;
+  while (conditions.length < args.maxConditions) {
     const take = Math.min(50, args.maxConditions - conditions.length);
-    const data = await gql<{ conditions: ConditionRow[] }>(
-      args.graphqlUrl,
-      CONDITIONS_QUERY,
-      {
-        where: {
-          chainId: { equals: args.chainId },
-          endTime: { lte: nowSec },
-          settled: { equals: false },
-          resolver: { equals: args.conditionResolver, mode: 'insensitive' },
-        },
-        take,
-        skip,
-      }
-    );
-    if (data.conditions.length === 0) break;
-    conditions.push(...data.conditions);
+    const data = await gql<{
+      conditionsConnection: {
+        nodes: ConditionRow[];
+        pageInfo: { hasNextPage: boolean; endCursor: string | null };
+      };
+    }>(args.graphqlUrl, CONDITIONS_QUERY, {
+      filters: {
+        chainId: args.chainId,
+        maxEndTime: nowSec,
+        settled: false,
+        resolver: args.conditionResolver,
+      },
+      take,
+      after,
+    });
+    if (data.conditionsConnection.nodes.length === 0) break;
+    conditions.push(...data.conditionsConnection.nodes);
+    const pageInfo = data.conditionsConnection.pageInfo;
+    if (!pageInfo.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
   }
 
   console.log(
@@ -783,21 +810,19 @@ async function main() {
   // If we found none, print a small debug sample to help diagnose DB/indexer mismatch.
   if (conditions.length === 0) {
     try {
-      const dbg = await gql<{ conditions: DebugConditionRow[] }>(
-        args.graphqlUrl,
-        PYTH_DEBUG_CONDITIONS_QUERY,
-        {
-          where: {
-            chainId: { equals: args.chainId },
-            endTime: { lte: nowSec },
-            question: { contains: 'PYTH', mode: 'insensitive' },
-          },
-          take: 10,
-          skip: 0,
-        }
-      );
+      const dbg = await gql<{
+        conditionsConnection: { nodes: DebugConditionRow[] };
+      }>(args.graphqlUrl, PYTH_DEBUG_CONDITIONS_QUERY, {
+        filters: {
+          chainId: args.chainId,
+          maxEndTime: nowSec,
+          search: 'PYTH',
+        },
+        take: 10,
+        after: null,
+      });
 
-      const rows = dbg.conditions ?? [];
+      const rows = dbg.conditionsConnection?.nodes ?? [];
       if (rows.length === 0) {
         console.log(
           '[settle:pyth][debug] No ended PYTH:* conditions found either. Check chain-id / indexer coverage.'

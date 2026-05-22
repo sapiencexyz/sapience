@@ -7,7 +7,7 @@ describe('ConditionGroups query', () => {
   it('matches the recorded contract', async () => {
     const result = await executeOperation(GET_CONDITION_GROUPS, {
       take: 10,
-      skip: 0,
+      after: null,
     });
     expect(result.errors).toBeUndefined();
     await expect(

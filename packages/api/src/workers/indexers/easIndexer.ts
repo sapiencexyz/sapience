@@ -280,7 +280,7 @@ class EASPredictionIndexer implements IIndexer {
           decodedDataJson: decodedDataJson,
           resolver: decodedData.resolver,
           conditionId: decodedData.condition,
-          prediction: decodedData.forecast,
+          forecast: decodedData.forecast,
           comment: decodedData.comment || null,
         },
         update: {
@@ -288,7 +288,7 @@ class EASPredictionIndexer implements IIndexer {
           decodedDataJson: decodedDataJson,
           resolver: decodedData.resolver,
           conditionId: decodedData.condition,
-          prediction: decodedData.forecast,
+          forecast: decodedData.forecast,
           comment: decodedData.comment || null,
         },
       });

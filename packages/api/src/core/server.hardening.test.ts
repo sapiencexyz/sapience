@@ -3,9 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { type Request, type Response } from 'express';
 import { createConcurrencyLimiter } from '../runtime/concurrencyLimiter';
+import { inflightRegistry } from '../runtime/inflightRegistry';
 
 beforeEach(() => {
   vi.resetModules();
+  // Process-wide singleton — clear it so a previous case's still-settling
+  // in-flight rows don't shift this case's admission count.
+  inflightRegistry.reset();
 });
 
 /**

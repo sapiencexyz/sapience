@@ -191,7 +191,7 @@ describe('EASPredictionIndexer', () => {
     expect(call.create.attester).toBe(MOCK_ATTESTER);
     expect(call.create.recipient).toBe(MOCK_RECIPIENT);
     expect(call.create.resolver).toBe(MOCK_RESOLVER.toLowerCase());
-    expect(call.create.prediction).toBe('750000000000000000');
+    expect(call.create.forecast).toBe('750000000000000000');
     expect(call.create.comment).toBe('test comment');
     expect(call.create.blockNumber).toBe(50);
     expect(call.create.transactionHash).toBe(MOCK_TX_HASH);

@@ -1,43 +1,28 @@
 // Profile-specific helpers for OG image generation
 
 import { isAddress, getAddress } from 'viem';
+import {
+  fetchAccountAccuracyRank,
+  fetchAccountStatsRank,
+} from '@sapience/sdk/queries';
+import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
 import { mainnetClient } from '~/lib/utils/util';
 import { getEnsAvatarUrlForAddress } from '~/lib/ens/avatar';
-import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
 import { SCHEMA_UID } from '~/lib/constants';
 
 // ---------- GraphQL queries ----------
 
-const ALL_TIME_PROFIT_LEADERBOARD_QUERY = `
-  query ProfitLeaderboard($limit: Int) {
-    profitLeaderboard(limit: $limit) {
-      address
-      totalPnL
-    }
-  }
-`;
-
-const ACCURACY_RANK_QUERY = `
-  query AccountAccuracyRank($address: String!) {
-    accountAccuracyRank(address: $address) {
-      address
-      accuracyScore
-      rank
-      totalForecasters
-    }
-  }
-`;
-
-const TRADING_VOLUME_QUERY = `
-  query TradingVolume($address: String!) {
-    accountTotalVolume(address: $address)
-  }
-`;
-
 const ATTESTATIONS_COUNT_QUERY = `
-  query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
-    attestations(where: $where, orderBy: { time: desc }, take: $take) {
-      id
+  query FindAttestationsCount($filter: ForecastFilter, $first: Int!) {
+    forecastsConnection(
+      filter: $filter
+      orderBy: { field: ATTESTED_AT, direction: DESC }
+      first: $first
+    ) {
+      totalCount
+      nodes {
+        id
+      }
     }
   }
 `;
@@ -50,7 +35,7 @@ export interface ProfileOGData {
   totalParticipants: number;
   accuracyScore: number | null;
   accuracyRank: number | null;
-  totalForecasters: number;
+  accuracyTotalParticipants: number;
   volumeDisplay: string | null;
   forecastsCount: number | null;
 }
@@ -75,27 +60,33 @@ async function gqlFetch<T>(query: string, variables?: object): Promise<T> {
 
 // ---------- Data fetchers ----------
 
-async function fetchProfitRank(address: string): Promise<{
+async function fetchProfitAndVolume(address: string): Promise<{
   totalPnL: number | null;
   rank: number | null;
   totalParticipants: number;
+  volumeDisplay: string | null;
 }> {
-  const data = await gqlFetch<{
-    profitLeaderboard: Array<{ address: string; totalPnL: string }>;
-  }>(ALL_TIME_PROFIT_LEADERBOARD_QUERY, { limit: 100 });
+  // Single per-address resolver against the same ranked set the analytics
+  // leaderboard slices — no top-100 scan, so users outside the top 100 still
+  // get a real PnL number. `netPnL` and `volume` are wei; convert for display.
+  // Volume comes from the same call so we don't need a second resolver hop.
+  const r = await fetchAccountStatsRank({ address, metric: 'NET_PNL' });
 
-  const entries = data?.profitLeaderboard || [];
-  const sorted = entries.sort(
-    (a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL)
-  );
-  const addressLc = address.toLowerCase();
-  const idx = sorted.findIndex((e) => e.address.toLowerCase() === addressLc);
-  const entry = idx >= 0 ? sorted[idx] : null;
+  const totalPnL = parseFloat(r.netPnL) / 1e18;
+  const volumeNum = Number(formatUnits(r.volume || '0', 18));
+  const volumeDisplay =
+    Number.isFinite(volumeNum) && volumeNum !== 0
+      ? volumeNum.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+      : null;
 
   return {
-    totalPnL: entry ? parseFloat(entry.totalPnL) : null,
-    rank: idx >= 0 ? idx + 1 : null,
-    totalParticipants: sorted.length,
+    totalPnL: r.rank == null && totalPnL === 0 ? null : totalPnL,
+    rank: r.rank,
+    totalParticipants: r.totalParticipants,
+    volumeDisplay,
   };
 }
 
@@ -104,37 +95,12 @@ async function fetchAccuracyRank(address: string): Promise<{
   rank: number | null;
   totalForecasters: number;
 }> {
-  const data = await gqlFetch<{
-    accountAccuracyRank: {
-      accuracyScore: number;
-      rank: number | null;
-      totalForecasters: number;
-    };
-  }>(ACCURACY_RANK_QUERY, { address: address.toLowerCase() });
-
-  const r = data?.accountAccuracyRank;
-  if (!r) return { accuracyScore: null, rank: null, totalForecasters: 0 };
+  const r = await fetchAccountAccuracyRank(address);
   return {
-    accuracyScore: r.accuracyScore ?? null,
+    accuracyScore: r.rank == null ? null : r.accuracyScore,
     rank: r.rank,
-    totalForecasters: r.totalForecasters ?? 0,
+    totalForecasters: r.totalForecasters,
   };
-}
-
-async function fetchVolume(address: string): Promise<string | null> {
-  const data = await gqlFetch<{ accountTotalVolume: string }>(
-    TRADING_VOLUME_QUERY,
-    { address: address.toLowerCase() }
-  );
-
-  const volumeWei = data?.accountTotalVolume || '0';
-  const formatted = formatUnits(volumeWei, 18);
-  const num = Number(formatted);
-  if (!Number.isFinite(num) || num === 0) return null;
-  return num.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }
 
 async function fetchForecastsCount(address: string): Promise<number | null> {
@@ -147,17 +113,19 @@ async function fetchForecastsCount(address: string): Promise<number | null> {
   }
 
   const data = await gqlFetch<{
-    attestations: Array<{ id: string }>;
+    forecastsConnection: {
+      totalCount: number | null;
+      nodes: Array<{ id: string }>;
+    };
   }>(ATTESTATIONS_COUNT_QUERY, {
-    where: {
-      schemaId: { equals: SCHEMA_UID },
-      AND: [{ attester: { equals: normalizedAddress } }],
-    },
-    take: 100,
+    filter: { schemaId: SCHEMA_UID, forecaster: normalizedAddress },
+    first: 100,
   });
 
-  const count = data?.attestations?.length;
-  return count != null ? count : null;
+  const totalCount = data?.forecastsConnection?.totalCount;
+  if (totalCount != null) return totalCount;
+  const fallbackCount = data?.forecastsConnection?.nodes?.length;
+  return fallbackCount != null ? fallbackCount : null;
 }
 
 // ---------- Public API ----------
@@ -165,24 +133,26 @@ async function fetchForecastsCount(address: string): Promise<number | null> {
 export async function fetchProfileData(
   address: string
 ): Promise<ProfileOGData> {
-  const [profitResult, accuracyResult, volumeResult, forecastsResult] =
+  const [profitResult, accuracyResult, forecastsResult] =
     await Promise.allSettled([
-      fetchProfitRank(address),
+      fetchProfitAndVolume(address),
       fetchAccuracyRank(address),
-      fetchVolume(address),
       fetchForecastsCount(address),
     ]);
 
   const profit =
     profitResult.status === 'fulfilled'
       ? profitResult.value
-      : { totalPnL: null, rank: null, totalParticipants: 0 };
+      : {
+          totalPnL: null,
+          rank: null,
+          totalParticipants: 0,
+          volumeDisplay: null,
+        };
   const accuracy =
     accuracyResult.status === 'fulfilled'
       ? accuracyResult.value
       : { accuracyScore: null, rank: null, totalForecasters: 0 };
-  const volume =
-    volumeResult.status === 'fulfilled' ? volumeResult.value : null;
   const forecastsCount =
     forecastsResult.status === 'fulfilled' ? forecastsResult.value : null;
 
@@ -192,8 +162,8 @@ export async function fetchProfileData(
     totalParticipants: profit.totalParticipants,
     accuracyScore: accuracy.accuracyScore,
     accuracyRank: accuracy.rank,
-    totalForecasters: accuracy.totalForecasters,
-    volumeDisplay: volume,
+    accuracyTotalParticipants: accuracy.totalForecasters,
+    volumeDisplay: profit.volumeDisplay,
     forecastsCount,
   };
 }
