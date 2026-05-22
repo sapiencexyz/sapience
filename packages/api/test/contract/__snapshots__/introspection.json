@@ -545,7 +545,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "PositionOrder",
+                  "name": "LegacyPositionOrder",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -12672,6 +12672,37 @@
       },
       {
         "kind": "INPUT_OBJECT",
+        "name": "LegacyPositionOrder",
+        "description": "Order input for the non-Connection-suffix `Account.positions` /\n`PickConfiguration.positions` access paths. Both fields are nullable so\npre-existing external queries that wire nullable variables into the\n`orderBy` shape (`{ field: $f, direction: $d }`) keep validating; the\nresolver defaults to `UPDATED_AT` / `DESC` when either field is omitted.\nNew callers should prefer `positionsConnection(orderBy: PositionOrder!)`,\nwhich is the canonical Relay surface.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "ENUM",
+              "name": "PositionOrderField",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "ENUM",
+              "name": "OrderDirection",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
         "name": "NestedBigIntFilter",
         "description": null,
         "fields": null,
@@ -14535,7 +14566,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "PositionOrder",
+                  "name": "LegacyPositionOrder",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -15569,16 +15600,20 @@
       {
         "kind": "INPUT_OBJECT",
         "name": "PositionOrder",
-        "description": "Order input for the Relay-shaped `positionsConnection`.\nBoth `field` and `direction` are nullable so external clients passing\nnullable `$orderDirection: OrderDirection` / `$orderBy: PositionOrderField`\nvariables continue to validate against this schema. Resolver defaults to\n`UPDATED_AT` / `DESC`.",
+        "description": "Order input for the Relay-shaped `positionsConnection`. Strict: both fields are\nrequired so canonical Relay clients self-document the sort they intend.",
         "fields": null,
         "inputFields": [
           {
             "name": "field",
             "description": null,
             "type": {
-              "kind": "ENUM",
-              "name": "PositionOrderField",
-              "ofType": null
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "PositionOrderField",
+                "ofType": null
+              }
             },
             "defaultValue": null
           },
@@ -15586,9 +15621,13 @@
             "name": "direction",
             "description": null,
             "type": {
-              "kind": "ENUM",
-              "name": "OrderDirection",
-              "ofType": null
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "ENUM",
+                "name": "OrderDirection",
+                "ofType": null
+              }
             },
             "defaultValue": null
           }

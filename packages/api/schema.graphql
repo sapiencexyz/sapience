@@ -86,7 +86,7 @@ type Account implements Node {
   predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
   trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
   forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
-  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: LegacyPositionOrder): PositionConnection!
   collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
 }
 
@@ -1382,7 +1382,7 @@ type PickConfiguration implements Node {
   picks: [Pick!]!
   predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
   trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
-  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: LegacyPositionOrder): PositionConnection!
   predictionId: String
   predictorToken: String
   resolved: Boolean!
@@ -1760,13 +1760,24 @@ enum TradeOrderField {
 }
 
 """
-Order input for the Relay-shaped `positionsConnection`.
-Both `field` and `direction` are nullable so external clients passing
-nullable `$orderDirection: OrderDirection` / `$orderBy: PositionOrderField`
-variables continue to validate against this schema. Resolver defaults to
-`UPDATED_AT` / `DESC`.
+Order input for the Relay-shaped `positionsConnection`. Strict: both fields are
+required so canonical Relay clients self-document the sort they intend.
 """
 input PositionOrder {
+  field: PositionOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Order input for the non-Connection-suffix `Account.positions` /
+`PickConfiguration.positions` access paths. Both fields are nullable so
+pre-existing external queries that wire nullable variables into the
+`orderBy` shape (`{ field: $f, direction: $d }`) keep validating; the
+resolver defaults to `UPDATED_AT` / `DESC` when either field is omitted.
+New callers should prefer `positionsConnection(orderBy: PositionOrder!)`,
+which is the canonical Relay surface.
+"""
+input LegacyPositionOrder {
   field: PositionOrderField
   direction: OrderDirection
 }

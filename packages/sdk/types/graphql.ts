@@ -107,7 +107,7 @@ export type AccountPositionsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<PositionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<PositionOrder>;
+  orderBy?: InputMaybe<LegacyPositionOrder>;
 };
 
 
@@ -1997,6 +1997,20 @@ export type LeaderboardMetric =
   | 'ROI'
   | 'VOLUME';
 
+/**
+ * Order input for the non-Connection-suffix `Account.positions` /
+ * `PickConfiguration.positions` access paths. Both fields are nullable so
+ * pre-existing external queries that wire nullable variables into the
+ * `orderBy` shape (`{ field: $f, direction: $d }`) keep validating; the
+ * resolver defaults to `UPDATED_AT` / `DESC` when either field is omitted.
+ * New callers should prefer `positionsConnection(orderBy: PositionOrder!)`,
+ * which is the canonical Relay surface.
+ */
+export type LegacyPositionOrder = {
+  direction?: InputMaybe<OrderDirection>;
+  field?: InputMaybe<PositionOrderField>;
+};
+
 export type NestedBigIntFilter = {
   equals?: InputMaybe<Scalars['BigInt']['input']>;
   gt?: InputMaybe<Scalars['BigInt']['input']>;
@@ -2252,7 +2266,7 @@ export type PickConfigurationPositionsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<PositionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<PositionOrder>;
+  orderBy?: InputMaybe<LegacyPositionOrder>;
 };
 
 
@@ -2458,15 +2472,12 @@ export type PositionFilters = {
 };
 
 /**
- * Order input for the Relay-shaped `positionsConnection`.
- * Both `field` and `direction` are nullable so external clients passing
- * nullable `$orderDirection: OrderDirection` / `$orderBy: PositionOrderField`
- * variables continue to validate against this schema. Resolver defaults to
- * `UPDATED_AT` / `DESC`.
+ * Order input for the Relay-shaped `positionsConnection`. Strict: both fields are
+ * required so canonical Relay clients self-document the sort they intend.
  */
 export type PositionOrder = {
-  direction?: InputMaybe<OrderDirection>;
-  field?: InputMaybe<PositionOrderField>;
+  direction: OrderDirection;
+  field: PositionOrderField;
 };
 
 /** Sort fields for the Relay-shaped `positionsConnection`. */
