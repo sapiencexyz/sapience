@@ -8,13 +8,18 @@ import {
 
 export const useConditionGroups = (opts?: {
   take?: number;
-  skip?: number;
+  /**
+   * Opaque cursor from the previous page's `endCursor`. Connections are
+   * cursor-only — there is no `skip`. For infinite scroll, prefer
+   * `useInfiniteQuery` with `pageParam` driving `after`.
+   */
+  after?: string | null;
   chainId?: number;
   filters?: ConditionGroupFilters;
   includeEmptyGroups?: boolean;
 }) => {
   const take = opts?.take ?? 100;
-  const skip = opts?.skip ?? 0;
+  const after = opts?.after ?? null;
   const chainId = opts?.chainId;
   const filters = opts?.filters;
   const includeEmptyGroups = opts?.includeEmptyGroups ?? false;
@@ -23,7 +28,7 @@ export const useConditionGroups = (opts?: {
     queryKey: [
       'conditionGroups',
       take,
-      skip,
+      after,
       chainId,
       filters,
       includeEmptyGroups,
@@ -31,7 +36,7 @@ export const useConditionGroups = (opts?: {
     queryFn: () =>
       fetchConditionGroups({
         take,
-        skip,
+        after,
         chainId,
         filters,
         includeEmptyGroups,

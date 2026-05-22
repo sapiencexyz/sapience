@@ -182,7 +182,7 @@ describe('buildConditionsFilters', () => {
 // ============================================================================
 
 describe('fetchConditions', () => {
-  test('uses default take=50 and skip=0', async () => {
+  test('uses default take=50 and after=null', async () => {
     mockGraphqlRequest.mockResolvedValue({
       conditionsConnection: { nodes: [] },
     });
@@ -193,15 +193,24 @@ describe('fetchConditions', () => {
     );
   });
 
-  test('passes custom take and skip', async () => {
+  test('passes the cursor through as `after` and does NOT walk pages', async () => {
     mockGraphqlRequest.mockResolvedValue({
       conditionsConnection: { nodes: [] },
     });
-    await fetchConditions({ take: 10, skip: 5 });
+    await fetchConditions({ take: 10, after: 'cursor-X' });
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ take: 15, after: null })
+      expect.objectContaining({ take: 10, after: 'cursor-X' })
     );
+  });
+
+  test('caps take at the server limit of 100', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      conditionsConnection: { nodes: [] },
+    });
+    await fetchConditions({ take: 500 });
+    expect(mockGraphqlRequest.mock.calls[0][1].take).toBe(100);
   });
 
   test('unwraps items from conditionsConnection', async () => {

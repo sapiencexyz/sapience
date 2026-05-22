@@ -1,4 +1,4 @@
-import { graphqlRequest } from './client/graphqlClient';
+import { clampConnectionTake, fetchConnectionPage } from './connectionPage';
 import type { ConditionType } from './conditions';
 import type { ConditionGroupType } from './conditionGroups';
 
@@ -204,16 +204,6 @@ export interface FetchQuestionsSortedParams {
   similarMarketVolumeWindow?: VolumeWindow;
 }
 
-type QuestionsQueryResult = {
-  questionsConnection?: {
-    nodes?: QuestionType[] | null;
-    pageInfo?: {
-      hasNextPage?: boolean | null;
-      endCursor?: string | null;
-    } | null;
-  } | null;
-};
-
 export interface QuestionsPageResult {
   items: QuestionType[];
   hasMore: boolean;
@@ -261,30 +251,25 @@ function buildQuestionFilter(params: FetchQuestionsSortedParams) {
   };
 }
 
-const SERVER_MAX_TAKE = 100;
-
 export async function fetchQuestionsPage(
   params: FetchQuestionsSortedParams
 ): Promise<QuestionsPageResult> {
-  const take = Math.max(1, Math.min(SERVER_MAX_TAKE, params.take));
-  const data = await graphqlRequest<QuestionsQueryResult>(GET_QUESTIONS, {
-    take,
-    after: params.after ?? null,
-    orderBy: {
-      field: getQuestionOrderField(
-        params.sortField,
-        params.similarMarketVolumeWindow
-      ),
-      direction: params.sortDirection.toUpperCase(),
+  return fetchConnectionPage<QuestionType>(
+    GET_QUESTIONS,
+    {
+      take: clampConnectionTake(params.take),
+      after: params.after ?? null,
+      orderBy: {
+        field: getQuestionOrderField(
+          params.sortField,
+          params.similarMarketVolumeWindow
+        ),
+        direction: params.sortDirection.toUpperCase(),
+      },
+      filter: buildQuestionFilter(params),
     },
-    filter: buildQuestionFilter(params),
-  });
-  const conn = data.questionsConnection;
-  return {
-    items: conn?.nodes ?? [],
-    hasMore: Boolean(conn?.pageInfo?.hasNextPage),
-    endCursor: conn?.pageInfo?.endCursor ?? null,
-  };
+    'questionsConnection'
+  );
 }
 
 export async function fetchQuestionsSorted(

@@ -17,18 +17,24 @@ beforeEach(() => {
 });
 
 describe('fetchConditionGroups', () => {
-  test('uses default take=100, skip=0', async () => {
+  test('uses default take=100, after=null', async () => {
     await fetchConditionGroups();
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].take).toBe(100);
     expect(call[1].after).toBeNull();
   });
 
-  test('passes custom take and skip', async () => {
-    await fetchConditionGroups({ take: 10, skip: 5 });
+  test('passes the cursor through as `after` and does NOT walk pages', async () => {
+    await fetchConditionGroups({ take: 10, after: 'cursor-X' });
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].take).toBe(15);
-    expect(call[1].after).toBeNull();
+    expect(call[1].take).toBe(10);
+    expect(call[1].after).toBe('cursor-X');
+  });
+
+  test('caps take at the server limit of 100', async () => {
+    await fetchConditionGroups({ take: 500 });
+    expect(mockGraphqlRequest.mock.calls[0][1].take).toBe(100);
   });
 
   test('returns groups from response unchanged (server filters server-side)', async () => {

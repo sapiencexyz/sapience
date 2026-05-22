@@ -1,4 +1,8 @@
-import { graphqlRequest } from './client/graphqlClient';
+import {
+  clampConnectionTake,
+  fetchConnectionPage,
+  type ConnectionPage,
+} from './connectionPage';
 
 export interface ConditionGroupConditionType {
   id: string;
@@ -110,26 +114,13 @@ export const GET_CONDITION_GROUPS = /* GraphQL */ `
   }
 `;
 
-type ConditionGroupsQueryResult = {
-  conditionGroupsConnection?: {
-    nodes?: ConditionGroupType[] | null;
-    pageInfo?: {
-      hasNextPage?: boolean | null;
-      endCursor?: string | null;
-    } | null;
-  } | null;
-};
-
-export async function fetchConditionGroups(opts?: {
+export async function fetchConditionGroupsPage(opts?: {
   take?: number;
-  skip?: number;
+  after?: string | null;
   chainId?: number;
   filters?: ConditionGroupFilter;
   includeEmptyGroups?: boolean;
-}): Promise<ConditionGroupType[]> {
-  const take = opts?.take ?? 100;
-  const skip = opts?.skip ?? 0;
-  const target = skip + take;
+}): Promise<ConnectionPage<ConditionGroupType>> {
   const chainId = opts?.chainId;
   const filters = opts?.filters;
   const includeEmpty = opts?.includeEmptyGroups ?? false;
@@ -143,22 +134,28 @@ export async function fetchConditionGroups(opts?: {
     includeEmpty,
   };
 
-  const collected: ConditionGroupType[] = [];
-  let after: string | null | undefined = null;
-  while (collected.length < target) {
-    const first = Math.min(100, target - collected.length);
-    const data: ConditionGroupsQueryResult =
-      await graphqlRequest<ConditionGroupsQueryResult>(GET_CONDITION_GROUPS, {
-        take: first,
-        after,
-        filter,
-        conditionsWhere,
-      });
-    const conn = data.conditionGroupsConnection;
-    collected.push(...(conn?.nodes ?? []));
-    if (!conn?.pageInfo?.hasNextPage || !conn.pageInfo.endCursor) break;
-    after = conn.pageInfo.endCursor;
-  }
+  return fetchConnectionPage<ConditionGroupType>(
+    GET_CONDITION_GROUPS,
+    {
+      take: clampConnectionTake(opts?.take, 100),
+      after: opts?.after ?? null,
+      filter,
+      conditionsWhere,
+    },
+    'conditionGroupsConnection'
+  );
+}
 
-  return collected.slice(skip, target);
+/**
+ * Single-page convenience wrapper. Use `fetchConditionGroupsPage` when
+ * you need `hasMore` / `endCursor` for paginating.
+ */
+export async function fetchConditionGroups(opts?: {
+  take?: number;
+  after?: string | null;
+  chainId?: number;
+  filters?: ConditionGroupFilter;
+  includeEmptyGroups?: boolean;
+}): Promise<ConditionGroupType[]> {
+  return (await fetchConditionGroupsPage(opts)).items;
 }

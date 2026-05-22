@@ -7,18 +7,23 @@ import {
 
 export const useConditions = (opts?: {
   take?: number;
-  skip?: number;
+  /**
+   * Opaque cursor from the previous page's `endCursor`. Connections are
+   * cursor-only — there is no `skip`. For infinite scroll, prefer
+   * `useInfiniteQuery` with `pageParam` driving `after`.
+   */
+  after?: string | null;
   chainId?: number;
   filters?: ConditionFilters;
 }) => {
   const take = opts?.take ?? 50;
-  const skip = opts?.skip ?? 0;
+  const after = opts?.after ?? null;
   const chainId = opts?.chainId;
   const filters = opts?.filters;
 
   return useQuery<ConditionType[], Error>({
-    queryKey: ['conditions', take, skip, chainId, filters],
-    queryFn: () => fetchConditions({ take, skip, chainId, filters }),
+    queryKey: ['conditions', take, after, chainId, filters],
+    queryFn: () => fetchConditions({ take, after, chainId, filters }),
   });
 };
 
