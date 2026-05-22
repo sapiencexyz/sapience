@@ -868,6 +868,8 @@ export type Condition = Node & {
   chainId: Scalars['Int']['output'];
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroupId?: Maybe<Scalars['Int']['output']>;
+  /** Natural-key condition id (on-chain identifier), returned verbatim. */
+  conditionId: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   description: Scalars['String']['output'];
   displayOrder?: Maybe<Scalars['Int']['output']>;
@@ -875,10 +877,11 @@ export type Condition = Node & {
   /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket */
   estimatedPrice?: Maybe<Scalars['Float']['output']>;
   forecasts: ForecastConnection;
-  /** Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId` for the on-chain condition identifier. */
+  /**
+   * Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`
+   * for the on-chain condition identifier.
+   */
   id: Scalars['ID']['output'];
-  /** Natural-key condition id (on-chain identifier), returned verbatim. */
-  conditionId: Scalars['String']['output'];
   /**
    * On-chain market contract address that owns this condition (case-insensitive,
    * 0x-prefixed lowercase). The canonical client-facing name for the address
@@ -2187,12 +2190,15 @@ export type PickConfiguration = Node & {
   claimedPredictorCollateral: Scalars['String']['output'];
   counterpartyToken?: Maybe<Scalars['String']['output']>;
   endsAt?: Maybe<Scalars['UnixSeconds']['output']>;
-  /** Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId` for the natural pick-configuration identifier. */
+  /**
+   * Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`
+   * for the natural pick-configuration identifier.
+   */
   id: Scalars['ID']['output'];
-  /** Natural-key pick-configuration id, returned verbatim. */
-  pickConfigId: Scalars['String']['output'];
   isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
+  /** Natural-key pick-configuration id, returned verbatim. */
+  pickConfigId: Scalars['String']['output'];
   picks: Array<Pick>;
   positions: PositionConnection;
   predictionId?: Maybe<Scalars['String']['output']>;
@@ -2305,17 +2311,20 @@ export type Position = Node & {
   createdAt: Scalars['DateTimeISO']['output'];
   /** Holder wallet address (lowercase 0x-hex). */
   holder: Scalars['String']['output'];
-  /** Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId` for the synthetic position row identifier. */
+  /**
+   * Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`
+   * for the synthetic position row identifier.
+   */
   id: Scalars['ID']['output'];
+  /** True if this is the predictor token side; false for counterparty. */
+  isPredictorToken: Scalars['Boolean']['output'];
+  pickConfig?: Maybe<PickConfiguration>;
+  pickConfigId: Scalars['String']['output'];
   /**
    * Synthetic row id. Open rows use the underlying Position row id
    * serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
    */
   positionId: Scalars['String']['output'];
-  /** True if this is the predictor token side; false for counterparty. */
-  isPredictorToken: Scalars['Boolean']['output'];
-  pickConfig?: Maybe<PickConfiguration>;
-  pickConfigId: Scalars['String']['output'];
   /**
    * Realized PnL delta for a synthesized sell row (wei, 18 decimals;
    * signed — negative when sold below cost basis). Null on open rows;

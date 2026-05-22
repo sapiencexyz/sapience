@@ -2297,7 +2297,7 @@ interface Page {
 
   """
   Total rows matching the same filters as `items`.
-  
+
   Lazy by default — the count query only fires when this field is selected
   in the operation, so paginated requests that don't need a total don't pay
   for one. Concrete `*Page` types call out the two exceptions to this:
@@ -2853,7 +2853,7 @@ type Query {
   picks the cadence; `fromEpoch` / `toEpoch` are optional epoch seconds
   (inclusive). Both omitted ⇒ last 365 days (the DAY-bucket cap in the
   helper layer until the snapshot table lands).
-  
+
   Implementation today wraps the legacy per-metric SQL helpers and emits
   one point per day. A follow-up migrates this to a real per-account
   snapshot table without changing the wire shape.
@@ -2942,7 +2942,7 @@ type Query {
 
   """
   Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
-  
+
   Note: this field will be renamed to drop the `Connection` suffix
   (→ `forecasts`) in a subsequent migration.
   """
@@ -2994,9 +2994,9 @@ type Query {
 
   """
   Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
-  
+
   Sorting is timestamp-based with `id` as the stable tie-breaker. Defaults to `TIMESTAMP` / `DESC` when omitted.
-  
+
   Note: this field will be renamed to drop the `Connection` suffix
   (→ `collateralTransfers`) in a subsequent migration, once the
   deprecated bare-array `collateralTransfers` sibling above is removed.
@@ -3015,7 +3015,7 @@ type Query {
   lookups should keep using `account(address:)`, which synthesizes
   address-backed Accounts for wallets without a User row;
   `accountsConnection` is for enumeration / search use cases.
-  
+
   Note: this field will be renamed to drop the `Connection` suffix
   (→ `accounts`) in a subsequent migration.
   """
@@ -3035,7 +3035,7 @@ type Query {
   cursor pagination via `first` / `after`. Replaces the deprecated
   bare `conditionGroups(where:)`. `totalCount` is omitted per design-doc D3
   (default-off, add per-PR where cheap).
-  
+
   Note: this field will be renamed to drop the `Connection` suffix
   (→ `conditionGroups`) in a subsequent migration, once the deprecated
   bare-array sibling above is removed.
@@ -3053,7 +3053,7 @@ type Query {
   Relay-shaped connection over `Condition` rows. Forward-only cursor
   pagination via `first` / `after`. Replaces the deprecated bare
   `conditions(where:)`. Public conditions only.
-  
+
   Note: this field will be renamed to drop the `Connection` suffix
   (→ `conditions`) in a subsequent migration, once the deprecated
   bare-array sibling above is removed.
@@ -3070,7 +3070,7 @@ type Query {
 
   """
   Relay-shaped connection over pick configurations.
-  
+
   Note: this field will be renamed to drop the `Connection` suffix
   (→ `pickConfigurations`) in a subsequent migration, once the
   deprecated bare-array `pickConfigurations` sibling above is removed.
@@ -3095,7 +3095,7 @@ type Query {
 
   """
   Relay-shaped connection over token positions.
-  
+
   Note: this field will be renamed to drop the `Connection` suffix
   (→ `positions`) in a subsequent migration, once the deprecated
   `positions` bare-array / `positionsPage` siblings above are removed.
@@ -3119,7 +3119,7 @@ type Query {
 
   """
   Relay-style prediction list. Defaults to createdAt DESC.
-  
+
   Note: this field will be renamed to drop the `Connection` suffix
   (→ `predictions`) in a subsequent migration, once the deprecated
   `predictions` bare-array sibling above is removed.
@@ -3141,7 +3141,7 @@ type Query {
   cumulative volume, trade count, open interest, escrow balance. Window
   with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
   returns full history.
-  
+
   Bar timestamps: closed bars are labelled at *the start* of the interval
   they represent (capture time minus one interval), so a bar at
   `2026-01-01 00:00` summarizes activity ending `2026-01-02 00:00`. When
@@ -3172,7 +3172,7 @@ type Query {
   `first` / `after`. Replaces the deprecated bare `questions(...)`. `totalCount` is omitted on
   `QuestionConnection` because the underlying SQL UNION cannot produce
   a single COUNT cheaply.
-  
+
   Note: this field will be renamed to drop the `Connection` suffix
   (→ `questions`) in a subsequent migration, once the deprecated
   bare-array sibling above is removed.
@@ -3196,7 +3196,7 @@ type Query {
 
   """
   Relay-shaped connection over secondary market trades.
-  
+
   Note: this field will be renamed to drop the `Connection` suffix
   (→ `trades`) in a subsequent migration, once the deprecated
   `trades` bare-array sibling above is removed.
@@ -3211,7 +3211,7 @@ type Query {
   withdrawals, airdrop gains, secondary flows, unredeemed claims. Window
   with `fromEpoch` / `toEpoch` (epoch seconds, inclusive). Both omitted
   returns full history.
-  
+
   Bar timestamps follow the same convention as `protocolStats`: closed
   bars are labelled at the *start* of the interval they represent, and a
   trailing live candle (anchored to the *current* interval boundary) is
