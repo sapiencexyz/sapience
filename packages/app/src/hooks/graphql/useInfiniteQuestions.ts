@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   fetchQuestionsPage,
   type QuestionType,
@@ -116,6 +116,16 @@ export function useInfiniteQuestions(
         }),
     });
 
+  // React Query publishes `isFetchingNextPage` asynchronously; this latch
+  // closes the same-frame gap where scroll handlers can call fetchMore twice.
+  const fetchMorePendingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isFetchingNextPage) {
+      fetchMorePendingRef.current = false;
+    }
+  }, [isFetchingNextPage]);
+
   // Deduplicate across page boundaries so a cursor that overlaps doesn't
   // double-render a row in the table.
   const items = useMemo<QuestionType[]>(() => {
@@ -133,7 +143,14 @@ export function useInfiniteQuestions(
   }, [data]);
 
   const fetchMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+    if (!hasNextPage || isFetchingNextPage || fetchMorePendingRef.current) {
+      return;
+    }
+
+    fetchMorePendingRef.current = true;
+    void fetchNextPage({ cancelRefetch: false }).catch(() => {
+      fetchMorePendingRef.current = false;
+    });
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return {
