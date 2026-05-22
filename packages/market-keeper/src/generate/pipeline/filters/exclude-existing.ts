@@ -42,7 +42,7 @@ export async function checkExistingConditions(
         conditionsConnection(filter: $filters, first: 100) {
           hasMore
           nodes {
-            id
+            id: conditionId
             endTime
             question
             shortName

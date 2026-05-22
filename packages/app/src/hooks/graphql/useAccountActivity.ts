@@ -55,7 +55,8 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
           refCode
           isLegacy
           pickConfig {
-            id
+            id: pickConfigId
+            pickConfigId
             chainId
             marketAddress
             totalPredictorCollateral
@@ -77,7 +78,8 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
               conditionId
               predictedOutcome
               condition {
-                id
+                id: conditionId
+                conditionId
                 shortName
                 optionName
                 question
@@ -109,7 +111,8 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
           blockNumber
           executedAt
           pickConfig {
-            id
+            id: pickConfigId
+            pickConfigId
             chainId
             marketAddress
             totalPredictorCollateral
@@ -130,7 +133,8 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
               conditionId
               predictedOutcome
               condition {
-                id
+                id: conditionId
+                conditionId
                 shortName
                 optionName
                 question

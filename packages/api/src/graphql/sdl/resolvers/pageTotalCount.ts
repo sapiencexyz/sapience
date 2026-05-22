@@ -12,10 +12,10 @@
  * The deprecated bare-array wrappers (`positions`, `predictions`, …)
  * discard the envelope entirely, so they get the count-skip for free.
  *
- * Pages whose runner can't cheaply produce a `_countWhere` (the union
- * questions connection/bare resolver and the merged predictions/trades feed on
- * `activityPage`) keep their own dedicated resolver and stay `null`
- * even when selected.
+ * Pages whose runner can't cheaply produce a `_countWhere` (such as the
+ * legacy merged predictions/trades feed on `activityPage`) keep their own
+ * dedicated resolver and stay `null` even when selected. Relay connections
+ * with non-Prisma count paths use `ConnectionTotalCount` instead.
  */
 
 interface CountableModel<W> {

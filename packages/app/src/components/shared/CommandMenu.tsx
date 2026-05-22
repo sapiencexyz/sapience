@@ -52,11 +52,9 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
   query CommandMenuSearch($take: Int!, $filters: QuestionFilter) {
     questionsConnection(
       first: $take
-      skip: 0
       filter: $filters
       orderBy: { field: RESOLVES_AT, direction: ASC }
     ) {
-      hasMore
       nodes {
         questionType
         group {
@@ -68,7 +66,8 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
             slug
           }
           conditions {
-            id
+            id: conditionId
+            conditionId
             question
             shortName
             endTime
@@ -82,7 +81,8 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
           }
         }
         condition {
-          id
+          id: conditionId
+          conditionId
           question
           shortName
           endTime

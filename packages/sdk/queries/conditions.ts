@@ -2,6 +2,7 @@ import { graphqlRequest } from './client/graphqlClient';
 
 export interface ConditionType {
   id: string;
+  conditionId: string;
   createdAt: string;
   question: string;
   shortName?: string | null;
@@ -50,7 +51,8 @@ export interface ConditionFilter {
 export type ConditionFilters = ConditionFilter;
 
 const CONDITION_FIELDS = /* GraphQL */ `
-  id
+  id: conditionId
+  conditionId
   createdAt
   question
   shortName
@@ -91,7 +93,6 @@ export const GET_CONDITIONS = /* GraphQL */ `
       filter: $filter
       orderBy: { field: CREATED_AT, direction: DESC }
     ) {
-      hasMore
       nodes {
         ${CONDITION_FIELDS}
       }
@@ -207,9 +208,6 @@ export async function fetchConditionsByIds<T>(
     if (page && typeof page === 'object' && 'nodes' in page) {
       return ((page as { nodes: T[] }).nodes ?? []) as T[];
     }
-    if (page && typeof page === 'object' && 'items' in page) {
-      return ((page as { items: T[] }).items ?? []) as T[];
-    }
     return (r[resultKey] as T[]) ?? [];
   };
 
@@ -236,6 +234,7 @@ export async function fetchConditionsByIds<T>(
 
 type ConditionById = {
   id: string;
+  conditionId: string;
   shortName?: string | null;
   optionName?: string | null;
   question?: string | null;
@@ -253,9 +252,9 @@ type ConditionById = {
 export const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
   query ConditionsByIds($filter: ConditionFilter!) {
     conditionsConnection(filter: $filter, first: 100) {
-      hasMore
       nodes {
-        id
+        id: conditionId
+        conditionId
         shortName
         optionName
         question

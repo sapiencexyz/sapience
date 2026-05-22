@@ -174,9 +174,8 @@ export const CreatePositionProvider = ({
     const QUERY = /* GraphQL */ `
       query ConditionsByIds($filters: ConditionFilter!) {
         conditionsConnection(filter: $filters, first: 100) {
-          hasMore
           nodes {
-            id
+            id: conditionId
             settled
           }
         }

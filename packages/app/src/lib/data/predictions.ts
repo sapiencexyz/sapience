@@ -21,7 +21,8 @@ export const PREDICTION_BY_ID_QUERY = `
       result
       createdAt
       pickConfig {
-        id
+        id: pickConfigId
+        pickConfigId
         chainId
         marketAddress
         resolved
@@ -42,9 +43,9 @@ export const PREDICTION_BY_ID_QUERY = `
 export const CONDITIONS_BY_IDS_QUERY = `
   query ConditionsByIds($filters: ConditionFilter!) {
     conditionsConnection(filter: $filters, first: 100) {
-      hasMore
       nodes {
-        id
+        id: conditionId
+        conditionId
         question
         shortName
         endTime
@@ -67,6 +68,7 @@ export interface PredictionPick {
 
 export interface PredictionPickConfig {
   id: string;
+  pickConfigId: string;
   chainId: number;
   marketAddress: string;
   resolved: boolean;
@@ -96,6 +98,7 @@ export interface PredictionData {
 
 export interface ConditionData {
   id: string;
+  conditionId: string;
   question?: string | null;
   shortName?: string | null;
   endTime?: number | null;

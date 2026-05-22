@@ -99,8 +99,8 @@ export default function QuestionPageContent({
       const QUERY = /* GraphQL */ `
         query ConditionsByIds($filters: ConditionFilter!) {
           conditionsConnection(filter: $filters, first: 1) {
-            items {
-              id
+            nodes {
+              id: conditionId
               question
               shortName
               endTime
@@ -126,7 +126,7 @@ export default function QuestionPageContent({
       }
       const resp = await graphqlRequest<{
         conditionsConnection: {
-          items: Array<{
+          nodes: Array<{
             id: string;
             question: string;
             shortName?: string | null;
@@ -143,7 +143,7 @@ export default function QuestionPageContent({
           }>;
         };
       }>(QUERY, { filters });
-      return resp?.conditionsConnection?.items?.[0] || null;
+      return resp?.conditionsConnection?.nodes?.[0] || null;
     },
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,

@@ -218,8 +218,8 @@ const Comments = ({
       const query = /* GraphQL */ `
         query ConditionsByIds($filters: ConditionFilter!) {
           conditionsConnection(filter: $filters, first: 100) {
-            items {
-              id
+            nodes {
+              id: conditionId
               question
               shortName
               endTime

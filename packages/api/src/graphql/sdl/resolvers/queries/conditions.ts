@@ -156,10 +156,15 @@ const buildConditionsConnectionWhere = (
     and.push({ id: { in: filter.ids.map((id) => String(id).toLowerCase()) } });
   }
 
-  const resolverAddress = filter.resolverAddress?.toLowerCase() ?? null;
+  const resolverAddress =
+    filter.resolverAddress?.toLowerCase() ??
+    filter.marketAddress?.toLowerCase() ??
+    null;
+  const resolverAddressInRaw =
+    filter.resolverAddressIn ?? filter.marketAddressIn;
   const resolverAddressIn =
-    filter.resolverAddressIn && filter.resolverAddressIn.length > 0
-      ? filter.resolverAddressIn.map((address) => address.toLowerCase())
+    resolverAddressInRaw && resolverAddressInRaw.length > 0
+      ? resolverAddressInRaw.map((address) => address.toLowerCase())
       : null;
   const hasResolverAddressFilter =
     resolverAddress != null || resolverAddressIn != null;
@@ -332,9 +337,9 @@ export const conditionsConnection: NonNullable<
   QueryResolvers['conditionsConnection']
 > = async (
   _parent,
-  { first, after, filter, orderBy, take, skip }: QueryConditionsConnectionArgs
+  { first, after, filter, orderBy }: QueryConditionsConnectionArgs
 ) => {
-  const cappedFirst = clampTake(first ?? take ?? 50, {
+  const cappedFirst = clampTake(first ?? 50, {
     defaultTake: 50,
     maxTake: 100,
   });
@@ -368,7 +373,6 @@ export const conditionsConnection: NonNullable<
         { id: prismaDir },
       ],
       take: cappedFirst + 1,
-      ...(after ? {} : { skip: skip ?? 0 }),
     }),
     prisma.condition.count({ where: filterWhere }),
   ]);
@@ -381,9 +385,5 @@ export const conditionsConnection: NonNullable<
       encodeCursor({ k: readOrderKey(row, orderField), id: row.id }),
   });
 
-  return {
-    items: connection.nodes,
-    hasMore: connection.pageInfo.hasNextPage,
-    ...connection,
-  };
+  return connection;
 };

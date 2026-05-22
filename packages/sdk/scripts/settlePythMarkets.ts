@@ -173,24 +173,26 @@ const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
     $filters: ConditionFilter
     $take: Int!
-    $skip: Int!
+    $after: String
   ) {
     conditionsConnection(
       filter: $filters
       orderBy: { field: RESOLVES_AT, direction: ASC }
       first: $take
-      skip: $skip
+      after: $after
     ) {
-      hasMore
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
-        id
+        id: conditionId
         endTime
         chainId
         resolver
         description
         settled
       }
-      hasMore
     }
   }
 `;
@@ -199,17 +201,20 @@ const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
   query PythDebugConditions(
     $filters: ConditionFilter
     $take: Int!
-    $skip: Int!
+    $after: String
   ) {
     conditionsConnection(
       filter: $filters
       orderBy: { field: RESOLVES_AT, direction: ASC }
       first: $take
-      skip: $skip
+      after: $after
     ) {
-      hasMore
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
-        id
+        id: conditionId
         endTime
         chainId
         resolver
@@ -772,10 +777,14 @@ async function main() {
 
   // 1) Find ended, unsettled conditions whose resolver is this PythResolver.
   const conditions: ConditionRow[] = [];
-  for (let skip = 0; conditions.length < args.maxConditions; skip += 50) {
+  let after: string | null = null;
+  while (conditions.length < args.maxConditions) {
     const take = Math.min(50, args.maxConditions - conditions.length);
     const data = await gql<{
-      conditionsConnection: { nodes: ConditionRow[]; hasMore: boolean };
+      conditionsConnection: {
+        nodes: ConditionRow[];
+        pageInfo: { hasNextPage: boolean; endCursor: string | null };
+      };
     }>(args.graphqlUrl, CONDITIONS_QUERY, {
       filters: {
         chainId: args.chainId,
@@ -784,11 +793,13 @@ async function main() {
         resolver: args.conditionResolver,
       },
       take,
-      skip,
+      after,
     });
     if (data.conditionsConnection.nodes.length === 0) break;
     conditions.push(...data.conditionsConnection.nodes);
-    if (!data.conditionsConnection.hasMore) break;
+    const pageInfo = data.conditionsConnection.pageInfo;
+    if (!pageInfo.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
   }
 
   console.log(
@@ -807,8 +818,8 @@ async function main() {
           maxEndTime: nowSec,
           search: 'PYTH',
         },
-        first: 10,
-        skip: 0,
+        take: 10,
+        after: null,
       });
 
       const rows = dbg.conditionsConnection?.nodes ?? [];

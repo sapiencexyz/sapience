@@ -46,7 +46,10 @@ export type NodeTypeName =
   | 'CollateralTransfer'
   | 'Vault'
   | 'Category'
-  | 'Account';
+  | 'Account'
+  | 'Condition'
+  | 'PickConfiguration'
+  | 'Position';
 
 export type GlobalIdParts = {
   type: string;
@@ -88,6 +91,9 @@ export const FROZEN_NODE_TYPES: readonly string[] = [
   'Vault',
   'Category',
   'Account',
+  'Condition',
+  'PickConfiguration',
+  'Position',
 ];
 
 const SEPARATOR = ':';

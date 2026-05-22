@@ -2,6 +2,7 @@ import { graphqlRequest } from './client/graphqlClient';
 
 export interface ConditionGroupConditionType {
   id: string;
+  conditionId: string;
   createdAt: string;
   question: string;
   shortName?: string | null;
@@ -58,7 +59,6 @@ export const GET_CONDITION_GROUPS = /* GraphQL */ `
     $conditionsWhere: ConditionWhereInput
   ) {
     conditionGroupsConnection(first: $take, after: $after, filter: $filter) {
-      hasMore
       nodes {
         id
         createdAt
@@ -72,7 +72,8 @@ export const GET_CONDITION_GROUPS = /* GraphQL */ `
           orderBy: [{ displayOrder: { sort: asc } }]
           where: $conditionsWhere
         ) {
-          id
+          id: conditionId
+          conditionId
           createdAt
           question
           shortName

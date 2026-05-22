@@ -321,7 +321,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "LeaderboardFilter",
+                  "name": "AccountRankingFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -1216,6 +1216,27 @@
         ],
         "inputFields": null,
         "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
+        "name": "AccountRankingFilter",
+        "description": "Filter input for the `AccountRankingConnection` returned by\n`leaderboard(...)`. PNL / VOLUME / ROI aggregate over a configurable\nwindow; ACCURACY is lifetime-aggregated (the time-weighted Brier-derived\nscore already weights by recency) and ignores the window. Operator-\npattern shape matches `AccountStatFilter`.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "timestamp",
+            "description": "Filter by aggregation epoch seconds. `{ gte }` sets the window's lower\nbound, `{ lte }` sets the upper bound; both inclusive. Other operators\nreject — this is a window selector, not a point query.",
+            "type": {
+              "kind": "INPUT_OBJECT",
+              "name": "IntFilter",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
         "enumValues": null,
         "possibleTypes": null
       },
@@ -2126,6 +2147,22 @@
               "ofType": {
                 "kind": "OBJECT",
                 "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Sum of matching Prediction and SecondaryTrade rows for the same filters\nthe page was sliced from. Resolved lazily via two indexed `COUNT(*)`\nqueries only when clients select this field.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
                 "ofType": null
               }
             },
@@ -5410,7 +5447,23 @@
           },
           {
             "name": "id",
-            "description": null,
+            "description": "Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`\nfor the on-chain condition identifier.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "ID",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Natural-key condition id (on-chain identifier), returned verbatim.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -5993,7 +6046,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Node",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -6002,46 +6061,6 @@
         "name": "ConditionConnection",
         "description": "Relay-shaped connection over `Condition` rows.",
         "fields": [
-          {
-            "name": "items",
-            "description": "Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "Condition",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": "Deprecated convenience alias for `pageInfo.hasNextPage`.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
           {
             "name": "edges",
             "description": null,
@@ -6679,7 +6698,7 @@
       {
         "kind": "OBJECT",
         "name": "ConditionGroup",
-        "description": null,
+        "description": "TODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "_count",
@@ -6928,46 +6947,6 @@
         "name": "ConditionGroupConnection",
         "description": "Relay-shaped connection over `ConditionGroup` rows.",
         "fields": [
-          {
-            "name": "items",
-            "description": "Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "ConditionGroup",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": "Deprecated convenience alias for `pageInfo.hasNextPage`.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
           {
             "name": "edges",
             "description": null,
@@ -10852,7 +10831,7 @@
       {
         "kind": "OBJECT",
         "name": "Forecast",
-        "description": "Public Forecast surface backed by EAS attestation rows.",
+        "description": "Public Forecast surface backed by EAS attestation rows.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "forecastScore",
@@ -12653,27 +12632,6 @@
         "possibleTypes": null
       },
       {
-        "kind": "INPUT_OBJECT",
-        "name": "LeaderboardFilter",
-        "description": "Filter input for `leaderboard(...)`. PNL / VOLUME / ROI aggregate over a\nconfigurable window; ACCURACY is lifetime-aggregated (the time-weighted\nBrier-derived score already weights by recency) and ignores the window.\nOperator-pattern shape matches `AccountStatFilter`.",
-        "fields": null,
-        "inputFields": [
-          {
-            "name": "timestamp",
-            "description": "Filter by aggregation epoch seconds. `{ gte }` sets the window's lower\nbound, `{ lte }` sets the upper bound; both inclusive. Other operators\nreject — this is a window selector, not a point query.",
-            "type": {
-              "kind": "INPUT_OBJECT",
-              "name": "IntFilter",
-              "ofType": null
-            },
-            "defaultValue": null
-          }
-        ],
-        "interfaces": null,
-        "enumValues": null,
-        "possibleTypes": null
-      },
-      {
         "kind": "ENUM",
         "name": "LeaderboardMetric",
         "description": null,
@@ -13943,6 +13901,21 @@
           },
           {
             "kind": "OBJECT",
+            "name": "Condition",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "PickConfiguration",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "Position",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
             "name": "Vault",
             "ofType": null
           }
@@ -14124,7 +14097,7 @@
       {
         "kind": "OBJECT",
         "name": "Pick",
-        "description": "Individual outcome pick within a pick configuration",
+        "description": "Individual outcome pick within a pick configuration.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "condition",
@@ -14303,7 +14276,23 @@
           },
           {
             "name": "id",
-            "description": null,
+            "description": "Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`\nfor the natural pick-configuration identifier.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "ID",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pickConfigId",
+            "description": "Natural-key pick-configuration id, returned verbatim.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -14646,7 +14635,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Node",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -15041,6 +15036,22 @@
           },
           {
             "name": "id",
+            "description": "Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`\nfor the synthetic position row identifier.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "ID",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "positionId",
             "description": "Synthetic row id. Open rows use the underlying Position row id\nserialized as a string; synthesized sell rows append `\"-sell-<tradeHash>\"`.",
             "args": [],
             "type": {
@@ -15169,7 +15180,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Node",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -15698,7 +15715,7 @@
       {
         "kind": "OBJECT",
         "name": "Prediction",
-        "description": "Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking",
+        "description": "Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "chainId",
@@ -17103,7 +17120,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "LeaderboardFilter",
+                  "name": "AccountRankingFilter",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -21314,48 +21331,8 @@
       {
         "kind": "OBJECT",
         "name": "QuestionConnection",
-        "description": "Relay-shaped connection over `Question` rows. `totalCount` is\nintentionally omitted — the underlying SQL UNION over `condition_group`\nand ungrouped `condition` rows cannot produce a single COUNT cheaply.",
+        "description": "Relay-shaped connection over `Question` rows.",
         "fields": [
-          {
-            "name": "items",
-            "description": "Deprecated convenience alias for `nodes`; kept while repo callers migrate to the Relay shape.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "NON_NULL",
-                  "name": null,
-                  "ofType": {
-                    "kind": "OBJECT",
-                    "name": "Question",
-                    "ofType": null
-                  }
-                }
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "hasMore",
-            "description": "Deprecated convenience alias for `pageInfo.hasNextPage`.",
-            "args": [],
-            "type": {
-              "kind": "NON_NULL",
-              "name": null,
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
           {
             "name": "edges",
             "description": null,
@@ -21414,6 +21391,22 @@
               "ofType": {
                 "kind": "OBJECT",
                 "name": "PageInfo",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "totalCount",
+            "description": "Size of the underlying ranked set the page is sliced from. Resolved lazily\nvia a separate `COUNT(*)` over the same `condition_group` / ungrouped\n`condition` UNION only when clients select this field.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Int",
                 "ofType": null
               }
             },
@@ -21916,7 +21909,7 @@
       {
         "kind": "OBJECT",
         "name": "ReferralCode",
-        "description": "Public referral code metadata. Exposed via `User.referredByCode` /\n`Account.referredByCode` so clients can render an account's referrer.\n\nReferral codes are low-security attribution hints: using someone else's code\nonly credits that referrer; it does not grant access to funds or privileged\nactions. `codeHash` is intentionally omitted from GraphQL — public clients\nidentify codes by integer `id`. Aggregate analytics (claim count, volume,\nclaimants) live on the public REST endpoint `GET /referrals/codes`.",
+        "description": "Public referral code metadata. Exposed via `User.referredByCode` /\n`Account.referredByCode` so clients can render an account's referrer.\n\nReferral codes are low-security attribution hints: using someone else's code\nonly credits that referrer; it does not grant access to funds or privileged\nactions. `codeHash` is intentionally omitted from GraphQL — public clients\nidentify codes by integer `id`. Aggregate analytics (claim count, volume,\nclaimants) live on the public REST endpoint `GET /referrals/codes`.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "id",
@@ -23030,7 +23023,7 @@
       {
         "kind": "OBJECT",
         "name": "Trade",
-        "description": "Secondary market trade record where position tokens are exchanged\nbetween users. The on-chain reference is `tradeHash`; `id` is an\ninternal row id (see schema-preamble conventions).",
+        "description": "Secondary market trade record where position tokens are exchanged\nbetween users. The on-chain reference is `tradeHash`; `id` is an\ninternal row id (see schema-preamble conventions).\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "blockNumber",

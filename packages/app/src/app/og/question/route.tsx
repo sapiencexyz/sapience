@@ -173,7 +173,6 @@ async function fetchConditionData(
     const query = `
       query ConditionForOG($filters: ConditionFilter!) {
         conditionsConnection(filter: $filters, first: 1) {
-          hasMore
           nodes {
             question
             category { slug }

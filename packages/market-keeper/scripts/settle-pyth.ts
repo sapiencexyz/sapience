@@ -119,6 +119,13 @@ interface GraphQLResponse<T> {
   errors?: Array<{ message: string }>;
 }
 
+interface ConditionsConnectionResponse {
+  conditionsConnection: {
+    nodes: ConditionRow[];
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  };
+}
+
 // ============ ABIs ============
 
 const pythResolverAbi = [
@@ -239,24 +246,26 @@ const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
     $filters: ConditionFilter
     $take: Int!
-    $skip: Int!
+    $after: String
   ) {
     conditionsConnection(
       filter: $filters
       orderBy: { field: RESOLVES_AT, direction: ASC }
       first: $take
-      skip: $skip
+      after: $after
     ) {
-      hasMore
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
-        id
+        id: conditionId
         endTime
         chainId
         resolver
         description
         settled
       }
-      hasMore
     }
   }
 `;
@@ -552,23 +561,29 @@ async function main() {
 
   console.log('[settle-pyth] Fetching unsettled Pyth conditions...');
 
-  for (let skip = 0; conditions.length < MAX_CONDITIONS; skip += 50) {
+  let after: string | null = null;
+  while (conditions.length < MAX_CONDITIONS) {
     const take = Math.min(50, MAX_CONDITIONS - conditions.length);
-    const data = await gql<{
-      conditionsConnection: { nodes: ConditionRow[]; hasMore: boolean };
-    }>(sapienceApiUrl, CONDITIONS_QUERY, {
-      filters: {
-        chainId: CHAIN_ID,
-        resolvesAt: { lte: nowSec },
-        settled: false,
-        marketAddress: PYTH_RESOLVER_ADDRESS,
-      },
-      take,
-      skip,
-    });
+    const data: ConditionsConnectionResponse =
+      await gql<ConditionsConnectionResponse>(
+        sapienceApiUrl,
+        CONDITIONS_QUERY,
+        {
+          filters: {
+            chainId: CHAIN_ID,
+            resolvesAt: { lte: nowSec },
+            settled: false,
+            marketAddress: PYTH_RESOLVER_ADDRESS,
+          },
+          take,
+          after,
+        }
+      );
     if (data.conditionsConnection.nodes.length === 0) break;
     conditions.push(...data.conditionsConnection.nodes);
-    if (!data.conditionsConnection.hasMore) break;
+    const pageInfo = data.conditionsConnection.pageInfo;
+    if (!pageInfo.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
   }
 
   console.log(

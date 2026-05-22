@@ -12,7 +12,8 @@ import type { PickConfigData, PickData } from '~/hooks/graphql/usePositions';
 const PICK_CONFIGS_BY_TOKENS_QUERY = /* GraphQL */ `
   query PickConfigsByTokens($tokens: [String!]) {
     pickConfigurations(tokens: $tokens, take: 100) {
-      id
+      id: pickConfigId
+      pickConfigId
       chainId
       marketAddress
       totalPredictorCollateral
@@ -33,7 +34,8 @@ const PICK_CONFIGS_BY_TOKENS_QUERY = /* GraphQL */ `
         conditionId
         predictedOutcome
         condition {
-          id
+          id: conditionId
+          conditionId
           shortName
           optionName
           question

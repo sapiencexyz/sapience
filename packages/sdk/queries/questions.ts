@@ -80,7 +80,6 @@ export const GET_QUESTIONS = /* GraphQL */ `
       orderBy: $orderBy
       filter: $filter
     ) {
-      hasMore
       nodes {
         questionType
         group {
@@ -93,7 +92,8 @@ export const GET_QUESTIONS = /* GraphQL */ `
             slug
           }
           conditions {
-            id
+            id: conditionId
+            conditionId
             createdAt
             question
             shortName
@@ -132,7 +132,8 @@ export const GET_QUESTIONS = /* GraphQL */ `
           }
         }
         condition {
-          id
+          id: conditionId
+          conditionId
           createdAt
           question
           shortName
