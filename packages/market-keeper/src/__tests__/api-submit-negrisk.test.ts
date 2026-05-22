@@ -60,7 +60,7 @@ describe('submitToAPI negRisk mismatch recovery', () => {
     mockGetAdminAuthHeaders.mockResolvedValue({ Authorization: 'Bearer test' });
   });
 
-  it('retries a batch without structured negRisk mismatches so good conditions still submit', async () => {
+  it('fails the whole batch on structured negRisk mismatches', async () => {
     const goodHash = '0x' + 'aa'.repeat(32);
     const badHash = '0x' + 'bb'.repeat(32);
     const data: SapienceOutput = {
@@ -114,12 +114,6 @@ describe('submitToAPI negRisk mismatch recovery', () => {
       data
     );
 
-    expect(mockFetchWithRetry).toHaveBeenCalledTimes(2);
-    const retryBody = JSON.parse(mockFetchWithRetry.mock.calls[1][1].body);
-    expect(
-      retryBody.conditions.map(
-        (c: { conditionHash: string }) => c.conditionHash
-      )
-    ).toEqual([goodHash]);
+    expect(mockFetchWithRetry).toHaveBeenCalledTimes(1);
   });
 });

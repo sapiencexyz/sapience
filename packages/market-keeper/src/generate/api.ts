@@ -624,46 +624,6 @@ export async function submitGroupMetadataUpdates(
 /**
  * Submit all condition groups and conditions to the API
  */
-type NegRiskMismatchResponse = {
-  code?: string;
-  message?: string;
-  mismatches?: Array<{
-    type?: 'EXISTING_GROUP_MISMATCH' | 'NEW_GROUP_INCOHERENT';
-    groupName?: string;
-    expectedNegRiskMarketId?: string | null;
-    mismatched?: Array<{
-      conditionHash?: string;
-      actualNegRiskMarketId?: string | null;
-    }>;
-  }>;
-};
-
-function splitNegRiskMismatchBatch<
-  T extends { conditionHash: string; groupName?: string },
->(
-  batch: T[],
-  errorData: NegRiskMismatchResponse
-): { retryable: T[]; quarantined: T[] } | null {
-  if (errorData.code !== 'NEG_RISK_BASKET_MISMATCH') return null;
-  if (!Array.isArray(errorData.mismatches)) return null;
-
-  const badHashes = new Set<string>();
-
-  for (const mismatch of errorData.mismatches) {
-    for (const item of mismatch.mismatched ?? []) {
-      if (item.conditionHash) badHashes.add(item.conditionHash);
-    }
-  }
-
-  if (badHashes.size === 0) return null;
-
-  const quarantined = batch.filter((item) => badHashes.has(item.conditionHash));
-  const retryable = batch.filter((item) => !quarantined.includes(item));
-
-  if (quarantined.length === 0) return null;
-  return { retryable, quarantined };
-}
-
 export async function submitToAPI(
   apiUrl: string,
   privateKey: `0x${string}`,
@@ -741,11 +701,7 @@ export async function submitToAPI(
   let totalFailed = 0;
   const allFailedGroups = new Set<string>();
 
-  async function submitBatches(
-    batchList: (typeof payloads)[],
-    label: string,
-    salvageDepth = 0
-  ) {
+  async function submitBatches(batchList: (typeof payloads)[], label: string) {
     for (let batchIdx = 0; batchIdx < batchList.length; batchIdx++) {
       const batch = batchList[batchIdx];
       const batchNum = batchIdx + 1;
@@ -786,14 +742,14 @@ export async function submitToAPI(
             .catch(() => ({ message: 'Unknown error' }));
           const message =
             (errorData as { message?: string }).message || response.statusText;
-          const split = splitNegRiskMismatchBatch(batch, errorData);
           // Surface basket-id mismatches separately: the API rejects them with
           // a 400 carrying the "non-matching negRisk conditions" phrase, and
-          // these are the cases operators want to triage (the keeper would
-          // otherwise drop the new condition on every subsequent sync).
+          // these are the cases operators want to triage. Keep this fail-closed:
+          // if one condition in the batch fails admission, do not retry a partial
+          // subset because that can split a negRisk basket across sync runs.
           if (
             response.status === 400 &&
-            (split || /non-matching negRisk/i.test(message))
+            /non-matching negRisk/i.test(message)
           ) {
             console.error(
               `${label} Batch ${batchNum} unable to add to existing negRisk ` +
@@ -804,25 +760,6 @@ export async function submitToAPI(
                   )
                   .join('; ')}`
             );
-            if (
-              split &&
-              split.retryable.length < batch.length &&
-              salvageDepth < 3
-            ) {
-              totalFailed += split.quarantined.length;
-              console.error(
-                `${label} Batch ${batchNum} quarantined ${split.quarantined.length} ` +
-                  `negRisk mismatch condition(s), retrying ${split.retryable.length}`
-              );
-              if (split.retryable.length > 0) {
-                await submitBatches(
-                  [split.retryable],
-                  `${label} Salvage`,
-                  salvageDepth + 1
-                );
-              }
-              continue;
-            }
           } else {
             console.error(
               `${label} Batch ${batchNum} failed: HTTP ${response.status}: ${message}`
