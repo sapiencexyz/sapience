@@ -100,7 +100,7 @@ export default function QuestionPageContent({
         query ConditionsByIds($filters: ConditionFilter!) {
           conditionsConnection(filter: $filters, first: 1) {
             nodes {
-              id
+              id: conditionId
               question
               shortName
               endTime
@@ -122,7 +122,7 @@ export default function QuestionPageContent({
       `;
       const filters: Record<string, unknown> = { ids: [conditionId] };
       if (resolverAddressFromUrl) {
-        filters.marketAddress = resolverAddressFromUrl;
+        filters.resolverAddress = resolverAddressFromUrl;
       }
       const resp = await graphqlRequest<{
         conditionsConnection: {

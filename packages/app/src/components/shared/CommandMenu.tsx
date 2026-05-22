@@ -66,7 +66,8 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
             slug
           }
           conditions {
-            id
+            id: conditionId
+            conditionId
             question
             shortName
             endTime
@@ -80,7 +81,8 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
           }
         }
         condition {
-          id
+          id: conditionId
+          conditionId
           question
           shortName
           endTime

@@ -3,6 +3,7 @@
     "nodes": [
       {
         "id": "0xa93a85108d1bda42a235b0b85c71b2e4636165ca87a2df89fd8fb0d879a3d8cf",
+        "conditionId": "0xa93a85108d1bda42a235b0b85c71b2e4636165ca87a2df89fd8fb0d879a3d8cf",
         "createdAt": "<ISO_TIMESTAMP>",
         "question": "Jamal Murray: Points O/U 25.5",
         "shortName": "Jamal Murray: Points O/U 25.5",
@@ -43,6 +44,7 @@
       },
       {
         "id": "0xa553a62dad12df974b39406710949b4d88d8f7b7155eb7ebd3da36169823ab63",
+        "conditionId": "0xa553a62dad12df974b39406710949b4d88d8f7b7155eb7ebd3da36169823ab63",
         "createdAt": "<ISO_TIMESTAMP>",
         "question": "Nikola Jokić: Points O/U 27.5",
         "shortName": "Nikola Jokić: Points O/U 27.5",
@@ -83,6 +85,7 @@
       },
       {
         "id": "0x4ba3528009f2a085bb4c20a69851554c29a312ff45a1148e31791c57377d17ba",
+        "conditionId": "0x4ba3528009f2a085bb4c20a69851554c29a312ff45a1148e31791c57377d17ba",
         "createdAt": "<ISO_TIMESTAMP>",
         "question": "Will Nuggets vs Timberwolves total be over 232.5?",
         "shortName": "DEN/MIN O232.5",
@@ -123,6 +126,7 @@
       },
       {
         "id": "0xe44aecae44754e928dd1c921de9f3d9cd9e7bd39195d771a81ea17915094fd97",
+        "conditionId": "0xe44aecae44754e928dd1c921de9f3d9cd9e7bd39195d771a81ea17915094fd97",
         "createdAt": "<ISO_TIMESTAMP>",
         "question": "Will Cavaliers vs Raptors 1H total be over 107.5?",
         "shortName": "CLE/TOR 1H O107.5",
@@ -163,6 +167,7 @@
       },
       {
         "id": "0xb2e8d63bde6eb76480e47cea598676b9080d9f91cf80ceca44577b62f6a00453",
+        "conditionId": "0xb2e8d63bde6eb76480e47cea598676b9080d9f91cf80ceca44577b62f6a00453",
         "createdAt": "<ISO_TIMESTAMP>",
         "question": "Will Trump say \"Somali\" or \"Somalia\" or \"Somalian\" during healthcare event?",
         "shortName": "Will Trump say \"Somali\" or \"Somalia\" or \"Somalian\" during healthcare event?",
@@ -198,6 +203,7 @@
       },
       {
         "id": "0xe453ae2b9edb41214942837c4426798a9df30917ad05443e7ae944d4c08b69ef",
+        "conditionId": "0xe453ae2b9edb41214942837c4426798a9df30917ad05443e7ae944d4c08b69ef",
         "createdAt": "<ISO_TIMESTAMP>",
         "question": "James Harden: Points O/U 20.5",
         "shortName": "James Harden: Points O/U 20.5",
@@ -238,6 +244,7 @@
       },
       {
         "id": "0xf0292000aca67839ae84da385974355665e8cd4abae1ff134bd0a9573cd1a199",
+        "conditionId": "0xf0292000aca67839ae84da385974355665e8cd4abae1ff134bd0a9573cd1a199",
         "createdAt": "<ISO_TIMESTAMP>",
         "question": "Will Trump say \"Veteran\" during healthcare event?",
         "shortName": "Will Trump say \"Veteran\" during healthcare event?",
@@ -273,6 +280,7 @@
       },
       {
         "id": "0x2bca2dab0bc5307dfb2c4b41345b2baee093e4e9c2545d59cb3ac5a66338f0b6",
+        "conditionId": "0x2bca2dab0bc5307dfb2c4b41345b2baee093e4e9c2545d59cb3ac5a66338f0b6",
         "createdAt": "<ISO_TIMESTAMP>",
         "question": "Will Trump say \"Go ahead\" 3+ times during healthcare event?",
         "shortName": "Will Trump say \"Go ahead\" 3+ times during healthcare event?",
@@ -308,6 +316,7 @@
       },
       {
         "id": "0x658259910478a9bac37a279e2c4ef22f565af085e7e6ee1f87431101e047c653",
+        "conditionId": "0x658259910478a9bac37a279e2c4ef22f565af085e7e6ee1f87431101e047c653",
         "createdAt": "<ISO_TIMESTAMP>",
         "question": "Will Trump say \"Unaffordable Care Act\" during healthcare event?",
         "shortName": "Will Trump say \"Unaffordable Care Act\" during healthcare event?",
@@ -343,6 +352,7 @@
       },
       {
         "id": "0xfbef512228f1f16444b8ed5afe892965cf5c8fef6ff5135688bb8aaf279a5c94",
+        "conditionId": "0xfbef512228f1f16444b8ed5afe892965cf5c8fef6ff5135688bb8aaf279a5c94",
         "createdAt": "<ISO_TIMESTAMP>",
         "question": "Will Trump say \"MAHA\" during healthcare event?",
         "shortName": "Will Trump say \"MAHA\" during healthcare event?",

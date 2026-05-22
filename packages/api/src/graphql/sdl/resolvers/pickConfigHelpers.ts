@@ -54,6 +54,7 @@ export const mapPickConfig = (
 ): PickConfigurationParent =>
   ({
     id: pc.id,
+    pickConfigId: pc.id,
     chainId: pc.chainId,
     marketAddress: pc.marketAddress,
     totalPredictorCollateral: pc.totalPredictorCollateral,

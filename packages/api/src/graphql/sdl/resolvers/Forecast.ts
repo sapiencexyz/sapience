@@ -23,6 +23,8 @@ type PrismaForecast = {
 export const Forecast: ForecastResolvers = {
   attestedAt: (parent) => (parent as unknown as PrismaForecast).time,
   forecaster: (parent) => (parent as unknown as PrismaForecast).attester,
+  resolverAddress: (parent) =>
+    (parent as unknown as { resolver?: string | null }).resolver ?? null,
 
   condition: async (parent, args, ctx) => {
     const p = parent as unknown as PrismaForecast;

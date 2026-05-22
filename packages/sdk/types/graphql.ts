@@ -742,10 +742,10 @@ export type Claim = {
   __typename?: 'Claim';
   chainId: Scalars['Int']['output'];
   collateralPaid: Scalars['String']['output'];
-  holder: Scalars['String']['output'];
+  holder: Scalars['Address']['output'];
   id: Scalars['Int']['output'];
-  marketAddress: Scalars['String']['output'];
-  positionToken: Scalars['String']['output'];
+  marketAddress: Scalars['Address']['output'];
+  positionToken: Scalars['Address']['output'];
   predictionId: Scalars['String']['output'];
   redeemedAt: Scalars['UnixSeconds']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
@@ -758,13 +758,13 @@ export type Close = {
   __typename?: 'Close';
   burnedAt: Scalars['UnixSeconds']['output'];
   chainId: Scalars['Int']['output'];
-  counterpartyHolder: Scalars['String']['output'];
+  counterpartyHolder: Scalars['Address']['output'];
   counterpartyPayout: Scalars['String']['output'];
   counterpartyTokensBurned: Scalars['String']['output'];
   id: Scalars['Int']['output'];
-  marketAddress: Scalars['String']['output'];
+  marketAddress: Scalars['Address']['output'];
   pickConfigId: Scalars['String']['output'];
-  predictorHolder: Scalars['String']['output'];
+  predictorHolder: Scalars['Address']['output'];
   predictorPayout: Scalars['String']['output'];
   predictorTokensBurned: Scalars['String']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
@@ -774,7 +774,7 @@ export type Close = {
 export type CollateralBalance = {
   __typename?: 'CollateralBalance';
   account: Account;
-  address: Scalars['String']['output'];
+  address: Scalars['Address']['output'];
   amount: Scalars['String']['output'];
   atBlock?: Maybe<Scalars['Int']['output']>;
   balance: Scalars['String']['output'];
@@ -858,7 +858,7 @@ export type CollateralTransferOrder = {
 export type CollateralTransferOrderField =
   | 'BLOCK_NUMBER';
 
-export type Condition = {
+export type Condition = Node & {
   __typename?: 'Condition';
   _count?: Maybe<ConditionCount>;
   assertionId?: Maybe<Scalars['String']['output']>;
@@ -868,6 +868,8 @@ export type Condition = {
   chainId: Scalars['Int']['output'];
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroupId?: Maybe<Scalars['Int']['output']>;
+  /** Natural-key condition id (on-chain identifier), returned verbatim. */
+  conditionId: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   description: Scalars['String']['output'];
   displayOrder?: Maybe<Scalars['Int']['output']>;
@@ -875,13 +877,18 @@ export type Condition = {
   /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket */
   estimatedPrice?: Maybe<Scalars['Float']['output']>;
   forecasts: ForecastConnection;
-  id: Scalars['String']['output'];
   /**
-   * On-chain market contract address that owns this condition (case-insensitive,
-   * 0x-prefixed lowercase). The canonical client-facing name for the address
-   * surfaced as `resolver` on the legacy fragment.
+   * Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`
+   * for the on-chain condition identifier.
    */
-  marketAddress: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /**
+   * Mislabeled alias of `resolverAddress`. Holds the resolver contract address,
+   * not the PredictionMarketEscrow address. The recent `resolver → marketAddress`
+   * migration collapsed a real distinction; `resolverAddress` is the corrected name.
+   * @deprecated Use `resolverAddress` — same value, but accurately named. This field holds the resolver (oracle) contract address, not the market/escrow address that `Prediction.marketAddress` / `PickConfiguration.marketAddress` carry.
+   */
+  marketAddress: Scalars['Address']['output'];
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
   optionName?: Maybe<Scalars['String']['output']>;
@@ -904,9 +911,16 @@ export type Condition = {
   resolvedToYes: Scalars['Boolean']['output'];
   /**
    * Canonical resolver address for this condition (required).
-   * @deprecated Use `marketAddress` — same value, drops the protocol-jargon name to match `Prediction.marketAddress` / `PickConfig.marketAddress` and the `ConditionFilter.marketAddress` filter.
+   * @deprecated Use `resolverAddress` — same value, Address-typed and consistent with `Forecast.resolverAddress` / `Pick.conditionResolverAddress`.
    */
   resolver: Scalars['String']['output'];
+  /**
+   * Resolver contract address — the oracle that settles this condition's outcome.
+   * Distinct from the PredictionMarketEscrow address (which is `Prediction.marketAddress` /
+   * `PickConfiguration.marketAddress`); one resolver contract can settle conditions
+   * referenced by many escrow markets.
+   */
+  resolverAddress: Scalars['Address']['output'];
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
@@ -1009,7 +1023,7 @@ export type ConditionFilter = {
   categoryIds?: InputMaybe<Array<Scalars['ID']['input']>>;
   /** Restrict to conditions whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present. */
+  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to / exclude conditions in a specific group. `{ isNull: true }` matches ungrouped conditions. */
   conditionGroupId?: InputMaybe<IdFilter>;
@@ -1022,15 +1036,15 @@ export type ConditionFilter = {
   /** Restrict to these condition IDs (case-insensitive). */
   ids?: InputMaybe<Array<Scalars['ID']['input']>>;
   /**
-   * Match the on-chain market contract address that owns the condition
-   * (case-insensitive). Maps to the DB `resolver` column.
+   * Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+   * @deprecated Use `resolverAddress` — same resolver/oracle contract address, accurately named.
    */
-  marketAddress?: InputMaybe<Scalars['String']['input']>;
+  marketAddress?: InputMaybe<Scalars['Address']['input']>;
   /**
-   * Match any of these on-chain market contract addresses (case-insensitive).
-   * Same semantics as `marketAddress`.
+   * Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+   * @deprecated Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.
    */
-  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
+  marketAddressIn?: InputMaybe<Array<Scalars['Address']['input']>>;
   /**
    * Filter by resolution state. `{ isNull: true }` selects unsettled
    * conditions; `{ isNull: false }` selects settled (any outcome);
@@ -1039,6 +1053,15 @@ export type ConditionFilter = {
   outcome?: InputMaybe<ConditionOutcomeFilter>;
   /** Restrict to conditions resolved YES (true) or NO (false). Implies settled=true. */
   resolvedToYes?: InputMaybe<Scalars['Boolean']['input']>;
+  /**
+   * Match the on-chain resolver (oracle) contract address. Maps to the DB
+   * `condition.resolver` column. Distinct from `Prediction.marketAddress` /
+   * `PickConfiguration.marketAddress`, which carry the PredictionMarketEscrow
+   * contract.
+   */
+  resolverAddress?: InputMaybe<Scalars['Address']['input']>;
+  /** Match any of these resolver contract addresses. Same semantics as `resolverAddress`. */
+  resolverAddressIn?: InputMaybe<Array<Scalars['Address']['input']>>;
   /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
   resolvesAt?: InputMaybe<IntFilter>;
   /** Free-text search across `question`, `shortName`, and `description` (case-insensitive). */
@@ -1109,6 +1132,13 @@ export type ConditionFilters = {
   visibility?: InputMaybe<ConditionVisibility>;
 };
 
+/**
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type ConditionGroup = {
   __typename?: 'ConditionGroup';
   _count?: Maybe<ConditionGroupCount>;
@@ -1130,11 +1160,25 @@ export type ConditionGroup = {
 };
 
 
+/**
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type ConditionGroupCategoryArgs = {
   where?: InputMaybe<CategoryWhereInput>;
 };
 
 
+/**
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type ConditionGroupConditionsArgs = {
   cursor?: InputMaybe<ConditionWhereUniqueInput>;
   distinct?: InputMaybe<Array<ConditionScalarFieldEnum>>;
@@ -1682,7 +1726,15 @@ export type FloatNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
-/** Public Forecast surface backed by EAS attestation rows. */
+/**
+ * Public Forecast surface backed by EAS attestation rows.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type Forecast = {
   __typename?: 'Forecast';
   /** When the forecast was made on-chain. */
@@ -1707,20 +1759,42 @@ export type Forecast = {
   forecaster: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   recipient: Scalars['String']['output'];
-  resolver?: Maybe<Scalars['String']['output']>;
+  /**
+   * Resolver contract address from the on-chain EAS attestation (`address resolver`
+   * on the forecast schema). Identifies which oracle the forecaster is predicting
+   * against — same address as `Condition.resolverAddress` when the forecast
+   * matches a tracked condition.
+   */
+  resolverAddress?: Maybe<Scalars['Address']['output']>;
   schemaId: Scalars['String']['output'];
   transactionHash: Scalars['String']['output'];
   uid: Scalars['String']['output'];
 };
 
 
-/** Public Forecast surface backed by EAS attestation rows. */
+/**
+ * Public Forecast surface backed by EAS attestation rows.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type ForecastConditionArgs = {
   where?: InputMaybe<ConditionWhereInput>;
 };
 
 
-/** Public Forecast surface backed by EAS attestation rows. */
+/**
+ * Public Forecast surface backed by EAS attestation rows.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type ForecastForecastScoreArgs = {
   where?: InputMaybe<ForecastScoreWhereInput>;
 };
@@ -1800,13 +1874,18 @@ export type ForecastScore = {
   forecaster: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   madeAt: Scalars['UnixSeconds']['output'];
-  marketAddress?: Maybe<Scalars['String']['output']>;
   marketId?: Maybe<Scalars['String']['output']>;
   outcome?: Maybe<Scalars['Int']['output']>;
   probabilityD18?: Maybe<Scalars['String']['output']>;
   probabilityFloat?: Maybe<Scalars['Float']['output']>;
   questionId?: Maybe<Scalars['String']['output']>;
-  resolver?: Maybe<Scalars['String']['output']>;
+  /**
+   * Resolver contract address this score is keyed against. Mirrors
+   * `Condition.resolverAddress` for the scored forecast. The DB row carries two
+   * legacy columns (`marketAddress`, `resolver`) that hold the same value; the
+   * GraphQL surface exposes the single corrected name.
+   */
+  resolverAddress?: Maybe<Scalars['Address']['output']>;
   scoredAt?: Maybe<Scalars['DateTimeISO']['output']>;
   used: Scalars['Boolean']['output'];
 };
@@ -2113,29 +2192,49 @@ export type PageInfo = {
   startCursor?: Maybe<Scalars['String']['output']>;
 };
 
-/** Individual outcome pick within a pick configuration */
+/**
+ * Individual outcome pick within a pick configuration.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type Pick = {
   __typename?: 'Pick';
   /** The condition this pick references. May be null if the conditionId is dangling. */
   condition?: Maybe<Condition>;
   conditionId: Scalars['String']['output'];
+  /** @deprecated Use `conditionResolverAddress` — same value, Address-typed and consistent with `Condition.resolverAddress`. */
   conditionResolver: Scalars['String']['output'];
+  /**
+   * Resolver (oracle) contract address for the referenced condition — mirrors
+   * `Condition.resolverAddress`. Replaces the loosely-typed `conditionResolver`.
+   */
+  conditionResolverAddress: Scalars['Address']['output'];
   id: Scalars['Int']['output'];
   pickConfigId: Scalars['String']['output'];
   predictedOutcome: Scalars['Int']['output'];
 };
 
 /** Group of outcome picks forming a combined prediction position, with collateral and settlement tracking */
-export type PickConfiguration = {
+export type PickConfiguration = Node & {
   __typename?: 'PickConfiguration';
   chainId: Scalars['Int']['output'];
   claimedCounterpartyCollateral: Scalars['String']['output'];
   claimedPredictorCollateral: Scalars['String']['output'];
   counterpartyToken?: Maybe<Scalars['String']['output']>;
   endsAt?: Maybe<Scalars['UnixSeconds']['output']>;
-  id: Scalars['String']['output'];
+  /**
+   * Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`
+   * for the natural pick-configuration identifier.
+   */
+  id: Scalars['ID']['output'];
   isLegacy: Scalars['Boolean']['output'];
-  marketAddress: Scalars['String']['output'];
+  marketAddress: Scalars['Address']['output'];
+  /** Natural-key pick-configuration id, returned verbatim. */
+  pickConfigId: Scalars['String']['output'];
   picks: Array<Pick>;
   positions: PositionConnection;
   predictionId?: Maybe<Scalars['String']['output']>;
@@ -2236,7 +2335,7 @@ export type PnlDataPoint = {
  * "open" row carrying remaining cost basis, plus one synthesized "sell"
  * row per secondary-market disposal (so PnL realizes incrementally).
  */
-export type Position = {
+export type Position = Node & {
   __typename?: 'Position';
   /**
    * Number of position tokens still held (decimal string, 18 decimals on
@@ -2249,14 +2348,19 @@ export type Position = {
   /** Holder wallet address (lowercase 0x-hex). */
   holder: Scalars['String']['output'];
   /**
-   * Synthetic row id. Open rows use the underlying Position row id
-   * serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
+   * Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`
+   * for the synthetic position row identifier.
    */
-  id: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
   /** True if this is the predictor token side; false for counterparty. */
   isPredictorToken: Scalars['Boolean']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   pickConfigId: Scalars['String']['output'];
+  /**
+   * Synthetic row id. Open rows use the underlying Position row id
+   * serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
+   */
+  positionId: Scalars['String']['output'];
   /**
    * Realized PnL delta for a synthesized sell row (wei, 18 decimals;
    * signed — negative when sold below cost basis). Null on open rows;
@@ -2264,8 +2368,11 @@ export type Position = {
    * holder-wide aggregate.
    */
   realizedPnL?: Maybe<Scalars['String']['output']>;
-  /** ERC-20 position token address (lowercase 0x-hex). */
-  tokenAddress: Scalars['String']['output'];
+  /**
+   * ERC-20 position token address. Validated via the `Address` scalar
+   * (lowercased 0x-hex).
+   */
+  tokenAddress: Scalars['Address']['output'];
   /**
    * Cumulative payout the contract would owe this position if every
    * matched prediction resolved in the holder's favour (wei, 18 dec).
@@ -2383,7 +2490,15 @@ export type PositionsPage = Page & {
   totalCount?: Maybe<Scalars['Int']['output']>;
 };
 
-/** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
+/**
+ * Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
+ */
 export type Prediction = {
   __typename?: 'Prediction';
   chainId: Scalars['Int']['output'];
@@ -2397,7 +2512,7 @@ export type Prediction = {
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
   isLegacy: Scalars['Boolean']['output'];
-  marketAddress: Scalars['String']['output'];
+  marketAddress: Scalars['Address']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   predictionId: Scalars['String']['output'];
   predictor: Scalars['String']['output'];
@@ -2449,8 +2564,8 @@ export type PredictionEdge = {
  * values combine with AND.
  */
 export type PredictionFilter = {
-  /** Restrict to predictions where the address is predictor or counterparty (case-insensitive). */
-  address?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to predictions where the address is predictor or counterparty. */
+  address?: InputMaybe<Scalars['Address']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to predictions on a single condition (via the pickConfig join). */
@@ -2566,7 +2681,7 @@ export type Query = {
   __typename?: 'Query';
   /**
    * Look up a single account by canonical wallet address. Replacement for
-   * `user(where:)` — accepts a flat `address: String!` arg instead of the
+   * `user(where:)` — accepts a flat `address: Address!` arg instead of the
    * Prisma-shaped `UserWhereUniqueInput`.
    */
   account?: Maybe<Account>;
@@ -2979,7 +3094,7 @@ export type Query = {
 
 
 export type QueryAccountArgs = {
-  address: Scalars['String']['input'];
+  address: Scalars['Address']['input'];
 };
 
 
@@ -3611,16 +3726,29 @@ export type QuestionEdge = {
 export type QuestionFilter = {
   /** Restrict to questions whose category slug is in this set. */
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present. */
+  /** Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Filter by estimated price, e.g. `{ gte: 0.2, lte: 0.8 }`. */
   estimatedPrice?: InputMaybe<FloatFilter>;
-  /** Match the on-chain market contract address that owns the underlying condition (case-insensitive). */
-  marketAddress?: InputMaybe<Scalars['String']['input']>;
-  /** Match any of these on-chain market contract addresses that own the underlying condition (case-insensitive). */
-  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
+  /**
+   * Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+   * @deprecated Use `resolverAddress` — same resolver/oracle contract address, accurately named.
+   */
+  marketAddress?: InputMaybe<Scalars['Address']['input']>;
+  /**
+   * Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+   * @deprecated Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.
+   */
+  marketAddressIn?: InputMaybe<Array<Scalars['Address']['input']>>;
   /** Resolution-status filter; defaults to all when omitted. */
   resolutionStatus?: InputMaybe<ResolutionStatus>;
+  /**
+   * Match the on-chain resolver (oracle) contract address for the underlying condition.
+   * Distinct from the PredictionMarketEscrow address; see `Condition.resolverAddress`.
+   */
+  resolverAddress?: InputMaybe<Scalars['Address']['input']>;
+  /** Match any of these resolver contract addresses. Same semantics as `resolverAddress`. */
+  resolverAddressIn?: InputMaybe<Array<Scalars['Address']['input']>>;
   /** Filter by resolution epoch seconds, e.g. `{ gte: 1770000000 }`. */
   resolvesAt?: InputMaybe<IntFilter>;
   /** Free-text search across the wrapped Condition/Group's title and description (case-insensitive). */
@@ -3728,6 +3856,12 @@ export type QuestionSortField =
  * actions. `codeHash` is intentionally omitted from GraphQL — public clients
  * identify codes by integer `id`. Aggregate analytics (claim count, volume,
  * claimants) live on the public REST endpoint `GET /referrals/codes`.
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
  */
 export type ReferralCode = {
   __typename?: 'ReferralCode';
@@ -3871,6 +4005,12 @@ export type TimeToResolutionBucket = {
  * Secondary market trade record where position tokens are exchanged
  * between users. The on-chain reference is `tradeHash`; `id` is an
  * internal row id (see schema-preamble conventions).
+ *
+ * TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+ * exposes `id: Int!` (Prisma row id), so the wire format would change from
+ * number → opaque string — a breaking change for typed clients. Plan: add
+ * `globalId: ID!` alongside, deprecate the raw integer read, flip on a
+ * future major.
  */
 export type Trade = {
   __typename?: 'Trade';
@@ -3914,19 +4054,19 @@ export type TradeEdge = {
 
 /** Filter input for the Relay-shaped `tradesConnection` query. Combines with AND. */
 export type TradeFilter = {
-  /** Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`. */
-  address?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to a single buyer address (case-insensitive). */
-  buyer?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`. */
+  address?: InputMaybe<Scalars['Address']['input']>;
+  /** Restrict to a single buyer address. */
+  buyer?: InputMaybe<Scalars['Address']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
   executedAt?: InputMaybe<IntFilter>;
-  /** Restrict to a single seller address (case-insensitive). */
-  seller?: InputMaybe<Scalars['String']['input']>;
-  /** Restrict to a single position token address (case-insensitive). */
-  token?: InputMaybe<Scalars['String']['input']>;
-  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Restrict to a single seller address. */
+  seller?: InputMaybe<Scalars['Address']['input']>;
+  /** Restrict to a single position token address. */
+  token?: InputMaybe<Scalars['Address']['input']>;
+  tokens?: InputMaybe<Array<Scalars['Address']['input']>>;
   /**
    * Restrict to a single trade by execution hash. Supports the
    * by-hash single-record lookup pattern — `tradesConnection(filter: { tradeHash: $h }).nodes[0]`

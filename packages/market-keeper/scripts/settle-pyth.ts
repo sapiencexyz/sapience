@@ -119,6 +119,13 @@ interface GraphQLResponse<T> {
   errors?: Array<{ message: string }>;
 }
 
+interface ConditionsConnectionResponse {
+  conditionsConnection: {
+    nodes: ConditionRow[];
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  };
+}
+
 // ============ ABIs ============
 
 const pythResolverAbi = [
@@ -252,7 +259,7 @@ const CONDITIONS_QUERY = /* GraphQL */ `
         endCursor
       }
       nodes {
-        id
+        id: conditionId
         endTime
         chainId
         resolver
@@ -452,13 +459,6 @@ async function recoverSignerFromLazerUpdate(
 
 // ============ Main ============
 
-type ConditionsConnectionResponse = {
-  conditionsConnection: {
-    nodes: ConditionRow[];
-    pageInfo: { hasNextPage: boolean; endCursor: string | null };
-  };
-};
-
 async function main() {
   const options = parseArgs();
 
@@ -573,7 +573,7 @@ async function main() {
             chainId: CHAIN_ID,
             resolvesAt: { lte: nowSec },
             settled: false,
-            marketAddress: PYTH_RESOLVER_ADDRESS,
+            resolverAddress: PYTH_RESOLVER_ADDRESS,
           },
           take,
           after,

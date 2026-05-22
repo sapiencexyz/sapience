@@ -186,7 +186,7 @@ const CONDITIONS_QUERY = /* GraphQL */ `
         endCursor
       }
       nodes {
-        id
+        id: conditionId
         endTime
         chainId
         resolver
@@ -214,7 +214,7 @@ const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
         endCursor
       }
       nodes {
-        id
+        id: conditionId
         endTime
         chainId
         resolver

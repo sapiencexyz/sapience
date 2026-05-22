@@ -45,9 +45,8 @@ export async function checkExistingConditions(
     const query = `
       query CheckConditions($filters: ConditionFilter!) {
         conditionsConnection(filter: $filters, first: 100) {
-          hasMore
           nodes {
-            id
+            id: conditionId
             endTime
             question
             shortName

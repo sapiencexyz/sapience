@@ -4095,7 +4095,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4127,7 +4127,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4143,7 +4143,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4278,7 +4278,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4342,7 +4342,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4374,7 +4374,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -4537,7 +4537,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -5447,7 +5447,23 @@
           },
           {
             "name": "id",
-            "description": null,
+            "description": "Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`\nfor the on-chain condition identifier.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "ID",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "conditionId",
+            "description": "Natural-key condition id (on-chain identifier), returned verbatim.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -5753,20 +5769,36 @@
             "deprecationReason": null
           },
           {
-            "name": "marketAddress",
-            "description": "On-chain market contract address that owns this condition (case-insensitive,\n0x-prefixed lowercase). The canonical client-facing name for the address\nsurfaced as `resolver` on the legacy fragment.",
+            "name": "resolverAddress",
+            "description": "Resolver contract address — the oracle that settles this condition's outcome.\nDistinct from the PredictionMarketEscrow address (which is `Prediction.marketAddress` /\n`PickConfiguration.marketAddress`); one resolver contract can settle conditions\nreferenced by many escrow markets.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "marketAddress",
+            "description": "Mislabeled alias of `resolverAddress`. Holds the resolver contract address,\nnot the PredictionMarketEscrow address. The recent `resolver → marketAddress`\nmigration collapsed a real distinction; `resolverAddress` is the corrected name.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Address",
+                "ofType": null
+              }
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `resolverAddress` — same value, but accurately named. This field holds the resolver (oracle) contract address, not the market/escrow address that `Prediction.marketAddress` / `PickConfiguration.marketAddress` carry."
           },
           {
             "name": "resolver",
@@ -5782,7 +5814,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "Use `marketAddress` — same value, drops the protocol-jargon name to match `Prediction.marketAddress` / `PickConfig.marketAddress` and the `ConditionFilter.marketAddress` filter."
+            "deprecationReason": "Use `resolverAddress` — same value, Address-typed and consistent with `Forecast.resolverAddress` / `Pick.conditionResolverAddress`."
           },
           {
             "name": "settled",
@@ -6030,7 +6062,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Node",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -6255,7 +6293,7 @@
           },
           {
             "name": "chainId",
-            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present.",
+            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.",
             "type": {
               "kind": "SCALAR",
               "name": "Int",
@@ -6264,18 +6302,18 @@
             "defaultValue": null
           },
           {
-            "name": "marketAddress",
-            "description": "Match the on-chain market contract address that owns the condition\n(case-insensitive). Maps to the DB `resolver` column.",
+            "name": "resolverAddress",
+            "description": "Match the on-chain resolver (oracle) contract address. Maps to the DB\n`condition.resolver` column. Distinct from `Prediction.marketAddress` /\n`PickConfiguration.marketAddress`, which carry the PredictionMarketEscrow\ncontract.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
           },
           {
-            "name": "marketAddressIn",
-            "description": "Match any of these on-chain market contract addresses (case-insensitive).\nSame semantics as `marketAddress`.",
+            "name": "resolverAddressIn",
+            "description": "Match any of these resolver contract addresses. Same semantics as `resolverAddress`.",
             "type": {
               "kind": "LIST",
               "name": null,
@@ -6284,7 +6322,7 @@
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "String",
+                  "name": "Address",
                   "ofType": null
                 }
               }
@@ -6676,7 +6714,7 @@
       {
         "kind": "OBJECT",
         "name": "ConditionGroup",
-        "description": null,
+        "description": "TODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "_count",
@@ -10825,7 +10863,7 @@
       {
         "kind": "OBJECT",
         "name": "Forecast",
-        "description": "Public Forecast surface backed by EAS attestation rows.",
+        "description": "Public Forecast surface backed by EAS attestation rows.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "forecastScore",
@@ -11026,12 +11064,12 @@
             "deprecationReason": null
           },
           {
-            "name": "resolver",
-            "description": null,
+            "name": "resolverAddress",
+            "description": "Resolver contract address from the on-chain EAS attestation (`address resolver`\non the forecast schema). Identifies which oracle the forecaster is predicting\nagainst — same address as `Condition.resolverAddress` when the forecast\nmatches a tracked condition.",
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "isDeprecated": false,
@@ -11706,12 +11744,12 @@
             "deprecationReason": null
           },
           {
-            "name": "marketAddress",
-            "description": null,
+            "name": "resolverAddress",
+            "description": "Resolver contract address this score is keyed against. Mirrors\n`Condition.resolverAddress` for the scored forecast. The DB row carries two\nlegacy columns (`marketAddress`, `resolver`) that hold the same value; the\nGraphQL surface exposes the single corrected name.",
             "args": [],
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "isDeprecated": false,
@@ -11767,18 +11805,6 @@
           },
           {
             "name": "questionId",
-            "description": null,
-            "args": [],
-            "type": {
-              "kind": "SCALAR",
-              "name": "String",
-              "ofType": null
-            },
-            "isDeprecated": false,
-            "deprecationReason": null
-          },
-          {
-            "name": "resolver",
             "description": null,
             "args": [],
             "type": {
@@ -13895,6 +13921,21 @@
           },
           {
             "kind": "OBJECT",
+            "name": "Condition",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "PickConfiguration",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
+            "name": "Position",
+            "ofType": null
+          },
+          {
+            "kind": "OBJECT",
             "name": "Vault",
             "ofType": null
           }
@@ -14076,7 +14117,7 @@
       {
         "kind": "OBJECT",
         "name": "Pick",
-        "description": "Individual outcome pick within a pick configuration",
+        "description": "Individual outcome pick within a pick configuration.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "condition",
@@ -14107,6 +14148,22 @@
             "deprecationReason": null
           },
           {
+            "name": "conditionResolverAddress",
+            "description": "Resolver (oracle) contract address for the referenced condition — mirrors\n`Condition.resolverAddress`. Replaces the loosely-typed `conditionResolver`.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Address",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "conditionResolver",
             "description": null,
             "args": [],
@@ -14119,8 +14176,8 @@
                 "ofType": null
               }
             },
-            "isDeprecated": false,
-            "deprecationReason": null
+            "isDeprecated": true,
+            "deprecationReason": "Use `conditionResolverAddress` — same value, Address-typed and consistent with `Condition.resolverAddress`."
           },
           {
             "name": "id",
@@ -14255,7 +14312,23 @@
           },
           {
             "name": "id",
-            "description": null,
+            "description": "Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`\nfor the natural pick-configuration identifier.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "ID",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "pickConfigId",
+            "description": "Natural-key pick-configuration id, returned verbatim.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -14294,7 +14367,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -14598,7 +14671,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Node",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -14993,6 +15072,22 @@
           },
           {
             "name": "id",
+            "description": "Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`\nfor the synthetic position row identifier.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "ID",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "positionId",
             "description": "Synthetic row id. Open rows use the underlying Position row id\nserialized as a string; synthesized sell rows append `\"-sell-<tradeHash>\"`.",
             "args": [],
             "type": {
@@ -15065,14 +15160,14 @@
           },
           {
             "name": "tokenAddress",
-            "description": "ERC-20 position token address (lowercase 0x-hex).",
+            "description": "ERC-20 position token address. Validated via the `Address` scalar\n(lowercased 0x-hex).",
             "args": [],
             "type": {
               "kind": "NON_NULL",
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -15121,7 +15216,13 @@
           }
         ],
         "inputFields": null,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "kind": "INTERFACE",
+            "name": "Node",
+            "ofType": null
+          }
+        ],
         "enumValues": null,
         "possibleTypes": null
       },
@@ -15650,7 +15751,7 @@
       {
         "kind": "OBJECT",
         "name": "Prediction",
-        "description": "Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking",
+        "description": "Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "chainId",
@@ -15825,7 +15926,7 @@
               "name": null,
               "ofType": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "Address",
                 "ofType": null
               }
             },
@@ -16253,10 +16354,10 @@
           },
           {
             "name": "address",
-            "description": "Restrict to predictions where the address is predictor or counterparty (case-insensitive).",
+            "description": "Restrict to predictions where the address is predictor or counterparty.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
@@ -18709,7 +18810,7 @@
           },
           {
             "name": "account",
-            "description": "Look up a single account by canonical wallet address. Replacement for\n`user(where:)` — accepts a flat `address: String!` arg instead of the\nPrisma-shaped `UserWhereUniqueInput`.",
+            "description": "Look up a single account by canonical wallet address. Replacement for\n`user(where:)` — accepts a flat `address: Address!` arg instead of the\nPrisma-shaped `UserWhereUniqueInput`.",
             "args": [
               {
                 "name": "address",
@@ -18719,7 +18820,7 @@
                   "name": null,
                   "ofType": {
                     "kind": "SCALAR",
-                    "name": "String",
+                    "name": "Address",
                     "ofType": null
                   }
                 },
@@ -21405,7 +21506,7 @@
         "inputFields": [
           {
             "name": "chainId",
-            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present.",
+            "description": "Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.",
             "type": {
               "kind": "SCALAR",
               "name": "Int",
@@ -21414,18 +21515,18 @@
             "defaultValue": null
           },
           {
-            "name": "marketAddress",
-            "description": "Match the on-chain market contract address that owns the underlying condition (case-insensitive).",
+            "name": "resolverAddress",
+            "description": "Match the on-chain resolver (oracle) contract address for the underlying condition.\nDistinct from the PredictionMarketEscrow address; see `Condition.resolverAddress`.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
           },
           {
-            "name": "marketAddressIn",
-            "description": "Match any of these on-chain market contract addresses that own the underlying condition (case-insensitive).",
+            "name": "resolverAddressIn",
+            "description": "Match any of these resolver contract addresses. Same semantics as `resolverAddress`.",
             "type": {
               "kind": "LIST",
               "name": null,
@@ -21434,7 +21535,7 @@
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "String",
+                  "name": "Address",
                   "ofType": null
                 }
               }
@@ -21844,7 +21945,7 @@
       {
         "kind": "OBJECT",
         "name": "ReferralCode",
-        "description": "Public referral code metadata. Exposed via `User.referredByCode` /\n`Account.referredByCode` so clients can render an account's referrer.\n\nReferral codes are low-security attribution hints: using someone else's code\nonly credits that referrer; it does not grant access to funds or privileged\nactions. `codeHash` is intentionally omitted from GraphQL — public clients\nidentify codes by integer `id`. Aggregate analytics (claim count, volume,\nclaimants) live on the public REST endpoint `GET /referrals/codes`.",
+        "description": "Public referral code metadata. Exposed via `User.referredByCode` /\n`Account.referredByCode` so clients can render an account's referrer.\n\nReferral codes are low-security attribution hints: using someone else's code\nonly credits that referrer; it does not grant access to funds or privileged\nactions. `codeHash` is intentionally omitted from GraphQL — public clients\nidentify codes by integer `id`. Aggregate analytics (claim count, volume,\nclaimants) live on the public REST endpoint `GET /referrals/codes`.\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "id",
@@ -22958,7 +23059,7 @@
       {
         "kind": "OBJECT",
         "name": "Trade",
-        "description": "Secondary market trade record where position tokens are exchanged\nbetween users. The on-chain reference is `tradeHash`; `id` is an\ninternal row id (see schema-preamble conventions).",
+        "description": "Secondary market trade record where position tokens are exchanged\nbetween users. The on-chain reference is `tradeHash`; `id` is an\ninternal row id (see schema-preamble conventions).\n\nTODO(node-migration): Should `implements Node` with `id: ID!`. Currently\nexposes `id: Int!` (Prisma row id), so the wire format would change from\nnumber → opaque string — a breaking change for typed clients. Plan: add\n`globalId: ID!` alongside, deprecate the raw integer read, flip on a\nfuture major.",
         "fields": [
           {
             "name": "blockNumber",
@@ -23322,40 +23423,40 @@
           },
           {
             "name": "address",
-            "description": "Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`.",
+            "description": "Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "seller",
-            "description": "Restrict to a single seller address (case-insensitive).",
+            "description": "Restrict to a single seller address.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "buyer",
-            "description": "Restrict to a single buyer address (case-insensitive).",
+            "description": "Restrict to a single buyer address.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "token",
-            "description": "Restrict to a single position token address (case-insensitive).",
+            "description": "Restrict to a single position token address.",
             "type": {
               "kind": "SCALAR",
-              "name": "String",
+              "name": "Address",
               "ofType": null
             },
             "defaultValue": null
@@ -23371,7 +23472,7 @@
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "String",
+                  "name": "Address",
                   "ofType": null
                 }
               }

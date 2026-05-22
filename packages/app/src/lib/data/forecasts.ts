@@ -15,7 +15,8 @@ export const FORECAST_BY_UID_QUERY = `
         comment
         conditionId
         condition {
-          id
+          id: conditionId
+          conditionId
           question
           shortName
           endTime
@@ -33,6 +34,7 @@ export const FORECAST_BY_UID_QUERY = `
 
 export interface ForecastCondition {
   id: string;
+  conditionId: string;
   question: string;
   shortName?: string | null;
   endTime?: number | null;

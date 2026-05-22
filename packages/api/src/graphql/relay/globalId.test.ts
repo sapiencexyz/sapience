@@ -193,6 +193,9 @@ describe('frozen node types — public-API stability', () => {
       'Vault',
       'Category',
       'Account',
+      'Condition',
+      'PickConfiguration',
+      'Position',
     ]);
     expect(registeredNodeTypes()).toHaveLength(0);
   });

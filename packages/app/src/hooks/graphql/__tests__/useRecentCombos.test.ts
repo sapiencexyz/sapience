@@ -43,6 +43,7 @@ function makeCondition(
   overrides: Partial<PickConfigurationCondition> & { id: string }
 ): PickConfigurationCondition {
   return {
+    conditionId: overrides.id,
     shortName: null,
     question: 'Test?',
     description: null,
@@ -73,6 +74,7 @@ function makeConfig(
   overrides: Partial<PickConfigurationResult> & { id: string }
 ): PickConfigurationResult {
   return {
+    pickConfigId: overrides.id,
     chainId: 1,
     totalPredictorCollateral: '1000',
     totalCounterpartyCollateral: '1000',

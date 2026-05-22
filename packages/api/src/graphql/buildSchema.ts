@@ -57,7 +57,7 @@ export const buildApiSchema = async (
     });
   }
   if (options.emitSchemaFile) {
-    const sdl = printSchema(cachedSchema);
+    const sdl = printSchema(cachedSchema).replace(/[ \t]+$/gm, '');
     writeFileSync(schemaOutPath, `${sdl}\n`, 'utf8');
   }
   return cachedSchema;

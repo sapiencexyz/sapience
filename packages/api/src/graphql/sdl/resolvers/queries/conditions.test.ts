@@ -53,4 +53,28 @@ describe('conditionsConnection — operator filters', () => {
       similarMarketVolume: { gte: 100, lte: 900 },
     });
   });
+
+  it('keeps deprecated marketAddress aliases wired to resolver filters', async () => {
+    await conditionsConnectionFn(
+      undefined,
+      {
+        first: 10,
+        filter: {
+          marketAddress: '0xAbCdEf0123456789aBcDeF0123456789ABCDEF01',
+          marketAddressIn: ['0x1111111111111111111111111111111111111111'],
+        },
+      },
+      undefined,
+      undefined
+    );
+
+    const where = whereOf();
+    expect(where.AND).toContainEqual({ chainId: { equals: 5064014 } });
+    expect(where.AND).toContainEqual({
+      resolver: { equals: '0xabcdef0123456789abcdef0123456789abcdef01' },
+    });
+    expect(where.AND).toContainEqual({
+      resolver: { in: ['0x1111111111111111111111111111111111111111'] },
+    });
+  });
 });

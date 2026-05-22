@@ -1035,8 +1035,9 @@ const questionsConnectionResolver = async (
     categorySlugs: filter?.categorySlugs ?? null,
     tag: filter?.tag ?? null,
     chainId: filter?.chainId ?? null,
-    contractAddress: filter?.marketAddress ?? null,
-    contractAddressIn: filter?.marketAddressIn ?? null,
+    contractAddress: filter?.resolverAddress ?? filter?.marketAddress ?? null,
+    contractAddressIn:
+      filter?.resolverAddressIn ?? filter?.marketAddressIn ?? null,
     minEndTime: rangeMin(operatorFilter?.resolvesAt),
     maxEndTime: rangeMax(operatorFilter?.resolvesAt),
     resolutionStatus: filter?.resolutionStatus ?? null,
