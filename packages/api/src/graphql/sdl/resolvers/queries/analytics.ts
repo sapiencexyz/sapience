@@ -452,6 +452,7 @@ type ProtocolStatsArgs = {
   to?: number | null;
   fromEpoch?: number | null;
   toEpoch?: number | null;
+  vaultAddress?: string | null;
 };
 
 type VaultStatsArgs = ProtocolStatsArgs & {
@@ -460,9 +461,14 @@ type VaultStatsArgs = ProtocolStatsArgs & {
 
 const protocolStatsImpl = async (
   _parent: unknown,
-  { from, to, fromEpoch, toEpoch }: ProtocolStatsArgs
+  { from, to, fromEpoch, toEpoch, vaultAddress }: ProtocolStatsArgs
 ): Promise<ProtocolStat[]> => {
-  const fat = await runFatStats(undefined, from ?? fromEpoch, to ?? toEpoch);
+  const fat = await runFatStats(
+    vaultAddress ?? undefined,
+    from ?? fromEpoch,
+    to ?? toEpoch
+  );
+  const isVaultScoped = vaultAddress != null;
   return fat.map(
     (s): ProtocolStat => ({
       timestamp: s.timestamp,
@@ -472,6 +478,20 @@ const protocolStatsImpl = async (
       periodVolume: s.periodVolume,
       openInterest: s.openInterest,
       escrowBalance: s.escrowBalance,
+      totalTradeCount: s.cumulativeTradeCount,
+      periodPnL: isVaultScoped ? s.periodPnL : null,
+      vaultBalance: isVaultScoped ? s.balance : null,
+      vaultAvailableAssets: isVaultScoped ? s.availableAssets : null,
+      vaultDeployed: isVaultScoped ? s.deployed : null,
+      vaultCumulativePnL: isVaultScoped ? s.cumulativePnL : null,
+      vaultPositionsWon: isVaultScoped ? s.positionsWon : null,
+      vaultPositionsLost: isVaultScoped ? s.positionsLost : null,
+      vaultDeposits: isVaultScoped ? s.deposits : null,
+      vaultWithdrawals: isVaultScoped ? s.withdrawals : null,
+      vaultAirdropGains: isVaultScoped ? s.airdropGains : null,
+      vaultSecondaryBought: isVaultScoped ? s.secondaryBought : null,
+      vaultSecondarySold: isVaultScoped ? s.secondarySold : null,
+      vaultUnredeemedClaim: isVaultScoped ? s.unredeemedClaim : null,
     })
   );
 };
