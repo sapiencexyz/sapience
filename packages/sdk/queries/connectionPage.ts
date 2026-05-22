@@ -46,6 +46,33 @@ export const clampConnectionTake = (
   return Math.max(1, Math.min(Math.floor(take), CONNECTION_MAX_TAKE));
 };
 
+const normalizeConnectionTake = (
+  take: number | null | undefined,
+  defaultTake = 50
+): number => {
+  if (take == null || !Number.isFinite(take) || take <= 0) {
+    return defaultTake;
+  }
+  return Math.max(1, Math.floor(take));
+};
+
+const normalizeConnectionSkip = (skip: number | null | undefined): number => {
+  if (skip == null || !Number.isFinite(skip) || skip <= 0) {
+    return 0;
+  }
+  return Math.floor(skip);
+};
+
+export const shouldFetchConnectionWindow = (
+  take: number | null | undefined,
+  skip: number | null | undefined,
+  after: string | null | undefined,
+  defaultTake = 50
+): boolean =>
+  after == null &&
+  (normalizeConnectionSkip(skip) > 0 ||
+    normalizeConnectionTake(take, defaultTake) > CONNECTION_MAX_TAKE);
+
 /**
  * Run a connection query and return one page.
  *
@@ -74,5 +101,54 @@ export async function fetchConnectionPage<T>(
     items: conn?.nodes ?? [],
     hasMore: Boolean(conn?.pageInfo?.hasNextPage),
     endCursor: conn?.pageInfo?.endCursor ?? null,
+  };
+}
+
+export async function fetchConnectionWindow<T>(
+  query: string,
+  buildVariables: (
+    take: number,
+    after: string | null
+  ) => Record<string, unknown>,
+  resultKey: string,
+  opts?: {
+    take?: number | null;
+    skip?: number | null;
+    after?: string | null;
+    defaultTake?: number;
+  }
+): Promise<ConnectionPage<T>> {
+  const take = normalizeConnectionTake(opts?.take, opts?.defaultTake);
+  const skip = normalizeConnectionSkip(opts?.skip);
+  const target = skip + take;
+  const collected: T[] = [];
+  let after = opts?.after ?? null;
+  let hasMore = false;
+  let endCursor: string | null = null;
+
+  while (collected.length < target) {
+    const page = await fetchConnectionPage<T>(
+      query,
+      buildVariables(
+        Math.min(CONNECTION_MAX_TAKE, target - collected.length),
+        after
+      ),
+      resultKey
+    );
+
+    collected.push(...page.items);
+    hasMore = page.hasMore;
+    endCursor = page.endCursor;
+
+    if (!page.hasMore || !page.endCursor || page.items.length === 0) {
+      break;
+    }
+    after = page.endCursor;
+  }
+
+  return {
+    items: collected.slice(skip, target),
+    hasMore,
+    endCursor,
   };
 }

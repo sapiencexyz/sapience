@@ -1,6 +1,8 @@
 import {
   clampConnectionTake,
   fetchConnectionPage,
+  fetchConnectionWindow,
+  shouldFetchConnectionWindow,
   type ConnectionPage,
 } from './connectionPage';
 
@@ -114,13 +116,17 @@ export const GET_CONDITION_GROUPS = /* GraphQL */ `
   }
 `;
 
-export async function fetchConditionGroupsPage(opts?: {
-  take?: number;
-  after?: string | null;
+type ConditionGroupConnectionOptions = {
   chainId?: number;
   filters?: ConditionGroupFilter;
   includeEmptyGroups?: boolean;
-}): Promise<ConnectionPage<ConditionGroupType>> {
+};
+
+function buildConditionGroupsVariables(
+  opts: ConditionGroupConnectionOptions | undefined,
+  take: number,
+  after: string | null
+) {
   const chainId = opts?.chainId;
   const filters = opts?.filters;
   const includeEmpty = opts?.includeEmptyGroups ?? false;
@@ -134,14 +140,28 @@ export async function fetchConditionGroupsPage(opts?: {
     includeEmpty,
   };
 
+  return {
+    take,
+    after,
+    filter,
+    conditionsWhere,
+  };
+}
+
+export async function fetchConditionGroupsPage(opts?: {
+  take?: number;
+  after?: string | null;
+  chainId?: number;
+  filters?: ConditionGroupFilter;
+  includeEmptyGroups?: boolean;
+}): Promise<ConnectionPage<ConditionGroupType>> {
   return fetchConnectionPage<ConditionGroupType>(
     GET_CONDITION_GROUPS,
-    {
-      take: clampConnectionTake(opts?.take, 100),
-      after: opts?.after ?? null,
-      filter,
-      conditionsWhere,
-    },
+    buildConditionGroupsVariables(
+      opts,
+      clampConnectionTake(opts?.take, 100),
+      opts?.after ?? null
+    ),
     'conditionGroupsConnection'
   );
 }
@@ -152,10 +172,26 @@ export async function fetchConditionGroupsPage(opts?: {
  */
 export async function fetchConditionGroups(opts?: {
   take?: number;
+  /** @deprecated Use `after` with `endCursor` from `fetchConditionGroupsPage`. */
+  skip?: number;
   after?: string | null;
   chainId?: number;
   filters?: ConditionGroupFilter;
   includeEmptyGroups?: boolean;
 }): Promise<ConditionGroupType[]> {
+  if (shouldFetchConnectionWindow(opts?.take, opts?.skip, opts?.after, 100)) {
+    const page = await fetchConnectionWindow<ConditionGroupType>(
+      GET_CONDITION_GROUPS,
+      (take, after) => buildConditionGroupsVariables(opts, take, after),
+      'conditionGroupsConnection',
+      {
+        take: opts?.take,
+        skip: opts?.skip,
+        defaultTake: 100,
+      }
+    );
+    return page.items;
+  }
+
   return (await fetchConditionGroupsPage(opts)).items;
 }

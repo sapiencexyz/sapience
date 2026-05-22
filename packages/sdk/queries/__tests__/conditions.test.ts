@@ -205,12 +205,98 @@ describe('fetchConditions', () => {
     );
   });
 
-  test('caps take at the server limit of 100', async () => {
+  test('walks cursor pages for legacy skip windows', async () => {
+    const firstBatch = Array.from({ length: 100 }, (_, i) => ({
+      id: String(i + 1),
+      question: `Condition ${i + 1}`,
+    }));
+    const secondBatch = Array.from({ length: 5 }, (_, i) => ({
+      id: String(i + 101),
+      question: `Condition ${i + 101}`,
+    }));
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        conditionsConnection: {
+          nodes: firstBatch,
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-100' },
+        },
+      })
+      .mockResolvedValueOnce({
+        conditionsConnection: {
+          nodes: secondBatch,
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchConditions({ take: 10, skip: 95 });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
+      take: 100,
+      after: null,
+    });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
+      take: 5,
+      after: 'cursor-100',
+    });
+    expect(result.map((item) => item.id)).toEqual([
+      '96',
+      '97',
+      '98',
+      '99',
+      '100',
+      '101',
+      '102',
+      '103',
+      '104',
+      '105',
+    ]);
+  });
+
+  test('walks cursor pages for legacy large-take callers', async () => {
+    const firstBatch = Array.from({ length: 100 }, (_, i) => ({
+      id: String(i + 1),
+      question: `Condition ${i + 1}`,
+    }));
+    const secondBatch = Array.from({ length: 50 }, (_, i) => ({
+      id: String(i + 101),
+      question: `Condition ${i + 101}`,
+    }));
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        conditionsConnection: {
+          nodes: firstBatch,
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-100' },
+        },
+      })
+      .mockResolvedValueOnce({
+        conditionsConnection: {
+          nodes: secondBatch,
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchConditions({ take: 150 });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1].take).toBe(100);
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
+      take: 50,
+      after: 'cursor-100',
+    });
+    expect(result).toHaveLength(150);
+  });
+
+  test('caps cursor callers at one server-sized request when `after` is provided', async () => {
     mockGraphqlRequest.mockResolvedValue({
       conditionsConnection: { nodes: [] },
     });
-    await fetchConditions({ take: 500 });
-    expect(mockGraphqlRequest.mock.calls[0][1].take).toBe(100);
+    await fetchConditions({ take: 500, after: 'cursor-X' });
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
+      take: 100,
+      after: 'cursor-X',
+    });
   });
 
   test('unwraps items from conditionsConnection', async () => {

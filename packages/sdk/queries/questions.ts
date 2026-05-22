@@ -1,4 +1,9 @@
-import { clampConnectionTake, fetchConnectionPage } from './connectionPage';
+import {
+  clampConnectionTake,
+  fetchConnectionPage,
+  fetchConnectionWindow,
+  shouldFetchConnectionWindow,
+} from './connectionPage';
 import type { ConditionType } from './conditions';
 import type { ConditionGroupType } from './conditionGroups';
 
@@ -179,6 +184,8 @@ export const GET_QUESTIONS = /* GraphQL */ `
 
 export interface FetchQuestionsSortedParams {
   take: number;
+  /** @deprecated Use `after` with `endCursor` from `fetchQuestionsPage`. */
+  skip?: number;
   /**
    * Opaque cursor from the previous page's `endCursor`. Pass `null` (or
    * omit) to fetch the first page. Cursor pagination keeps server cost
@@ -251,23 +258,44 @@ function buildQuestionFilter(params: FetchQuestionsSortedParams) {
   };
 }
 
+function buildQuestionsVariables(
+  params: FetchQuestionsSortedParams,
+  take: number,
+  after: string | null
+) {
+  return {
+    take,
+    after,
+    orderBy: {
+      field: getQuestionOrderField(
+        params.sortField,
+        params.similarMarketVolumeWindow
+      ),
+      direction: params.sortDirection.toUpperCase(),
+    },
+    filter: buildQuestionFilter(params),
+  };
+}
+
 export async function fetchQuestionsPage(
   params: FetchQuestionsSortedParams
 ): Promise<QuestionsPageResult> {
+  if (shouldFetchConnectionWindow(params.take, params.skip, params.after, 50)) {
+    return fetchConnectionWindow<QuestionType>(
+      GET_QUESTIONS,
+      (take, after) => buildQuestionsVariables(params, take, after),
+      'questionsConnection',
+      { take: params.take, skip: params.skip, defaultTake: 50 }
+    );
+  }
+
   return fetchConnectionPage<QuestionType>(
     GET_QUESTIONS,
-    {
-      take: clampConnectionTake(params.take),
-      after: params.after ?? null,
-      orderBy: {
-        field: getQuestionOrderField(
-          params.sortField,
-          params.similarMarketVolumeWindow
-        ),
-        direction: params.sortDirection.toUpperCase(),
-      },
-      filter: buildQuestionFilter(params),
-    },
+    buildQuestionsVariables(
+      params,
+      clampConnectionTake(params.take),
+      params.after ?? null
+    ),
     'questionsConnection'
   );
 }

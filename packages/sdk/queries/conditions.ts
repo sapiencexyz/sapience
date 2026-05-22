@@ -2,6 +2,8 @@ import { graphqlRequest } from './client/graphqlClient';
 import {
   clampConnectionTake,
   fetchConnectionPage,
+  fetchConnectionWindow,
+  shouldFetchConnectionWindow,
   type ConnectionPage,
 } from './connectionPage';
 
@@ -144,6 +146,18 @@ export function buildConditionsWhereClause(
   return buildConditionsFilters(chainId, filters);
 }
 
+function buildConditionsVariables(
+  filters: Record<string, unknown>,
+  take: number,
+  after: string | null
+) {
+  return {
+    take,
+    after,
+    filter: Object.keys(filters).length > 0 ? filters : undefined,
+  };
+}
+
 export async function fetchConditionsPage(opts?: {
   take?: number;
   after?: string | null;
@@ -153,11 +167,11 @@ export async function fetchConditionsPage(opts?: {
   const filters = buildConditionsFilters(opts?.chainId, opts?.filters);
   return fetchConnectionPage<ConditionType>(
     GET_CONDITIONS,
-    {
-      take: clampConnectionTake(opts?.take),
-      after: opts?.after ?? null,
-      filter: Object.keys(filters).length > 0 ? filters : undefined,
-    },
+    buildConditionsVariables(
+      filters,
+      clampConnectionTake(opts?.take),
+      opts?.after ?? null
+    ),
     'conditionsConnection'
   );
 }
@@ -168,10 +182,27 @@ export async function fetchConditionsPage(opts?: {
  */
 export async function fetchConditions(opts?: {
   take?: number;
+  /** @deprecated Use `after` with `endCursor` from `fetchConditionsPage`. */
+  skip?: number;
   after?: string | null;
   chainId?: number;
   filters?: ConditionFilter;
 }): Promise<ConditionType[]> {
+  if (shouldFetchConnectionWindow(opts?.take, opts?.skip, opts?.after, 50)) {
+    const filters = buildConditionsFilters(opts?.chainId, opts?.filters);
+    const page = await fetchConnectionWindow<ConditionType>(
+      GET_CONDITIONS,
+      (take, after) => buildConditionsVariables(filters, take, after),
+      'conditionsConnection',
+      {
+        take: opts?.take,
+        skip: opts?.skip,
+        defaultTake: 50,
+      }
+    );
+    return page.items;
+  }
+
   return (await fetchConditionsPage(opts)).items;
 }
 
