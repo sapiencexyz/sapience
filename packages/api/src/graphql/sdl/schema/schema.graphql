@@ -242,7 +242,14 @@ type Forecast {
   """
   forecast: String!
   recipient: String!
-  resolver: String
+
+  """
+  Resolver contract address from the on-chain EAS attestation (`address resolver`
+  on the forecast schema). Identifies which oracle the forecaster is predicting
+  against — same address as `Condition.resolverAddress` when the forecast
+  matches a tracked condition.
+  """
+  resolverAddress: Address
   schemaId: String!
 
   """
@@ -276,13 +283,19 @@ type ForecastScore {
   errorSquared: Float
   id: Int!
   madeAt: UnixSeconds!
-  marketAddress: String
+
+  """
+  Resolver contract address this score is keyed against. Mirrors
+  `Condition.resolverAddress` for the scored forecast. The DB row carries two
+  legacy columns (`marketAddress`, `resolver`) that hold the same value; the
+  GraphQL surface exposes the single corrected name.
+  """
+  resolverAddress: Address
   marketId: String
   outcome: Int
   probabilityD18: String
   probabilityFloat: Float
   questionId: String
-  resolver: String
   scoredAt: DateTimeISO
   used: Boolean!
 }
@@ -492,10 +505,10 @@ Record of a settled prediction redemption where a holder burns tokens for collat
 type Claim {
   chainId: Int!
   collateralPaid: String!
-  holder: String!
+  holder: Address!
   id: Int!
-  marketAddress: String!
-  positionToken: String!
+  marketAddress: Address!
+  positionToken: Address!
   predictionId: String!
   redeemedAt: UnixSeconds!
   refCode: String
@@ -509,13 +522,13 @@ Record of a position close where both sides burn tokens and receive payouts
 type Close {
   burnedAt: UnixSeconds!
   chainId: Int!
-  counterpartyHolder: String!
+  counterpartyHolder: Address!
   counterpartyPayout: String!
   counterpartyTokensBurned: String!
   id: Int!
-  marketAddress: String!
+  marketAddress: Address!
   pickConfigId: String!
-  predictorHolder: String!
+  predictorHolder: Address!
   predictorPayout: String!
   predictorTokensBurned: String!
   refCode: String
@@ -706,11 +719,17 @@ type CollateralBalanceSnapshot {
   Position of this snapshot in the returned series, starting at 0 for the
   most-recent boundary. Carried over from the legacy `CollateralBalanceSnapshotType`.
   """
-  index: Int! @deprecated(reason: "Index is incidental to the returned list order; rely on `timestamp` (or array position) instead.")
+  index: Int!
+    @deprecated(
+      reason: "Index is incidental to the returned list order; rely on `timestamp` (or array position) instead."
+    )
   """
   Same value as `amount`. Carried over from the legacy `CollateralBalanceSnapshotType`.
   """
-  balance: String! @deprecated(reason: "Use `amount` — same value, drops the wallet-balance framing for consistency with `CollateralTransfer.amount`.")
+  balance: String!
+    @deprecated(
+      reason: "Use `amount` — same value, drops the wallet-balance framing for consistency with `CollateralTransfer.amount`."
+    )
 }
 
 type CollateralBalance {
@@ -719,7 +738,7 @@ type CollateralBalance {
   collateral: CollateralToken!
   amount: String!
   atBlock: Int
-  address: String!
+  address: Address!
   balance: String!
 }
 
@@ -807,16 +826,30 @@ type Condition implements Node {
   resolvedToYes: Boolean!
 
   """
-  On-chain market contract address that owns this condition (case-insensitive,
-  0x-prefixed lowercase). The canonical client-facing name for the address
-  surfaced as `resolver` on the legacy fragment.
+  Resolver contract address — the oracle that settles this condition's outcome.
+  Distinct from the PredictionMarketEscrow address (which is `Prediction.marketAddress` /
+  `PickConfiguration.marketAddress`); one resolver contract can settle conditions
+  referenced by many escrow markets.
   """
-  marketAddress: String!
+  resolverAddress: Address!
+
+  """
+  Mislabeled alias of `resolverAddress`. Holds the resolver contract address,
+  not the PredictionMarketEscrow address. The recent `resolver → marketAddress`
+  migration collapsed a real distinction; `resolverAddress` is the corrected name.
+  """
+  marketAddress: Address!
+    @deprecated(
+      reason: "Use `resolverAddress` — same value, but accurately named. This field holds the resolver (oracle) contract address, not the market/escrow address that `Prediction.marketAddress` / `PickConfiguration.marketAddress` carry."
+    )
 
   """
   Canonical resolver address for this condition (required).
   """
-  resolver: String! @deprecated(reason: "Use `marketAddress` — same value, drops the protocol-jargon name to match `Prediction.marketAddress` / `PickConfig.marketAddress` and the `ConditionFilter.marketAddress` filter.")
+  resolver: String!
+    @deprecated(
+      reason: "Use `resolverAddress` — same value, Address-typed and consistent with `Forecast.resolverAddress` / `Pick.conditionResolverAddress`."
+    )
   settled: Boolean!
   settledAt: UnixSeconds
   shortName: String
@@ -1468,7 +1501,17 @@ type Pick {
   """
   condition: Condition
   conditionId: String!
+
+  """
+  Resolver (oracle) contract address for the referenced condition — mirrors
+  `Condition.resolverAddress`. Replaces the loosely-typed `conditionResolver`.
+  """
+  conditionResolverAddress: Address!
+
   conditionResolver: String!
+    @deprecated(
+      reason: "Use `conditionResolverAddress` — same value, Address-typed and consistent with `Condition.resolverAddress`."
+    )
   id: Int!
   pickConfigId: String!
   predictedOutcome: Int!
@@ -1493,7 +1536,7 @@ type PickConfiguration implements Node {
   """
   pickConfigId: String!
   isLegacy: Boolean!
-  marketAddress: String!
+  marketAddress: Address!
   picks: [Pick!]!
   predictions(
     first: Int = 50
@@ -2168,21 +2211,32 @@ input ConditionFilter {
   ids: [ID!]
 
   """
-  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present.
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.
   """
   chainId: Int
 
   """
-  Match the on-chain market contract address that owns the condition
-  (case-insensitive). Maps to the DB `resolver` column.
+  Match the on-chain resolver (oracle) contract address. Maps to the DB
+  `condition.resolver` column. Distinct from `Prediction.marketAddress` /
+  `PickConfiguration.marketAddress`, which carry the PredictionMarketEscrow
+  contract.
   """
-  marketAddress: String
+  resolverAddress: Address
 
   """
-  Match any of these on-chain market contract addresses (case-insensitive).
-  Same semantics as `marketAddress`.
+  Match any of these resolver contract addresses. Same semantics as `resolverAddress`.
   """
-  marketAddressIn: [String!]
+  resolverAddressIn: [Address!]
+
+  """
+  Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+  """
+  marketAddress: Address @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
+
+  """
+  Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+  """
+  marketAddressIn: [Address!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
 
   """
   Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups.
@@ -2311,19 +2365,30 @@ with AND. For outcome-based filtering today, use
 """
 input QuestionFilter {
   """
-  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a market-address filter is present.
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.
   """
   chainId: Int
 
   """
-  Match the on-chain market contract address that owns the underlying condition (case-insensitive).
+  Match the on-chain resolver (oracle) contract address for the underlying condition.
+  Distinct from the PredictionMarketEscrow address; see `Condition.resolverAddress`.
   """
-  marketAddress: String
+  resolverAddress: Address
 
   """
-  Match any of these on-chain market contract addresses that own the underlying condition (case-insensitive).
+  Match any of these resolver contract addresses. Same semantics as `resolverAddress`.
   """
-  marketAddressIn: [String!]
+  resolverAddressIn: [Address!]
+
+  """
+  Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+  """
+  marketAddress: Address @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
+
+  """
+  Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+  """
+  marketAddressIn: [Address!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
 
   """
   Restrict to questions whose category slug is in this set.
@@ -2412,9 +2477,10 @@ type Position implements Node {
   """
   realizedPnL: String
   """
-  ERC-20 position token address (lowercase 0x-hex).
+  ERC-20 position token address. Validated via the `Address` scalar
+  (lowercased 0x-hex).
   """
-  tokenAddress: String!
+  tokenAddress: Address!
   """
   Cumulative payout the contract would owe this position if every
   matched prediction resolved in the holder's favour (wei, 18 dec).
@@ -2468,7 +2534,7 @@ type Prediction {
   createdAt: DateTimeISO!
   id: Int!
   isLegacy: Boolean!
-  marketAddress: String!
+  marketAddress: Address!
   pickConfig: PickConfiguration
   predictionId: String!
   predictor: String!
@@ -2932,22 +2998,22 @@ input TradeFilter {
   """
   tradeHash: Bytes32
   """
-  Restrict to trades where the address is seller or buyer (case-insensitive). Mutually exclusive with `seller`/`buyer`.
+  Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.
   """
-  address: String
+  address: Address
   """
-  Restrict to a single seller address (case-insensitive).
+  Restrict to a single seller address.
   """
-  seller: String
+  seller: Address
   """
-  Restrict to a single buyer address (case-insensitive).
+  Restrict to a single buyer address.
   """
-  buyer: String
+  buyer: Address
   """
-  Restrict to a single position token address (case-insensitive).
+  Restrict to a single position token address.
   """
-  token: String
-  tokens: [String!]
+  token: Address
+  tokens: [Address!]
   """
   Restrict to a single chain.
   """
@@ -3046,9 +3112,9 @@ input PredictionFilter {
   """
   predictionId: String
   """
-  Restrict to predictions where the address is predictor or counterparty (case-insensitive).
+  Restrict to predictions where the address is predictor or counterparty.
   """
-  address: String
+  address: Address
   """
   Restrict to a single chain.
   """
@@ -3573,10 +3639,10 @@ type Query {
   ): CollateralTransferConnection!
   """
   Look up a single account by canonical wallet address. Replacement for
-  `user(where:)` — accepts a flat `address: String!` arg instead of the
+  `user(where:)` — accepts a flat `address: Address!` arg instead of the
   Prisma-shaped `UserWhereUniqueInput`.
   """
-  account(address: String!): Account
+  account(address: Address!): Account
 
   """
   Relay-shaped connection over accounts (User-table rows). Single-address

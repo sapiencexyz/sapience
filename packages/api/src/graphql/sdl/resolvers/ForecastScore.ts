@@ -23,4 +23,11 @@ export const ForecastScore: ForecastScoreResolvers = {
   forecastId: (parent) =>
     (parent as unknown as { attestationId: number }).attestationId,
   forecaster: (parent) => (parent as unknown as { attester: string }).attester,
+  resolverAddress: (parent) => {
+    const p = parent as unknown as {
+      marketAddress?: string | null;
+      resolver?: string | null;
+    };
+    return p.marketAddress ?? p.resolver ?? null;
+  },
 };

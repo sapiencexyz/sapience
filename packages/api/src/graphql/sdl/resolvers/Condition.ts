@@ -84,7 +84,7 @@ type PrismaCondition = {
 export const Condition: ConditionResolvers = {
   id: (parent) => toGlobalId('Condition', (parent as PrismaCondition).id),
   conditionId: (parent) => (parent as PrismaCondition).id,
-
+  resolverAddress: (parent) => (parent as PrismaCondition).resolver ?? '',
   marketAddress: (parent) => (parent as PrismaCondition).resolver ?? '',
 
   /**

@@ -21,7 +21,10 @@ import {
   user,
 } from './crud';
 
-type CategoriesConnectionArgs = { first?: number | null; after?: string | null };
+type CategoriesConnectionArgs = {
+  first?: number | null;
+  after?: string | null;
+};
 type ResolverFn<Args, Out> = (
   parent: unknown,
   args: Args,
@@ -61,20 +64,35 @@ beforeEach(() => {
 
 describe('categoriesConnection — Relay pagination', () => {
   it('caps first at MAX_TAKE (100) and probes for hasMore', async () => {
-    await categoriesConnectionFn(undefined, { first: 9999 }, undefined, undefined);
+    await categoriesConnectionFn(
+      undefined,
+      { first: 9999 },
+      undefined,
+      undefined
+    );
     const args = mockPrisma.category.findMany.mock.calls[0][0];
     expect(args.take).toBe(101);
   });
 
   it('orders by name asc, then id asc for stable cursors', async () => {
-    await categoriesConnectionFn(undefined, { first: 100 }, undefined, undefined);
+    await categoriesConnectionFn(
+      undefined,
+      { first: 100 },
+      undefined,
+      undefined
+    );
     const args = mockPrisma.category.findMany.mock.calls[0][0];
     expect(args.orderBy).toEqual([{ name: 'asc' }, { id: 'asc' }]);
   });
 
   it('uses a composite name/id cursor predicate matching the stable order', async () => {
     const after = encodeCursor({ k: 'Crypto', id: '7' });
-    await categoriesConnectionFn(undefined, { first: 25, after }, undefined, undefined);
+    await categoriesConnectionFn(
+      undefined,
+      { first: 25, after },
+      undefined,
+      undefined
+    );
     const args = mockPrisma.category.findMany.mock.calls[0][0];
     expect(args.where).toEqual({
       OR: [
