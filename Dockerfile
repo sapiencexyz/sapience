@@ -50,5 +50,10 @@ RUN pnpm install --frozen-lockfile --offline
 # Generate Prisma client
 RUN pnpm --filter @sapience/api run prisma:generate
 
+# Compile market-keeper scripts for the cron runtime and fail the image build
+# if the start script's first target is missing.
+RUN pnpm --filter @sapience/market-keeper run build \
+ && test -f packages/market-keeper/dist/scripts/refresh-metadata.js
+
 # Runtime default; deployment environments can override this (e.g. staging).
 ENV NODE_ENV=production
