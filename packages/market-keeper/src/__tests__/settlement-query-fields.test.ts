@@ -9,14 +9,13 @@ function readScript(relativePath: string): string {
 }
 
 describe('settlement GraphQL filters', () => {
-  it.each([
-    'scripts/settle-manual.ts',
-    'scripts/settle-polymarket.ts',
-    'scripts/settle-pyth.ts',
-  ])('uses ConditionFilter.marketAddress in %s', (scriptPath) => {
-    const source = readScript(scriptPath);
+  it.each(['src/settlement/fetchConditions.ts', 'scripts/settle-pyth.ts'])(
+    'uses ConditionFilter resolver-address fields in %s',
+    (scriptPath) => {
+      const source = readScript(scriptPath);
 
-    expect(source).toContain('marketAddress');
-    expect(source).not.toContain('contractAddress');
-  });
+      expect(source).toContain('resolverAddress');
+      expect(source).not.toContain('contractAddress');
+    }
+  );
 });
