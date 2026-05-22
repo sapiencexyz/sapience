@@ -1759,10 +1759,16 @@ enum TradeOrderField {
   BLOCK_NUMBER
 }
 
-"""Order input for the Relay-shaped `positionsConnection`."""
+"""
+Order input for the Relay-shaped `positionsConnection`.
+Both `field` and `direction` are nullable so external clients passing
+nullable `$orderDirection: OrderDirection` / `$orderBy: PositionOrderField`
+variables continue to validate against this schema. Resolver defaults to
+`UPDATED_AT` / `DESC`.
+"""
 input PositionOrder {
-  field: PositionOrderField!
-  direction: OrderDirection!
+  field: PositionOrderField
+  direction: OrderDirection
 }
 
 """Sort fields for the Relay-shaped `positionsConnection`."""
@@ -2467,7 +2473,11 @@ input VaultFilter {
   chainId: Int
 }
 
-"""Protocol-wide stats snapshot — no vault scoping."""
+"""
+Protocol-wide stats snapshot. When the deprecated `Query.protocolStats(vaultAddress:)`
+arg is set, vault-scoped fields (the `vault*` block below) are populated alongside the
+protocol-wide counters from the same fat-row pipeline that backs `vaultStats`.
+"""
 type ProtocolStat {
   """Snapshot boundary, aligned to the snapshot interval."""
   timestamp: UnixSeconds!
@@ -2483,6 +2493,35 @@ type ProtocolStat {
   periodVolume: String!
   openInterest: String!
   escrowBalance: String!
+
+  """
+  DEPRECATED — pre-split alias for `cumulativeTradeCount`. Kept so pinned external
+  queries keep validating; new callers should read `cumulativeTradeCount`.
+  """
+  totalTradeCount: Int @deprecated(reason: "Use `cumulativeTradeCount`.")
+
+  """
+  DEPRECATED — realized PnL delta. Lives on `VaultStat.periodPnL` now and is
+  only populated here when the row is vault-scoped (`protocolStats(vaultAddress:)`).
+  """
+  periodPnL: String @deprecated(reason: "Use `vaultStats(vaultAddress:).periodPnL` — only populated on vault-scoped rows.")
+
+  """
+  DEPRECATED — vault collateral balance. Only populated when the row is vault-scoped
+  via `protocolStats(vaultAddress:)`.
+  """
+  vaultBalance: String @deprecated(reason: "Use `vaultStats(vaultAddress:).balance`.")
+  vaultAvailableAssets: String @deprecated(reason: "Use `vaultStats(vaultAddress:).availableAssets`.")
+  vaultDeployed: String @deprecated(reason: "Use `vaultStats(vaultAddress:).deployed`.")
+  vaultCumulativePnL: String @deprecated(reason: "Use `vaultStats(vaultAddress:).cumulativePnL`.")
+  vaultPositionsWon: Int @deprecated(reason: "Use `vaultStats(vaultAddress:).positionsWon`.")
+  vaultPositionsLost: Int @deprecated(reason: "Use `vaultStats(vaultAddress:).positionsLost`.")
+  vaultDeposits: String @deprecated(reason: "Use `vaultStats(vaultAddress:).deposits`.")
+  vaultWithdrawals: String @deprecated(reason: "Use `vaultStats(vaultAddress:).withdrawals`.")
+  vaultAirdropGains: String @deprecated(reason: "Use `vaultStats(vaultAddress:).airdropGains`.")
+  vaultSecondaryBought: String @deprecated(reason: "Use `vaultStats(vaultAddress:).secondaryBought`.")
+  vaultSecondarySold: String @deprecated(reason: "Use `vaultStats(vaultAddress:).secondarySold`.")
+  vaultUnredeemedClaim: String @deprecated(reason: "Use `vaultStats(vaultAddress:).unredeemedClaim`.")
 }
 
 """
@@ -3201,7 +3240,7 @@ type Query {
   back), so callers can distinguish it as `points[points.length - 1]
   .timestamp >= floor(now / interval) * interval`.
   """
-  protocolStats(from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [ProtocolStat!]! @deprecated(reason: "Use `protocol.stats(filter:)` — Relay-shaped stats connection under the protocol namespace.")
+  protocolStats(from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix."), vaultAddress: String @deprecated(reason: "Use `vaultStats(vaultAddress:)` — per-vault snapshots live on Vault. When set here, the legacy vault* fields on ProtocolStat are populated for backwards compatibility.")): [ProtocolStat!]! @deprecated(reason: "Use `protocol.stats(filter:)` — Relay-shaped stats connection under the protocol namespace.")
 
   """
   Time-bucketed total protocol trading volume across all users. DEPRECATED:
