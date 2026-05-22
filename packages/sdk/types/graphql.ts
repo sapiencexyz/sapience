@@ -2457,10 +2457,16 @@ export type PositionFilters = {
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
-/** Order input for the Relay-shaped `positionsConnection`. */
+/**
+ * Order input for the Relay-shaped `positionsConnection`.
+ * Both `field` and `direction` are nullable so external clients passing
+ * nullable `$orderDirection: OrderDirection` / `$orderBy: PositionOrderField`
+ * variables continue to validate against this schema. Resolver defaults to
+ * `UPDATED_AT` / `DESC`.
+ */
 export type PositionOrder = {
-  direction: OrderDirection;
-  field: PositionOrderField;
+  direction?: InputMaybe<OrderDirection>;
+  field?: InputMaybe<PositionOrderField>;
 };
 
 /** Sort fields for the Relay-shaped `positionsConnection`. */
@@ -2636,7 +2642,11 @@ export type ProtocolStatsArgs = {
   filter?: InputMaybe<ProtocolStatFilter>;
 };
 
-/** Protocol-wide stats snapshot — no vault scoping. */
+/**
+ * Protocol-wide stats snapshot. When the deprecated `Query.protocolStats(vaultAddress:)`
+ * arg is set, vault-scoped fields (the `vault*` block below) are populated alongside the
+ * protocol-wide counters from the same fat-row pipeline that backs `vaultStats`.
+ */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
   /** Cumulative count of predictions and secondary trades/sales */
@@ -2644,12 +2654,52 @@ export type ProtocolStat = {
   cumulativeVolume: Scalars['String']['output'];
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
+  /**
+   * DEPRECATED — realized PnL delta. Lives on `VaultStat.periodPnL` now and is
+   * only populated here when the row is vault-scoped (`protocolStats(vaultAddress:)`).
+   * @deprecated Use `vaultStats(vaultAddress:).periodPnL` — only populated on vault-scoped rows.
+   */
+  periodPnL?: Maybe<Scalars['String']['output']>;
   /** Trade-count delta over the snapshot interval */
   periodTradeCount: Scalars['Int']['output'];
   /** Cumulative-volume delta over the snapshot interval */
   periodVolume: Scalars['String']['output'];
   /** Snapshot boundary, aligned to the snapshot interval. */
   timestamp: Scalars['UnixSeconds']['output'];
+  /**
+   * DEPRECATED — pre-split alias for `cumulativeTradeCount`. Kept so pinned external
+   * queries keep validating; new callers should read `cumulativeTradeCount`.
+   * @deprecated Use `cumulativeTradeCount`.
+   */
+  totalTradeCount?: Maybe<Scalars['Int']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).airdropGains`. */
+  vaultAirdropGains?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).availableAssets`. */
+  vaultAvailableAssets?: Maybe<Scalars['String']['output']>;
+  /**
+   * DEPRECATED — vault collateral balance. Only populated when the row is vault-scoped
+   * via `protocolStats(vaultAddress:)`.
+   * @deprecated Use `vaultStats(vaultAddress:).balance`.
+   */
+  vaultBalance?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).cumulativePnL`. */
+  vaultCumulativePnL?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).deployed`. */
+  vaultDeployed?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).deposits`. */
+  vaultDeposits?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).positionsLost`. */
+  vaultPositionsLost?: Maybe<Scalars['Int']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).positionsWon`. */
+  vaultPositionsWon?: Maybe<Scalars['Int']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).secondaryBought`. */
+  vaultSecondaryBought?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).secondarySold`. */
+  vaultSecondarySold?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).unredeemedClaim`. */
+  vaultUnredeemedClaim?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).withdrawals`. */
+  vaultWithdrawals?: Maybe<Scalars['String']['output']>;
 };
 
 export type ProtocolStatConnection = {
@@ -3482,6 +3532,7 @@ export type QueryProtocolStatsArgs = {
   fromEpoch?: InputMaybe<Scalars['Int']['input']>;
   to?: InputMaybe<Scalars['UnixSeconds']['input']>;
   toEpoch?: InputMaybe<Scalars['Int']['input']>;
+  vaultAddress?: InputMaybe<Scalars['String']['input']>;
 };
 
 
