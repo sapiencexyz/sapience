@@ -179,7 +179,14 @@ export const GET_QUESTIONS = /* GraphQL */ `
 
 export interface FetchQuestionsSortedParams {
   take: number;
-  skip: number;
+  /**
+   * Opaque cursor from the previous page's `endCursor`. Pass `null` (or
+   * omit) to fetch the first page. Cursor pagination keeps server cost
+   * constant per page — the resolver enforces a query-complexity ceiling
+   * that an offset-style "refetch with larger first" pattern blows past
+   * within a couple of scrolls.
+   */
+  after?: string | null;
   chainId?: number;
   marketAddress?: string;
   marketAddressIn?: string[];
@@ -210,6 +217,7 @@ type QuestionsQueryResult = {
 export interface QuestionsPageResult {
   items: QuestionType[];
   hasMore: boolean;
+  endCursor: string | null;
 }
 
 function buildQuestionFilter(params: FetchQuestionsSortedParams) {
@@ -253,40 +261,29 @@ function buildQuestionFilter(params: FetchQuestionsSortedParams) {
   };
 }
 
+const SERVER_MAX_TAKE = 100;
+
 export async function fetchQuestionsPage(
   params: FetchQuestionsSortedParams
 ): Promise<QuestionsPageResult> {
-  const target = params.skip + params.take;
-  const collected: QuestionType[] = [];
-  let after: string | null | undefined = null;
-  let hasMore = false;
-
-  while (collected.length < target) {
-    const first = Math.min(100, target - collected.length);
-    const data: QuestionsQueryResult =
-      await graphqlRequest<QuestionsQueryResult>(GET_QUESTIONS, {
-        take: first,
-        after,
-        orderBy: {
-          field: getQuestionOrderField(
-            params.sortField,
-            params.similarMarketVolumeWindow
-          ),
-          direction: params.sortDirection.toUpperCase(),
-        },
-        filter: buildQuestionFilter(params),
-      });
-    const conn = data.questionsConnection;
-    const nodes = conn?.nodes ?? [];
-    collected.push(...nodes);
-    hasMore = Boolean(conn?.pageInfo?.hasNextPage);
-    if (!hasMore || !conn?.pageInfo?.endCursor || nodes.length === 0) break;
-    after = conn.pageInfo.endCursor;
-  }
-
+  const take = Math.max(1, Math.min(SERVER_MAX_TAKE, params.take));
+  const data = await graphqlRequest<QuestionsQueryResult>(GET_QUESTIONS, {
+    take,
+    after: params.after ?? null,
+    orderBy: {
+      field: getQuestionOrderField(
+        params.sortField,
+        params.similarMarketVolumeWindow
+      ),
+      direction: params.sortDirection.toUpperCase(),
+    },
+    filter: buildQuestionFilter(params),
+  });
+  const conn = data.questionsConnection;
   return {
-    items: collected.slice(params.skip, target),
-    hasMore,
+    items: conn?.nodes ?? [],
+    hasMore: Boolean(conn?.pageInfo?.hasNextPage),
+    endCursor: conn?.pageInfo?.endCursor ?? null,
   };
 }
 

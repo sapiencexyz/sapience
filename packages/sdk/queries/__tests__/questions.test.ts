@@ -19,7 +19,6 @@ beforeEach(() => {
 describe('fetchQuestionsSorted', () => {
   const baseParams = {
     take: 10,
-    skip: 0,
     sortField: 'createdAt' as const,
     sortDirection: 'desc' as const,
   };
@@ -181,7 +180,7 @@ describe('fetchQuestionsSorted', () => {
     expect(result).toEqual([]);
   });
 
-  test('returns connection hasMore separately from node count', async () => {
+  test('returns connection hasMore + endCursor verbatim from the connection', async () => {
     const questions = Array.from({ length: 8 }, (_, i) => ({
       questionType: 'condition',
       condition: { id: String(i + 1) },
@@ -197,38 +196,38 @@ describe('fetchQuestionsSorted', () => {
     const result = await fetchQuestionsPage({ ...baseParams, take: 8 });
     expect(result.items).toEqual(questions);
     expect(result.hasMore).toBe(true);
+    expect(result.endCursor).toBe('cursor-8');
   });
 
-  test('continues cursor requests when hydration returns fewer nodes than requested', async () => {
-    const firstBatch = Array.from({ length: 8 }, (_, i) => ({
+  test('passes the cursor through as `after` and does NOT walk pages client-side', async () => {
+    const batch = Array.from({ length: 5 }, (_, i) => ({
       questionType: 'condition',
-      condition: { id: String(i + 1) },
+      condition: { id: String(i + 100) },
       group: null,
     }));
-    const secondBatch = Array.from({ length: 2 }, (_, i) => ({
-      questionType: 'condition',
-      condition: { id: String(i + 9) },
-      group: null,
-    }));
-    mockGraphqlRequest
-      .mockResolvedValueOnce({
-        questionsConnection: {
-          nodes: firstBatch,
-          pageInfo: { hasNextPage: true, endCursor: 'cursor-8' },
-        },
-      })
-      .mockResolvedValueOnce({
-        questionsConnection: {
-          nodes: secondBatch,
-          pageInfo: { hasNextPage: true, endCursor: 'cursor-10' },
-        },
-      });
+    mockGraphqlRequest.mockResolvedValue({
+      questionsConnection: {
+        nodes: batch,
+        pageInfo: { hasNextPage: true, endCursor: 'cursor-105' },
+      },
+    });
 
-    const result = await fetchQuestionsPage(baseParams);
-    expect(result.items).toEqual([...firstBatch, ...secondBatch]);
+    const result = await fetchQuestionsPage({
+      ...baseParams,
+      take: 5,
+      after: 'cursor-100',
+    });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(mockGraphqlRequest.mock.calls[0][1].take).toBe(5);
+    expect(mockGraphqlRequest.mock.calls[0][1].after).toBe('cursor-100');
+    expect(result.items).toEqual(batch);
     expect(result.hasMore).toBe(true);
-    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
-    expect(mockGraphqlRequest.mock.calls[1][1].take).toBe(2);
-    expect(mockGraphqlRequest.mock.calls[1][1].after).toBe('cursor-8');
+    expect(result.endCursor).toBe('cursor-105');
+  });
+
+  test('caps take at the server limit of 100 to avoid validation errors', async () => {
+    await fetchQuestionsPage({ ...baseParams, take: 500 });
+    expect(mockGraphqlRequest.mock.calls[0][1].take).toBe(100);
   });
 });

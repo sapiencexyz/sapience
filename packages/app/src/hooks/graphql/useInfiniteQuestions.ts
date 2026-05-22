@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
 import {
   fetchQuestionsPage,
   type QuestionType,
@@ -8,6 +8,12 @@ import {
   type VolumeWindow,
 } from '@sapience/sdk/queries';
 export type { SortField, SortDirection, VolumeWindow, QuestionType };
+
+type QuestionsPage = {
+  items: QuestionType[];
+  hasMore: boolean;
+  endCursor: string | null;
+};
 
 export interface UseInfiniteQuestionsOptions {
   chainId?: number;
@@ -34,6 +40,11 @@ export interface UseInfiniteQuestionsResult {
   fetchMore: () => void;
 }
 
+const itemKey = (item: QuestionType): string =>
+  item.questionType === 'group'
+    ? `group-${item.group?.id}`
+    : `condition-${item.condition?.id}`;
+
 export function useInfiniteQuestions(
   opts: UseInfiniteQuestionsOptions
 ): UseInfiniteQuestionsResult {
@@ -59,83 +70,16 @@ export function useInfiniteQuestions(
       ? rawMinEndTime
       : undefined;
 
-  const [skip, setSkip] = useState(0);
-  const [allLoadedData, setAllLoadedData] = useState<QuestionType[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  // Tracks the last skip value whose data has been merged into allLoadedData.
-  // Used to keep isFetchingMore=true until the new rows are in the DOM,
-  // preventing a layout shift where the skeleton disappears one frame before
-  // the new rows appear.
-  const [lastMergedSkip, setLastMergedSkip] = useState(-1);
-
-  const processedSkipRef = useRef<number>(-1);
-  const isFetchPendingRef = useRef(false);
-  const hasMoreRef = useRef(hasMore);
-  const isFetchingRef = useRef(false);
-
-  const filtersKey = JSON.stringify({
-    chainId,
-    search,
-    categorySlugs,
-    sortField,
-    sortDirection,
-    minEndTime,
-    resolutionStatus,
-    minEstimatedPrice,
-    maxEstimatedPrice,
-    minSimilarMarketVolume,
-    maxSimilarMarketVolume,
-    tag,
-    similarMarketVolumeWindow,
-  });
-  const prevFiltersKeyRef = useRef(filtersKey);
-  const lastSuccessfulSkipRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (prevFiltersKeyRef.current !== filtersKey) {
-      prevFiltersKeyRef.current = filtersKey;
-      setSkip(0);
-      setAllLoadedData([]);
-      setHasMore(true);
-      setLastMergedSkip(-1);
-      processedSkipRef.current = -1;
-      lastSuccessfulSkipRef.current = 0;
-      isFetchPendingRef.current = false;
-    }
-  }, [filtersKey]);
-
-  const {
-    data: rawData,
-    isFetching,
-    isError,
-  } = useQuery<{ items: QuestionType[]; hasMore: boolean }, Error>({
-    queryKey: [
-      'infiniteQuestions',
-      pageSize,
-      skip,
-      chainId,
-      search,
-      categorySlugs,
-      sortField,
-      sortDirection,
-      minEndTime,
-      resolutionStatus,
-      minEstimatedPrice,
-      maxEstimatedPrice,
-      minSimilarMarketVolume,
-      maxSimilarMarketVolume,
-      tag,
-      similarMarketVolumeWindow,
-    ],
-    queryFn: () =>
-      fetchQuestionsPage({
-        take: pageSize,
-        skip,
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } =
+    useInfiniteQuery({
+      queryKey: [
+        'infiniteQuestions',
+        pageSize,
         chainId,
-        sortField,
-        sortDirection,
         search,
         categorySlugs,
+        sortField,
+        sortDirection,
         minEndTime,
         resolutionStatus,
         minEstimatedPrice,
@@ -144,83 +88,59 @@ export function useInfiniteQuestions(
         maxSimilarMarketVolume,
         tag,
         similarMarketVolumeWindow,
-      }),
-  });
+      ],
+      initialPageParam: null as string | null,
+      // Cursor pagination is what the connection is designed for — every
+      // page is one constant-cost server call. The old skip-based hook
+      // re-fetched from offset zero with an ever-larger `first`, which
+      // blew past the API's 15k query-complexity limit on page 2.
+      getNextPageParam: (lastPage: QuestionsPage) =>
+        lastPage.hasMore ? (lastPage.endCursor ?? undefined) : undefined,
+      queryFn: ({ pageParam }): Promise<QuestionsPage> =>
+        fetchQuestionsPage({
+          take: pageSize,
+          after: pageParam,
+          chainId,
+          sortField,
+          sortDirection,
+          search,
+          categorySlugs,
+          minEndTime,
+          resolutionStatus,
+          minEstimatedPrice,
+          maxEstimatedPrice,
+          minSimilarMarketVolume,
+          maxSimilarMarketVolume,
+          tag,
+          similarMarketVolumeWindow,
+        }),
+    });
 
-  useEffect(() => {
-    if (rawData && processedSkipRef.current !== skip) {
-      processedSkipRef.current = skip;
-      lastSuccessfulSkipRef.current = skip;
-
-      setHasMore(rawData.hasMore);
-
-      const items = rawData.items;
-
-      if (skip === 0) {
-        setAllLoadedData(items);
-        setLastMergedSkip(skip);
-      } else {
-        setAllLoadedData((prev) => {
-          const existingIds = new Set(
-            prev.map((item) =>
-              item.questionType === 'group'
-                ? `group-${item.group?.id}`
-                : `condition-${item.condition?.id}`
-            )
-          );
-
-          const newItems = items.filter((item) => {
-            const id =
-              item.questionType === 'group'
-                ? `group-${item.group?.id}`
-                : `condition-${item.condition?.id}`;
-            return !existingIds.has(id);
-          });
-
-          // Batched with setAllLoadedData — React renders both in the same frame,
-          // so the skeleton stays visible until the new rows are ready.
-          setLastMergedSkip(skip);
-
-          return [...prev, ...newItems];
-        });
+  // Deduplicate across page boundaries so a cursor that overlaps doesn't
+  // double-render a row in the table.
+  const items = useMemo<QuestionType[]>(() => {
+    const seen = new Set<string>();
+    const out: QuestionType[] = [];
+    for (const page of data?.pages ?? []) {
+      for (const item of page.items) {
+        const key = itemKey(item);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(item);
       }
     }
-  }, [rawData, skip]);
-
-  useEffect(() => {
-    if (isError && skip !== lastSuccessfulSkipRef.current) {
-      setSkip(lastSuccessfulSkipRef.current);
-      isFetchPendingRef.current = false;
-    }
-  }, [isError, skip]);
-
-  useEffect(() => {
-    hasMoreRef.current = hasMore;
-  }, [hasMore]);
-
-  useEffect(() => {
-    isFetchingRef.current = isFetching;
-    if (!isFetching) {
-      isFetchPendingRef.current = false;
-    }
-  }, [isFetching]);
+    return out;
+  }, [data]);
 
   const fetchMore = useCallback(() => {
-    if (
-      !isFetchPendingRef.current &&
-      hasMoreRef.current &&
-      !isFetchingRef.current
-    ) {
-      isFetchPendingRef.current = true;
-      setSkip((prev) => prev + pageSize);
-    }
-  }, [pageSize]);
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return {
-    data: allLoadedData,
-    isLoading: isFetching && skip === 0,
-    isFetchingMore: skip > 0 && (isFetching || lastMergedSkip !== skip),
-    hasMore,
+    data: items,
+    isLoading: isLoading && !data,
+    isFetchingMore: isFetchingNextPage,
+    hasMore: Boolean(hasNextPage),
     fetchMore,
   };
 }
