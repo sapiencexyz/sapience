@@ -34,7 +34,23 @@
           "conditionId": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7c769000000000000000000000000000000000000000000000000000006dec7e24080fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
           "conditionResolver": "0x7bd534c96b78a5d6c10701714f29ea4f1587b64d",
           "predictedOutcome": 1,
-          "condition": null
+          "condition": {
+            "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7c769000000000000000000000000000000000000000000000000000006dec7e24080fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+            "conditionId": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7c769000000000000000000000000000000000000000000000000000006dec7e24080fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+            "shortName": "BTC OVER $75,539.06",
+            "optionName": null,
+            "question": "Crypto.BTC/USD OVER $75,539.06",
+            "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $75,539.06 at settlement (Tue, 21 Apr 2026 18:52:25 GMT), YES wins. If the price is exactly $75,539.06 at settlement, OVER wins.",
+            "endTime": 1776797545,
+            "resolver": "0x7bd534c96b78a5d6c10701714f29ea4f1587b64d",
+            "settled": true,
+            "resolvedToYes": false,
+            "nonDecisive": false,
+            "estimatedPrice": null,
+            "category": {
+              "slug": "prices-crypto"
+            }
+          }
         }
       ]
     },
@@ -50,7 +66,23 @@
           "conditionId": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7b13f000000000000000000000000000000000000000000000000000006de665edf80fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
           "conditionResolver": "0xf56d26c58496a07df4882f52c56e3cadbfb87729",
           "predictedOutcome": 1,
-          "condition": null
+          "condition": {
+            "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7b13f000000000000000000000000000000000000000000000000000006de665edf80fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+            "conditionId": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069e7b13f000000000000000000000000000000000000000000000000000006de665edf80fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+            "shortName": "BTC OVER $75,522.7",
+            "optionName": null,
+            "question": "Crypto.BTC/USD OVER $75,522.7",
+            "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $75,522.7 at settlement (Tue, 21 Apr 2026 17:17:51 GMT), YES wins. If the price is exactly $75,522.7 at settlement, OVER wins.",
+            "endTime": 1776791871,
+            "resolver": "0xf56d26c58496a07df4882f52c56e3cadbfb87729",
+            "settled": false,
+            "resolvedToYes": false,
+            "nonDecisive": false,
+            "estimatedPrice": null,
+            "category": {
+              "slug": "prices-crypto"
+            }
+          }
         }
       ]
     },
@@ -66,13 +98,45 @@
           "conditionId": "0x35d8c42a467d4e485ffba50c5d2d984ed0793f4935319ca923b494798051c8ef",
           "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
           "predictedOutcome": 1,
-          "condition": null
+          "condition": {
+            "id": "0x35d8c42a467d4e485ffba50c5d2d984ed0793f4935319ca923b494798051c8ef",
+            "conditionId": "0x35d8c42a467d4e485ffba50c5d2d984ed0793f4935319ca923b494798051c8ef",
+            "shortName": "↑ $110",
+            "optionName": "↑ $110",
+            "question": "Will WTI Crude Oil (WTI) hit (HIGH) $110 in April?",
+            "description": "This market will resolve to \"Yes\" if, at any point between market creation and the final trading day during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"High\" price equal to or above the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"High\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily high price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
+            "endTime": 1777521600,
+            "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "settled": false,
+            "resolvedToYes": false,
+            "nonDecisive": false,
+            "estimatedPrice": 0.295,
+            "category": {
+              "slug": "geopolitics"
+            }
+          }
         },
         {
           "conditionId": "0x67a8543bf23f52dfe5c908f512ea04e749c9044a6ff1a9fcf32a60b936b79472",
           "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
           "predictedOutcome": 1,
-          "condition": null
+          "condition": {
+            "id": "0x67a8543bf23f52dfe5c908f512ea04e749c9044a6ff1a9fcf32a60b936b79472",
+            "conditionId": "0x67a8543bf23f52dfe5c908f512ea04e749c9044a6ff1a9fcf32a60b936b79472",
+            "shortName": "↓ $70",
+            "optionName": "↓ $70",
+            "question": "Will WTI Crude Oil (WTI) hit (LOW) $70 in April?",
+            "description": "This market will resolve to \"Yes\" if, at any point during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"Low\" price equal to or below the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"Low\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily low price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
+            "endTime": 1777521600,
+            "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "settled": false,
+            "resolvedToYes": false,
+            "nonDecisive": false,
+            "estimatedPrice": 0.05,
+            "category": {
+              "slug": "geopolitics"
+            }
+          }
         }
       ]
     },
@@ -116,7 +180,23 @@
           "conditionId": "0x39104f7f48f4f379de4162f0cf64c24bf1ccb1f786fd7fafb3fbfb879fffedcc",
           "conditionResolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
           "predictedOutcome": 1,
-          "condition": null
+          "condition": {
+            "id": "0x39104f7f48f4f379de4162f0cf64c24bf1ccb1f786fd7fafb3fbfb879fffedcc",
+            "conditionId": "0x39104f7f48f4f379de4162f0cf64c24bf1ccb1f786fd7fafb3fbfb879fffedcc",
+            "shortName": "↑ $150",
+            "optionName": "↑ $150",
+            "question": "Will WTI Crude Oil (WTI) hit (HIGH) $150 in April?",
+            "description": "This market will resolve to \"Yes\" if, at any point during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"High\" price equal to or above the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"High\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily high price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
+            "endTime": 1777521600,
+            "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+            "settled": false,
+            "resolvedToYes": false,
+            "nonDecisive": false,
+            "estimatedPrice": 0.0135,
+            "category": {
+              "slug": "geopolitics"
+            }
+          }
         },
         {
           "conditionId": "0x8183a221622f2d5d2b46da86c80d55a61f43d35829589e03c1efae9d072638c5",
