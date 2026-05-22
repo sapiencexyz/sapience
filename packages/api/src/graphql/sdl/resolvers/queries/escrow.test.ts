@@ -55,7 +55,11 @@ type PositionsConnectionFn = (
   args: QueryPositionsConnectionArgs,
   ctx: unknown,
   info: unknown
-) => Promise<{ nodes: unknown[]; pageInfo: { hasNextPage: boolean } }>;
+) => Promise<{
+  edges: Array<{ cursor: string }>;
+  nodes: Array<{ id: string }>;
+  pageInfo: { hasNextPage: boolean };
+}>;
 const positionsConnectionFn =
   positionsConnection as unknown as PositionsConnectionFn;
 type PickConfigurationsConnectionFn = (
@@ -233,6 +237,59 @@ describe('positionsConnection filters', () => {
     });
     expect(where.pickConfigId).toEqual({ in: [PC_ID] });
     expect(mockPrisma.$queryRaw).toHaveBeenCalled();
+  });
+
+  it('paginates over synthesized rows rather than raw Position rows', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({
+        balance: '100',
+        pickConfiguration: makePickConfig({
+          predictions: [makePrediction()],
+        }),
+      }),
+    ]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
+      makeTrade({
+        seller: ALICE,
+        buyer: BOB,
+        price: '25',
+        tokenAmount: '50',
+        executedAt: TS_SELL - 100,
+        tradeHash: '0xsell-1',
+      }),
+      makeTrade({
+        seller: ALICE,
+        buyer: BOB,
+        price: '30',
+        tokenAmount: '50',
+        executedAt: TS_SELL,
+        tradeHash: '0xsell-2',
+      }),
+    ]);
+
+    const firstPage = await positionsConnectionFn(
+      undefined,
+      { first: 2, filter: { holder: ALICE } } as QueryPositionsConnectionArgs,
+      undefined,
+      undefined
+    );
+    const secondPage = await positionsConnectionFn(
+      undefined,
+      {
+        first: 2,
+        after: firstPage.edges.at(-1)?.cursor,
+        filter: { holder: ALICE },
+      } as QueryPositionsConnectionArgs,
+      undefined,
+      undefined
+    );
+
+    expect(firstPage.nodes).toHaveLength(2);
+    expect(firstPage.pageInfo.hasNextPage).toBe(true);
+    expect(secondPage.nodes).toHaveLength(1);
+    expect(
+      new Set([...firstPage.nodes, ...secondPage.nodes].map((n) => n.id))
+    ).toHaveSize(3);
   });
 });
 

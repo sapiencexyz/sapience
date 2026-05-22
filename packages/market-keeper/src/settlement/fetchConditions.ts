@@ -23,9 +23,15 @@ interface ConditionsQueryResponse {
 const CONDITIONS_PAGE_SIZE = 30;
 
 const RESOLVER_CONDITIONS_QUERY = /* GraphQL */ `
-  query ResolverConditions($first: Int!, $after: String, $resolver: Address!) {
+  query ResolverConditions(
+    $first: Int!
+    $after: String
+    $resolver: Address!
+    $chainId: Int!
+  ) {
     conditionsConnection(
       filter: {
+        chainId: $chainId
         settled: false
         resolverAddress: $resolver
         # Pick up both public and private — the deprecated resolver's
@@ -52,7 +58,7 @@ const RESOLVER_CONDITIONS_QUERY = /* GraphQL */ `
 
 async function fetchResolverConditionsPage(
   graphqlUrl: string,
-  resolver: string,
+  params: { resolverAddress: string; chainId: number },
   first: number,
   after: string | null
 ): Promise<{
@@ -68,7 +74,12 @@ async function fetchResolverConditionsPage(
     },
     body: JSON.stringify({
       query: RESOLVER_CONDITIONS_QUERY,
-      variables: { resolver, first, after },
+      variables: {
+        resolver: params.resolverAddress,
+        chainId: params.chainId,
+        first,
+        after,
+      },
     }),
   });
 
@@ -118,7 +129,7 @@ async function fetchResolverConditionsPage(
 
 export async function fetchResolverConditions(
   graphqlUrl: string,
-  resolver: string
+  params: { resolverAddress: string; chainId: number }
 ): Promise<SettlementCondition[]> {
   const allConditions: SettlementCondition[] = [];
   let after: string | null = null;
@@ -128,7 +139,7 @@ export async function fetchResolverConditions(
   while (true) {
     const page = await fetchResolverConditionsPage(
       graphqlUrl,
-      resolver,
+      params,
       CONDITIONS_PAGE_SIZE,
       after
     );

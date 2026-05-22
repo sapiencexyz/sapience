@@ -20,11 +20,9 @@ import {
   ComposedChart,
   Bar,
 } from 'recharts';
-import { predictionMarketVault } from '@sapience/sdk/contracts';
 import {
   getProtocolTvlWei,
-  useProtocolStats,
-  useVaultStats,
+  useProtocolTvlSeries,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import AccountsLeaderboardCard from '~/components/analytics/AccountsLeaderboardCard';
@@ -201,53 +199,13 @@ function AnalyticsPageContent(): React.ReactElement {
   const [oiPeriod, setOiPeriod] = useState<TimeRange>(presetRange('1M'));
   const [tvlPeriod, setTvlPeriod] = useState<TimeRange>(presetRange('1M'));
 
-  // Protocol-wide series (volume, OI, escrow, trade count) and the protocol
-  // vault's vault-specific series (`availableAssets` for the TVL calc).
-  // After the SDL split, the two live on separate resolvers + types; we zip
-  // them by timestamp downstream.
-  const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
-  const protocolVaultAddress = predictionMarketVault[DEFAULT_CHAIN_ID]?.address;
-  const { data: vaultStats } = useVaultStats(protocolVaultAddress);
-
-  // Get summary from the last snapshot of each series.
-  const summary = useMemo(() => {
-    if (!protocolStats || protocolStats.length === 0) return null;
-    return protocolStats[protocolStats.length - 1];
-  }, [protocolStats]);
-  const vaultSummary = useMemo(() => {
-    if (!vaultStats || vaultStats.length === 0) return null;
-    return vaultStats[vaultStats.length - 1];
-  }, [vaultStats]);
-
-  // Prepare chart data for protocol stats (TVL, OI). TVL composes
-  // `escrowBalance` (protocol-wide) with `VaultStat.availableAssets`
-  // (protocol vault). Snapshot timestamps line up between the two queries
-  // since the cron writes both in the same row; we look up vault rows by
-  // timestamp to defend against drift.
-  const vaultPointByTs = useMemo(() => {
-    const map = new Map<number, NonNullable<typeof vaultStats>[number]>();
-    if (vaultStats) for (const p of vaultStats) map.set(p.timestamp, p);
-    return map;
-  }, [vaultStats]);
-
-  const statsChartData = useMemo(() => {
-    if (!protocolStats) return [];
-
-    return protocolStats.map((point) => {
-      const openInterest = parseFloat(point.openInterest) / 1e18;
-      const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
-      const vaultPoint = vaultPointByTs.get(point.timestamp);
-      const vaultAvailableAssets = vaultPoint
-        ? parseFloat(vaultPoint.availableAssets) / 1e18
-        : 0;
-      return {
-        timestamp: point.timestamp,
-        openInterest,
-        protocolTvl: escrowBalance + vaultAvailableAssets,
-        vaultAvailableAssets,
-      };
-    });
-  }, [protocolStats, vaultPointByTs]);
+  const {
+    data: statsChartData,
+    protocolStats,
+    protocolSummary: summary,
+    vaultSummary,
+    isLoading,
+  } = useProtocolTvlSeries();
 
   const volumeChartData = useMemo(() => {
     if (!protocolStats) return [];
@@ -305,8 +263,6 @@ function AnalyticsPageContent(): React.ReactElement {
     () => bucketStatsByDay(filterByRange(statsChartData, tvlPeriod)),
     [statsChartData, tvlPeriod]
   );
-
-  const isLoading = statsLoading;
 
   return (
     <div className="relative">

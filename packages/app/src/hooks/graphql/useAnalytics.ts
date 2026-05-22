@@ -1,4 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { predictionMarketVault } from '@sapience/sdk/contracts';
 import {
   fetchOpenInterestByCategory,
   fetchOpenInterestByTimeToResolution,
@@ -52,6 +55,73 @@ export function useVaultStats(vaultAddress?: string, window?: StatsWindow) {
       }),
     ...ANALYTICS_QUERY_OPTS,
   });
+}
+
+type ProtocolTvlProtocolPoint = Pick<
+  ProtocolStat,
+  'timestamp' | 'openInterest' | 'escrowBalance'
+>;
+type ProtocolTvlVaultPoint = Pick<VaultStat, 'timestamp' | 'availableAssets'>;
+
+export interface ProtocolTvlSeriesPoint {
+  timestamp: number;
+  openInterest: number;
+  protocolTvl: number;
+  vaultAvailableAssets: number;
+}
+
+const weiToNumber = (value: string | null | undefined): number =>
+  Number(BigInt(value || '0')) / 1e18;
+
+export function composeProtocolTvlSeries(
+  protocolStats: ProtocolTvlProtocolPoint[],
+  vaultStats: ProtocolTvlVaultPoint[]
+): ProtocolTvlSeriesPoint[] {
+  const vaultPointByTs = new Map<number, ProtocolTvlVaultPoint>();
+  for (const point of vaultStats) vaultPointByTs.set(point.timestamp, point);
+
+  return protocolStats.map((point) => {
+    const vaultPoint = vaultPointByTs.get(point.timestamp);
+    const vaultAvailableAssets = weiToNumber(vaultPoint?.availableAssets);
+    return {
+      timestamp: point.timestamp,
+      openInterest: weiToNumber(point.openInterest),
+      protocolTvl: weiToNumber(point.escrowBalance) + vaultAvailableAssets,
+      vaultAvailableAssets,
+    };
+  });
+}
+
+export function useProtocolTvlSeries(window?: StatsWindow) {
+  const protocolVaultAddress = predictionMarketVault[DEFAULT_CHAIN_ID]?.address;
+  const protocolStats = useProtocolStats(window);
+  const vaultStats = useVaultStats(protocolVaultAddress, window);
+
+  const data = useMemo(
+    () =>
+      protocolStats.data && vaultStats.data
+        ? composeProtocolTvlSeries(protocolStats.data, vaultStats.data)
+        : [],
+    [protocolStats.data, vaultStats.data]
+  );
+  const protocolSummary = useMemo(() => {
+    const rows = protocolStats.data;
+    return rows && rows.length > 0 ? rows[rows.length - 1] : null;
+  }, [protocolStats.data]);
+  const vaultSummary = useMemo(() => {
+    const rows = vaultStats.data;
+    return rows && rows.length > 0 ? rows[rows.length - 1] : null;
+  }, [vaultStats.data]);
+
+  return {
+    data,
+    protocolStats: protocolStats.data,
+    protocolSummary,
+    vaultSummary,
+    isLoading: protocolStats.isLoading || vaultStats.isLoading,
+    isError: protocolStats.isError || vaultStats.isError,
+    error: protocolStats.error ?? vaultStats.error,
+  };
 }
 
 export function useOpenInterestByCategory() {

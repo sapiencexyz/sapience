@@ -53,7 +53,7 @@ describe('fetchResolverConditions', () => {
 
     const conditions = await fetchResolverConditions(
       'https://api.example.com/graphql',
-      '0xResolver'
+      { resolverAddress: '0xResolver', chainId: 13374202 }
     );
 
     expect(conditions).toEqual([
@@ -72,7 +72,9 @@ describe('fetchResolverConditions', () => {
 
     expect(firstBody.query).toContain('after: $after');
     expect(firstBody.query).toContain('$resolver: Address!');
+    expect(firstBody.query).toContain('$chainId: Int!');
     expect(firstBody.query).toContain('resolverAddress: $resolver');
+    expect(firstBody.query).toContain('chainId: $chainId');
     expect(firstBody.query).toContain('nodes');
     expect(firstBody.query).toContain('pageInfo');
     expect(firstBody.query).toContain('id: conditionId');
@@ -81,6 +83,7 @@ describe('fetchResolverConditions', () => {
     expect(firstBody.query).not.toContain('hasMore');
     expect(firstBody.variables).toEqual({
       resolver: '0xResolver',
+      chainId: 13374202,
       first: 30,
       after: null,
     });

@@ -1241,6 +1241,89 @@ export const runPositions = async (
   return { items: sorted, hasMore, totalCount: null, _countWhere: where };
 };
 
+const runPositionsConnection = async (
+  args: QueryPositionsArgs,
+  synthesizedOffset: number
+): Promise<PositionsEnvelope> => {
+  const norm = normalizePositionsArgs({ ...args, skip: 0 });
+
+  let conditionPickConfigIds: string[] | null = null;
+  if (norm.conditionId) {
+    conditionPickConfigIds = await resolveConditionPickConfigIds(
+      norm.conditionId
+    );
+    if (conditionPickConfigIds === null) return EMPTY_POSITIONS;
+  }
+
+  let where = buildPositionsWhere(norm, conditionPickConfigIds);
+  if (where === null) return EMPTY_POSITIONS;
+
+  if (norm.holderLower && (norm.collateralMin || norm.collateralMax)) {
+    const next = await applyCollateralRangeFilter(
+      where,
+      norm.holderLower,
+      norm.collateralMin,
+      norm.collateralMax
+    );
+    if (next === null) return EMPTY_POSITIONS;
+    where = next;
+  }
+
+  const predictionsInclude: Prisma.Picks$predictionsArgs | true =
+    norm.holderLower
+      ? {
+          where: {
+            OR: [
+              { predictor: norm.holderLower },
+              { counterparty: norm.holderLower },
+            ],
+          },
+        }
+      : true;
+
+  const targetSize = synthesizedOffset + norm.cappedTake + 1;
+  const batchSize = Math.max(norm.cappedTake + 1, 50);
+  const synthesized: PositionShape[] = [];
+  let rawSkip = 0;
+  let rawHasMore = true;
+
+  while (synthesized.length < targetSize && rawHasMore) {
+    const rawRows = await prisma.position.findMany({
+      where,
+      orderBy: { [norm.orderField]: norm.orderDirection },
+      take: batchSize,
+      skip: rawSkip,
+      include: {
+        pickConfiguration: {
+          include: { picks: true, predictions: predictionsInclude },
+        },
+      },
+    });
+
+    rawSkip += rawRows.length;
+    rawHasMore = rawRows.length === batchSize;
+    if (rawRows.length === 0) break;
+    synthesized.push(...(await synthesizePositionsPage(rawRows)));
+  }
+
+  const sorted = sortSynthesizedRows(
+    synthesized,
+    norm.orderField,
+    norm.orderDirection
+  );
+  const window = sorted.slice(
+    synthesizedOffset,
+    synthesizedOffset + norm.cappedTake
+  );
+
+  return {
+    items: window,
+    hasMore: sorted.length > synthesizedOffset + norm.cappedTake || rawHasMore,
+    totalCount: null,
+    _countWhere: where,
+  };
+};
+
 /**
  * Merge deprecated `positionsPage(filters: PositionFilters)` with the flat arg shape.
  * `filters` wins on conflicts.
@@ -1355,8 +1438,11 @@ const mergePositionConnectionFilter = (
 export const positionsConnection: NonNullable<
   QueryResolvers['positionsConnection']
 > = async (_parent, args) => {
-  const result = await runPositions(mergePositionConnectionFilter(args));
   const startOffset = offsetFromCursor(args.after);
+  const result = await runPositionsConnection(
+    mergePositionConnectionFilter(args),
+    startOffset
+  );
   const edges = result.items.map((node, index) => ({
     node,
     cursor: encodeCursor({

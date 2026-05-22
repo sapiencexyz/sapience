@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getProtocolTvlWei } from '../useAnalytics';
+import { composeProtocolTvlSeries, getProtocolTvlWei } from '../useAnalytics';
 
 describe('getProtocolTvlWei', () => {
   it('returns 0n when both inputs are null/undefined', () => {
@@ -30,5 +30,44 @@ describe('getProtocolTvlWei', () => {
         { availableAssets: oneEther.toString() }
       )
     ).toBe(2n * oneEther);
+  });
+});
+
+describe('composeProtocolTvlSeries', () => {
+  it('sums protocol escrow and matching vault available assets by timestamp', () => {
+    expect(
+      composeProtocolTvlSeries(
+        [
+          {
+            timestamp: 100,
+            openInterest: '3000000000000000000',
+            escrowBalance: '1000000000000000000',
+          },
+        ],
+        [{ timestamp: 100, availableAssets: '2000000000000000000' }]
+      )
+    ).toEqual([
+      {
+        timestamp: 100,
+        openInterest: 3,
+        protocolTvl: 3,
+        vaultAvailableAssets: 2,
+      },
+    ]);
+  });
+
+  it('does not invent vault assets for missing timestamps', () => {
+    expect(
+      composeProtocolTvlSeries(
+        [
+          {
+            timestamp: 100,
+            openInterest: '0',
+            escrowBalance: '1000000000000000000',
+          },
+        ],
+        [{ timestamp: 200, availableAssets: '9000000000000000000' }]
+      )[0].protocolTvl
+    ).toBe(1);
   });
 });

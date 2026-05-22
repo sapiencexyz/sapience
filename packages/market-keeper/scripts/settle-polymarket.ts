@@ -347,7 +347,7 @@ async function processResolverPair(
 
   const conditions: SettlementCondition[] = await fetchResolverConditions(
     sapienceApiUrl,
-    pair.resolver
+    { resolverAddress: pair.resolver, chainId: RESOLVER_CHAIN_ID }
   );
   results.total = conditions.length;
 
