@@ -119,6 +119,13 @@ interface GraphQLResponse<T> {
   errors?: Array<{ message: string }>;
 }
 
+interface ConditionsConnectionResponse {
+  conditionsConnection: {
+    nodes: ConditionRow[];
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  };
+}
+
 // ============ ABIs ============
 
 const pythResolverAbi = [
@@ -252,7 +259,7 @@ const CONDITIONS_QUERY = /* GraphQL */ `
         endCursor
       }
       nodes {
-        id
+        id: conditionId
         endTime
         chainId
         resolver
@@ -557,21 +564,21 @@ async function main() {
   let after: string | null = null;
   while (conditions.length < MAX_CONDITIONS) {
     const take = Math.min(50, MAX_CONDITIONS - conditions.length);
-    const data = await gql<{
-      conditionsConnection: {
-        nodes: ConditionRow[];
-        pageInfo: { hasNextPage: boolean; endCursor: string | null };
-      };
-    }>(sapienceApiUrl, CONDITIONS_QUERY, {
-      filters: {
-        chainId: CHAIN_ID,
-        resolvesAt: { lte: nowSec },
-        settled: false,
-        marketAddress: PYTH_RESOLVER_ADDRESS,
-      },
-      take,
-      after,
-    });
+    const data: ConditionsConnectionResponse =
+      await gql<ConditionsConnectionResponse>(
+        sapienceApiUrl,
+        CONDITIONS_QUERY,
+        {
+          filters: {
+            chainId: CHAIN_ID,
+            resolvesAt: { lte: nowSec },
+            settled: false,
+            marketAddress: PYTH_RESOLVER_ADDRESS,
+          },
+          take,
+          after,
+        }
+      );
     if (data.conditionsConnection.nodes.length === 0) break;
     conditions.push(...data.conditionsConnection.nodes);
     const pageInfo = data.conditionsConnection.pageInfo;

@@ -73,7 +73,7 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
     query ActiveConditions($filter: ConditionFilter!, $first: Int!, $after: String) {
       conditionsConnection(filter: $filter, first: $first, after: $after, orderBy: { field: CREATED_AT, direction: ASC }) {
         nodes {
-          id
+          id: conditionId
         }
         pageInfo {
           hasNextPage

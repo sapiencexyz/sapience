@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { fromGlobalId, registeredNodeTypes } from '../../relay/globalId';
 
 const helperMock = vi.hoisted(() => ({ loadRelation: vi.fn() }));
 vi.mock('./relationHelpers', () => helperMock);
@@ -23,6 +24,27 @@ const callField = (
 
 beforeEach(() => {
   helperMock.loadRelation.mockReset();
+});
+
+describe('Condition Node identity', () => {
+  it('encodes id as an opaque Node id and exposes conditionId separately', async () => {
+    expect(registeredNodeTypes()).toEqual(
+      expect.arrayContaining(['Condition'])
+    );
+
+    const id = await (Condition.id as (parent: unknown) => string)({
+      id: 'condition-1',
+    });
+    const conditionId = await (
+      Condition.conditionId as (parent: unknown) => string
+    )({ id: 'condition-1' });
+
+    expect(fromGlobalId(id)).toEqual({
+      type: 'Condition',
+      id: 'condition-1',
+    });
+    expect(conditionId).toBe('condition-1');
+  });
 });
 
 describe('Condition.category', () => {

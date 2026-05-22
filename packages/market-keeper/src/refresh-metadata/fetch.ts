@@ -51,7 +51,7 @@ export async function fetchAllExistingConditions(
     query RefreshMetadataConditions($filter: ConditionFilter!, $first: Int!, $after: String) {
       conditionsConnection(filter: $filter, first: $first, after: $after, orderBy: { field: CREATED_AT, direction: ASC }) {
         nodes {
-          id
+          id: conditionId
           endTime
           question
           shortName

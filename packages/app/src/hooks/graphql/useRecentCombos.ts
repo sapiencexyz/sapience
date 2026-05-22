@@ -87,7 +87,7 @@ export function useRecentCombos(opts: { chainId: number; count?: number }) {
             : 0.5;
 
         return {
-          pickConfigId: pc.id,
+          pickConfigId: pc.pickConfigId,
           probability,
           picks: pc.picks.map((p) => ({
             conditionId: p.conditionId,

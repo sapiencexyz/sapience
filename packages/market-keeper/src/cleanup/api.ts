@@ -35,7 +35,7 @@ query UnresolvedNoEngagement($first: Int!, $after: String) {
     after: $after
   ) {
     nodes {
-      id
+      id: conditionId
       openInterest
       question
     }
@@ -62,7 +62,7 @@ query ConditionsWithEngagement($ids: [ID!]!) {
     first: 100
   ) {
     nodes {
-      id
+      id: conditionId
     }
   }
 }

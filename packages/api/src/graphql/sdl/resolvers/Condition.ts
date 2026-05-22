@@ -19,6 +19,26 @@ import { loadRelation } from './relationHelpers';
 import { predictionsConnection } from './queries/escrow';
 import { tradesConnection } from './queries/trade';
 import { forecastsConnection } from './queries/crud';
+import { registerNodeType, toGlobalId } from '../../relay/globalId';
+
+registerNodeType({
+  type: 'Condition',
+  loader: async (id, ctx) => {
+    const conditionId = id.toLowerCase();
+    const loaders = (
+      ctx as {
+        loaders?: {
+          conditionById?: {
+            load: (id: string) => Promise<unknown | null>;
+          };
+        };
+      }
+    ).loaders;
+    return loaders?.conditionById
+      ? loaders.conditionById.load(conditionId)
+      : prisma.condition.findUnique({ where: { id: conditionId } });
+  },
+});
 
 export const tokensForConditionIds = async (
   conditionIds: string[]
@@ -62,6 +82,9 @@ type PrismaCondition = {
 };
 
 export const Condition: ConditionResolvers = {
+  id: (parent) => toGlobalId('Condition', (parent as PrismaCondition).id),
+  conditionId: (parent) => (parent as PrismaCondition).id,
+
   marketAddress: (parent) => (parent as PrismaCondition).resolver ?? '',
 
   /**

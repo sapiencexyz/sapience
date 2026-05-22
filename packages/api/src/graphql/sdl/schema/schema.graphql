@@ -213,6 +213,12 @@ type ActivityTrade {
 
 """
 Public Forecast surface backed by EAS attestation rows.
+
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
 """
 type Forecast {
   forecastScore(where: ForecastScoreWhereInput): ForecastScore
@@ -733,7 +739,7 @@ type CollateralTransfer implements Node {
   logIndex: Int!
 }
 
-type Condition {
+type Condition implements Node {
   _count: ConditionCount
   assertionId: String
   assertionTimestamp: UnixSeconds
@@ -751,7 +757,15 @@ type Condition {
   YES probability from Polymarket (0.0–1.0), null for non-Polymarket
   """
   estimatedPrice: Float
-  id: String!
+  """
+  Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`
+  for the on-chain condition identifier.
+  """
+  id: ID!
+  """
+  Natural-key condition id (on-chain identifier), returned verbatim.
+  """
+  conditionId: String!
   nonDecisive: Boolean!
   openInterest: String!
   optionName: String
@@ -848,6 +862,13 @@ enum ConditionOutcome {
   NON_DECISIVE
 }
 
+"""
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
+"""
 type ConditionGroup {
   _count: ConditionGroupCount
   category(where: CategoryWhereInput): Category
@@ -1433,7 +1454,13 @@ enum NullsOrder {
 }
 
 """
-Individual outcome pick within a pick configuration
+Individual outcome pick within a pick configuration.
+
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
 """
 type Pick {
   """
@@ -1450,13 +1477,21 @@ type Pick {
 """
 Group of outcome picks forming a combined prediction position, with collateral and settlement tracking
 """
-type PickConfiguration {
+type PickConfiguration implements Node {
   chainId: Int!
   claimedCounterpartyCollateral: String!
   claimedPredictorCollateral: String!
   counterpartyToken: String
   endsAt: UnixSeconds
-  id: String!
+  """
+  Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`
+  for the natural pick-configuration identifier.
+  """
+  id: ID!
+  """
+  Natural-key pick-configuration id, returned verbatim.
+  """
+  pickConfigId: String!
   isLegacy: Boolean!
   marketAddress: String!
   picks: [Pick!]!
@@ -2340,7 +2375,7 @@ underlying Position row may surface as multiple `*Page` items: one
 "open" row carrying remaining cost basis, plus one synthesized "sell"
 row per secondary-market disposal (so PnL realizes incrementally).
 """
-type Position {
+type Position implements Node {
   """
   Number of position tokens still held (decimal string, 18 decimals on
   Sapience). Synthesized sell rows carry `"0"` here — the realized PnL
@@ -2354,10 +2389,15 @@ type Position {
   """
   holder: String!
   """
+  Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`
+  for the synthetic position row identifier.
+  """
+  id: ID!
+  """
   Synthetic row id. Open rows use the underlying Position row id
   serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
   """
-  id: String!
+  positionId: String!
   """
   True if this is the predictor token side; false for counterparty.
   """
@@ -2408,7 +2448,13 @@ enum PositionSortField {
 }
 
 """
-Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking
+Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking.
+
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
 """
 type Prediction {
   chainId: Int!
@@ -4319,6 +4365,12 @@ only credits that referrer; it does not grant access to funds or privileged
 actions. `codeHash` is intentionally omitted from GraphQL — public clients
 identify codes by integer `id`. Aggregate analytics (claim count, volume,
 claimants) live on the public REST endpoint `GET /referrals/codes`.
+
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
 """
 type ReferralCode {
   id: Int!
@@ -4449,6 +4501,12 @@ input StringNullableListFilter {
 Secondary market trade record where position tokens are exchanged
 between users. The on-chain reference is `tradeHash`; `id` is an
 internal row id (see schema-preamble conventions).
+
+TODO(node-migration): Should `implements Node` with `id: ID!`. Currently
+exposes `id: Int!` (Prisma row id), so the wire format would change from
+number → opaque string — a breaking change for typed clients. Plan: add
+`globalId: ID!` alongside, deprecate the raw integer read, flip on a
+future major.
 """
 type Trade {
   blockNumber: Int!

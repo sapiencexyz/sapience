@@ -100,7 +100,7 @@ export default function QuestionPageContent({
         query ConditionsByIds($filters: ConditionFilter!) {
           conditionsConnection(filter: $filters, first: 1) {
             nodes {
-              id
+              id: conditionId
               question
               shortName
               endTime
