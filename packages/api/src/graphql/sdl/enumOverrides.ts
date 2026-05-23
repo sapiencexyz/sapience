@@ -31,3 +31,10 @@ export enum SortOrder {
   AscLegacy = 'ASC',
   DescLegacy = 'DESC',
 }
+
+export enum OrderDirection {
+  Asc = 'ASC',
+  Desc = 'DESC',
+  AscLegacy = 'asc',
+  DescLegacy = 'desc',
+}

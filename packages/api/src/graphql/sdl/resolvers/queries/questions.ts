@@ -44,7 +44,6 @@ import type {
 import {
   QuestionItemType,
   QuestionOrderField,
-  OrderDirection,
   QuestionSortField,
   SortOrder,
   VolumeWindow,
@@ -1017,11 +1016,11 @@ const questionsConnectionResolver = async (
     ? mapOrderField(orderBy.field)
     : { sortField: null, volumeWindow: null };
   const sortDirection: SortOrder | null =
-    orderBy?.direction === OrderDirection.Asc
-      ? SortOrder.Asc
-      : orderBy?.direction === OrderDirection.Desc
-        ? SortOrder.Desc
-        : null;
+    orderBy?.direction == null
+      ? null
+      : String(orderBy.direction).toLowerCase() === 'asc'
+        ? SortOrder.Asc
+        : SortOrder.Desc;
   const operatorFilter = filter as typeof filter & {
     resolvesAt?: ScalarRangeFilter | null;
     estimatedPrice?: ScalarRangeFilter | null;

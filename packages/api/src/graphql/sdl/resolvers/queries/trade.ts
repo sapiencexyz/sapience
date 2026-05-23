@@ -15,7 +15,7 @@ import type {
   QueryTradesArgs,
   QueryTradesConnectionArgs,
 } from '../../__generated__/resolvers';
-import { OrderDirection, TradeOrderField } from '../../__generated__/resolvers';
+import { TradeOrderField } from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { clampSkip, clampTake, offsetFromCursor } from './pagination';
@@ -189,7 +189,7 @@ const mergeTradeFilters = (args: QueryTradesConnectionArgs): RunTradesArgs => {
         ? 'BLOCK_NUMBER'
         : 'EXECUTED_AT',
     orderDirection:
-      args.orderBy?.direction === OrderDirection.Asc ? 'asc' : 'desc',
+      String(args.orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc',
   };
 };
 

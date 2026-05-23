@@ -15,7 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parse, Kind } from 'graphql';
+import { buildSchema, graphql, parse, Kind } from 'graphql';
 import type {
   ObjectTypeDefinitionNode,
   ObjectTypeExtensionNode,
@@ -26,7 +26,8 @@ import type {
 import { describe, it, expect } from 'vitest';
 
 const SDL_PATH = join(__dirname, 'schema.graphql');
-const doc = parse(readFileSync(SDL_PATH, 'utf8'));
+const schemaText = readFileSync(SDL_PATH, 'utf8');
+const doc = parse(schemaText);
 
 type QueryFieldEntry = {
   typeName: string;
@@ -178,5 +179,49 @@ describe('SDL contract: *Page fields', () => {
     expect(offenders, '*Page types with non-canonical field shapes').toEqual(
       []
     );
+  });
+});
+
+describe('SDL contract: external order compatibility', () => {
+  it('accepts legacy lowercase direction values without changing order input nullability', async () => {
+    const schema = buildSchema(schemaText);
+    const result = await graphql({
+      schema,
+      source: `
+        query UserForecasts(
+          $filters: ForecastFilter
+          $take: Int!
+          $after: String
+          $orderBy: ForecastOrderField!
+          $orderDirection: OrderDirection!
+        ) {
+          forecastsConnection(
+            filter: $filters
+            first: $take
+            after: $after
+            orderBy: { field: $orderBy, direction: $orderDirection }
+          ) {
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      `,
+      rootValue: {
+        forecastsConnection: () => ({
+          pageInfo: { hasNextPage: false, endCursor: null },
+        }),
+      },
+      variableValues: {
+        filters: {},
+        take: 1,
+        after: null,
+        orderBy: 'ATTESTED_AT',
+        orderDirection: 'desc',
+      },
+    });
+
+    expect(result.errors).toBeUndefined();
   });
 });
