@@ -3,14 +3,12 @@ import { GET_OPEN_INTEREST_BY_TIME_TO_RESOLUTION } from '@sapience/sdk/queries';
 import { executeOperation } from '../../helpers/testApollo';
 
 interface TTRResult {
-  protocol: {
-    openInterestByTimeToResolution: Array<{
-      bucket: number;
-      label: string;
-      openInterest: string;
-      predictionCount: number;
-    }>;
-  };
+  openInterestByTimeToResolution: Array<{
+    bucket: number;
+    label: string;
+    openInterest: string;
+    predictionCount: number;
+  }>;
 }
 
 // Bucket assignments depend on `NOW() - condition.endTime`, so a JSON snapshot
@@ -27,7 +25,7 @@ describe('OpenInterestByTimeToResolution query', () => {
     );
     expect(result.errors).toBeUndefined();
 
-    const rows = result.data?.protocol?.openInterestByTimeToResolution ?? [];
+    const rows = result.data?.openInterestByTimeToResolution ?? [];
 
     const seenBuckets = new Set<number>();
     for (const row of rows) {

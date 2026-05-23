@@ -7,9 +7,9 @@ describe('Questions query', () => {
   it('matches the recorded contract', async () => {
     const result = await executeOperation(GET_QUESTIONS, {
       take: 10,
-      after: null,
-      orderBy: { field: 'CREATED_AT', direction: 'DESC' },
-      filter: {},
+      skip: 0,
+      sortField: 'openInterest',
+      sortDirection: 'desc',
     });
     expect(result.errors).toBeUndefined();
     await expect(

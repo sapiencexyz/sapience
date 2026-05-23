@@ -7,7 +7,6 @@
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
-import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 
 interface VolumeRow {
   total: string;
@@ -16,7 +15,6 @@ interface VolumeRow {
 export const accountTotalVolume: NonNullable<
   QueryResolvers['accountTotalVolume']
 > = async (_parent, { address }) => {
-  logDeprecatedHit('accountTotalVolume');
   const addr = address.toLowerCase();
   // Addresses are stored lowercase by indexers, so no LOWER() needed.
   const [result] = await prisma.$queryRaw<VolumeRow[]>`

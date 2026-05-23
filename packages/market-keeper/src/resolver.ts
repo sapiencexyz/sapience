@@ -18,15 +18,7 @@ function normalizeLegacy(entry: string | { address: string }): string {
   return typeof entry === 'string' ? entry : entry.address;
 }
 
-type ResolverDeployment = {
-  address: Address;
-  legacy?: readonly (string | { address: string })[];
-};
-
-const RESOLVER_MAPS: Record<
-  ResolverType,
-  Record<number, ResolverDeployment>
-> = {
+const RESOLVER_MAPS: Record<ResolverType, Record<number, { address: Address; legacy?: readonly any[] }>> = {
   ct: conditionalTokensConditionResolver,
   manual: manualConditionResolver,
 };
@@ -44,17 +36,14 @@ const RESOLVER_LABELS: Record<ResolverType, string> = {
  * @returns Resolver address and full address list (current + legacy) for DB queries
  * @throws If the resolver type has no entry for the given chain
  */
-export function getResolverConfig(
-  chainId: number,
-  resolverType: ResolverType
-): ResolverConfig {
+export function getResolverConfig(chainId: number, resolverType: ResolverType): ResolverConfig {
   const map = RESOLVER_MAPS[resolverType];
   const entry = map[chainId];
 
   if (!entry) {
     throw new Error(
       `${RESOLVER_LABELS[resolverType]} has no deployment on chain ${chainId}. ` +
-        `Set RESOLVER_TYPE to a resolver that exists on this chain.`
+      `Set RESOLVER_TYPE to a resolver that exists on this chain.`
     );
   }
 

@@ -40,7 +40,7 @@ import type { AggregatedLeaderboardEntry } from '~/hooks/graphql/useLeaderboard'
 import { useLeaderboard } from '~/hooks/graphql/useLeaderboard';
 import {
   useAccuracyLeaderboard,
-  type AccountAccuracyLeaderboardEntry,
+  type ForecasterScore,
 } from '~/hooks/graphql/useAccuracyLeaderboard';
 
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
@@ -139,14 +139,6 @@ const Leaderboard = () => {
           <AccuracyLeaderboard />
         </TabsContent>
       </Tabs>
-      <div className="mt-6 text-center">
-        <Link
-          href="/analytics"
-          className="text-sm text-muted-foreground underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
-        >
-          More analytics…
-        </Link>
-      </div>
     </div>
   );
 };
@@ -329,7 +321,7 @@ const AccuracyLeaderboard = () => {
   const { data, isLoading } = useAccuracyLeaderboard(100);
   const { currentAddress: address } = useCurrentAddress();
 
-  const columns = useMemo<ColumnDef<AccountAccuracyLeaderboardEntry>[]>(
+  const columns = useMemo<ColumnDef<ForecasterScore>[]>(
     () => [
       { id: 'rank', header: () => '', cell: RankCell },
       {
@@ -368,7 +360,7 @@ const AccuracyLeaderboard = () => {
     []
   );
 
-  const table = useReactTable<AccountAccuracyLeaderboardEntry>({
+  const table = useReactTable<ForecasterScore>({
     data: data ?? [],
     columns,
     getCoreRowModel: getCoreRowModel(),

@@ -30,7 +30,7 @@ import InfiniteScrollFooter from '~/components/shared/InfiniteScrollFooter';
 import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketBadge from '~/components/markets/MarketBadge';
-import type { FormattedForecast } from '~/hooks/graphql/useForecasts';
+import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
 import ShareDialog from '~/components/shared/ShareDialog';
 import { formatPercentChance } from '~/lib/format/percentChance';
@@ -47,7 +47,7 @@ import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import ConditionStatus from '~/components/shared/ConditionStatus';
 
 interface ForecastsTableProps {
-  forecasterAddress: string;
+  attesterAddress: string;
   leftSlot?: React.ReactNode;
   /** Grow the empty/loading panel via `flex-1` to fill the parent.
    *  Caller is responsible for the flex ancestor chain (page wrapper
@@ -82,7 +82,7 @@ const getCategoryColor = (categorySlug?: string | null): string => {
 const renderSubmittedCell = ({
   row,
 }: {
-  row: { original: FormattedForecast };
+  row: { original: FormattedAttestation };
 }) => {
   const createdDate = new Date(Number(row.original.rawTime) * 1000);
   const createdDisplay = formatDistanceToNow(createdDate, {
@@ -120,7 +120,7 @@ const renderSubmittedCell = ({
 const renderPredictionCell = ({
   row,
 }: {
-  row: { original: FormattedForecast };
+  row: { original: FormattedAttestation };
 }) => {
   const { value } = row.original; // D18 format: percentage * 10^18
 
@@ -147,7 +147,7 @@ const renderQuestionCell = ({
   conditionsMap,
   isConditionsLoading,
 }: {
-  row: { original: FormattedForecast };
+  row: { original: FormattedAttestation };
   conditionsMap?: Record<string, ConditionData>;
   isConditionsLoading: boolean;
 }) => {
@@ -210,7 +210,7 @@ const renderQuestionCell = ({
 };
 
 const ForecastsTable = ({
-  forecasterAddress,
+  attesterAddress,
   leftSlot,
   fill = false,
 }: ForecastsTableProps) => {
@@ -224,10 +224,10 @@ const ForecastsTable = ({
 
   // Pagination & sorting state
   const ITEMS_PER_PAGE = 20;
-  const [after, setAfter] = React.useState<string | null>(null);
-  const [allLoadedData, setAllLoadedData] = React.useState<FormattedForecast[]>(
-    []
-  );
+  const [skip, setSkip] = React.useState(0);
+  const [allLoadedData, setAllLoadedData] = React.useState<
+    FormattedAttestation[]
+  >([]);
   const [hasMore, setHasMore] = React.useState(true);
 
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -241,67 +241,67 @@ const ForecastsTable = ({
   const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
 
   // Track what data we've already processed to avoid infinite loops
-  const processedRef = React.useRef<{
-    cursor: string | null;
-    length: number;
-  } | null>(null);
+  const processedRef = React.useRef<{ skip: number; length: number } | null>(
+    null
+  );
 
   // Reset when sorting changes
   React.useEffect(() => {
-    setAfter(null);
-    setAllLoadedData([]);
+    setSkip(0);
     setHasMore(true);
     processedRef.current = null;
-  }, [sorting, forecasterAddress]);
+  }, [sorting, attesterAddress]);
 
-  // Fetch data with Relay cursor pagination
+  // Fetch data with skip-based pagination
   const { data: rawData, isLoading } = useUserForecasts({
-    forecasterAddress,
+    attesterAddress,
     schemaId: SCHEMA_UID,
-    take: ITEMS_PER_PAGE,
-    after,
+    take: ITEMS_PER_PAGE + 1,
+    skip,
     orderBy,
     orderDirection,
   });
 
   // Accumulate pages
   React.useEffect(() => {
-    const forecasts = rawData?.forecasts ?? [];
-    const dataLength = forecasts.length;
+    const dataLength = rawData?.length ?? 0;
 
     if (
-      processedRef.current?.cursor === after &&
+      processedRef.current?.skip === skip &&
       processedRef.current?.length === dataLength
     ) {
       return;
     }
-    processedRef.current = { cursor: after, length: dataLength };
+    processedRef.current = { skip, length: dataLength };
 
-    if (!rawData || forecasts.length === 0) {
-      if (after === null) {
+    if (!rawData || rawData.length === 0) {
+      if (skip === 0) {
         setAllLoadedData((prev) => (prev.length === 0 ? prev : []));
+        setHasMore((prev) => (prev === false ? prev : false));
       }
-      setHasMore((prev) => (prev === false ? prev : false));
       return;
     }
 
-    if (after === null) {
-      setAllLoadedData(forecasts);
+    const hasNextPage = rawData.length > ITEMS_PER_PAGE;
+    const newItems = hasNextPage ? rawData.slice(0, ITEMS_PER_PAGE) : rawData;
+
+    if (skip === 0) {
+      setAllLoadedData(newItems);
     } else {
-      setAllLoadedData((prev) => [...prev, ...forecasts]);
+      setAllLoadedData((prev) => [...prev, ...newItems]);
     }
 
-    setHasMore(rawData.hasMore);
-  }, [rawData, after]);
+    setHasMore(hasNextPage);
+  }, [rawData, skip]);
 
   const attestations = allLoadedData;
 
   // Load more handler
   const handleLoadMore = useCallback(() => {
-    if (!isLoading && hasMore && rawData?.endCursor) {
-      setAfter(rawData.endCursor);
+    if (!isLoading && hasMore) {
+      setSkip((prev) => prev + ITEMS_PER_PAGE);
     }
-  }, [isLoading, hasMore, rawData?.endCursor]);
+  }, [isLoading, hasMore]);
 
   // Collect conditionIds from attestations for batch fetching
   const conditionIds = useMemo(() => {
@@ -330,21 +330,19 @@ const ForecastsTable = ({
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
       const query = /* GraphQL */ `
-        query ConditionsByIds($filters: ConditionFilter!) {
-          conditionsConnection(filter: $filters, first: 100) {
-            nodes {
-              id: conditionId
-              question
-              shortName
-              endTime
-              description
-              settled
-              resolvedToYes
-              nonDecisive
-              resolver
-              category {
-                slug
-              }
+        query ConditionsByIds($where: ConditionWhereInput!) {
+          conditions(where: $where, take: 100) {
+            id
+            question
+            shortName
+            endTime
+            description
+            settled
+            resolvedToYes
+            nonDecisive
+            resolver
+            category {
+              slug
             }
           }
         }
@@ -367,7 +365,7 @@ const ForecastsTable = ({
     },
   });
 
-  const columns: ColumnDef<FormattedForecast>[] = React.useMemo(
+  const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
       {
         id: 'question',
@@ -961,7 +959,7 @@ const ForecastsTable = ({
             <ShareDialog
               title="Share Forecast"
               question={questionText}
-              owner={att.forecaster}
+              owner={att.attester}
               imagePath="/og/forecast"
               forecastUid={att.uid}
               extraParams={{

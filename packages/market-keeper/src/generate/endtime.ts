@@ -197,33 +197,6 @@ export function extractYear(month: number, day: number): number {
 }
 
 /**
- * Detect whether a description contains an explicit time marker the
- * date-only regex tiers cannot extract (clock time, AM/PM, named timezone,
- * "noon"/"midnight"). When this returns true, date-only tiers should
- * decline rather than stamp end-of-day — the description has time-of-day
- * precision that we'd be silently dropping. Caller then falls through to
- * the LLM or Polymarket's endDate, which can preserve the time.
- *
- * Scoped narrowly: timezone abbreviations must be word-bounded so "EAST"
- * (no zone) or "stuck in CST" (the abbrev as substring of a non-timezone
- * word) don't trip the guard.
- */
-export function descHasTimingMarker(desc: string): boolean {
-  if (!desc) return false;
-  if (/\b(?:noon|midnight)\b/i.test(desc)) return true;
-  if (/\b\d{1,2}:\d{2}\b/.test(desc)) return true;
-  if (/\b\d{1,2}\s*(?:AM|PM|am|pm)\b/.test(desc)) return true;
-  if (
-    /\b(?:ET|EST|EDT|UTC|GMT|PT|PST|PDT|CT|CST|CDT|MT|MST|MDT|JST|KST|IST|CET|CEST|Eastern|Pacific|Central|Mountain)\b/.test(
-      desc
-    )
-  ) {
-    return true;
-  }
-  return false;
-}
-
-/**
  * Extract a resolution end-time from market question + description.
  * Tries tiers 0–4f in order; returns null (tier 6) if none match.
  */
@@ -240,15 +213,6 @@ export function extractEndTime(
     ''
   );
   const combined = (question + ' ' + cleanDesc).trim();
-
-  // Date-only tiers (3a, 3b, 4a, 4b, 4d, 4e, 4f, 4month, 4month2, 4week) stamp
-  // end-of-day because the question text gives no clock time. When the
-  // description does name a time (e.g. "noon ET", "12:00 PM", "2:00 PM EST"),
-  // declining the date-only tier lets the caller fall back to the LLM or
-  // Polymarket endDate, both of which preserve the actual time. See the
-  // ETH/USDT $1,800 prod bug: title "on May 16?" + desc "noon ET" → without
-  // this guard, Tier 4e returned end-of-day instead of letting noon ET stand.
-  const hasTimingMarker = descHasTimingMarker(cleanDesc);
 
   let m: RegExpExecArray | null;
 
@@ -392,7 +356,7 @@ export function extractEndTime(
     `resolv\\w*\\s+(?:by|before|on|after)\\s+(${MONTHS})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s*(\\d{4}))?`,
     'i'
   ).exec(cleanDesc);
-  if (m && !hasTimingMarker) {
+  if (m) {
     const mon = parseMonth(m[1]);
     const day = parseInt(m[2]);
     const yr = m[3] ? parseInt(m[3]) : extractYear(mon, day);
@@ -405,7 +369,7 @@ export function extractEndTime(
     `(?:checked?|measured?|determined?)\\s+(?:on|at)\\s+(${MONTHS})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s*(\\d{4}))?`,
     'i'
   ).exec(cleanDesc);
-  if (m && !hasTimingMarker) {
+  if (m) {
     const mon = parseMonth(m[1]);
     const day = parseInt(m[2]);
     const yr = m[3] ? parseInt(m[3]) : extractYear(mon, day);
@@ -452,7 +416,7 @@ export function extractEndTime(
     `\\bby\\s+(${MONTHS})\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s*(\\d{4})`,
     'i'
   ).exec(question);
-  if (m && !hasTimingMarker) {
+  if (m) {
     const mon = parseMonth(m[1]);
     const day = parseInt(m[2]);
     const yr = parseInt(m[3]);
@@ -465,7 +429,7 @@ export function extractEndTime(
     `\\b(?:on|for)\\s+(${MONTHS})\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})`,
     'i'
   ).exec(question);
-  if (m && !hasTimingMarker) {
+  if (m) {
     const mon = parseMonth(m[1]);
     const day = parseInt(m[2]);
     const yr = parseInt(m[3]);
@@ -517,7 +481,7 @@ export function extractEndTime(
     `\\bby\\s+(${MONTHS})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?!\\s*,?\\s*\\d{4})`,
     'i'
   ).exec(question);
-  if (m && !hasTimingMarker) {
+  if (m) {
     const mon = parseMonth(m[1]);
     const day = parseInt(m[2]);
     if (out) out.tier = '4d';
@@ -529,7 +493,7 @@ export function extractEndTime(
     `\\b(?:on|for|between)\\s+(${MONTHS})\\s+(\\d{1,2})(?:[-–](\\d{1,2}))?(?:st|nd|rd|th)?(?!\\s*,?\\s*\\d{4})`,
     'i'
   ).exec(question);
-  if (m && !hasTimingMarker) {
+  if (m) {
     const mon = parseMonth(m[1]);
     // Use end of range if present (e.g. "on March 23-29" → 29)
     const day = m[3] ? parseInt(m[3]) : parseInt(m[2]);
@@ -542,7 +506,7 @@ export function extractEndTime(
     `\\b(${MONTHS})\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s*(\\d{4})`,
     'i'
   ).exec(question);
-  if (m && !hasTimingMarker) {
+  if (m) {
     const mon = parseMonth(m[1]);
     const day = parseInt(m[2]);
     const yr = parseInt(m[3]);
@@ -558,7 +522,7 @@ export function extractEndTime(
     /\b(?:Bitcoin|BTC|Ethereum|ETH|Solana|SOL|XRP|Ripple|Dogecoin|DOGE|BNB|Litecoin|LTC|Cardano|ADA|Avalanche|AVAX|Chainlink|LINK|Polkadot|DOT|Uniswap|UNI|Hyperliquid|HYPE|Ethena|ENA)\b/i;
   if (CRYPTO_ASSETS_RE.test(question)) {
     m = new RegExp(`\\bin\\s+(${MONTHS})(?:\\s+(\\d{4}))?`, 'i').exec(question);
-    if (m && !hasTimingMarker) {
+    if (m) {
       const mon = parseMonth(m[1]);
       // Compute last day using approximate current year, then confirm year using that last day
       const approxLastDay = new Date(
@@ -582,7 +546,7 @@ export function extractEndTime(
   m = new RegExp(`\\bin\\s+(${MONTHS})(?:\\s+(\\d{4}))?\\s*\\??$`, 'i').exec(
     question
   );
-  if (m && !CENTRAL_BANK_RE.test(question) && !hasTimingMarker) {
+  if (m && !CENTRAL_BANK_RE.test(question)) {
     const mon = parseMonth(m[1]);
     const approxLastDay = new Date(
       Date.UTC(new Date().getUTCFullYear(), mon, 0)
@@ -594,7 +558,7 @@ export function extractEndTime(
   }
 
   // ── Tier 4week: "this week" → next Sunday 23:59 ET ──────────────────────
-  if (/\bthis\s+week\b/i.test(question) && !hasTimingMarker) {
+  if (/\bthis\s+week\b/i.test(question)) {
     const now = new Date();
     const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
     const daysUntilSunday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;

@@ -60,6 +60,10 @@ export const SUPPLEMENTARY_EVENT_TAGS = ['earnings'];
 export const RELIST_LOOKBACK_DAYS = 30;
 export const RELIST_FORWARD_DAYS = 3;
 
+// End time buffer: added to Polymarket's endDate to cover UMA 2h liveness period
+export const END_TIME_BUFFER_HOURS = 4;
+export const END_TIME_BUFFER_SECONDS = END_TIME_BUFFER_HOURS * 3600;
+
 // LLM Configuration
 export const LLM_ENABLED = process.env.LLM_ENABLED === 'true';
 // Sub-flags: both default ON when LLM_ENABLED=true; set to 'false' to disable individually
@@ -72,22 +76,8 @@ export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 // FFR: try mistralai/ministral-3b or other cheaper alternatives to gpt-4o-mini
 export const LLM_MODEL = process.env.LLM_MODEL || 'openai/gpt-4o-mini';
 
-// Perplexity Sonar model for web-search-augmented endTime determination.
-//
-// Defaults to `perplexity/sonar-pro`. We compared sonar vs sonar-pro
-// head-to-head on the same 27-market UEFA backfill with identical prompt:
-//   - basic sonar: produced 1 catastrophic hallucination (2026-10-29 for
-//     a UECL market whose final is 2026-05-27 — off by 154 days, citations
-//     were correct UECL pages, no signal that it was guessing). 20/27 were
-//     stamped EOD fallback rather than kickoff+duration.
-//   - sonar-pro: zero hallucinations. 19/27 high-confidence with actual
-//     kickoff+duration timestamps (21:00/21:15/21:30/21:45).
-// The 5× cost (~$0.10 vs $0.02 per 27 markets) buys both correctness and
-// the ability to detect when the model is guessing. Override via
-// LLM_ENDTIME_MODEL=perplexity/sonar if cost dominates at scale.
-// Costs: sonar $1/M in + $1/M out + $5/1000 searches;
-//        sonar-pro $3/M in + $15/M out + $5/1000 searches.
+// Perplexity Sonar model for web-search-augmented endTime determination
 export const LLM_ENDTIME_MODEL =
-  process.env.LLM_ENDTIME_MODEL || 'perplexity/sonar-pro';
+  process.env.LLM_ENDTIME_MODEL || 'perplexity/sonar';
 // Longer timeout for Sonar (does web searches)
 export const LLM_ENDTIME_TIMEOUT_MS = 60000;

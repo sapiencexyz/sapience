@@ -42,18 +42,8 @@ export interface EndTimeEnrichmentInput {
   eventTitle?: string;
 }
 
-export type EndTimeConfidence = 'high' | 'low' | 'unknown';
-
 export interface EndTimeOutput {
   conditionId: string;
   /** Unix timestamp in seconds, or null if LLM cannot determine */
   endTime: number | null;
-  /**
-   * LLM self-reported confidence:
-   *  - 'high'    — title/desc has unambiguous specific time (date + hour + tz, "noon ET", etc.)
-   *  - 'low'     — only the date is extractable; endTime is end-of-day 23:59 UTC
-   *  - 'unknown' — no date extractable, endTime is null
-   * Telemetry only — decideEndTime always trusts LLM when ts is non-null.
-   */
-  confidence: EndTimeConfidence;
 }
