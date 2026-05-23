@@ -1037,14 +1037,17 @@ export type ConditionFilter = {
   ids?: InputMaybe<Array<Scalars['ID']['input']>>;
   /**
    * Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+   * Typed as `String` (not `Address`) so existing queries passing nullable `$marketAddress: String`
+   * variables continue to validate — the strict `Address` scalar lives on the canonical `resolverAddress`.
    * @deprecated Use `resolverAddress` — same resolver/oracle contract address, accurately named.
    */
-  marketAddress?: InputMaybe<Scalars['Address']['input']>;
+  marketAddress?: InputMaybe<Scalars['String']['input']>;
   /**
    * Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+   * Typed as `[String!]` for the same back-compat reason as `marketAddress` above.
    * @deprecated Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.
    */
-  marketAddressIn?: InputMaybe<Array<Scalars['Address']['input']>>;
+  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /**
    * Filter by resolution state. `{ isNull: true }` selects unsettled
    * conditions; `{ isNull: false }` selects settled (any outcome);
@@ -2579,8 +2582,12 @@ export type PredictionEdge = {
  * values combine with AND.
  */
 export type PredictionFilter = {
-  /** Restrict to predictions where the address is predictor or counterparty. */
-  address?: InputMaybe<Scalars['Address']['input']>;
+  /**
+   * Restrict to predictions where the address is predictor or counterparty.
+   * Typed as `String` (not `Address`) so existing queries passing nullable `String` variables
+   * keep validating against the pre-existing input shape.
+   */
+  address?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to predictions on a single condition (via the pickConfig join). */
@@ -2740,8 +2747,10 @@ export type Query = {
   __typename?: 'Query';
   /**
    * Look up a single account by canonical wallet address. Replacement for
-   * `user(where:)` — accepts a flat `address: Address!` arg instead of the
-   * Prisma-shaped `UserWhereUniqueInput`.
+   * `user(where:)` — accepts a flat `address: String!` arg instead of the
+   * Prisma-shaped `UserWhereUniqueInput`. The arg is typed as `String` (not
+   * `Address`) so existing external queries passing `$wallet: String!`
+   * variables continue to validate.
    */
   account?: Maybe<Account>;
   /**
@@ -3153,7 +3162,7 @@ export type Query = {
 
 
 export type QueryAccountArgs = {
-  address: Scalars['Address']['input'];
+  address: Scalars['String']['input'];
 };
 
 
@@ -3792,14 +3801,17 @@ export type QuestionFilter = {
   estimatedPrice?: InputMaybe<FloatFilter>;
   /**
    * Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+   * Typed as `String` (not `Address`) so existing queries passing nullable `$marketAddress: String`
+   * variables continue to validate — the strict `Address` scalar lives on the canonical `resolverAddress`.
    * @deprecated Use `resolverAddress` — same resolver/oracle contract address, accurately named.
    */
-  marketAddress?: InputMaybe<Scalars['Address']['input']>;
+  marketAddress?: InputMaybe<Scalars['String']['input']>;
   /**
    * Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+   * Typed as `[String!]` for the same back-compat reason as `marketAddress` above.
    * @deprecated Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.
    */
-  marketAddressIn?: InputMaybe<Array<Scalars['Address']['input']>>;
+  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Resolution-status filter; defaults to all when omitted. */
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   /**
@@ -4114,19 +4126,23 @@ export type TradeEdge = {
 
 /** Filter input for the Relay-shaped `tradesConnection` query. Combines with AND. */
 export type TradeFilter = {
-  /** Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`. */
-  address?: InputMaybe<Scalars['Address']['input']>;
-  /** Restrict to a single buyer address. */
-  buyer?: InputMaybe<Scalars['Address']['input']>;
+  /**
+   * Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.
+   * Typed as `String` (not `Address`) so existing queries passing nullable `String` variables
+   * keep validating against the pre-existing input shape.
+   */
+  address?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single buyer address. Typed as `String` for back-compat — see `address` above. */
+  buyer?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
   executedAt?: InputMaybe<IntFilter>;
-  /** Restrict to a single seller address. */
-  seller?: InputMaybe<Scalars['Address']['input']>;
-  /** Restrict to a single position token address. */
-  token?: InputMaybe<Scalars['Address']['input']>;
-  tokens?: InputMaybe<Array<Scalars['Address']['input']>>;
+  /** Restrict to a single seller address. Typed as `String` for back-compat — see `address` above. */
+  seller?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single position token address. Typed as `String` for back-compat — see `address` above. */
+  token?: InputMaybe<Scalars['String']['input']>;
+  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
   /**
    * Restrict to a single trade by execution hash. Supports the
    * by-hash single-record lookup pattern — `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
