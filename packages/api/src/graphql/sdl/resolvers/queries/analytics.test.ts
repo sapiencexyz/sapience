@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { toGlobalId } from '../../../relay/globalId';
 
 const mockGetConfiguredVaults = vi.fn();
 const mockGetProtocolStatsTimeSeries = vi.fn();
@@ -31,7 +32,7 @@ vi.mock('../../../../lib/utils', () => ({
   getProviderForChain: vi.fn(),
 }));
 
-const { protocolStats, vaultStats } = await import('./analytics');
+const { protocolStats, vaultStats, vault } = await import('./analytics');
 
 type StatsArgs = {
   fromEpoch?: number | null;
@@ -46,6 +47,12 @@ type ResolverFn = (
 ) => Promise<Array<Record<string, unknown>>>;
 const protocolStatsFn = protocolStats as unknown as ResolverFn;
 const vaultStatsFn = vaultStats as unknown as ResolverFn;
+const vaultFn = vault as unknown as (
+  parent: unknown,
+  args: { id: string },
+  ctx: unknown,
+  info: unknown
+) => Promise<Record<string, unknown> | null>;
 
 const PROTOCOL_VAULT = '0xprotocol';
 
@@ -172,6 +179,51 @@ describe('Query.vaultStats', () => {
     expect(result[1].periodPnL).toBe('-80');
     // Live candle: realizedPnL(-970) + unredeemed(988) + sold(7) - bought(5) = 20
     expect(result[2].cumulativePnL).toBe('20');
+  });
+});
+
+describe('Query.vault', () => {
+  it('resolves a valid Vault global id', async () => {
+    const result = await vaultFn(
+      {} as never,
+      { id: toGlobalId('Vault', `42161:${PROTOCOL_VAULT}`) },
+      {} as never,
+      {} as never
+    );
+
+    expect(result).toMatchObject({
+      id: toGlobalId('Vault', `42161:${PROTOCOL_VAULT}`),
+      address: PROTOCOL_VAULT,
+      chainId: 42161,
+    });
+  });
+
+  it('returns null for malformed or non-Vault ids instead of throwing', async () => {
+    await expect(
+      vaultFn(
+        {} as never,
+        { id: '0x0000000000000000000000000000000000000000' },
+        {} as never,
+        {} as never
+      )
+    ).resolves.toBeNull();
+
+    await expect(
+      vaultFn({} as never, { id: 'not-a-global-id' }, {} as never, {} as never)
+    ).resolves.toBeNull();
+
+    await expect(
+      vaultFn(
+        {} as never,
+        {
+          id: Buffer.from(
+            'Account:0x0000000000000000000000000000000000000000'
+          ).toString('base64url'),
+        },
+        {} as never,
+        {} as never
+      )
+    ).resolves.toBeNull();
   });
 });
 
