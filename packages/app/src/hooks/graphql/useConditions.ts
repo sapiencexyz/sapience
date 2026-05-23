@@ -7,26 +7,18 @@ import {
 
 export const useConditions = (opts?: {
   take?: number;
-  /** @deprecated Use `after` with a connection page cursor for pagination. */
   skip?: number;
-  /**
-   * Opaque cursor from the previous page's `endCursor`. Connections are
-   * cursor-first; `skip` remains only for legacy compatibility. Prefer
-   * `useInfiniteQuery` with `pageParam` driving `after`.
-   */
-  after?: string | null;
   chainId?: number;
   filters?: ConditionFilters;
 }) => {
   const take = opts?.take ?? 50;
-  const after = opts?.after ?? null;
-  const skip = after == null ? (opts?.skip ?? 0) : 0;
+  const skip = opts?.skip ?? 0;
   const chainId = opts?.chainId;
   const filters = opts?.filters;
 
   return useQuery<ConditionType[], Error>({
-    queryKey: ['conditions', take, skip, after, chainId, filters],
-    queryFn: () => fetchConditions({ take, skip, after, chainId, filters }),
+    queryKey: ['conditions', take, skip, chainId, filters],
+    queryFn: () => fetchConditions({ take, skip, chainId, filters }),
   });
 };
 

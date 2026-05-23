@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import type { FormattedForecast } from '@sapience/sdk/queries';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import { AddressDisplay } from './AddressDisplay';
 import Loader from './Loader';
-import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
+import type { FormattedAttestation } from '@sapience/sdk/queries';
 import { SCHEMA_UID } from '~/lib/constants';
 import { d18ToPercentage } from '~/lib/utils/util';
 import { formatRelativeTime } from '~/lib/utils/timeUtils';
@@ -75,27 +75,27 @@ interface CommentsProps {
   fullBleed?: boolean;
 }
 
-// Helper to extract decoded data from forecast
-function getDecodedDataFromForecast(forecast: FormattedForecast): {
+// Helper to extract decoded data from attestation
+function getDecodedDataFromAttestation(att: FormattedAttestation): {
   prediction: bigint;
   commentText: string;
 } {
   return {
-    prediction: BigInt(forecast.value),
-    commentText: forecast.comment,
+    prediction: BigInt(att.value),
+    commentText: att.comment,
   };
 }
 
-// Helper to parse forecast data to Comment type
-function forecastToComment(
-  forecast: FormattedForecast,
+// Helper to parse EAS attestation data to Comment type
+function attestationToComment(
+  att: FormattedAttestation,
   conditionsMap: Record<string, ConditionData> | undefined,
   isConditionsLoading: boolean
 ): Comment {
-  const { prediction, commentText } = getDecodedDataFromForecast(forecast);
+  const { prediction, commentText } = getDecodedDataFromAttestation(att);
 
-  // Extract conditionId from the forecast
-  const conditionId = forecast.conditionId;
+  // Extract conditionId from the attestation
+  const conditionId = att.conditionId;
 
   // Find the condition data using conditionId
   let category: string | undefined = undefined;
@@ -135,10 +135,10 @@ function forecastToComment(
   predictionText = `${formatPercentChance(prob)} Chance`;
 
   return {
-    id: forecast.id,
-    address: forecast.forecaster,
+    id: att.id,
+    address: att.attester,
     content: commentText,
-    timestamp: new Date(Number(forecast.rawTime) * 1000).toISOString(),
+    timestamp: new Date(Number(att.rawTime) * 1000).toISOString(),
     prediction: predictionText,
     predictionPercent,
     answer: Answer.Yes,
@@ -160,14 +160,14 @@ const Comments = ({
   refetchTrigger,
   fullBleed = false,
 }: CommentsProps) => {
-  // Fetch forecasts
-  const shouldFilterByForecaster =
+  // Fetch EAS attestations
+  const shouldFilterByAttester =
     selectedFilter === CommentFilters.FilterByAccount &&
     address &&
     typeof address === 'string' &&
     address.length > 0;
   const {
-    data: forecasts,
+    data: easAttestations,
     isLoading: isEasLoading,
     refetch,
     fetchNextPage,
@@ -175,11 +175,11 @@ const Comments = ({
     isFetchingNextPage,
   } = useInfiniteForecasts({
     schemaId: SCHEMA_UID,
-    forecasterAddress: shouldFilterByForecaster ? address : undefined,
+    attesterAddress: shouldFilterByAttester ? address : undefined,
     conditionId: conditionId,
   });
 
-  // Refetch forecasts when refetchTrigger changes
+  // Refetch EAS attestations when refetchTrigger changes
   useEffect(() => {
     if (refetch) {
       setTimeout(() => {
@@ -188,25 +188,25 @@ const Comments = ({
     }
   }, [refetchTrigger, refetch]);
 
-  // Collect unique conditionIds from forecasts for batch fetching
+  // Collect unique conditionIds from attestations for batch fetching
   const conditionIds = useMemo(() => {
     const set = new Set<string>();
-    for (const f of forecasts || []) {
-      const fConditionId = f.conditionId;
+    for (const att of easAttestations || []) {
+      const conditionId = att.conditionId;
       if (
-        fConditionId &&
-        typeof fConditionId === 'string' &&
-        fConditionId.startsWith('0x') &&
-        fConditionId !==
+        conditionId &&
+        typeof conditionId === 'string' &&
+        conditionId.startsWith('0x') &&
+        conditionId !==
           '0x0000000000000000000000000000000000000000000000000000000000000000'
       ) {
-        set.add(fConditionId.toLowerCase());
+        set.add(conditionId.toLowerCase());
       }
     }
     return Array.from(set);
-  }, [forecasts]);
+  }, [easAttestations]);
 
-  // Fetch condition details for the forecasts
+  // Fetch condition details for the attestations
   const { data: conditionsMap, isLoading: isConditionsLoading } = useQuery<
     Record<string, ConditionData>
   >({
@@ -216,18 +216,16 @@ const Comments = ({
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
       const query = /* GraphQL */ `
-        query ConditionsByIds($filters: ConditionFilter!) {
-          conditionsConnection(filter: $filters, first: 100) {
-            nodes {
-              id: conditionId
-              question
-              shortName
-              endTime
-              description
-              resolver
-              category {
-                slug
-              }
+        query ConditionsByIds($where: ConditionWhereInput!) {
+          conditions(where: $where, take: 100) {
+            id
+            question
+            shortName
+            endTime
+            description
+            resolver
+            category {
+              slug
             }
           }
         }
@@ -244,13 +242,13 @@ const Comments = ({
     },
   });
 
-  // Convert forecasts to Comment objects with category
+  // Convert EAS attestations to Comment objects with category
   const easComments: Comment[] = useMemo(
     () =>
-      (forecasts || []).map((f) =>
-        forecastToComment(f, conditionsMap, isConditionsLoading)
+      (easAttestations || []).map((att) =>
+        attestationToComment(att, conditionsMap, isConditionsLoading)
       ),
-    [forecasts, conditionsMap, isConditionsLoading]
+    [easAttestations, conditionsMap, isConditionsLoading]
   );
 
   // Filter comments based on selected category and question
@@ -385,14 +383,14 @@ const Comments = ({
                                 'px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 uppercase font-mono';
 
                               let variant: 'default' | 'outline' = 'default';
-                              let badgeClassName = baseClasses;
+                              let className = baseClasses;
 
                               if (
                                 typeof percent === 'number' &&
                                 percent !== 50
                               ) {
                                 variant = 'outline';
-                                badgeClassName =
+                                className =
                                   baseClasses +
                                   (percent > 50
                                     ? ' border-yes/40 bg-yes/10 text-yes'
@@ -400,10 +398,7 @@ const Comments = ({
                               }
 
                               return (
-                                <Badge
-                                  variant={variant}
-                                  className={badgeClassName}
-                                >
+                                <Badge variant={variant} className={className}>
                                   {comment.prediction}
                                 </Badge>
                               );

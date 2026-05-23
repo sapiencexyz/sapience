@@ -1,15 +1,5 @@
 [build]
-builder = "RAILPACK"
-watchPatterns = [
-  "packages/**",
-  "Dockerfile",
-  ".dockerignore",
-  "railway.toml",
-  "package.json",
-  "pnpm-lock.yaml",
-  "pnpm-workspace.yaml",
-  ".npmrc",
-]
+watchPatterns = ["packages/**"]
 
 [deploy]
 restartPolicyType = "on_failure"

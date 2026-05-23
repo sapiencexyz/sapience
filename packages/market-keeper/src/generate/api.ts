@@ -9,7 +9,7 @@ import type {
   SyncableFields,
   GroupMetadataUpdate,
 } from '../types';
-import { RESOLVER_ADDRESS } from '../constants';
+import { RESOLVER_ADDRESS, END_TIME_BUFFER_SECONDS } from '../constants';
 import { fetchWithRetry, getAdminAuthHeaders } from '../utils';
 import {
   runPipeline,
@@ -30,81 +30,6 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 export function toUnixTimestamp(isoDate: string): number {
   return Math.floor(new Date(isoDate).getTime() / 1000);
-}
-
-/**
- * Pick the endTime for a condition payload, with logging for prod observability.
- *
- * Priority:
- *   1. LLM (Sonar) — wins whenever it returned a timestamp, any confidence.
- *      Confidence is logged but does NOT gate the decision. This is the
- *      hallucination-guard knob: if logs show LLM is hallucinating, the
- *      easy first knob is to re-introduce a `confidence === 'high'` gate.
- *   2. Polymarket endDate — universal fallback for PM-sourced markets.
- *      Only reachable when LLM returned UNKNOWN, errored, or was disabled.
- *   3. Regex extraction (endTimeOverride) — only for templated markets
- *      (sports/series/group) where the format is deterministic by
- *      construction. For non-templated markets, regex is too brittle to
- *      trust (the ETH/USDT $1,800 bug was a regex Tier 4e false positive).
- *   4. Throw — non-templated, non-PM market with no LLM result. Better
- *      to fail loud than to publish a confidently-wrong endTime.
- *
- * No buffer is added. The previous `+ END_TIME_BUFFER_SECONDS` was
- * meant to cover UMA dispute liveness, but settlement scripts don't
- * gate on `endTime + UMA` — the buffer was just over-conservative padding
- * baked into the public-facing value.
- */
-export function decideEndTime(c: SapienceCondition): {
-  ts: number;
-  source:
-    | 'llm-high'
-    | 'llm-low'
-    | 'llm-unknown'
-    | 'pm-fallback'
-    | 'regex-templated';
-} {
-  const llm = c.llmEndTime;
-  if (llm?.ts) {
-    return { ts: llm.ts, source: `llm-${llm.confidence}` as const };
-  }
-  const pm = c.endDate ? toUnixTimestamp(c.endDate) : null;
-  if (pm) {
-    return { ts: pm, source: 'pm-fallback' };
-  }
-  // Reachable only for non-Polymarket markets (Pyth, manual) that lack
-  // endDate. PM markets always have endDate, so they exit at pm-fallback.
-  if (c.isTemplated && c.endTimeOverride) {
-    return { ts: c.endTimeOverride, source: 'regex-templated' };
-  }
-  throw new Error(`[decideEndTime] no endTime source for ${c.conditionHash}`);
-}
-
-/**
- * Emit one structured line per condition at create time. Consumed by the
- * inspect-endtime-decisions script (queries Railway log GraphQL API).
- * Self-contained so outliers can be triaged without DB cross-referencing.
- */
-function logEndTimeDecision(
-  c: SapienceCondition,
-  decision: { ts: number; source: string }
-): void {
-  const llmTs = c.llmEndTime?.ts ?? null;
-  const pmTs = c.endDate ? toUnixTimestamp(c.endDate) : null;
-  const drift = llmTs !== null && pmTs !== null ? llmTs - pmTs : null;
-  const payload = {
-    event: 'endtime_decided',
-    conditionHash: c.conditionHash,
-    question: c.question.slice(0, 80),
-    source: decision.source,
-    llmTs,
-    pmTs,
-    regexTs: c.endTimeOverride ?? null,
-    llmConfidence: c.llmEndTime?.confidence ?? null,
-    isTemplated: c.isTemplated ?? false,
-    driftSeconds: drift,
-    finalTs: decision.ts,
-  };
-  console.log(JSON.stringify(payload));
 }
 
 /**
@@ -164,9 +89,6 @@ export async function submitCondition(
   try {
     const authHeaders = await getAdminAuthHeaders(privateKey);
 
-    const decision = decideEndTime(condition);
-    logEndTimeDecision(condition, decision);
-
     const response = await fetchWithRetry(`${apiUrl}/admin/conditions`, {
       method: 'POST',
       headers: {
@@ -179,7 +101,9 @@ export async function submitCondition(
         shortName: condition.shortName,
         optionName: condition.optionName,
         categorySlug: condition.categorySlug,
-        endTime: decision.ts,
+        endTime:
+          (condition.endTimeOverride ?? toUnixTimestamp(condition.endDate)) +
+          END_TIME_BUFFER_SECONDS,
         description: condition.description,
         similarMarkets: condition.similarMarkets,
         tags: condition.tags,
@@ -667,27 +591,25 @@ export async function submitToAPI(
   }
 
   // Build batch payloads
-  const payloads = allConditions.map((condition) => {
-    const decision = decideEndTime(condition);
-    logEndTimeDecision(condition, decision);
-    return {
-      conditionHash: condition.conditionHash,
-      question: condition.question,
-      shortName: condition.shortName,
-      optionName: condition.optionName,
-      categorySlug: condition.categorySlug,
-      endTime: decision.ts,
-      description: condition.description,
-      similarMarkets: condition.similarMarkets,
-      tags: condition.tags,
-      chainId: condition.chainId,
-      groupName: condition.groupTitle,
-      resolver: RESOLVER_ADDRESS,
-      estimatedPrice: condition.estimatedPrice,
-      similarMarketVolume: condition.similarMarketVolume,
-      similarMarketImage: condition.similarMarketImage,
-    };
-  });
+  const payloads = allConditions.map((condition) => ({
+    conditionHash: condition.conditionHash,
+    question: condition.question,
+    shortName: condition.shortName,
+    optionName: condition.optionName,
+    categorySlug: condition.categorySlug,
+    endTime:
+      (condition.endTimeOverride ?? toUnixTimestamp(condition.endDate)) +
+      END_TIME_BUFFER_SECONDS,
+    description: condition.description,
+    similarMarkets: condition.similarMarkets,
+    tags: condition.tags,
+    chainId: condition.chainId,
+    groupName: condition.groupTitle,
+    resolver: RESOLVER_ADDRESS,
+    estimatedPrice: condition.estimatedPrice,
+    similarMarketVolume: condition.similarMarketVolume,
+    similarMarketImage: condition.similarMarketImage,
+  }));
 
   // Split into batches that fit within the API body size limit
   const batches = batchBySize(payloads, API_BODY_LIMIT_BYTES);

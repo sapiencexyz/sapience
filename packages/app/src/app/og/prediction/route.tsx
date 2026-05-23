@@ -86,13 +86,13 @@ export async function GET(req: Request) {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     query: CONDITIONS_BY_IDS_QUERY,
-                    variables: { filters: { ids: conditionIds } },
+                    variables: { where: { id: { in: conditionIds } } },
                   }),
                 });
                 if (condResp.ok) {
                   const condResult = await condResp.json();
                   const conditions: ConditionData[] =
-                    condResult?.data?.conditionsConnection?.nodes ?? [];
+                    condResult?.data?.conditions ?? [];
                   for (const c of conditions) {
                     conditionsMap.set(c.id, c);
                   }

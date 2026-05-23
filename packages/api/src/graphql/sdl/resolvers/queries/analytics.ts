@@ -10,18 +10,9 @@
 
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { normalizeLegacyEntry } from '@sapience/sdk/contracts';
-import { collateralToken } from '@sapience/sdk/contracts/addresses';
-import {
-  fromGlobalId,
-  registerNodeType,
-  toGlobalId,
-} from '../../../relay/globalId';
-import { synthesizeAccount } from '../accountSynthesis';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import type {
   QueryResolvers,
   ProtocolStat,
-  VaultStat,
   CategoryOpenInterest,
   Category,
   TimeToResolutionBucket,
@@ -37,7 +28,6 @@ import {
   fetchVaultDeployed,
   fetchVaultTVL,
   getConfiguredVaults,
-  getPriorSnapshot,
   getProtocolStatsTimeSeries,
   resolveSnapshotIntervalSeconds,
   sumEscrowBalancesAtBlock,
@@ -76,32 +66,9 @@ const buildTimestampMap = <T extends { timestamp: bigint }>(
   return map;
 };
 
-/**
- * Fat stats row carrying both protocol-wide and vault-specific fields.
- * The two public resolvers each project to a subset of these. Declared
- * as an intersection (rather than `extends ProtocolStat, VaultStat`) so
- * the shared `timestamp` + `__typename` discriminator don't collide.
- */
-type FatStat = Omit<ProtocolStat, '__typename'> &
-  Omit<VaultStat, '__typename' | 'timestamp' | 'vault'>;
-
-/**
- * Shared inner pipeline for `protocolStats` and `vaultStats`. Returns the
- * "fat" rows (every field both resolvers can read) so each caller can
- * project to its narrower wire type.
- *
- * Windowing: `fromEpoch` / `toEpoch` are inclusive epoch seconds. When
- * `fromEpoch` is set, a single leading baseline snapshot (timestamp <
- * fromEpoch) is prepended so the first windowed bar's `periodVolume` /
- * `periodPnL` deltas anchor correctly; the baseline row is trimmed from
- * the result. The live candle is only emitted when the window covers now
- * (`toEpoch` null or >= now). Without a window the behaviour is unchanged.
- */
-const runFatStats = async (
-  vaultAddressArg: string | null | undefined,
-  fromEpoch: number | null | undefined,
-  toEpoch: number | null | undefined
-): Promise<FatStat[]> => {
+export const protocolStats: NonNullable<
+  QueryResolvers['protocolStats']
+> = async (_parent, { vaultAddress: vaultAddressArg }) => {
   const chainId = DEFAULT_CHAIN_ID;
 
   // Resolve which vault category the caller wants. Without `vaultAddressArg`
@@ -146,31 +113,14 @@ const runFatStats = async (
       ].map((a) => a.toLowerCase())
     : [];
 
-  const windowedSnapshots = await getProtocolStatsTimeSeries({
+  const rawSnapshots = await getProtocolStatsTimeSeries(
+    undefined,
     chainId,
-    vaultAddress: vaultAddresses,
-    fromEpoch: fromEpoch ?? undefined,
-    toEpoch: toEpoch ?? undefined,
-  });
-  if (windowedSnapshots.length === 0) {
+    vaultAddresses
+  );
+  if (rawSnapshots.length === 0) {
     return [];
   }
-
-  // Leading baseline: when a window is set, fetch the single latest
-  // snapshot strictly before `fromEpoch` so `periodVolume` / `periodPnL`
-  // for the first windowed bar anchors to the real prior cumulative
-  // values. Trimmed from the final result.
-  const baselineSnapshot =
-    fromEpoch != null && vaultAddresses.length > 0
-      ? await getPriorSnapshot({
-          vaultAddress: vaultAddresses,
-          fromEpoch,
-          chainId,
-        })
-      : null;
-  const rawSnapshots = baselineSnapshot
-    ? [baselineSnapshot, ...windowedSnapshots]
-    : windowedSnapshots;
 
   // Dedupe by timestamp: a single day can have rows under multiple addresses
   // (current primary + a since-demoted legacy that prod's older cron wrote).
@@ -198,22 +148,9 @@ const runFatStats = async (
     (a, b) => a.timestamp - b.timestamp
   );
 
-  // Index of the first snapshot that's actually inside the requested window
-  // — the baseline (when present) is at index 0 and must be dropped before
-  // returning. Without a baseline this is just 0.
-  const baselineTrimIndex = baselineSnapshot
-    ? protocolSnapshots.findIndex((s) => s.timestamp >= (fromEpoch as number))
-    : 0;
-
   const snapshotTimestamps = protocolSnapshots.map((s) => s.timestamp);
   const nowTimestamp = Math.floor(Date.now() / 1000);
-  // Live candle is only meaningful when the window actually covers "now".
-  // Without a window (both null), it always covers now. With `toEpoch` < now,
-  // historical-only — closed bars only.
-  const windowCoversNow = toEpoch == null || toEpoch >= nowTimestamp;
-  const queryTimestamps = windowCoversNow
-    ? [...snapshotTimestamps, nowTimestamp]
-    : [...snapshotTimestamps];
+  const queryTimestamps = [...snapshotTimestamps, nowTimestamp];
 
   const [cumulativeVolumes, cumulativeTradeCounts, openInterests] =
     await Promise.all([
@@ -311,7 +248,7 @@ const runFatStats = async (
     BigInt(s.vaultSecondarySold) -
     BigInt(s.vaultSecondaryBought);
 
-  const results: FatStat[] = protocolSnapshots.map((snapshot, i) => {
+  const results: ProtocolStat[] = protocolSnapshots.map((snapshot, i) => {
     const cumVol = volumeMap.get(snapshot.timestamp) || '0';
     const prevCumVol =
       i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
@@ -331,207 +268,114 @@ const runFatStats = async (
     return {
       timestamp: snapshot.timestamp - interval,
       cumulativeVolume: cumVol,
-      cumulativeTradeCount: cumTradeCount,
+      totalTradeCount: cumTradeCount,
       periodTradeCount,
       openInterest: oiMap.get(snapshot.timestamp) || '0',
-      balance: snapshot.vaultBalance,
-      availableAssets: snapshot.vaultAvailableAssets,
-      deployed: snapshot.vaultDeployed,
+      vaultBalance: snapshot.vaultBalance,
+      vaultAvailableAssets: snapshot.vaultAvailableAssets,
+      vaultDeployed: snapshot.vaultDeployed,
       escrowBalance: snapshot.escrowBalance,
-      cumulativePnL: cumPnL.toString(),
-      positionsWon: snapshot.vaultPositionsWon,
-      positionsLost: snapshot.vaultPositionsLost,
-      deposits: snapshot.vaultDeposits,
-      withdrawals: snapshot.vaultWithdrawals,
-      airdropGains: snapshot.vaultAirdropGains,
-      secondaryBought: snapshot.vaultSecondaryBought,
-      secondarySold: snapshot.vaultSecondarySold,
-      unredeemedClaim: snapshot.vaultUnredeemedClaim,
+      vaultCumulativePnL: cumPnL.toString(),
+      vaultPositionsWon: snapshot.vaultPositionsWon,
+      vaultPositionsLost: snapshot.vaultPositionsLost,
+      vaultDeposits: snapshot.vaultDeposits,
+      vaultWithdrawals: snapshot.vaultWithdrawals,
+      vaultAirdropGains: snapshot.vaultAirdropGains,
+      vaultSecondaryBought: snapshot.vaultSecondaryBought,
+      vaultSecondarySold: snapshot.vaultSecondarySold,
+      vaultUnredeemedClaim: snapshot.vaultUnredeemedClaim,
       periodPnL,
       periodVolume,
     };
   });
 
-  if (windowCoversNow)
-    try {
-      const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
-      const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
-      const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
-      const livePeriodVolume = (
-        BigInt(liveCumVol) - BigInt(lastCumVol)
-      ).toString();
-      const lastTradeCount = Number(
-        tradeCountMap.get(lastSnapshot.timestamp) || '0'
-      );
-      const liveTradeCount = Number(
-        tradeCountMap.get(nowTimestamp) || lastTradeCount
-      );
-      const livePeriodTradeCount = liveTradeCount - lastTradeCount;
+  try {
+    const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
+    const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
+    const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
+    const livePeriodVolume = (
+      BigInt(liveCumVol) - BigInt(lastCumVol)
+    ).toString();
+    const lastTradeCount = Number(
+      tradeCountMap.get(lastSnapshot.timestamp) || '0'
+    );
+    const liveTradeCount = Number(
+      tradeCountMap.get(nowTimestamp) || lastTradeCount
+    );
+    const livePeriodTradeCount = liveTradeCount - lastTradeCount;
 
-      // Scope all per-vault helpers to the SELECTED vault category. Without this
-      // the live candle on the Pyth/SingleLeg/StrategyB tabs would silently render
-      // protocol-vault numbers, since these helpers default to the protocol
-      // primary when no vaultAddress arg is passed. Escrow stays chain-scoped —
-      // it's shared across all vault families on the chain.
-      const liveVaultAddress = vaultConfig?.address.toLowerCase();
-      const [
-        liveVaultBalance,
-        liveVaultAvailableAssets,
-        liveVaultDeployed,
-        liveEscrowBalance,
-        livePnlResult,
-        liveFlowsResult,
-        liveSecondaryFlows,
-        liveAirdropGains,
-        liveUnredeemedClaim,
-      ] = await Promise.all([
-        fetchVaultTVL(chainId, liveVaultAddress),
-        fetchVaultAvailableAssets(chainId, liveVaultAddress),
-        fetchVaultDeployed(chainId, undefined, liveVaultAddress),
-        sumEscrowBalancesAtBlock(getProviderForChain(chainId), chainId),
-        calculateVaultPnL(chainId, undefined, liveVaultAddress),
-        calculateVaultFlows(chainId, undefined, liveVaultAddress),
-        calculateVaultSecondaryFlows(chainId, undefined, liveVaultAddress),
-        calculateVaultAirdrops(chainId, undefined, liveVaultAddress),
-        calculateVaultUnredeemedClaim(chainId, undefined, liveVaultAddress),
-      ]);
+    // Scope all per-vault helpers to the SELECTED vault category. Without this
+    // the live candle on the Pyth/SingleLeg/StrategyB tabs would silently render
+    // protocol-vault numbers, since these helpers default to the protocol
+    // primary when no vaultAddress arg is passed. Escrow stays chain-scoped —
+    // it's shared across all vault families on the chain.
+    const liveVaultAddress = vaultConfig?.address.toLowerCase();
+    const [
+      liveVaultBalance,
+      liveVaultAvailableAssets,
+      liveVaultDeployed,
+      liveEscrowBalance,
+      livePnlResult,
+      liveFlowsResult,
+      liveSecondaryFlows,
+      liveAirdropGains,
+      liveUnredeemedClaim,
+    ] = await Promise.all([
+      fetchVaultTVL(chainId, liveVaultAddress),
+      fetchVaultAvailableAssets(chainId, liveVaultAddress),
+      fetchVaultDeployed(chainId, undefined, liveVaultAddress),
+      sumEscrowBalancesAtBlock(getProviderForChain(chainId), chainId),
+      calculateVaultPnL(chainId, undefined, liveVaultAddress),
+      calculateVaultFlows(chainId, undefined, liveVaultAddress),
+      calculateVaultSecondaryFlows(chainId, undefined, liveVaultAddress),
+      calculateVaultAirdrops(chainId, undefined, liveVaultAddress),
+      calculateVaultUnredeemedClaim(chainId, undefined, liveVaultAddress),
+    ]);
 
-      const liveCumulativePnL =
-        livePnlResult.realizedPnL +
-        liveUnredeemedClaim +
-        liveSecondaryFlows.sold -
-        liveSecondaryFlows.bought;
-      const livePeriodPnL = (
-        liveCumulativePnL - cumulativePnL(lastSnapshot)
-      ).toString();
+    const liveCumulativePnL =
+      livePnlResult.realizedPnL +
+      liveUnredeemedClaim +
+      liveSecondaryFlows.sold -
+      liveSecondaryFlows.bought;
+    const livePeriodPnL = (
+      liveCumulativePnL - cumulativePnL(lastSnapshot)
+    ).toString();
 
-      // Live candle = current in-progress period; label at start of current
-      // interval (matches the display shift for closed bars).
-      const currentBoundary =
-        Math.floor(Date.now() / 1000 / interval) * interval;
+    // Live candle = current in-progress period; label at start of current
+    // interval (matches the display shift for closed bars).
+    const currentBoundary = Math.floor(Date.now() / 1000 / interval) * interval;
 
-      results.push({
-        timestamp: currentBoundary,
-        cumulativeVolume: liveCumVol,
-        cumulativeTradeCount: liveTradeCount,
-        periodTradeCount: livePeriodTradeCount,
-        openInterest: oiMap.get(nowTimestamp) || '0',
-        balance: liveVaultBalance.toString(),
-        availableAssets: liveVaultAvailableAssets.toString(),
-        deployed: liveVaultDeployed.toString(),
-        escrowBalance: liveEscrowBalance.toString(),
-        cumulativePnL: liveCumulativePnL.toString(),
-        positionsWon: livePnlResult.positionsWon,
-        positionsLost: livePnlResult.positionsLost,
-        deposits: liveFlowsResult.totalDeposits.toString(),
-        withdrawals: liveFlowsResult.totalWithdrawals.toString(),
-        airdropGains: liveAirdropGains.toString(),
-        secondaryBought: liveSecondaryFlows.bought.toString(),
-        secondarySold: liveSecondaryFlows.sold.toString(),
-        unredeemedClaim: liveUnredeemedClaim.toString(),
-        periodPnL: livePeriodPnL,
-        periodVolume: livePeriodVolume,
-      });
-    } catch (err) {
-      log.error(
-        { err: err },
-        '[protocolStats] live candle failed, falling back to snapshots only:'
-      );
-    }
+    results.push({
+      timestamp: currentBoundary,
+      cumulativeVolume: liveCumVol,
+      totalTradeCount: liveTradeCount,
+      periodTradeCount: livePeriodTradeCount,
+      openInterest: oiMap.get(nowTimestamp) || '0',
+      vaultBalance: liveVaultBalance.toString(),
+      vaultAvailableAssets: liveVaultAvailableAssets.toString(),
+      vaultDeployed: liveVaultDeployed.toString(),
+      escrowBalance: liveEscrowBalance.toString(),
+      vaultCumulativePnL: liveCumulativePnL.toString(),
+      vaultPositionsWon: livePnlResult.positionsWon,
+      vaultPositionsLost: livePnlResult.positionsLost,
+      vaultDeposits: liveFlowsResult.totalDeposits.toString(),
+      vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
+      vaultAirdropGains: liveAirdropGains.toString(),
+      vaultSecondaryBought: liveSecondaryFlows.bought.toString(),
+      vaultSecondarySold: liveSecondaryFlows.sold.toString(),
+      vaultUnredeemedClaim: liveUnredeemedClaim.toString(),
+      periodPnL: livePeriodPnL,
+      periodVolume: livePeriodVolume,
+    });
+  } catch (err) {
+    log.error(
+      { err: err },
+      '[protocolStats] live candle failed, falling back to snapshots only:'
+    );
+  }
 
-  // Trim the leading baseline row (it only existed to anchor the first
-  // windowed bar's `period*` deltas).
-  return baselineTrimIndex > 0 ? results.slice(baselineTrimIndex) : results;
+  return results;
 };
-
-/**
- * Project protocol-wide fields from the fat shared pipeline.
- */
-type ProtocolStatsArgs = {
-  from?: number | null;
-  to?: number | null;
-  fromEpoch?: number | null;
-  toEpoch?: number | null;
-  vaultAddress?: string | null;
-};
-
-type VaultStatsArgs = ProtocolStatsArgs & {
-  vaultAddress?: string | null;
-};
-
-const protocolStatsImpl = async (
-  _parent: unknown,
-  { from, to, fromEpoch, toEpoch, vaultAddress }: ProtocolStatsArgs
-): Promise<ProtocolStat[]> => {
-  const fat = await runFatStats(
-    vaultAddress ?? undefined,
-    from ?? fromEpoch,
-    to ?? toEpoch
-  );
-  const isVaultScoped = vaultAddress != null;
-  return fat.map(
-    (s): ProtocolStat => ({
-      timestamp: s.timestamp,
-      cumulativeVolume: s.cumulativeVolume,
-      cumulativeTradeCount: s.cumulativeTradeCount,
-      periodTradeCount: s.periodTradeCount,
-      periodVolume: s.periodVolume,
-      openInterest: s.openInterest,
-      escrowBalance: s.escrowBalance,
-      totalTradeCount: s.cumulativeTradeCount,
-      periodPnL: isVaultScoped ? s.periodPnL : null,
-      vaultBalance: isVaultScoped ? s.balance : null,
-      vaultAvailableAssets: isVaultScoped ? s.availableAssets : null,
-      vaultDeployed: isVaultScoped ? s.deployed : null,
-      vaultCumulativePnL: isVaultScoped ? s.cumulativePnL : null,
-      vaultPositionsWon: isVaultScoped ? s.positionsWon : null,
-      vaultPositionsLost: isVaultScoped ? s.positionsLost : null,
-      vaultDeposits: isVaultScoped ? s.deposits : null,
-      vaultWithdrawals: isVaultScoped ? s.withdrawals : null,
-      vaultAirdropGains: isVaultScoped ? s.airdropGains : null,
-      vaultSecondaryBought: isVaultScoped ? s.secondaryBought : null,
-      vaultSecondarySold: isVaultScoped ? s.secondarySold : null,
-      vaultUnredeemedClaim: isVaultScoped ? s.unredeemedClaim : null,
-    })
-  );
-};
-
-export const protocolStats = protocolStatsImpl as unknown as NonNullable<
-  QueryResolvers['protocolStats']
->;
-
-/**
- * Project vault-specific fields from the fat shared pipeline.
- */
-const vaultStatsImpl = async (
-  _parent: unknown,
-  { vaultAddress, from, to, fromEpoch, toEpoch }: VaultStatsArgs
-): Promise<VaultStat[]> => {
-  const fat = await runFatStats(vaultAddress, from ?? fromEpoch, to ?? toEpoch);
-  return fat.map(
-    (s) =>
-      ({
-        timestamp: s.timestamp,
-        balance: s.balance,
-        availableAssets: s.availableAssets,
-        deployed: s.deployed,
-        cumulativePnL: s.cumulativePnL,
-        positionsWon: s.positionsWon,
-        positionsLost: s.positionsLost,
-        deposits: s.deposits,
-        withdrawals: s.withdrawals,
-        airdropGains: s.airdropGains,
-        secondaryBought: s.secondaryBought,
-        secondarySold: s.secondarySold,
-        unredeemedClaim: s.unredeemedClaim,
-        periodPnL: s.periodPnL,
-      }) as unknown as VaultStat
-  );
-};
-
-export const vaultStats = vaultStatsImpl as unknown as NonNullable<
-  QueryResolvers['vaultStats']
->;
 
 interface CategoryOpenInterestRow {
   category_id: number;
@@ -618,10 +462,9 @@ const fetchOpenInterestByCategory = memoTtl(
   ANALYTICS_CACHE_TTL_MS
 );
 
-export const openInterestByCategory = (() =>
-  fetchOpenInterestByCategory()) as unknown as NonNullable<
+export const openInterestByCategory: NonNullable<
   QueryResolvers['openInterestByCategory']
->;
+> = () => fetchOpenInterestByCategory();
 
 interface TimeToResolutionRow {
   bucket: number;
@@ -704,182 +547,3 @@ const fetchOpenInterestByTimeToResolution = memoTtl(
 export const openInterestByTimeToResolution: NonNullable<
   QueryResolvers['openInterestByTimeToResolution']
 > = () => fetchOpenInterestByTimeToResolution();
-
-const vaultDomainId = (chainId: number, address: string) =>
-  `${chainId}:${address.toLowerCase()}`;
-
-const vaultCollateral = (chainId: number) => ({
-  symbol: 'wUSDe',
-  address: (collateralToken[chainId]?.address ?? '').toLowerCase(),
-  decimals: 18,
-  chainId,
-});
-
-const mapVault = (
-  vault: ReturnType<typeof getConfiguredVaults>[number],
-  chainId: number
-) => ({
-  id: toGlobalId('Vault', vaultDomainId(chainId, vault.address)),
-  address: vault.address,
-  chainId,
-  collateral: vaultCollateral(chainId),
-  account: synthesizeAccount(vault.address),
-});
-
-const parseVaultDomainId = (id: string) => {
-  const [chainIdRaw, addressRaw] = id.split(':');
-  const chainId = Number(chainIdRaw);
-  if (!Number.isInteger(chainId) || !addressRaw) return null;
-  return { chainId, address: addressRaw.toLowerCase() };
-};
-
-registerNodeType({
-  type: 'Vault',
-  loader: async (id) => {
-    const parsed = parseVaultDomainId(id);
-    if (!parsed) return null;
-    const vault = getConfiguredVaults(parsed.chainId).find(
-      (v) =>
-        v.address === parsed.address ||
-        (v.config.legacy ?? []).some(
-          (le) =>
-            normalizeLegacyEntry(le).address.toLowerCase() === parsed.address
-        )
-    );
-    return vault
-      ? mapVault({ ...vault, address: parsed.address }, parsed.chainId)
-      : null;
-  },
-});
-
-export const protocol = (async () => ({})) as unknown as NonNullable<
-  QueryResolvers['protocol']
->;
-
-const findVaultByAddress = (chainId: number, address: string) => {
-  const addr = address.toLowerCase();
-  const vault = getConfiguredVaults(chainId).find(
-    (v) =>
-      v.address === addr ||
-      (v.config.legacy ?? []).some(
-        (le) => normalizeLegacyEntry(le).address.toLowerCase() === addr
-      )
-  );
-  return vault ? mapVault({ ...vault, address: addr }, chainId) : null;
-};
-
-export const vault = (async (_parent: unknown, { id }: { id: string }) => {
-  const parsed = parseVaultDomainId(fromGlobalId(id).id);
-  if (!parsed) return null;
-  return findVaultByAddress(parsed.chainId, parsed.address);
-}) as unknown as NonNullable<QueryResolvers['vault']>;
-
-type VaultsConnectionArgs = {
-  first?: number | null;
-  after?: string | null;
-  filter?: { address?: string | null; chainId?: number | null } | null;
-};
-
-export const vaultsConnection = (async (
-  _parent: unknown,
-  { first, after, filter }: VaultsConnectionArgs
-) => {
-  const cappedFirst = Math.min(Math.max(first ?? 50, 1), 100);
-  const chainId = filter?.chainId ?? DEFAULT_CHAIN_ID;
-
-  // Optimization: when filter.address is set, short-circuit to a direct
-  // lookup — same payload, no list scan.
-  let nodes: ReturnType<typeof mapVault>[];
-  if (filter?.address) {
-    const node = findVaultByAddress(chainId, filter.address);
-    nodes = node ? [node] : [];
-  } else {
-    nodes = getConfiguredVaults(chainId).map((v) => mapVault(v, chainId));
-  }
-
-  const totalCount = nodes.length;
-  const startOffset = (() => {
-    const payload = after ? decodeCursor(after) : null;
-    const offset = payload ? Number(payload.k) : Number.NaN;
-    return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
-  })();
-  const window = nodes.slice(startOffset, startOffset + cappedFirst);
-  const edges = window.map((node, i) => ({
-    node,
-    cursor: encodeCursor({ k: String(startOffset + i), id: node.address }),
-  }));
-  return {
-    edges,
-    nodes: window,
-    totalCount,
-    pageInfo: {
-      hasNextPage: startOffset + window.length < totalCount,
-      hasPreviousPage: startOffset > 0,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
-}) as unknown as NonNullable<QueryResolvers['vaultsConnection']>;
-
-export const Protocol = {
-  stats: async (
-    _parent: unknown,
-    args: {
-      filter?: { timestamp?: { gte?: number; lte?: number } | null } | null;
-    }
-  ) => {
-    const rows = await protocolStatsImpl(null, {
-      fromEpoch: args.filter?.timestamp?.gte ?? undefined,
-      toEpoch: args.filter?.timestamp?.lte ?? undefined,
-    });
-    const nodes = rows;
-    const edges = nodes.map((node, i) => ({
-      node,
-      cursor: encodeCursor({ k: String(node.timestamp), id: String(i) }),
-    }));
-    return {
-      edges,
-      nodes,
-      totalCount: nodes.length,
-      pageInfo: {
-        hasNextPage: false,
-        hasPreviousPage: false,
-        startCursor: edges[0]?.cursor ?? null,
-        endCursor: edges.at(-1)?.cursor ?? null,
-      },
-    };
-  },
-  openInterestByCategory: () => fetchOpenInterestByCategory(),
-  openInterestByTimeToResolution: () => fetchOpenInterestByTimeToResolution(),
-} as never;
-
-export const Vault = {
-  stats: async (
-    parent: { address: string },
-    args: {
-      filter?: { timestamp?: { gte?: number; lte?: number } | null } | null;
-    }
-  ) => {
-    const rows = await vaultStatsImpl(null, {
-      vaultAddress: parent.address,
-      fromEpoch: args.filter?.timestamp?.gte ?? undefined,
-      toEpoch: args.filter?.timestamp?.lte ?? undefined,
-    });
-    const nodes = rows.map((row) => ({ ...row, vault: parent }));
-    const edges = nodes.map((node, i) => ({
-      node,
-      cursor: encodeCursor({ k: String(node.timestamp), id: String(i) }),
-    }));
-    return {
-      edges,
-      nodes,
-      totalCount: nodes.length,
-      pageInfo: {
-        hasNextPage: false,
-        hasPreviousPage: false,
-        startCursor: edges[0]?.cursor ?? null,
-        endCursor: edges.at(-1)?.cursor ?? null,
-      },
-    };
-  },
-} as never;

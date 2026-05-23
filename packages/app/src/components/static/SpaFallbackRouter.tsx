@@ -75,7 +75,7 @@ export default function SpaFallbackRouter() {
         />
       )}
       {match.type === 'forecast' && (
-        <ForecastPageClient uid={match.uid} serverForecast={null} />
+        <ForecastPageClient uid={match.uid} serverAttestation={null} />
       )}
       {match.type === 'question' && <QuestionPageClient parts={match.parts} />}
       {match.type === 'profile' && (

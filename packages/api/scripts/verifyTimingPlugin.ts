@@ -40,18 +40,18 @@ const ENDPOINT = process.env.ENDPOINT ?? 'http://localhost:3001/graphql';
 const probes: Probe[] = [
   {
     label: 'sensitive-var redaction (address)',
-    expects: ['"address":"[REDACTED]"'],
+    expects: ['"address":"[REDACTED]"', '"interval":"DAY"'],
     body: {
-      operationName: 'GetAccountStatsRank',
-      query: `query GetAccountStatsRank($address: String!, $filters: AccountStatsFilters!) {
-        accountStatsRank(address: $address, filters: $filters) {
-          rank
-          totalParticipants
+      operationName: 'GetAccountBalance',
+      query: `query GetAccountBalance($address: String!, $interval: TimeInterval!) {
+        accountBalance(address: $address, interval: $interval) {
+          timestamp
+          deployedCollateral
         }
       }`,
       variables: {
         address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bAce',
-        filters: { metric: 'NET_PNL' },
+        interval: 'DAY',
       },
     },
   },

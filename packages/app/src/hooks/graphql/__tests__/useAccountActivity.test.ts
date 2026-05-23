@@ -31,7 +31,7 @@ async function getHook() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockResolvedValue({ activityPage: { items: [] } });
+  mockGraphqlRequest.mockResolvedValue({ accountActivity: [] });
 });
 
 describe('useAccountActivity', () => {
@@ -48,11 +48,9 @@ describe('useAccountActivity', () => {
 
     const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toMatchObject({
-      filters: {
-        address: null,
-        pickConfigId: null,
-        conditionId: null,
-      },
+      address: null,
+      pickConfigId: null,
+      conditionId: null,
       take: 20,
       skip: 0,
     });
@@ -62,25 +60,23 @@ describe('useAccountActivity', () => {
     const useAccountActivity = await getHook();
 
     mockGraphqlRequest.mockResolvedValue({
-      activityPage: {
-        items: [
-          {
-            type: 'prediction',
-            timestamp: 1700000000,
-            prediction: {
-              id: 'p1',
-              predictionId: '1',
-              predictor: '0xaaa',
-              counterparty: '0xbbb',
-              predictorCollateral: '0',
-              counterpartyCollateral: '0',
-              settled: false,
-              pickConfig: null,
-            },
-            trade: null,
+      accountActivity: [
+        {
+          type: 'prediction',
+          timestamp: 1700000000,
+          prediction: {
+            id: 'p1',
+            predictionId: '1',
+            predictor: '0xaaa',
+            counterparty: '0xbbb',
+            predictorCollateral: '0',
+            counterpartyCollateral: '0',
+            settled: false,
+            pickConfig: null,
           },
-        ],
-      },
+          trade: null,
+        },
+      ],
     });
 
     const { result } = renderHook(() => useAccountActivity({}), {
@@ -128,12 +124,10 @@ describe('useAccountActivity', () => {
 
     const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toMatchObject({
-      filters: {
-        address: '0xABCDEF0000000000000000000000000000000001',
-        pickConfigId: 'pc1',
-        conditionId: 'c1',
-        type: 'trade',
-      },
+      address: '0xABCDEF0000000000000000000000000000000001',
+      pickConfigId: 'pc1',
+      conditionId: 'c1',
+      type: 'trade',
     });
   });
 
@@ -142,46 +136,42 @@ describe('useAccountActivity', () => {
 
     mockGraphqlRequest
       .mockResolvedValueOnce({
-        activityPage: {
-          items: [
-            {
-              type: 'prediction',
-              timestamp: 1700000000,
-              prediction: {
-                id: 'p1',
-                predictionId: '1',
-                predictor: '0xaaa',
-                counterparty: '0xbbb',
-                predictorCollateral: '0',
-                counterpartyCollateral: '0',
-                settled: false,
-                pickConfig: null,
-              },
-              trade: null,
+        accountActivity: [
+          {
+            type: 'prediction',
+            timestamp: 1700000000,
+            prediction: {
+              id: 'p1',
+              predictionId: '1',
+              predictor: '0xaaa',
+              counterparty: '0xbbb',
+              predictorCollateral: '0',
+              counterpartyCollateral: '0',
+              settled: false,
+              pickConfig: null,
             },
-          ],
-        },
+            trade: null,
+          },
+        ],
       })
       .mockResolvedValueOnce({
-        activityPage: {
-          items: [
-            {
-              type: 'prediction',
-              timestamp: 1700000001,
-              prediction: {
-                id: 'p2',
-                predictionId: '2',
-                predictor: '0xccc',
-                counterparty: '0xddd',
-                predictorCollateral: '0',
-                counterpartyCollateral: '0',
-                settled: false,
-                pickConfig: null,
-              },
-              trade: null,
+        accountActivity: [
+          {
+            type: 'prediction',
+            timestamp: 1700000001,
+            prediction: {
+              id: 'p2',
+              predictionId: '2',
+              predictor: '0xccc',
+              counterparty: '0xddd',
+              predictorCollateral: '0',
+              counterpartyCollateral: '0',
+              settled: false,
+              pickConfig: null,
             },
-          ],
-        },
+            trade: null,
+          },
+        ],
       });
 
     const { result } = renderHook(() => useAccountActivity({ pageSize: 1 }), {

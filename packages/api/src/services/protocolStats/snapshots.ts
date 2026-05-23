@@ -29,6 +29,16 @@ import { createLogger } from '../../core/logger';
 const log = createLogger('services.protocolStats.snapshots');
 
 /**
+ * Get UTC midnight timestamp for a given date.
+ */
+function getUtcMidnightTimestamp(date: Date): number {
+  return Math.floor(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) /
+      1000
+  );
+}
+
+/**
  * Create or update stats snapshot with all data.
  */
 export async function upsertProtocolStatsSnapshot(
@@ -318,71 +328,33 @@ export async function getLatestProtocolStats(
   });
 }
 
-const buildVaultFilter = (vaultAddress?: string | readonly string[]) => {
-  if (!vaultAddress) return {};
-  if (Array.isArray(vaultAddress)) {
-    if (vaultAddress.length === 0) return {};
-    if (vaultAddress.length === 1) return { vaultAddress: vaultAddress[0] };
-    return { vaultAddress: { in: vaultAddress as string[] } };
-  }
-  return { vaultAddress: vaultAddress as string };
-};
-
-/**
- * Snapshot time series for the chosen vault address (or all when omitted).
- *
- * `fromEpoch` / `toEpoch` (inclusive epoch seconds) define the window; both
- * omitted returns all history.
- */
 export async function getProtocolStatsTimeSeries(
-  options: {
-    chainId?: number;
-    vaultAddress?: string | readonly string[];
-    fromEpoch?: number;
-    toEpoch?: number;
-  } = {}
+  days?: number,
+  chainId: number = DEFAULT_CHAIN_ID,
+  vaultAddress?: string | readonly string[]
 ) {
-  const {
-    chainId = DEFAULT_CHAIN_ID,
-    vaultAddress,
-    fromEpoch,
-    toEpoch,
-  } = options;
-
-  const timestampFilter: Record<string, number> = {};
-  if (fromEpoch != null) timestampFilter.gte = fromEpoch;
-  if (toEpoch != null) timestampFilter.lte = toEpoch;
+  const vaultFilter = (() => {
+    if (!vaultAddress) return {};
+    if (Array.isArray(vaultAddress)) {
+      if (vaultAddress.length === 0) return {};
+      if (vaultAddress.length === 1) return { vaultAddress: vaultAddress[0] };
+      return { vaultAddress: { in: vaultAddress as string[] } };
+    }
+    return { vaultAddress: vaultAddress as string };
+  })();
 
   return prisma.protocolStatsSnapshot.findMany({
     where: {
-      ...(Object.keys(timestampFilter).length > 0
-        ? { timestamp: timestampFilter }
+      ...(days
+        ? {
+            timestamp: {
+              gte: getUtcMidnightTimestamp(new Date()) - days * 86400,
+            },
+          }
         : {}),
       chainId,
-      ...buildVaultFilter(vaultAddress),
+      ...vaultFilter,
     },
     orderBy: { timestamp: 'asc' },
-  });
-}
-
-/**
- * Single snapshot whose timestamp is strictly before `fromEpoch` — the
- * "leading baseline" used to anchor `periodVolume` / `periodPnL` deltas
- * for the first row of a windowed query. Without it, the first windowed
- * bar would emit cumulative-since-time-zero as its period delta.
- */
-export async function getPriorSnapshot(options: {
-  vaultAddress: string | readonly string[];
-  fromEpoch: number;
-  chainId?: number;
-}) {
-  const { vaultAddress, fromEpoch, chainId = DEFAULT_CHAIN_ID } = options;
-  return prisma.protocolStatsSnapshot.findFirst({
-    where: {
-      ...buildVaultFilter(vaultAddress),
-      chainId,
-      timestamp: { lt: fromEpoch },
-    },
-    orderBy: { timestamp: 'desc' },
   });
 }
