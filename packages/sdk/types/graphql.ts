@@ -2164,7 +2164,9 @@ export type NullsOrder =
 /** Sort order shared across every `orderBy` input on the redesigned surface. */
 export type OrderDirection =
   | 'ASC'
-  | 'DESC';
+  | 'DESC'
+  | 'asc'
+  | 'desc';
 
 /**
  * Shared shape for `*Page` paginated wrappers. Concrete types add their own
@@ -2474,10 +2476,7 @@ export type PositionFilters = {
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
-/**
- * Order input for the Relay-shaped `positionsConnection`. Strict: both fields are
- * required so canonical Relay clients self-document the sort they intend.
- */
+/** Order input for the Relay-shaped `positionsConnection`. */
 export type PositionOrder = {
   direction: OrderDirection;
   field: PositionOrderField;

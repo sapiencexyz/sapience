@@ -13998,6 +13998,18 @@
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "asc",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "desc",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "possibleTypes": null
@@ -15600,7 +15612,7 @@
       {
         "kind": "INPUT_OBJECT",
         "name": "PositionOrder",
-        "description": "Order input for the Relay-shaped `positionsConnection`. Strict: both fields are\nrequired so canonical Relay clients self-document the sort they intend.",
+        "description": "Order input for the Relay-shaped `positionsConnection`.",
         "fields": null,
         "inputFields": [
           {

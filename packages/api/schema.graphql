@@ -1759,10 +1759,7 @@ enum TradeOrderField {
   BLOCK_NUMBER
 }
 
-"""
-Order input for the Relay-shaped `positionsConnection`. Strict: both fields are
-required so canonical Relay clients self-document the sort they intend.
-"""
+"""Order input for the Relay-shaped `positionsConnection`."""
 input PositionOrder {
   field: PositionOrderField!
   direction: OrderDirection!
@@ -2356,6 +2353,8 @@ Sort order shared across every `orderBy` input on the redesigned surface.
 enum OrderDirection {
   ASC
   DESC
+  asc
+  desc
 }
 
 """

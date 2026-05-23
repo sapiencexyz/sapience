@@ -191,8 +191,8 @@ const USER_FORECASTS_QUERY = /* GraphQL */ `
     $filters: ForecastFilter
     $take: Int!
     $after: String
-    $orderBy: ForecastOrderField
-    $orderDirection: OrderDirection
+    $orderBy: ForecastOrderField!
+    $orderDirection: OrderDirection!
   ) {
     forecastsConnection(
       filter: $filters

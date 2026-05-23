@@ -84,10 +84,10 @@ const config: CodegenConfig = {
         // values for the canonical members so existing resolver
         // references like `SortOrder.Asc` keep compiling.
         enumValues: {
-          PredictionSortField:
-            '../enumOverrides#PredictionSortField',
+          PredictionSortField: '../enumOverrides#PredictionSortField',
           PositionSortField: '../enumOverrides#PositionSortField',
           SortOrder: '../enumOverrides#SortOrder',
+          OrderDirection: '../enumOverrides#OrderDirection',
         },
         // Let `makeExecutableSchema` do the typename work at runtime
         // via prisma-model mappers; we don't need __resolveType here

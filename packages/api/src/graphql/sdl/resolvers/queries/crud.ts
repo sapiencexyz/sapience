@@ -192,7 +192,7 @@ export const accountsConnection = (async (
 ) => {
   const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
   const direction: 'asc' | 'desc' =
-    orderBy?.direction === 'ASC' ? 'asc' : 'desc';
+    String(orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
   const search = (filter?.search as string | null | undefined)?.trim();
   const baseWhere: Prisma.UserWhereInput = search
     ? { address: { contains: search.toLowerCase(), mode: 'insensitive' } }
@@ -311,7 +311,7 @@ export const forecastsConnection: NonNullable<
 
   const orderField = orderBy?.field ?? ForecastOrderField.AttestedAt;
   const direction = orderBy?.direction ?? OrderDirection.Desc;
-  const prismaDir = direction === OrderDirection.Asc ? 'asc' : 'desc';
+  const prismaDir = String(direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
   const prismaOrderField =
     orderField === ForecastOrderField.CreatedAt ? 'createdAt' : 'time';
   const cursorPayload = after ? decodeCursor(after) : null;

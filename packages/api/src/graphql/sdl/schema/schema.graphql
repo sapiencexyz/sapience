@@ -1988,8 +1988,7 @@ enum TradeOrderField {
 }
 
 """
-Order input for the Relay-shaped `positionsConnection`. Strict: both fields are
-required so canonical Relay clients self-document the sort they intend.
+Order input for the Relay-shaped `positionsConnection`.
 """
 input PositionOrder {
   field: PositionOrderField!
@@ -2248,13 +2247,19 @@ input ConditionFilter {
   Typed as `String` (not `Address`) so existing queries passing nullable `$marketAddress: String`
   variables continue to validate — the strict `Address` scalar lives on the canonical `resolverAddress`.
   """
-  marketAddress: String @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
+  marketAddress: String
+    @deprecated(
+      reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named."
+    )
 
   """
   Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
   Typed as `[String!]` for the same back-compat reason as `marketAddress` above.
   """
-  marketAddressIn: [String!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
+  marketAddressIn: [String!]
+    @deprecated(
+      reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named."
+    )
 
   """
   Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups.
@@ -2403,13 +2408,19 @@ input QuestionFilter {
   Typed as `String` (not `Address`) so existing queries passing nullable `$marketAddress: String`
   variables continue to validate — the strict `Address` scalar lives on the canonical `resolverAddress`.
   """
-  marketAddress: String @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
+  marketAddress: String
+    @deprecated(
+      reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named."
+    )
 
   """
   Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
   Typed as `[String!]` for the same back-compat reason as `marketAddress` above.
   """
-  marketAddressIn: [String!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
+  marketAddressIn: [String!]
+    @deprecated(
+      reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named."
+    )
 
   """
   Restrict to questions whose category slug is in this set.
@@ -2677,6 +2688,8 @@ Sort order shared across every `orderBy` input on the redesigned surface.
 enum OrderDirection {
   ASC
   DESC
+  asc
+  desc
 }
 
 """
@@ -2852,15 +2865,16 @@ type ProtocolStat {
   DEPRECATED — pre-split alias for `cumulativeTradeCount`. Kept so pinned external
   queries keep validating; new callers should read `cumulativeTradeCount`.
   """
-  totalTradeCount: Int
-    @deprecated(reason: "Use `cumulativeTradeCount`.")
+  totalTradeCount: Int @deprecated(reason: "Use `cumulativeTradeCount`.")
 
   """
   DEPRECATED — realized PnL delta. Lives on `VaultStat.periodPnL` now and is
   only populated here when the row is vault-scoped (`protocolStats(vaultAddress:)`).
   """
   periodPnL: String
-    @deprecated(reason: "Use `vaultStats(vaultAddress:).periodPnL` — only populated on vault-scoped rows.")
+    @deprecated(
+      reason: "Use `vaultStats(vaultAddress:).periodPnL` — only populated on vault-scoped rows."
+    )
 
   """
   DEPRECATED — vault collateral balance. Only populated when the row is vault-scoped
