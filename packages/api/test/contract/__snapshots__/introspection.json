@@ -16369,10 +16369,10 @@
           },
           {
             "name": "address",
-            "description": "Restrict to predictions where the address is predictor or counterparty.",
+            "description": "Restrict to predictions where the address is predictor or counterparty.\nTyped as `String` (not `Address`) so existing queries passing nullable `String` variables\nkeep validating against the pre-existing input shape.",
             "type": {
               "kind": "SCALAR",
-              "name": "Address",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
@@ -18993,7 +18993,7 @@
           },
           {
             "name": "account",
-            "description": "Look up a single account by canonical wallet address. Replacement for\n`user(where:)` — accepts a flat `address: Address!` arg instead of the\nPrisma-shaped `UserWhereUniqueInput`.",
+            "description": "Look up a single account by canonical wallet address. Replacement for\n`user(where:)` — accepts a flat `address: String!` arg instead of the\nPrisma-shaped `UserWhereUniqueInput`. The arg is typed as `String` (not\n`Address`) so existing external queries passing `$wallet: String!`\nvariables continue to validate.",
             "args": [
               {
                 "name": "address",
@@ -19003,7 +19003,7 @@
                   "name": null,
                   "ofType": {
                     "kind": "SCALAR",
-                    "name": "Address",
+                    "name": "String",
                     "ofType": null
                   }
                 },
@@ -23606,40 +23606,40 @@
           },
           {
             "name": "address",
-            "description": "Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.",
+            "description": "Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.\nTyped as `String` (not `Address`) so existing queries passing nullable `String` variables\nkeep validating against the pre-existing input shape.",
             "type": {
               "kind": "SCALAR",
-              "name": "Address",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "seller",
-            "description": "Restrict to a single seller address.",
+            "description": "Restrict to a single seller address. Typed as `String` for back-compat — see `address` above.",
             "type": {
               "kind": "SCALAR",
-              "name": "Address",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "buyer",
-            "description": "Restrict to a single buyer address.",
+            "description": "Restrict to a single buyer address. Typed as `String` for back-compat — see `address` above.",
             "type": {
               "kind": "SCALAR",
-              "name": "Address",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "token",
-            "description": "Restrict to a single position token address.",
+            "description": "Restrict to a single position token address. Typed as `String` for back-compat — see `address` above.",
             "type": {
               "kind": "SCALAR",
-              "name": "Address",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
@@ -23655,7 +23655,7 @@
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "Address",
+                  "name": "String",
                   "ofType": null
                 }
               }

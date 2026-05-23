@@ -2245,13 +2245,16 @@ input ConditionFilter {
 
   """
   Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+  Typed as `String` (not `Address`) so existing queries passing nullable `$marketAddress: String`
+  variables continue to validate — the strict `Address` scalar lives on the canonical `resolverAddress`.
   """
-  marketAddress: Address @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
+  marketAddress: String @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
 
   """
   Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+  Typed as `[String!]` for the same back-compat reason as `marketAddress` above.
   """
-  marketAddressIn: [Address!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
+  marketAddressIn: [String!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
 
   """
   Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups.
@@ -2397,13 +2400,16 @@ input QuestionFilter {
 
   """
   Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+  Typed as `String` (not `Address`) so existing queries passing nullable `$marketAddress: String`
+  variables continue to validate — the strict `Address` scalar lives on the canonical `resolverAddress`.
   """
-  marketAddress: Address @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
+  marketAddress: String @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
 
   """
   Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+  Typed as `[String!]` for the same back-compat reason as `marketAddress` above.
   """
-  marketAddressIn: [Address!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
+  marketAddressIn: [String!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
 
   """
   Restrict to questions whose category slug is in this set.
@@ -3059,21 +3065,23 @@ input TradeFilter {
   tradeHash: Bytes32
   """
   Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.
+  Typed as `String` (not `Address`) so existing queries passing nullable `String` variables
+  keep validating against the pre-existing input shape.
   """
-  address: Address
+  address: String
   """
-  Restrict to a single seller address.
+  Restrict to a single seller address. Typed as `String` for back-compat — see `address` above.
   """
-  seller: Address
+  seller: String
   """
-  Restrict to a single buyer address.
+  Restrict to a single buyer address. Typed as `String` for back-compat — see `address` above.
   """
-  buyer: Address
+  buyer: String
   """
-  Restrict to a single position token address.
+  Restrict to a single position token address. Typed as `String` for back-compat — see `address` above.
   """
-  token: Address
-  tokens: [Address!]
+  token: String
+  tokens: [String!]
   """
   Restrict to a single chain.
   """
@@ -3173,8 +3181,10 @@ input PredictionFilter {
   predictionId: String
   """
   Restrict to predictions where the address is predictor or counterparty.
+  Typed as `String` (not `Address`) so existing queries passing nullable `String` variables
+  keep validating against the pre-existing input shape.
   """
-  address: Address
+  address: String
   """
   Restrict to a single chain.
   """
@@ -3699,10 +3709,12 @@ type Query {
   ): CollateralTransferConnection!
   """
   Look up a single account by canonical wallet address. Replacement for
-  `user(where:)` — accepts a flat `address: Address!` arg instead of the
-  Prisma-shaped `UserWhereUniqueInput`.
+  `user(where:)` — accepts a flat `address: String!` arg instead of the
+  Prisma-shaped `UserWhereUniqueInput`. The arg is typed as `String` (not
+  `Address`) so existing external queries passing `$wallet: String!`
+  variables continue to validate.
   """
-  account(address: Address!): Account
+  account(address: String!): Account
 
   """
   Relay-shaped connection over accounts (User-table rows). Single-address
