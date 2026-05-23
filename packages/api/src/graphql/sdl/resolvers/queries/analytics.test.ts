@@ -31,7 +31,7 @@ vi.mock('../../../../lib/utils', () => ({
   getProviderForChain: vi.fn(),
 }));
 
-const { protocolStats, vaultStats } = await import('./analytics');
+const { protocolStats, vaultStats, vault } = await import('./analytics');
 
 type StatsArgs = {
   fromEpoch?: number | null;
@@ -172,6 +172,22 @@ describe('Query.vaultStats', () => {
     expect(result[1].periodPnL).toBe('-80');
     // Live candle: realizedPnL(-970) + unredeemed(988) + sold(7) - bought(5) = 20
     expect(result[2].cumulativePnL).toBe('20');
+  });
+});
+
+describe('Query.vault(id:) — malformed id tolerance', () => {
+  // Consumers occasionally pass a raw EVM address (e.g. the zero address)
+  // where an opaque Relay id is expected. The resolver should treat that as
+  // "not found" rather than throw — a throw becomes a logged GraphQL error
+  // even though the right semantic is null.
+  it('returns null for a malformed global id instead of throwing', async () => {
+    const vaultFn = vault as unknown as (
+      parent: unknown,
+      args: { id: string }
+    ) => Promise<unknown>;
+    await expect(
+      vaultFn({}, { id: '0x0000000000000000000000000000000000000000' })
+    ).resolves.toBeNull();
   });
 });
 
