@@ -3063,6 +3063,15 @@ type Query {
   (→ `forecasts`) in a subsequent migration.
   """
   forecastsConnection(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
+
+  """Look up a single forecast (EAS attestation) by its on-chain `uid`."""
+  forecast(uid: String!): Forecast
+
+  """
+  Look up a single category by ID. Accepts either the numeric DB id
+  serialized as a string or the Relay opaque global id.
+  """
+  category(id: ID!): Category
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories.")
 
   """
@@ -3072,10 +3081,16 @@ type Query {
   """
   categoriesConnection(first: Int = 100, after: String, filter: CategoryFilter): CategoryConnection!
 
+  """Look up a single claim (redemption) record by its row id."""
+  claim(id: Int!): Claim
+
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
   """
   claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated(reason: "Unused; will be removed. No live consumers — claim records are reachable as a side-effect of position settlement.")
+
+  """Look up a single close (settled position exit) record by its row id."""
+  close(id: Int!): Close
 
   """
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
@@ -3118,6 +3133,9 @@ type Query {
   deprecated bare-array `collateralTransfers` sibling above is removed.
   """
   collateralTransfersConnection(first: Int = 100, after: String, filter: CollateralTransferFilter, orderBy: CollateralTransferOrder): CollateralTransferConnection!
+
+  """Look up a single collateral transfer by its Relay global id."""
+  collateralTransfer(id: ID!): CollateralTransfer
 
   """
   Look up a single account by canonical wallet address. Replacement for
@@ -3219,6 +3237,14 @@ type Query {
   `positions` bare-array / `positionsPage` siblings above are removed.
   """
   positionsConnection(first: Int, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+
+  """
+  Look up a single position by its Relay global id. The id encodes the
+  underlying Position row id and (for synthesized sell rows) the trade
+  hash that produced them; the same id format is surfaced on
+  `Position.id`.
+  """
+  position(id: ID!): Position
 
   """
   Look up a single prediction by its on-chain prediction ID. Pass

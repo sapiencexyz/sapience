@@ -3611,6 +3611,17 @@ type Query {
     filter: ForecastFilter
     orderBy: ForecastOrder
   ): ForecastConnection!
+
+  """
+  Look up a single forecast (EAS attestation) by its on-chain `uid`.
+  """
+  forecast(uid: String!): Forecast
+
+  """
+  Look up a single category by ID. Accepts either the numeric DB id
+  serialized as a string or the Relay opaque global id.
+  """
+  category(id: ID!): Category
   categories(
     cursor: CategoryWhereUniqueInput
     distinct: [CategoryScalarFieldEnum!]
@@ -3635,6 +3646,11 @@ type Query {
   ): CategoryConnection!
 
   """
+  Look up a single claim (redemption) record by its row id.
+  """
+  claim(id: Int!): Claim
+
+  """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
   """
   claims(
@@ -3647,6 +3663,11 @@ type Query {
     @deprecated(
       reason: "Unused; will be removed. No live consumers — claim records are reachable as a side-effect of position settlement."
     )
+
+  """
+  Look up a single close (settled position exit) record by its row id.
+  """
+  close(id: Int!): Close
 
   """
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
@@ -3721,6 +3742,11 @@ type Query {
     filter: CollateralTransferFilter
     orderBy: CollateralTransferOrder
   ): CollateralTransferConnection!
+
+  """
+  Look up a single collateral transfer by its Relay global id.
+  """
+  collateralTransfer(id: ID!): CollateralTransfer
   """
   Look up a single account by canonical wallet address. Replacement for
   `user(where:)` — accepts a flat `address: String!` arg instead of the
@@ -3965,6 +3991,14 @@ type Query {
     filter: PositionFilter
     orderBy: PositionOrder
   ): PositionConnection!
+
+  """
+  Look up a single position by its Relay global id. The id encodes the
+  underlying Position row id and (for synthesized sell rows) the trade
+  hash that produced them; the same id format is surfaced on
+  `Position.id`.
+  """
+  position(id: ID!): Position
 
   """
   Look up a single prediction by its on-chain prediction ID. Pass
