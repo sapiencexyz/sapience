@@ -332,7 +332,8 @@ export const collateralTransfersConnection = (async (
   });
   const cursor = args.after ? decodeCursor(args.after) : null;
   const baseWhere = buildConnectionWhere(args.filter);
-  const direction = args.orderBy?.direction === 'ASC' ? 'asc' : 'desc';
+  const direction =
+    String(args.orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
   const cursorWhere = cursor
     ? buildTransferCursorPredicate(cursor.k, cursor.id, direction)
     : null;

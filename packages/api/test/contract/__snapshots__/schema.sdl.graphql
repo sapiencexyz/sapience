@@ -86,7 +86,7 @@ type Account implements Node {
   predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
   trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
   forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
-  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: LegacyPositionOrder): PositionConnection!
   collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
 }
 
@@ -1382,7 +1382,7 @@ type PickConfiguration implements Node {
   picks: [Pick!]!
   predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
   trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
-  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: LegacyPositionOrder): PositionConnection!
   predictionId: String
   predictorToken: String
   resolved: Boolean!
@@ -1765,6 +1765,20 @@ input PositionOrder {
   direction: OrderDirection!
 }
 
+"""
+Order input for the non-Connection-suffix `Account.positions` /
+`PickConfiguration.positions` access paths. Both fields are nullable so
+pre-existing external queries that wire nullable variables into the
+`orderBy` shape (`{ field: $f, direction: $d }`) keep validating; the
+resolver defaults to `UPDATED_AT` / `DESC` when either field is omitted.
+New callers should prefer `positionsConnection(orderBy: PositionOrder!)`,
+which is the canonical Relay surface.
+"""
+input LegacyPositionOrder {
+  field: PositionOrderField
+  direction: OrderDirection
+}
+
 """Sort fields for the Relay-shaped `positionsConnection`."""
 enum PositionOrderField {
   CREATED_AT
@@ -1973,13 +1987,16 @@ input ConditionFilter {
 
   """
   Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+  Typed as `String` (not `Address`) so existing queries passing nullable `$marketAddress: String`
+  variables continue to validate — the strict `Address` scalar lives on the canonical `resolverAddress`.
   """
-  marketAddress: Address @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
+  marketAddress: String @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
 
   """
   Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+  Typed as `[String!]` for the same back-compat reason as `marketAddress` above.
   """
-  marketAddressIn: [Address!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
+  marketAddressIn: [String!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
 
   """
   Visibility filter. Defaults to PUBLIC when omitted; ID filters bypass the default for direct lookups.
@@ -2091,13 +2108,16 @@ input QuestionFilter {
 
   """
   Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+  Typed as `String` (not `Address`) so existing queries passing nullable `$marketAddress: String`
+  variables continue to validate — the strict `Address` scalar lives on the canonical `resolverAddress`.
   """
-  marketAddress: Address @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
+  marketAddress: String @deprecated(reason: "Use `resolverAddress` — same resolver/oracle contract address, accurately named.")
 
   """
   Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+  Typed as `[String!]` for the same back-compat reason as `marketAddress` above.
   """
-  marketAddressIn: [Address!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
+  marketAddressIn: [String!] @deprecated(reason: "Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.")
 
   """Restrict to questions whose category slug is in this set."""
   categorySlugs: [String!]
@@ -2333,6 +2353,8 @@ Sort order shared across every `orderBy` input on the redesigned surface.
 enum OrderDirection {
   ASC
   DESC
+  asc
+  desc
 }
 
 """
@@ -2467,7 +2489,11 @@ input VaultFilter {
   chainId: Int
 }
 
-"""Protocol-wide stats snapshot — no vault scoping."""
+"""
+Protocol-wide stats snapshot. When the deprecated `Query.protocolStats(vaultAddress:)`
+arg is set, vault-scoped fields (the `vault*` block below) are populated alongside the
+protocol-wide counters from the same fat-row pipeline that backs `vaultStats`.
+"""
 type ProtocolStat {
   """Snapshot boundary, aligned to the snapshot interval."""
   timestamp: UnixSeconds!
@@ -2483,6 +2509,35 @@ type ProtocolStat {
   periodVolume: String!
   openInterest: String!
   escrowBalance: String!
+
+  """
+  DEPRECATED — pre-split alias for `cumulativeTradeCount`. Kept so pinned external
+  queries keep validating; new callers should read `cumulativeTradeCount`.
+  """
+  totalTradeCount: Int @deprecated(reason: "Use `cumulativeTradeCount`.")
+
+  """
+  DEPRECATED — realized PnL delta. Lives on `VaultStat.periodPnL` now and is
+  only populated here when the row is vault-scoped (`protocolStats(vaultAddress:)`).
+  """
+  periodPnL: String @deprecated(reason: "Use `vaultStats(vaultAddress:).periodPnL` — only populated on vault-scoped rows.")
+
+  """
+  DEPRECATED — vault collateral balance. Only populated when the row is vault-scoped
+  via `protocolStats(vaultAddress:)`.
+  """
+  vaultBalance: String @deprecated(reason: "Use `vaultStats(vaultAddress:).balance`.")
+  vaultAvailableAssets: String @deprecated(reason: "Use `vaultStats(vaultAddress:).availableAssets`.")
+  vaultDeployed: String @deprecated(reason: "Use `vaultStats(vaultAddress:).deployed`.")
+  vaultCumulativePnL: String @deprecated(reason: "Use `vaultStats(vaultAddress:).cumulativePnL`.")
+  vaultPositionsWon: Int @deprecated(reason: "Use `vaultStats(vaultAddress:).positionsWon`.")
+  vaultPositionsLost: Int @deprecated(reason: "Use `vaultStats(vaultAddress:).positionsLost`.")
+  vaultDeposits: String @deprecated(reason: "Use `vaultStats(vaultAddress:).deposits`.")
+  vaultWithdrawals: String @deprecated(reason: "Use `vaultStats(vaultAddress:).withdrawals`.")
+  vaultAirdropGains: String @deprecated(reason: "Use `vaultStats(vaultAddress:).airdropGains`.")
+  vaultSecondaryBought: String @deprecated(reason: "Use `vaultStats(vaultAddress:).secondaryBought`.")
+  vaultSecondarySold: String @deprecated(reason: "Use `vaultStats(vaultAddress:).secondarySold`.")
+  vaultUnredeemedClaim: String @deprecated(reason: "Use `vaultStats(vaultAddress:).unredeemedClaim`.")
 }
 
 """
@@ -2621,18 +2676,26 @@ input TradeFilter {
 
   """
   Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.
+  Typed as `String` (not `Address`) so existing queries passing nullable `String` variables
+  keep validating against the pre-existing input shape.
   """
-  address: Address
+  address: String
 
-  """Restrict to a single seller address."""
-  seller: Address
+  """
+  Restrict to a single seller address. Typed as `String` for back-compat — see `address` above.
+  """
+  seller: String
 
-  """Restrict to a single buyer address."""
-  buyer: Address
+  """
+  Restrict to a single buyer address. Typed as `String` for back-compat — see `address` above.
+  """
+  buyer: String
 
-  """Restrict to a single position token address."""
-  token: Address
-  tokens: [Address!]
+  """
+  Restrict to a single position token address. Typed as `String` for back-compat — see `address` above.
+  """
+  token: String
+  tokens: [String!]
 
   """Restrict to a single chain."""
   chainId: Int
@@ -2728,8 +2791,10 @@ input PredictionFilter {
 
   """
   Restrict to predictions where the address is predictor or counterparty.
+  Typed as `String` (not `Address`) so existing queries passing nullable `String` variables
+  keep validating against the pre-existing input shape.
   """
-  address: Address
+  address: String
 
   """Restrict to a single chain."""
   chainId: Int
@@ -3056,10 +3121,12 @@ type Query {
 
   """
   Look up a single account by canonical wallet address. Replacement for
-  `user(where:)` — accepts a flat `address: Address!` arg instead of the
-  Prisma-shaped `UserWhereUniqueInput`.
+  `user(where:)` — accepts a flat `address: String!` arg instead of the
+  Prisma-shaped `UserWhereUniqueInput`. The arg is typed as `String` (not
+  `Address`) so existing external queries passing `$wallet: String!`
+  variables continue to validate.
   """
-  account(address: Address!): Account
+  account(address: String!): Account
 
   """
   Relay-shaped connection over accounts (User-table rows). Single-address
@@ -3201,7 +3268,7 @@ type Query {
   back), so callers can distinguish it as `points[points.length - 1]
   .timestamp >= floor(now / interval) * interval`.
   """
-  protocolStats(from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix.")): [ProtocolStat!]! @deprecated(reason: "Use `protocol.stats(filter:)` — Relay-shaped stats connection under the protocol namespace.")
+  protocolStats(from: UnixSeconds, to: UnixSeconds, fromEpoch: Int @deprecated(reason: "Use `from: UnixSeconds` — same wire format, drops the unit-suffix."), toEpoch: Int @deprecated(reason: "Use `to: UnixSeconds` — same wire format, drops the unit-suffix."), vaultAddress: String @deprecated(reason: "Use `vaultStats(vaultAddress:)` — per-vault snapshots live on Vault. When set here, the legacy vault* fields on ProtocolStat are populated for backwards compatibility.")): [ProtocolStat!]! @deprecated(reason: "Use `protocol.stats(filter:)` — Relay-shaped stats connection under the protocol namespace.")
 
   """
   Time-bucketed total protocol trading volume across all users. DEPRECATED:

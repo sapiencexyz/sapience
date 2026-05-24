@@ -545,7 +545,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "PositionOrder",
+                  "name": "LegacyPositionOrder",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -12672,6 +12672,37 @@
       },
       {
         "kind": "INPUT_OBJECT",
+        "name": "LegacyPositionOrder",
+        "description": "Order input for the non-Connection-suffix `Account.positions` /\n`PickConfiguration.positions` access paths. Both fields are nullable so\npre-existing external queries that wire nullable variables into the\n`orderBy` shape (`{ field: $f, direction: $d }`) keep validating; the\nresolver defaults to `UPDATED_AT` / `DESC` when either field is omitted.\nNew callers should prefer `positionsConnection(orderBy: PositionOrder!)`,\nwhich is the canonical Relay surface.",
+        "fields": null,
+        "inputFields": [
+          {
+            "name": "field",
+            "description": null,
+            "type": {
+              "kind": "ENUM",
+              "name": "PositionOrderField",
+              "ofType": null
+            },
+            "defaultValue": null
+          },
+          {
+            "name": "direction",
+            "description": null,
+            "type": {
+              "kind": "ENUM",
+              "name": "OrderDirection",
+              "ofType": null
+            },
+            "defaultValue": null
+          }
+        ],
+        "interfaces": null,
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "INPUT_OBJECT",
         "name": "NestedBigIntFilter",
         "description": null,
         "fields": null,
@@ -13967,6 +13998,18 @@
             "description": null,
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "asc",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "desc",
+            "description": null,
+            "isDeprecated": false,
+            "deprecationReason": null
           }
         ],
         "possibleTypes": null
@@ -14535,7 +14578,7 @@
                 "description": null,
                 "type": {
                   "kind": "INPUT_OBJECT",
-                  "name": "PositionOrder",
+                  "name": "LegacyPositionOrder",
                   "ofType": null
                 },
                 "defaultValue": null
@@ -16338,10 +16381,10 @@
           },
           {
             "name": "address",
-            "description": "Restrict to predictions where the address is predictor or counterparty.",
+            "description": "Restrict to predictions where the address is predictor or counterparty.\nTyped as `String` (not `Address`) so existing queries passing nullable `String` variables\nkeep validating against the pre-existing input shape.",
             "type": {
               "kind": "SCALAR",
-              "name": "Address",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
@@ -16690,7 +16733,7 @@
       {
         "kind": "OBJECT",
         "name": "ProtocolStat",
-        "description": "Protocol-wide stats snapshot — no vault scoping.",
+        "description": "Protocol-wide stats snapshot. When the deprecated `Query.protocolStats(vaultAddress:)`\narg is set, vault-scoped fields (the `vault*` block below) are populated alongside the\nprotocol-wide counters from the same fat-row pipeline that backs `vaultStats`.",
         "fields": [
           {
             "name": "timestamp",
@@ -16803,6 +16846,174 @@
             },
             "isDeprecated": false,
             "deprecationReason": null
+          },
+          {
+            "name": "totalTradeCount",
+            "description": "DEPRECATED — pre-split alias for `cumulativeTradeCount`. Kept so pinned external\nqueries keep validating; new callers should read `cumulativeTradeCount`.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `cumulativeTradeCount`."
+          },
+          {
+            "name": "periodPnL",
+            "description": "DEPRECATED — realized PnL delta. Lives on `VaultStat.periodPnL` now and is\nonly populated here when the row is vault-scoped (`protocolStats(vaultAddress:)`).",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).periodPnL` — only populated on vault-scoped rows."
+          },
+          {
+            "name": "vaultBalance",
+            "description": "DEPRECATED — vault collateral balance. Only populated when the row is vault-scoped\nvia `protocolStats(vaultAddress:)`.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).balance`."
+          },
+          {
+            "name": "vaultAvailableAssets",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).availableAssets`."
+          },
+          {
+            "name": "vaultDeployed",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).deployed`."
+          },
+          {
+            "name": "vaultCumulativePnL",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).cumulativePnL`."
+          },
+          {
+            "name": "vaultPositionsWon",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).positionsWon`."
+          },
+          {
+            "name": "vaultPositionsLost",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "Int",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).positionsLost`."
+          },
+          {
+            "name": "vaultDeposits",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).deposits`."
+          },
+          {
+            "name": "vaultWithdrawals",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).withdrawals`."
+          },
+          {
+            "name": "vaultAirdropGains",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).airdropGains`."
+          },
+          {
+            "name": "vaultSecondaryBought",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).secondaryBought`."
+          },
+          {
+            "name": "vaultSecondarySold",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).secondarySold`."
+          },
+          {
+            "name": "vaultUnredeemedClaim",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": true,
+            "deprecationReason": "Use `vaultStats(vaultAddress:).unredeemedClaim`."
           }
         ],
         "inputFields": null,
@@ -18794,7 +19005,7 @@
           },
           {
             "name": "account",
-            "description": "Look up a single account by canonical wallet address. Replacement for\n`user(where:)` — accepts a flat `address: Address!` arg instead of the\nPrisma-shaped `UserWhereUniqueInput`.",
+            "description": "Look up a single account by canonical wallet address. Replacement for\n`user(where:)` — accepts a flat `address: String!` arg instead of the\nPrisma-shaped `UserWhereUniqueInput`. The arg is typed as `String` (not\n`Address`) so existing external queries passing `$wallet: String!`\nvariables continue to validate.",
             "args": [
               {
                 "name": "address",
@@ -18804,7 +19015,7 @@
                   "name": null,
                   "ofType": {
                     "kind": "SCALAR",
-                    "name": "Address",
+                    "name": "String",
                     "ofType": null
                   }
                 },
@@ -23407,40 +23618,40 @@
           },
           {
             "name": "address",
-            "description": "Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.",
+            "description": "Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.\nTyped as `String` (not `Address`) so existing queries passing nullable `String` variables\nkeep validating against the pre-existing input shape.",
             "type": {
               "kind": "SCALAR",
-              "name": "Address",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "seller",
-            "description": "Restrict to a single seller address.",
+            "description": "Restrict to a single seller address. Typed as `String` for back-compat — see `address` above.",
             "type": {
               "kind": "SCALAR",
-              "name": "Address",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "buyer",
-            "description": "Restrict to a single buyer address.",
+            "description": "Restrict to a single buyer address. Typed as `String` for back-compat — see `address` above.",
             "type": {
               "kind": "SCALAR",
-              "name": "Address",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
           },
           {
             "name": "token",
-            "description": "Restrict to a single position token address.",
+            "description": "Restrict to a single position token address. Typed as `String` for back-compat — see `address` above.",
             "type": {
               "kind": "SCALAR",
-              "name": "Address",
+              "name": "String",
               "ofType": null
             },
             "defaultValue": null
@@ -23456,7 +23667,7 @@
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "Address",
+                  "name": "String",
                   "ofType": null
                 }
               }

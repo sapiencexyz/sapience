@@ -328,7 +328,7 @@ export const predictionsConnection: NonNullable<
 ) => {
   const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
   const direction = orderBy?.direction ?? OrderDirection.Desc;
-  const prismaDir = direction === OrderDirection.Asc ? 'asc' : 'desc';
+  const prismaDir = String(direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
 
   const { where: filterWhere, empty } = await buildPredictionWhere({
     predictionId:
@@ -548,7 +548,7 @@ const mergePickConfigurationFilters = (
           ? 'RESOLVED_AT'
           : 'CREATED_AT',
     orderDirection:
-      args.orderBy?.direction === OrderDirection.Asc ? 'asc' : 'desc',
+      String(args.orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc',
   };
 };
 
@@ -1335,7 +1335,7 @@ const mergePositionConnectionFilter = (
         ? PositionSortField.CreatedAt
         : PositionSortField.UpdatedAt,
     orderDirection:
-      args.orderBy?.direction === OrderDirection.Asc
+      String(args.orderBy?.direction).toLowerCase() === 'asc'
         ? SortOrder.Asc
         : SortOrder.Desc,
     holder: f?.holder ?? null,

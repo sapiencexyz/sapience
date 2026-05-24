@@ -153,7 +153,7 @@ export const conditionGroupsConnection: NonNullable<
   const orderField: ConditionGroupOrderField =
     orderBy?.field ?? ConditionGroupOrderField.CreatedAt;
   const direction: OrderDirection = orderBy?.direction ?? OrderDirection.Desc;
-  const prismaDir = direction === OrderDirection.Asc ? 'asc' : 'desc';
+  const prismaDir = String(direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
   const prismaOrderField = CONNECTION_ORDER_FIELD_MAP[orderField];
 
   const filterWhere = buildConditionGroupsConnectionWhere(filter);

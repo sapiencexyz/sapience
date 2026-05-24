@@ -107,7 +107,7 @@ export type AccountPositionsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<PositionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<PositionOrder>;
+  orderBy?: InputMaybe<LegacyPositionOrder>;
 };
 
 
@@ -1037,14 +1037,17 @@ export type ConditionFilter = {
   ids?: InputMaybe<Array<Scalars['ID']['input']>>;
   /**
    * Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+   * Typed as `String` (not `Address`) so existing queries passing nullable `$marketAddress: String`
+   * variables continue to validate — the strict `Address` scalar lives on the canonical `resolverAddress`.
    * @deprecated Use `resolverAddress` — same resolver/oracle contract address, accurately named.
    */
-  marketAddress?: InputMaybe<Scalars['Address']['input']>;
+  marketAddress?: InputMaybe<Scalars['String']['input']>;
   /**
    * Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+   * Typed as `[String!]` for the same back-compat reason as `marketAddress` above.
    * @deprecated Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.
    */
-  marketAddressIn?: InputMaybe<Array<Scalars['Address']['input']>>;
+  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /**
    * Filter by resolution state. `{ isNull: true }` selects unsettled
    * conditions; `{ isNull: false }` selects settled (any outcome);
@@ -1997,6 +2000,20 @@ export type LeaderboardMetric =
   | 'ROI'
   | 'VOLUME';
 
+/**
+ * Order input for the non-Connection-suffix `Account.positions` /
+ * `PickConfiguration.positions` access paths. Both fields are nullable so
+ * pre-existing external queries that wire nullable variables into the
+ * `orderBy` shape (`{ field: $f, direction: $d }`) keep validating; the
+ * resolver defaults to `UPDATED_AT` / `DESC` when either field is omitted.
+ * New callers should prefer `positionsConnection(orderBy: PositionOrder!)`,
+ * which is the canonical Relay surface.
+ */
+export type LegacyPositionOrder = {
+  direction?: InputMaybe<OrderDirection>;
+  field?: InputMaybe<PositionOrderField>;
+};
+
 export type NestedBigIntFilter = {
   equals?: InputMaybe<Scalars['BigInt']['input']>;
   gt?: InputMaybe<Scalars['BigInt']['input']>;
@@ -2147,7 +2164,9 @@ export type NullsOrder =
 /** Sort order shared across every `orderBy` input on the redesigned surface. */
 export type OrderDirection =
   | 'ASC'
-  | 'DESC';
+  | 'DESC'
+  | 'asc'
+  | 'desc';
 
 /**
  * Shared shape for `*Page` paginated wrappers. Concrete types add their own
@@ -2252,7 +2271,7 @@ export type PickConfigurationPositionsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<PositionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<PositionOrder>;
+  orderBy?: InputMaybe<LegacyPositionOrder>;
 };
 
 
@@ -2562,8 +2581,12 @@ export type PredictionEdge = {
  * values combine with AND.
  */
 export type PredictionFilter = {
-  /** Restrict to predictions where the address is predictor or counterparty. */
-  address?: InputMaybe<Scalars['Address']['input']>;
+  /**
+   * Restrict to predictions where the address is predictor or counterparty.
+   * Typed as `String` (not `Address`) so existing queries passing nullable `String` variables
+   * keep validating against the pre-existing input shape.
+   */
+  address?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Restrict to predictions on a single condition (via the pickConfig join). */
@@ -2636,7 +2659,11 @@ export type ProtocolStatsArgs = {
   filter?: InputMaybe<ProtocolStatFilter>;
 };
 
-/** Protocol-wide stats snapshot — no vault scoping. */
+/**
+ * Protocol-wide stats snapshot. When the deprecated `Query.protocolStats(vaultAddress:)`
+ * arg is set, vault-scoped fields (the `vault*` block below) are populated alongside the
+ * protocol-wide counters from the same fat-row pipeline that backs `vaultStats`.
+ */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
   /** Cumulative count of predictions and secondary trades/sales */
@@ -2644,12 +2671,52 @@ export type ProtocolStat = {
   cumulativeVolume: Scalars['String']['output'];
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
+  /**
+   * DEPRECATED — realized PnL delta. Lives on `VaultStat.periodPnL` now and is
+   * only populated here when the row is vault-scoped (`protocolStats(vaultAddress:)`).
+   * @deprecated Use `vaultStats(vaultAddress:).periodPnL` — only populated on vault-scoped rows.
+   */
+  periodPnL?: Maybe<Scalars['String']['output']>;
   /** Trade-count delta over the snapshot interval */
   periodTradeCount: Scalars['Int']['output'];
   /** Cumulative-volume delta over the snapshot interval */
   periodVolume: Scalars['String']['output'];
   /** Snapshot boundary, aligned to the snapshot interval. */
   timestamp: Scalars['UnixSeconds']['output'];
+  /**
+   * DEPRECATED — pre-split alias for `cumulativeTradeCount`. Kept so pinned external
+   * queries keep validating; new callers should read `cumulativeTradeCount`.
+   * @deprecated Use `cumulativeTradeCount`.
+   */
+  totalTradeCount?: Maybe<Scalars['Int']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).airdropGains`. */
+  vaultAirdropGains?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).availableAssets`. */
+  vaultAvailableAssets?: Maybe<Scalars['String']['output']>;
+  /**
+   * DEPRECATED — vault collateral balance. Only populated when the row is vault-scoped
+   * via `protocolStats(vaultAddress:)`.
+   * @deprecated Use `vaultStats(vaultAddress:).balance`.
+   */
+  vaultBalance?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).cumulativePnL`. */
+  vaultCumulativePnL?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).deployed`. */
+  vaultDeployed?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).deposits`. */
+  vaultDeposits?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).positionsLost`. */
+  vaultPositionsLost?: Maybe<Scalars['Int']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).positionsWon`. */
+  vaultPositionsWon?: Maybe<Scalars['Int']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).secondaryBought`. */
+  vaultSecondaryBought?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).secondarySold`. */
+  vaultSecondarySold?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).unredeemedClaim`. */
+  vaultUnredeemedClaim?: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `vaultStats(vaultAddress:).withdrawals`. */
+  vaultWithdrawals?: Maybe<Scalars['String']['output']>;
 };
 
 export type ProtocolStatConnection = {
@@ -2679,8 +2746,10 @@ export type Query = {
   __typename?: 'Query';
   /**
    * Look up a single account by canonical wallet address. Replacement for
-   * `user(where:)` — accepts a flat `address: Address!` arg instead of the
-   * Prisma-shaped `UserWhereUniqueInput`.
+   * `user(where:)` — accepts a flat `address: String!` arg instead of the
+   * Prisma-shaped `UserWhereUniqueInput`. The arg is typed as `String` (not
+   * `Address`) so existing external queries passing `$wallet: String!`
+   * variables continue to validate.
    */
   account?: Maybe<Account>;
   /**
@@ -3092,7 +3161,7 @@ export type Query = {
 
 
 export type QueryAccountArgs = {
-  address: Scalars['Address']['input'];
+  address: Scalars['String']['input'];
 };
 
 
@@ -3482,6 +3551,7 @@ export type QueryProtocolStatsArgs = {
   fromEpoch?: InputMaybe<Scalars['Int']['input']>;
   to?: InputMaybe<Scalars['UnixSeconds']['input']>;
   toEpoch?: InputMaybe<Scalars['Int']['input']>;
+  vaultAddress?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3730,14 +3800,17 @@ export type QuestionFilter = {
   estimatedPrice?: InputMaybe<FloatFilter>;
   /**
    * Deprecated alias for `resolverAddress`; kept during the rename window for older clients.
+   * Typed as `String` (not `Address`) so existing queries passing nullable `$marketAddress: String`
+   * variables continue to validate — the strict `Address` scalar lives on the canonical `resolverAddress`.
    * @deprecated Use `resolverAddress` — same resolver/oracle contract address, accurately named.
    */
-  marketAddress?: InputMaybe<Scalars['Address']['input']>;
+  marketAddress?: InputMaybe<Scalars['String']['input']>;
   /**
    * Deprecated alias for `resolverAddressIn`; kept during the rename window for older clients.
+   * Typed as `[String!]` for the same back-compat reason as `marketAddress` above.
    * @deprecated Use `resolverAddressIn` — same resolver/oracle contract addresses, accurately named.
    */
-  marketAddressIn?: InputMaybe<Array<Scalars['Address']['input']>>;
+  marketAddressIn?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Resolution-status filter; defaults to all when omitted. */
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   /**
@@ -4052,19 +4125,23 @@ export type TradeEdge = {
 
 /** Filter input for the Relay-shaped `tradesConnection` query. Combines with AND. */
 export type TradeFilter = {
-  /** Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`. */
-  address?: InputMaybe<Scalars['Address']['input']>;
-  /** Restrict to a single buyer address. */
-  buyer?: InputMaybe<Scalars['Address']['input']>;
+  /**
+   * Restrict to trades where the address is seller or buyer. Mutually exclusive with `seller`/`buyer`.
+   * Typed as `String` (not `Address`) so existing queries passing nullable `String` variables
+   * keep validating against the pre-existing input shape.
+   */
+  address?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single buyer address. Typed as `String` for back-compat — see `address` above. */
+  buyer?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to a single chain. */
   chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Filter by execution epoch seconds, e.g. `{ gte: 1770000000, lt: 1770086400 }`. */
   executedAt?: InputMaybe<IntFilter>;
-  /** Restrict to a single seller address. */
-  seller?: InputMaybe<Scalars['Address']['input']>;
-  /** Restrict to a single position token address. */
-  token?: InputMaybe<Scalars['Address']['input']>;
-  tokens?: InputMaybe<Array<Scalars['Address']['input']>>;
+  /** Restrict to a single seller address. Typed as `String` for back-compat — see `address` above. */
+  seller?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to a single position token address. Typed as `String` for back-compat — see `address` above. */
+  token?: InputMaybe<Scalars['String']['input']>;
+  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
   /**
    * Restrict to a single trade by execution hash. Supports the
    * by-hash single-record lookup pattern — `tradesConnection(filter: { tradeHash: $h }).nodes[0]`
