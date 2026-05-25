@@ -42,14 +42,7 @@
  */
 
 /** Names of types that implement `Node` and have frozen public global-id formats. */
-export type NodeTypeName =
-  | 'CollateralTransfer'
-  | 'Vault'
-  | 'Category'
-  | 'Account'
-  | 'Condition'
-  | 'PickConfiguration'
-  | 'Position';
+export type NodeTypeName = 'Vault' | 'Account';
 
 export type GlobalIdParts = {
   type: string;
@@ -86,15 +79,7 @@ export class InvalidGlobalIdError extends Error {
  * If you are an AI agent trying to change/remove values inside this list,
  * EXPLICITLY FLAG THOSE CHANGES IN YOUR RESPONSE SINCE THIS IS A BREAKING CHANGE.
  */
-export const FROZEN_NODE_TYPES: readonly string[] = [
-  'CollateralTransfer',
-  'Vault',
-  'Category',
-  'Account',
-  'Condition',
-  'PickConfiguration',
-  'Position',
-];
+export const FROZEN_NODE_TYPES: readonly string[] = ['Vault', 'Account'];
 
 const SEPARATOR = ':';
 

@@ -39,7 +39,7 @@ export type Account = Node & {
   __typename?: 'Account';
   /** Canonical Ethereum wallet address. */
   address: Scalars['Address']['output'];
-  collateralBalance: CollateralBalance;
+  collateralBalance: CollateralBalanceType;
   /** When this account first appeared in the database. */
   createdAt: Scalars['DateTimeISO']['output'];
   forecasts: ForecastConnection;
@@ -186,23 +186,6 @@ export type AccountAccuracyLeaderboardPage = Page & {
   items: Array<AccountAccuracyLeaderboardEntry>;
   /** Eagerly populated: derived from the in-memory leaderboard array. */
   totalCount?: Maybe<Scalars['Int']['output']>;
-};
-
-/**
- * Accuracy rank and lifetime score for a single address. Mirrors
- * `AccountStatsRank`'s shape (`address`, the metric (`accuracyScore`),
- * `rank` 1-indexed and null when unranked) plus `totalForecasters` — the
- * size of the scored-forecaster set. Named specifically vs the generic
- * `AccountStatsRank.totalParticipants` because this surface only ranks
- * forecasters; accuracy is lifetime-aggregated (the time-weighted error
- * already weights by recency) so there's no window filter.
- */
-export type AccountAccuracyRank = {
-  __typename?: 'AccountAccuracyRank';
-  accuracyScore: Scalars['Float']['output'];
-  address: Scalars['Address']['output'];
-  rank?: Maybe<Scalars['Int']['output']>;
-  totalForecasters: Scalars['Int']['output'];
 };
 
 /**
@@ -431,6 +414,23 @@ export type AccountStatsRank = {
   volume: Scalars['String']['output'];
 };
 
+/**
+ * Accuracy rank and lifetime score for a single address. Mirrors
+ * `AccountStatsRank`'s shape (`address`, the metric (`accuracyScore`),
+ * `rank` 1-indexed and null when unranked) plus `totalForecasters` — the
+ * size of the scored-forecaster set. Named specifically vs the generic
+ * `AccountStatsRank.totalParticipants` because this surface only ranks
+ * forecasters; accuracy is lifetime-aggregated (the time-weighted error
+ * already weights by recency) so there's no window filter.
+ */
+export type AccuracyRank = {
+  __typename?: 'AccuracyRank';
+  accuracyScore: Scalars['Float']['output'];
+  address: Scalars['Address']['output'];
+  rank?: Maybe<Scalars['Int']['output']>;
+  totalForecasters: Scalars['Int']['output'];
+};
+
 export type Activity = {
   __typename?: 'Activity';
   account: Account;
@@ -614,15 +614,15 @@ export type BoolNullableFilter = {
   not?: InputMaybe<NestedBoolNullableFilter>;
 };
 
-export type Category = Node & {
+export type Category = {
   __typename?: 'Category';
   _count?: Maybe<CategoryCount>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
   createdAt: Scalars['DateTimeISO']['output'];
-  id: Scalars['ID']['output'];
+  id: Scalars['Int']['output'];
   name: Scalars['String']['output'];
-  slug?: Maybe<Scalars['String']['output']>;
+  slug: Scalars['String']['output'];
 };
 
 
@@ -753,6 +753,34 @@ export type Claim = {
   txHash: Scalars['String']['output'];
 };
 
+export type ClaimConnection = {
+  __typename?: 'ClaimConnection';
+  edges: Array<ClaimEdge>;
+  nodes: Array<Claim>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ClaimEdge = {
+  __typename?: 'ClaimEdge';
+  cursor: Scalars['String']['output'];
+  node: Claim;
+};
+
+export type ClaimFilter = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  holder?: InputMaybe<Scalars['Address']['input']>;
+  predictionId?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type ClaimOrder = {
+  direction: OrderDirection;
+  field: ClaimOrderField;
+};
+
+export type ClaimOrderField =
+  | 'REDEEMED_AT';
+
 /** Record of a position close where both sides burn tokens and receive payouts */
 export type Close = {
   __typename?: 'Close';
@@ -771,19 +799,36 @@ export type Close = {
   txHash: Scalars['String']['output'];
 };
 
-export type CollateralBalance = {
-  __typename?: 'CollateralBalance';
-  account: Account;
-  address: Scalars['Address']['output'];
-  amount: Scalars['String']['output'];
-  atBlock?: Maybe<Scalars['Int']['output']>;
-  balance: Scalars['String']['output'];
-  chainId: Scalars['Int']['output'];
-  collateral: CollateralToken;
+export type CloseConnection = {
+  __typename?: 'CloseConnection';
+  edges: Array<CloseEdge>;
+  nodes: Array<Close>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
 };
 
-export type CollateralBalanceSnapshot = {
-  __typename?: 'CollateralBalanceSnapshot';
+export type CloseEdge = {
+  __typename?: 'CloseEdge';
+  cursor: Scalars['String']['output'];
+  node: Close;
+};
+
+export type CloseFilter = {
+  address?: InputMaybe<Scalars['Address']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type CloseOrder = {
+  direction: OrderDirection;
+  field: CloseOrderField;
+};
+
+export type CloseOrderField =
+  | 'BURNED_AT';
+
+export type CollateralBalanceSnapshotType = {
+  __typename?: 'CollateralBalanceSnapshotType';
   account: Account;
   amount: Scalars['String']['output'];
   /**
@@ -803,6 +848,17 @@ export type CollateralBalanceSnapshot = {
   timestamp: Scalars['DateTimeISO']['output'];
 };
 
+export type CollateralBalanceType = {
+  __typename?: 'CollateralBalanceType';
+  account: Account;
+  address: Scalars['Address']['output'];
+  amount: Scalars['String']['output'];
+  atBlock?: Maybe<Scalars['Int']['output']>;
+  balance: Scalars['String']['output'];
+  chainId: Scalars['Int']['output'];
+  collateral: CollateralToken;
+};
+
 export type CollateralToken = {
   __typename?: 'CollateralToken';
   address: Scalars['Address']['output'];
@@ -811,28 +867,11 @@ export type CollateralToken = {
   symbol: Scalars['String']['output'];
 };
 
-export type CollateralTransfer = Node & {
-  __typename?: 'CollateralTransfer';
-  account: Account;
-  amount: Scalars['String']['output'];
-  blockNumber: Scalars['Int']['output'];
-  chainId: Scalars['Int']['output'];
-  collateral: CollateralToken;
-  createdAt: Scalars['DateTimeISO']['output'];
-  from: Scalars['String']['output'];
-  id: Scalars['ID']['output'];
-  logIndex: Scalars['Int']['output'];
-  timestamp: Scalars['DateTimeISO']['output'];
-  to: Scalars['String']['output'];
-  transactionHash: Scalars['Bytes32']['output'];
-  value: Scalars['String']['output'];
-};
-
 /** Relay-shaped connection over `CollateralTransfer` rows. */
 export type CollateralTransferConnection = {
   __typename?: 'CollateralTransferConnection';
   edges: Array<CollateralTransferEdge>;
-  nodes: Array<CollateralTransfer>;
+  nodes: Array<CollateralTransferType>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
 };
@@ -840,7 +879,7 @@ export type CollateralTransferConnection = {
 export type CollateralTransferEdge = {
   __typename?: 'CollateralTransferEdge';
   cursor: Scalars['String']['output'];
-  node: CollateralTransfer;
+  node: CollateralTransferType;
 };
 
 export type CollateralTransferFilter = {
@@ -858,7 +897,24 @@ export type CollateralTransferOrder = {
 export type CollateralTransferOrderField =
   | 'BLOCK_NUMBER';
 
-export type Condition = Node & {
+export type CollateralTransferType = {
+  __typename?: 'CollateralTransferType';
+  account: Account;
+  amount: Scalars['String']['output'];
+  blockNumber: Scalars['Int']['output'];
+  chainId: Scalars['Int']['output'];
+  collateral: CollateralToken;
+  createdAt: Scalars['DateTimeISO']['output'];
+  from: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  logIndex: Scalars['Int']['output'];
+  timestamp: Scalars['DateTimeISO']['output'];
+  to: Scalars['String']['output'];
+  transactionHash: Scalars['Bytes32']['output'];
+  value: Scalars['String']['output'];
+};
+
+export type Condition = {
   __typename?: 'Condition';
   _count?: Maybe<ConditionCount>;
   assertionId?: Maybe<Scalars['String']['output']>;
@@ -868,7 +924,12 @@ export type Condition = Node & {
   chainId: Scalars['Int']['output'];
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroupId?: Maybe<Scalars['Int']['output']>;
-  /** Natural-key condition id (on-chain identifier), returned verbatim. */
+  /**
+   * Back-compat alias for `id` — same on-chain condition id. Kept for
+   * callers that adopted `conditionId` during the Relay-Node migration
+   * window.
+   * @deprecated Use `id` — same value, dropping the alias.
+   */
   conditionId: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   description: Scalars['String']['output'];
@@ -878,10 +939,10 @@ export type Condition = Node & {
   estimatedPrice?: Maybe<Scalars['Float']['output']>;
   forecasts: ForecastConnection;
   /**
-   * Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`
-   * for the on-chain condition identifier.
+   * On-chain condition id (the CTF condition id), returned verbatim as a
+   * lowercase hex string.
    */
-  id: Scalars['ID']['output'];
+  id: Scalars['String']['output'];
   /**
    * Mislabeled alias of `resolverAddress`. Holds the resolver contract address,
    * not the PredictionMarketEscrow address. The recent `resolver → marketAddress`
@@ -2236,21 +2297,22 @@ export type Pick = {
 };
 
 /** Group of outcome picks forming a combined prediction position, with collateral and settlement tracking */
-export type PickConfiguration = Node & {
+export type PickConfiguration = {
   __typename?: 'PickConfiguration';
   chainId: Scalars['Int']['output'];
   claimedCounterpartyCollateral: Scalars['String']['output'];
   claimedPredictorCollateral: Scalars['String']['output'];
   counterpartyToken?: Maybe<Scalars['String']['output']>;
   endsAt?: Maybe<Scalars['UnixSeconds']['output']>;
-  /**
-   * Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`
-   * for the natural pick-configuration identifier.
-   */
-  id: Scalars['ID']['output'];
+  /** Natural-key pick-configuration id, returned verbatim. */
+  id: Scalars['String']['output'];
   isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['Address']['output'];
-  /** Natural-key pick-configuration id, returned verbatim. */
+  /**
+   * Back-compat alias for `id` — same value. Kept for callers that
+   * adopted `pickConfigId` during the Relay-Node migration window.
+   * @deprecated Use `id` — same value, dropping the alias.
+   */
   pickConfigId: Scalars['String']['output'];
   picks: Array<Pick>;
   positions: PositionConnection;
@@ -2352,7 +2414,7 @@ export type PnlDataPoint = {
  * "open" row carrying remaining cost basis, plus one synthesized "sell"
  * row per secondary-market disposal (so PnL realizes incrementally).
  */
-export type Position = Node & {
+export type Position = {
   __typename?: 'Position';
   /**
    * Number of position tokens still held (decimal string, 18 decimals on
@@ -2365,17 +2427,18 @@ export type Position = Node & {
   /** Holder wallet address (lowercase 0x-hex). */
   holder: Scalars['String']['output'];
   /**
-   * Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`
-   * for the synthetic position row identifier.
+   * Synthetic row id. Open rows use the underlying Position row id
+   * serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
    */
-  id: Scalars['ID']['output'];
+  id: Scalars['String']['output'];
   /** True if this is the predictor token side; false for counterparty. */
   isPredictorToken: Scalars['Boolean']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   pickConfigId: Scalars['String']['output'];
   /**
-   * Synthetic row id. Open rows use the underlying Position row id
-   * serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
+   * Back-compat alias for `id` — same value. Kept for callers that
+   * adopted `positionId` during the Relay-Node migration window.
+   * @deprecated Use `id` — same value, dropping the alias.
    */
   positionId: Scalars['String']['output'];
   /**
@@ -2766,7 +2829,7 @@ export type Query = {
    * set.
    * @deprecated Use `account(address: $a).rank(metric: ACCURACY)` — returns the same rank + value via the Relay-shaped Account surface.
    */
-  accountAccuracyRank: AccountAccuracyRank;
+  accountAccuracyRank: AccuracyRank;
   /**
    * Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
    * @deprecated Use `activityPage` — same data with a server-truth `hasMore` stop signal.
@@ -2885,18 +2948,41 @@ export type Query = {
    * bare-array `categories` sibling above is removed.
    */
   categoriesConnection: CategoryConnection;
+  /** Look up a single category by its integer primary key. */
+  category?: Maybe<Category>;
+  /** Look up a single claim (redemption) record by its row id. */
+  claim?: Maybe<Claim>;
   /**
    * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
-   * @deprecated Unused; will be removed. No live consumers — claim records are reachable as a side-effect of position settlement.
+   * @deprecated Use `claimsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
    */
   claims: Array<Claim>;
   /**
+   * Relay-shaped connection over claim (redemption) records. Forward-only
+   * cursor pagination via `first` / `after`; sorting defaults to
+   * `REDEEMED_AT` / `DESC`.
+   */
+  claimsConnection: ClaimConnection;
+  /** Look up a single close (settled position exit) record by its row id. */
+  close?: Maybe<Close>;
+  /**
    * Paginated list of position close (burn) records, filterable by address, pick config, and chain
-   * @deprecated Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement.
+   * @deprecated Use `closesConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.
    */
   closes: Array<Close>;
-  /** @deprecated Use `collateralBalance(account:, chainId:)`; legacy `address` remains as an argument alias during migration. */
-  collateralBalance: CollateralBalance;
+  /**
+   * Relay-shaped connection over position close (burn) records. Forward-only
+   * cursor pagination via `first` / `after`; sorting defaults to
+   * `BURNED_AT` / `DESC`.
+   */
+  closesConnection: CloseConnection;
+  /**
+   * Wallet collateral balance — wUSDe holdings for the given account at
+   * an optional block (defaults to head). Pass `account:` (Address scalar)
+   * going forward; the legacy `address: String` arg remains as an alias
+   * during migration.
+   */
+  collateralBalance: CollateralBalanceType;
   /**
    * Cumulative wUSDe collateral balance for an address at `count + 1`
    * evenly-spaced snapshot boundaries going back from now. The snapshot
@@ -2904,9 +2990,11 @@ export type Query = {
    * arg is retained as a deprecated alias — when both are supplied,
    * `intervalSeconds` wins.
    */
-  collateralBalanceHistory: Array<CollateralBalanceSnapshot>;
+  collateralBalanceHistory: Array<CollateralBalanceSnapshotType>;
+  /** Look up a single collateral transfer by its integer primary key. */
+  collateralTransfer?: Maybe<CollateralTransferType>;
   /** @deprecated Use `collateralTransfersConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over collateral transfers. */
-  collateralTransfers: Array<CollateralTransfer>;
+  collateralTransfers: Array<CollateralTransferType>;
   /**
    * Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
    *
@@ -2917,9 +3005,18 @@ export type Query = {
    * deprecated bare-array `collateralTransfers` sibling above is removed.
    */
   collateralTransfersConnection: CollateralTransferConnection;
-  /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape. */
+  /**
+   * Look up a single condition by its on-chain condition id (the
+   * CTF condition id). Pass `id:` going forward; the legacy
+   * `where: ConditionWhereUniqueInput` shape remains as an alias during
+   * migration.
+   */
   condition?: Maybe<Condition>;
-  /** @deprecated Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape. */
+  /**
+   * Look up a single condition group by its identifier. Pass `id:` going
+   * forward; the legacy `where: ConditionGroupWhereUniqueInput` shape
+   * remains as an alias during migration.
+   */
   conditionGroup?: Maybe<ConditionGroup>;
   /**
    * Deprecated bare-array form. Retained unchanged for the one-release
@@ -2956,6 +3053,8 @@ export type Query = {
    * bare-array sibling above is removed.
    */
   conditionsConnection: ConditionConnection;
+  /** Look up a single forecast (EAS attestation) by its on-chain `uid`. */
+  forecast?: Maybe<Forecast>;
   /**
    * Relay-style forecast list backed by EAS attestations. Defaults to attestedAt DESC.
    *
@@ -2990,10 +3089,7 @@ export type Query = {
    * @deprecated Use `protocol.openInterestByTimeToResolution`.
    */
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
-  /**
-   * Look up a single pick configuration by ID
-   * @deprecated Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsConnection` for list lookups.
-   */
+  /** Look up a single pick configuration by ID */
   pickConfiguration?: Maybe<PickConfiguration>;
   /**
    * Paginated list of pick configurations, filterable by chain, resolution status, and result
@@ -3010,6 +3106,11 @@ export type Query = {
   pickConfigurationsConnection: PickConfigurationConnection;
   /** Top 20 most-used tags across public conditions */
   popularTags: Array<Scalars['String']['output']>;
+  /**
+   * Look up a single position by its synthetic row id (the same value
+   * surfaced on `Position.id`).
+   */
+  position?: Maybe<Position>;
   /**
    * Count of token positions for a given holder
    * @deprecated Use `positionsConnection` — Relay-shaped cursor pagination over the same data.
@@ -3309,6 +3410,16 @@ export type QueryCategoriesConnectionArgs = {
 };
 
 
+export type QueryCategoryArgs = {
+  id: Scalars['Int']['input'];
+};
+
+
+export type QueryClaimArgs = {
+  id: Scalars['Int']['input'];
+};
+
+
 export type QueryClaimsArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   holder?: InputMaybe<Scalars['String']['input']>;
@@ -3318,12 +3429,33 @@ export type QueryClaimsArgs = {
 };
 
 
+export type QueryClaimsConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ClaimFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ClaimOrder>;
+};
+
+
+export type QueryCloseArgs = {
+  id: Scalars['Int']['input'];
+};
+
+
 export type QueryClosesArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
+};
+
+
+export type QueryClosesConnectionArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<CloseFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<CloseOrder>;
 };
 
 
@@ -3347,6 +3479,11 @@ export type QueryCollateralBalanceHistoryArgs = {
 };
 
 
+export type QueryCollateralTransferArgs = {
+  id: Scalars['Int']['input'];
+};
+
+
 export type QueryCollateralTransfersArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
@@ -3365,12 +3502,14 @@ export type QueryCollateralTransfersConnectionArgs = {
 
 
 export type QueryConditionArgs = {
-  where: ConditionWhereUniqueInput;
+  id?: InputMaybe<Scalars['String']['input']>;
+  where?: InputMaybe<ConditionWhereUniqueInput>;
 };
 
 
 export type QueryConditionGroupArgs = {
-  where: ConditionGroupWhereUniqueInput;
+  id?: InputMaybe<Scalars['String']['input']>;
+  where?: InputMaybe<ConditionGroupWhereUniqueInput>;
 };
 
 
@@ -3407,6 +3546,11 @@ export type QueryConditionsConnectionArgs = {
   filter?: InputMaybe<ConditionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ConditionOrder>;
+};
+
+
+export type QueryForecastArgs = {
+  uid: Scalars['String']['input'];
 };
 
 
@@ -3456,6 +3600,11 @@ export type QueryPickConfigurationsConnectionArgs = {
   filter?: InputMaybe<PickConfigurationFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<PickConfigurationOrder>;
+};
+
+
+export type QueryPositionArgs = {
+  id: Scalars['String']['input'];
 };
 
 

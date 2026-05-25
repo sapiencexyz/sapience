@@ -7,7 +7,7 @@ size of the scored-forecaster set. Named specifically vs the generic
 forecasters; accuracy is lifetime-aggregated (the time-weighted error
 already weights by recency) so there's no window filter.
 """
-type AccountAccuracyRank {
+type AccuracyRank {
   address: Address!
   accuracyScore: Float!
   rank: Int
@@ -87,7 +87,7 @@ type Account implements Node {
   trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
   forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
   positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: LegacyPositionOrder): PositionConnection!
-  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
+  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalanceType!
 }
 
 """
@@ -329,14 +329,14 @@ input BoolNullableFilter {
   not: NestedBoolNullableFilter
 }
 
-type Category implements Node {
+type Category {
   _count: CategoryCount
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
   createdAt: DateTimeISO!
-  id: ID!
+  id: Int!
   name: String!
-  slug: String
+  slug: String!
 }
 
 type CategoryCount {
@@ -661,7 +661,7 @@ type CollateralToken {
   chainId: Int!
 }
 
-type CollateralBalanceSnapshot {
+type CollateralBalanceSnapshotType {
   account: Account!
   chainId: Int!
   collateral: CollateralToken!
@@ -681,7 +681,7 @@ type CollateralBalanceSnapshot {
   balance: String! @deprecated(reason: "Use `amount` — same value, drops the wallet-balance framing for consistency with `CollateralTransfer.amount`.")
 }
 
-type CollateralBalance {
+type CollateralBalanceType {
   account: Account!
   chainId: Int!
   collateral: CollateralToken!
@@ -691,8 +691,8 @@ type CollateralBalance {
   balance: String!
 }
 
-type CollateralTransfer implements Node {
-  id: ID!
+type CollateralTransferType {
+  id: Int!
   account: Account!
   chainId: Int!
   collateral: CollateralToken!
@@ -707,7 +707,7 @@ type CollateralTransfer implements Node {
   logIndex: Int!
 }
 
-type Condition implements Node {
+type Condition {
   _count: ConditionCount
   assertionId: String
   assertionTimestamp: UnixSeconds
@@ -725,13 +725,17 @@ type Condition implements Node {
   estimatedPrice: Float
 
   """
-  Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`
-  for the on-chain condition identifier.
+  On-chain condition id (the CTF condition id), returned verbatim as a
+  lowercase hex string.
   """
-  id: ID!
+  id: String!
 
-  """Natural-key condition id (on-chain identifier), returned verbatim."""
-  conditionId: String!
+  """
+  Back-compat alias for `id` — same on-chain condition id. Kept for
+  callers that adopted `conditionId` during the Relay-Node migration
+  window.
+  """
+  conditionId: String! @deprecated(reason: "Use `id` — same value, dropping the alias.")
   nonDecisive: Boolean!
   openInterest: String!
   optionName: String
@@ -1416,21 +1420,21 @@ type Pick {
 """
 Group of outcome picks forming a combined prediction position, with collateral and settlement tracking
 """
-type PickConfiguration implements Node {
+type PickConfiguration {
   chainId: Int!
   claimedCounterpartyCollateral: String!
   claimedPredictorCollateral: String!
   counterpartyToken: String
   endsAt: UnixSeconds
 
-  """
-  Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`
-  for the natural pick-configuration identifier.
-  """
-  id: ID!
-
   """Natural-key pick-configuration id, returned verbatim."""
-  pickConfigId: String!
+  id: String!
+
+  """
+  Back-compat alias for `id` — same value. Kept for callers that
+  adopted `pickConfigId` during the Relay-Node migration window.
+  """
+  pickConfigId: String! @deprecated(reason: "Use `id` — same value, dropping the alias.")
   isLegacy: Boolean!
   marketAddress: Address!
   picks: [Pick!]!
@@ -1579,13 +1583,13 @@ type PickConfigurationEdge {
 """Relay-shaped connection over `CollateralTransfer` rows."""
 type CollateralTransferConnection {
   edges: [CollateralTransferEdge!]!
-  nodes: [CollateralTransfer!]!
+  nodes: [CollateralTransferType!]!
   pageInfo: PageInfo!
   totalCount: Int!
 }
 
 type CollateralTransferEdge {
-  node: CollateralTransfer!
+  node: CollateralTransferType!
   cursor: String!
 }
 
@@ -2215,7 +2219,7 @@ underlying Position row may surface as multiple `*Page` items: one
 "open" row carrying remaining cost basis, plus one synthesized "sell"
 row per secondary-market disposal (so PnL realizes incrementally).
 """
-type Position implements Node {
+type Position {
   """
   Number of position tokens still held (decimal string, 18 decimals on
   Sapience). Synthesized sell rows carry `"0"` here — the realized PnL
@@ -2229,16 +2233,16 @@ type Position implements Node {
   holder: String!
 
   """
-  Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`
-  for the synthetic position row identifier.
-  """
-  id: ID!
-
-  """
   Synthetic row id. Open rows use the underlying Position row id
   serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
   """
-  positionId: String!
+  id: String!
+
+  """
+  Back-compat alias for `id` — same value. Kept for callers that
+  adopted `positionId` during the Relay-Node migration window.
+  """
+  positionId: String! @deprecated(reason: "Use `id` — same value, dropping the alias.")
 
   """True if this is the predictor token side; false for counterparty."""
   isPredictorToken: Boolean!
@@ -2986,7 +2990,7 @@ type Query {
   ranked set, and `totalForecasters` is the size of the scored-forecaster
   set.
   """
-  accountAccuracyRank(address: String!): AccountAccuracyRank! @deprecated(reason: "Use `account(address: $a).rank(metric: ACCURACY)` — returns the same rank + value via the Relay-shaped Account surface.")
+  accountAccuracyRank(address: String!): AccuracyRank! @deprecated(reason: "Use `account(address: $a).rank(metric: ACCURACY)` — returns the same rank + value via the Relay-shaped Account surface.")
 
   """
   Lifetime accuracy score for a single address, or null if no scored
@@ -3121,11 +3125,8 @@ type Query {
   """Look up a single forecast (EAS attestation) by its on-chain `uid`."""
   forecast(uid: String!): Forecast
 
-  """
-  Look up a single category by ID. Accepts either the numeric DB id
-  serialized as a string or the Relay opaque global id.
-  """
-  category(id: ID!): Category
+  """Look up a single category by its integer primary key."""
+  category(id: Int!): Category
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]! @deprecated(reason: "Use `categoriesConnection(first:, after:)` — Relay-shaped cursor pagination over categories.")
 
   """
@@ -3171,7 +3172,7 @@ type Query {
   going forward; the legacy `address: String` arg remains as an alias
   during migration.
   """
-  collateralBalance(account: Address, address: String @deprecated(reason: "Use `account`."), atBlock: Int, chainId: Int!): CollateralBalance!
+  collateralBalance(account: Address, address: String @deprecated(reason: "Use `account`."), atBlock: Int, chainId: Int!): CollateralBalanceType!
 
   """
   Cumulative wUSDe collateral balance for an address at `count + 1`
@@ -3195,8 +3196,8 @@ type Query {
     """
     intervalSeconds: Int
     intervalHours: Int! = 168 @deprecated(reason: "Use `intervalSeconds:` — drops the unit-suffix to match the unit-on-scalar convention used elsewhere. When both are supplied, `intervalSeconds` wins.")
-  ): [CollateralBalanceSnapshot!]!
-  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransfer!]! @deprecated(reason: "Use `collateralTransfersConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over collateral transfers.")
+  ): [CollateralBalanceSnapshotType!]!
+  collateralTransfers(address: String!, chainId: Int!, excludeProtocol: Boolean = false, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]! @deprecated(reason: "Use `collateralTransfersConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over collateral transfers.")
 
   """
   Relay-shaped connection over collateral transfers. Forward-only cursor pagination via `first` / `after`.
@@ -3209,8 +3210,8 @@ type Query {
   """
   collateralTransfersConnection(first: Int = 100, after: String, filter: CollateralTransferFilter, orderBy: CollateralTransferOrder): CollateralTransferConnection!
 
-  """Look up a single collateral transfer by its Relay global id."""
-  collateralTransfer(id: ID!): CollateralTransfer
+  """Look up a single collateral transfer by its integer primary key."""
+  collateralTransfer(id: Int!): CollateralTransferType
 
   """
   Look up a single account by canonical wallet address. Replacement for
@@ -3327,12 +3328,10 @@ type Query {
   positionsConnection(first: Int, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
 
   """
-  Look up a single position by its Relay global id. The id encodes the
-  underlying Position row id and (for synthesized sell rows) the trade
-  hash that produced them; the same id format is surfaced on
-  `Position.id`.
+  Look up a single position by its synthetic row id (the same value
+  surfaced on `Position.id`).
   """
-  position(id: ID!): Position
+  position(id: String!): Position
 
   """
   Look up a single prediction by its on-chain prediction ID. Pass

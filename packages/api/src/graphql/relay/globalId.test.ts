@@ -188,15 +188,7 @@ describe('resolveNodes (batch)', () => {
 
 describe('frozen node types — public-API stability', () => {
   it('freezes the public list of Node type names', () => {
-    expect(FROZEN_NODE_TYPES).toEqual([
-      'CollateralTransfer',
-      'Vault',
-      'Category',
-      'Account',
-      'Condition',
-      'PickConfiguration',
-      'Position',
-    ]);
+    expect(FROZEN_NODE_TYPES).toEqual(['Vault', 'Account']);
     expect(registeredNodeTypes()).toHaveLength(0);
   });
 

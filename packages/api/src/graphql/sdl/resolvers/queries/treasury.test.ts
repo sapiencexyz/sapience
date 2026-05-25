@@ -95,18 +95,12 @@ describe('treasury — SDL guardrails', () => {
 });
 
 describe('treasury — Node identity', () => {
-  it('freezes CollateralTransfer, Vault, and Category node types', () => {
+  it('keeps Vault and Account as registered Node types (CollateralTransfer and Category were unwound for back-compat)', () => {
     expect(registeredNodeTypes()).toEqual(
-      expect.arrayContaining(['CollateralTransfer', 'Vault', 'Category'])
+      expect.arrayContaining(['Vault', 'Account'])
     );
-  });
-
-  it('encodes CollateralTransfer as chainId:transactionHash:logIndex', () => {
-    const id = toGlobalId('CollateralTransfer', `${TESTNET}:0xabc:7`);
-    expect(fromGlobalId(id)).toEqual({
-      type: 'CollateralTransfer',
-      id: `${TESTNET}:0xabc:7`,
-    });
+    expect(registeredNodeTypes()).not.toContain('CollateralTransfer');
+    expect(registeredNodeTypes()).not.toContain('Category');
   });
 
   it('encodes Vault as chainId:lowercaseAddress', () => {
@@ -177,7 +171,6 @@ describe('treasury — collateral surface', () => {
     );
     expect(result.nodes).toHaveLength(1);
     expect(result.nodes[0]).toMatchObject({
-      id: toGlobalId('CollateralTransfer', `${TESTNET}:0xabc:7`),
       account: { address: ACCOUNT },
       amount: '42',
       transactionHash: '0xabc',
@@ -260,9 +253,9 @@ describe('treasury — protocol/vault/categories surface', () => {
     mockPrisma.category.count.mockResolvedValue(1);
     const result = await callResolver<{
       totalCount: number;
-      nodes: Array<{ id: string }>;
+      nodes: Array<{ id: number }>;
     }>(categoriesConnection)(null, { first: 10 }, {} as never, null as never);
     expect(result.totalCount).toBe(1);
-    expect(result.nodes[0].id).toBe(toGlobalId('Category', '5'));
+    expect(result.nodes[0].id).toBe(5);
   });
 });

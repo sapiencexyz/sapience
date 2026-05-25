@@ -10,11 +10,6 @@ import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { buildConnection, clampSkip, clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import {
-  registerNodeType,
-  resolveNode,
-  toGlobalId,
-} from '../../../relay/globalId';
 import { synthesizeAccount } from '../accountSynthesis';
 
 const collateralForChain = (chainId: number) => ({
@@ -23,13 +18,6 @@ const collateralForChain = (chainId: number) => ({
   decimals: 18,
   chainId,
 });
-
-const transferDomainId = (row: {
-  chainId: number;
-  transactionHash: string;
-  logIndex: number;
-}) =>
-  `${row.chainId}:${row.transactionHash.toLowerCase()}:${Number(row.logIndex)}`;
 
 const actorForTransfer = (
   row: { from: string; to: string },
@@ -46,7 +34,6 @@ export const mapCollateralTransfer = (
   account?: string
 ) => ({
   ...row,
-  id: toGlobalId('CollateralTransfer', transferDomainId(row)),
   account: synthesizeAccount(actorForTransfer(row, account)),
   collateral: collateralForChain(row.chainId),
   amount: row.value,
@@ -54,49 +41,12 @@ export const mapCollateralTransfer = (
   createdAt: row.timestamp ?? row.createdAt,
 });
 
-const parseTransferDomainId = (id: string) => {
-  const [chainIdRaw, transactionHashRaw, logIndexRaw] = id.split(':');
-  const chainId = Number(chainIdRaw);
-  const logIndex = Number(logIndexRaw);
-  if (
-    !Number.isInteger(chainId) ||
-    !transactionHashRaw ||
-    !Number.isInteger(logIndex)
-  ) {
-    return null;
-  }
-  return {
-    chainId,
-    transactionHash: transactionHashRaw.toLowerCase(),
-    logIndex,
-  };
-};
-
-registerNodeType({
-  type: 'CollateralTransfer',
-  loader: async (id) => {
-    const parsed = parseTransferDomainId(id);
-    if (!parsed) return null;
-    const row = await prisma.collateralTransfer.findUnique({
-      where: { chainId_transactionHash_logIndex: parsed },
-    });
-    return row ? mapCollateralTransfer(row) : null;
-  },
-});
-
 export const collateralTransfer = (async (
   _parent: unknown,
-  { id }: { id: string },
-  ctx: unknown
+  { id }: { id: number }
 ) => {
-  const result = await resolveNode(id, ctx);
-  if (
-    result &&
-    (result as { __typename?: string }).__typename === 'CollateralTransfer'
-  ) {
-    return result;
-  }
-  return null;
+  const row = await prisma.collateralTransfer.findUnique({ where: { id } });
+  return row ? mapCollateralTransfer(row) : null;
 }) as unknown as NonNullable<QueryResolvers['collateralTransfer']>;
 
 export const collateralBalance = (async (
