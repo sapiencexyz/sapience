@@ -1,0 +1,97 @@
+# -----------------------------------------------
+# Sapience GraphQL API — v2 (Relay-compatible, greenfield).
+#
+# This SDL is the source of truth for the `/v2/graphql` endpoint. v2 is
+# being built incrementally per `../PLAN.md`; this stub is intentionally
+# minimal — enough for the endpoint to mount, respond to introspection,
+# and serve `node(id:)` against an (initially) empty registry.
+#
+# Entity types are added one PR at a time per the phase plan. Adding a
+# type means: defining it here (`implements Node`), registering its
+# loader in `../resolvers/queries/node.ts`, and appending its name to
+# `FROZEN_NODE_TYPES_V2` in `../relay/nodeRegistry.ts`.
+# -----------------------------------------------
+
+"""
+0x-prefixed lowercase 20-byte Ethereum address. The same scalar wire
+shape as v1's `Address` — kept identical so the same client decode
+helpers work across endpoints.
+"""
+scalar Address
+
+"""
+Integer epoch seconds. Used for on-chain timestamps and any field
+whose source-of-truth granularity is whole seconds.
+"""
+scalar UnixSeconds
+
+"""
+ISO 8601 string. Used for Postgres-managed timestamps (`createdAt`,
+`updatedAt`, snapshot boundaries).
+"""
+scalar DateTimeISO
+
+"""
+Arbitrary-precision integer, serialized as a decimal `String`. Used for
+collateral / balance / payout amounts in wei (18-decimal wUSDe).
+"""
+scalar BigInt
+
+"""
+Relay `Node` interface — every persistent entity in v2 implements it.
+The `id` is an opaque base64url-encoded `(TypeName, domainId)` pair;
+clients should treat it as a refetch handle and read the entity's named
+domain identifier (`address`, `predictionId`, `tradeHash`, …) for any
+display or persistence use.
+"""
+interface Node {
+  id: ID!
+}
+
+"""
+Standard Relay pagination metadata.
+"""
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+"""
+Order direction shared across every `*Order` input.
+"""
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+"""
+Endpoint health probe. Returns a static payload while v2 is under
+construction so clients can verify the route mounts.
+"""
+type V2Health {
+  status: String!
+  schemaVersion: String!
+}
+
+type Query {
+  """
+  Relay refetch by opaque global id. Returns `null` when the id is
+  malformed, the type is not registered against the v2 registry, or
+  the underlying entity has been deleted.
+  """
+  node(id: ID!): Node
+
+  """
+  Batched form of `node(id:)`. Preserves input order; each element is
+  resolved independently and may be null.
+  """
+  nodes(ids: [ID!]!): [Node]!
+
+  """
+  Stub health probe. Will be removed once the v2 surface has real
+  entities to query.
+  """
+  _v2Health: V2Health!
+}
