@@ -18,6 +18,8 @@ import { Forecast } from './Forecast';
 import { forecast, forecasts } from './queries/forecast';
 import { Trade } from './Trade';
 import { trade, trades } from './queries/trade';
+import { Condition } from './Condition';
+import { condition, conditions } from './queries/condition';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
@@ -37,6 +39,7 @@ export const resolvers = {
   Category,
   Forecast,
   Trade,
+  Condition,
   Query: {
     node,
     nodes,
@@ -54,5 +57,7 @@ export const resolvers = {
     forecasts,
     trade,
     trades,
+    condition,
+    conditions,
   },
 };

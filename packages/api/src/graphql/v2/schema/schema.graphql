@@ -432,6 +432,128 @@ input TradeOrder {
 }
 
 # -----------------------------------------------
+# Condition (Phase 6)
+# -----------------------------------------------
+
+"""
+On-chain prediction condition. v2 drops v1's legacy boolean flags
+(`settled`, `resolvedToYes`, `nonDecisive`) in favour of the single
+nullable `outcome` enum; clients should filter "settled" as
+`outcome: { isNull: false }` (or `null` means not yet settled).
+
+Heavy `similarMarket*` fields collapse into a nested `similarMarket`
+value type — wire-weight reduction and grouping by source.
+"""
+type Condition implements Node {
+  id: ID!
+  """CTF on-chain condition id, lowercase 0x-hex."""
+  conditionId: String!
+  chainId: Int!
+  question: String!
+  description: String!
+  shortName: String
+  optionName: String
+
+  """Resolver (oracle) contract address that settles this condition."""
+  resolverAddress: Address!
+  endTime: UnixSeconds!
+  settledAt: UnixSeconds
+
+  """
+  Resolved state — `null` until the on-chain resolver returns. `YES` /
+  `NO` are decisive resolutions of the binary outcome; `NON_DECISIVE`
+  covers voided / tied / unresolvable settlements.
+  """
+  outcome: ConditionOutcome
+
+  """Cumulative on-chain open interest, wei."""
+  openInterest: BigInt!
+
+  """YES probability from Polymarket (0.0–1.0), null for non-Polymarket."""
+  estimatedPrice: Float
+
+  """Visibility — false hides this condition from public listing surfaces."""
+  public: Boolean!
+  displayOrder: Int
+  tags: [String!]!
+  createdAt: DateTimeISO!
+
+  categoryId: Int
+  category: Category
+
+  """Bundled similar-market signal from external sources (Polymarket)."""
+  similarMarket: SimilarMarket
+}
+
+enum ConditionOutcome {
+  YES
+  NO
+  NON_DECISIVE
+}
+
+"""
+Bundled similar-market signal for a Condition. All `volume*` fields are
+USD trading volume on the linked external market over the listed window;
+`volumeFiltered*` exclude pre-resolution / off-platform volume. Image
+and `markets` carry the source-side metadata used to render an
+attribution chip in the UI.
+"""
+type SimilarMarket {
+  image: String
+  markets: [String!]!
+  volume: Float!
+  volume1h: Float!
+  volume4h: Float!
+  volume24h: Float!
+  volume7d: Float!
+  volumeFiltered1h: Float!
+  volumeFiltered4h: Float!
+  volumeFiltered24h: Float!
+  volumeFiltered7d: Float!
+}
+
+type ConditionEdge {
+  cursor: String!
+  node: Condition!
+}
+
+type ConditionConnection {
+  edges: [ConditionEdge!]!
+  nodes: [Condition!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input ConditionFilter {
+  conditionId: String
+  conditionIds: [String!]
+  chainId: Int
+  categoryId: Int
+  """Restrict to settled (`outcome` non-null) / unsettled (null)."""
+  settled: Boolean
+  outcome: ConditionOutcome
+  """Restrict to public conditions only (default true when omitted on listing surfaces)."""
+  publicOnly: Boolean
+  """Restrict to conditions tagged with at least one of these."""
+  tags: [String!]
+  """Substring search across `question` / `description`, case-insensitive."""
+  search: String
+  endTime: IntRangeFilter
+}
+
+enum ConditionOrderField {
+  CREATED_AT
+  END_TIME
+  DISPLAY_ORDER
+  OPEN_INTEREST
+}
+
+input ConditionOrder {
+  field: ConditionOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -495,6 +617,21 @@ type Query {
     filter: VaultFilter
     orderBy: VaultOrder
   ): VaultConnection!
+
+  """Look up a single condition by its on-chain CTF condition id."""
+  condition(conditionId: String!): Condition
+
+  """
+  Relay-shaped connection over conditions. Defaults to `END_TIME ASC`
+  (next-to-resolve first), but `CREATED_AT DESC` and `OPEN_INTEREST
+  DESC` are common alternates.
+  """
+  conditions(
+    first: Int = 50
+    after: String
+    filter: ConditionFilter
+    orderBy: ConditionOrder
+  ): ConditionConnection!
 
   """Look up a single trade by its on-chain `tradeHash`."""
   trade(tradeHash: Bytes32!): Trade
