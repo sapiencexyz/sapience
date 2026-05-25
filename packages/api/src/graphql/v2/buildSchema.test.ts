@@ -25,6 +25,46 @@ describe('v2 schema stub', () => {
     expect(fields?._v2Health).toBeDefined();
   });
 
+  it('declares the full v2 root query surface', async () => {
+    const schema = await buildV2Schema();
+    const query = schema.getQueryType()?.getFields() ?? {};
+    const expected = [
+      'account',
+      'accounts',
+      'vault',
+      'vaults',
+      'category',
+      'categories',
+      'forecast',
+      'forecasts',
+      'trade',
+      'trades',
+      'condition',
+      'conditions',
+      'conditionGroup',
+      'conditionGroups',
+      'pickConfiguration',
+      'pickConfigurations',
+      'prediction',
+      'predictions',
+      'position',
+      'positions',
+      'claim',
+      'claims',
+      'close',
+      'closes',
+      'collateralTransfer',
+      'collateralTransfers',
+      'activity',
+      'leaderboard',
+      'protocol',
+      'popularTags',
+    ];
+    for (const name of expected) {
+      expect(query[name], `Query.${name} should be declared`).toBeDefined();
+    }
+  });
+
   it('declares the AddressEntity interface', async () => {
     const schema = await buildV2Schema();
     const iface = schema.getType('AddressEntity');

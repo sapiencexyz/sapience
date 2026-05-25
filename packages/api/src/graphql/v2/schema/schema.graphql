@@ -83,8 +83,8 @@ enum OrderDirection {
 }
 
 """
-Endpoint health probe. Returns a static payload while v2 is under
-construction so clients can verify the route mounts.
+Endpoint health / version probe. Clients can read `schemaVersion` to
+detect when the v2 surface evolves.
 """
 type V2Health {
   status: String!
@@ -1275,10 +1275,7 @@ type Query {
   """
   nodes(ids: [ID!]!): [Node]!
 
-  """
-  Stub health probe. Will be removed once the v2 surface has real
-  entities to query.
-  """
+  """Endpoint health / schema-version probe."""
   _v2Health: V2Health!
 
   """
@@ -1338,6 +1335,9 @@ type Query {
 
   """The protocol singleton — aggregate dashboards over all accounts/conditions."""
   protocol: Protocol!
+
+  """Top 20 most-used tags across public conditions."""
+  popularTags: [String!]!
 
   """
   Interleaved Prediction + Trade activity feed, sorted by timestamp DESC.

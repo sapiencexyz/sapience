@@ -42,6 +42,7 @@ import { ActivityItem } from './Activity';
 import { activity } from './queries/activity';
 import { leaderboard } from './queries/leaderboard';
 import { Protocol, protocol } from './Protocol';
+import { popularTags } from '../../sdl/resolvers/queries/tags';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
@@ -77,7 +78,7 @@ export const resolvers = {
     nodes,
     _v2Health: () => ({
       status: 'ok',
-      schemaVersion: 'v2.0.0-stub',
+      schemaVersion: 'v2.0.0',
     }),
     account,
     accounts,
@@ -108,5 +109,6 @@ export const resolvers = {
     activity,
     leaderboard,
     protocol,
+    popularTags,
   },
 };
