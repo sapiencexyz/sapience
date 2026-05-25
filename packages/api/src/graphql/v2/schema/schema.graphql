@@ -637,6 +637,95 @@ input ConditionGroupOrder {
 }
 
 # -----------------------------------------------
+# PickConfiguration (Phase 8)
+# -----------------------------------------------
+
+"""
+A pick configuration bundles the per-condition picks that make up a
+single prediction. The `pickConfigId` is a deterministic 0x-hash of
+the constituent picks — same picks produce the same pickConfigId.
+"""
+type PickConfiguration implements Node {
+  id: ID!
+  pickConfigId: String!
+
+  chainId: Int!
+  marketAddress: Address!
+
+  predictorToken: Address
+  counterpartyToken: Address
+
+  isLegacy: Boolean!
+
+  resolved: Boolean!
+  resolvedAt: UnixSeconds
+  result: SettlementResult!
+
+  endsAt: UnixSeconds
+
+  totalPredictorCollateral: BigInt!
+  totalCounterpartyCollateral: BigInt!
+  claimedPredictorCollateral: BigInt!
+  claimedCounterpartyCollateral: BigInt!
+
+  picks: [Pick!]!
+}
+
+"""
+A single condition + outcome pair within a PickConfiguration. Not a Node —
+picks are only fetched in the context of their parent configuration.
+"""
+type Pick {
+  conditionId: String!
+  conditionResolverAddress: Address!
+  predictedOutcome: Int!
+  condition: Condition
+}
+
+enum SettlementResult {
+  COUNTERPARTY_WINS
+  PREDICTOR_WINS
+  NON_DECISIVE
+  UNRESOLVED
+}
+
+input SettlementResultFilter {
+  equals: SettlementResult
+  in: [SettlementResult!]
+}
+
+type PickConfigurationEdge {
+  cursor: String!
+  node: PickConfiguration!
+}
+
+type PickConfigurationConnection {
+  edges: [PickConfigurationEdge!]!
+  nodes: [PickConfiguration!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input PickConfigurationFilter {
+  chainId: Int
+  resolved: Boolean
+  result: SettlementResultFilter
+  """Either predictor or counterparty token matches one of these (case-insensitive)."""
+  tokens: [Address!]
+}
+
+enum PickConfigurationOrderField {
+  CREATED_AT
+  ENDS_AT
+  RESOLVED_AT
+}
+
+input PickConfigurationOrder {
+  field: PickConfigurationOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -714,6 +803,20 @@ type Query {
     filter: ConditionGroupFilter
     orderBy: ConditionGroupOrder
   ): ConditionGroupConnection!
+
+  """Look up a single pick configuration by its on-chain `pickConfigId`."""
+  pickConfiguration(pickConfigId: String!): PickConfiguration
+
+  """
+  Relay-shaped connection over pick configurations. Defaults to
+  `CREATED_AT DESC`.
+  """
+  pickConfigurations(
+    first: Int = 50
+    after: String
+    filter: PickConfigurationFilter
+    orderBy: PickConfigurationOrder
+  ): PickConfigurationConnection!
 
   """Look up a single condition by its on-chain CTF condition id."""
   condition(conditionId: String!): Condition

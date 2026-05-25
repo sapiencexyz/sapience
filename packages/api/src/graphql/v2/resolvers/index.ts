@@ -22,6 +22,11 @@ import { Condition } from './Condition';
 import { condition, conditions } from './queries/condition';
 import { ConditionGroup } from './ConditionGroup';
 import { conditionGroup, conditionGroups } from './queries/conditionGroup';
+import { PickConfiguration, Pick } from './PickConfiguration';
+import {
+  pickConfiguration,
+  pickConfigurations,
+} from './queries/pickConfiguration';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
@@ -43,6 +48,8 @@ export const resolvers = {
   Trade,
   Condition,
   ConditionGroup,
+  PickConfiguration,
+  Pick,
   Query: {
     node,
     nodes,
@@ -64,5 +71,7 @@ export const resolvers = {
     conditions,
     conditionGroup,
     conditionGroups,
+    pickConfiguration,
+    pickConfigurations,
   },
 };
