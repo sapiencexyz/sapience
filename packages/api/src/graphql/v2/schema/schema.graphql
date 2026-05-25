@@ -129,6 +129,21 @@ type Account implements Node & AddressEntity {
 
   """Rank of this account on a chosen metric, or null when unranked."""
   rank(metric: LeaderboardMetric!, filter: AccountRankingFilter): AccountRanking
+
+  """Current wUSDe wallet balance at an optional block (defaults to head)."""
+  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
+
+  """
+  Time-bucketed wUSDe wallet balance snapshots. Step size is
+  `intervalSeconds` (default 7d); returns `first + 1` boundaries
+  back from now.
+  """
+  collateralBalanceHistory(
+    chainId: Int!
+    first: Int = 12
+    after: String
+    intervalSeconds: Int
+  ): CollateralBalanceSnapshotConnection!
 }
 
 """
@@ -1202,6 +1217,44 @@ type TimeToResolutionBucket {
   label: String!
   openInterest: BigInt!
   predictionCount: Int!
+}
+
+# -----------------------------------------------
+# CollateralBalance + history (Phase 16)
+# -----------------------------------------------
+
+"""
+Wallet wUSDe collateral balance at a point in time. Not a Node —
+snapshots are derived rather than persistent entities.
+"""
+type CollateralBalance {
+  address: Address!
+  chainId: Int!
+  amount: BigInt!
+  atBlock: Int
+}
+
+"""
+Single time-bucketed wUSDe wallet balance snapshot.
+"""
+type CollateralBalanceSnapshot {
+  address: Address!
+  chainId: Int!
+  amount: BigInt!
+  blockNumber: BigInt!
+  timestamp: DateTimeISO!
+}
+
+type CollateralBalanceSnapshotEdge {
+  cursor: String!
+  node: CollateralBalanceSnapshot!
+}
+
+type CollateralBalanceSnapshotConnection {
+  edges: [CollateralBalanceSnapshotEdge!]!
+  nodes: [CollateralBalanceSnapshot!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
 }
 
 # -----------------------------------------------

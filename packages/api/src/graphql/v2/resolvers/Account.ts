@@ -16,6 +16,10 @@ import { synthesizeAccount } from '../../sdl/resolvers/accountSynthesis';
 import { decodeCursor, encodeCursor } from '../../relay/cursor';
 import { clampTake } from '../../sdl/resolvers/queries/pagination';
 import { accountRank } from './queries/leaderboard';
+import {
+  collateralBalanceField,
+  collateralBalanceHistoryField,
+} from './CollateralBalance';
 
 registerNodeTypeV2({
   type: 'Account',
@@ -65,6 +69,9 @@ export const Account = {
    * inserts; direction is DESC (newest referrals first).
    */
   rank: accountRank,
+
+  collateralBalance: collateralBalanceField,
+  collateralBalanceHistory: collateralBalanceHistoryField,
 
   referrals: async (parent: any, args: any) => {
     if (!parent.id) return emptyAccountConnection();
