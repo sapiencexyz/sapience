@@ -55,7 +55,12 @@ import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
-import { clampSkip, clampTake, offsetFromCursor } from './pagination';
+import {
+  buildConnection,
+  clampSkip,
+  clampTake,
+  offsetFromCursor,
+} from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import { tryFromGlobalId } from '../../../relay/globalId';
 
@@ -1531,3 +1536,215 @@ export const claims: NonNullable<QueryResolvers['claims']> = async (
     refCode: r.refCode ?? null,
   }));
 };
+
+const mapClaimRow = (r: {
+  id: number;
+  chainId: number;
+  marketAddress: string;
+  predictionId: string;
+  holder: string;
+  positionToken: string;
+  tokensBurned: string;
+  collateralPaid: string;
+  redeemedAt: number;
+  txHash: string;
+  refCode: string | null;
+}) => ({
+  id: r.id,
+  chainId: r.chainId,
+  marketAddress: r.marketAddress,
+  predictionId: r.predictionId,
+  holder: r.holder,
+  positionToken: r.positionToken,
+  tokensBurned: r.tokensBurned,
+  collateralPaid: r.collateralPaid,
+  redeemedAt: r.redeemedAt,
+  txHash: r.txHash,
+  refCode: r.refCode ?? null,
+});
+
+const buildClaimsConnectionWhere = (
+  filter?: {
+    chainId?: number | null;
+    holder?: string | null;
+    predictionId?: string | null;
+  } | null
+): Prisma.ClaimWhereInput => {
+  const where: Prisma.ClaimWhereInput = {};
+  if (filter?.chainId != null) where.chainId = filter.chainId;
+  if (filter?.holder) where.holder = filter.holder.toLowerCase();
+  if (filter?.predictionId)
+    where.predictionId = filter.predictionId.toLowerCase();
+  return where;
+};
+
+const buildClaimCursorPredicate = (
+  k: string,
+  cursorId: string,
+  direction: 'asc' | 'desc'
+): Prisma.ClaimWhereInput => {
+  const op = direction === 'desc' ? 'lt' : 'gt';
+  const redeemedAt = Number(k);
+  const id = Number(cursorId);
+  return {
+    OR: [
+      { redeemedAt: { [op]: redeemedAt } },
+      { AND: [{ redeemedAt: { equals: redeemedAt } }, { id: { [op]: id } }] },
+    ],
+  };
+};
+
+export const claimsConnection = (async (
+  _parent: unknown,
+  args: {
+    first?: number | null;
+    after?: string | null;
+    filter?: {
+      chainId?: number | null;
+      holder?: string | null;
+      predictionId?: string | null;
+    } | null;
+    orderBy?: { field?: string | null; direction?: string | null } | null;
+  }
+) => {
+  const first = clampTake(args.first ?? undefined, {
+    defaultTake: 50,
+    maxTake: 100,
+  });
+  const direction =
+    String(args.orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
+  const baseWhere = buildClaimsConnectionWhere(args.filter);
+  const cursor = args.after ? decodeCursor(args.after) : null;
+  const cursorWhere = cursor
+    ? buildClaimCursorPredicate(cursor.k, cursor.id, direction)
+    : null;
+  const where: Prisma.ClaimWhereInput = cursorWhere
+    ? { AND: [baseWhere, cursorWhere] }
+    : baseWhere;
+  const [rows, totalCount] = await Promise.all([
+    prisma.claim.findMany({
+      where,
+      orderBy: [{ redeemedAt: direction }, { id: direction }],
+      take: first + 1,
+    }),
+    prisma.claim.count({ where: baseWhere }),
+  ]);
+  return buildConnection({
+    rows,
+    first,
+    totalCount,
+    getNode: mapClaimRow,
+    getCursor: (row) =>
+      encodeCursor({ k: String(row.redeemedAt), id: String(row.id) }),
+  });
+}) as unknown as NonNullable<QueryResolvers['claimsConnection']>;
+
+const mapCloseRow = (r: {
+  id: number;
+  chainId: number;
+  marketAddress: string;
+  pickConfigId: string;
+  predictorHolder: string;
+  counterpartyHolder: string;
+  predictorTokensBurned: string;
+  counterpartyTokensBurned: string;
+  predictorPayout: string;
+  counterpartyPayout: string;
+  burnedAt: number;
+  txHash: string;
+  refCode: string | null;
+}) => ({
+  id: r.id,
+  chainId: r.chainId,
+  marketAddress: r.marketAddress,
+  pickConfigId: r.pickConfigId,
+  predictorHolder: r.predictorHolder,
+  counterpartyHolder: r.counterpartyHolder,
+  predictorTokensBurned: r.predictorTokensBurned,
+  counterpartyTokensBurned: r.counterpartyTokensBurned,
+  predictorPayout: r.predictorPayout,
+  counterpartyPayout: r.counterpartyPayout,
+  burnedAt: r.burnedAt,
+  txHash: r.txHash,
+  refCode: r.refCode ?? null,
+});
+
+const buildClosesConnectionWhere = (
+  filter?: {
+    address?: string | null;
+    chainId?: number | null;
+    pickConfigId?: string | null;
+  } | null
+): Prisma.CloseWhereInput => {
+  const where: Prisma.CloseWhereInput = {};
+  if (filter?.chainId != null) where.chainId = filter.chainId;
+  if (filter?.pickConfigId) {
+    where.pickConfigId = filter.pickConfigId.toLowerCase();
+  }
+  if (filter?.address) {
+    const addr = filter.address.toLowerCase();
+    where.OR = [{ predictorHolder: addr }, { counterpartyHolder: addr }];
+  }
+  return where;
+};
+
+const buildCloseCursorPredicate = (
+  k: string,
+  cursorId: string,
+  direction: 'asc' | 'desc'
+): Prisma.CloseWhereInput => {
+  const op = direction === 'desc' ? 'lt' : 'gt';
+  const burnedAt = Number(k);
+  const id = Number(cursorId);
+  return {
+    OR: [
+      { burnedAt: { [op]: burnedAt } },
+      { AND: [{ burnedAt: { equals: burnedAt } }, { id: { [op]: id } }] },
+    ],
+  };
+};
+
+export const closesConnection = (async (
+  _parent: unknown,
+  args: {
+    first?: number | null;
+    after?: string | null;
+    filter?: {
+      address?: string | null;
+      chainId?: number | null;
+      pickConfigId?: string | null;
+    } | null;
+    orderBy?: { field?: string | null; direction?: string | null } | null;
+  }
+) => {
+  const first = clampTake(args.first ?? undefined, {
+    defaultTake: 50,
+    maxTake: 100,
+  });
+  const direction =
+    String(args.orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
+  const baseWhere = buildClosesConnectionWhere(args.filter);
+  const cursor = args.after ? decodeCursor(args.after) : null;
+  const cursorWhere = cursor
+    ? buildCloseCursorPredicate(cursor.k, cursor.id, direction)
+    : null;
+  const where: Prisma.CloseWhereInput = cursorWhere
+    ? { AND: [baseWhere, cursorWhere] }
+    : baseWhere;
+  const [rows, totalCount] = await Promise.all([
+    prisma.close.findMany({
+      where,
+      orderBy: [{ burnedAt: direction }, { id: direction }],
+      take: first + 1,
+    }),
+    prisma.close.count({ where: baseWhere }),
+  ]);
+  return buildConnection({
+    rows,
+    first,
+    totalCount,
+    getNode: mapCloseRow,
+    getCursor: (row) =>
+      encodeCursor({ k: String(row.burnedAt), id: String(row.id) }),
+  });
+}) as unknown as NonNullable<QueryResolvers['closesConnection']>;
