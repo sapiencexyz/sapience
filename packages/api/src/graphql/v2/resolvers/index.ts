@@ -41,6 +41,7 @@ import {
 import { ActivityItem } from './Activity';
 import { activity } from './queries/activity';
 import { leaderboard } from './queries/leaderboard';
+import { Protocol, protocol } from './Protocol';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
@@ -70,6 +71,7 @@ export const resolvers = {
   Close,
   CollateralTransfer,
   ActivityItem,
+  Protocol,
   Query: {
     node,
     nodes,
@@ -105,5 +107,6 @@ export const resolvers = {
     collateralTransfers,
     activity,
     leaderboard,
+    protocol,
   },
 };

@@ -1139,6 +1139,72 @@ type AccountRankingConnection {
 }
 
 # -----------------------------------------------
+# Protocol + stats (Phase 15)
+# -----------------------------------------------
+
+"""
+Top-level protocol surface — aggregated cross-account metrics and the
+breakdowns the dashboard renders. Lookup is via `protocol { … }`; no
+arguments needed.
+"""
+type Protocol {
+  stats(filter: ProtocolStatFilter): ProtocolStatConnection!
+  openInterestByCategory: [CategoryOpenInterest!]!
+  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
+}
+
+"""
+Protocol-wide snapshot of cumulative + period metrics. v2 drops the
+vault-scoped fields v1 carried (`vault*`, `periodPnL`) — vault-specific
+stats live on `Vault.stats` in the same shape.
+"""
+type ProtocolStat {
+  timestamp: UnixSeconds!
+  cumulativeVolume: BigInt!
+  cumulativeTradeCount: Int!
+  periodVolume: BigInt!
+  periodTradeCount: Int!
+  openInterest: BigInt!
+  escrowBalance: BigInt!
+}
+
+type ProtocolStatEdge {
+  cursor: String!
+  node: ProtocolStat!
+}
+
+type ProtocolStatConnection {
+  edges: [ProtocolStatEdge!]!
+  nodes: [ProtocolStat!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input ProtocolStatFilter {
+  """Snapshot timestamp window in epoch seconds (inclusive)."""
+  timestamp: IntRangeFilter
+}
+
+"""Open-interest broken down by category."""
+type CategoryOpenInterest {
+  category: Category!
+  openInterest: BigInt!
+}
+
+"""
+Open-interest bucketed by time-to-resolution. Each unsettled prediction
+is bucketed by the latest endTime among its constituent conditions.
+"""
+type TimeToResolutionBucket {
+  """Sort key: 1 = soonest, ascending for further-out buckets."""
+  bucket: Int!
+  """Display label, e.g. ≤1d / 2-7d / 1-2mo."""
+  label: String!
+  openInterest: BigInt!
+  predictionCount: Int!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -1216,6 +1282,9 @@ type Query {
     filter: ConditionGroupFilter
     orderBy: ConditionGroupOrder
   ): ConditionGroupConnection!
+
+  """The protocol singleton — aggregate dashboards over all accounts/conditions."""
+  protocol: Protocol!
 
   """
   Interleaved Prediction + Trade activity feed, sorted by timestamp DESC.
