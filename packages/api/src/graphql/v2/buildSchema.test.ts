@@ -25,6 +25,25 @@ describe('v2 schema stub', () => {
     expect(fields?._v2Health).toBeDefined();
   });
 
+  it('declares the AddressEntity interface', async () => {
+    const schema = await buildV2Schema();
+    const iface = schema.getType('AddressEntity');
+    expect(iface?.astNode?.kind).toBe('InterfaceTypeDefinition');
+  });
+
+  it('declares Account implementing Node & AddressEntity with account / accounts on Query', async () => {
+    const schema = await buildV2Schema();
+    const account = schema.getType('Account');
+    expect(account).toBeDefined();
+    const ifaces = (
+      account as unknown as { getInterfaces: () => { name: string }[] }
+    ).getInterfaces();
+    expect(ifaces.map((i) => i.name).sort()).toEqual(['AddressEntity', 'Node']);
+    const query = schema.getQueryType()?.getFields();
+    expect(query?.account).toBeDefined();
+    expect(query?.accounts).toBeDefined();
+  });
+
   it('declares the Node interface', async () => {
     const schema = await buildV2Schema();
     const node = schema.getType('Node');

@@ -2,26 +2,24 @@
 # Sapience GraphQL API — v2 (Relay-compatible, greenfield).
 #
 # This SDL is the source of truth for the `/v2/graphql` endpoint. v2 is
-# being built incrementally per `../PLAN.md`; this stub is intentionally
-# minimal — enough for the endpoint to mount, respond to introspection,
-# and serve `node(id:)` against an (initially) empty registry.
-#
-# Entity types are added one PR at a time per the phase plan. Adding a
-# type means: defining it here (`implements Node`), registering its
-# loader in `../resolvers/queries/node.ts`, and appending its name to
-# `FROZEN_NODE_TYPES_V2` in `../relay/nodeRegistry.ts`.
+# being built incrementally per `../PLAN.md`; each phase appends entities
+# to this file along with their resolvers and frozen-list entries.
+# -----------------------------------------------
+
+# -----------------------------------------------
+# Foundation: scalars + Node / PageInfo / OrderDirection
 # -----------------------------------------------
 
 """
-0x-prefixed lowercase 20-byte Ethereum address. The same scalar wire
-shape as v1's `Address` — kept identical so the same client decode
-helpers work across endpoints.
+0x-prefixed lowercase 20-byte Ethereum address. Same wire shape as v1's
+`Address` — kept identical so the same client decode helpers work
+across endpoints.
 """
 scalar Address
 
 """
-Integer epoch seconds. Used for on-chain timestamps and any field
-whose source-of-truth granularity is whole seconds.
+Integer epoch seconds. Used for on-chain timestamps and any field whose
+source-of-truth granularity is whole seconds.
 """
 scalar UnixSeconds
 
@@ -46,6 +44,18 @@ display or persistence use.
 """
 interface Node {
   id: ID!
+}
+
+"""
+Anything addressable on-chain. Both wallet-keyed accounts and
+contract-controlled vaults expose an `address` and a Node identity, so
+v2 unifies them under one interface. Address-scoped fields shared by
+both kinds (`stats`, `collateralBalance`, `rank`, …) attach here in the
+phases that introduce them; this stub starts the interface narrow.
+"""
+interface AddressEntity implements Node {
+  id: ID!
+  address: Address!
 }
 
 """
@@ -75,6 +85,91 @@ type V2Health {
   schemaVersion: String!
 }
 
+# -----------------------------------------------
+# Account (Phase 1)
+# -----------------------------------------------
+
+"""
+Address-keyed account record — wallet-level identity. Synthesized for
+addresses that have no User row so every valid address resolves to an
+Account; persistent rows additionally carry referral metadata.
+"""
+type Account implements Node & AddressEntity {
+  id: ID!
+
+  """Canonical lowercase Ethereum wallet address."""
+  address: Address!
+
+  """When this account first appeared in the database. Synthesized accounts return the unix epoch."""
+  createdAt: DateTimeISO!
+
+  """
+  keccak256(utf8(trimmed_lowercase_code)) of the user's referral code,
+  0x-prefixed hex, if they own one.
+  """
+  refCodeHash: String
+
+  """Maximum number of referrals this account's code allows. Default 0."""
+  maxReferrals: Int!
+
+  """The account that referred this one, if any."""
+  referredBy: Account
+
+  """The referral code this account was referred by, if any."""
+  referredByCode: ReferralCode
+
+  """Accounts referred by this account, via its referral code."""
+  referrals(first: Int = 50, after: String): AccountConnection!
+}
+
+"""
+A referral code an account can issue or be referred by. Not a Node —
+referrals are looked up only through `Account.referredByCode`.
+"""
+type ReferralCode {
+  createdAt: DateTimeISO!
+  createdBy: Address!
+  creatorType: String!
+  maxClaims: Int!
+  isActive: Boolean!
+  expiresAt: UnixSeconds
+}
+
+type AccountEdge {
+  cursor: String!
+  node: Account!
+}
+
+type AccountConnection {
+  edges: [AccountEdge!]!
+  nodes: [Account!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Filter input for `accounts`. Intentionally narrow — the only meaningful
+filter dimension for an address-keyed table is substring match against
+the address itself.
+"""
+input AccountFilter {
+  """Substring search against the wallet address (case-insensitive)."""
+  search: String
+}
+
+enum AccountOrderField {
+  CREATED_AT
+}
+
+input AccountOrder {
+  field: AccountOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
+# Query
+# -----------------------------------------------
+
 type Query {
   """
   Relay refetch by opaque global id. Returns `null` when the id is
@@ -94,4 +189,24 @@ type Query {
   entities to query.
   """
   _v2Health: V2Health!
+
+  """
+  Look up a single account by canonical wallet address. Always returns
+  an Account — addresses with no User row are synthesized (`createdAt`
+  is the unix epoch, referral fields are null).
+  """
+  account(address: Address!): Account!
+
+  """
+  Relay-shaped connection over accounts (User-table rows). Single-address
+  lookups should use `account(address:)`, which synthesizes for missing
+  rows; `accounts` is for enumeration / search and only returns persisted
+  rows. Defaults to `CREATED_AT DESC`.
+  """
+  accounts(
+    first: Int = 50
+    after: String
+    filter: AccountFilter
+    orderBy: AccountOrder
+  ): AccountConnection!
 }

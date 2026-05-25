@@ -1,14 +1,15 @@
 /**
  * Resolver map for the v2 schema.
  *
- * Currently stub-only — only the foundation surface (`node`, `nodes`,
- * `_v2Health`) plus the scalar resolvers v2 shares with v1. Each
- * per-entity phase appends to this map alongside the SDL change that
- * introduces the type.
+ * Per-entity field resolvers and their root queries are added here as
+ * each phase lands (see ../PLAN.md). Scalar resolvers are projected
+ * down from the shared v1 scalar map to the narrower set v2 declares.
  */
 
 import { scalarResolvers } from '../../sdl/resolvers/scalars';
 import { node, nodes } from './queries/node';
+import { Account, ReferralCode } from './Account';
+import { account, accounts } from './queries/account';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
@@ -21,6 +22,8 @@ export const resolvers = {
   BigInt,
   DateTimeISO,
   UnixSeconds,
+  Account,
+  ReferralCode,
   Query: {
     node,
     nodes,
@@ -28,5 +31,7 @@ export const resolvers = {
       status: 'ok',
       schemaVersion: 'v2.0.0-stub',
     }),
+    account,
+    accounts,
   },
 };

@@ -90,11 +90,16 @@ describe('v2 nodeRegistry dispatch', () => {
 });
 
 describe('v2 nodeRegistry frozen list', () => {
-  it('starts empty in the stub PR', () => {
-    expect(FROZEN_NODE_TYPES_V2).toEqual([]);
+  it('contains the type names registered by each landed phase', () => {
+    // Append the name of each new Node-implementing type as its phase
+    // lands. Removals require a deprecation cycle — see ./nodeRegistry.ts.
+    expect(FROZEN_NODE_TYPES_V2).toEqual(['Account']);
   });
 
-  it('verifyFrozenNodeTypesV2 passes when registry matches', () => {
-    expect(verifyFrozenNodeTypesV2()).toEqual({ ok: true });
+  it('verifyFrozenNodeTypesV2 reports mismatch against an empty registry', () => {
+    // beforeEach resets the runtime registry; phase modules re-register
+    // via module import in their own test files.
+    const result = verifyFrozenNodeTypesV2();
+    expect(result.ok).toBe(false);
   });
 });
