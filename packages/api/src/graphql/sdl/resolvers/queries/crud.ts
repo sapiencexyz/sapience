@@ -127,9 +127,17 @@ export const categories: NonNullable<QueryResolvers['categories']> = async (
 
 export const condition: NonNullable<QueryResolvers['condition']> = async (
   _parent,
-  { where }
+  { id, where }
 ) => {
-  logDeprecatedHit('condition');
+  if (id != null) {
+    return prisma.condition.findUnique({
+      where: { id: id.toLowerCase() },
+    });
+  }
+  if (where == null) {
+    throw new Error('condition: must pass `id:` or `where:`');
+  }
+  logDeprecatedHit('condition.where');
   return prisma.condition.findUnique({
     where: asPrismaArgs<Prisma.ConditionWhereUniqueInput>(where),
   });

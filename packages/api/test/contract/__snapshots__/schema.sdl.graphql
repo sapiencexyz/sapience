@@ -3081,7 +3081,14 @@ type Query {
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated(reason: "Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement.")
-  collateralBalance(account: Address, address: String @deprecated(reason: "Use `account`."), atBlock: Int, chainId: Int!): CollateralBalance! @deprecated(reason: "Use `collateralBalance(account:, chainId:)`; legacy `address` remains as an argument alias during migration.")
+
+  """
+  Wallet collateral balance — wUSDe holdings for the given account at
+  an optional block (defaults to head). Pass `account:` (Address scalar)
+  going forward; the legacy `address: String` arg remains as an alias
+  during migration.
+  """
+  collateralBalance(account: Address, address: String @deprecated(reason: "Use `account`."), atBlock: Int, chainId: Int!): CollateralBalance!
 
   """
   Cumulative wUSDe collateral balance for an address at `count + 1`
@@ -3138,8 +3145,21 @@ type Query {
   (→ `accounts`) in a subsequent migration.
   """
   accountsConnection(first: Int, after: String, filter: AccountFilter, orderBy: AccountOrder): AccountConnection!
-  condition(where: ConditionWhereUniqueInput!): Condition @deprecated(reason: "Pending flat-id arg flip in the final cleanup PR — single-record `condition(id:)` will replace the Prisma `where:` shape.")
-  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup @deprecated(reason: "Pending flat-id arg flip in the final cleanup PR — single-record `conditionGroup(id:)` will replace the Prisma `where:` shape.")
+
+  """
+  Look up a single condition by its on-chain condition id (the
+  CTF condition id). Pass `id:` going forward; the legacy
+  `where: ConditionWhereUniqueInput` shape remains as an alias during
+  migration.
+  """
+  condition(id: String, where: ConditionWhereUniqueInput): Condition
+
+  """
+  Look up a single condition group by its identifier. Pass `id:` going
+  forward; the legacy `where: ConditionGroupWhereUniqueInput` shape
+  remains as an alias during migration.
+  """
+  conditionGroup(id: String, where: ConditionGroupWhereUniqueInput): ConditionGroup
 
   """
   Deprecated bare-array form. Retained unchanged for the one-release
@@ -3179,7 +3199,7 @@ type Query {
   conditionsConnection(first: Int, after: String, filter: ConditionFilter, orderBy: ConditionOrder): ConditionConnection!
 
   """Look up a single pick configuration by ID"""
-  pickConfiguration(id: String!): PickConfiguration @deprecated(reason: "Unused as a top-level query. Individual configs are reachable via the embedded `pickConfig` field on positions/predictions/trades, or via `pickConfigurationsConnection` for list lookups.")
+  pickConfiguration(id: String!): PickConfiguration
 
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result

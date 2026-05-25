@@ -16,10 +16,21 @@ type Where = Prisma.ConditionGroupWhereInput;
 
 export const conditionGroup: NonNullable<
   QueryResolvers['conditionGroup']
-> = async (_parent, { where }) =>
-  prisma.conditionGroup.findUnique({
+> = async (_parent, { id, where }) => {
+  if (id != null) {
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId)) return null;
+    return prisma.conditionGroup.findUnique({
+      where: { id: numericId },
+    });
+  }
+  if (where == null) {
+    throw new Error('conditionGroup: must pass `id:` or `where:`');
+  }
+  return prisma.conditionGroup.findUnique({
     where: where as unknown as Prisma.ConditionGroupWhereUniqueInput,
   });
+};
 
 // ---------------------------------------------------------------------
 // Relay-shaped `conditionGroups` connection (PR 2)
