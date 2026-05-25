@@ -26,11 +26,7 @@ import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import {
-  registerNodeType,
-  resolveNode,
-  toGlobalId,
-} from '../../../relay/globalId';
+import { registerNodeType } from '../../../relay/globalId';
 import { synthesizeAccount } from '../accountSynthesis';
 import { buildConnection, clampTake } from './pagination';
 
@@ -48,15 +44,6 @@ const categoriesCache = new TtlCache<string, CategoryRow>({
   ttlMs: 60 * 60 * 1000,
 });
 const CATEGORIES_CACHE_KEY = 'categories:v1';
-
-registerNodeType({
-  type: 'Category',
-  loader: async (id) => {
-    const numericId = Number(id);
-    if (!Number.isInteger(numericId)) return null;
-    return prisma.category.findUnique({ where: { id: numericId } });
-  },
-});
 
 registerNodeType({
   type: 'Account',
@@ -147,17 +134,10 @@ export const condition: NonNullable<QueryResolvers['condition']> = async (
   });
 };
 
-export const category = (async (
-  _parent: unknown,
-  { id }: { id: string },
-  ctx: unknown
-) => {
-  const result = await resolveNode(id, ctx);
-  if (result && (result as { __typename?: string }).__typename === 'Category') {
-    return result;
-  }
-  return null;
-}) as unknown as NonNullable<QueryResolvers['category']>;
+export const category = (async (_parent: unknown, { id }: { id: number }) =>
+  prisma.category.findUnique({ where: { id } })) as unknown as NonNullable<
+  QueryResolvers['category']
+>;
 
 export const forecast: NonNullable<QueryResolvers['forecast']> = async (
   _parent,
@@ -436,10 +416,6 @@ export const categoriesConnection = (async (
     rows: rawRows,
     first: cappedTake,
     totalCount,
-    getNode: (row) => ({
-      ...row,
-      id: toGlobalId('Category', row.id),
-    }),
     getCursor: (row) => encodeCursor({ k: row.name, id: String(row.id) }),
   });
 }) as unknown as NonNullable<QueryResolvers['categoriesConnection']>;

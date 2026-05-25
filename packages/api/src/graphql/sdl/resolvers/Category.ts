@@ -10,14 +10,11 @@
  */
 
 import type { CategoryResolvers } from '../__generated__/resolvers';
-import { toGlobalId } from '../../relay/globalId';
 import { loadRelation } from './relationHelpers';
 
 type PrismaCategory = { id: number; [k: string]: unknown };
 
 export const Category: CategoryResolvers = {
-  id: (parent) => toGlobalId('Category', (parent as PrismaCategory).id),
-
   conditions: async (parent, args) =>
     loadRelation(parent as PrismaCategory, 'condition', {
       parentModel: 'category',

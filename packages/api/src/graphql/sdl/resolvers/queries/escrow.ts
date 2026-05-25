@@ -62,7 +62,6 @@ import {
   offsetFromCursor,
 } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { tryFromGlobalId } from '../../../relay/globalId';
 
 export type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
@@ -1132,11 +1131,9 @@ const basePositionRowId = (positionNodeId: string): number | null => {
 export const position: NonNullable<QueryResolvers['position']> = (async (
   _parent: unknown,
   { id }: { id: string }
-) => {
-  const parts = tryFromGlobalId(id);
-  if (!parts || parts.type !== 'Position') return null;
-  return resolvePositionNode(parts.id);
-}) as unknown as NonNullable<QueryResolvers['position']>;
+) => resolvePositionNode(id)) as unknown as NonNullable<
+  QueryResolvers['position']
+>;
 
 export const resolvePositionNode = async (
   positionNodeId: string

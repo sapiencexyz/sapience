@@ -425,7 +425,7 @@ input BoolNullableFilter {
   not: NestedBoolNullableFilter
 }
 
-type Category implements Node {
+type Category {
   _count: CategoryCount
   conditionGroups(
     cursor: ConditionGroupWhereUniqueInput
@@ -444,7 +444,7 @@ type Category implements Node {
     where: ConditionWhereInput
   ): [Condition!]!
   createdAt: DateTimeISO!
-  id: ID!
+  id: Int!
   name: String!
   slug: String
 }
@@ -796,8 +796,8 @@ type CollateralBalance {
   balance: String!
 }
 
-type CollateralTransfer implements Node {
-  id: ID!
+type CollateralTransfer {
+  id: Int!
   account: Account!
   chainId: Int!
   collateral: CollateralToken!
@@ -812,7 +812,7 @@ type CollateralTransfer implements Node {
   logIndex: Int!
 }
 
-type Condition implements Node {
+type Condition {
   _count: ConditionCount
   assertionId: String
   assertionTimestamp: UnixSeconds
@@ -831,14 +831,17 @@ type Condition implements Node {
   """
   estimatedPrice: Float
   """
-  Opaque global ID for Relay-style `node(id:)` refetch. Use `conditionId`
-  for the on-chain condition identifier.
+  On-chain condition id (the CTF condition id), returned verbatim as a
+  lowercase hex string.
   """
-  id: ID!
+  id: String!
   """
-  Natural-key condition id (on-chain identifier), returned verbatim.
+  Back-compat alias for `id` — same on-chain condition id. Kept for
+  callers that adopted `conditionId` during the Relay-Node migration
+  window.
   """
   conditionId: String!
+    @deprecated(reason: "Use `id` — same value, dropping the alias.")
   nonDecisive: Boolean!
   openInterest: String!
   optionName: String
@@ -1574,21 +1577,22 @@ type Pick {
 """
 Group of outcome picks forming a combined prediction position, with collateral and settlement tracking
 """
-type PickConfiguration implements Node {
+type PickConfiguration {
   chainId: Int!
   claimedCounterpartyCollateral: String!
   claimedPredictorCollateral: String!
   counterpartyToken: String
   endsAt: UnixSeconds
   """
-  Opaque global ID for Relay-style `node(id:)` refetch. Use `pickConfigId`
-  for the natural pick-configuration identifier.
-  """
-  id: ID!
-  """
   Natural-key pick-configuration id, returned verbatim.
   """
+  id: String!
+  """
+  Back-compat alias for `id` — same value. Kept for callers that
+  adopted `pickConfigId` during the Relay-Node migration window.
+  """
   pickConfigId: String!
+    @deprecated(reason: "Use `id` — same value, dropping the alias.")
   isLegacy: Boolean!
   marketAddress: Address!
   picks: [Pick!]!
@@ -2526,7 +2530,7 @@ underlying Position row may surface as multiple `*Page` items: one
 "open" row carrying remaining cost basis, plus one synthesized "sell"
 row per secondary-market disposal (so PnL realizes incrementally).
 """
-type Position implements Node {
+type Position {
   """
   Number of position tokens still held (decimal string, 18 decimals on
   Sapience). Synthesized sell rows carry `"0"` here — the realized PnL
@@ -2540,15 +2544,16 @@ type Position implements Node {
   """
   holder: String!
   """
-  Opaque global ID for Relay-style `node(id:)` refetch. Use `positionId`
-  for the synthetic position row identifier.
-  """
-  id: ID!
-  """
   Synthetic row id. Open rows use the underlying Position row id
   serialized as a string; synthesized sell rows append `"-sell-<tradeHash>"`.
   """
+  id: String!
+  """
+  Back-compat alias for `id` — same value. Kept for callers that
+  adopted `positionId` during the Relay-Node migration window.
+  """
   positionId: String!
+    @deprecated(reason: "Use `id` — same value, dropping the alias.")
   """
   True if this is the predictor token side; false for counterparty.
   """
@@ -3672,10 +3677,9 @@ type Query {
   forecast(uid: String!): Forecast
 
   """
-  Look up a single category by ID. Accepts either the numeric DB id
-  serialized as a string or the Relay opaque global id.
+  Look up a single category by its integer primary key.
   """
-  category(id: ID!): Category
+  category(id: Int!): Category
   categories(
     cursor: CategoryWhereUniqueInput
     distinct: [CategoryScalarFieldEnum!]
@@ -3825,9 +3829,9 @@ type Query {
   ): CollateralTransferConnection!
 
   """
-  Look up a single collateral transfer by its Relay global id.
+  Look up a single collateral transfer by its integer primary key.
   """
-  collateralTransfer(id: ID!): CollateralTransfer
+  collateralTransfer(id: Int!): CollateralTransfer
   """
   Look up a single account by canonical wallet address. Replacement for
   `user(where:)` — accepts a flat `address: String!` arg instead of the
@@ -4080,12 +4084,10 @@ type Query {
   ): PositionConnection!
 
   """
-  Look up a single position by its Relay global id. The id encodes the
-  underlying Position row id and (for synthesized sell rows) the trade
-  hash that produced them; the same id format is surfaced on
-  `Position.id`.
+  Look up a single position by its synthetic row id (the same value
+  surfaced on `Position.id`).
   """
-  position(id: ID!): Position
+  position(id: String!): Position
 
   """
   Look up a single prediction by its on-chain prediction ID. Pass
