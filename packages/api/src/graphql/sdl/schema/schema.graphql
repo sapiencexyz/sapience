@@ -46,7 +46,7 @@ size of the scored-forecaster set. Named specifically vs the generic
 forecasters; accuracy is lifetime-aggregated (the time-weighted error
 already weights by recency) so there's no window filter.
 """
-type AccountAccuracyRank {
+type AccuracyRank {
   address: Address!
   accuracyScore: Float!
   rank: Int
@@ -161,7 +161,7 @@ type Account implements Node {
     filter: PositionFilter
     orderBy: LegacyPositionOrder
   ): PositionConnection!
-  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
+  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalanceType!
 }
 
 """
@@ -446,7 +446,7 @@ type Category {
   createdAt: DateTimeISO!
   id: Int!
   name: String!
-  slug: String
+  slug: String!
 }
 
 type CategoryCount {
@@ -762,7 +762,7 @@ type CollateralToken {
   chainId: Int!
 }
 
-type CollateralBalanceSnapshot {
+type CollateralBalanceSnapshotType {
   account: Account!
   chainId: Int!
   collateral: CollateralToken!
@@ -786,7 +786,7 @@ type CollateralBalanceSnapshot {
     )
 }
 
-type CollateralBalance {
+type CollateralBalanceType {
   account: Account!
   chainId: Int!
   collateral: CollateralToken!
@@ -796,7 +796,7 @@ type CollateralBalance {
   balance: String!
 }
 
-type CollateralTransfer {
+type CollateralTransferType {
   id: Int!
   account: Account!
   chainId: Int!
@@ -1796,13 +1796,13 @@ Relay-shaped connection over `CollateralTransfer` rows.
 """
 type CollateralTransferConnection {
   edges: [CollateralTransferEdge!]!
-  nodes: [CollateralTransfer!]!
+  nodes: [CollateralTransferType!]!
   pageInfo: PageInfo!
   totalCount: Int!
 }
 
 type CollateralTransferEdge {
-  node: CollateralTransfer!
+  node: CollateralTransferType!
   cursor: String!
 }
 
@@ -3420,7 +3420,7 @@ type Query {
   ranked set, and `totalForecasters` is the size of the scored-forecaster
   set.
   """
-  accountAccuracyRank(address: String!): AccountAccuracyRank!
+  accountAccuracyRank(address: String!): AccuracyRank!
     @deprecated(
       reason: "Use `account(address: $a).rank(metric: ACCURACY)` — returns the same rank + value via the Relay-shaped Account surface."
     )
@@ -3775,7 +3775,7 @@ type Query {
     address: String @deprecated(reason: "Use `account`.")
     atBlock: Int
     chainId: Int!
-  ): CollateralBalance!
+  ): CollateralBalanceType!
   """
   Cumulative wUSDe collateral balance for an address at `count + 1`
   evenly-spaced snapshot boundaries going back from now. The snapshot
@@ -3800,14 +3800,14 @@ type Query {
       @deprecated(
         reason: "Use `intervalSeconds:` — drops the unit-suffix to match the unit-on-scalar convention used elsewhere. When both are supplied, `intervalSeconds` wins."
       )
-  ): [CollateralBalanceSnapshot!]!
+  ): [CollateralBalanceSnapshotType!]!
   collateralTransfers(
     address: String!
     chainId: Int!
     excludeProtocol: Boolean = false
     limit: Int! = 100
     offset: Int! = 0
-  ): [CollateralTransfer!]!
+  ): [CollateralTransferType!]!
     @deprecated(
       reason: "Use `collateralTransfersConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over collateral transfers."
     )
@@ -3831,7 +3831,7 @@ type Query {
   """
   Look up a single collateral transfer by its integer primary key.
   """
-  collateralTransfer(id: Int!): CollateralTransfer
+  collateralTransfer(id: Int!): CollateralTransferType
   """
   Look up a single account by canonical wallet address. Replacement for
   `user(where:)` — accepts a flat `address: String!` arg instead of the
