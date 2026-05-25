@@ -104,6 +104,8 @@ describe('v2 nodeRegistry frozen list', () => {
       'PickConfiguration',
       'Prediction',
       'Position',
+      'Claim',
+      'Close',
     ]);
   });
 

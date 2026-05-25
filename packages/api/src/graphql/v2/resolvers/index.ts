@@ -31,6 +31,8 @@ import { Prediction } from './Prediction';
 import { prediction, predictions } from './queries/prediction';
 import { Position } from './Position';
 import { position, positions } from './queries/position';
+import { Claim, Close } from './ClaimClose';
+import { claim, claims, close, closes } from './queries/claimClose';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
@@ -56,6 +58,8 @@ export const resolvers = {
   Pick,
   Prediction,
   Position,
+  Claim,
+  Close,
   Query: {
     node,
     nodes,
@@ -83,5 +87,9 @@ export const resolvers = {
     predictions,
     position,
     positions,
+    claim,
+    claims,
+    close,
+    closes,
   },
 };

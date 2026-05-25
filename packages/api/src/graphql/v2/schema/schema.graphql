@@ -879,6 +879,106 @@ input PositionOrder {
 }
 
 # -----------------------------------------------
+# Claim + Close (Phase 11)
+# -----------------------------------------------
+
+"""
+Token-redeem event — holder burned position tokens to redeem collateral
+after settlement. Identified by `(chainId, txHash, logIndex)`.
+"""
+type Claim implements Node {
+  id: ID!
+  chainId: Int!
+  marketAddress: Address!
+  predictionId: String!
+  holder: Address!
+  positionToken: Address!
+  tokensBurned: BigInt!
+  collateralPaid: BigInt!
+  redeemedAt: UnixSeconds!
+  txHash: Bytes32!
+  logIndex: Int!
+  refCode: String
+  createdAt: DateTimeISO!
+}
+
+type ClaimEdge {
+  cursor: String!
+  node: Claim!
+}
+
+type ClaimConnection {
+  edges: [ClaimEdge!]!
+  nodes: [Claim!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input ClaimFilter {
+  chainId: Int
+  holder: Address
+  predictionId: String
+}
+
+enum ClaimOrderField {
+  REDEEMED_AT
+}
+
+input ClaimOrder {
+  field: ClaimOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Position-close (burn) event — both sides burn their tokens after the
+pickConfig settles and receive the proportional payout.
+"""
+type Close implements Node {
+  id: ID!
+  chainId: Int!
+  marketAddress: Address!
+  pickConfigId: String!
+  predictorHolder: Address!
+  counterpartyHolder: Address!
+  predictorTokensBurned: BigInt!
+  counterpartyTokensBurned: BigInt!
+  predictorPayout: BigInt!
+  counterpartyPayout: BigInt!
+  burnedAt: UnixSeconds!
+  txHash: Bytes32!
+  refCode: String
+  createdAt: DateTimeISO!
+}
+
+type CloseEdge {
+  cursor: String!
+  node: Close!
+}
+
+type CloseConnection {
+  edges: [CloseEdge!]!
+  nodes: [Close!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input CloseFilter {
+  chainId: Int
+  pickConfigId: String
+  """Restrict to closes where the address is on either side (predictor or counterparty)."""
+  participant: Address
+}
+
+enum CloseOrderField {
+  BURNED_AT
+}
+
+input CloseOrder {
+  field: CloseOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -956,6 +1056,34 @@ type Query {
     filter: ConditionGroupFilter
     orderBy: ConditionGroupOrder
   ): ConditionGroupConnection!
+
+  """Look up a single claim by its globalId-encoded row id."""
+  claim(id: ID!): Claim
+
+  """
+  Relay-shaped connection over claim (redemption) records. Defaults to
+  `REDEEMED_AT DESC`.
+  """
+  claims(
+    first: Int = 50
+    after: String
+    filter: ClaimFilter
+    orderBy: ClaimOrder
+  ): ClaimConnection!
+
+  """Look up a single position-close record by its globalId-encoded row id."""
+  close(id: ID!): Close
+
+  """
+  Relay-shaped connection over position close (burn) records. Defaults
+  to `BURNED_AT DESC`.
+  """
+  closes(
+    first: Int = 50
+    after: String
+    filter: CloseFilter
+    orderBy: CloseOrder
+  ): CloseConnection!
 
   """Look up a single position by its globalId-encoded row id."""
   position(id: ID!): Position
