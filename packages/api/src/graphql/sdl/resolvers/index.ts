@@ -87,8 +87,10 @@ import { users } from './queries/deprecated/crud';
 import {
   claim,
   claims,
+  claimsConnection,
   close,
   closes,
+  closesConnection,
   pickConfiguration,
   pickConfigurationsConnection,
   position,
@@ -169,8 +171,10 @@ export const resolvers: Resolvers = {
     // Escrow (predictions / positions / claims / closes / pick configs)
     claim,
     claims,
+    claimsConnection,
     close,
     closes,
+    closesConnection,
     pickConfiguration,
     pickConfigurations,
     pickConfigurationsConnection,

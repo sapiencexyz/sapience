@@ -12,9 +12,9 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import { collateralToken } from '@sapience/sdk/contracts/addresses';
 import {
-  fromGlobalId,
   registerNodeType,
   toGlobalId,
+  tryFromGlobalId,
 } from '../../../relay/globalId';
 import { synthesizeAccount } from '../accountSynthesis';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
@@ -769,7 +769,9 @@ const findVaultByAddress = (chainId: number, address: string) => {
 };
 
 export const vault = (async (_parent: unknown, { id }: { id: string }) => {
-  const parsed = parseVaultDomainId(fromGlobalId(id).id);
+  const parts = tryFromGlobalId(id);
+  if (!parts) return null;
+  const parsed = parseVaultDomainId(parts.id);
   if (!parsed) return null;
   return findVaultByAddress(parsed.chainId, parsed.address);
 }) as unknown as NonNullable<QueryResolvers['vault']>;
