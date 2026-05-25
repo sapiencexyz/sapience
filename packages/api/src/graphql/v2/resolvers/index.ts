@@ -12,6 +12,8 @@ import { Account, ReferralCode } from './Account';
 import { account, accounts } from './queries/account';
 import { Vault } from './Vault';
 import { vault, vaults } from './queries/vault';
+import { Category } from './Category';
+import { category, categories } from './queries/category';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
@@ -27,6 +29,7 @@ export const resolvers = {
   Account,
   ReferralCode,
   Vault,
+  Category,
   Query: {
     node,
     nodes,
@@ -38,5 +41,7 @@ export const resolvers = {
     accounts,
     vault,
     vaults,
+    category,
+    categories,
   },
 };

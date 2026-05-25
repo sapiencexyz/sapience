@@ -244,6 +244,50 @@ input VaultOrder {
 }
 
 # -----------------------------------------------
+# Category (Phase 3)
+# -----------------------------------------------
+
+"""
+A category groups prediction conditions / condition groups for the
+UI. Backed by the Postgres `Category` table.
+"""
+type Category implements Node {
+  id: ID!
+  """Internal integer primary key; stable per-row, not encoded in opaque ids."""
+  categoryId: Int!
+  name: String!
+  slug: String!
+  createdAt: DateTimeISO!
+}
+
+type CategoryEdge {
+  cursor: String!
+  node: Category!
+}
+
+type CategoryConnection {
+  edges: [CategoryEdge!]!
+  nodes: [Category!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input CategoryFilter {
+  """Case-insensitive substring match against `name`."""
+  search: String
+}
+
+enum CategoryOrderField {
+  NAME
+  CREATED_AT
+}
+
+input CategoryOrder {
+  field: CategoryOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -307,4 +351,17 @@ type Query {
     filter: VaultFilter
     orderBy: VaultOrder
   ): VaultConnection!
+
+  """Look up a single category by its integer primary key."""
+  category(id: Int!): Category
+
+  """
+  Relay-shaped connection over categories. Defaults to `NAME ASC`.
+  """
+  categories(
+    first: Int = 100
+    after: String
+    filter: CategoryFilter
+    orderBy: CategoryOrder
+  ): CategoryConnection!
 }
