@@ -126,7 +126,7 @@ function PositionRow({
 
   // Synthetic sell rows have ids like `${dbId}-sell-${tradeHash}`; the open
   // / parent row is just `${dbId}`.
-  const isSoldRow = position.positionId.includes('-sell-');
+  const isSoldRow = position.id.includes('-sell-');
   const isClosed = !isResolved && BigInt(position.balance) === 0n;
   const realizedPnLFormatted =
     position.realizedPnL != null
@@ -157,7 +157,7 @@ function PositionRow({
   });
 
   const { isLoading: isLoadingClaimable } = useClaimableAmount({
-    pickConfigId: pickConfig?.pickConfigId as `0x${string}`,
+    pickConfigId: pickConfig?.id as `0x${string}`,
     tokenAddress: position.tokenAddress as Address,
     amount: BigInt(position.balance),
     chainId: position.chainId,

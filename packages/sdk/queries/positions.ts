@@ -1,8 +1,37 @@
-// Intentionally empty.
-//
-// The hand-written `LegacyPosition` type that previously lived here was
-// only consumed by ProfileQuickMetrics — and that consumer always
-// received an empty array, so the dependency was effectively dead.
-// Both have been removed alongside the V1 (NFT-based) holdings
-// deprecation. Use `positionsConnection` for V2 holdings.
-export {};
+type PredictedOutcome = {
+  conditionId: string;
+  outcomeYes: boolean;
+  condition?: {
+    id: string;
+    question?: string | null;
+    shortName?: string | null;
+    endTime?: number | null;
+    description?: string | null;
+    settled?: boolean;
+    resolvedToYes?: boolean;
+    resolver?: string | null;
+    category?: {
+      slug: string;
+    } | null;
+  } | null;
+};
+
+export type LegacyPosition = {
+  id: number;
+  chainId: number;
+  marketAddress: string;
+  predictor: string;
+  counterparty: string;
+  predictorNftTokenId: string;
+  counterpartyNftTokenId: string;
+  totalCollateral: string;
+  predictorCollateral?: string | null;
+  counterpartyCollateral?: string | null;
+  refCode?: string | null;
+  status: 'active' | 'settled' | 'consolidated';
+  predictorWon?: boolean | null;
+  mintedAt: number;
+  settledAt?: number | null;
+  endsAt?: number | null;
+  predictions: PredictedOutcome[];
+};

@@ -44,36 +44,27 @@ const client = new ApolloClient({
 const { data } = await client.query({
   query: gql`
     query Questions {
-      questionsConnection(
-        first: 10
-        orderBy: { field: RESOLVES_AT, direction: DESC }
-      ) {
-        nodes {
-          questionType
-          predictionCount
-          condition {
-            id
-            endTime
-          }
-          group {
-            id
-          }
+      questions(take: 10, sortField: endTime, sortDirection: desc) {
+        questionType
+        predictionCount
+        condition {
+          id
+          endTime
         }
-        pageInfo {
-          hasNextPage
-          endCursor
+        group {
+          id
         }
       }
     }
   `,
 });
 
-console.log(data.questionsConnection.nodes);
+console.log(data.questions);
 ```
 
 ## Notes
 
 - The API is currently public; please be considerate and cache when possible.
 - Use `slug` (not `id`) when you need a stable, human-friendly identifier — most ID fields on Sapience entities are `Int!` and shift between environments.
-- Prefer the paginated list queries (`questionsConnection`, `conditionsConnection`, `conditionGroupsConnection`, `categoriesConnection`, `predictionsPage`, `positionsPage`, etc.) for list reads. The `*Connection` fields use cursor pagination (`first`/`after`) and expose `nodes`, `edges`, and `pageInfo` (Relay shape); pass sort via `orderBy: { field: <FIELD>, direction: ASC | DESC }`. The older shipped `*Page` fields use `take`/`skip` with `{ items, hasMore, totalCount }`. The bare-array equivalents (`questions`, `conditions`, …) still respond but are `@deprecated` and will be removed.
-- Some queries are marked `@deprecated` in the schema (`claims`, `closes`, `conditionGroup`, `pickConfiguration`, `tradeCount`, `users`, plus the bare-array list queries listed above). They still respond, but rely on them at your own risk — read the schema before depending on one.
+- Pagination args vary by query. The Prisma-backed list queries (`categories`, `conditions`, `conditionGroups`, etc.) accept `cursor`, `distinct`, `orderBy`, `skip`, `take`, `where`. Curated queries (`questions`, leaderboard queries) take a smaller fixed set — check the sandbox before assuming.
+- Some queries are marked `@deprecated` in the schema (`accountAccuracy`, `accountProfitRank`, `claims`, `closes`, `conditionGroup`, `pickConfiguration`, `protocolVolume`, `tradeCount`, `users`). They still respond, but rely on them at your own risk — read the schema before depending on one.

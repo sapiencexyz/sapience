@@ -1,7 +1,13 @@
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+
+const mockGraphqlRequest = vi.fn();
+
+vi.mock('@sapience/sdk/queries/client/graphqlClient', () => ({
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
+}));
 
 vi.mock('~/hooks/useAdminApi', () => ({
   useAdminApi: () => ({
@@ -36,35 +42,19 @@ const makeRow = (id: number) => ({
   totalPositions: 0,
 });
 
-const okResponse = (body: unknown): Response =>
-  ({
-    ok: true,
-    status: 200,
-    json: async () => body,
-  }) as unknown as Response;
-
-const errResponse = (status: number, body: unknown): Response =>
-  ({
-    ok: false,
-    status,
-    json: async () => body,
-  }) as unknown as Response;
-
-const fetchSpy = vi.fn();
+const page = (
+  items: ReturnType<typeof makeRow>[],
+  nextCursor: number | null
+) => ({ referralCodes: { items, nextCursor } });
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubGlobal('fetch', fetchSpy);
 });
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe('useAdminReferralCodes', () => {
-  it('GETs /referrals/codes and returns items', async () => {
-    fetchSpy.mockResolvedValueOnce(
-      okResponse({ items: [makeRow(2), makeRow(1)] })
+describe('useAdminReferralCodes — pagination', () => {
+  it('returns the single page when nextCursor is null', async () => {
+    mockGraphqlRequest.mockResolvedValueOnce(
+      page([makeRow(1), makeRow(2)], null)
     );
 
     const { useAdminReferralCodes } = await import('../useAdminReferralCodes');
@@ -73,16 +63,20 @@ describe('useAdminReferralCodes', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.data?.map((r) => r.id)).toEqual([2, 1]);
+      expect(result.current.data?.length).toBe(2);
     });
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(fetchSpy).toHaveBeenCalledWith(
-      'https://api.example/referrals/codes'
-    );
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(expect.any(String), {
+      limit: 500,
+      cursor: null,
+    });
   });
 
-  it('surfaces an Error with the server message on a non-2xx response', async () => {
-    fetchSpy.mockResolvedValueOnce(errResponse(500, { message: 'boom' }));
+  it('follows nextCursor across multiple pages and concatenates results', async () => {
+    mockGraphqlRequest
+      .mockResolvedValueOnce(page([makeRow(10), makeRow(9)], 9))
+      .mockResolvedValueOnce(page([makeRow(8), makeRow(7)], 7))
+      .mockResolvedValueOnce(page([makeRow(6)], null));
 
     const { useAdminReferralCodes } = await import('../useAdminReferralCodes');
     const { result } = renderHook(() => useAdminReferralCodes(), {
@@ -90,56 +84,40 @@ describe('useAdminReferralCodes', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.error).toBeInstanceOf(Error);
+      expect(result.current.data?.map((r) => r.id)).toEqual([10, 9, 8, 7, 6]);
     });
-    expect((result.current.error as Error).message).toBe('boom');
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(3);
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(1, expect.any(String), {
+      limit: 500,
+      cursor: null,
+    });
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(2, expect.any(String), {
+      limit: 500,
+      cursor: 9,
+    });
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(3, expect.any(String), {
+      limit: 500,
+      cursor: 7,
+    });
   });
-});
 
-describe('useAdminReferralCodeAnalytics', () => {
-  it('GETs /referrals/codes/:id and returns the analytics payload', async () => {
-    fetchSpy.mockResolvedValueOnce(
-      okResponse({
-        id: 7,
-        claimCount: 2,
-        totalVolume: '500',
-        totalPositions: 3,
-        claimants: [{ address: '0xa', tradingVolume: '300', positionCount: 2 }],
-      })
-    );
+  it('caps at MAX_PAGES so a non-progressing cursor cannot loop forever', async () => {
+    // Server pathologically keeps returning a non-null cursor.
+    mockGraphqlRequest.mockResolvedValue(page([makeRow(1)], 1));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const { useAdminReferralCodeAnalytics } = await import(
-      '../useAdminReferralCodes'
-    );
-    const { result } = renderHook(() => useAdminReferralCodeAnalytics(7), {
+    const { useAdminReferralCodes } = await import('../useAdminReferralCodes');
+    const { result } = renderHook(() => useAdminReferralCodes(), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => {
-      expect(result.current.data?.id).toBe(7);
+      expect(result.current.data).toBeDefined();
     });
-    expect(fetchSpy).toHaveBeenCalledWith(
-      'https://api.example/referrals/codes/7'
-    );
-    expect(result.current.data?.claimants).toEqual([
-      { address: '0xa', tradingVolume: '300', positionCount: 2 },
-    ]);
-  });
-
-  it('is disabled when id is undefined', async () => {
-    const { useAdminReferralCodeAnalytics } = await import(
-      '../useAdminReferralCodes'
-    );
-    const { result } = renderHook(
-      () => useAdminReferralCodeAnalytics(undefined),
-      {
-        wrapper: createWrapper(),
-      }
-    );
-
-    // Give the query a tick to run if it were going to.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(result.current.fetchStatus).toBe('idle');
+    // 50 pages × 1 row each
+    expect(result.current.data?.length).toBe(50);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(50);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('MAX_PAGES'));
+    warn.mockRestore();
   });
 });

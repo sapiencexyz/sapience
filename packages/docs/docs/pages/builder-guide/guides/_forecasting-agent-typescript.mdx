@@ -39,24 +39,21 @@ const CHAIN_ID_ARBITRUM = 42161;
 async function fetchRandomCondition() {
   const nowSec = Math.floor(Date.now() / 1000);
   const query = gql`
-    query Conditions($nowSec: Int!) {
-      conditionsConnection(
-        filter: { visibility: PUBLIC, resolvesAt: { gte: $nowSec } }
-        first: 50
+    query Conditions($nowSec: Int) {
+      conditions(
+        where: { public: { equals: true }, endTime: { gt: $nowSec } }
+        take: 50
       ) {
-        nodes {
-          id
-          question
-          shortName
-          endTime
-        }
+        id
+        question
+        shortName
+        endTime
       }
     }
   `;
-  const { conditionsConnection } = await graphqlRequest<{
-    conditionsConnection: { nodes: any[] };
-  }>(query, { nowSec });
-  const conditions = conditionsConnection.nodes;
+  const { conditions } = await graphqlRequest<{ conditions: any[] }>(query, {
+    nowSec,
+  });
 
   if (conditions.length === 0) {
     throw new Error('No active conditions found');

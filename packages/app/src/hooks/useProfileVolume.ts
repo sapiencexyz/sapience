@@ -1,15 +1,15 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { fetchAccountStatsRank } from '@sapience/sdk/queries';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { formatUnits } from 'viem';
 
-/**
- * Lifetime trading volume in USDe for a profile address. Sourced from
- * `accountStatsRank` (metric is irrelevant — `volume` is populated for any
- * metric since the resolver merges per-address stats once before sorting).
- * Replaces the deprecated `accountTotalVolume` scalar resolver.
- */
+const TRADING_VOLUME_QUERY = /* GraphQL */ `
+  query TradingVolume($address: String!) {
+    accountTotalVolume(address: $address)
+  }
+`;
+
 export function useProfileVolume(address?: string) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['userTradingVolume', address],
@@ -19,10 +19,11 @@ export function useProfileVolume(address?: string) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const rank = await fetchAccountStatsRank({
-        address: (address ?? '').toLowerCase(),
-      });
-      const volumeWei = BigInt(rank.volume || '0');
+      const resp = await graphqlRequest<{
+        accountTotalVolume: string;
+      }>(TRADING_VOLUME_QUERY, { address: address?.toLowerCase() });
+
+      const volumeWei = BigInt(resp?.accountTotalVolume || '0');
       const value = Number(formatUnits(volumeWei, 18));
 
       return {

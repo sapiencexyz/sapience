@@ -51,10 +51,6 @@ import { polygon } from 'viem/chains';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { logSeparator } from '../src/utils/log.js';
 import {
-  fetchResolverConditions,
-  type SettlementCondition,
-} from '../src/settlement/fetchConditions.js';
-import {
   manualConditionResolver,
   conditionalTokensReader,
   normalizeLegacyEntry,
@@ -131,6 +127,20 @@ interface CLIOptions {
   execute: boolean;
   wait: boolean;
   help: boolean;
+}
+
+interface SapienceCondition {
+  id: string;
+  question: string;
+}
+
+interface GraphQLResponse<T> {
+  data?: T;
+  errors?: Array<{ message: string }>;
+}
+
+interface ConditionsQueryResponse {
+  conditions: SapienceCondition[];
 }
 
 interface SettlementCandidate {
@@ -213,6 +223,135 @@ Examples:
   POLYGON_RPC_URL=https://polygon-rpc.com ADMIN_PRIVATE_KEY=0x... \\
     tsx scripts/settle-manual.ts --execute --wait
 `);
+}
+
+// ============ GraphQL Query ============
+
+const CONDITIONS_PAGE_SIZE = 30;
+
+const UNRESOLVED_CONDITIONS_QUERY = `
+query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
+  conditions(
+    where: {
+      AND: [
+        { settled: { equals: false } }
+        { resolver: { equals: $resolver, mode: insensitive } }
+        # Explicit public filter: the conditions resolver defaults to
+        # public = true unless the query already filters on public, which
+        # would silently exclude privated conditions that still have
+        # engagement to settle. Match both values.
+        { OR: [{ public: { equals: true } }, { public: { equals: false } }] }
+        {
+          OR: [
+            { openInterest: { gt: "0" } }
+            { attestations: { some: {} } }
+          ]
+        }
+      ]
+    }
+    orderBy: { endTime: asc }
+    take: $take
+    skip: $skip
+  ) {
+    id
+    question
+  }
+}
+`;
+
+// ============ API Functions ============
+
+async function fetchConditionsPage(
+  apiUrl: string,
+  resolver: string,
+  take: number,
+  skip: number
+): Promise<SapienceCondition[]> {
+  const response = await fetchWithRetry(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      query: UNRESOLVED_CONDITIONS_QUERY,
+      variables: { resolver, take, skip },
+    }),
+  });
+
+  if (!response.ok) {
+    let errorBody = '';
+    try {
+      errorBody = await response.text();
+    } catch {
+      errorBody = '(could not read response body)';
+    }
+    throw new Error(
+      `GraphQL request failed: ${response.status} ${response.statusText}\n` +
+        `URL: ${apiUrl}\n` +
+        `Response: ${errorBody.slice(0, 500)}`
+    );
+  }
+
+  let result: GraphQLResponse<ConditionsQueryResponse>;
+  try {
+    result =
+      (await response.json()) as GraphQLResponse<ConditionsQueryResponse>;
+  } catch {
+    const text = await response
+      .clone()
+      .text()
+      .catch(() => '(could not read body)');
+    throw new Error(
+      `Failed to parse GraphQL response as JSON\n` +
+        `URL: ${apiUrl}\n` +
+        `Response: ${text.slice(0, 500)}`
+    );
+  }
+
+  if (result.errors?.length) {
+    throw new Error(
+      `GraphQL errors: ${result.errors.map((e) => e.message).join('; ')}`
+    );
+  }
+
+  return result.data?.conditions ?? [];
+}
+
+async function fetchUnresolvedConditions(
+  apiUrl: string,
+  resolver: string
+): Promise<SapienceCondition[]> {
+  const allConditions: SapienceCondition[] = [];
+  let skip = 0;
+
+  console.log(`Fetching unresolved conditions from ${apiUrl}...`);
+
+  while (true) {
+    const page = await fetchConditionsPage(
+      apiUrl,
+      resolver,
+      CONDITIONS_PAGE_SIZE + 1,
+      skip
+    );
+
+    const hasMore = page.length > CONDITIONS_PAGE_SIZE;
+    const pageConditions = hasMore ? page.slice(0, CONDITIONS_PAGE_SIZE) : page;
+
+    allConditions.push(...pageConditions);
+
+    if (pageConditions.length > 0) {
+      console.log(`  Fetched ${allConditions.length} conditions so far...`);
+    }
+
+    if (!hasMore) break;
+
+    skip += CONDITIONS_PAGE_SIZE;
+  }
+
+  console.log(`Found ${allConditions.length} unresolved conditions`);
+
+  return allConditions;
 }
 
 // ============ Polymarket API Fallback ============
@@ -378,7 +517,7 @@ async function processResolver(
     errors: 0,
   };
 
-  const conditions: SettlementCondition[] = await fetchResolverConditions(
+  const conditions = await fetchUnresolvedConditions(
     sapienceApiUrl,
     resolverAddress
   );
