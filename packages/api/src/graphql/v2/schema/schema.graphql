@@ -364,6 +364,74 @@ input ForecastOrder {
 }
 
 # -----------------------------------------------
+# Trade (Phase 5)
+# -----------------------------------------------
+
+"""
+Secondary-market trade — a peer-to-peer transfer of position tokens.
+Identified by its canonical on-chain `tradeHash`. v2 wire shape uses
+typed scalars throughout (`Address`, `Bytes32`, `BigInt`) where v1
+returned plain `String!`.
+"""
+type Trade implements Node {
+  id: ID!
+  tradeHash: Bytes32!
+  chainId: Int!
+  buyer: Address!
+  seller: Address!
+  """Position token being transferred."""
+  token: Address!
+  """Collateral asset paid by the buyer."""
+  collateral: Address!
+  """Total collateral paid by the buyer, wei. `price / tokenAmount` is the per-share price."""
+  price: BigInt!
+  """Quantity of position tokens transferred, wei (18-dec)."""
+  tokenAmount: BigInt!
+  txHash: Bytes32!
+  blockNumber: Int!
+  executedAt: UnixSeconds!
+  refCode: String
+}
+
+type TradeEdge {
+  cursor: String!
+  node: Trade!
+}
+
+type TradeConnection {
+  edges: [TradeEdge!]!
+  nodes: [Trade!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input TradeFilter {
+  tradeHash: Bytes32
+  """
+  Restrict to trades where the address is on either side (buyer or seller).
+  Convenience filter for per-account activity feeds; mutually exclusive
+  with `buyer` / `seller` (passing both wins toward `participant`).
+  """
+  participant: Address
+  buyer: Address
+  seller: Address
+  token: Address
+  tokens: [Address!]
+  chainId: Int
+  executedAt: IntRangeFilter
+}
+
+enum TradeOrderField {
+  EXECUTED_AT
+  BLOCK_NUMBER
+}
+
+input TradeOrder {
+  field: TradeOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -427,6 +495,20 @@ type Query {
     filter: VaultFilter
     orderBy: VaultOrder
   ): VaultConnection!
+
+  """Look up a single trade by its on-chain `tradeHash`."""
+  trade(tradeHash: Bytes32!): Trade
+
+  """
+  Relay-shaped connection over secondary-market trades. Defaults to
+  `EXECUTED_AT DESC`.
+  """
+  trades(
+    first: Int = 50
+    after: String
+    filter: TradeFilter
+    orderBy: TradeOrder
+  ): TradeConnection!
 
   """Look up a single forecast by its on-chain `uid`."""
   forecast(uid: Bytes32!): Forecast

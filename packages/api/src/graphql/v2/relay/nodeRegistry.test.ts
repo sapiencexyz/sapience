@@ -98,6 +98,7 @@ describe('v2 nodeRegistry frozen list', () => {
       'Vault',
       'Category',
       'Forecast',
+      'Trade',
     ]);
   });
 

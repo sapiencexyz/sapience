@@ -53,6 +53,7 @@ export const FROZEN_NODE_TYPES_V2: readonly string[] = [
   'Vault',
   'Category',
   'Forecast',
+  'Trade',
 ];
 
 const SEPARATOR = ':';
