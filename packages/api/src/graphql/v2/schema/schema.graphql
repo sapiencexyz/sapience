@@ -36,6 +36,12 @@ collateral / balance / payout amounts in wei (18-decimal wUSDe).
 scalar BigInt
 
 """
+0x-prefixed lowercase 32-byte hex value. Used for transaction hashes,
+EAS UIDs, and other 32-byte on-chain identifiers.
+"""
+scalar Bytes32
+
+"""
 Relay `Node` interface — every persistent entity in v2 implements it.
 The `id` is an opaque base64url-encoded `(TypeName, domainId)` pair;
 clients should treat it as a refetch handle and read the entity's named
@@ -288,6 +294,76 @@ input CategoryOrder {
 }
 
 # -----------------------------------------------
+# Forecast (Phase 4)
+# -----------------------------------------------
+
+"""
+EAS attestation-backed forecast made by `forecaster` against `resolverAddress`.
+Identified by its on-chain `uid`. Wire shape drops the leaked Prisma column
+names (`attester`, `time`) in favour of the public-API names (`forecaster`,
+`attestedAt`); the raw on-chain value is renamed `forecastValue` to avoid
+the type-vs-field naming collision v1 had.
+"""
+type Forecast implements Node {
+  id: ID!
+  uid: Bytes32!
+  schemaId: Bytes32!
+  forecaster: Address!
+  recipient: Address!
+  resolverAddress: Address
+  """CTF condition id this forecast targets, lowercase 0x-hex. May be null for non-condition-backed forecasts."""
+  conditionId: String
+  """
+  Raw on-chain forecast value — D18 fixed-point probability in
+  `[0, 1e18]`. Divide by 1e18 to render as a 0–1 float.
+  """
+  forecastValue: BigInt!
+  comment: String
+  attestedAt: UnixSeconds!
+  blockNumber: Int!
+  transactionHash: Bytes32!
+  createdAt: DateTimeISO!
+}
+
+type ForecastEdge {
+  cursor: String!
+  node: Forecast!
+}
+
+type ForecastConnection {
+  edges: [ForecastEdge!]!
+  nodes: [Forecast!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Range filter for an integer/UnixSeconds field; both bounds inclusive."""
+input IntRangeFilter {
+  gte: Int
+  lte: Int
+}
+
+input ForecastFilter {
+  uid: Bytes32
+  forecaster: Address
+  recipient: Address
+  conditionId: String
+  conditionIds: [String!]
+  schemaId: Bytes32
+  attestedAt: IntRangeFilter
+}
+
+enum ForecastOrderField {
+  ATTESTED_AT
+  CREATED_AT
+}
+
+input ForecastOrder {
+  field: ForecastOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -351,6 +427,20 @@ type Query {
     filter: VaultFilter
     orderBy: VaultOrder
   ): VaultConnection!
+
+  """Look up a single forecast by its on-chain `uid`."""
+  forecast(uid: Bytes32!): Forecast
+
+  """
+  Relay-shaped connection over EAS-backed forecasts. Defaults to
+  `ATTESTED_AT DESC`.
+  """
+  forecasts(
+    first: Int = 50
+    after: String
+    filter: ForecastFilter
+    orderBy: ForecastOrder
+  ): ForecastConnection!
 
   """Look up a single category by its integer primary key."""
   category(id: Int!): Category

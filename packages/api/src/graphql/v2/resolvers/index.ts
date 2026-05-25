@@ -14,22 +14,26 @@ import { Vault } from './Vault';
 import { vault, vaults } from './queries/vault';
 import { Category } from './Category';
 import { category, categories } from './queries/category';
+import { Forecast } from './Forecast';
+import { forecast, forecasts } from './queries/forecast';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
 // types the schema doesn't define, and v2 starts with a narrower scalar
 // set than v1.
-const { Address, BigInt, DateTimeISO, UnixSeconds } = scalarResolvers;
+const { Address, BigInt, Bytes32, DateTimeISO, UnixSeconds } = scalarResolvers;
 
 export const resolvers = {
   Address,
   BigInt,
+  Bytes32,
   DateTimeISO,
   UnixSeconds,
   Account,
   ReferralCode,
   Vault,
   Category,
+  Forecast,
   Query: {
     node,
     nodes,
@@ -43,5 +47,7 @@ export const resolvers = {
     vaults,
     category,
     categories,
+    forecast,
+    forecasts,
   },
 };

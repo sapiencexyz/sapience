@@ -93,7 +93,12 @@ describe('v2 nodeRegistry frozen list', () => {
   it('contains the type names registered by each landed phase', () => {
     // Append the name of each new Node-implementing type as its phase
     // lands. Removals require a deprecation cycle — see ./nodeRegistry.ts.
-    expect(FROZEN_NODE_TYPES_V2).toEqual(['Account', 'Vault', 'Category']);
+    expect(FROZEN_NODE_TYPES_V2).toEqual([
+      'Account',
+      'Vault',
+      'Category',
+      'Forecast',
+    ]);
   });
 
   it('verifyFrozenNodeTypesV2 reports mismatch against an empty registry', () => {
