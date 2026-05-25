@@ -103,6 +103,7 @@ describe('v2 nodeRegistry frozen list', () => {
       'ConditionGroup',
       'PickConfiguration',
       'Prediction',
+      'Position',
     ]);
   });
 

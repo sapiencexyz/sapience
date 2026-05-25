@@ -58,6 +58,7 @@ export const FROZEN_NODE_TYPES_V2: readonly string[] = [
   'ConditionGroup',
   'PickConfiguration',
   'Prediction',
+  'Position',
 ];
 
 const SEPARATOR = ':';

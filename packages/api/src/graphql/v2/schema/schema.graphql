@@ -815,6 +815,70 @@ input PredictionOrder {
 }
 
 # -----------------------------------------------
+# Position (Phase 10)
+# -----------------------------------------------
+
+"""
+Position-token balance held by `holder` on a specific pick configuration.
+The synthesized sell-event row format from v1 doesn't carry forward; v2
+returns raw balance rows. Cost-basis / realized-PnL surfaces will land
+behind opt-in fields in a later phase.
+"""
+type Position implements Node {
+  id: ID!
+  chainId: Int!
+  holder: Address!
+  pickConfigId: String!
+  pickConfig: PickConfiguration
+
+  """ERC-20 position token address."""
+  tokenAddress: Address!
+  """True if this is the predictor token side; false for counterparty."""
+  isPredictorToken: Boolean!
+
+  """Number of position tokens still held, wei (18 decimals)."""
+  balance: BigInt!
+
+  createdAt: DateTimeISO!
+  updatedAt: DateTimeISO!
+}
+
+type PositionEdge {
+  cursor: String!
+  node: Position!
+}
+
+type PositionConnection {
+  edges: [PositionEdge!]!
+  nodes: [Position!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input PositionFilter {
+  holder: Address
+  chainId: Int
+  conditionId: String
+  pickConfigId: String
+  """Restrict to positions whose pickConfig settled with this result."""
+  result: SettlementResultFilter
+  """Restrict to positions where the pickConfig is settled / unsettled."""
+  settled: Boolean
+  """Filter by pickConfig end epoch seconds."""
+  endsAt: IntRangeFilter
+}
+
+enum PositionOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+
+input PositionOrder {
+  field: PositionOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -892,6 +956,20 @@ type Query {
     filter: ConditionGroupFilter
     orderBy: ConditionGroupOrder
   ): ConditionGroupConnection!
+
+  """Look up a single position by its globalId-encoded row id."""
+  position(id: ID!): Position
+
+  """
+  Relay-shaped connection over token positions. Defaults to
+  `UPDATED_AT DESC`.
+  """
+  positions(
+    first: Int = 50
+    after: String
+    filter: PositionFilter
+    orderBy: PositionOrder
+  ): PositionConnection!
 
   """Look up a single prediction by its on-chain `predictionId`."""
   prediction(predictionId: String!): Prediction
