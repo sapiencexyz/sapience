@@ -726,6 +726,95 @@ input PickConfigurationOrder {
 }
 
 # -----------------------------------------------
+# Prediction (Phase 9)
+# -----------------------------------------------
+
+"""
+Escrow-based prediction — a two-sided bet between a predictor and a
+counterparty, settled by the pick configuration's underlying condition(s).
+Identified by its on-chain `predictionId`.
+"""
+type Prediction implements Node {
+  id: ID!
+  predictionId: String!
+
+  chainId: Int!
+  marketAddress: Address!
+
+  predictor: Address!
+  counterparty: Address!
+
+  predictorToken: Address!
+  counterpartyToken: Address!
+
+  predictorCollateral: BigInt!
+  counterpartyCollateral: BigInt!
+
+  collateralDeposited: BigInt
+  collateralDepositedAt: UnixSeconds
+
+  settled: Boolean!
+  settledAt: UnixSeconds
+  result: SettlementResult!
+
+  predictorClaimable: BigInt
+  counterpartyClaimable: BigInt
+
+  createdAt: DateTimeISO!
+  createTxHash: Bytes32!
+  settleTxHash: Bytes32
+
+  refCode: String
+  isLegacy: Boolean!
+
+  pickConfig: PickConfiguration
+}
+
+type PredictionEdge {
+  cursor: String!
+  node: Prediction!
+}
+
+type PredictionConnection {
+  edges: [PredictionEdge!]!
+  nodes: [Prediction!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input PredictionFilter {
+  predictionId: String
+  """
+  Restrict to predictions where the address is predictor or counterparty.
+  Convenience filter; mutually exclusive with `predictor` / `counterparty`.
+  """
+  participant: Address
+  predictor: Address
+  counterparty: Address
+  chainId: Int
+  pickConfigId: String
+  """Restrict to predictions on a single condition (via the pickConfig join)."""
+  conditionId: String
+  """Restrict to predictions on any of these conditions (via the pickConfig join)."""
+  conditionIds: [String!]
+  isLegacy: Boolean
+  settled: Boolean
+  result: SettlementResultFilter
+  """Filter by pickConfig end epoch seconds."""
+  endsAt: IntRangeFilter
+}
+
+enum PredictionOrderField {
+  CREATED_AT
+  SETTLED_AT
+}
+
+input PredictionOrder {
+  field: PredictionOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -803,6 +892,20 @@ type Query {
     filter: ConditionGroupFilter
     orderBy: ConditionGroupOrder
   ): ConditionGroupConnection!
+
+  """Look up a single prediction by its on-chain `predictionId`."""
+  prediction(predictionId: String!): Prediction
+
+  """
+  Relay-shaped connection over escrow predictions. Defaults to
+  `CREATED_AT DESC`.
+  """
+  predictions(
+    first: Int = 50
+    after: String
+    filter: PredictionFilter
+    orderBy: PredictionOrder
+  ): PredictionConnection!
 
   """Look up a single pick configuration by its on-chain `pickConfigId`."""
   pickConfiguration(pickConfigId: String!): PickConfiguration
