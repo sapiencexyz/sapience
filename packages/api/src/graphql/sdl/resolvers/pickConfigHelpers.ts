@@ -51,31 +51,29 @@ export type PicksWithPicks = {
 export const mapPickConfig = (
   pc: PicksWithPicks,
   extra?: { predictionId?: string | null }
-): PickConfigurationParent =>
-  ({
-    id: pc.id,
-    pickConfigId: pc.id,
-    chainId: pc.chainId,
-    marketAddress: pc.marketAddress,
-    totalPredictorCollateral: pc.totalPredictorCollateral,
-    totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
-    claimedPredictorCollateral: pc.claimedPredictorCollateral,
-    claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
-    resolved: pc.resolved,
-    // SDL exposes `result` as a `SettlementResult!` enum — codegen types
-    // it as the enum union, while Prisma hands us the raw string.
-    result: pc.result as PickConfiguration['result'],
-    resolvedAt: pc.resolvedAt ?? null,
-    predictorToken: pc.predictorToken ?? null,
-    counterpartyToken: pc.counterpartyToken ?? null,
-    endsAt: pc.endsAt ?? null,
-    isLegacy: pc.isLegacy,
-    picks: pc.picks.map((p) => ({
-      id: p.id,
-      pickConfigId: p.pickConfigId,
-      conditionResolver: p.conditionResolver,
-      conditionId: p.conditionId,
-      predictedOutcome: p.predictedOutcome,
-    })),
-    predictionId: extra?.predictionId ?? null,
-  }) as PickConfigurationParent;
+): PickConfigurationParent => ({
+  id: pc.id,
+  chainId: pc.chainId,
+  marketAddress: pc.marketAddress,
+  totalPredictorCollateral: pc.totalPredictorCollateral,
+  totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
+  claimedPredictorCollateral: pc.claimedPredictorCollateral,
+  claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
+  resolved: pc.resolved,
+  // SDL exposes `result` as a `SettlementResult!` enum — codegen types
+  // it as the enum union, while Prisma hands us the raw string.
+  result: pc.result as PickConfiguration['result'],
+  resolvedAt: pc.resolvedAt ?? null,
+  predictorToken: pc.predictorToken ?? null,
+  counterpartyToken: pc.counterpartyToken ?? null,
+  endsAt: pc.endsAt ?? null,
+  isLegacy: pc.isLegacy,
+  picks: pc.picks.map((p) => ({
+    id: p.id,
+    pickConfigId: p.pickConfigId,
+    conditionResolver: p.conditionResolver,
+    conditionId: p.conditionId,
+    predictedOutcome: p.predictedOutcome,
+  })),
+  predictionId: extra?.predictionId ?? null,
+});

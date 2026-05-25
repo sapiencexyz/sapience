@@ -30,17 +30,13 @@ const stabilizeLiveCandle = (data: unknown): unknown => {
   if (
     typeof data !== 'object' ||
     data === null ||
-    !('protocol' in data) ||
-    !Array.isArray(
-      (data as { protocol: { stats?: { nodes?: unknown } } }).protocol?.stats
-        ?.nodes
-    )
+    !('protocolStats' in data) ||
+    !Array.isArray((data as { protocolStats: unknown }).protocolStats)
   ) {
     return data;
   }
-  const stats = (data as {
-    protocol: { stats: { nodes: Record<string, unknown>[] } };
-  }).protocol.stats.nodes;
+  const stats = (data as { protocolStats: Record<string, unknown>[] })
+    .protocolStats;
   if (stats.length === 0) return data;
   // The resolver always appends the live candle as the last entry when RPC
   // succeeds. Replace its volatile fields with sentinels.
@@ -53,14 +49,7 @@ const stabilizeLiveCandle = (data: unknown): unknown => {
   }
   return {
     ...(data as Record<string, unknown>),
-    protocol: {
-      ...(data as { protocol: Record<string, unknown> }).protocol,
-      stats: {
-        ...(data as { protocol: { stats: Record<string, unknown> } }).protocol
-          .stats,
-        nodes: [...stats.slice(0, -1), stabilized],
-      },
-    },
+    protocolStats: [...stats.slice(0, -1), stabilized],
   };
 };
 

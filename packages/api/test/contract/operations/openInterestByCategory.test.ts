@@ -4,12 +4,10 @@ import { executeOperation } from '../../helpers/testApollo';
 import { stabilize } from '../../helpers/stableSerializer';
 
 interface OpenInterestByCategoryResult {
-  protocol: {
-    openInterestByCategory: Array<{
-      category: { id: string; name: string; slug: string };
-      openInterest: string;
-    }>;
-  };
+  openInterestByCategory: Array<{
+    category: { id: number; name: string; slug: string };
+    openInterest: string;
+  }>;
 }
 
 // The contract fixture's data lives on chain 13374202 (Ethereal Testnet),
@@ -37,12 +35,12 @@ describe('OpenInterestByCategory query', () => {
       GET_OPEN_INTEREST_BY_CATEGORY
     );
     expect(result.errors).toBeUndefined();
-    const rows = result.data?.protocol?.openInterestByCategory ?? [];
+    const rows = result.data?.openInterestByCategory ?? [];
 
     for (const row of rows) {
       expect(row.openInterest).toMatch(/^\d+$/);
       expect(BigInt(row.openInterest)).toBeGreaterThan(0n);
-      expect(row.category.id).toBeTypeOf('string');
+      expect(row.category.id).toBeTypeOf('number');
       expect(row.category.name).toBeTypeOf('string');
       expect(row.category.slug).toBeTypeOf('string');
     }

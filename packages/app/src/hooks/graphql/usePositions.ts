@@ -41,7 +41,6 @@ export type Prediction = {
  *  without a follow-up query. */
 export type PickConditionData = {
   id: string;
-  conditionId: string;
   shortName?: string | null;
   optionName?: string | null;
   question?: string | null;
@@ -68,7 +67,6 @@ export type PickData = {
 /** Pick Configuration data */
 export type PickConfigData = {
   id: string;
-  pickConfigId: string;
   chainId: number;
   marketAddress: string;
   totalPredictorCollateral: string;
@@ -101,7 +99,6 @@ export type PositionBalancePage = {
  */
 export type PositionBalance = {
   id: string;
-  positionId: string;
   chainId: number;
   tokenAddress: string;
   pickConfigId: string;
@@ -124,8 +121,7 @@ export type PositionBalance = {
 // resolvers.
 const PICK_CONDITION_FRAGMENT = `
   condition {
-    id: conditionId
-    conditionId
+    id
     shortName
     optionName
     question
@@ -144,8 +140,7 @@ const PICK_CONDITION_FRAGMENT = `
 
 const PICK_CONFIG_FRAGMENT = `
   pickConfig {
-    id: pickConfigId
-    pickConfigId
+    id
     chainId
     marketAddress
     totalPredictorCollateral
@@ -172,32 +167,40 @@ const PICK_CONFIG_FRAGMENT = `
 `;
 
 const PREDICTIONS_QUERY = /* GraphQL */ `
-  query Predictions($filter: PredictionFilter, $first: Int) {
-    predictionsConnection(filter: $filter, first: $first) {
-      nodes {
-        id
-        predictionId
-        chainId
-        marketAddress
-        predictor
-        counterparty
-        predictorToken
-        counterpartyToken
-        predictorCollateral
-        counterpartyCollateral
-        collateralDeposited
-        collateralDepositedAt
-        settled
-        settledAt
-        settleTxHash
-        result
-        predictorClaimable
-        counterpartyClaimable
-        createTxHash
-        createdAt
-        refCode
-        ${PICK_CONFIG_FRAGMENT}
-      }
+  query Predictions(
+    $address: String!
+    $chainId: Int
+    $take: Int
+    $skip: Int
+  ) {
+    predictions(
+      address: $address
+      chainId: $chainId
+      take: $take
+      skip: $skip
+    ) {
+      id
+      predictionId
+      chainId
+      marketAddress
+      predictor
+      counterparty
+      predictorToken
+      counterpartyToken
+      predictorCollateral
+      counterpartyCollateral
+      collateralDeposited
+      collateralDepositedAt
+      settled
+      settledAt
+      settleTxHash
+      result
+      predictorClaimable
+      counterpartyClaimable
+      createTxHash
+      createdAt
+      refCode
+      ${PICK_CONFIG_FRAGMENT}
     }
   }
 `;
@@ -206,26 +209,23 @@ const PREDICTIONS_QUERY = /* GraphQL */ `
 // reads. Keeps server-side query complexity under the 15k limit at take=100;
 // the full PICK_CONFIG_FRAGMENT (with embedded conditions) blew past it.
 const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
-  query PredictionsByCondition($filter: PredictionFilter, $first: Int) {
-    predictionsConnection(filter: $filter, first: $first) {
-      nodes {
+  query PredictionsByCondition($conditionId: String!, $take: Int, $skip: Int) {
+    predictions(conditionId: $conditionId, take: $take, skip: $skip) {
+      id
+      predictionId
+      marketAddress
+      predictor
+      counterparty
+      predictorCollateral
+      counterpartyCollateral
+      collateralDepositedAt
+      createdAt
+      pickConfig {
         id
-        predictionId
-        marketAddress
-        predictor
-        counterparty
-        predictorCollateral
-        counterpartyCollateral
-        collateralDepositedAt
-        createdAt
-        pickConfig {
-          id: pickConfigId
-          pickConfigId
-          picks {
-            conditionId
-            conditionResolver
-            predictedOutcome
-          }
+        picks {
+          conditionId
+          conditionResolver
+          predictedOutcome
         }
       }
     }
@@ -233,16 +233,14 @@ const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
 `;
 
 const PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
-  query PredictionsCount($filter: PredictionFilter) {
-    predictionsConnection(filter: $filter, first: 1) {
-      totalCount
-    }
+  query PredictionsCount($address: String!, $chainId: Int) {
+    predictionCount(address: $address, chainId: $chainId)
   }
 `;
 
 const PREDICTION_QUERY = /* GraphQL */ `
-  query Prediction($predictionId: String!) {
-    prediction(predictionId: $predictionId) {
+  query Prediction($id: String!) {
+    prediction(id: $id) {
       id
       predictionId
       chainId
@@ -274,14 +272,23 @@ const PREDICTION_QUERY = /* GraphQL */ `
 // positions with no sells), so the client-side `lastPage.length === 0`
 // stop signal is unsafe — use the response's `hasMore` flag instead.
 const POSITION_BALANCES_QUERY = /* GraphQL */ `
-  query Positions($filter: PositionFilter, $first: Int, $after: String) {
-    positionsConnection(filter: $filter, first: $first, after: $after) {
-      pageInfo {
-        hasNextPage
-      }
-      nodes {
+  query Positions(
+    $holder: String!
+    $chainId: Int
+    $settled: Boolean
+    $take: Int
+    $skip: Int
+  ) {
+    positionsPage(
+      holder: $holder
+      chainId: $chainId
+      settled: $settled
+      take: $take
+      skip: $skip
+    ) {
+      hasMore
+      items {
         id
-        positionId
         chainId
         tokenAddress
         pickConfigId
@@ -301,17 +308,20 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
 
 const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
   query PositionsByCondition(
-    $filter: PositionFilter
-    $first: Int
-    $after: String
+    $conditionId: String!
+    $take: Int
+    $skip: Int
+    $settled: Boolean
   ) {
-    positionsConnection(filter: $filter, first: $first, after: $after) {
-      pageInfo {
-        hasNextPage
-      }
-      nodes {
+    positionsPage(
+      conditionId: $conditionId
+      take: $take
+      skip: $skip
+      settled: $settled
+    ) {
+      hasMore
+      items {
         id
-        positionId
         chainId
         tokenAddress
         pickConfigId
@@ -342,12 +352,11 @@ export function usePredictionsCount(address?: string, chainId?: number) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{
-        predictionsConnection: { totalCount: number | null };
-      }>(PREDICTIONS_COUNT_QUERY, {
-        filter: { address, chainId: chainId ?? null },
-      });
-      return resp?.predictionsConnection?.totalCount ?? 0;
+      const resp = await graphqlRequest<{ predictionCount: number }>(
+        PREDICTIONS_COUNT_QUERY,
+        { address, chainId: chainId ?? null }
+      );
+      return resp?.predictionCount ?? 0;
     },
   });
   return data ?? 0;
@@ -373,13 +382,16 @@ export function usePredictions(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{
-        predictionsConnection: { nodes: Prediction[] };
-      }>(PREDICTIONS_QUERY, {
-        filter: { address, chainId: chainId ?? null },
-        first: take,
-      });
-      return resp?.predictionsConnection?.nodes ?? [];
+      const resp = await graphqlRequest<{ predictions: Prediction[] }>(
+        PREDICTIONS_QUERY,
+        {
+          address,
+          chainId: chainId ?? null,
+          take,
+          skip,
+        }
+      );
+      return resp?.predictions ?? [];
     },
   });
 
@@ -392,11 +404,6 @@ export function usePredictions(params: {
 }
 
 const DEFAULT_POSITIONS_PAGE_SIZE = 15;
-
-const cursorFromSkip = (skip: number): string | null =>
-  skip > 0
-    ? btoa(JSON.stringify({ k: String(skip - 1), id: String(skip - 1) }))
-    : null;
 
 /**
  * Hook to get position balances (ERC20 tokens) for a user, paginated.
@@ -441,23 +448,15 @@ export function usePositionBalances(params: {
       lastPage.hasMore ? allPages.length * pageSize : undefined,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        positionsConnection: {
-          nodes: PositionBalance[];
-          pageInfo: { hasNextPage: boolean };
-        };
+        positionsPage: PositionBalancePage;
       }>(POSITION_BALANCES_QUERY, {
-        filter: {
-          holder,
-          chainId: chainId ?? null,
-          settled: settled ?? null,
-        },
-        first: pageSize,
-        after: cursorFromSkip(pageParam),
+        holder,
+        chainId: chainId ?? null,
+        settled: settled ?? null,
+        take: pageSize,
+        skip: pageParam,
       });
-      return {
-        items: resp?.positionsConnection?.nodes ?? [],
-        hasMore: resp?.positionsConnection?.pageInfo?.hasNextPage ?? false,
-      };
+      return resp?.positionsPage ?? { items: [], hasMore: false };
     },
   });
 
@@ -518,19 +517,14 @@ export function usePositionBalancesByConditionId(params: {
       lastPage.hasMore ? allPages.length * pageSize : undefined,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        positionsConnection: {
-          nodes: PositionBalance[];
-          pageInfo: { hasNextPage: boolean };
-        };
+        positionsPage: PositionBalancePage;
       }>(POSITION_BALANCES_BY_CONDITION_QUERY, {
-        filter: { conditionId, settled: settled ?? null },
-        first: pageSize,
-        after: cursorFromSkip(pageParam),
+        conditionId,
+        take: pageSize,
+        skip: pageParam,
+        settled: settled ?? null,
       });
-      return {
-        items: resp?.positionsConnection?.nodes ?? [],
-        hasMore: resp?.positionsConnection?.pageInfo?.hasNextPage ?? false,
-      };
+      return resp?.positionsPage ?? { items: [], hasMore: false };
     },
   });
 
@@ -573,13 +567,11 @@ export function usePredictionsByConditionId(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{
-        predictionsConnection: { nodes: Prediction[] };
-      }>(PREDICTIONS_BY_CONDITION_QUERY, {
-        filter: { conditionId },
-        first: take,
-      });
-      return resp?.predictionsConnection?.nodes ?? [];
+      const resp = await graphqlRequest<{ predictions: Prediction[] }>(
+        PREDICTIONS_BY_CONDITION_QUERY,
+        { conditionId, take, skip }
+      );
+      return resp?.predictions ?? [];
     },
   });
 
@@ -607,7 +599,7 @@ export function usePrediction(predictionId?: string) {
     queryFn: async () => {
       const resp = await graphqlRequest<{ prediction: Prediction | null }>(
         PREDICTION_QUERY,
-        { predictionId }
+        { id: predictionId }
       );
       return resp?.prediction ?? null;
     },

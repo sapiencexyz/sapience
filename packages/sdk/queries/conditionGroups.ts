@@ -1,14 +1,7 @@
-import {
-  clampConnectionTake,
-  fetchConnectionPage,
-  fetchConnectionWindow,
-  shouldFetchConnectionWindow,
-  type ConnectionPage,
-} from './connectionPage';
+import { graphqlRequest } from './client/graphqlClient';
 
 export interface ConditionGroupConditionType {
   id: string;
-  conditionId: string;
   createdAt: string;
   question: string;
   shortName?: string | null;
@@ -49,149 +42,173 @@ export interface ConditionGroupType {
   conditions: ConditionGroupConditionType[];
 }
 
-export interface ConditionGroupFilter {
+export interface ConditionGroupFilters {
   search?: string;
   categorySlugs?: string[];
   publicOnly?: boolean;
 }
 
-export type ConditionGroupFilters = ConditionGroupFilter;
-
 export const GET_CONDITION_GROUPS = /* GraphQL */ `
   query ConditionGroups(
-    $take: Int!
-    $after: String
-    $filter: ConditionGroupFilter
+    $take: Int
+    $skip: Int
+    $where: ConditionGroupWhereInput
     $conditionsWhere: ConditionWhereInput
   ) {
-    conditionGroupsConnection(first: $take, after: $after, filter: $filter) {
-      nodes {
+    conditionGroups(
+      orderBy: [{ createdAt: desc }]
+      take: $take
+      skip: $skip
+      where: $where
+    ) {
+      id
+      createdAt
+      name
+      category {
+        id
+        name
+        slug
+      }
+      conditions(
+        orderBy: [{ displayOrder: { sort: asc } }]
+        where: $conditionsWhere
+      ) {
         id
         createdAt
-        name
+        question
+        shortName
+        optionName
+        endTime
+        public
+        description
+        similarMarkets
+        chainId
+        resolver
+        settled
+        resolvedToYes
+        nonDecisive
+        assertionId
+        assertionTimestamp
+        openInterest
+        similarMarketVolume
+        similarMarketImage
+        estimatedPrice
+        conditionGroupId
         category {
           id
           name
           slug
         }
-        conditions(
-          orderBy: [{ displayOrder: { sort: asc } }]
-          where: $conditionsWhere
-        ) {
-          id: conditionId
-          conditionId
-          createdAt
-          question
-          shortName
-          optionName
-          endTime
-          public
-          description
-          similarMarkets
-          chainId
-          resolver
-          settled
-          resolvedToYes
-          nonDecisive
-          assertionId
-          assertionTimestamp
-          openInterest
-          similarMarketVolume
-          similarMarketImage
-          estimatedPrice
-          conditionGroupId
-          category {
-            id
-            name
-            slug
-          }
-          displayOrder
-        }
-      }
-      pageInfo {
-        hasNextPage
-        endCursor
+        displayOrder
       }
     }
   }
 `;
 
-type ConditionGroupConnectionOptions = {
+function buildGroupWhereClause(opts?: {
   chainId?: number;
-  filters?: ConditionGroupFilter;
+  filters?: ConditionGroupFilters;
   includeEmptyGroups?: boolean;
-};
+}): Record<string, unknown> {
+  const where: Record<string, unknown> = {};
+  const andConditions: Record<string, unknown>[] = [];
 
-function buildConditionGroupsVariables(
-  opts: ConditionGroupConnectionOptions | undefined,
-  take: number,
-  after: string | null
-) {
-  const chainId = opts?.chainId;
-  const filters = opts?.filters;
-  const includeEmpty = opts?.includeEmptyGroups ?? false;
-  const conditionsWhere =
-    chainId !== undefined ? { chainId: { equals: chainId } } : undefined;
-  const filter = {
-    search: filters?.search,
-    categorySlugs: filters?.categorySlugs,
-    chainId,
-    publicOnly: filters?.publicOnly === true,
-    includeEmpty,
-  };
-
-  return {
-    take,
-    after,
-    filter,
-    conditionsWhere,
-  };
-}
-
-export async function fetchConditionGroupsPage(opts?: {
-  take?: number;
-  after?: string | null;
-  chainId?: number;
-  filters?: ConditionGroupFilter;
-  includeEmptyGroups?: boolean;
-}): Promise<ConnectionPage<ConditionGroupType>> {
-  return fetchConnectionPage<ConditionGroupType>(
-    GET_CONDITION_GROUPS,
-    buildConditionGroupsVariables(
-      opts,
-      clampConnectionTake(opts?.take, 100),
-      opts?.after ?? null
-    ),
-    'conditionGroupsConnection'
-  );
-}
-
-/**
- * Single-page convenience wrapper. Use `fetchConditionGroupsPage` when
- * you need `hasMore` / `endCursor` for paginating.
- */
-export async function fetchConditionGroups(opts?: {
-  take?: number;
-  /** @deprecated Use `after` with `endCursor` from `fetchConditionGroupsPage`. */
-  skip?: number;
-  after?: string | null;
-  chainId?: number;
-  filters?: ConditionGroupFilter;
-  includeEmptyGroups?: boolean;
-}): Promise<ConditionGroupType[]> {
-  if (shouldFetchConnectionWindow(opts?.take, opts?.skip, opts?.after, 100)) {
-    const page = await fetchConnectionWindow<ConditionGroupType>(
-      GET_CONDITION_GROUPS,
-      (take, after) => buildConditionGroupsVariables(opts, take, after),
-      'conditionGroupsConnection',
-      {
-        take: opts?.take,
-        skip: opts?.skip,
-        defaultTake: 100,
-      }
-    );
-    return page.items;
+  if (opts?.filters?.search?.trim()) {
+    const searchTerm = opts.filters.search.trim();
+    andConditions.push({
+      name: { contains: searchTerm, mode: 'insensitive' },
+    });
   }
 
-  return (await fetchConditionGroupsPage(opts)).items;
+  if (opts?.filters?.categorySlugs && opts.filters.categorySlugs.length > 0) {
+    andConditions.push({
+      category: {
+        is: {
+          slug: { in: opts.filters.categorySlugs },
+        },
+      },
+    });
+  }
+
+  const conditionSomeAnd: Record<string, unknown>[] = [];
+  if (opts?.filters?.publicOnly) {
+    conditionSomeAnd.push({ public: { equals: true } });
+  }
+  if (opts?.chainId !== undefined) {
+    conditionSomeAnd.push({ chainId: { equals: opts.chainId } });
+  }
+
+  const shouldRequireSomeCondition =
+    !opts?.includeEmptyGroups || conditionSomeAnd.length > 0;
+
+  if (shouldRequireSomeCondition) {
+    andConditions.push({
+      conditions: {
+        some: conditionSomeAnd.length > 0 ? { AND: conditionSomeAnd } : {},
+      },
+    });
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
+  }
+
+  return where;
+}
+
+function buildConditionsWhereClause(opts?: {
+  chainId?: number;
+  filters?: ConditionGroupFilters;
+}): Record<string, unknown> {
+  const where: Record<string, unknown> = {};
+  const andConditions: Record<string, unknown>[] = [];
+
+  if (opts?.chainId !== undefined) {
+    andConditions.push({ chainId: { equals: opts.chainId } });
+  }
+
+  if (opts?.filters?.publicOnly) {
+    andConditions.push({ public: { equals: true } });
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
+  }
+
+  return where;
+}
+
+export async function fetchConditionGroups(opts?: {
+  take?: number;
+  skip?: number;
+  chainId?: number;
+  filters?: ConditionGroupFilters;
+  includeEmptyGroups?: boolean;
+}): Promise<ConditionGroupType[]> {
+  const take = opts?.take ?? 100;
+  const skip = opts?.skip ?? 0;
+  const chainId = opts?.chainId;
+  const filters = opts?.filters;
+  const includeEmptyGroups = opts?.includeEmptyGroups ?? false;
+
+  const where = buildGroupWhereClause({ chainId, filters, includeEmptyGroups });
+  const conditionsWhere = buildConditionsWhereClause({ chainId, filters });
+
+  type ConditionGroupsQueryResult = {
+    conditionGroups: ConditionGroupType[];
+  };
+  const variables = {
+    take,
+    skip,
+    where: Object.keys(where).length > 0 ? where : undefined,
+    conditionsWhere:
+      Object.keys(conditionsWhere).length > 0 ? conditionsWhere : undefined,
+  };
+
+  const data = await graphqlRequest<ConditionGroupsQueryResult>(
+    GET_CONDITION_GROUPS,
+    variables
+  );
+
+  return data.conditionGroups ?? [];
 }
