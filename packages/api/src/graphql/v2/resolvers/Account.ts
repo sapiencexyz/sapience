@@ -15,6 +15,7 @@ import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
 import { synthesizeAccount } from '../../sdl/resolvers/accountSynthesis';
 import { decodeCursor, encodeCursor } from '../../relay/cursor';
 import { clampTake } from '../../sdl/resolvers/queries/pagination';
+import { accountRank } from './queries/leaderboard';
 
 registerNodeTypeV2({
   type: 'Account',
@@ -63,6 +64,8 @@ export const Account = {
    * Cursor key is `(createdAt, id)` to stay stable under concurrent
    * inserts; direction is DESC (newest referrals first).
    */
+  rank: accountRank,
+
   referrals: async (parent: any, args: any) => {
     if (!parent.id) return emptyAccountConnection();
 

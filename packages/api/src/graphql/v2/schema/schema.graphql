@@ -126,6 +126,9 @@ type Account implements Node & AddressEntity {
 
   """Accounts referred by this account, via its referral code."""
   referrals(first: Int = 50, after: String): AccountConnection!
+
+  """Rank of this account on a chosen metric, or null when unranked."""
+  rank(metric: LeaderboardMetric!, filter: AccountRankingFilter): AccountRanking
 }
 
 """
@@ -1088,6 +1091,54 @@ input ActivityFilter {
 }
 
 # -----------------------------------------------
+# Leaderboard / ranking (Phase 14)
+# -----------------------------------------------
+
+"""
+Metric an `AccountRanking` is sorted by.
+
+- `ACCURACY`: lifetime time-weighted Brier-style score; ignores the
+  window filter (the score already weights by recency).
+- `PNL`: net profit/loss across settled positions over the window.
+- `VOLUME`: total trade volume over the window.
+- `ROI`: PnL / volume ratio (`null`-safe).
+"""
+enum LeaderboardMetric {
+  ACCURACY
+  PNL
+  VOLUME
+  ROI
+}
+
+input AccountRankingFilter {
+  """Window selector in epoch seconds (inclusive). Ignored for ACCURACY."""
+  timestamp: IntRangeFilter
+}
+
+"""
+One row of an account ranking — the address, its rank (1-indexed), and
+the underlying metric value as a string (formatted per metric).
+"""
+type AccountRanking {
+  account: Account!
+  rank: Int!
+  value: String!
+}
+
+type AccountRankingEdge {
+  cursor: String!
+  node: AccountRanking!
+}
+
+type AccountRankingConnection {
+  edges: [AccountRankingEdge!]!
+  nodes: [AccountRanking!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+  metric: LeaderboardMetric!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -1174,6 +1225,18 @@ type Query {
     after: String
     filter: ActivityFilter
   ): ActivityConnection!
+
+  """
+  Account leaderboard ranked by `metric`. PnL / Volume / ROI accept a
+  `filter.timestamp` window; Accuracy is lifetime-aggregated and ignores
+  the window.
+  """
+  leaderboard(
+    metric: LeaderboardMetric!
+    first: Int = 25
+    after: String
+    filter: AccountRankingFilter
+  ): AccountRankingConnection!
 
   """Look up a single collateral transfer by its globalId-encoded row id."""
   collateralTransfer(id: ID!): CollateralTransfer
