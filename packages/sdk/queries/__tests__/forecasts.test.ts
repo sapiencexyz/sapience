@@ -289,6 +289,8 @@ describe('fetchUserForecasts', () => {
     });
 
     const call = mockGraphqlRequest.mock.calls[0];
+    expect(call[0]).toContain('$orderBy: ForecastOrderField!');
+    expect(call[0]).toContain('$orderDirection: OrderDirection!');
     expect(call[1].orderBy).toBe('ATTESTED_AT');
     expect(call[1].orderDirection).toBe('ASC');
     expect(call[1].take).toBe(10);
