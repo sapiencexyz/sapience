@@ -120,13 +120,15 @@ in `graphql/v2/relay/nodeRegistry.ts`. Rationale:
   module-global registry in `graphql/relay/globalId.ts` can only point one
   loader at a given type name; mounting both endpoints in the same process
   needs two registries.
-- v2 globalIds are public from day one — once an id ships from `/v2/graphql`,
-  its `(TypeName, domainId)` is frozen for the same reasons v1's is.
-  `FROZEN_NODE_TYPES_V2` is the v2 equivalent (initially empty; appended to
-  in each per-entity PR alongside `implements Node` in the SDL).
 - v2 ids and v1 ids are **not interchangeable**. Clients that mix endpoints
   must use the id they got from the endpoint they're querying. This is
   acceptable because they're separate endpoints with separate caches.
+- v2 is greenfield — no globalIds have shipped, so there's no
+  `FROZEN_NODE_TYPES_V2`-style snapshot enforcing public-API stability.
+  Once v2 starts serving production traffic, schema-diff CI on the
+  emitted `schema.v2.graphql` catches the same class of bug (silent
+  Node-type renames invalidating in-flight ids); a frozen list can be
+  added back then if the extra tripwire turns out worth the maintenance.
 
 The base64url encoding is intentionally identical so the same client-side
 decode helper works for either endpoint when inspecting (the **content**
@@ -280,8 +282,6 @@ The `emit-schema` step writes both root-level schema files.
   drift the same way `sdl/schema/schema.test.ts` does for v1.
 - **Contract suite** — a new `test/contract/v2/` tree mirrors the existing
   contract suite once a meaningful number of entities have shipped.
-- **Frozen Node types** — `globalId.v2.test.ts` cross-checks the v2
-  registry against `FROZEN_NODE_TYPES_V2`, same idea as v1.
 
 ---
 
@@ -293,7 +293,7 @@ shippable on its own (v2 endpoint stays buildable + healthy throughout).
 | Phase | PR title (suggested)                                         | Scope                                                                                                          |
 | ----- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
 | **0** | `feat(api): stub /v2/graphql endpoint + plan`                | **This PR.** Endpoint mounted, returns a `_v2Health` ping, `node(id:)` against empty registry, plan committed. |
-| 1     | `feat(api/v2): Account + accounts + Node base`               | `Account` type, `account` + `accounts`, `AddressEntity` interface, synthesis path, frozen list entry.          |
+| 1     | `feat(api/v2): Account + accounts + Node base`               | `Account` type, `account` + `accounts`, `AddressEntity` interface, synthesis path.                             |
 | 2     | `feat(api/v2): Vault + vaults`                               | `Vault` implements `AddressEntity`, `vault` + `vaults` queries.                                                |
 | 3     | `feat(api/v2): Category + categories`                        | `category` + `categories` (small, easy warm-up after Account).                                                 |
 | 4     | `feat(api/v2): Forecast + forecasts`                         | EAS attestations, simplest connection (no internal joins).                                                     |

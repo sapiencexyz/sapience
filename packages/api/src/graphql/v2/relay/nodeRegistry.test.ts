@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import {
-  FROZEN_NODE_TYPES_V2,
   __resetNodeRegistryV2,
   fromGlobalIdV2,
   registerNodeTypeV2,
@@ -9,7 +8,6 @@ import {
   resolveNodesV2,
   toGlobalIdV2,
   tryFromGlobalIdV2,
-  verifyFrozenNodeTypesV2,
 } from './nodeRegistry';
 
 beforeEach(() => {
@@ -86,34 +84,5 @@ describe('v2 nodeRegistry dispatch', () => {
     expect(() =>
       registerNodeTypeV2({ type: 'Trade', loader: async () => null })
     ).toThrow(/already registered/);
-  });
-});
-
-describe('v2 nodeRegistry frozen list', () => {
-  it('contains the type names registered by each landed phase', () => {
-    // Append the name of each new Node-implementing type as its phase
-    // lands. Removals require a deprecation cycle — see ./nodeRegistry.ts.
-    expect(FROZEN_NODE_TYPES_V2).toEqual([
-      'Account',
-      'Vault',
-      'Category',
-      'Forecast',
-      'Trade',
-      'Condition',
-      'ConditionGroup',
-      'PickConfiguration',
-      'Prediction',
-      'Position',
-      'Claim',
-      'Close',
-      'CollateralTransfer',
-    ]);
-  });
-
-  it('verifyFrozenNodeTypesV2 reports mismatch against an empty registry', () => {
-    // beforeEach resets the runtime registry; phase modules re-register
-    // via module import in their own test files.
-    const result = verifyFrozenNodeTypesV2();
-    expect(result.ok).toBe(false);
   });
 });

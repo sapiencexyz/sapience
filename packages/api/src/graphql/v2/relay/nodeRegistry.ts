@@ -11,13 +11,7 @@
  * so the same client-side decode helper works for either endpoint when
  * inspecting an id. The two registries are otherwise disjoint: a v1
  * `Account` global id is meaningless to v2 and vice versa.
- *
- * PUBLIC-API CONTRACT: once a type is registered and shipped from v2,
- * its name is frozen — every previously-issued id embeds it. See the
- * matching contract docstring on the v1 module for the longer rationale.
  */
-
-export type NodeTypeNameV2 = string;
 
 export type GlobalIdPartsV2 = {
   type: string;
@@ -40,29 +34,6 @@ export class InvalidGlobalIdErrorV2 extends Error {
     this.name = 'InvalidGlobalIdErrorV2';
   }
 }
-
-/**
- * Frozen list of every type name registered against the v2 registry.
- * Empty in the stub PR; each per-entity phase appends to it alongside
- * the schema change that adds `implements Node`. The snapshot test
- * cross-checks this against the runtime registry to catch silent
- * renames or removals — v2 global ids are public from day one.
- */
-export const FROZEN_NODE_TYPES_V2: readonly string[] = [
-  'Account',
-  'Vault',
-  'Category',
-  'Forecast',
-  'Trade',
-  'Condition',
-  'ConditionGroup',
-  'PickConfiguration',
-  'Prediction',
-  'Position',
-  'Claim',
-  'Close',
-  'CollateralTransfer',
-];
 
 const SEPARATOR = ':';
 
@@ -131,9 +102,6 @@ export const __resetNodeRegistryV2 = (): void => {
   registry.clear();
 };
 
-export const registeredNodeTypesV2 = (): string[] =>
-  Array.from(registry.keys());
-
 const loadOneV2 = async (
   opaqueId: string,
   ctx: unknown
@@ -160,30 +128,3 @@ export const resolveNodesV2 = async (
   ctx: unknown
 ): Promise<(unknown | null)[]> =>
   Promise.all(opaqueIds.map((id) => loadOneV2(id, ctx)));
-
-export const verifyFrozenNodeTypesV2 = ():
-  | { ok: true }
-  | { ok: false; message: string } => {
-  const registered = registeredNodeTypesV2().sort();
-  const frozen = [...FROZEN_NODE_TYPES_V2].sort();
-  const missing = frozen.filter((t) => !registered.includes(t));
-  const extra = registered.filter((t) => !frozen.includes(t));
-  if (missing.length === 0 && extra.length === 0) {
-    return { ok: true };
-  }
-  const lines: string[] = [
-    'Registered v2 Node types do not match FROZEN_NODE_TYPES_V2.',
-    'Type names are a public API contract: never rename or remove without a deprecation cycle.',
-  ];
-  if (missing.length > 0) {
-    lines.push(
-      `  Missing from registry (declared frozen but no registration): ${missing.join(', ')}`
-    );
-  }
-  if (extra.length > 0) {
-    lines.push(
-      `  Missing from FROZEN_NODE_TYPES_V2 (registered but not declared frozen): ${extra.join(', ')}`
-    );
-  }
-  return { ok: false, message: lines.join('\n') };
-};
