@@ -406,6 +406,33 @@ type Claim {
   txHash: String!
 }
 
+type ClaimConnection {
+  edges: [ClaimEdge!]!
+  nodes: [Claim!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ClaimEdge {
+  node: Claim!
+  cursor: String!
+}
+
+input ClaimFilter {
+  chainId: Int
+  holder: Address
+  predictionId: String
+}
+
+input ClaimOrder {
+  field: ClaimOrderField!
+  direction: OrderDirection!
+}
+
+enum ClaimOrderField {
+  REDEEMED_AT
+}
+
 """
 Record of a position close where both sides burn tokens and receive payouts
 """
@@ -423,6 +450,33 @@ type Close {
   predictorTokensBurned: String!
   refCode: String
   txHash: String!
+}
+
+type CloseConnection {
+  edges: [CloseEdge!]!
+  nodes: [Close!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type CloseEdge {
+  node: Close!
+  cursor: String!
+}
+
+input CloseFilter {
+  address: Address
+  chainId: Int
+  pickConfigId: String
+}
+
+input CloseOrder {
+  field: CloseOrderField!
+  direction: OrderDirection!
+}
+
+enum CloseOrderField {
+  BURNED_AT
 }
 
 type Activity {
@@ -3075,12 +3129,26 @@ type Query {
   """
   Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
   """
-  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated(reason: "Unused; will be removed. No live consumers — claim records are reachable as a side-effect of position settlement.")
+  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]! @deprecated(reason: "Use `claimsConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
+
+  """
+  Relay-shaped connection over claim (redemption) records. Forward-only
+  cursor pagination via `first` / `after`; sorting defaults to
+  `REDEEMED_AT` / `DESC`.
+  """
+  claimsConnection(first: Int, after: String, filter: ClaimFilter, orderBy: ClaimOrder): ClaimConnection!
 
   """
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
-  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated(reason: "Unused; will be removed. No live consumers — close records are reachable as a side-effect of position settlement.")
+  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]! @deprecated(reason: "Use `closesConnection(first:, after:, filter:, orderBy:)` — Relay-shaped cursor pagination over the same data.")
+
+  """
+  Relay-shaped connection over position close (burn) records. Forward-only
+  cursor pagination via `first` / `after`; sorting defaults to
+  `BURNED_AT` / `DESC`.
+  """
+  closesConnection(first: Int, after: String, filter: CloseFilter, orderBy: CloseOrder): CloseConnection!
   collateralBalance(account: Address, address: String @deprecated(reason: "Use `account`."), atBlock: Int, chainId: Int!): CollateralBalance! @deprecated(reason: "Use `collateralBalance(account:, chainId:)`; legacy `address` remains as an argument alias during migration.")
 
   """
