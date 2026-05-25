@@ -10,7 +10,11 @@ import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { buildConnection, clampSkip, clampTake } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { registerNodeType, toGlobalId } from '../../../relay/globalId';
+import {
+  registerNodeType,
+  resolveNode,
+  toGlobalId,
+} from '../../../relay/globalId';
 import { synthesizeAccount } from '../accountSynthesis';
 
 const collateralForChain = (chainId: number) => ({
@@ -79,6 +83,21 @@ registerNodeType({
     return row ? mapCollateralTransfer(row) : null;
   },
 });
+
+export const collateralTransfer = (async (
+  _parent: unknown,
+  { id }: { id: string },
+  ctx: unknown
+) => {
+  const result = await resolveNode(id, ctx);
+  if (
+    result &&
+    (result as { __typename?: string }).__typename === 'CollateralTransfer'
+  ) {
+    return result;
+  }
+  return null;
+}) as unknown as NonNullable<QueryResolvers['collateralTransfer']>;
 
 export const collateralBalance = (async (
   _parent: unknown,

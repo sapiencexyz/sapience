@@ -57,6 +57,7 @@ import { TtlCache } from '../../../../lib/ttlCache';
 import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
 import { clampSkip, clampTake, offsetFromCursor } from './pagination';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
+import { tryFromGlobalId } from '../../../relay/globalId';
 
 export type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
@@ -1123,6 +1124,15 @@ const basePositionRowId = (positionNodeId: string): number | null => {
   return Number.isInteger(numericId) ? numericId : null;
 };
 
+export const position: NonNullable<QueryResolvers['position']> = (async (
+  _parent: unknown,
+  { id }: { id: string }
+) => {
+  const parts = tryFromGlobalId(id);
+  if (!parts || parts.type !== 'Position') return null;
+  return resolvePositionNode(parts.id);
+}) as unknown as NonNullable<QueryResolvers['position']>;
+
 export const resolvePositionNode = async (
   positionNodeId: string
 ): Promise<PositionShape | null> => {
@@ -1415,6 +1425,78 @@ export const closes: NonNullable<QueryResolvers['closes']> = async (
     txHash: r.txHash,
     refCode: r.refCode ?? null,
   }));
+};
+
+const mapClaim = (r: {
+  id: number;
+  chainId: number;
+  marketAddress: string;
+  predictionId: string;
+  holder: string;
+  positionToken: string;
+  tokensBurned: string;
+  collateralPaid: string;
+  redeemedAt: number;
+  txHash: string;
+  refCode: string | null;
+}) => ({
+  id: r.id,
+  chainId: r.chainId,
+  marketAddress: r.marketAddress,
+  predictionId: r.predictionId,
+  holder: r.holder,
+  positionToken: r.positionToken,
+  tokensBurned: r.tokensBurned,
+  collateralPaid: r.collateralPaid,
+  redeemedAt: r.redeemedAt,
+  txHash: r.txHash,
+  refCode: r.refCode ?? null,
+});
+
+export const claim: NonNullable<QueryResolvers['claim']> = async (
+  _parent,
+  { id }
+) => {
+  const row = await prisma.claim.findUnique({ where: { id } });
+  return row ? mapClaim(row) : null;
+};
+
+const mapClose = (r: {
+  id: number;
+  chainId: number;
+  marketAddress: string;
+  pickConfigId: string;
+  predictorHolder: string;
+  counterpartyHolder: string;
+  predictorTokensBurned: string;
+  counterpartyTokensBurned: string;
+  predictorPayout: string;
+  counterpartyPayout: string;
+  burnedAt: number;
+  txHash: string;
+  refCode: string | null;
+}) => ({
+  id: r.id,
+  chainId: r.chainId,
+  marketAddress: r.marketAddress,
+  pickConfigId: r.pickConfigId,
+  predictorHolder: r.predictorHolder,
+  counterpartyHolder: r.counterpartyHolder,
+  predictorTokensBurned: r.predictorTokensBurned,
+  counterpartyTokensBurned: r.counterpartyTokensBurned,
+  predictorPayout: r.predictorPayout,
+  counterpartyPayout: r.counterpartyPayout,
+  burnedAt: r.burnedAt,
+  txHash: r.txHash,
+  refCode: r.refCode ?? null,
+});
+
+export const close: NonNullable<QueryResolvers['close']> = async (
+  _parent,
+  { id }
+) => {
+  const row = await prisma.close.findUnique({ where: { id } });
+  return row ? mapClose(row) : null;
 };
 
 export const claims: NonNullable<QueryResolvers['claims']> = async (

@@ -59,6 +59,7 @@ import {
 import {
   collateralBalance,
   collateralBalanceHistory,
+  collateralTransfer,
   collateralTransfersConnection,
 } from './queries/collateralBalance';
 import { collateralTransfers } from './queries/deprecated/collateralBalance';
@@ -76,16 +77,21 @@ import {
   accountsConnection,
   categories,
   categoriesConnection,
+  category,
   condition,
+  forecast,
   forecastsConnection,
   user,
 } from './queries/crud';
 import { users } from './queries/deprecated/crud';
 import {
+  claim,
   claims,
+  close,
   closes,
   pickConfiguration,
   pickConfigurationsConnection,
+  position,
   positionsConnection,
   positionsPage,
   prediction,
@@ -152,6 +158,7 @@ export const resolvers: Resolvers = {
     // Collateral
     collateralBalance,
     collateralBalanceHistory,
+    collateralTransfer,
     collateralTransfers,
     collateralTransfersConnection,
     // Conditions / questions
@@ -160,11 +167,14 @@ export const resolvers: Resolvers = {
     questions,
     questionsConnection,
     // Escrow (predictions / positions / claims / closes / pick configs)
+    claim,
     claims,
+    close,
     closes,
     pickConfiguration,
     pickConfigurations,
     pickConfigurationsConnection,
+    position,
     positionCount,
     positions,
     positionsConnection,
@@ -183,6 +193,8 @@ export const resolvers: Resolvers = {
     // CRUD passthroughs
     account,
     accountsConnection,
+    category,
+    forecast,
     forecastsConnection,
     categories,
     categoriesConnection,
