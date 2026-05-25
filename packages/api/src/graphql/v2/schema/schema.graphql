@@ -1039,6 +1039,55 @@ input CollateralTransferOrder {
 }
 
 # -----------------------------------------------
+# Activity (Phase 13)
+# -----------------------------------------------
+
+"""
+A unified activity item — either an escrow `Prediction` or a
+secondary-market `Trade`. v2 returns the union directly; v1 wrapped
+each item in an `Activity` envelope, which forced clients to dereference
+through `.source` to get the entity. Here the union is the wire shape.
+
+`Forecast` is intentionally not in the union — see the v1 design doc's
+"Activity model" section. Forecasts are a separate timeline.
+"""
+union ActivityItem = Prediction | Trade
+
+type ActivityEdge {
+  cursor: String!
+  node: ActivityItem!
+}
+
+"""
+Relay-shaped connection over the interleaved Prediction + Trade feed.
+`nodes` is omitted because unions don't share a field set; clients
+should select through `edges { node { ... } }` with inline fragments.
+"""
+type ActivityConnection {
+  edges: [ActivityEdge!]!
+  pageInfo: PageInfo!
+  """Sum of matching predictions + trades. Two indexed COUNT(*) queries."""
+  totalCount: Int!
+}
+
+enum ActivityType {
+  PREDICTION
+  TRADE
+}
+
+input ActivityFilter {
+  """OR across predictor/counterparty (predictions) and buyer/seller (trades)."""
+  account: Address
+  conditionId: String
+  conditionIds: [String!]
+  pickConfigId: String
+  """Restrict to a subset of activity types. `[]` is a zero-result query."""
+  types: [ActivityType!]
+  """Filter by activity timestamp in epoch seconds."""
+  timestamp: IntRangeFilter
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -1116,6 +1165,15 @@ type Query {
     filter: ConditionGroupFilter
     orderBy: ConditionGroupOrder
   ): ConditionGroupConnection!
+
+  """
+  Interleaved Prediction + Trade activity feed, sorted by timestamp DESC.
+  """
+  activity(
+    first: Int = 50
+    after: String
+    filter: ActivityFilter
+  ): ActivityConnection!
 
   """Look up a single collateral transfer by its globalId-encoded row id."""
   collateralTransfer(id: ID!): CollateralTransfer

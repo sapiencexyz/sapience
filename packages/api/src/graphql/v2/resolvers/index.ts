@@ -38,6 +38,8 @@ import {
   collateralTransfer,
   collateralTransfers,
 } from './queries/collateralTransfer';
+import { ActivityItem } from './Activity';
+import { activity } from './queries/activity';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
@@ -66,6 +68,7 @@ export const resolvers = {
   Claim,
   Close,
   CollateralTransfer,
+  ActivityItem,
   Query: {
     node,
     nodes,
@@ -99,5 +102,6 @@ export const resolvers = {
     closes,
     collateralTransfer,
     collateralTransfers,
+    activity,
   },
 };
