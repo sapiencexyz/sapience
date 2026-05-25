@@ -33,6 +33,11 @@ import { Position } from './Position';
 import { position, positions } from './queries/position';
 import { Claim, Close } from './ClaimClose';
 import { claim, claims, close, closes } from './queries/claimClose';
+import { CollateralTransfer } from './CollateralTransfer';
+import {
+  collateralTransfer,
+  collateralTransfers,
+} from './queries/collateralTransfer';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
@@ -60,6 +65,7 @@ export const resolvers = {
   Position,
   Claim,
   Close,
+  CollateralTransfer,
   Query: {
     node,
     nodes,
@@ -91,5 +97,7 @@ export const resolvers = {
     claims,
     close,
     closes,
+    collateralTransfer,
+    collateralTransfers,
   },
 };

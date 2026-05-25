@@ -979,6 +979,66 @@ input CloseOrder {
 }
 
 # -----------------------------------------------
+# CollateralTransfer (Phase 12)
+# -----------------------------------------------
+
+"""
+On-chain ERC-20 Transfer of the collateral token (wUSDe). The
+`(chainId, transactionHash, logIndex)` tuple is the natural key.
+"""
+type CollateralTransfer implements Node {
+  id: ID!
+  chainId: Int!
+  blockNumber: Int!
+  timestamp: DateTimeISO!
+  transactionHash: Bytes32!
+  logIndex: Int!
+  from: Address!
+  to: Address!
+  """Transfer amount in wei (18 decimals)."""
+  value: BigInt!
+  createdAt: DateTimeISO!
+}
+
+type CollateralTransferEdge {
+  cursor: String!
+  node: CollateralTransfer!
+}
+
+type CollateralTransferConnection {
+  edges: [CollateralTransferEdge!]!
+  nodes: [CollateralTransfer!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Date/time range filter; both bounds inclusive."""
+input DateTimeRangeFilter {
+  gte: DateTimeISO
+  lte: DateTimeISO
+}
+
+input CollateralTransferFilter {
+  """OR across from/to (account is on either side of the transfer)."""
+  account: Address
+  chainId: Int
+  timestamp: DateTimeRangeFilter
+  transactionHash: Bytes32
+  """Exclude transfers to/from configured protocol addresses (vault, escrow)."""
+  excludeProtocol: Boolean
+}
+
+enum CollateralTransferOrderField {
+  BLOCK_NUMBER
+  TIMESTAMP
+}
+
+input CollateralTransferOrder {
+  field: CollateralTransferOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -1056,6 +1116,20 @@ type Query {
     filter: ConditionGroupFilter
     orderBy: ConditionGroupOrder
   ): ConditionGroupConnection!
+
+  """Look up a single collateral transfer by its globalId-encoded row id."""
+  collateralTransfer(id: ID!): CollateralTransfer
+
+  """
+  Relay-shaped connection over collateral-token transfers. Defaults to
+  `TIMESTAMP DESC`.
+  """
+  collateralTransfers(
+    first: Int = 100
+    after: String
+    filter: CollateralTransferFilter
+    orderBy: CollateralTransferOrder
+  ): CollateralTransferConnection!
 
   """Look up a single claim by its globalId-encoded row id."""
   claim(id: ID!): Claim

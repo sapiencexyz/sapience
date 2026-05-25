@@ -106,6 +106,7 @@ describe('v2 nodeRegistry frozen list', () => {
       'Position',
       'Claim',
       'Close',
+      'CollateralTransfer',
     ]);
   });
 

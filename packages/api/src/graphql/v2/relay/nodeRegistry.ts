@@ -61,6 +61,7 @@ export const FROZEN_NODE_TYPES_V2: readonly string[] = [
   'Position',
   'Claim',
   'Close',
+  'CollateralTransfer',
 ];
 
 const SEPARATOR = ':';
