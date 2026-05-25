@@ -10,6 +10,8 @@ import { scalarResolvers } from '../../sdl/resolvers/scalars';
 import { node, nodes } from './queries/node';
 import { Account, ReferralCode } from './Account';
 import { account, accounts } from './queries/account';
+import { Vault } from './Vault';
+import { vault, vaults } from './queries/vault';
 
 // Project the shared scalar map down to the scalars actually declared in
 // v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
@@ -24,6 +26,7 @@ export const resolvers = {
   UnixSeconds,
   Account,
   ReferralCode,
+  Vault,
   Query: {
     node,
     nodes,
@@ -33,5 +36,7 @@ export const resolvers = {
     }),
     account,
     accounts,
+    vault,
+    vaults,
   },
 };

@@ -167,6 +167,83 @@ input AccountOrder {
 }
 
 # -----------------------------------------------
+# Vault (Phase 2)
+# -----------------------------------------------
+
+"""
+A statically configured protocol vault. Vaults are address-keyed like
+accounts but contract-controlled, with their own deployment kind and
+historical legacy aliases. The small total count means the connection
+exists primarily for enumeration; per-vault refetch goes through
+`vault(address:)`.
+"""
+type Vault implements Node & AddressEntity {
+  id: ID!
+
+  """Canonical lowercase vault contract address (current primary)."""
+  address: Address!
+
+  """Chain the vault is deployed on."""
+  chainId: Int!
+
+  """Deployment kind — one of a small enum set."""
+  kind: VaultKind!
+
+  """
+  Previously-active vault contract addresses (lowercase). Old refs may
+  still appear in indexer data; the canonical `address` is the current
+  primary deployment.
+  """
+  legacyAddresses: [Address!]!
+}
+
+"""
+Identifies which "family" of vault a row belongs to. Maps 1:1 to the
+keys under `predictionMarketVault` in the SDK contracts module.
+"""
+enum VaultKind {
+  PROTOCOL
+  PYTH
+  SINGLE_LEG
+  STRATEGY_B
+}
+
+type VaultEdge {
+  cursor: String!
+  node: Vault!
+}
+
+type VaultConnection {
+  edges: [VaultEdge!]!
+  nodes: [Vault!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Filter for the `vaults` connection. Address filter exists primarily for
+enumeration patterns that want to scope to a known vault — single-row
+lookup should use `vault(address:)` instead.
+"""
+input VaultFilter {
+  """Restrict to a single vault address (case-insensitive). Matches both the current primary and any legacy alias."""
+  address: Address
+  """Restrict to a single chain. Defaults to the SDK's default chain when omitted."""
+  chainId: Int
+  """Restrict to a single deployment kind."""
+  kind: VaultKind
+}
+
+enum VaultOrderField {
+  ADDRESS
+}
+
+input VaultOrder {
+  field: VaultOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -209,4 +286,25 @@ type Query {
     filter: AccountFilter
     orderBy: AccountOrder
   ): AccountConnection!
+
+  """
+  Look up a single vault by its canonical lowercase contract address.
+  Falls back to matching against any legacy alias the vault has been
+  deployed at. `chainId` defaults to the SDK's default chain; pass it
+  explicitly when querying a non-default chain.
+  """
+  vault(address: Address!, chainId: Int): Vault
+
+  """
+  Relay-shaped connection over the configured vault set. Vaults are a
+  small statically configured catalog, so paging matters less than
+  filterability; the connection exists for completeness and symmetry
+  with the other root entities.
+  """
+  vaults(
+    first: Int = 50
+    after: String
+    filter: VaultFilter
+    orderBy: VaultOrder
+  ): VaultConnection!
 }

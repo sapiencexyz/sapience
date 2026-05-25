@@ -48,7 +48,7 @@ export class InvalidGlobalIdErrorV2 extends Error {
  * cross-checks this against the runtime registry to catch silent
  * renames or removals — v2 global ids are public from day one.
  */
-export const FROZEN_NODE_TYPES_V2: readonly string[] = ['Account'];
+export const FROZEN_NODE_TYPES_V2: readonly string[] = ['Account', 'Vault'];
 
 const SEPARATOR = ':';
 
