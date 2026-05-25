@@ -54,6 +54,13 @@ export const Condition = {
     return prisma.category.findUnique({ where: { id: parent.categoryId } });
   },
 
+  conditionGroup: async (parent: any) => {
+    if (parent.conditionGroupId == null) return null;
+    return prisma.conditionGroup.findUnique({
+      where: { id: parent.conditionGroupId },
+    });
+  },
+
   similarMarket: (parent: any) => {
     // Only build the nested object if at least one signal is present —
     // a Condition with no Polymarket linkage returns null rather than a

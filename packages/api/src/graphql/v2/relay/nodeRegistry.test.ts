@@ -100,6 +100,7 @@ describe('v2 nodeRegistry frozen list', () => {
       'Forecast',
       'Trade',
       'Condition',
+      'ConditionGroup',
     ]);
   });
 

@@ -55,6 +55,7 @@ export const FROZEN_NODE_TYPES_V2: readonly string[] = [
   'Forecast',
   'Trade',
   'Condition',
+  'ConditionGroup',
 ];
 
 const SEPARATOR = ':';

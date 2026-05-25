@@ -481,6 +481,9 @@ type Condition implements Node {
   categoryId: Int
   category: Category
 
+  conditionGroupId: Int
+  conditionGroup: ConditionGroup
+
   """Bundled similar-market signal from external sources (Polymarket)."""
   similarMarket: SimilarMarket
 }
@@ -554,6 +557,86 @@ input ConditionOrder {
 }
 
 # -----------------------------------------------
+# ConditionGroup (Phase 7)
+# -----------------------------------------------
+
+"""
+A named bundle of related conditions — used by the UI to group e.g.
+"Who wins the Super Bowl" into one card with per-option conditions
+underneath. The bundle exposes aggregated counters across its
+constituent conditions.
+"""
+type ConditionGroup implements Node {
+  id: ID!
+  """Internal integer primary key — stable per row."""
+  groupId: Int!
+  name: String!
+  similarMarkets: [String!]!
+  createdAt: DateTimeISO!
+
+  categoryId: Int
+  category: Category
+
+  """Aggregated counters across this group's public conditions."""
+  totals: ConditionGroupTotals!
+
+  """Conditions in this group, ordered by `displayOrder` then `createdAt`."""
+  conditions(first: Int = 50, after: String): ConditionConnection!
+}
+
+"""
+Pre-computed aggregates over a ConditionGroup's public conditions.
+Recomputed by the indexer; clients should treat the numbers as
+near-real-time.
+"""
+type ConditionGroupTotals {
+  publicConditionCount: Int!
+  totalPredictionCount: Int!
+  totalOpenInterest: BigInt!
+  maxEndTime: UnixSeconds
+  maxCreatedAtEpoch: UnixSeconds
+  totalSimilarMarketVolume1h: Float!
+  totalSimilarMarketVolume4h: Float!
+  totalSimilarMarketVolume24h: Float!
+  totalSimilarMarketVolume7d: Float!
+  totalSimilarMarketVolumeFiltered1h: Float!
+  totalSimilarMarketVolumeFiltered4h: Float!
+  totalSimilarMarketVolumeFiltered24h: Float!
+  totalSimilarMarketVolumeFiltered7d: Float!
+}
+
+type ConditionGroupEdge {
+  cursor: String!
+  node: ConditionGroup!
+}
+
+type ConditionGroupConnection {
+  edges: [ConditionGroupEdge!]!
+  nodes: [ConditionGroup!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input ConditionGroupFilter {
+  categoryId: Int
+  """Substring search against `name`, case-insensitive."""
+  search: String
+}
+
+enum ConditionGroupOrderField {
+  CREATED_AT
+  NAME
+  MAX_END_TIME
+  TOTAL_OPEN_INTEREST
+  TOTAL_PREDICTION_COUNT
+}
+
+input ConditionGroupOrder {
+  field: ConditionGroupOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -617,6 +700,20 @@ type Query {
     filter: VaultFilter
     orderBy: VaultOrder
   ): VaultConnection!
+
+  """Look up a single condition group by its integer primary key."""
+  conditionGroup(id: Int!): ConditionGroup
+
+  """
+  Relay-shaped connection over condition groups. Defaults to
+  `MAX_END_TIME ASC` (next-to-resolve first).
+  """
+  conditionGroups(
+    first: Int = 50
+    after: String
+    filter: ConditionGroupFilter
+    orderBy: ConditionGroupOrder
+  ): ConditionGroupConnection!
 
   """Look up a single condition by its on-chain CTF condition id."""
   condition(conditionId: String!): Condition
