@@ -6,10 +6,6 @@ export default function AmountScreen({ onPick }: { onPick: (t: Tier) => void }) 
   return (
     <section className="screen">
       <h2>Pick an amount</h2>
-      <p className="muted">
-        Each card costs the same regardless of theme. Bigger mint = bigger
-        potential payout.
-      </p>
       <div className="tier-grid">
         {TIERS.map((t) => (
           <button

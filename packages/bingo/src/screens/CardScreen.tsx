@@ -89,7 +89,7 @@ export default function CardScreen({
           className="quick-pick block"
           onClick={quickPick}
         >
-          ⚡ Quick Pick ⚡
+          Quick pick
         </button>
         <button
           type="button"

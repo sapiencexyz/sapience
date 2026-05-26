@@ -161,6 +161,100 @@ export async function fetchProductionPool(
   return out;
 }
 
+/**
+ * Search-capable fetch for the admin pool editor.
+ * Returns flat conditions only — group rows are flattened into their member
+ * conditions. Honors a free-text search arg supported by the API's questions()
+ * resolver.
+ */
+const SEARCH_QUERY = /* GraphQL */ `
+  query BingoConditionSearch($take: Int!, $search: String) {
+    questions(
+      take: $take
+      skip: 0
+      sortField: endTime
+      sortDirection: asc
+      resolutionStatus: unresolved
+      search: $search
+    ) {
+      questionType
+      group {
+        id
+        name
+        conditions {
+          id
+          resolver
+          question
+          shortName
+          optionName
+          estimatedPrice
+          settled
+        }
+      }
+      condition {
+        id
+        resolver
+        question
+        shortName
+        estimatedPrice
+        settled
+      }
+    }
+  }
+`;
+
+export async function fetchConditions(opts: {
+  search?: string;
+  take?: number;
+}): Promise<BingoCondition[]> {
+  const take = Math.min(opts.take ?? 50, 100);
+  const search = opts.search?.trim() || null;
+
+  const res = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      query: SEARCH_QUERY,
+      variables: { take, search },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`API ${res.status}: ${await res.text().catch(() => '')}`);
+  }
+  const body = (await res.json()) as GqlResponse;
+  if (body.errors?.length) {
+    throw new Error(body.errors.map((e) => e.message).join('; '));
+  }
+
+  const out: BingoCondition[] = [];
+  const seen = new Set<string>();
+  const push = (raw: RawCondition, group?: { name: string }) => {
+    if (raw.settled) return;
+    if (!raw.resolver) return;
+    if (raw.estimatedPrice == null) return;
+    if (seen.has(raw.id)) return;
+    seen.add(raw.id);
+    out.push({
+      id: raw.id,
+      resolver: raw.resolver as `0x${string}`,
+      question: raw.question,
+      shortName: raw.shortName ?? null,
+      optionName: raw.optionName ?? null,
+      estimatedPrice: raw.estimatedPrice,
+      groupName: group?.name ?? null,
+    });
+  };
+
+  for (const q of body.data?.questions ?? []) {
+    if (q.questionType === 'condition' && q.condition) {
+      push(q.condition);
+    } else if (q.questionType === 'group' && q.group) {
+      for (const c of q.group.conditions ?? []) push(c, { name: q.group.name });
+    }
+  }
+  return out;
+}
+
 export function pickRandom<T>(items: T[], count: number): T[] {
   const copy = items.slice();
   for (let i = copy.length - 1; i > 0; i--) {
