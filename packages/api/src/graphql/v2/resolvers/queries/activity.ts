@@ -21,6 +21,7 @@ import {
 } from '../../__generated__/resolvers';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import { clampTake } from '../../../sdl/resolvers/queries/pagination';
+import { getConditionTokenSet } from './conditionTokens';
 
 const isType = (value: unknown): value is ActivityType =>
   value === ActivityType.Prediction || value === ActivityType.Trade;
@@ -89,37 +90,16 @@ export const activity: NonNullable<QueryResolvers['activity']> = async (
   );
 
   // For trade-side condition filter we walk Pick → PickConfiguration to
-  // collect the predictor / counterparty token addresses.
+  // collect the predictor / counterparty token addresses. The lookup is
+  // TTL-cached (60s) by sorted condition-id set — the mapping changes
+  // only when a new PickConfiguration is materialized, which is rare
+  // relative to activity-feed read rate.
   let conditionPickConfigIds: string[] | null = null;
   let conditionTokens: string[] | null = null;
   if (condIds) {
-    const picks = await prisma.pick.findMany({
-      where: { conditionId: { in: condIds } },
-      select: { pickConfigId: true },
-    });
-    conditionPickConfigIds = Array.from(
-      new Set(picks.map((p) => p.pickConfigId))
-    );
-    if (conditionPickConfigIds.length > 0) {
-      const configs = await prisma.picks.findMany({
-        where: { id: { in: conditionPickConfigIds } },
-        select: { predictorToken: true, counterpartyToken: true },
-      });
-      conditionTokens = Array.from(
-        new Set(
-          configs.flatMap((c) =>
-            [c.predictorToken, c.counterpartyToken].filter((t): t is string =>
-              Boolean(t)
-            )
-          )
-        )
-      );
-    } else {
-      // No picks match the condition → activity is empty per the
-      // condition filter.
-      conditionPickConfigIds = [];
-      conditionTokens = [];
-    }
+    const { pickConfigIds, tokens } = await getConditionTokenSet(condIds);
+    conditionPickConfigIds = pickConfigIds;
+    conditionTokens = tokens;
   }
 
   // Prediction-side where
