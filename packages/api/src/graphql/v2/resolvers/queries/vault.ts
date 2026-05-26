@@ -10,6 +10,7 @@ import { clampTake } from '../../../sdl/resolvers/queries/pagination';
 import { findVaultByAddress, mapVault, type VaultRow } from '../Vault';
 import { getConfiguredVaults } from '../../../../services/protocolStats';
 import type { QueryResolvers } from '../../__generated__/resolvers';
+import { CACHE_HINTS, setCacheHint } from '../../cacheHints';
 
 export const vault: NonNullable<QueryResolvers['vault']> = async (
   _parent,
@@ -18,8 +19,12 @@ export const vault: NonNullable<QueryResolvers['vault']> = async (
 
 export const vaults: NonNullable<QueryResolvers['vaults']> = async (
   _parent,
-  args
+  args,
+  _ctx,
+  info
 ) => {
+  // Configured statically; the catalog changes on releases. 1h cache.
+  setCacheHint(info, CACHE_HINTS.STATIC_ONE_HOUR);
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const chainId = args.filter?.chainId ?? DEFAULT_CHAIN_ID;
 

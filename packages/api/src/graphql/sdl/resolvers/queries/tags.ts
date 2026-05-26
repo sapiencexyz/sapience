@@ -12,6 +12,7 @@
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import { TtlCache } from '../../../../lib/ttlCache';
+import { CACHE_HINTS, setCacheHint } from '../../../v2/cacheHints';
 
 const popularTagsCache = new TtlCache<string, string[]>({
   ttlMs: 60 * 60 * 1000,
@@ -19,9 +20,17 @@ const popularTagsCache = new TtlCache<string, string[]>({
 /** Versioned so old caches invalidate when the deny list / SQL changes. */
 const CACHE_KEY = 'popularTags:v2';
 
-export const popularTags: NonNullable<
-  QueryResolvers['popularTags']
-> = async () => {
+export const popularTags: NonNullable<QueryResolvers['popularTags']> = async (
+  _parent,
+  _args,
+  _ctx,
+  info
+) => {
+  // The in-process TTL above already collapses concurrent calls; the
+  // cache hint additionally enables CDN edge caching and the bundled
+  // responseCachePlugin's in-process result cache. 5min upper bound
+  // matches the doc-recommended top-N refresh cadence.
+  setCacheHint(info, CACHE_HINTS.STABLE_FIVE_MINUTES);
   const cached = popularTagsCache.get(CACHE_KEY);
   if (cached) return cached;
 

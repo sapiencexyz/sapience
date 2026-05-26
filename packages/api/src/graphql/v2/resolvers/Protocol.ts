@@ -20,6 +20,7 @@ import {
   openInterestByCategory as v1OIByCategory,
   openInterestByTimeToResolution as v1OIByTTR,
 } from '../../sdl/resolvers/queries/analytics';
+import { CACHE_HINTS, setCacheHint } from '../cacheHints';
 
 type V1Resolver = (parent: null, args: unknown, ctx: unknown) => unknown;
 
@@ -27,7 +28,9 @@ export const protocol: NonNullable<QueryResolvers['protocol']> = () =>
   ({}) as never;
 
 export const Protocol: ProtocolResolvers = {
-  stats: async (_parent, args) => {
+  stats: async (_parent, args, _ctx, info) => {
+    // Stats are materialized by a once-per-minute snapshot writer.
+    setCacheHint(info, CACHE_HINTS.SNAPSHOT_MINUTE);
     const rows = (await (v1ProtocolStats as unknown as V1Resolver)(
       null,
       {

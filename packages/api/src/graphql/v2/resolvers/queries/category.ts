@@ -14,6 +14,7 @@ import {
   normalizeDirection,
   withCursorWhere,
 } from '../../relay/connection';
+import { CACHE_HINTS, setCacheHint } from '../../cacheHints';
 
 export const category: NonNullable<QueryResolvers['category']> = async (
   _parent,
@@ -27,8 +28,13 @@ const FIELD_TO_PRISMA: Record<string, 'name' | 'createdAt'> = {
 
 export const categories: NonNullable<QueryResolvers['categories']> = async (
   _parent,
-  args
+  args,
+  _ctx,
+  info
 ) => {
+  // Categories change rarely (manual admin action). 5min CDN/in-process
+  // cache absorbs the dashboard's load page and the navbar.
+  setCacheHint(info, CACHE_HINTS.STABLE_FIVE_MINUTES);
   const first = clampTake(args.first ?? 100, {
     defaultTake: 100,
     maxTake: 100,
