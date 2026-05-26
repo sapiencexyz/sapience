@@ -12,6 +12,7 @@ import type {
   SapienceCategorySlug,
   MetadataUpdate,
   SyncableFields,
+  GroupSyncableFields,
   GroupMetadataUpdate,
   LlmEndTimeResult,
 } from '../types';
@@ -76,12 +77,53 @@ export function computeGroupCategory(
   return majorityCategory;
 }
 
+function getNegRiskMarketId(market: PolymarketMarket): string | undefined {
+  const raw =
+    market.negRiskMarketId ??
+    market.negRiskMarketID ??
+    market.neg_risk_market_id ??
+    market.events?.[0]?.negRiskMarketId ??
+    market.events?.[0]?.negRiskMarketID ??
+    market.events?.[0]?.neg_risk_market_id;
+  if (raw === undefined || raw === null) return undefined;
+  const id = String(raw).trim();
+  return id.length > 0 ? id : undefined;
+}
+
+function isNegRiskMarket(market: PolymarketMarket): boolean {
+  // Treat any neg-risk basket id as a strong signal too: Polymarket has shipped
+  // the flag and the id under slightly different field names over time, and we
+  // do not want a casing mismatch to silently downgrade a basket to non-negRisk.
+  return (
+    market.negRisk === true ||
+    market.events?.[0]?.negRisk === true ||
+    getNegRiskMarketId(market) !== undefined
+  );
+}
+
+/**
+ * Resolve the shared Polymarket negative-risk basket id for a set of
+ * sibling markets. We only stamp a basket id when every market agrees:
+ * mixed groups stay basket-less so the API derives `negRisk: false`.
+ */
+function sharedNegRiskMarketId(
+  markets: PolymarketMarket[]
+): string | undefined {
+  if (markets.length === 0) return undefined;
+  const ids = markets.map(getNegRiskMarketId);
+  const firstId = ids[0];
+  const sameBasket = !!firstId && ids.every((id) => id === firstId);
+  const allNegRisk = markets.every(isNegRiskMarket);
+  return allNegRisk && sameBasket ? firstId : undefined;
+}
+
 export function transformToSapienceCondition(
   market: PolymarketMarket,
   groupTitle?: string,
   enrichment?: MarketEnrichmentOutput,
   tags: string[] = [],
-  llmEndTime?: LlmEndTimeResult
+  llmEndTime?: LlmEndTimeResult,
+  negRiskMarketId?: string
 ): SapienceCondition {
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
@@ -114,6 +156,8 @@ export function transformToSapienceCondition(
     endTimeOverride: regexEndTime ?? undefined,
     llmEndTime,
     isTemplated: isTemplatedMarket(market),
+    negRisk: negRiskMarketId !== undefined,
+    negRiskMarketId,
   };
 }
 
@@ -219,12 +263,20 @@ export async function groupMarkets(
     const enrichment = enrichments.get(market.conditionId);
     const eventSlug = market.events?.[0]?.slug;
     const marketTags = eventSlug ? (eventTagMap.get(eventSlug) ?? []) : [];
+    // Use the raw event title — no basket-id suffixing. If two same-title
+    // markets come from different baskets, the API's strict basket
+    // invariant rejects whichever one arrives second, surfaced as an
+    // operator-visible 400 from batch-create. Auto-segmenting masked the
+    // underlying data problem; let it surface.
+    const conditionGroupTitle = group.title;
+    const groupNegRiskMarketId = sharedNegRiskMarketId(group.markets);
     const condition = transformToSapienceCondition(
       market,
-      group.title,
+      conditionGroupTitle,
       enrichment,
       marketTags,
-      endTimeMap.get(market.conditionId)
+      endTimeMap.get(market.conditionId),
+      groupNegRiskMarketId
     );
 
     // Use event description if available, otherwise use market's description
@@ -236,11 +288,12 @@ export async function groupMarkets(
 
     const groupUrl = getPolymarketUrl(market);
     conditionGroups.push({
-      title: group.title,
+      title: conditionGroupTitle,
       description: groupDescription,
       categorySlug: condition.categorySlug,
       similarMarkets: groupUrl ? [groupUrl] : [],
       tags: marketTags,
+      negRiskMarketId: groupNegRiskMarketId,
       conditions: [condition],
     });
   }
@@ -254,7 +307,8 @@ export async function groupMarkets(
       undefined,
       enrichments.get(m.conditionId),
       mTags,
-      endTimeMap.get(m.conditionId)
+      endTimeMap.get(m.conditionId),
+      sharedNegRiskMarketId([m])
     );
   });
 
@@ -391,6 +445,9 @@ export function computeMetadataUpdates(
 
     // Iterate every syncable key. Undefined/null on the fresh side means
     // "we don't own this value right now" → skip, never blank out DB state.
+    // Per-condition negRisk fields are not GraphQL-exposed, so the keeper
+    // does not drift-detect them here — only the ConditionGroup.negRisk
+    // bucket flag is tracked, in computeGroupMetadataUpdates below.
     const keys: (keyof SyncableFields)[] = [
       'question',
       'optionName',
@@ -460,7 +517,6 @@ export function computeGroupMetadataUpdates(
 ): GroupMetadataUpdate[] {
   const updates: GroupMetadataUpdate[] = [];
   const seenGroupIds = new Set<number>();
-
   for (const group of groups) {
     const market = group.markets[0];
     if (!market) continue;
@@ -478,12 +534,48 @@ export function computeGroupMetadataUpdates(
 
     const freshSimilarMarkets = [freshUrl];
     const oldSimilarMarkets = existing.conditionGroupSimilarMarkets;
+    const freshNegRiskMarketId = sharedNegRiskMarketId(group.markets);
+
+    const fields: GroupSyncableFields = {};
+    const old: GroupSyncableFields = {};
 
     if (!fieldsEqual(oldSimilarMarkets, freshSimilarMarkets)) {
+      fields.similarMarkets = freshSimilarMarkets;
+      old.similarMarkets = oldSimilarMarkets;
+    }
+
+    // negRisk on an existing group is a one-way ratchet: we only ever flip
+    // false → true. A demotion back to non-negRisk would silently dissolve a
+    // basket's invariant — if fresh markets disagree on basketing, that's a
+    // data problem to surface to operators, not auto-correct. The boolean
+    // itself lives in GraphQL as a derived field; the keeper writes
+    // `negRiskMarketId` directly via PUT /admin/conditionGroups/:id and the
+    // API computes the boolean from it being non-null.
+    if (
+      existing.conditionGroupNegRisk === false &&
+      freshNegRiskMarketId !== undefined
+    ) {
+      fields.negRiskMarketId = freshNegRiskMarketId;
+      old.negRiskMarketId = null;
+    } else if (
+      existing.conditionGroupNegRisk === true &&
+      freshNegRiskMarketId === undefined
+    ) {
+      console.error(
+        `[Metadata] refused to demote group ${existing.conditionGroupId} ` +
+          `("${group.title}") from negRisk: fresh Polymarket markets disagree on ` +
+          `basket id (or are missing it). Conditions: ` +
+          group.markets
+            .map((m) => `${m.conditionId}=${getNegRiskMarketId(m) ?? 'none'}`)
+            .join(', ')
+      );
+    }
+
+    if (Object.keys(fields).length > 0) {
       updates.push({
         groupId: existing.conditionGroupId,
-        fields: { similarMarkets: freshSimilarMarkets },
-        old: { similarMarkets: oldSimilarMarkets },
+        fields,
+        old,
       });
     }
   }

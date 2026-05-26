@@ -1,20 +1,32 @@
 /**
  * ConditionGroup model resolvers.
  *
- * The `conditions` field carries the deployed behaviour that hidden
- * conditions never leak: the parent always filters `public: true` even
- * if the caller didn't pass a `where` clause. Default ordering is
- * `displayOrder ASC` to match the frontend's expectation.
+ * `category`: FK on parent (`categoryId`) → batched via `categoryById`
+ * DataLoader.
+ *
+ * `conditions`: deployed behaviour is that hidden conditions never
+ * leak — the parent always filters `public: true` even if the caller
+ * didn't pass a `where` clause, with `displayOrder ASC` as the default
+ * order. The custom args make this field unsafe to batch through a
+ * DataLoader, so it stays on the legacy per-row path.
  *
  * GraphQL `conditions` maps to Prisma `condition` (the rename was
  * carried via `@TypeGraphQL.field(name: "conditions")` in
  * schema.prisma on the deployed stack).
+ *
+ * `negRisk` is a derived boolean — the DB only stores `negRiskMarketId`
+ * on the group, and the flag is true exactly when a basket id is set.
+ * Keeping it computed (rather than a column) means the two can't drift.
  */
 
 import type { ConditionGroupResolvers } from '../__generated__/resolvers';
 import { loadRelation } from './relationHelpers';
 
-type PrismaConditionGroup = { id: number; [k: string]: unknown };
+type PrismaConditionGroup = {
+  id: number;
+  negRiskMarketId?: string | null;
+  [k: string]: unknown;
+};
 
 export const ConditionGroup: ConditionGroupResolvers = {
   category: async (parent, args) =>
@@ -24,6 +36,9 @@ export const ConditionGroup: ConditionGroupResolvers = {
       prismaRelationName: 'category',
       args,
     }),
+
+  negRisk: (parent) =>
+    Boolean((parent as PrismaConditionGroup).negRiskMarketId),
 
   conditions: async (parent, args) => {
     const p = parent as PrismaConditionGroup;

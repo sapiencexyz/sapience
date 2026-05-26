@@ -19,6 +19,11 @@ export interface ExistingCondition {
   groupName?: string;
   conditionGroupId?: number;
   conditionGroupSimilarMarkets?: string[];
+  // Only ConditionGroup.negRisk is exposed via GraphQL; the per-condition
+  // negRisk/negRiskMarketId pair and ConditionGroup.negRiskMarketId stay in
+  // the DB but are admin-only via REST, so the keeper can't drift-detect
+  // them.
+  conditionGroupNegRisk?: boolean;
 }
 
 /**
@@ -38,22 +43,25 @@ export async function checkExistingConditions(
     const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
     const query = `
-      query CheckConditions($where: ConditionWhereInput!) {
-        conditions(where: $where, take: 100) {
-          id
-          endTime
-          question
-          shortName
-          optionName
-          description
-          similarMarkets
-          tags
-          similarMarketVolume
-          similarMarketImage
-          conditionGroup {
-            id
-            name
+      query CheckConditions($filters: ConditionFilter!) {
+        conditionsConnection(filter: $filters, first: 100) {
+          nodes {
+            id: conditionId
+            endTime
+            question
+            shortName
+            optionName
+            description
             similarMarkets
+            tags
+            similarMarketVolume
+            similarMarketImage
+            conditionGroup {
+              id
+              name
+              similarMarkets
+              negRisk
+            }
           }
         }
       }
@@ -71,7 +79,9 @@ export async function checkExistingConditions(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query,
-          variables: { where: { id: { in: chunk } } },
+          // visibility: ALL — we want to detect any pre-existing row (public
+          // or private) so the pipeline doesn't try to recreate it.
+          variables: { filters: { ids: chunk, visibility: 'ALL' } },
         }),
       });
 
@@ -81,7 +91,7 @@ export async function checkExistingConditions(
       }
 
       const result = await response.json();
-      for (const condition of result.data?.conditions ?? []) {
+      for (const condition of result.data?.conditionsConnection?.nodes ?? []) {
         existing.set(condition.id, {
           endTime: condition.endTime,
           question: condition.question ?? undefined,
@@ -96,6 +106,7 @@ export async function checkExistingConditions(
           conditionGroupId: condition.conditionGroup?.id ?? undefined,
           conditionGroupSimilarMarkets:
             condition.conditionGroup?.similarMarkets ?? undefined,
+          conditionGroupNegRisk: condition.conditionGroup?.negRisk ?? undefined,
         });
       }
     }

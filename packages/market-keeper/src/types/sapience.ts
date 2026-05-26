@@ -37,6 +37,8 @@ export interface SapienceCondition {
   endTimeOverride?: number; // Regex-extracted endTime fallback (unix seconds), only trusted for templated markets
   llmEndTime?: LlmEndTimeResult; // Perplexity Sonar result; primary source of truth when ts is non-null
   isTemplated?: boolean; // True for sports/series/group templates; gates regex-fallback in decideEndTime
+  negRisk?: boolean; // True when this condition belongs to a Polymarket negative-risk basket
+  negRiskMarketId?: string; // Polymarket negative-risk basket identifier
 }
 
 export interface SapienceConditionGroup {
@@ -45,6 +47,11 @@ export interface SapienceConditionGroup {
   description: string;
   similarMarkets: string[];
   tags: string[];
+  // Polymarket negative-risk basket identifier. When set, every child
+  // condition is part of the same mutually-exclusive basket. The API
+  // derives `ConditionGroup.negRisk` from this being non-null; the
+  // keeper sends only the id.
+  negRiskMarketId?: string;
   conditions: SapienceCondition[];
 }
 
@@ -84,9 +91,14 @@ export interface MetadataUpdate {
  * Fields on a ConditionGroup that the generate cron is allowed to keep in sync
  * with fresh Polymarket data. Intentionally narrow: name is excluded because
  * group names have a unique constraint, and category is LLM-derived.
+ *
+ * `negRiskMarketId` carries the basket id. The API derives
+ * `ConditionGroup.negRisk` from this column being non-null, so the keeper
+ * doesn't need a separate boolean field in the payload.
  */
 export interface GroupSyncableFields {
   similarMarkets?: string[];
+  negRiskMarketId?: string | null;
 }
 
 export interface GroupMetadataUpdate {

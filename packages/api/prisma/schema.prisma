@@ -235,6 +235,11 @@ model ConditionGroup {
   categoryId     Int?
   category       Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   similarMarkets String[]    @default([])
+  /// Polymarket negative-risk basket identifier when every child condition
+  /// shares one. Null for non-basket groups. The GraphQL `negRisk: Boolean!`
+  /// field is derived from this being non-null; the boolean itself is not
+  /// stored as a column.
+  negRiskMarketId String?    @db.VarChar
   condition      Condition[]
 
   // Denormalized aggregates maintained by trigger on condition table
