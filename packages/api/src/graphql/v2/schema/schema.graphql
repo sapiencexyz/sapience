@@ -1262,6 +1262,128 @@ type CollateralBalanceSnapshotConnection {
 }
 
 # -----------------------------------------------
+# Questions (Phase 18)
+# -----------------------------------------------
+
+"""
+A question is either a single `Condition` or a `ConditionGroup`. v2
+returns the discriminated entity directly through this union — the
+v1 `Question` envelope (with `source`, `title`, `description`, etc.)
+collapses away here in favour of reading those fields off the concrete
+type via inline fragments.
+"""
+union QuestionItem = Condition | ConditionGroup
+
+"""
+Float range filter; all bounds optional. `gt` / `lt` are open-ended,
+`gte` / `lte` inclusive. Used by `QuestionFilter.estimatedPrice` and
+`QuestionFilter.similarMarketVolume`.
+"""
+input FloatFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  lt: Float
+  lte: Float
+}
+
+"""
+Resolution-status filter for the interleaved questions feed.
+- `ALL` (default): no filter.
+- `RESOLVED` / `UNRESOLVED`: any decisive outcome / pending.
+- `RESOLVED_YES` / `RESOLVED_NO`: specific decisive outcomes.
+"""
+enum ResolutionStatus {
+  ALL
+  RESOLVED
+  UNRESOLVED
+  RESOLVED_YES
+  RESOLVED_NO
+}
+
+"""
+Which similar-market-volume window the filter / sort looks at.
+`*_FILTERED` variants exclude pre-resolution / off-platform volume.
+"""
+enum VolumeWindow {
+  ONE_HOUR
+  FOUR_HOURS
+  TWENTY_FOUR_HOURS
+  SEVEN_DAYS
+  ONE_HOUR_FILTERED
+  FOUR_HOURS_FILTERED
+  TWENTY_FOUR_HOURS_FILTERED
+  SEVEN_DAYS_FILTERED
+}
+
+"""
+Filter input for `questions`. All fields optional. Where an aggregate
+column drives the sort (e.g. `OPEN_INTEREST`,
+`SIMILAR_MARKET_VOLUME_*`), the same filter dimension is exposed here.
+"""
+input QuestionFilter {
+  """Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present."""
+  chainId: Int
+  """Resolver (oracle) contract address that owns the underlying condition."""
+  resolverAddress: Address
+  """Match any of these resolver contract addresses."""
+  resolverAddressIn: [Address!]
+  """Restrict to questions whose category slug is in this set."""
+  categorySlugs: [String!]
+  """Resolution-status filter; defaults to ALL when omitted."""
+  resolutionStatus: ResolutionStatus
+  """Range over the Polymarket-derived `estimatedPrice` 0–1 probability."""
+  estimatedPrice: FloatFilter
+  """Range over similar-market volume (USD). Window selected by `similarMarketVolumeWindow`."""
+  similarMarketVolume: FloatFilter
+  """Volume window the `similarMarketVolume` filter and the corresponding sort look at. All-time when omitted."""
+  similarMarketVolumeWindow: VolumeWindow
+  """Free-text search across the wrapped condition/group title and description (case-insensitive)."""
+  search: String
+  """Restrict to questions tagged with this value."""
+  tag: String
+}
+
+"""
+Sort fields for the `questions` connection. `OPEN_INTEREST` is
+supported because the union runner sorts via raw SQL with a numeric
+cast — the narrower `conditions` / `conditionGroups` connections fall
+back to offset for that field.
+"""
+enum QuestionOrderField {
+  CREATED_AT
+  RESOLVES_AT
+  OPEN_INTEREST
+  PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_24H
+  SIMILAR_MARKET_VOLUME_7D
+}
+
+input QuestionOrder {
+  field: QuestionOrderField!
+  direction: OrderDirection!
+}
+
+type QuestionEdge {
+  cursor: String!
+  node: QuestionItem!
+}
+
+"""
+Relay-shaped connection over the interleaved Condition + ConditionGroup
+feed. `nodes` is omitted because unions don't share a field set —
+clients select through `edges { node { ... } }` with inline fragments.
+
+`totalCount` is intentionally omitted on this surface — the underlying
+SQL UNION can't produce a single COUNT cheaply; `hasNextPage` from
+`pageInfo` is the right end-of-feed signal.
+"""
+type QuestionConnection {
+  edges: [QuestionEdge!]!
+  pageInfo: PageInfo!
+}
+
+# -----------------------------------------------
 # Query
 # -----------------------------------------------
 
@@ -1351,6 +1473,20 @@ type Query {
     after: String
     filter: ActivityFilter
   ): ActivityConnection!
+
+  """
+  Interleaved Condition + ConditionGroup feed — the markets list on
+  most public surfaces. Sort by `END_TIME` (next-to-resolve first) or
+  one of the windowed-volume / open-interest columns. `totalCount` is
+  omitted on this connection (SQL UNION can't COUNT cheaply); rely on
+  `pageInfo.hasNextPage`.
+  """
+  questions(
+    first: Int = 50
+    after: String
+    filter: QuestionFilter
+    orderBy: QuestionOrder
+  ): QuestionConnection!
 
   """
   Account leaderboard ranked by `metric`. PnL / Volume / ROI accept a

@@ -565,7 +565,7 @@ const cursorIdentity = (row: SortedItemRow) => ({
   endTime: Number(row.end_time ?? 0),
 });
 
-const encodeQuestionCursor = (row: SortedItemRow): string => {
+export const encodeQuestionCursor = (row: SortedItemRow): string => {
   const identity = cursorIdentity(row);
   return encodeCursor({
     k: String(row.sort_value),
@@ -573,7 +573,7 @@ const encodeQuestionCursor = (row: SortedItemRow): string => {
   });
 };
 
-const decodeQuestionCursor = (cursor: string | null | undefined) => {
+export const decodeQuestionCursor = (cursor: string | null | undefined) => {
   if (!cursor) return null;
   const payload = decodeCursor(cursor);
   if (!payload) return null;
@@ -897,7 +897,7 @@ const hydrateItems = async (
   return result;
 };
 
-const runQuestionsData = async (
+export const runQuestionsData = async (
   args: RunQuestionsInput
 ): Promise<{
   items: QuestionReturn[];
@@ -966,7 +966,7 @@ import { decodeCursor, encodeCursor } from '../../../relay/cursor';
  * sorts via raw SQL; the narrower Condition/ConditionGroup connections
  * still omit it because their Prisma orderBy path cannot cast varchar OI.
  */
-const mapOrderField = (
+export const mapOrderField = (
   field: QuestionOrderField | string
 ): { sortField: QuestionSortField; volumeWindow: VolumeWindow | null } => {
   switch (String(field)) {

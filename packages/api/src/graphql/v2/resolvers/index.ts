@@ -42,6 +42,7 @@ import { ActivityItem } from './Activity';
 import { activity } from './queries/activity';
 import { leaderboard } from './queries/leaderboard';
 import { Protocol, protocol } from './Protocol';
+import { QuestionItem, questions } from './queries/questions';
 import { popularTags } from '../../sdl/resolvers/queries/tags';
 
 // Project the shared scalar map down to the scalars actually declared in
@@ -72,6 +73,7 @@ export const resolvers = {
   Close,
   CollateralTransfer,
   ActivityItem,
+  QuestionItem,
   Protocol,
   Query: {
     node,
@@ -109,6 +111,7 @@ export const resolvers = {
     activity,
     leaderboard,
     protocol,
+    questions,
     popularTags,
   },
 };
