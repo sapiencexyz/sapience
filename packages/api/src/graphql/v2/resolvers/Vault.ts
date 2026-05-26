@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * v2 Vault — implements Node & AddressEntity.
  *
@@ -17,20 +16,21 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import { getConfiguredVaults } from '../../../services/protocolStats';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import type { VaultKind } from '../__generated__/resolvers';
 
 export type VaultRow = {
   id: string; // pre-encoded global id
   address: string;
   chainId: number;
-  kind: 'PROTOCOL' | 'PYTH' | 'SINGLE_LEG' | 'STRATEGY_B';
+  kind: VaultKind;
   legacyAddresses: string[];
 };
 
-const KIND_MAP: Record<string, VaultRow['kind']> = {
-  protocol: 'PROTOCOL',
-  pyth: 'PYTH',
-  'single-leg': 'SINGLE_LEG',
-  'strategy-b': 'STRATEGY_B',
+const KIND_MAP: Record<string, VaultKind> = {
+  protocol: 'PROTOCOL' as VaultKind,
+  pyth: 'PYTH' as VaultKind,
+  'single-leg': 'SINGLE_LEG' as VaultKind,
+  'strategy-b': 'STRATEGY_B' as VaultKind,
 };
 
 const vaultDomainId = (chainId: number, address: string) =>

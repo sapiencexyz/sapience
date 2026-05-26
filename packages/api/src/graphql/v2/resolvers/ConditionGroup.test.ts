@@ -48,7 +48,7 @@ describe('ConditionGroup (v2)', () => {
   it('totals collapses denormalized counters into one struct', () => {
     type Totals = {
       publicConditionCount: number;
-      totalOpenInterest: string;
+      totalOpenInterest: bigint;
       totalSimilarMarketVolume24h: number;
     };
     const result = callResolver<Totals>(ConditionGroup.totals)(
@@ -62,7 +62,7 @@ describe('ConditionGroup (v2)', () => {
       null
     ) as Totals;
     expect(result.publicConditionCount).toBe(3);
-    expect(result.totalOpenInterest).toBe('1234567890');
+    expect(result.totalOpenInterest).toBe(1234567890n);
     expect(result.totalSimilarMarketVolume24h).toBe(99.5);
   });
 

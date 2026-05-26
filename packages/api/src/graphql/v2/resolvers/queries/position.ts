@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `position(id:)` / `positions(...)`.
  *
@@ -9,6 +8,7 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
   buildKeysetWhere,
@@ -20,7 +20,10 @@ import {
 } from '../../relay/connection';
 import { tryFromGlobalIdV2 } from '../../relay/nodeRegistry';
 
-export const position = async (_parent: unknown, { id }: { id: string }) => {
+export const position: NonNullable<QueryResolvers['position']> = async (
+  _parent,
+  { id }
+) => {
   const parts = tryFromGlobalIdV2(id);
   if (!parts || parts.type !== 'Position') return null;
   const rowId = Number(parts.id);
@@ -31,28 +34,14 @@ export const position = async (_parent: unknown, { id }: { id: string }) => {
   });
 };
 
-type Field = 'CREATED_AT' | 'UPDATED_AT';
-const FIELD_TO_PRISMA: Record<Field, 'createdAt' | 'updatedAt'> = {
+const FIELD_TO_PRISMA: Record<string, 'createdAt' | 'updatedAt'> = {
   CREATED_AT: 'createdAt',
   UPDATED_AT: 'updatedAt',
 };
 
-export const positions = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: {
-      holder?: string | null;
-      chainId?: number | null;
-      conditionId?: string | null;
-      pickConfigId?: string | null;
-      result?: { equals?: string | null; in?: string[] | null } | null;
-      settled?: boolean | null;
-      endsAt?: { gte?: number | null; lte?: number | null } | null;
-    } | null;
-    orderBy?: { field: Field; direction: string } | null;
-  }
+export const positions: NonNullable<QueryResolvers['positions']> = async (
+  _parent,
+  args
 ) => {
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'UPDATED_AT'];
@@ -73,11 +62,14 @@ export const positions = async (
     hasPickConfigFilter = true;
   }
   if (args.filter?.result?.equals) {
-    pickConfigFilter.result = args.filter.result.equals as any;
+    pickConfigFilter.result = args.filter.result
+      .equals as Prisma.PicksWhereInput['result'];
     hasPickConfigFilter = true;
   }
   if (args.filter?.result?.in?.length) {
-    pickConfigFilter.result = { in: args.filter.result.in as any[] };
+    pickConfigFilter.result = {
+      in: args.filter.result.in as Prisma.EnumSettlementResultFilter['in'],
+    };
     hasPickConfigFilter = true;
   }
   if (args.filter?.settled != null) {
@@ -107,7 +99,10 @@ export const positions = async (
   const [rows, totalCount] = await Promise.all([
     prisma.position.findMany({
       where: withCursorWhere(where, cursorWhere),
-      orderBy: [{ [field]: direction } as any, { id: direction }],
+      orderBy: [
+        { [field]: direction } as Prisma.PositionOrderByWithRelationInput,
+        { id: direction },
+      ],
       include: { pickConfiguration: { include: { picks: true } } },
       take: first + 1,
     }),
@@ -120,7 +115,7 @@ export const positions = async (
     totalCount,
     getCursor: (row) =>
       encodeCursor({
-        k: (row as any)[field].toISOString(),
+        k: row[field].toISOString(),
         id: String(row.id),
       }),
   });

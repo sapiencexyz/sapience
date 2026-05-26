@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `claim(id:)` / `claims(...)` and `close(id:)` / `closes(...)`.
  */
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
   buildKeysetWhere,
@@ -28,24 +28,18 @@ const decodeRowId = (
 
 // ---- Claim ----
 
-export const claim = async (_parent: unknown, { id }: { id: string }) => {
+export const claim: NonNullable<QueryResolvers['claim']> = async (
+  _parent,
+  { id }
+) => {
   const rowId = decodeRowId(id, 'Claim');
   if (rowId == null) return null;
   return prisma.claim.findUnique({ where: { id: rowId } });
 };
 
-export const claims = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: {
-      chainId?: number | null;
-      holder?: string | null;
-      predictionId?: string | null;
-    } | null;
-    orderBy?: { field: 'REDEEMED_AT'; direction: string } | null;
-  }
+export const claims: NonNullable<QueryResolvers['claims']> = async (
+  _parent,
+  args
 ) => {
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');
@@ -87,24 +81,18 @@ export const claims = async (
 
 // ---- Close ----
 
-export const close = async (_parent: unknown, { id }: { id: string }) => {
+export const close: NonNullable<QueryResolvers['close']> = async (
+  _parent,
+  { id }
+) => {
   const rowId = decodeRowId(id, 'Close');
   if (rowId == null) return null;
   return prisma.close.findUnique({ where: { id: rowId } });
 };
 
-export const closes = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: {
-      chainId?: number | null;
-      pickConfigId?: string | null;
-      participant?: string | null;
-    } | null;
-    orderBy?: { field: 'BURNED_AT'; direction: string } | null;
-  }
+export const closes: NonNullable<QueryResolvers['closes']> = async (
+  _parent,
+  args
 ) => {
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');

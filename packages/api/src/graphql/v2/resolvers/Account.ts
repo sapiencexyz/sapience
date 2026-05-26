@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * v2 Account field resolvers. Mirrors v1's Account.ts but:
  *
@@ -13,6 +12,10 @@
 import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
 import { synthesizeAccount } from '../../sdl/resolvers/accountSynthesis';
+import type {
+  AccountResolvers,
+  ReferralCodeResolvers,
+} from '../__generated__/resolvers';
 import {
   buildConnection,
   buildKeysetWhere,
@@ -29,17 +32,22 @@ import {
 
 registerNodeTypeV2({
   type: 'Account',
-  loader: async (id, ctx: any) => {
+  loader: async (id, ctx) => {
     const address = id.toLowerCase();
-    const row = ctx?.loaders?.userByAddress
-      ? await ctx.loaders.userByAddress.load(address)
+    const loaders = (
+      ctx as {
+        loaders?: { userByAddress?: { load: (a: string) => Promise<unknown> } };
+      }
+    )?.loaders;
+    const row = loaders?.userByAddress
+      ? await loaders.userByAddress.load(address)
       : await prisma.user.findUnique({ where: { address } });
     return row ?? synthesizeAccount(address);
   },
 });
 
-const addressOf = (parent: any): string =>
-  (parent?.address ?? '').toLowerCase();
+const addressOf = (parent: { address?: string | null }): string =>
+  (parent.address ?? '').toLowerCase();
 
 const emptyAccountConnection = () =>
   buildConnection<never, never>({
@@ -49,18 +57,30 @@ const emptyAccountConnection = () =>
     getCursor: () => '',
   });
 
-export const Account = {
-  id: (parent: any) => toGlobalIdV2('Account', addressOf(parent)),
+export const Account: AccountResolvers = {
+  id: (parent) => toGlobalIdV2('Account', addressOf(parent)),
 
-  referredBy: async (parent: any, _args: unknown, ctx: any) => {
+  referredBy: async (parent, _args, ctx) => {
     if (parent.referredById == null) return null;
-    return ctx.loaders!.userById.load(parent.referredById);
+    return ctx.loaders?.userById.load(parent.referredById) ?? null;
   },
 
-  referredByCode: async (parent: any, _args: unknown, ctx: any) => {
+  referredByCode: async (parent, _args, ctx) => {
     if (parent.referredByCodeId == null) return null;
-    return ctx.loaders!.referralCodeById.load(parent.referredByCodeId);
+    return ctx.loaders?.referralCodeById.load(parent.referredByCodeId) ?? null;
   },
+
+  /**
+   * Account ranking on the chosen metric. Delegates to the leaderboard
+   * resolver to share materialization. The shared helper returns a
+   * synthesized AccountRanking row; cast at the boundary because the
+   * generated resolver type wraps the parent in a strict
+   * ResolverTypeWrapper.
+   */
+  rank: accountRank as AccountResolvers['rank'],
+
+  collateralBalance: collateralBalanceField,
+  collateralBalanceHistory: collateralBalanceHistoryField,
 
   /**
    * Cursor-paginated list of accounts referred by `parent`. Synthesized
@@ -70,12 +90,7 @@ export const Account = {
    * Cursor key is `(createdAt, id)` to stay stable under concurrent
    * inserts; direction is DESC (newest referrals first).
    */
-  rank: accountRank,
-
-  collateralBalance: collateralBalanceField,
-  collateralBalanceHistory: collateralBalanceHistoryField,
-
-  referrals: async (parent: any, args: any) => {
+  referrals: async (parent, args) => {
     if (!parent.id) return emptyAccountConnection();
 
     const first = clampTake(args.first ?? 50, {
@@ -123,6 +138,6 @@ export const Account = {
  * is canonicalized to a lowercase Address, and the leaked internal
  * `id` / `updatedAt` fields are dropped.
  */
-export const ReferralCode = {
-  createdBy: (parent: any): string => (parent.createdBy ?? '').toLowerCase(),
+export const ReferralCode: ReferralCodeResolvers = {
+  createdBy: (parent) => parent.createdBy.toLowerCase(),
 };

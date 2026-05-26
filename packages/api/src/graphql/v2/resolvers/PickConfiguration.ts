@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * v2 PickConfiguration — Node-implementing entity over the Postgres
  * `Picks` table (legacy model name; the GraphQL surface uses the
@@ -10,6 +9,10 @@
 
 import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import type {
+  PickConfigurationResolvers,
+  PickResolvers,
+} from '../__generated__/resolvers';
 
 registerNodeTypeV2({
   type: 'PickConfiguration',
@@ -20,30 +23,27 @@ registerNodeTypeV2({
     }),
 });
 
-export const PickConfiguration = {
-  id: (parent: any) => toGlobalIdV2('PickConfiguration', parent.id),
-  pickConfigId: (parent: any) => parent.id,
-  marketAddress: (parent: any) => (parent.marketAddress ?? '').toLowerCase(),
-  predictorToken: (parent: any) =>
+export const PickConfiguration: PickConfigurationResolvers = {
+  id: (parent) => toGlobalIdV2('PickConfiguration', parent.id),
+  pickConfigId: (parent) => parent.id,
+  marketAddress: (parent) => parent.marketAddress.toLowerCase(),
+  predictorToken: (parent) =>
     parent.predictorToken ? parent.predictorToken.toLowerCase() : null,
-  counterpartyToken: (parent: any) =>
+  counterpartyToken: (parent) =>
     parent.counterpartyToken ? parent.counterpartyToken.toLowerCase() : null,
-
-  picks: async (parent: any) => {
-    if (parent.picks) return parent.picks;
+  picks: async (parent) => {
+    const withPicks = parent as typeof parent & {
+      picks?: Awaited<ReturnType<typeof prisma.pick.findMany>>;
+    };
+    if (withPicks.picks) return withPicks.picks;
     return prisma.pick.findMany({ where: { pickConfigId: parent.id } });
   },
 };
 
-export const Pick = {
-  conditionId: (parent: any) => (parent.conditionId ?? '').toLowerCase(),
-  conditionResolverAddress: (parent: any) =>
-    (
-      parent.conditionResolver ??
-      parent.conditionResolverAddress ??
-      ''
-    ).toLowerCase(),
-  condition: async (parent: any) => {
+export const Pick: PickResolvers = {
+  conditionId: (parent) => parent.conditionId.toLowerCase(),
+  conditionResolverAddress: (parent) => parent.conditionResolver.toLowerCase(),
+  condition: async (parent) => {
     if (!parent.conditionId) return null;
     return prisma.condition.findUnique({
       where: { id: parent.conditionId.toLowerCase() },

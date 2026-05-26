@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `forecast(uid:)` / `forecasts(...)` — EAS attestation lookups.
  *
@@ -10,6 +9,7 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
   buildKeysetWhere,
@@ -20,31 +20,19 @@ import {
   withCursorWhere,
 } from '../../relay/connection';
 
-export const forecast = async (_parent: unknown, { uid }: { uid: string }) =>
-  prisma.attestation.findUnique({ where: { uid } });
+export const forecast: NonNullable<QueryResolvers['forecast']> = async (
+  _parent,
+  { uid }
+) => prisma.attestation.findUnique({ where: { uid } });
 
-type Field = 'ATTESTED_AT' | 'CREATED_AT';
-const FIELD_TO_PRISMA: Record<Field, 'time' | 'createdAt'> = {
+const FIELD_TO_PRISMA: Record<string, 'time' | 'createdAt'> = {
   ATTESTED_AT: 'time',
   CREATED_AT: 'createdAt',
 };
 
-export const forecasts = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: {
-      uid?: string | null;
-      forecaster?: string | null;
-      recipient?: string | null;
-      conditionId?: string | null;
-      conditionIds?: string[] | null;
-      schemaId?: string | null;
-      attestedAt?: { gte?: number | null; lte?: number | null } | null;
-    } | null;
-    orderBy?: { field: Field; direction: string } | null;
-  }
+export const forecasts: NonNullable<QueryResolvers['forecasts']> = async (
+  _parent,
+  args
 ) => {
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'ATTESTED_AT'];
@@ -85,7 +73,10 @@ export const forecasts = async (
   const [rows, totalCount] = await Promise.all([
     prisma.attestation.findMany({
       where: withCursorWhere(where, cursorWhere),
-      orderBy: [{ [field]: direction } as any, { uid: direction }],
+      orderBy: [
+        { [field]: direction } as Prisma.AttestationOrderByWithRelationInput,
+        { uid: direction },
+      ],
       take: first + 1,
     }),
     prisma.attestation.count({ where }),

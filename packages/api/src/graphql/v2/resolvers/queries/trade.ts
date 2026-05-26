@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `trade(tradeHash:)` / `trades(...)` — secondary-market trade queries.
  *
@@ -8,6 +7,7 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
   buildKeysetWhere,
@@ -18,41 +18,27 @@ import {
   withCursorWhere,
 } from '../../relay/connection';
 
-export const trade = async (
-  _parent: unknown,
-  { tradeHash }: { tradeHash: string }
+export const trade: NonNullable<QueryResolvers['trade']> = async (
+  _parent,
+  { tradeHash }
 ) =>
   prisma.secondaryTrade.findUnique({
     where: { tradeHash: tradeHash.toLowerCase() },
   });
 
-type Field = 'EXECUTED_AT' | 'BLOCK_NUMBER';
-const FIELD_TO_PRISMA: Record<Field, 'executedAt' | 'blockNumber'> = {
+const FIELD_TO_PRISMA: Record<string, 'executedAt' | 'blockNumber'> = {
   EXECUTED_AT: 'executedAt',
   BLOCK_NUMBER: 'blockNumber',
 };
 
-export const trades = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: {
-      tradeHash?: string | null;
-      participant?: string | null;
-      buyer?: string | null;
-      seller?: string | null;
-      token?: string | null;
-      tokens?: string[] | null;
-      chainId?: number | null;
-      executedAt?: { gte?: number | null; lte?: number | null } | null;
-    } | null;
-    orderBy?: { field: Field; direction: string } | null;
-  }
+export const trades: NonNullable<QueryResolvers['trades']> = async (
+  _parent,
+  args
 ) => {
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'EXECUTED_AT'];
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');
+  type Row = Awaited<ReturnType<typeof prisma.secondaryTrade.findUnique>>;
 
   const where: Prisma.SecondaryTradeWhereInput = {};
   if (args.filter?.tradeHash)
@@ -89,7 +75,10 @@ export const trades = async (
   const [rows, totalCount] = await Promise.all([
     prisma.secondaryTrade.findMany({
       where: withCursorWhere(where, cursorWhere),
-      orderBy: [{ [field]: direction } as any, { tradeHash: direction }],
+      orderBy: [
+        { [field]: direction } as Prisma.SecondaryTradeOrderByWithRelationInput,
+        { tradeHash: direction },
+      ],
       take: first + 1,
     }),
     prisma.secondaryTrade.count({ where }),
@@ -100,6 +89,9 @@ export const trades = async (
     first,
     totalCount,
     getCursor: (row) =>
-      encodeCursor({ k: String((row as any)[field]), id: row.tradeHash }),
+      encodeCursor({
+        k: String((row as NonNullable<Row>)[field]),
+        id: row.tradeHash,
+      }),
   });
 };

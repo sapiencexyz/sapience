@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `condition(conditionId:)` / `conditions(...)` — CTF condition lookups.
  *
@@ -13,6 +12,7 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
   buildKeysetWhere,
@@ -23,17 +23,16 @@ import {
   withCursorWhere,
 } from '../../relay/connection';
 
-export const condition = async (
-  _parent: unknown,
-  { conditionId }: { conditionId: string }
+export const condition: NonNullable<QueryResolvers['condition']> = async (
+  _parent,
+  { conditionId }
 ) =>
   prisma.condition.findUnique({
     where: { id: conditionId.toLowerCase() },
   });
 
-type Field = 'CREATED_AT' | 'END_TIME' | 'DISPLAY_ORDER' | 'OPEN_INTEREST';
 const FIELD_TO_PRISMA: Record<
-  Field,
+  string,
   'createdAt' | 'endTime' | 'displayOrder' | 'openInterest'
 > = {
   CREATED_AT: 'createdAt',
@@ -59,25 +58,9 @@ const projectOutcomeFilter = (
   return {};
 };
 
-export const conditions = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: {
-      conditionId?: string | null;
-      conditionIds?: string[] | null;
-      chainId?: number | null;
-      categoryId?: number | null;
-      settled?: boolean | null;
-      outcome?: 'YES' | 'NO' | 'NON_DECISIVE' | null;
-      publicOnly?: boolean | null;
-      tags?: string[] | null;
-      search?: string | null;
-      endTime?: { gte?: number | null; lte?: number | null } | null;
-    } | null;
-    orderBy?: { field: Field; direction: string } | null;
-  }
+export const conditions: NonNullable<QueryResolvers['conditions']> = async (
+  _parent,
+  args
 ) => {
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'END_TIME'];
@@ -127,7 +110,10 @@ export const conditions = async (
   const [rows, totalCount] = await Promise.all([
     prisma.condition.findMany({
       where: withCursorWhere(where, cursorWhere),
-      orderBy: [{ [field]: direction } as any, { id: direction }],
+      orderBy: [
+        { [field]: direction } as Prisma.ConditionOrderByWithRelationInput,
+        { id: direction },
+      ],
       take: first + 1,
       skip: skip || undefined,
     }),
@@ -138,14 +124,13 @@ export const conditions = async (
     rows,
     first,
     totalCount,
-    getCursor: (row, idx) =>
-      encodeCursor({
-        k: usesOffset
-          ? String(skip + idx)
-          : field === 'createdAt'
-            ? row.createdAt.toISOString()
-            : String((row as any)[field]),
-        id: row.id,
-      }),
+    getCursor: (row, idx) => {
+      const k = usesOffset
+        ? String(skip + idx)
+        : field === 'createdAt'
+          ? row.createdAt.toISOString()
+          : String(row[field as keyof typeof row]);
+      return encodeCursor({ k, id: row.id });
+    },
   });
 };

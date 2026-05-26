@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * v2 Claim + Close — settlement-side events.
  *
@@ -11,6 +10,10 @@
 
 import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import type {
+  ClaimResolvers,
+  CloseResolvers,
+} from '../__generated__/resolvers';
 
 registerNodeTypeV2({
   type: 'Claim',
@@ -30,18 +33,16 @@ registerNodeTypeV2({
   },
 });
 
-export const Claim = {
-  id: (parent: any) => toGlobalIdV2('Claim', String(parent.id)),
-  marketAddress: (parent: any) => (parent.marketAddress ?? '').toLowerCase(),
-  holder: (parent: any) => (parent.holder ?? '').toLowerCase(),
-  positionToken: (parent: any) => (parent.positionToken ?? '').toLowerCase(),
+export const Claim: ClaimResolvers = {
+  id: (parent) => toGlobalIdV2('Claim', String(parent.id)),
+  marketAddress: (parent) => parent.marketAddress.toLowerCase(),
+  holder: (parent) => parent.holder.toLowerCase(),
+  positionToken: (parent) => parent.positionToken.toLowerCase(),
 };
 
-export const Close = {
-  id: (parent: any) => toGlobalIdV2('Close', String(parent.id)),
-  marketAddress: (parent: any) => (parent.marketAddress ?? '').toLowerCase(),
-  predictorHolder: (parent: any) =>
-    (parent.predictorHolder ?? '').toLowerCase(),
-  counterpartyHolder: (parent: any) =>
-    (parent.counterpartyHolder ?? '').toLowerCase(),
+export const Close: CloseResolvers = {
+  id: (parent) => toGlobalIdV2('Close', String(parent.id)),
+  marketAddress: (parent) => parent.marketAddress.toLowerCase(),
+  predictorHolder: (parent) => parent.predictorHolder.toLowerCase(),
+  counterpartyHolder: (parent) => parent.counterpartyHolder.toLowerCase(),
 };

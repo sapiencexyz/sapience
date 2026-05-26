@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `conditionGroup(id:)` / `conditionGroups(...)` — Relay queries over
  * the `ConditionGroup` table. `TOTAL_OPEN_INTEREST` /
@@ -8,6 +7,7 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
   buildKeysetWhere,
@@ -18,18 +18,12 @@ import {
   withCursorWhere,
 } from '../../relay/connection';
 
-export const conditionGroup = async (
-  _parent: unknown,
-  { id }: { id: number }
-) => prisma.conditionGroup.findUnique({ where: { id } });
+export const conditionGroup: NonNullable<
+  QueryResolvers['conditionGroup']
+> = async (_parent, { id }) =>
+  prisma.conditionGroup.findUnique({ where: { id } });
 
-type Field =
-  | 'CREATED_AT'
-  | 'NAME'
-  | 'MAX_END_TIME'
-  | 'TOTAL_OPEN_INTEREST'
-  | 'TOTAL_PREDICTION_COUNT';
-const FIELD_TO_PRISMA: Record<Field, string> = {
+const FIELD_TO_PRISMA: Record<string, string> = {
   CREATED_AT: 'createdAt',
   NAME: 'name',
   MAX_END_TIME: 'maxEndTime',
@@ -37,18 +31,9 @@ const FIELD_TO_PRISMA: Record<Field, string> = {
   TOTAL_PREDICTION_COUNT: 'totalPredictionCount',
 };
 
-export const conditionGroups = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: {
-      categoryId?: number | null;
-      search?: string | null;
-    } | null;
-    orderBy?: { field: Field; direction: string } | null;
-  }
-) => {
+export const conditionGroups: NonNullable<
+  QueryResolvers['conditionGroups']
+> = async (_parent, args) => {
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'MAX_END_TIME'];
   const direction = normalizeDirection(args.orderBy?.direction, 'asc');
@@ -83,7 +68,10 @@ export const conditionGroups = async (
   const [rows, totalCount] = await Promise.all([
     prisma.conditionGroup.findMany({
       where: withCursorWhere(where, cursorWhere),
-      orderBy: [{ [field]: direction } as any, { id: direction }],
+      orderBy: [
+        { [field]: direction } as Prisma.ConditionGroupOrderByWithRelationInput,
+        { id: direction },
+      ],
       take: first + 1,
       skip: skip || undefined,
     }),
@@ -94,14 +82,13 @@ export const conditionGroups = async (
     rows,
     first,
     totalCount,
-    getCursor: (row, idx) =>
-      encodeCursor({
-        k: usesOffset
-          ? String(skip + idx)
-          : field === 'createdAt'
-            ? (row as any).createdAt.toISOString()
-            : String((row as any)[field]),
-        id: String(row.id),
-      }),
+    getCursor: (row, idx) => {
+      const k = usesOffset
+        ? String(skip + idx)
+        : field === 'createdAt'
+          ? row.createdAt.toISOString()
+          : String(row[field as keyof typeof row]);
+      return encodeCursor({ k, id: String(row.id) });
+    },
   });
 };

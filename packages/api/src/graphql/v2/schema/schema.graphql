@@ -1163,7 +1163,11 @@ breakdowns the dashboard renders. Lookup is via `protocol { … }`; no
 arguments needed.
 """
 type Protocol {
-  stats(filter: ProtocolStatFilter): ProtocolStatConnection!
+  stats(
+    first: Int = 100
+    after: String
+    filter: ProtocolStatFilter
+  ): ProtocolStatConnection!
   openInterestByCategory: [CategoryOpenInterest!]!
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
 }

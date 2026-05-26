@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * v2 Category — Node-implementing record from the Postgres `Category`
  * table. Exposes its row id as the named `categoryId` field; the
@@ -7,6 +6,7 @@
 
 import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import type { CategoryResolvers } from '../__generated__/resolvers';
 
 registerNodeTypeV2({
   type: 'Category',
@@ -17,7 +17,7 @@ registerNodeTypeV2({
   },
 });
 
-export const Category = {
-  id: (parent: any) => toGlobalIdV2('Category', String(parent.id)),
-  categoryId: (parent: any) => parent.id,
+export const Category: CategoryResolvers = {
+  id: (parent) => toGlobalIdV2('Category', String(parent.id)),
+  categoryId: (parent) => parent.id,
 };

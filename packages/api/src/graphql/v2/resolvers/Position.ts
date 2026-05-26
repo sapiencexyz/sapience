@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * v2 Position — raw `Position` row (no WAC synthesis).
  *
@@ -11,6 +10,7 @@
 
 import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import type { PositionResolvers } from '../__generated__/resolvers';
 
 registerNodeTypeV2({
   type: 'Position',
@@ -24,9 +24,16 @@ registerNodeTypeV2({
   },
 });
 
-export const Position = {
-  id: (parent: any) => toGlobalIdV2('Position', String(parent.id)),
-  holder: (parent: any) => (parent.holder ?? '').toLowerCase(),
-  tokenAddress: (parent: any) => (parent.tokenAddress ?? '').toLowerCase(),
-  pickConfig: (parent: any) => parent.pickConfiguration ?? null,
+export const Position: PositionResolvers = {
+  id: (parent) => toGlobalIdV2('Position', String(parent.id)),
+  holder: (parent) => parent.holder.toLowerCase(),
+  tokenAddress: (parent) => parent.tokenAddress.toLowerCase(),
+  pickConfig: (parent) => {
+    const withConfig = parent as typeof parent & {
+      pickConfiguration?: Awaited<
+        ReturnType<typeof prisma.picks.findUnique>
+      > | null;
+    };
+    return withConfig.pickConfiguration ?? null;
+  },
 };

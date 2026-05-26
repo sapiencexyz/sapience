@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * v2 Condition — Node-implementing entity over the Postgres `condition`
  * table. The on-chain `conditionId` (lowercase 0x hex) doubles as both
@@ -19,49 +18,53 @@
 
 import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import {
+  ConditionOutcome,
+  type ConditionResolvers,
+} from '../__generated__/resolvers';
+import type { Condition as PrismaConditionRow } from '../../../../generated/prisma';
 
 registerNodeTypeV2({
   type: 'Condition',
-  loader: async (id, ctx: any) => {
+  loader: async (id, ctx) => {
     const lc = id.toLowerCase();
-    const loaders = ctx?.loaders as
-      | { conditionById?: { load: (id: string) => Promise<unknown | null> } }
-      | undefined;
+    const loaders = (
+      ctx as {
+        loaders?: {
+          conditionById?: { load: (id: string) => Promise<unknown | null> };
+        };
+      }
+    )?.loaders;
     if (loaders?.conditionById) return loaders.conditionById.load(lc);
     return prisma.condition.findUnique({ where: { id: lc } });
   },
 });
 
-const computeOutcome = (row: {
-  settled: boolean;
-  resolvedToYes: boolean;
-  nonDecisive: boolean;
-}): 'YES' | 'NO' | 'NON_DECISIVE' | null => {
+const computeOutcome = (row: PrismaConditionRow): ConditionOutcome | null => {
   if (!row.settled) return null;
-  if (row.nonDecisive) return 'NON_DECISIVE';
-  return row.resolvedToYes ? 'YES' : 'NO';
+  if (row.nonDecisive) return ConditionOutcome.NonDecisive;
+  return row.resolvedToYes ? ConditionOutcome.Yes : ConditionOutcome.No;
 };
 
-export const Condition = {
-  id: (parent: any) => toGlobalIdV2('Condition', parent.id),
-  conditionId: (parent: any) => parent.id,
-  resolverAddress: (parent: any) =>
-    (parent.resolver ?? parent.resolverAddress ?? '').toLowerCase(),
-  outcome: (parent: any) => computeOutcome(parent),
+export const Condition: ConditionResolvers = {
+  id: (parent) => toGlobalIdV2('Condition', parent.id),
+  conditionId: (parent) => parent.id,
+  resolverAddress: (parent) => parent.resolver.toLowerCase(),
+  outcome: (parent) => computeOutcome(parent),
 
-  category: async (parent: any) => {
+  category: async (parent) => {
     if (parent.categoryId == null) return null;
     return prisma.category.findUnique({ where: { id: parent.categoryId } });
   },
 
-  conditionGroup: async (parent: any) => {
+  conditionGroup: async (parent) => {
     if (parent.conditionGroupId == null) return null;
     return prisma.conditionGroup.findUnique({
       where: { id: parent.conditionGroupId },
     });
   },
 
-  similarMarket: (parent: any) => {
+  similarMarket: (parent) => {
     // Only build the nested object if at least one signal is present —
     // a Condition with no Polymarket linkage returns null rather than a
     // payload of zeros.
@@ -75,15 +78,15 @@ export const Condition = {
     return {
       image: parent.similarMarketImage ?? null,
       markets: parent.similarMarkets ?? [],
-      volume: parent.similarMarketVolume ?? 0,
-      volume1h: parent.similarMarketVolume1h ?? 0,
-      volume4h: parent.similarMarketVolume4h ?? 0,
-      volume24h: parent.similarMarketVolume24h ?? 0,
-      volume7d: parent.similarMarketVolume7d ?? 0,
-      volumeFiltered1h: parent.similarMarketVolumeFiltered1h ?? 0,
-      volumeFiltered4h: parent.similarMarketVolumeFiltered4h ?? 0,
-      volumeFiltered24h: parent.similarMarketVolumeFiltered24h ?? 0,
-      volumeFiltered7d: parent.similarMarketVolumeFiltered7d ?? 0,
+      volume: Number(parent.similarMarketVolume ?? 0),
+      volume1h: Number(parent.similarMarketVolume1h ?? 0),
+      volume4h: Number(parent.similarMarketVolume4h ?? 0),
+      volume24h: Number(parent.similarMarketVolume24h ?? 0),
+      volume7d: Number(parent.similarMarketVolume7d ?? 0),
+      volumeFiltered1h: Number(parent.similarMarketVolumeFiltered1h ?? 0),
+      volumeFiltered4h: Number(parent.similarMarketVolumeFiltered4h ?? 0),
+      volumeFiltered24h: Number(parent.similarMarketVolumeFiltered24h ?? 0),
+      volumeFiltered7d: Number(parent.similarMarketVolumeFiltered7d ?? 0),
     };
   },
 };

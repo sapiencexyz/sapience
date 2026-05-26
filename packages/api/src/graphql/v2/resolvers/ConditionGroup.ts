@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * v2 ConditionGroup — Node-implementing entity. The row's integer pk
  * surfaces as `groupId`; aggregated counters collapse under
@@ -8,6 +7,7 @@
 import type { Prisma } from '../../../../generated/prisma';
 import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import type { ConditionGroupResolvers } from '../__generated__/resolvers';
 import {
   buildConnection,
   clampTake,
@@ -26,20 +26,20 @@ registerNodeTypeV2({
   },
 });
 
-export const ConditionGroup = {
-  id: (parent: any) => toGlobalIdV2('ConditionGroup', String(parent.id)),
-  groupId: (parent: any) => parent.id,
+export const ConditionGroup: ConditionGroupResolvers = {
+  id: (parent) => toGlobalIdV2('ConditionGroup', String(parent.id)),
+  groupId: (parent) => parent.id,
 
-  category: async (parent: any) => {
+  category: async (parent) => {
     if (parent.categoryId == null) return null;
     return prisma.category.findUnique({ where: { id: parent.categoryId } });
   },
 
-  totals: (parent: any) => ({
+  totals: (parent) => ({
     publicConditionCount: parent.publicConditionCount ?? 0,
     totalPredictionCount: parent.totalPredictionCount ?? 0,
-    totalOpenInterest: parent.totalOpenInterest?.toString() ?? '0',
-    maxEndTime: parent.maxEndTime || null,
+    totalOpenInterest: BigInt(parent.totalOpenInterest?.toString() ?? '0'),
+    maxEndTime: parent.maxEndTime ?? null,
     maxCreatedAtEpoch:
       parent.maxCreatedAtEpoch != null
         ? Number(parent.maxCreatedAtEpoch)
@@ -64,11 +64,7 @@ export const ConditionGroup = {
     ),
   }),
 
-  conditions: async (
-    parent: any,
-    args: { first?: number | null; after?: string | null },
-    ctx: any
-  ) => {
+  conditions: async (parent, args, ctx) => {
     const first = clampTake(args.first ?? 50, {
       defaultTake: 50,
       maxTake: 100,
@@ -80,7 +76,7 @@ export const ConditionGroup = {
     // createdAt asc. Per-group sets are bounded; per-request loader
     // amortizes count+page across multiple parent rows in the same
     // selection.
-    const all: ConditionRow[] = ctx?.loaders?.conditionsByGroupId
+    const all: ConditionRow[] = ctx.loaders?.conditionsByGroupId
       ? ((await ctx.loaders.conditionsByGroupId.load(parent.id)) ?? [])
       : await prisma.condition.findMany({
           where: { conditionGroupId: parent.id },
@@ -102,14 +98,4 @@ export const ConditionGroup = {
         encodeCursor({ k: String(skip + idx), id: row.id }),
     });
   },
-};
-
-// Backreference: Condition.conditionGroup
-export const ConditionGroupBackref = async (parent: {
-  conditionGroupId?: number | null;
-}) => {
-  if (parent.conditionGroupId == null) return null;
-  return prisma.conditionGroup.findUnique({
-    where: { id: parent.conditionGroupId },
-  });
 };

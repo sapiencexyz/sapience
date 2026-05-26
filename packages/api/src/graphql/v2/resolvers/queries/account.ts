@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `account(address:)` / `accounts(...)` — singular + Relay connection
  * over the User table. Synthesis lives at the single-lookup level only;
@@ -8,6 +7,7 @@
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { synthesizeAccount } from '../../../sdl/resolvers/accountSynthesis';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
   buildKeysetWhere,
@@ -18,26 +18,27 @@ import {
   withCursorWhere,
 } from '../../relay/connection';
 
-export const account = async (
-  _parent: unknown,
-  { address }: { address: string },
-  ctx: any
+export const account: NonNullable<QueryResolvers['account']> = async (
+  _parent,
+  { address },
+  ctx
 ) => {
   const addressLc = address.toLowerCase();
-  const row = ctx?.loaders?.userByAddress
+  const row = ctx.loaders?.userByAddress
     ? await ctx.loaders.userByAddress.load(addressLc)
     : await prisma.user.findUnique({ where: { address: addressLc } });
-  return row ?? synthesizeAccount(addressLc);
+  // synthesizeAccount returns a v1-typed Account; the runtime shape matches
+  // the Prisma row mapper used here, so the cast is purely a name-level fix.
+  // Schema declares this as non-null (`account(...): Account!`) — the
+  // synthesis path guarantees a value, never returns null.
+  return (row ?? synthesizeAccount(addressLc)) as NonNullable<
+    Awaited<ReturnType<typeof prisma.user.findUnique>>
+  >;
 };
 
-export const accounts = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: { search?: string | null } | null;
-    orderBy?: { field: string; direction: string } | null;
-  }
+export const accounts: NonNullable<QueryResolvers['accounts']> = async (
+  _parent,
+  args
 ) => {
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');

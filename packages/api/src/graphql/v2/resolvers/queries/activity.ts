@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `Query.activity` — interleaved Prediction + Trade feed.
  *
@@ -16,13 +15,15 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import {
+  ActivityType,
+  type QueryResolvers,
+} from '../../__generated__/resolvers';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import { clampTake } from '../../../sdl/resolvers/queries/pagination';
 
-type ActivityType = 'PREDICTION' | 'TRADE';
-
 const isType = (value: unknown): value is ActivityType =>
-  value === 'PREDICTION' || value === 'TRADE';
+  value === ActivityType.Prediction || value === ActivityType.Trade;
 
 type ActivityCursor = { ts: number; type: ActivityType; id: string };
 
@@ -54,20 +55,9 @@ const conditionIdsFor = async (
   return ids.length ? Array.from(new Set(ids)) : null;
 };
 
-export const activity = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: {
-      account?: string | null;
-      conditionId?: string | null;
-      conditionIds?: string[] | null;
-      pickConfigId?: string | null;
-      types?: ActivityType[] | null;
-      timestamp?: { gte?: number | null; lte?: number | null } | null;
-    } | null;
-  }
+export const activity: NonNullable<QueryResolvers['activity']> = async (
+  _parent,
+  args
 ) => {
   const first = clampTake(args.first ?? 50, {
     defaultTake: 50,
@@ -88,9 +78,9 @@ export const activity = async (
     };
   }
   const includePrediction =
-    !args.filter?.types || args.filter.types.includes('PREDICTION');
+    !args.filter?.types || args.filter.types.includes(ActivityType.Prediction);
   const includeTrade =
-    !args.filter?.types || args.filter.types.includes('TRADE');
+    !args.filter?.types || args.filter.types.includes(ActivityType.Trade);
 
   // Resolve condition filter → pickConfig and token sets.
   const condIds = await conditionIdsFor(

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `collateralTransfer(id:)` / `collateralTransfers(...)`.
  *
@@ -9,6 +8,7 @@
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { getConfiguredVaultDeploymentAddresses } from '../../../../services/protocolStats/vaultConfig';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
   buildKeysetWhere,
@@ -20,10 +20,9 @@ import {
 } from '../../relay/connection';
 import { tryFromGlobalIdV2 } from '../../relay/nodeRegistry';
 
-export const collateralTransfer = async (
-  _parent: unknown,
-  { id }: { id: string }
-) => {
+export const collateralTransfer: NonNullable<
+  QueryResolvers['collateralTransfer']
+> = async (_parent, { id }) => {
   const parts = tryFromGlobalIdV2(id);
   if (!parts || parts.type !== 'CollateralTransfer') return null;
   const rowId = Number(parts.id);
@@ -31,27 +30,14 @@ export const collateralTransfer = async (
   return prisma.collateralTransfer.findUnique({ where: { id: rowId } });
 };
 
-type Field = 'BLOCK_NUMBER' | 'TIMESTAMP';
-const FIELD_TO_PRISMA: Record<Field, 'blockNumber' | 'timestamp'> = {
+const FIELD_TO_PRISMA: Record<string, 'blockNumber' | 'timestamp'> = {
   BLOCK_NUMBER: 'blockNumber',
   TIMESTAMP: 'timestamp',
 };
 
-export const collateralTransfers = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: {
-      account?: string | null;
-      chainId?: number | null;
-      timestamp?: { gte?: string | null; lte?: string | null } | null;
-      transactionHash?: string | null;
-      excludeProtocol?: boolean | null;
-    } | null;
-    orderBy?: { field: Field; direction: string } | null;
-  }
-) => {
+export const collateralTransfers: NonNullable<
+  QueryResolvers['collateralTransfers']
+> = async (_parent, args) => {
   const first = clampTake(args.first ?? 100, {
     defaultTake: 100,
     maxTake: 100,
@@ -69,8 +55,10 @@ export const collateralTransfers = async (
   }
   if (args.filter?.timestamp) {
     const r: Prisma.DateTimeFilter = {};
-    if (args.filter.timestamp.gte) r.gte = new Date(args.filter.timestamp.gte);
-    if (args.filter.timestamp.lte) r.lte = new Date(args.filter.timestamp.lte);
+    if (args.filter.timestamp.gte)
+      r.gte = new Date(args.filter.timestamp.gte as unknown as string);
+    if (args.filter.timestamp.lte)
+      r.lte = new Date(args.filter.timestamp.lte as unknown as string);
     where.timestamp = r;
   }
   if (args.filter?.excludeProtocol && args.filter?.chainId != null) {
@@ -100,7 +88,12 @@ export const collateralTransfers = async (
   const [rows, totalCount] = await Promise.all([
     prisma.collateralTransfer.findMany({
       where: withCursorWhere(where, cursorWhere),
-      orderBy: [{ [field]: direction } as any, { id: direction }],
+      orderBy: [
+        {
+          [field]: direction,
+        } as Prisma.CollateralTransferOrderByWithRelationInput,
+        { id: direction },
+      ],
       take: first + 1,
     }),
     prisma.collateralTransfer.count({ where }),

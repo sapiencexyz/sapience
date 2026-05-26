@@ -22,11 +22,12 @@ const callResolver = <TResult = unknown>(resolver: unknown) =>
 
 describe('ActivityItem (v2)', () => {
   it('discriminates rows by their unique field', () => {
-    expect(ActivityItem.__resolveType({ predictionId: '0xp' })).toBe(
-      'Prediction'
-    );
-    expect(ActivityItem.__resolveType({ tradeHash: '0xt' })).toBe('Trade');
-    expect(ActivityItem.__resolveType({})).toBeNull();
+    const resolveType = ActivityItem.__resolveType as (
+      obj: unknown
+    ) => string | null;
+    expect(resolveType({ predictionId: '0xp' })).toBe('Prediction');
+    expect(resolveType({ tradeHash: '0xt' })).toBe('Trade');
+    expect(resolveType({})).toBeNull();
   });
 });
 

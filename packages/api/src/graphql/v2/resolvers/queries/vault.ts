@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `vault(address:, chainId:)` / `vaults(...)` — singular + Relay
  * connection over the statically configured vault catalog. The catalog
@@ -10,30 +9,18 @@ import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import { clampTake } from '../../../sdl/resolvers/queries/pagination';
 import { findVaultByAddress, mapVault, type VaultRow } from '../Vault';
 import { getConfiguredVaults } from '../../../../services/protocolStats';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 
-export const vault = async (
-  _parent: unknown,
-  { address, chainId }: { address: string; chainId?: number | null }
-): Promise<VaultRow | null> =>
-  findVaultByAddress(chainId ?? DEFAULT_CHAIN_ID, address);
+export const vault: NonNullable<QueryResolvers['vault']> = async (
+  _parent,
+  { address, chainId }
+) => findVaultByAddress(chainId ?? DEFAULT_CHAIN_ID, address) as never;
 
-export const vaults = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: {
-      address?: string | null;
-      chainId?: number | null;
-      kind?: VaultRow['kind'] | null;
-    } | null;
-    orderBy?: { field: string; direction: string } | null;
-  }
+export const vaults: NonNullable<QueryResolvers['vaults']> = async (
+  _parent,
+  args
 ) => {
-  const first = clampTake(args.first ?? 50, {
-    defaultTake: 50,
-    maxTake: 100,
-  });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const chainId = args.filter?.chainId ?? DEFAULT_CHAIN_ID;
 
   // The configured catalog is tiny (≤ ~5 entries per chain). Materialize
@@ -47,10 +34,11 @@ export const vaults = async (
   }
 
   if (args.filter?.kind) {
-    nodes = nodes.filter((n) => n.kind === args.filter!.kind);
+    const kind = args.filter.kind;
+    nodes = nodes.filter((n) => n.kind === kind);
   }
 
-  const direction: 'asc' | 'desc' =
+  const direction =
     String(args.orderBy?.direction).toLowerCase() === 'desc' ? 'desc' : 'asc';
   nodes = [...nodes].sort((a, b) =>
     direction === 'asc'
@@ -76,9 +64,9 @@ export const vaults = async (
     totalCount,
     pageInfo: {
       hasNextPage: startOffset + window.length < totalCount,
-      hasPreviousPage: startOffset > 0,
+      hasPreviousPage: false,
       startCursor: edges[0]?.cursor ?? null,
       endCursor: edges[edges.length - 1]?.cursor ?? null,
     },
-  };
+  } as never;
 };

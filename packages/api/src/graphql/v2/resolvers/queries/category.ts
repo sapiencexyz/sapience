@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `category(id:)` / `categories(...)` — Category lookups.
  */
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
   buildKeysetWhere,
@@ -15,23 +15,19 @@ import {
   withCursorWhere,
 } from '../../relay/connection';
 
-export const category = async (_parent: unknown, { id }: { id: number }) =>
-  prisma.category.findUnique({ where: { id } });
+export const category: NonNullable<QueryResolvers['category']> = async (
+  _parent,
+  { id }
+) => prisma.category.findUnique({ where: { id } });
 
-type Field = 'NAME' | 'CREATED_AT';
-const FIELD_TO_PRISMA: Record<Field, 'name' | 'createdAt'> = {
+const FIELD_TO_PRISMA: Record<string, 'name' | 'createdAt'> = {
   NAME: 'name',
   CREATED_AT: 'createdAt',
 };
 
-export const categories = async (
-  _parent: unknown,
-  args: {
-    first?: number | null;
-    after?: string | null;
-    filter?: { search?: string | null } | null;
-    orderBy?: { field: Field; direction: string } | null;
-  }
+export const categories: NonNullable<QueryResolvers['categories']> = async (
+  _parent,
+  args
 ) => {
   const first = clampTake(args.first ?? 100, {
     defaultTake: 100,
@@ -59,7 +55,10 @@ export const categories = async (
   const [rows, totalCount] = await Promise.all([
     prisma.category.findMany({
       where: withCursorWhere(where, cursorWhere),
-      orderBy: [{ [field]: direction } as any, { id: direction }],
+      orderBy: [
+        { [field]: direction } as Prisma.CategoryOrderByWithRelationInput,
+        { id: direction },
+      ],
       take: first + 1,
     }),
     prisma.category.count({ where }),

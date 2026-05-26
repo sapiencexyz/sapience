@@ -52,8 +52,8 @@ describe('Forecast (v2)', () => {
       await callResolver<number>(Forecast.attestedAt)(row, {}, {}, null)
     ).toBe(1700000000);
     expect(
-      await callResolver<string>(Forecast.forecastValue)(row, {}, {}, null)
-    ).toBe('5');
+      await callResolver<bigint>(Forecast.forecastValue)(row, {}, {}, null)
+    ).toBe(5n);
   });
 
   it('forecast(uid:) returns null when not found', async () => {
