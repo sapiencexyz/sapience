@@ -757,3 +757,17 @@ model CollateralTransfer {
   @@index([chainId, blockNumber], map: "IDX_collateral_transfer_block")
   @@map("collateral_transfer")
 }
+
+/// Materialized top-N tag list for `Query.popularTags`. Refreshed by the
+/// keeper on the same cadence as condition_group aggregates; the
+/// resolver reads from this table instead of running the
+/// `unnest(tags)` aggregation against `condition` on every miss.
+model PopularTag {
+  tag         String   @id @db.VarChar
+  rank        Int
+  count       Int
+  refreshedAt DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([rank])
+  @@map("popular_tag")
+}
