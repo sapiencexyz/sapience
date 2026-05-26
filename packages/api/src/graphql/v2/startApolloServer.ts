@@ -29,9 +29,10 @@ const log = createLogger('graphql.v2');
 export const initializeApolloServerV2 = async () => {
   const schema = await buildV2Schema({ emitSchemaFile: true });
 
-  const maxComplexity = config.GRAPHQL_MAX_COMPLEXITY;
+  const maxComplexity = config.GRAPHQL_V2_MAX_COMPLEXITY;
+  const maxDepth = config.GRAPHQL_V2_MAX_DEPTH;
 
-  log.info({ maxComplexity }, 'v2 GraphQL query complexity limit set');
+  log.info({ maxComplexity, maxDepth }, 'v2 GraphQL query limits set');
 
   const apolloServer = new ApolloServer<ApolloContext>({
     schema,
@@ -53,7 +54,7 @@ export const initializeApolloServerV2 = async () => {
       return formattedError;
     },
     introspection: true,
-    validationRules: [depthLimit(7)],
+    validationRules: [depthLimit(maxDepth)],
     plugins: [
       ApolloServerPluginLandingPageLocalDefault({
         embed: true,
