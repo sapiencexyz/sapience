@@ -13,6 +13,7 @@ import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import depthLimit from 'graphql-depth-limit';
 import { GraphQLError } from 'graphql';
 import { httpCacheHeadersPlugin } from '../plugins/httpCacheHeadersPlugin';
+import { introspectionCachePlugin } from '../plugins/introspectionCachePlugin';
 import { operationTimingPlugin } from '../plugins/operationTimingPlugin';
 import { validateQuery } from '../queryValidation.js';
 import {
@@ -61,6 +62,7 @@ export const initializeApolloServerV2 = async () => {
         includeCookies: true,
       }),
       httpCacheHeadersPlugin(),
+      introspectionCachePlugin(),
       // TODO(v2): extend operationTimingPlugin to tag logs with endpoint
       // so dashboards can split /graphql from /v2/graphql traffic.
       operationTimingPlugin(),
