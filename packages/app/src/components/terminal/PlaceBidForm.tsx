@@ -213,11 +213,12 @@ const PlaceBidForm: React.FC<Props> = ({
     []
   );
 
+  const secondsNumber = useMemo(() => {
+    const n = Number(seconds);
+    return Number.isFinite(n) ? Math.floor(n) : NaN;
+  }, [seconds]);
+
   if (variant === 'compact') {
-    const secondsNumber = useMemo(() => {
-      const n = Number(seconds);
-      return Number.isFinite(n) ? Math.floor(n) : NaN;
-    }, [seconds]);
     const isExpiryValidCompact =
       seconds !== '' && Number.isFinite(secondsNumber) && secondsNumber > 0;
     const canSubmitCompact =

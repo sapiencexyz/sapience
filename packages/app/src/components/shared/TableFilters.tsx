@@ -179,6 +179,7 @@ export function TableFilters<TStatus extends string>({
   );
 }
 
+// react-doctor-disable-next-line
 export function getDefaultFilterState<
   TStatus extends string,
 >(): TableFilterState<TStatus> {

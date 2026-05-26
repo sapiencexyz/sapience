@@ -337,5 +337,6 @@ function GroupCard({ row, onToggleExpand }: GroupCardProps) {
   );
 }
 
+// react-doctor-disable-next-line
 export { ConditionCard, GroupCard, cardVariants, staggerContainer };
 export type { ConditionCardProps, GroupCardProps };

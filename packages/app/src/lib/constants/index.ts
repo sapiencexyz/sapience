@@ -13,7 +13,7 @@ import {
 export const PREFERRED_ESTIMATE_QUOTER =
   '0xe02eD37D0458c8999943CbE6D1c9DB597f3EE572';
 
-export const ADMIN_AUTHENTICATE_MSG =
+export const ADMIN_AUTHENTICATE_MESSAGE =
   'Sign this message to authenticate for admin actions.';
 
 export const STARGATE_DEPOSIT_URL =

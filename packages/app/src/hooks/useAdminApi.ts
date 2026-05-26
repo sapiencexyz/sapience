@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 import { useSignMessage } from 'wagmi';
 import { useSettings } from '~/lib/context/SettingsContext';
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
+import { ADMIN_AUTHENTICATE_MESSAGE } from '~/lib/constants';
 
 export function useAdminApi() {
   const { signMessageAsync } = useSignMessage();
@@ -24,7 +24,7 @@ export function useAdminApi() {
     }
     const timestamp = now;
     const signature = await signMessageAsync({
-      message: `${ADMIN_AUTHENTICATE_MSG}:${timestamp}`,
+      message: `${ADMIN_AUTHENTICATE_MESSAGE}:${timestamp}`,
     });
     lastSignatureRef.current = { sig: signature, ts: timestamp };
     return { signature, timestamp, signatureTimestamp: timestamp } as const;

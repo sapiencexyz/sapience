@@ -5,6 +5,7 @@ import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 
 export type Period = '1W' | '1M' | '3M' | 'ALL';
 
+// react-doctor-disable-next-line
 export const PERIOD_DAYS: Record<Period, number> = {
   '1W': 7,
   '1M': 30,

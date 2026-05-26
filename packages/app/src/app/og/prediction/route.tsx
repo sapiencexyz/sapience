@@ -37,6 +37,7 @@ import { getChoiceLabel } from '~/lib/resolvers/choiceLabel';
 
 export const runtime = 'nodejs';
 
+// react-doctor-disable-next-line
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);

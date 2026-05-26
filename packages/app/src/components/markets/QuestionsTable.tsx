@@ -135,6 +135,7 @@ type VolumeMetric =
 
 const VOLUME_WINDOW_OPTIONS: VolumeWindow[] = ['7d', '24h', '4h', '1h'];
 
+// react-doctor-disable-next-line
 export function getEffectiveVolumeWindow(
   window: VolumeWindow | null,
   filterVolume: boolean
@@ -613,6 +614,7 @@ function createColumns(
 }
 
 /** Get time-bucketed volume for a single condition (used in child rows). */
+// react-doctor-disable-next-line
 export function getConditionTimeBucketedVolume(
   c: ConditionGroupConditionType,
   window: VolumeWindow | null

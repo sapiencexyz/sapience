@@ -7,6 +7,7 @@ import {
 
 export type PositionStatus = 'active' | 'won' | 'lost';
 export type PositionsFilterState = TableFilterState<PositionStatus>;
+// react-doctor-disable-next-line
 export const getDefaultPositionsFilterState =
   getDefaultFilterState<PositionStatus>;
 

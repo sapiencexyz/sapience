@@ -7,6 +7,7 @@ import {
 
 export type ResolutionStatus = 'pending' | 'yes' | 'no' | 'nonDecisive';
 export type ForecastsFilterState = TableFilterState<ResolutionStatus>;
+// react-doctor-disable-next-line
 export const getDefaultForecastsFilterState =
   getDefaultFilterState<ResolutionStatus>;
 

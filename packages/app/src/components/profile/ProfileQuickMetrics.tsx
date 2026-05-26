@@ -93,6 +93,24 @@ type ProfileQuickMetricsProps = {
   className?: string;
 };
 
+type Metric = { label: string; value: React.ReactNode; sublabel?: string };
+
+const MetricItem = ({ m }: { m: Metric }) => (
+  <div className="flex flex-col gap-0.5">
+    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+      {m.label}
+    </span>
+    <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+      {m.value}
+      {m.sublabel ? (
+        <span className="ml-1 text-xs font-normal text-muted-foreground">
+          {m.sublabel}
+        </span>
+      ) : null}
+    </span>
+  </div>
+);
+
 export default function ProfileQuickMetrics({
   address,
   forecastsCount,
@@ -120,8 +138,6 @@ export default function ProfileQuickMetrics({
   // Show P&L and Accuracy if they have rankings
   const showPnl = !profitLoading && profit?.rank;
   const showAccuracy = !accuracyLoading && accuracy?.rank;
-
-  type Metric = { label: string; value: React.ReactNode; sublabel?: string };
 
   // Box 1: Volume metrics (only if volume > 0)
   const volumeMetrics: Metric[] = [];
@@ -184,22 +200,6 @@ export default function ProfileQuickMetrics({
 
   const boxes = [volumeMetrics, forecastMetrics, balanceMetrics].filter(
     (b) => b.length > 0
-  );
-
-  const MetricItem = ({ m }: { m: Metric }) => (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-        {m.label}
-      </span>
-      <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
-        {m.value}
-        {m.sublabel ? (
-          <span className="ml-1 text-xs font-normal text-muted-foreground">
-            {m.sublabel}
-          </span>
-        ) : null}
-      </span>
-    </div>
   );
 
   return (

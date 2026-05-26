@@ -24,6 +24,7 @@ interface PositionSizeInputProps {
 }
 
 // Define the position size schema that will be used across all forms
+// react-doctor-disable-next-line
 export const positionSizeSchema = z
   .string()
   .min(1, 'Position size is required')
@@ -54,6 +55,7 @@ export const positionSizeSchema = z
  * @param maxAmount - Optional maximum amount (human units)
  * @returns A Zod schema with min/max validation applied
  */
+// react-doctor-disable-next-line
 export const createPositionSizeSchema = (
   minAmount?: string | number,
   maxAmount?: string | number

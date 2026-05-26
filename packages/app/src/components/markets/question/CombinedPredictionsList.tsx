@@ -51,6 +51,7 @@ function fetchCombinedConditionDetails(
  * Imperative prefetch — call from event handlers (e.g. onMouseEnter) to
  * warm the cache before the popover is opened.
  */
+// react-doctor-disable-next-line
 export function prefetchCombinedConditions(
   queryClient: ReturnType<typeof useQueryClient>,
   conditionIds: string[]

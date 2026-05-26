@@ -16,6 +16,7 @@ export type ActivityFilterState = TableFilterState<ActivityStatus> & {
   activityType: ActivityType;
 };
 
+// react-doctor-disable-next-line
 export function getDefaultActivityFilterState(): ActivityFilterState {
   return {
     ...getDefaultFilterState<ActivityStatus>(),

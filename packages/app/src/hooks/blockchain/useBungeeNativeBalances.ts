@@ -20,13 +20,33 @@ interface NativeBalancesResult {
 export function useBungeeNativeBalances(
   eoaAddress: Address | undefined
 ): NativeBalancesResult {
-  const queries = BUNGEE_SOURCE_CHAIN_IDS.map((chainId) =>
-    useBalance({
-      chainId,
-      address: eoaAddress,
-      query: { enabled: !!eoaAddress },
-    })
-  );
+  const ethereum = useBalance({
+    chainId: 1,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
+  const arbitrum = useBalance({
+    chainId: 42161,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
+  const base = useBalance({
+    chainId: 8453,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
+  const bnb = useBalance({
+    chainId: 56,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
+  const hyperEvm = useBalance({
+    chainId: 999,
+    address: eoaAddress,
+    query: { enabled: !!eoaAddress },
+  });
+
+  const queries = [ethereum, arbitrum, base, bnb, hyperEvm];
 
   const byChainId: Record<number, bigint> = {};
   let isLoading = false;

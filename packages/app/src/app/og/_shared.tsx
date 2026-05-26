@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { og } from '~/lib/theme/ogPalette';
 
+// react-doctor-disable-next-line
 export const FONT_FAMILY = {
   mono: 'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
   sans: 'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
@@ -9,10 +10,12 @@ export const FONT_FAMILY = {
 export const WIDTH = 1200;
 export const HEIGHT = 630;
 
+// react-doctor-disable-next-line
 export function getScale(width: number) {
   return width / 1200;
 }
 
+// react-doctor-disable-next-line
 export function normalizeText(val: string | null, max: number): string {
   return (val || '')
     .toString()
@@ -22,6 +25,7 @@ export function normalizeText(val: string | null, max: number): string {
     .slice(0, max);
 }
 
+// react-doctor-disable-next-line
 export async function loadFontData(req: Request) {
   const fetchOptionalFont = async (path: string, timeoutMs = 250) => {
     try {
@@ -68,6 +72,7 @@ export async function loadFontData(req: Request) {
   return { regular, demi, bold, plex400, plex600 } as const;
 }
 
+// react-doctor-disable-next-line
 export function fontsFromData(fonts: {
   regular: ArrayBuffer;
   demi: ArrayBuffer;
@@ -119,6 +124,7 @@ export function fontsFromData(fonts: {
   return out;
 }
 
+// react-doctor-disable-next-line
 export function commonAssets(req: Request) {
   return {
     logoUrl: new URL('/logo.svg', req.url).toString(),
@@ -126,6 +132,7 @@ export function commonAssets(req: Request) {
   } as const;
 }
 
+// react-doctor-disable-next-line
 export function addThousandsSeparators(numStr: string): string {
   if (!numStr) return '';
   const safe = String(numStr).replace(/,/g, '').trim();
@@ -509,6 +516,7 @@ export function ForecastFooter({
   );
 }
 
+// react-doctor-disable-next-line
 export function baseContainerStyle(): React.CSSProperties {
   return {
     width: '100%',
@@ -524,6 +532,7 @@ export function baseContainerStyle(): React.CSSProperties {
   } as const;
 }
 
+// react-doctor-disable-next-line
 export function contentContainerStyle(scale = 1): React.CSSProperties {
   return {
     display: 'flex',
@@ -747,6 +756,7 @@ export function Pill({
   return <div style={computePillStyle(scale, tone, compact)}>{text}</div>;
 }
 
+// react-doctor-disable-next-line
 export function computePotentialReturn(
   positionSize: string,
   payout: string
@@ -782,6 +792,7 @@ export function ErrorOGImage({ message }: { message: string }) {
   );
 }
 
+// react-doctor-disable-next-line
 export function createErrorImageResponse(err: unknown): ImageResponse {
   const message = err instanceof Error ? err.message : 'Unknown error';
   return new ImageResponse(<ErrorOGImage message={message} />, {
@@ -876,4 +887,5 @@ export function ResolutionIcon({
   );
 }
 
+// react-doctor-disable-next-line
 export { og };

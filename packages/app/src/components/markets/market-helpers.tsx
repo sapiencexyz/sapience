@@ -32,6 +32,7 @@ import { isPriceSubCategory } from '~/lib/utils/categoryMatcher';
 // Layout helpers
 // ---------------------------------------------------------------------------
 
+// react-doctor-disable-next-line
 export function getCardGridViewportStyle(
   useCardGrid: boolean
 ): React.CSSProperties | undefined {
@@ -67,6 +68,7 @@ export type TopLevelRow =
 // ---------------------------------------------------------------------------
 
 /** Convert a group condition to a standalone ConditionType for reuse of shared cells */
+// react-doctor-disable-next-line
 export function groupConditionToConditionType(
   gc: ConditionGroupConditionType
 ): ConditionType {
@@ -104,6 +106,7 @@ export function groupConditionToConditionType(
 }
 
 /** Get the deterministic category colour, preferring FOCUS_AREAS. */
+// react-doctor-disable-next-line
 export const getCategoryColor = (categorySlug?: string | null): string => {
   if (!categorySlug) return 'hsl(var(--muted-foreground))';
   const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
@@ -134,6 +137,7 @@ const PRICES_AGGREGATE_NAME = 'Prices';
  * pass through unchanged. The returned list is unsorted — callers sort by
  * whatever metric they care about.
  */
+// react-doctor-disable-next-line
 export function collapsePriceCategories<
   T extends { slug: string; name: string; raw: bigint },
 >(rows: T[]): CategoryAggregate<T>[] {
@@ -157,18 +161,21 @@ export function collapsePriceCategories<
 }
 
 /** Get open interest (wei) for any row kind */
+// react-doctor-disable-next-line
 export function getRowOpenInterest(row: TopLevelRow): bigint {
   if (row.kind === 'group') return row.openInterestWei;
   return BigInt(row.condition.openInterest || '0');
 }
 
 /** Get end time (seconds) for any row kind */
+// react-doctor-disable-next-line
 export function getRowEndTime(row: TopLevelRow): number {
   if (row.kind === 'group') return row.maxEndTime;
   return row.condition.endTime ?? 0;
 }
 
 /** Format a USD volume value as a compact string (e.g. $1.2M, $45K, $123) */
+// react-doctor-disable-next-line
 export function formatVolume(vol: number): string {
   if (vol >= 1000000) return `$${(vol / 1000000).toFixed(1)}M`;
   if (vol >= 1000) return `$${(vol / 1000).toFixed(0)}K`;
@@ -176,6 +183,7 @@ export function formatVolume(vol: number): string {
 }
 
 /** Get similar market volume (USD) for any row kind */
+// react-doctor-disable-next-line
 export function getRowSimilarMarketVolume(row: TopLevelRow): number {
   if (row.kind === 'group') {
     return row.conditions.reduce(
@@ -216,6 +224,7 @@ function getConditionVolume(
 }
 
 /** Get time-bucketed volume (USD) for any row kind */
+// react-doctor-disable-next-line
 export function getRowTimeBucketedVolume(
   row: TopLevelRow,
   window: VolumeWindowKey
@@ -593,6 +602,7 @@ export function PredictCell({
 // ---------------------------------------------------------------------------
 
 /** Build the top-level row model from unified QuestionType[] */
+// react-doctor-disable-next-line
 export function buildTopLevelRows(questions: QuestionType[]): TopLevelRow[] {
   return questions.flatMap((item): TopLevelRow[] => {
     if (item.questionType === 'group' && item.group) {
@@ -632,6 +642,7 @@ export function buildTopLevelRows(questions: QuestionType[]): TopLevelRow[] {
 }
 
 /** Client-side filtering of rows (OI range + volume windows + time-to-resolution range) */
+// react-doctor-disable-next-line
 export function filterRows(
   rows: TopLevelRow[],
   filters: FilterState

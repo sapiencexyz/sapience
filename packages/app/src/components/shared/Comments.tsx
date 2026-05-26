@@ -23,6 +23,7 @@ enum Answer {
   No = 'no',
 }
 
+// react-doctor-disable-next-line
 export enum CommentFilters {
   SelectedQuestion = 'selected',
   FilterByAccount = 'my-predictions',
@@ -181,11 +182,13 @@ const Comments = ({
 
   // Refetch EAS attestations when refetchTrigger changes
   useEffect(() => {
-    if (refetch) {
-      setTimeout(() => {
-        refetch();
-      }, 2000);
-    }
+    if (!refetch) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      refetch();
+    }, 2000);
+
+    return () => window.clearTimeout(timeoutId);
   }, [refetchTrigger, refetch]);
 
   // Collect unique conditionIds from attestations for batch fetching

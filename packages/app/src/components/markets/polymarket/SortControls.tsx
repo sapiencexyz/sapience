@@ -12,6 +12,28 @@ interface SortControlsProps {
   onSortChange: (field: SortField, direction: SortDirection) => void;
 }
 
+const ArrowIcon = ({
+  active,
+  direction,
+}: {
+  active: boolean;
+  direction: SortDirection;
+}) => {
+  if (!active) {
+    return (
+      <span className="flex flex-col -my-1 opacity-40">
+        <ChevronUp className="h-3 w-3 -mb-1.5" />
+        <ChevronDown className="h-3 w-3" />
+      </span>
+    );
+  }
+  return direction === 'asc' ? (
+    <ChevronUp className="h-3.5 w-3.5" />
+  ) : (
+    <ChevronDown className="h-3.5 w-3.5" />
+  );
+};
+
 export default function SortControls({
   sortField,
   sortDirection,
@@ -23,22 +45,6 @@ export default function SortControls({
     } else {
       onSortChange(field, 'desc');
     }
-  };
-
-  const ArrowIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
-      return (
-        <span className="flex flex-col -my-1 opacity-40">
-          <ChevronUp className="h-3 w-3 -mb-1.5" />
-          <ChevronDown className="h-3 w-3" />
-        </span>
-      );
-    }
-    return sortDirection === 'asc' ? (
-      <ChevronUp className="h-3.5 w-3.5" />
-    ) : (
-      <ChevronDown className="h-3.5 w-3.5" />
-    );
   };
 
   return (
@@ -57,7 +63,10 @@ export default function SortControls({
           }`}
         >
           Open Interest
-          <ArrowIcon field="openInterest" />
+          <ArrowIcon
+            active={sortField === 'openInterest'}
+            direction={sortDirection}
+          />
         </button>
         <button
           type="button"
@@ -69,7 +78,10 @@ export default function SortControls({
           }`}
         >
           Volume
-          <ArrowIcon field="similarMarketVolume" />
+          <ArrowIcon
+            active={sortField === 'similarMarketVolume'}
+            direction={sortDirection}
+          />
         </button>
         <button
           type="button"
@@ -81,7 +93,10 @@ export default function SortControls({
           }`}
         >
           End Time
-          <ArrowIcon field="endTime" />
+          <ArrowIcon
+            active={sortField === 'endTime'}
+            direction={sortDirection}
+          />
         </button>
       </div>
     </div>
