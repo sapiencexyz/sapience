@@ -59,19 +59,16 @@ export const accounts: NonNullable<QueryResolvers['accounts']> = async (
       })
     : null;
 
-  const [rows, totalCount] = await Promise.all([
-    prisma.user.findMany({
-      where: withCursorWhere(where, cursorWhere),
-      orderBy: [{ createdAt: direction }, { id: direction }],
-      take: first + 1,
-    }),
-    prisma.user.count({ where }),
-  ]);
+  const rows = await prisma.user.findMany({
+    where: withCursorWhere(where, cursorWhere),
+    orderBy: [{ createdAt: direction }, { id: direction }],
+    take: first + 1,
+  });
 
   return buildConnection({
     rows,
     first,
-    totalCount,
+    totalCount: () => prisma.user.count({ where }),
     getCursor: (row) =>
       encodeCursor({
         k: row.createdAt.toISOString(),

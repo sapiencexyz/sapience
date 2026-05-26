@@ -61,19 +61,16 @@ export const claims: NonNullable<QueryResolvers['claims']> = async (
       })
     : null;
 
-  const [rows, totalCount] = await Promise.all([
-    prisma.claim.findMany({
-      where: withCursorWhere(where, cursorWhere),
-      orderBy: [{ redeemedAt: direction }, { id: direction }],
-      take: first + 1,
-    }),
-    prisma.claim.count({ where }),
-  ]);
+  const rows = await prisma.claim.findMany({
+    where: withCursorWhere(where, cursorWhere),
+    orderBy: [{ redeemedAt: direction }, { id: direction }],
+    take: first + 1,
+  });
 
   return buildConnection({
     rows,
     first,
-    totalCount,
+    totalCount: () => prisma.claim.count({ where }),
     getCursor: (row) =>
       encodeCursor({ k: String(row.redeemedAt), id: String(row.id) }),
   });
@@ -117,19 +114,16 @@ export const closes: NonNullable<QueryResolvers['closes']> = async (
       })
     : null;
 
-  const [rows, totalCount] = await Promise.all([
-    prisma.close.findMany({
-      where: withCursorWhere(where, cursorWhere),
-      orderBy: [{ burnedAt: direction }, { id: direction }],
-      take: first + 1,
-    }),
-    prisma.close.count({ where }),
-  ]);
+  const rows = await prisma.close.findMany({
+    where: withCursorWhere(where, cursorWhere),
+    orderBy: [{ burnedAt: direction }, { id: direction }],
+    take: first + 1,
+  });
 
   return buildConnection({
     rows,
     first,
-    totalCount,
+    totalCount: () => prisma.close.count({ where }),
     getCursor: (row) =>
       encodeCursor({ k: String(row.burnedAt), id: String(row.id) }),
   });

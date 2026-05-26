@@ -271,16 +271,20 @@ export const activity: NonNullable<QueryResolvers['activity']> = async (
   const hasNextPage = merged.length > first;
   const pageRows = hasNextPage ? merged.slice(0, first) : merged;
 
-  // totalCount: lazy count both sides under their respective filter
-  // (without the cursor predicate). Reasonably cheap — both indexes hit.
-  const [predictionCount, tradeCount] = await Promise.all([
-    includePrediction
-      ? prisma.prediction.count({ where: predictionWhere })
-      : Promise.resolve(0),
-    includeTrade
-      ? prisma.secondaryTrade.count({ where: tradeWhere })
-      : Promise.resolve(0),
-  ]);
+  // totalCount: lazy — count both sides only if the client selects the
+  // field. Both indexes hit, but skipping the roundtrips entirely is
+  // free for activity-feed pages that paginate via cursor.
+  const totalCountThunk = async (): Promise<number> => {
+    const [predictionCount, tradeCount] = await Promise.all([
+      includePrediction
+        ? prisma.prediction.count({ where: predictionWhere })
+        : Promise.resolve(0),
+      includeTrade
+        ? prisma.secondaryTrade.count({ where: tradeWhere })
+        : Promise.resolve(0),
+    ]);
+    return predictionCount + tradeCount;
+  };
 
   const edges = pageRows.map((r) => ({
     node: r.row,
@@ -292,7 +296,9 @@ export const activity: NonNullable<QueryResolvers['activity']> = async (
 
   return {
     edges,
-    totalCount: predictionCount + tradeCount,
+    // graphql-js default resolver invokes functions on the parent; the
+    // cast pushes the thunk past the generated `totalCount: number` type.
+    totalCount: totalCountThunk as unknown as number,
     pageInfo: {
       hasNextPage,
       hasPreviousPage: false,

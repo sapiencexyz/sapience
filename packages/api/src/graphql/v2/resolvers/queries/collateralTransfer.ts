@@ -85,24 +85,21 @@ export const collateralTransfers: NonNullable<
       })
     : null;
 
-  const [rows, totalCount] = await Promise.all([
-    prisma.collateralTransfer.findMany({
-      where: withCursorWhere(where, cursorWhere),
-      orderBy: [
-        {
-          [field]: direction,
-        } as Prisma.CollateralTransferOrderByWithRelationInput,
-        { id: direction },
-      ],
-      take: first + 1,
-    }),
-    prisma.collateralTransfer.count({ where }),
-  ]);
+  const rows = await prisma.collateralTransfer.findMany({
+    where: withCursorWhere(where, cursorWhere),
+    orderBy: [
+      {
+        [field]: direction,
+      } as Prisma.CollateralTransferOrderByWithRelationInput,
+      { id: direction },
+    ],
+    take: first + 1,
+  });
 
   return buildConnection({
     rows,
     first,
-    totalCount,
+    totalCount: () => prisma.collateralTransfer.count({ where }),
     getCursor: (row) =>
       encodeCursor({
         k:

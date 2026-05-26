@@ -70,22 +70,19 @@ export const forecasts: NonNullable<QueryResolvers['forecasts']> = async (
       })
     : null;
 
-  const [rows, totalCount] = await Promise.all([
-    prisma.attestation.findMany({
-      where: withCursorWhere(where, cursorWhere),
-      orderBy: [
-        { [field]: direction } as Prisma.AttestationOrderByWithRelationInput,
-        { uid: direction },
-      ],
-      take: first + 1,
-    }),
-    prisma.attestation.count({ where }),
-  ]);
+  const rows = await prisma.attestation.findMany({
+    where: withCursorWhere(where, cursorWhere),
+    orderBy: [
+      { [field]: direction } as Prisma.AttestationOrderByWithRelationInput,
+      { uid: direction },
+    ],
+    take: first + 1,
+  });
 
   return buildConnection({
     rows,
     first,
-    totalCount,
+    totalCount: () => prisma.attestation.count({ where }),
     getCursor: (row) =>
       encodeCursor({
         k:

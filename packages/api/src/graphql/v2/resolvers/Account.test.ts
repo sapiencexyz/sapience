@@ -23,6 +23,14 @@ const callResolver = <TResult = unknown>(resolver: unknown) =>
     info: unknown
   ) => Promise<TResult> | TResult;
 
+// totalCount on a connection may be either an eagerly-computed number or
+// a thunk; in production the default field resolver invokes the latter.
+// Unit tests inspect the raw return value, so resolve it manually here.
+const resolveTotal = async (v: unknown): Promise<number> =>
+  typeof v === 'function'
+    ? (v as () => Promise<number> | number)()
+    : (v as number);
+
 const ctx = {
   loaders: {
     userByAddress: { load: vi.fn() },
@@ -94,7 +102,7 @@ describe('Account (v2)', () => {
       nodes: { id: number }[];
       totalCount: number;
     }>(Account.referrals)({ id: 5, address: ADDRESS }, {}, ctx, null);
-    expect(result.totalCount).toBe(2);
+    expect(await resolveTotal(result.totalCount)).toBe(2);
     expect(result.nodes.map((n) => n.id)).toEqual([11, 12]);
     expect(mockPrisma.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({

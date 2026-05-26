@@ -66,23 +66,20 @@ export const pickConfigurations: NonNullable<
       })
     : null;
 
-  const [rows, totalCount] = await Promise.all([
-    prisma.picks.findMany({
-      where: withCursorWhere(where, cursorWhere),
-      orderBy: [
-        { [field]: direction } as Prisma.PicksOrderByWithRelationInput,
-        { id: direction },
-      ],
-      include: { picks: true },
-      take: first + 1,
-    }),
-    prisma.picks.count({ where }),
-  ]);
+  const rows = await prisma.picks.findMany({
+    where: withCursorWhere(where, cursorWhere),
+    orderBy: [
+      { [field]: direction } as Prisma.PicksOrderByWithRelationInput,
+      { id: direction },
+    ],
+    include: { picks: true },
+    take: first + 1,
+  });
 
   return buildConnection({
     rows,
     first,
-    totalCount,
+    totalCount: () => prisma.picks.count({ where }),
     getCursor: (row) =>
       encodeCursor({
         k:

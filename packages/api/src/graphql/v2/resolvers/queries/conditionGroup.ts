@@ -65,23 +65,20 @@ export const conditionGroups: NonNullable<
         })
       : null;
 
-  const [rows, totalCount] = await Promise.all([
-    prisma.conditionGroup.findMany({
-      where: withCursorWhere(where, cursorWhere),
-      orderBy: [
-        { [field]: direction } as Prisma.ConditionGroupOrderByWithRelationInput,
-        { id: direction },
-      ],
-      take: first + 1,
-      skip: skip || undefined,
-    }),
-    prisma.conditionGroup.count({ where }),
-  ]);
+  const rows = await prisma.conditionGroup.findMany({
+    where: withCursorWhere(where, cursorWhere),
+    orderBy: [
+      { [field]: direction } as Prisma.ConditionGroupOrderByWithRelationInput,
+      { id: direction },
+    ],
+    take: first + 1,
+    skip: skip || undefined,
+  });
 
   return buildConnection({
     rows,
     first,
-    totalCount,
+    totalCount: () => prisma.conditionGroup.count({ where }),
     getCursor: (row, idx) => {
       const k = usesOffset
         ? String(skip + idx)

@@ -129,19 +129,16 @@ export const Account: AccountResolvers = {
         })
       : null;
 
-    const [rows, totalCount] = await Promise.all([
-      prisma.user.findMany({
-        where: withCursorWhere(baseWhere, cursorWhere),
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: first + 1,
-      }),
-      prisma.user.count({ where: baseWhere }),
-    ]);
+    const rows = await prisma.user.findMany({
+      where: withCursorWhere(baseWhere, cursorWhere),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: first + 1,
+    });
 
     return buildConnection({
       rows,
       first,
-      totalCount,
+      totalCount: () => prisma.user.count({ where: baseWhere }),
       getCursor: (row) =>
         encodeCursor({
           k: row.createdAt.toISOString(),

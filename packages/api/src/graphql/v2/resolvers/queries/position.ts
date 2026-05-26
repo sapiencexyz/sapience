@@ -96,23 +96,20 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
       })
     : null;
 
-  const [rows, totalCount] = await Promise.all([
-    prisma.position.findMany({
-      where: withCursorWhere(where, cursorWhere),
-      orderBy: [
-        { [field]: direction } as Prisma.PositionOrderByWithRelationInput,
-        { id: direction },
-      ],
-      include: { pickConfiguration: { include: { picks: true } } },
-      take: first + 1,
-    }),
-    prisma.position.count({ where }),
-  ]);
+  const rows = await prisma.position.findMany({
+    where: withCursorWhere(where, cursorWhere),
+    orderBy: [
+      { [field]: direction } as Prisma.PositionOrderByWithRelationInput,
+      { id: direction },
+    ],
+    include: { pickConfiguration: { include: { picks: true } } },
+    take: first + 1,
+  });
 
   return buildConnection({
     rows,
     first,
-    totalCount,
+    totalCount: () => prisma.position.count({ where }),
     getCursor: (row) =>
       encodeCursor({
         k: row[field].toISOString(),

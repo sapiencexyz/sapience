@@ -20,6 +20,11 @@ const callResolver = <TResult = unknown>(resolver: unknown) =>
     info: unknown
   ) => Promise<TResult> | TResult;
 
+const resolveTotal = async (v: unknown): Promise<number> =>
+  typeof v === 'function'
+    ? (v as () => Promise<number> | number)()
+    : (v as number);
+
 describe('ActivityItem (v2)', () => {
   it('discriminates rows by their unique field', () => {
     const resolveType = ActivityItem.__resolveType as (
@@ -101,7 +106,7 @@ describe('activity (v2)', () => {
       totalCount: number;
     }>(activity)(null, { first: 10 }, {}, null);
 
-    expect(result.totalCount).toBe(3);
+    expect(await resolveTotal(result.totalCount)).toBe(3);
     expect(
       result.edges.map((e) => e.node.predictionId ?? e.node.tradeHash)
     ).toEqual(['0xp_new', '0xt_mid', '0xp_old']);

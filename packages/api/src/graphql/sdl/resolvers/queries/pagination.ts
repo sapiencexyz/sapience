@@ -56,7 +56,16 @@ type BuildConnectionArgs<TRow, TNode = TRow> = {
   first: number;
   getCursor: (row: TRow, index: number) => string;
   getNode?: (row: TRow, index: number) => TNode;
-  totalCount: number;
+  /**
+   * Either an eagerly-computed total (cheap when the resolver already has
+   * a complete row set in memory — e.g. small in-process collections), or
+   * a thunk that runs the count query on demand. When passed a thunk, the
+   * count is invoked by graphql-js's default field resolver only if the
+   * client actually selects `totalCount`. Most paginated UIs read the
+   * total once on the first page and paginate via cursor after that, so
+   * the lazy form saves one DB roundtrip on every follow-on request.
+   */
+  totalCount: number | (() => number | Promise<number>);
   hasPreviousPage?: boolean;
 };
 
@@ -90,10 +99,20 @@ export const buildConnection = <TRow, TNode = TRow>({
     cursor: getCursor(row, index),
   }));
 
+  // graphql-js's default field resolver invokes functions found on the
+  // parent under the field's name. Stashing the thunk here lets the
+  // count fire lazily — only when the client selects `totalCount` — with
+  // no per-connection resolver boilerplate. The `as unknown as number`
+  // squeezes the function through the strict generated parent type.
+  const totalCountField =
+    typeof totalCount === 'function'
+      ? (totalCount as unknown as number)
+      : totalCount;
+
   return {
     edges,
     nodes,
-    totalCount,
+    totalCount: totalCountField,
     pageInfo: {
       hasNextPage,
       hasPreviousPage,

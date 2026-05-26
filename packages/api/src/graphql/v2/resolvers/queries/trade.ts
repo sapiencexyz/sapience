@@ -72,22 +72,19 @@ export const trades: NonNullable<QueryResolvers['trades']> = async (
       })
     : null;
 
-  const [rows, totalCount] = await Promise.all([
-    prisma.secondaryTrade.findMany({
-      where: withCursorWhere(where, cursorWhere),
-      orderBy: [
-        { [field]: direction } as Prisma.SecondaryTradeOrderByWithRelationInput,
-        { tradeHash: direction },
-      ],
-      take: first + 1,
-    }),
-    prisma.secondaryTrade.count({ where }),
-  ]);
+  const rows = await prisma.secondaryTrade.findMany({
+    where: withCursorWhere(where, cursorWhere),
+    orderBy: [
+      { [field]: direction } as Prisma.SecondaryTradeOrderByWithRelationInput,
+      { tradeHash: direction },
+    ],
+    take: first + 1,
+  });
 
   return buildConnection({
     rows,
     first,
-    totalCount,
+    totalCount: () => prisma.secondaryTrade.count({ where }),
     getCursor: (row) =>
       encodeCursor({
         k: String((row as NonNullable<Row>)[field]),
