@@ -320,12 +320,7 @@ export async function enrichMarketsWithLLM(
     const results = new Map<string, MarketEnrichmentOutput>();
     let deterministicCount = 0;
     for (const market of markets) {
-      const shortName = resolveShortName(market);
-      if (shortName) {
-        deterministicCount++;
-      } else {
-        console.log(`[LLM] No pattern for short name: "${market.question}"`);
-      }
+      if (resolveShortName(market)) deterministicCount++;
       results.set(market.conditionId, getFallbackEnrichment(market));
     }
     console.log(
