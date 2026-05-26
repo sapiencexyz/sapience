@@ -32,11 +32,31 @@ export const initializeApolloServerV2 = async () => {
 
   const maxComplexity = config.GRAPHQL_V2_MAX_COMPLEXITY;
   const maxDepth = config.GRAPHQL_V2_MAX_DEPTH;
+  const apqTtlMs = config.GRAPHQL_V2_APQ_TTL_MS;
 
-  log.info({ maxComplexity, maxDepth }, 'v2 GraphQL query limits set');
+  log.info(
+    { maxComplexity, maxDepth, apqTtlMs },
+    'v2 GraphQL query limits set'
+  );
 
   const apolloServer = new ApolloServer<ApolloContext>({
     schema,
+    // Bounded LRU; backs both response cache (responseCachePlugin) and
+    // the APQ store below. Without this Apollo logs a startup warning
+    // about an unbounded default.
+    cache: 'bounded',
+    // Automatic Persisted Queries — clients can submit a SHA-256 hash
+    // of the operation; on cache hit we skip parsing+validation
+    // entirely and go straight to plan+execute. On miss the client
+    // resends the full query and we cache it for next time.
+    //
+    // TODO(v2): for the bigger "strict persisted queries" win in the
+    // perf notes (rejecting ad-hoc queries from untrusted clients and
+    // foreclosing the DoS surface), wire a build-time manifest from
+    // the SDK codegen step and gate the request handler on
+    // hash ∈ manifest. APQ is the same wire protocol minus the gate,
+    // so the migration is additive.
+    persistedQueries: { ttl: Math.floor(apqTtlMs / 1000) },
     csrfPrevention: false,
     formatError: (formattedError, error) => {
       const isClientError =
