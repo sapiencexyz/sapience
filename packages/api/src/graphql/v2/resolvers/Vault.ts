@@ -56,20 +56,45 @@ export const mapVault = (
   ),
 });
 
+// The configured vault catalog is static (set at deploy time) and tiny
+// (≤5 entries per chain). Memoize the (vaults, by-address index) pair
+// per chainId so every request reuses the same mapped rows instead of
+// re-mapping and re-scanning on each call.
+type VaultCatalog = {
+  rows: VaultRow[];
+  byAddress: Map<string, VaultRow>;
+};
+
+const catalogByChain = new Map<number, VaultCatalog>();
+
+const getVaultCatalog = (chainId: number): VaultCatalog => {
+  const hit = catalogByChain.get(chainId);
+  if (hit) return hit;
+
+  const configured = getConfiguredVaults(chainId);
+  const rows = configured.map((v) => mapVault(v, chainId));
+  const byAddress = new Map<string, VaultRow>();
+  for (let i = 0; i < configured.length; i += 1) {
+    const row = rows[i];
+    byAddress.set(row.address, row);
+    for (const le of configured[i].config.legacy ?? []) {
+      byAddress.set(normalizeLegacyEntry(le).address.toLowerCase(), row);
+    }
+  }
+
+  const catalog = { rows, byAddress };
+  catalogByChain.set(chainId, catalog);
+  return catalog;
+};
+
+export const getCachedVaultRows = (chainId: number): readonly VaultRow[] =>
+  getVaultCatalog(chainId).rows;
+
 export const findVaultByAddress = (
   chainId: number,
   address: string
-): VaultRow | null => {
-  const addr = address.toLowerCase();
-  const vault = getConfiguredVaults(chainId).find(
-    (v) =>
-      v.address === addr ||
-      (v.config.legacy ?? []).some(
-        (le) => normalizeLegacyEntry(le).address.toLowerCase() === addr
-      )
-  );
-  return vault ? mapVault(vault, chainId) : null;
-};
+): VaultRow | null =>
+  getVaultCatalog(chainId).byAddress.get(address.toLowerCase()) ?? null;
 
 registerNodeTypeV2({
   type: 'Vault',

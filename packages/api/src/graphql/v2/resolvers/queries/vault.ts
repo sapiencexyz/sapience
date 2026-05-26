@@ -7,8 +7,11 @@
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import { clampTake } from '../../../sdl/resolvers/queries/pagination';
-import { findVaultByAddress, mapVault, type VaultRow } from '../Vault';
-import { getConfiguredVaults } from '../../../../services/protocolStats';
+import {
+  findVaultByAddress,
+  getCachedVaultRows,
+  type VaultRow,
+} from '../Vault';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import { CACHE_HINTS, setCacheHint } from '../../cacheHints';
 
@@ -28,14 +31,14 @@ export const vaults: NonNullable<QueryResolvers['vaults']> = async (
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const chainId = args.filter?.chainId ?? DEFAULT_CHAIN_ID;
 
-  // The configured catalog is tiny (≤ ~5 entries per chain). Materialize
-  // the filtered list, then paginate offset-style.
+  // The configured catalog is tiny (≤ ~5 entries per chain) and
+  // memoized at module level. Spread for filter mutations below.
   let nodes: VaultRow[];
   if (args.filter?.address) {
     const node = findVaultByAddress(chainId, args.filter.address);
     nodes = node ? [node] : [];
   } else {
-    nodes = getConfiguredVaults(chainId).map((v) => mapVault(v, chainId));
+    nodes = [...getCachedVaultRows(chainId)];
   }
 
   if (args.filter?.kind) {
