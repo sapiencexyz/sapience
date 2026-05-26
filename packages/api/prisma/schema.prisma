@@ -83,11 +83,11 @@ model Attestation {
   resolver        String?  @db.VarChar
   conditionId      String?  @db.VarChar
   condition        Condition? @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  forecast        String   @db.VarChar
+  prediction      String   @db.VarChar
   comment         String?  @db.Text
 
   // Relation to scores
-  attestationScore AttestationScore?
+  attestation_score AttestationScore?
 
   @@unique([uid], map: "UQ_attestation_uid")
   @@index([attester], map: "IDX_attestation_attester")
@@ -228,9 +228,6 @@ model Condition {
   // - IDX_condition_oi_numeric: ("openInterest"::numeric) DESC WHERE public = true
   // - IDX_condition_public_endtime: "endTime" DESC WHERE public = true
   // - IDX_condition_prediction_count: "predictionCount" DESC WHERE public = true
-  // - IDX_condition_public_createdat: "createdAt" DESC WHERE public = true
-  // - IDX_condition_public_volume24h: "volume24h" DESC WHERE public = true
-  // - IDX_condition_public_volume7d: "volume7d" DESC WHERE public = true
   // Trigger: trg_prediction_count maintains predictionCount on prediction INSERT/DELETE
   @@map("condition")
 }

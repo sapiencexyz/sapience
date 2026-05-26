@@ -17,7 +17,7 @@ describe('ConditionsByIds query', () => {
     const ids = probe.data?.conditions?.map((c) => c.id) ?? [];
 
     const result = await executeOperation(CONDITIONS_BY_IDS_QUERY, {
-      filter: { ids },
+      where: { id: { in: ids } },
     });
     expect(result.errors).toBeUndefined();
     await expect(

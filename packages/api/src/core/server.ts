@@ -123,6 +123,7 @@ const startServer = async () => {
     expressMiddleware(apolloServer, {
       context: async ({ req }) => ({
         prisma,
+        pickConditions: new Map<string, unknown>(),
         loaders: createLoaders(prisma),
         // pino-http attaches `id` and `log` to req; passed through so the
         // operation-timing plugin can include reqId in the structured log.

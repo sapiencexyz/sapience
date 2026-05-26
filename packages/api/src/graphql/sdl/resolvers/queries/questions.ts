@@ -36,6 +36,7 @@
 
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import type {
   QueryQuestionsConnectionArgs,
   QueryResolvers,
@@ -956,8 +957,6 @@ export const runQuestions = async (
 // `questionsConnection` uses the same SQL UNION runner as the deprecated bare-array
 // `questions` resolver, but passes a decoded ordering tuple after the first page so pagination is
 // keyset-based rather than OFFSET-based.
-
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 
 /**
  * Map the public `QuestionOrderField` enum to the internal

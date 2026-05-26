@@ -1,0 +1,31 @@
+{
+  "attestations": [
+    {
+      "id": 9,
+      "uid": "0x554d70a89bb75d5efda7f791641582f926e8f000402bb726798c538a34db2a03",
+      "attester": "0x165E392409f3C0bA092Ae9Aa290B6AE57B1b661b",
+      "time": "<UNIX_TIMESTAMP>",
+      "prediction": "3000000000000000000",
+      "comment": "Skill test forecast - regime change extremely unlikely in 20 days",
+      "conditionId": "0xe443dab97ad8b7f58558cc7a6a3932d156031e962a451e0461e9a4578d78fe84"
+    },
+    {
+      "id": 2,
+      "uid": "0xfc517758b61b35c05e349f30c2c37bb8252209d03285595609a730343b0c59c5",
+      "attester": "0x6A225f09E0EbE597F79e86875B3704325d40c84d",
+      "time": "<UNIX_TIMESTAMP>",
+      "prediction": "10000000000000000000",
+      "comment": "Test forecast 2!",
+      "conditionId": "0xd897104f3c685a63635ca5b9ab290f8ed4308b57dd215bc4b3d85d5a31c7b110"
+    },
+    {
+      "id": 1,
+      "uid": "0xba3aec08b03e403900140ca733f2ac46441d16d93a1818bd3f89a811bc663cfe",
+      "attester": "0xFed214CCe9CC6F7Ceb507De9fdf00a3899592caA",
+      "time": "<UNIX_TIMESTAMP>",
+      "prediction": "73000000000000000000",
+      "comment": "Test Forecast!",
+      "conditionId": "0xd897104f3c685a63635ca5b9ab290f8ed4308b57dd215bc4b3d85d5a31c7b110"
+    }
+  ]
+}

@@ -16,8 +16,8 @@ const mockPrisma = vi.hoisted(() => ({
 }));
 
 vi.mock('../core/db', () => ({ default: mockPrisma }));
-vi.mock('./forecastNormalization', () => ({
-  normalizeForecastToProbability: vi.fn().mockReturnValue({
+vi.mock('./predictionNormalization', () => ({
+  normalizePredictionToProbability: vi.fn().mockReturnValue({
     probabilityFloat: 0.7,
     probabilityD18: '700000000000000000',
   }),
@@ -31,7 +31,7 @@ import {
   computeTimeWeightedForAttesterSummary,
   computeTimeWeightedForAttestersSummary,
 } from './scoringService';
-import { outcomeFromCondition } from './forecastNormalization';
+import { outcomeFromCondition } from './predictionNormalization';
 
 const mockOutcome = outcomeFromCondition as ReturnType<typeof vi.fn>;
 

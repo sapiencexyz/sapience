@@ -1,5 +1,55 @@
 {
-  "conditionsConnection": {
-    "nodes": []
-  }
+  "conditions": [
+    {
+      "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069cbd66a0000000000000000000000000000000000000000000000000000061d2552c681fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+      "shortName": "BTC OVER $67,222.50000001",
+      "optionName": null,
+      "question": "Crypto.BTC/USD OVER $67,222.50000001",
+      "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $67,222.50000001 at settlement (Tue, 31 Mar 2026 14:12:58 GMT), YES wins. If the price is exactly $67,222.50000001 at settlement, OVER wins.",
+      "endTime": 1774966378,
+      "resolver": "0x27a95ab8982eacf4ec3d4bccabb3630c72fd7e1b",
+      "similarMarkets": [],
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "estimatedPrice": null,
+      "category": {
+        "slug": "prices-crypto"
+      }
+    },
+    {
+      "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069cbdb7300000000000000000000000000000000000000000000000000000623967b20e0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+      "shortName": "BTC OVER $67,499.1827376",
+      "optionName": null,
+      "question": "Crypto.BTC/USD OVER $67,499.1827376",
+      "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $67,499.1827376 at settlement (Tue, 31 Mar 2026 14:34:27 GMT), YES wins. If the price is exactly $67,499.1827376 at settlement, OVER wins.",
+      "endTime": 1774967667,
+      "resolver": "0x27a95ab8982eacf4ec3d4bccabb3630c72fd7e1b",
+      "similarMarkets": [],
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "estimatedPrice": null,
+      "category": {
+        "slug": "prices-crypto"
+      }
+    },
+    {
+      "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069cbde140000000000000000000000000000000000000000000000000000061a0e4d80abfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+      "shortName": "BTC OVER $67,089.78876587",
+      "optionName": null,
+      "question": "Crypto.BTC/USD OVER $67,089.78876587",
+      "description": "Resolved by Pyth Network Lazer oracle. If Crypto.BTC/USD is over $67,089.78876587 at settlement (Tue, 31 Mar 2026 14:45:40 GMT), YES wins. If the price is exactly $67,089.78876587 at settlement, OVER wins.",
+      "endTime": 1774968340,
+      "resolver": "0x27a95ab8982eacf4ec3d4bccabb3630c72fd7e1b",
+      "similarMarkets": [],
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "estimatedPrice": null,
+      "category": {
+        "slug": "prices-crypto"
+      }
+    }
+  ]
 }

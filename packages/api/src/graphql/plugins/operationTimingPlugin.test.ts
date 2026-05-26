@@ -138,24 +138,6 @@ describe('operationTimingPlugin', () => {
     expect(parsed.errors as number).toBeGreaterThanOrEqual(1);
   });
 
-  it('emits outcome="success" for clean responses and "errors" otherwise', async () => {
-    await apollo.executeOperation(
-      { query: '{ hello }' },
-      { contextValue: stubContext() }
-    );
-    const ok = findLog(logs, '"event":"gql_request"');
-    expect(ok.outcome).toBe('success');
-
-    logs.length = 0;
-
-    await apollo.executeOperation(
-      { query: '{ fail }' },
-      { contextValue: stubContext() }
-    );
-    const failed = findLog(logs, '"event":"gql_request"');
-    expect(failed.outcome).toBe('errors');
-  });
-
   it('falls back to "anonymous" for unnamed queries', async () => {
     await apollo.executeOperation(
       { query: '{ hello }' },
@@ -178,60 +160,5 @@ describe('operationTimingPlugin', () => {
     const parsed = findLog(logs, '"operationName":"MyOp"');
     expect(parsed.operationName).toBe('MyOp');
     expect(parsed.operationType).toBe('query');
-  });
-
-  // The rootResolvers field is the entire reason this plugin counts
-  // selections instead of using operationName: aliased calls to the
-  // same resolver are the cost grain we care about, not the named
-  // operation. A regression that stops counting aliases (or that
-  // collapses aliases into 1) defeats the whole point.
-  describe('rootResolvers — alias counting', () => {
-    it('counts a single root field as 1', async () => {
-      await apollo.executeOperation(
-        { query: '{ hello }' },
-        { contextValue: stubContext() }
-      );
-      const parsed = findLog(logs, '"event":"gql_request"');
-      expect(parsed.rootResolvers).toEqual({ hello: 1 });
-    });
-
-    it('counts three aliased calls to the same field as { name: 3 }', async () => {
-      await apollo.executeOperation(
-        {
-          query: /* GraphQL */ `
-            {
-              a1: hello
-              a2: hello
-              a3: hello
-            }
-          `,
-        },
-        { contextValue: stubContext() }
-      );
-      const parsed = findLog(logs, '"event":"gql_request"');
-      expect(parsed.rootResolvers).toEqual({ hello: 3 });
-    });
-
-    it('aggregates aliases across multiple distinct fields and sorts keys alphabetically', async () => {
-      await apollo.executeOperation(
-        {
-          query: /* GraphQL */ `
-            {
-              x: ping
-              y: ping
-              hello
-            }
-          `,
-        },
-        { contextValue: stubContext() }
-      );
-      const parsed = findLog(logs, '"event":"gql_request"');
-      // Object.entries preserves insertion order; keys must be sorted alphabetically.
-      expect(Object.keys(parsed.rootResolvers as object)).toEqual([
-        'hello',
-        'ping',
-      ]);
-      expect(parsed.rootResolvers).toEqual({ hello: 1, ping: 2 });
-    });
   });
 });

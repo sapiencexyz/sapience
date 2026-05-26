@@ -74,11 +74,11 @@ const ReferralsDialog = ({
     referrals: ReferralRow[];
     maxReferrals: number | null;
   }>(() => {
-    const account = userReferralsQuery.data?.account;
-    if (!account) {
+    const user = userReferralsQuery.data?.user;
+    if (!user) {
       return { referrals: [], maxReferrals: null };
     }
-    const sorted = [...account.referrals].sort(
+    const sorted = [...user.referrals].sort(
       (a, b) =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
@@ -87,10 +87,10 @@ const ReferralsDialog = ({
       return {
         address: r.address,
         index: position,
-        withinCapacity: position <= (account.maxReferrals ?? 0),
+        withinCapacity: position <= (user.maxReferrals ?? 0),
       };
     });
-    return { referrals: rows, maxReferrals: account.maxReferrals ?? null };
+    return { referrals: rows, maxReferrals: user.maxReferrals ?? null };
   }, [userReferralsQuery.data]);
 
   const invitesRemaining =
