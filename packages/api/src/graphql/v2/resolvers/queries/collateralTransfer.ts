@@ -6,11 +6,18 @@
  * a stable keyset.
  */
 
-import { contracts } from '@sapience/sdk/contracts';
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { clampTake } from '../../../sdl/resolvers/queries/pagination';
+import { getConfiguredVaultDeploymentAddresses } from '../../../../services/protocolStats/vaultConfig';
+import {
+  buildConnection,
+  buildKeysetWhere,
+  clampTake,
+  decodeCursor,
+  encodeCursor,
+  normalizeDirection,
+  withCursorWhere,
+} from '../../relay/connection';
 import { tryFromGlobalIdV2 } from '../../relay/nodeRegistry';
 
 export const collateralTransfer = async (
@@ -22,31 +29,6 @@ export const collateralTransfer = async (
   const rowId = Number(parts.id);
   if (!Number.isInteger(rowId)) return null;
   return prisma.collateralTransfer.findUnique({ where: { id: rowId } });
-};
-
-/**
- * Best-effort list of protocol-controlled addresses on a given chain.
- * Includes vault primaries + their legacy aliases. Used by
- * `filter.excludeProtocol`.
- */
-const protocolAddresses = (chainId: number): string[] => {
-  try {
-    const vaults =
-      (contracts as any)?.predictionMarketVault?.filter?.(
-        (v: any) => v.chainId === chainId
-      ) ?? [];
-    const addrs: string[] = [];
-    for (const v of vaults) {
-      if (v.address) addrs.push(String(v.address).toLowerCase());
-      for (const le of v.legacy ?? []) {
-        const addr = typeof le === 'string' ? le : (le?.address ?? '');
-        if (addr) addrs.push(String(addr).toLowerCase());
-      }
-    }
-    return Array.from(new Set(addrs));
-  } catch {
-    return [];
-  }
 };
 
 type Field = 'BLOCK_NUMBER' | 'TIMESTAMP';
@@ -75,8 +57,7 @@ export const collateralTransfers = async (
     maxTake: 100,
   });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'TIMESTAMP'];
-  const direction: 'asc' | 'desc' =
-    String(args.orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
+  const direction = normalizeDirection(args.orderBy?.direction, 'desc');
 
   const where: Prisma.CollateralTransferWhereInput = {};
   if (args.filter?.chainId != null) where.chainId = args.filter.chainId;
@@ -93,7 +74,7 @@ export const collateralTransfers = async (
     where.timestamp = r;
   }
   if (args.filter?.excludeProtocol && args.filter?.chainId != null) {
-    const excluded = protocolAddresses(args.filter.chainId);
+    const excluded = getConfiguredVaultDeploymentAddresses(args.filter.chainId);
     if (excluded.length > 0) {
       const exclusion: Prisma.CollateralTransferWhereInput = {
         AND: [{ from: { notIn: excluded } }, { to: { notIn: excluded } }],
@@ -104,67 +85,38 @@ export const collateralTransfers = async (
     }
   }
 
-  const cursorPayload = args.after ? decodeCursor(args.after) : null;
-  let pageWhere: Prisma.CollateralTransferWhereInput = where;
-  if (cursorPayload) {
-    const op = direction === 'desc' ? 'lt' : 'gt';
-    const keyValue =
-      field === 'timestamp'
-        ? new Date(cursorPayload.k)
-        : Number(cursorPayload.k);
-    pageWhere = {
-      AND: [
-        where,
-        {
-          OR: [
-            {
-              [field]: { [op]: keyValue },
-            } as Prisma.CollateralTransferWhereInput,
-            {
-              AND: [
-                {
-                  [field]: { equals: keyValue },
-                } as Prisma.CollateralTransferWhereInput,
-                { id: { [op]: Number(cursorPayload.id) } },
-              ],
-            },
-          ],
-        },
-      ],
-    };
-  }
+  const cursor = args.after ? decodeCursor(args.after) : null;
+  const cursorWhere = cursor
+    ? buildKeysetWhere<Prisma.CollateralTransferWhereInput>({
+        orderField: field,
+        orderValue:
+          field === 'timestamp' ? new Date(cursor.k) : Number(cursor.k),
+        idField: 'id',
+        idValue: Number(cursor.id),
+        direction,
+      })
+    : null;
 
   const [rows, totalCount] = await Promise.all([
     prisma.collateralTransfer.findMany({
-      where: pageWhere,
+      where: withCursorWhere(where, cursorWhere),
       orderBy: [{ [field]: direction } as any, { id: direction }],
       take: first + 1,
     }),
     prisma.collateralTransfer.count({ where }),
   ]);
 
-  const hasNextPage = rows.length > first;
-  const pageRows = hasNextPage ? rows.slice(0, first) : rows;
-  const edges = pageRows.map((row) => ({
-    node: row,
-    cursor: encodeCursor({
-      k:
-        field === 'timestamp'
-          ? row.timestamp.toISOString()
-          : String(row.blockNumber),
-      id: String(row.id),
-    }),
-  }));
-
-  return {
-    edges,
-    nodes: pageRows,
+  return buildConnection({
+    rows,
+    first,
     totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+    getCursor: (row) =>
+      encodeCursor({
+        k:
+          field === 'timestamp'
+            ? row.timestamp.toISOString()
+            : String(row.blockNumber),
+        id: String(row.id),
+      }),
+  });
 };

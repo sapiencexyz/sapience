@@ -12,10 +12,17 @@ const mockPrisma = vi.hoisted(() => ({
 vi.mock('../../../core/db', () => ({ default: mockPrisma }));
 vi.mock('@sapience/sdk/contracts', () => ({
   contracts: {
-    predictionMarketVault: [
-      { chainId: 13374202, address: '0xVAULT', legacy: [] },
-    ],
+    predictionMarketVault: {
+      13374202: { address: '0xVAULT', legacy: [] },
+    },
+    pythPredictionMarketVault: {},
+    singleLegVault: {},
+    predictionMarketVaultStrategyB: {},
   },
+  normalizeLegacyEntry: (entry: unknown) =>
+    typeof entry === 'string'
+      ? { address: entry }
+      : (entry as { address: string }),
 }));
 
 import { CollateralTransfer } from './CollateralTransfer';

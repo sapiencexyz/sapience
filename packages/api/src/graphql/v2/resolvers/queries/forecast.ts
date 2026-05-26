@@ -10,8 +10,15 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { clampTake } from '../../../sdl/resolvers/queries/pagination';
+import {
+  buildConnection,
+  buildKeysetWhere,
+  clampTake,
+  decodeCursor,
+  encodeCursor,
+  normalizeDirection,
+  withCursorWhere,
+} from '../../relay/connection';
 
 export const forecast = async (_parent: unknown, { uid }: { uid: string }) =>
   prisma.attestation.findUnique({ where: { uid } });
@@ -20,27 +27,6 @@ type Field = 'ATTESTED_AT' | 'CREATED_AT';
 const FIELD_TO_PRISMA: Record<Field, 'time' | 'createdAt'> = {
   ATTESTED_AT: 'time',
   CREATED_AT: 'createdAt',
-};
-
-const buildCursorPredicate = (
-  k: string,
-  cursorId: string,
-  field: 'time' | 'createdAt',
-  direction: 'asc' | 'desc'
-): Prisma.AttestationWhereInput => {
-  const op = direction === 'desc' ? 'lt' : 'gt';
-  const keyValue = field === 'createdAt' ? new Date(k) : Number(k);
-  return {
-    OR: [
-      { [field]: { [op]: keyValue } } as Prisma.AttestationWhereInput,
-      {
-        AND: [
-          { [field]: { equals: keyValue } } as Prisma.AttestationWhereInput,
-          { uid: { [op]: cursorId } } as Prisma.AttestationWhereInput,
-        ],
-      },
-    ],
-  };
 };
 
 export const forecasts = async (
@@ -60,13 +46,9 @@ export const forecasts = async (
     orderBy?: { field: Field; direction: string } | null;
   }
 ) => {
-  const first = clampTake(args.first ?? 50, {
-    defaultTake: 50,
-    maxTake: 100,
-  });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'ATTESTED_AT'];
-  const direction: 'asc' | 'desc' =
-    String(args.orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
+  const direction = normalizeDirection(args.orderBy?.direction, 'desc');
 
   const where: Prisma.AttestationWhereInput = {};
   if (args.filter?.uid) where.uid = args.filter.uid;
@@ -88,40 +70,38 @@ export const forecasts = async (
     where.time = r;
   }
 
-  const cursorPayload = args.after ? decodeCursor(args.after) : null;
-  const cursorWhere = cursorPayload
-    ? buildCursorPredicate(cursorPayload.k, cursorPayload.id, field, direction)
+  const cursor = args.after ? decodeCursor(args.after) : null;
+  const cursorWhere = cursor
+    ? buildKeysetWhere<Prisma.AttestationWhereInput>({
+        orderField: field,
+        orderValue:
+          field === 'createdAt' ? new Date(cursor.k) : Number(cursor.k),
+        idField: 'uid',
+        idValue: cursor.id,
+        direction,
+      })
     : null;
-  const pageWhere = cursorWhere ? { AND: [where, cursorWhere] } : where;
 
   const [rows, totalCount] = await Promise.all([
     prisma.attestation.findMany({
-      where: pageWhere,
+      where: withCursorWhere(where, cursorWhere),
       orderBy: [{ [field]: direction } as any, { uid: direction }],
       take: first + 1,
     }),
     prisma.attestation.count({ where }),
   ]);
 
-  const hasNextPage = rows.length > first;
-  const pageRows = hasNextPage ? rows.slice(0, first) : rows;
-  const edges = pageRows.map((row) => ({
-    node: row,
-    cursor: encodeCursor({
-      k: field === 'createdAt' ? row.createdAt.toISOString() : String(row.time),
-      id: row.uid,
-    }),
-  }));
-
-  return {
-    edges,
-    nodes: pageRows,
+  return buildConnection({
+    rows,
+    first,
     totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+    getCursor: (row) =>
+      encodeCursor({
+        k:
+          field === 'createdAt'
+            ? row.createdAt.toISOString()
+            : String(row.time),
+        id: row.uid,
+      }),
+  });
 };

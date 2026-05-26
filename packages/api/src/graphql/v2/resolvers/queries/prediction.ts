@@ -7,8 +7,15 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { clampTake } from '../../../sdl/resolvers/queries/pagination';
+import {
+  buildConnection,
+  buildKeysetWhere,
+  clampTake,
+  decodeCursor,
+  encodeCursor,
+  normalizeDirection,
+  withCursorWhere,
+} from '../../relay/connection';
 
 export const prediction = async (
   _parent: unknown,
@@ -47,13 +54,9 @@ export const predictions = async (
     orderBy?: { field: Field; direction: string } | null;
   }
 ) => {
-  const first = clampTake(args.first ?? 50, {
-    defaultTake: 50,
-    maxTake: 100,
-  });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'CREATED_AT'];
-  const direction: 'asc' | 'desc' =
-    String(args.orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
+  const direction = normalizeDirection(args.orderBy?.direction, 'desc');
 
   const where: Prisma.PredictionWhereInput = {};
   if (args.filter?.predictionId)
@@ -77,7 +80,6 @@ export const predictions = async (
   if (args.filter?.result?.in?.length)
     where.result = { in: args.filter.result.in as any[] };
 
-  // Condition filters route through pickConfiguration → picks
   if (args.filter?.conditionId) {
     where.pickConfiguration = {
       picks: { some: { conditionId: args.filter.conditionId.toLowerCase() } },
@@ -104,37 +106,21 @@ export const predictions = async (
     };
   }
 
-  const cursorPayload = args.after ? decodeCursor(args.after) : null;
-  let pageWhere: Prisma.PredictionWhereInput = where;
-  if (cursorPayload) {
-    const op = direction === 'desc' ? 'lt' : 'gt';
-    const keyValue =
-      field === 'createdAt'
-        ? new Date(cursorPayload.k)
-        : Number(cursorPayload.k);
-    pageWhere = {
-      AND: [
-        where,
-        {
-          OR: [
-            { [field]: { [op]: keyValue } } as Prisma.PredictionWhereInput,
-            {
-              AND: [
-                {
-                  [field]: { equals: keyValue },
-                } as Prisma.PredictionWhereInput,
-                { id: { [op]: Number(cursorPayload.id) } },
-              ],
-            },
-          ],
-        },
-      ],
-    };
-  }
+  const cursor = args.after ? decodeCursor(args.after) : null;
+  const cursorWhere = cursor
+    ? buildKeysetWhere<Prisma.PredictionWhereInput>({
+        orderField: field,
+        orderValue:
+          field === 'createdAt' ? new Date(cursor.k) : Number(cursor.k),
+        idField: 'id',
+        idValue: Number(cursor.id),
+        direction,
+      })
+    : null;
 
   const [rows, totalCount] = await Promise.all([
     prisma.prediction.findMany({
-      where: pageWhere,
+      where: withCursorWhere(where, cursorWhere),
       orderBy: [{ [field]: direction } as any, { id: direction }],
       include: { pickConfiguration: { include: { picks: true } } },
       take: first + 1,
@@ -142,28 +128,17 @@ export const predictions = async (
     prisma.prediction.count({ where }),
   ]);
 
-  const hasNextPage = rows.length > first;
-  const pageRows = hasNextPage ? rows.slice(0, first) : rows;
-  const edges = pageRows.map((row) => ({
-    node: row,
-    cursor: encodeCursor({
-      k:
-        field === 'createdAt'
-          ? row.createdAt.toISOString()
-          : String((row as any)[field] ?? 0),
-      id: String(row.id),
-    }),
-  }));
-
-  return {
-    edges,
-    nodes: pageRows,
+  return buildConnection({
+    rows,
+    first,
     totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+    getCursor: (row) =>
+      encodeCursor({
+        k:
+          field === 'createdAt'
+            ? row.createdAt.toISOString()
+            : String((row as any)[field] ?? 0),
+        id: String(row.id),
+      }),
+  });
 };

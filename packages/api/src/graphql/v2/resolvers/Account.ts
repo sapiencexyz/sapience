@@ -13,8 +13,14 @@
 import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
 import { synthesizeAccount } from '../../sdl/resolvers/accountSynthesis';
-import { decodeCursor, encodeCursor } from '../../relay/cursor';
-import { clampTake } from '../../sdl/resolvers/queries/pagination';
+import {
+  buildConnection,
+  buildKeysetWhere,
+  clampTake,
+  decodeCursor,
+  encodeCursor,
+  withCursorWhere,
+} from '../relay/connection';
 import { accountRank } from './queries/leaderboard';
 import {
   collateralBalanceField,
@@ -35,17 +41,13 @@ registerNodeTypeV2({
 const addressOf = (parent: any): string =>
   (parent?.address ?? '').toLowerCase();
 
-const emptyAccountConnection = () => ({
-  edges: [],
-  nodes: [],
-  totalCount: 0,
-  pageInfo: {
-    hasNextPage: false,
-    hasPreviousPage: false,
-    startCursor: null,
-    endCursor: null,
-  },
-});
+const emptyAccountConnection = () =>
+  buildConnection<never, never>({
+    rows: [],
+    first: 0,
+    totalCount: 0,
+    getCursor: () => '',
+  });
 
 export const Account = {
   id: (parent: any) => toGlobalIdV2('Account', addressOf(parent)),
@@ -80,55 +82,37 @@ export const Account = {
       defaultTake: 50,
       maxTake: 100,
     });
-    const after = args.after ? decodeCursor(args.after) : null;
-
+    const cursor = args.after ? decodeCursor(args.after) : null;
     const baseWhere = { referredById: parent.id };
-    const cursorWhere = after
-      ? {
-          OR: [
-            { createdAt: { lt: new Date(after.k) } },
-            {
-              AND: [
-                { createdAt: { equals: new Date(after.k) } },
-                { id: { lt: Number(after.id) } },
-              ],
-            },
-          ],
-        }
+    const cursorWhere = cursor
+      ? buildKeysetWhere<typeof baseWhere>({
+          orderField: 'createdAt',
+          orderValue: new Date(cursor.k),
+          idField: 'id',
+          idValue: Number(cursor.id),
+          direction: 'desc',
+        })
       : null;
-
-    const where = cursorWhere ? { AND: [baseWhere, cursorWhere] } : baseWhere;
 
     const [rows, totalCount] = await Promise.all([
       prisma.user.findMany({
-        where: where as any,
+        where: withCursorWhere(baseWhere, cursorWhere),
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: first + 1,
       }),
-      prisma.user.count({ where: baseWhere as any }),
+      prisma.user.count({ where: baseWhere }),
     ]);
 
-    const hasNextPage = rows.length > first;
-    const pageRows = hasNextPage ? rows.slice(0, first) : rows;
-    const edges = pageRows.map((row) => ({
-      node: row,
-      cursor: encodeCursor({
-        k: row.createdAt.toISOString(),
-        id: String(row.id),
-      }),
-    }));
-
-    return {
-      edges,
-      nodes: pageRows,
+    return buildConnection({
+      rows,
+      first,
       totalCount,
-      pageInfo: {
-        hasNextPage,
-        hasPreviousPage: false,
-        startCursor: edges[0]?.cursor ?? null,
-        endCursor: edges[edges.length - 1]?.cursor ?? null,
-      },
-    };
+      getCursor: (row) =>
+        encodeCursor({
+          k: row.createdAt.toISOString(),
+          id: String(row.id),
+        }),
+    });
   },
 };
 

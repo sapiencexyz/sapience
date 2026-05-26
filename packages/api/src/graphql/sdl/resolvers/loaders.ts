@@ -53,6 +53,12 @@ export interface GraphQLLoaders {
   userById: DataLoader<number, UserRow | null>;
   /** id → ReferralCode row, or null when missing. */
   referralCodeById: DataLoader<number, ReferralCodeRow | null>;
+  /**
+   * conditionGroupId → ordered Condition[] (`displayOrder` asc nulls
+   * last, then `createdAt` asc). Used by v2 `ConditionGroup.conditions`
+   * to fold a per-row count + findMany into a single batched fetch.
+   */
+  conditionsByGroupId: DataLoader<number, ConditionRow[]>;
 }
 
 export const createLoaders = (prisma: typeof prismaClient): GraphQLLoaders => ({
@@ -123,4 +129,24 @@ export const createLoaders = (prisma: typeof prismaClient): GraphQLLoaders => ({
       return ids.map((id) => byId.get(id) ?? null);
     }
   ),
+
+  conditionsByGroupId: new DataLoader<number, ConditionRow[]>(async (ids) => {
+    const rows = await prisma.condition.findMany({
+      where: { conditionGroupId: { in: Array.from(new Set(ids)) } },
+      include: { category: true },
+      orderBy: [
+        { displayOrder: { sort: 'asc', nulls: 'last' } },
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
+    });
+    const byGroupId = new Map<number, ConditionRow[]>();
+    for (const row of rows) {
+      if (row.conditionGroupId == null) continue;
+      const bucket = byGroupId.get(row.conditionGroupId) ?? [];
+      bucket.push(row);
+      byGroupId.set(row.conditionGroupId, bucket);
+    }
+    return ids.map((id) => byGroupId.get(id) ?? []);
+  }),
 });

@@ -8,8 +8,15 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { clampTake } from '../../../sdl/resolvers/queries/pagination';
+import {
+  buildConnection,
+  buildKeysetWhere,
+  clampTake,
+  decodeCursor,
+  encodeCursor,
+  normalizeDirection,
+  withCursorWhere,
+} from '../../relay/connection';
 
 export const trade = async (
   _parent: unknown,
@@ -23,29 +30,6 @@ type Field = 'EXECUTED_AT' | 'BLOCK_NUMBER';
 const FIELD_TO_PRISMA: Record<Field, 'executedAt' | 'blockNumber'> = {
   EXECUTED_AT: 'executedAt',
   BLOCK_NUMBER: 'blockNumber',
-};
-
-const buildCursorPredicate = (
-  k: string,
-  cursorId: string,
-  field: 'executedAt' | 'blockNumber',
-  direction: 'asc' | 'desc'
-): Prisma.SecondaryTradeWhereInput => {
-  const op = direction === 'desc' ? 'lt' : 'gt';
-  const keyValue = Number(k);
-  return {
-    OR: [
-      { [field]: { [op]: keyValue } } as Prisma.SecondaryTradeWhereInput,
-      {
-        AND: [
-          { [field]: { equals: keyValue } } as Prisma.SecondaryTradeWhereInput,
-          {
-            tradeHash: { [op]: cursorId },
-          } as Prisma.SecondaryTradeWhereInput,
-        ],
-      },
-    ],
-  };
 };
 
 export const trades = async (
@@ -66,13 +50,9 @@ export const trades = async (
     orderBy?: { field: Field; direction: string } | null;
   }
 ) => {
-  const first = clampTake(args.first ?? 50, {
-    defaultTake: 50,
-    maxTake: 100,
-  });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'EXECUTED_AT'];
-  const direction: 'asc' | 'desc' =
-    String(args.orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
+  const direction = normalizeDirection(args.orderBy?.direction, 'desc');
 
   const where: Prisma.SecondaryTradeWhereInput = {};
   if (args.filter?.tradeHash)
@@ -95,37 +75,31 @@ export const trades = async (
     where.executedAt = r;
   }
 
-  const cursorPayload = args.after ? decodeCursor(args.after) : null;
-  const cursorWhere = cursorPayload
-    ? buildCursorPredicate(cursorPayload.k, cursorPayload.id, field, direction)
+  const cursor = args.after ? decodeCursor(args.after) : null;
+  const cursorWhere = cursor
+    ? buildKeysetWhere<Prisma.SecondaryTradeWhereInput>({
+        orderField: field,
+        orderValue: Number(cursor.k),
+        idField: 'tradeHash',
+        idValue: cursor.id,
+        direction,
+      })
     : null;
-  const pageWhere = cursorWhere ? { AND: [where, cursorWhere] } : where;
 
   const [rows, totalCount] = await Promise.all([
     prisma.secondaryTrade.findMany({
-      where: pageWhere,
+      where: withCursorWhere(where, cursorWhere),
       orderBy: [{ [field]: direction } as any, { tradeHash: direction }],
       take: first + 1,
     }),
     prisma.secondaryTrade.count({ where }),
   ]);
 
-  const hasNextPage = rows.length > first;
-  const pageRows = hasNextPage ? rows.slice(0, first) : rows;
-  const edges = pageRows.map((row) => ({
-    node: row,
-    cursor: encodeCursor({ k: String((row as any)[field]), id: row.tradeHash }),
-  }));
-
-  return {
-    edges,
-    nodes: pageRows,
+  return buildConnection({
+    rows,
+    first,
     totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+    getCursor: (row) =>
+      encodeCursor({ k: String((row as any)[field]), id: row.tradeHash }),
+  });
 };

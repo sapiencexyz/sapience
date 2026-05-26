@@ -5,10 +5,17 @@
  * `totals: ConditionGroupTotals` to keep the top-level shape tight.
  */
 
+import type { Prisma } from '../../../../generated/prisma';
 import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
-import { decodeCursor, encodeCursor } from '../../relay/cursor';
-import { clampTake } from '../../sdl/resolvers/queries/pagination';
+import {
+  buildConnection,
+  clampTake,
+  decodeCursor,
+  encodeCursor,
+} from '../relay/connection';
+
+type ConditionRow = Prisma.ConditionGetPayload<true>;
 
 registerNodeTypeV2({
   type: 'ConditionGroup',
@@ -59,7 +66,8 @@ export const ConditionGroup = {
 
   conditions: async (
     parent: any,
-    args: { first?: number | null; after?: string | null }
+    args: { first?: number | null; after?: string | null },
+    ctx: any
   ) => {
     const first = clampTake(args.first ?? 50, {
       defaultTake: 50,
@@ -69,40 +77,30 @@ export const ConditionGroup = {
     const skip = after ? Number(after.k) + 1 : 0;
 
     // Conditions within a group order by displayOrder (nulls last) then
-    // createdAt asc. The set is bounded (per-group), so offset paging
-    // is fine even for large groups.
-    const [rows, totalCount] = await Promise.all([
-      prisma.condition.findMany({
-        where: { conditionGroupId: parent.id },
-        orderBy: [
-          { displayOrder: { sort: 'asc', nulls: 'last' } },
-          { createdAt: 'asc' },
-          { id: 'asc' },
-        ],
-        skip,
-        take: first + 1,
-      }),
-      prisma.condition.count({ where: { conditionGroupId: parent.id } }),
-    ]);
+    // createdAt asc. Per-group sets are bounded; per-request loader
+    // amortizes count+page across multiple parent rows in the same
+    // selection.
+    const all: ConditionRow[] = ctx?.loaders?.conditionsByGroupId
+      ? ((await ctx.loaders.conditionsByGroupId.load(parent.id)) ?? [])
+      : await prisma.condition.findMany({
+          where: { conditionGroupId: parent.id },
+          orderBy: [
+            { displayOrder: { sort: 'asc', nulls: 'last' } },
+            { createdAt: 'asc' },
+            { id: 'asc' },
+          ],
+        });
 
-    const hasNextPage = rows.length > first;
-    const pageRows = hasNextPage ? rows.slice(0, first) : rows;
-    const edges = pageRows.map((row, idx) => ({
-      node: row,
-      cursor: encodeCursor({ k: String(skip + idx), id: row.id }),
-    }));
+    const totalCount = all.length;
+    const rows = all.slice(skip, skip + first + 1);
 
-    return {
-      edges,
-      nodes: pageRows,
+    return buildConnection({
+      rows,
+      first,
       totalCount,
-      pageInfo: {
-        hasNextPage,
-        hasPreviousPage: skip > 0,
-        startCursor: edges[0]?.cursor ?? null,
-        endCursor: edges[edges.length - 1]?.cursor ?? null,
-      },
-    };
+      getCursor: (row, idx) =>
+        encodeCursor({ k: String(skip + idx), id: row.id }),
+    });
   },
 };
 

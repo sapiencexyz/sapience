@@ -9,8 +9,15 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { clampTake } from '../../../sdl/resolvers/queries/pagination';
+import {
+  buildConnection,
+  buildKeysetWhere,
+  clampTake,
+  decodeCursor,
+  encodeCursor,
+  normalizeDirection,
+  withCursorWhere,
+} from '../../relay/connection';
 import { tryFromGlobalIdV2 } from '../../relay/nodeRegistry';
 
 export const position = async (_parent: unknown, { id }: { id: string }) => {
@@ -47,13 +54,9 @@ export const positions = async (
     orderBy?: { field: Field; direction: string } | null;
   }
 ) => {
-  const first = clampTake(args.first ?? 50, {
-    defaultTake: 50,
-    maxTake: 100,
-  });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'UPDATED_AT'];
-  const direction: 'asc' | 'desc' =
-    String(args.orderBy?.direction).toLowerCase() === 'asc' ? 'asc' : 'desc';
+  const direction = normalizeDirection(args.orderBy?.direction, 'desc');
 
   const where: Prisma.PositionWhereInput = {};
   if (args.filter?.holder) where.holder = args.filter.holder.toLowerCase();
@@ -90,32 +93,20 @@ export const positions = async (
   }
   if (hasPickConfigFilter) where.pickConfiguration = pickConfigFilter;
 
-  const cursorPayload = args.after ? decodeCursor(args.after) : null;
-  let pageWhere: Prisma.PositionWhereInput = where;
-  if (cursorPayload) {
-    const op = direction === 'desc' ? 'lt' : 'gt';
-    const keyValue = new Date(cursorPayload.k);
-    pageWhere = {
-      AND: [
-        where,
-        {
-          OR: [
-            { [field]: { [op]: keyValue } } as Prisma.PositionWhereInput,
-            {
-              AND: [
-                { [field]: { equals: keyValue } } as Prisma.PositionWhereInput,
-                { id: { [op]: Number(cursorPayload.id) } },
-              ],
-            },
-          ],
-        },
-      ],
-    };
-  }
+  const cursor = args.after ? decodeCursor(args.after) : null;
+  const cursorWhere = cursor
+    ? buildKeysetWhere<Prisma.PositionWhereInput>({
+        orderField: field,
+        orderValue: new Date(cursor.k),
+        idField: 'id',
+        idValue: Number(cursor.id),
+        direction,
+      })
+    : null;
 
   const [rows, totalCount] = await Promise.all([
     prisma.position.findMany({
-      where: pageWhere,
+      where: withCursorWhere(where, cursorWhere),
       orderBy: [{ [field]: direction } as any, { id: direction }],
       include: { pickConfiguration: { include: { picks: true } } },
       take: first + 1,
@@ -123,25 +114,14 @@ export const positions = async (
     prisma.position.count({ where }),
   ]);
 
-  const hasNextPage = rows.length > first;
-  const pageRows = hasNextPage ? rows.slice(0, first) : rows;
-  const edges = pageRows.map((row) => ({
-    node: row,
-    cursor: encodeCursor({
-      k: (row as any)[field].toISOString(),
-      id: String(row.id),
-    }),
-  }));
-
-  return {
-    edges,
-    nodes: pageRows,
+  return buildConnection({
+    rows,
+    first,
     totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+    getCursor: (row) =>
+      encodeCursor({
+        k: (row as any)[field].toISOString(),
+        id: String(row.id),
+      }),
+  });
 };

@@ -1,13 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * `conditionGroup(id:)` / `conditionGroups(...)` — Relay queries over
- * the `ConditionGroup` table.
+ * the `ConditionGroup` table. `TOTAL_OPEN_INTEREST` /
+ * `TOTAL_PREDICTION_COUNT` are Decimal columns that don't keyset-cast
+ * cleanly, so those orderBy modes fall back to offset paging.
  */
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { clampTake } from '../../../sdl/resolvers/queries/pagination';
+import {
+  buildConnection,
+  buildKeysetWhere,
+  clampTake,
+  decodeCursor,
+  encodeCursor,
+  normalizeDirection,
+  withCursorWhere,
+} from '../../relay/connection';
 
 export const conditionGroup = async (
   _parent: unknown,
@@ -40,13 +49,9 @@ export const conditionGroups = async (
     orderBy?: { field: Field; direction: string } | null;
   }
 ) => {
-  const first = clampTake(args.first ?? 50, {
-    defaultTake: 50,
-    maxTake: 100,
-  });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'MAX_END_TIME'];
-  const direction: 'asc' | 'desc' =
-    String(args.orderBy?.direction).toLowerCase() === 'desc' ? 'desc' : 'asc';
+  const direction = normalizeDirection(args.orderBy?.direction, 'asc');
 
   const where: Prisma.ConditionGroupWhereInput = {};
   if (args.filter?.categoryId != null)
@@ -55,46 +60,29 @@ export const conditionGroups = async (
     where.name = { contains: args.filter.search.trim(), mode: 'insensitive' };
   }
 
-  // Decimal/numeric fields are stored as Decimal — keyset cursor over
-  // them needs a stringified comparison; default to offset for those.
-  const isDecimalField =
+  const usesOffset =
     field === 'totalOpenInterest' || field === 'totalPredictionCount';
-
-  const after = args.after ? decodeCursor(args.after) : null;
-  let pageWhere: Prisma.ConditionGroupWhereInput = where;
-  let skip = 0;
-
-  if (after) {
-    if (isDecimalField) {
-      skip = Number(after.k) + 1;
-    } else {
-      const op = direction === 'desc' ? 'lt' : 'gt';
-      const keyValue =
-        field === 'createdAt'
-          ? new Date(after.k)
-          : field === 'name'
-            ? after.k
-            : Number(after.k);
-      const cursorWhere: Prisma.ConditionGroupWhereInput = {
-        OR: [
-          { [field]: { [op]: keyValue } } as Prisma.ConditionGroupWhereInput,
-          {
-            AND: [
-              {
-                [field]: { equals: keyValue },
-              } as Prisma.ConditionGroupWhereInput,
-              { id: { [op]: Number(after.id) } },
-            ],
-          },
-        ],
-      };
-      pageWhere = { AND: [where, cursorWhere] };
-    }
-  }
+  const cursor = args.after ? decodeCursor(args.after) : null;
+  const skip = cursor && usesOffset ? Number(cursor.k) + 1 : 0;
+  const cursorWhere =
+    cursor && !usesOffset
+      ? buildKeysetWhere<Prisma.ConditionGroupWhereInput>({
+          orderField: field,
+          orderValue:
+            field === 'createdAt'
+              ? new Date(cursor.k)
+              : field === 'name'
+                ? cursor.k
+                : Number(cursor.k),
+          idField: 'id',
+          idValue: Number(cursor.id),
+          direction,
+        })
+      : null;
 
   const [rows, totalCount] = await Promise.all([
     prisma.conditionGroup.findMany({
-      where: pageWhere,
+      where: withCursorWhere(where, cursorWhere),
       orderBy: [{ [field]: direction } as any, { id: direction }],
       take: first + 1,
       skip: skip || undefined,
@@ -102,29 +90,18 @@ export const conditionGroups = async (
     prisma.conditionGroup.count({ where }),
   ]);
 
-  const hasNextPage = rows.length > first;
-  const pageRows = hasNextPage ? rows.slice(0, first) : rows;
-  const edges = pageRows.map((row, idx) => ({
-    node: row,
-    cursor: encodeCursor({
-      k: isDecimalField
-        ? String(skip + idx)
-        : field === 'createdAt'
-          ? (row as any).createdAt.toISOString()
-          : String((row as any)[field]),
-      id: String(row.id),
-    }),
-  }));
-
-  return {
-    edges,
-    nodes: pageRows,
+  return buildConnection({
+    rows,
+    first,
     totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+    getCursor: (row, idx) =>
+      encodeCursor({
+        k: usesOffset
+          ? String(skip + idx)
+          : field === 'createdAt'
+            ? (row as any).createdAt.toISOString()
+            : String((row as any)[field]),
+        id: String(row.id),
+      }),
+  });
 };

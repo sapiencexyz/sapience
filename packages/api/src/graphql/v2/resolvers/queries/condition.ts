@@ -3,14 +3,25 @@
  * `condition(conditionId:)` / `conditions(...)` — CTF condition lookups.
  *
  * Cursor key tracks the selected `orderBy.field`; `(field, id)` is the
- * tie-broken keyset. The on-chain `conditionId` is unique, so the
- * tie-break is canonical.
+ * tie-broken keyset. On-chain `conditionId` is unique, so the tie-break
+ * is canonical.
+ *
+ * `OPEN_INTEREST` is stored as a VarChar-encoded bigint and can't be
+ * keyset-compared in SQL without a numeric cast, so that orderBy mode
+ * falls back to offset paging (cursor `k` is an integer offset).
  */
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { clampTake } from '../../../sdl/resolvers/queries/pagination';
+import {
+  buildConnection,
+  buildKeysetWhere,
+  clampTake,
+  decodeCursor,
+  encodeCursor,
+  normalizeDirection,
+  withCursorWhere,
+} from '../../relay/connection';
 
 export const condition = async (
   _parent: unknown,
@@ -68,13 +79,9 @@ export const conditions = async (
     orderBy?: { field: Field; direction: string } | null;
   }
 ) => {
-  const first = clampTake(args.first ?? 50, {
-    defaultTake: 50,
-    maxTake: 100,
-  });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'END_TIME'];
-  const direction: 'asc' | 'desc' =
-    String(args.orderBy?.direction).toLowerCase() === 'desc' ? 'desc' : 'asc';
+  const direction = normalizeDirection(args.orderBy?.direction, 'asc');
 
   const where: Prisma.ConditionWhereInput = {
     ...projectOutcomeFilter(args.filter?.outcome, args.filter?.settled),
@@ -102,40 +109,24 @@ export const conditions = async (
     where.endTime = r;
   }
 
-  // Cursor predicate over (field, id). openInterest is a VarChar-stored
-  // bigint — keyset comparison would require Postgres-side numeric cast.
-  // For v2's stub: fall back to offset for OPEN_INTEREST orderBy; the
-  // other three fields support proper keyset.
-  const cursorPayload = args.after ? decodeCursor(args.after) : null;
-  let pageWhere: Prisma.ConditionWhereInput = where;
-  let skip = 0;
-  if (cursorPayload) {
-    if (field === 'openInterest') {
-      skip = Number(cursorPayload.k) + 1;
-    } else {
-      const op = direction === 'desc' ? 'lt' : 'gt';
-      const keyValue =
-        field === 'createdAt'
-          ? new Date(cursorPayload.k)
-          : Number(cursorPayload.k);
-      const cursorWhere: Prisma.ConditionWhereInput = {
-        OR: [
-          { [field]: { [op]: keyValue } } as Prisma.ConditionWhereInput,
-          {
-            AND: [
-              { [field]: { equals: keyValue } } as Prisma.ConditionWhereInput,
-              { id: { [op]: cursorPayload.id } } as Prisma.ConditionWhereInput,
-            ],
-          },
-        ],
-      };
-      pageWhere = { AND: [where, cursorWhere] };
-    }
-  }
+  const cursor = args.after ? decodeCursor(args.after) : null;
+  const usesOffset = field === 'openInterest';
+  const skip = cursor && usesOffset ? Number(cursor.k) + 1 : 0;
+  const cursorWhere =
+    cursor && !usesOffset
+      ? buildKeysetWhere<Prisma.ConditionWhereInput>({
+          orderField: field,
+          orderValue:
+            field === 'createdAt' ? new Date(cursor.k) : Number(cursor.k),
+          idField: 'id',
+          idValue: cursor.id,
+          direction,
+        })
+      : null;
 
   const [rows, totalCount] = await Promise.all([
     prisma.condition.findMany({
-      where: pageWhere,
+      where: withCursorWhere(where, cursorWhere),
       orderBy: [{ [field]: direction } as any, { id: direction }],
       take: first + 1,
       skip: skip || undefined,
@@ -143,30 +134,18 @@ export const conditions = async (
     prisma.condition.count({ where }),
   ]);
 
-  const hasNextPage = rows.length > first;
-  const pageRows = hasNextPage ? rows.slice(0, first) : rows;
-  const edges = pageRows.map((row, idx) => ({
-    node: row,
-    cursor: encodeCursor({
-      k:
-        field === 'createdAt'
-          ? row.createdAt.toISOString()
-          : field === 'openInterest'
-            ? String(skip + idx)
-            : String((row as any)[field]),
-      id: row.id,
-    }),
-  }));
-
-  return {
-    edges,
-    nodes: pageRows,
+  return buildConnection({
+    rows,
+    first,
     totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+    getCursor: (row, idx) =>
+      encodeCursor({
+        k: usesOffset
+          ? String(skip + idx)
+          : field === 'createdAt'
+            ? row.createdAt.toISOString()
+            : String((row as any)[field]),
+        id: row.id,
+      }),
+  });
 };
