@@ -103,10 +103,14 @@ Account; persistent rows additionally carry referral metadata.
 type Account implements Node & AddressEntity {
   id: ID!
 
-  """Canonical lowercase Ethereum wallet address."""
+  """
+  Canonical lowercase Ethereum wallet address.
+  """
   address: Address!
 
-  """When this account first appeared in the database. Synthesized accounts return the unix epoch."""
+  """
+  When this account first appeared in the database. Synthesized accounts return the unix epoch.
+  """
   createdAt: DateTimeISO!
 
   """
@@ -115,22 +119,34 @@ type Account implements Node & AddressEntity {
   """
   refCodeHash: String
 
-  """Maximum number of referrals this account's code allows. Default 0."""
+  """
+  Maximum number of referrals this account's code allows. Default 0.
+  """
   maxReferrals: Int!
 
-  """The account that referred this one, if any."""
+  """
+  The account that referred this one, if any.
+  """
   referredBy: Account
 
-  """The referral code this account was referred by, if any."""
+  """
+  The referral code this account was referred by, if any.
+  """
   referredByCode: ReferralCode
 
-  """Accounts referred by this account, via its referral code."""
+  """
+  Accounts referred by this account, via its referral code.
+  """
   referrals(first: Int = 50, after: String): AccountConnection!
 
-  """Rank of this account on a chosen metric, or null when unranked."""
+  """
+  Rank of this account on a chosen metric, or null when unranked.
+  """
   rank(metric: LeaderboardMetric!, filter: AccountRankingFilter): AccountRanking
 
-  """Current wUSDe wallet balance at an optional block (defaults to head)."""
+  """
+  Current wUSDe wallet balance at an optional block (defaults to head).
+  """
   collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
 
   """
@@ -177,7 +193,9 @@ filter dimension for an address-keyed table is substring match against
 the address itself.
 """
 input AccountFilter {
-  """Substring search against the wallet address (case-insensitive)."""
+  """
+  Substring search against the wallet address (case-insensitive).
+  """
   search: String
 }
 
@@ -204,13 +222,19 @@ exists primarily for enumeration; per-vault refetch goes through
 type Vault implements Node & AddressEntity {
   id: ID!
 
-  """Canonical lowercase vault contract address (current primary)."""
+  """
+  Canonical lowercase vault contract address (current primary).
+  """
   address: Address!
 
-  """Chain the vault is deployed on."""
+  """
+  Chain the vault is deployed on.
+  """
   chainId: Int!
 
-  """Deployment kind — one of a small enum set."""
+  """
+  Deployment kind — one of a small enum set.
+  """
   kind: VaultKind!
 
   """
@@ -250,11 +274,17 @@ enumeration patterns that want to scope to a known vault — single-row
 lookup should use `vault(address:)` instead.
 """
 input VaultFilter {
-  """Restrict to a single vault address (case-insensitive). Matches both the current primary and any legacy alias."""
+  """
+  Restrict to a single vault address (case-insensitive). Matches both the current primary and any legacy alias.
+  """
   address: Address
-  """Restrict to a single chain. Defaults to the SDK's default chain when omitted."""
+  """
+  Restrict to a single chain. Defaults to the SDK's default chain when omitted.
+  """
   chainId: Int
-  """Restrict to a single deployment kind."""
+  """
+  Restrict to a single deployment kind.
+  """
   kind: VaultKind
 }
 
@@ -277,7 +307,9 @@ UI. Backed by the Postgres `Category` table.
 """
 type Category implements Node {
   id: ID!
-  """Internal integer primary key; stable per-row, not encoded in opaque ids."""
+  """
+  Internal integer primary key; stable per-row, not encoded in opaque ids.
+  """
   categoryId: Int!
   name: String!
   slug: String!
@@ -297,7 +329,9 @@ type CategoryConnection {
 }
 
 input CategoryFilter {
-  """Case-insensitive substring match against `name`."""
+  """
+  Case-insensitive substring match against `name`.
+  """
   search: String
 }
 
@@ -329,7 +363,9 @@ type Forecast implements Node {
   forecaster: Address!
   recipient: Address!
   resolverAddress: Address
-  """CTF condition id this forecast targets, lowercase 0x-hex. May be null for non-condition-backed forecasts."""
+  """
+  CTF condition id this forecast targets, lowercase 0x-hex. May be null for non-condition-backed forecasts.
+  """
   conditionId: String
   """
   Raw on-chain forecast value — D18 fixed-point probability in
@@ -355,7 +391,9 @@ type ForecastConnection {
   totalCount: Int!
 }
 
-"""Range filter for an integer/UnixSeconds field; both bounds inclusive."""
+"""
+Range filter for an integer/UnixSeconds field; both bounds inclusive.
+"""
 input IntRangeFilter {
   gte: Int
   lte: Int
@@ -397,13 +435,21 @@ type Trade implements Node {
   chainId: Int!
   buyer: Address!
   seller: Address!
-  """Position token being transferred."""
+  """
+  Position token being transferred.
+  """
   token: Address!
-  """Collateral asset paid by the buyer."""
+  """
+  Collateral asset paid by the buyer.
+  """
   collateral: Address!
-  """Total collateral paid by the buyer, wei. `price / tokenAmount` is the per-share price."""
+  """
+  Total collateral paid by the buyer, wei. `price / tokenAmount` is the per-share price.
+  """
   price: BigInt!
-  """Quantity of position tokens transferred, wei (18-dec)."""
+  """
+  Quantity of position tokens transferred, wei (18-dec).
+  """
   tokenAmount: BigInt!
   txHash: Bytes32!
   blockNumber: Int!
@@ -464,7 +510,9 @@ value type — wire-weight reduction and grouping by source.
 """
 type Condition implements Node {
   id: ID!
-  """CTF on-chain condition id, lowercase 0x-hex."""
+  """
+  CTF on-chain condition id, lowercase 0x-hex.
+  """
   conditionId: String!
   chainId: Int!
   question: String!
@@ -472,7 +520,9 @@ type Condition implements Node {
   shortName: String
   optionName: String
 
-  """Resolver (oracle) contract address that settles this condition."""
+  """
+  Resolver (oracle) contract address that settles this condition.
+  """
   resolverAddress: Address!
   endTime: UnixSeconds!
   settledAt: UnixSeconds
@@ -484,13 +534,19 @@ type Condition implements Node {
   """
   outcome: ConditionOutcome
 
-  """Cumulative on-chain open interest, wei."""
+  """
+  Cumulative on-chain open interest, wei.
+  """
   openInterest: BigInt!
 
-  """YES probability from Polymarket (0.0–1.0), null for non-Polymarket."""
+  """
+  YES probability from Polymarket (0.0–1.0), null for non-Polymarket.
+  """
   estimatedPrice: Float
 
-  """Visibility — false hides this condition from public listing surfaces."""
+  """
+  Visibility — false hides this condition from public listing surfaces.
+  """
   public: Boolean!
   displayOrder: Int
   tags: [String!]!
@@ -502,7 +558,9 @@ type Condition implements Node {
   conditionGroupId: Int
   conditionGroup: ConditionGroup
 
-  """Bundled similar-market signal from external sources (Polymarket)."""
+  """
+  Bundled similar-market signal from external sources (Polymarket).
+  """
   similarMarket: SimilarMarket
 }
 
@@ -550,14 +608,22 @@ input ConditionFilter {
   conditionIds: [String!]
   chainId: Int
   categoryId: Int
-  """Restrict to settled (`outcome` non-null) / unsettled (null)."""
+  """
+  Restrict to settled (`outcome` non-null) / unsettled (null).
+  """
   settled: Boolean
   outcome: ConditionOutcome
-  """Restrict to public conditions only (default true when omitted on listing surfaces)."""
+  """
+  Restrict to public conditions only (default true when omitted on listing surfaces).
+  """
   publicOnly: Boolean
-  """Restrict to conditions tagged with at least one of these."""
+  """
+  Restrict to conditions tagged with at least one of these.
+  """
   tags: [String!]
-  """Substring search across `question` / `description`, case-insensitive."""
+  """
+  Substring search across `question` / `description`, case-insensitive.
+  """
   search: String
   endTime: IntRangeFilter
 }
@@ -586,7 +652,9 @@ constituent conditions.
 """
 type ConditionGroup implements Node {
   id: ID!
-  """Internal integer primary key — stable per row."""
+  """
+  Internal integer primary key — stable per row.
+  """
   groupId: Int!
   name: String!
   similarMarkets: [String!]!
@@ -595,10 +663,14 @@ type ConditionGroup implements Node {
   categoryId: Int
   category: Category
 
-  """Aggregated counters across this group's public conditions."""
+  """
+  Aggregated counters across this group's public conditions.
+  """
   totals: ConditionGroupTotals!
 
-  """Conditions in this group, ordered by `displayOrder` then `createdAt`."""
+  """
+  Conditions in this group, ordered by `displayOrder` then `createdAt`.
+  """
   conditions(first: Int = 50, after: String): ConditionConnection!
 }
 
@@ -637,7 +709,9 @@ type ConditionGroupConnection {
 
 input ConditionGroupFilter {
   categoryId: Int
-  """Substring search against `name`, case-insensitive."""
+  """
+  Substring search against `name`, case-insensitive.
+  """
   search: String
 }
 
@@ -728,7 +802,9 @@ input PickConfigurationFilter {
   chainId: Int
   resolved: Boolean
   result: SettlementResultFilter
-  """Either predictor or counterparty token matches one of these (case-insensitive)."""
+  """
+  Either predictor or counterparty token matches one of these (case-insensitive).
+  """
   tokens: [Address!]
 }
 
@@ -811,14 +887,20 @@ input PredictionFilter {
   counterparty: Address
   chainId: Int
   pickConfigId: String
-  """Restrict to predictions on a single condition (via the pickConfig join)."""
+  """
+  Restrict to predictions on a single condition (via the pickConfig join).
+  """
   conditionId: String
-  """Restrict to predictions on any of these conditions (via the pickConfig join)."""
+  """
+  Restrict to predictions on any of these conditions (via the pickConfig join).
+  """
   conditionIds: [String!]
   isLegacy: Boolean
   settled: Boolean
   result: SettlementResultFilter
-  """Filter by pickConfig end epoch seconds."""
+  """
+  Filter by pickConfig end epoch seconds.
+  """
   endsAt: IntRangeFilter
 }
 
@@ -849,12 +931,18 @@ type Position implements Node {
   pickConfigId: String!
   pickConfig: PickConfiguration
 
-  """ERC-20 position token address."""
+  """
+  ERC-20 position token address.
+  """
   tokenAddress: Address!
-  """True if this is the predictor token side; false for counterparty."""
+  """
+  True if this is the predictor token side; false for counterparty.
+  """
   isPredictorToken: Boolean!
 
-  """Number of position tokens still held, wei (18 decimals)."""
+  """
+  Number of position tokens still held, wei (18 decimals).
+  """
   balance: BigInt!
 
   createdAt: DateTimeISO!
@@ -878,11 +966,17 @@ input PositionFilter {
   chainId: Int
   conditionId: String
   pickConfigId: String
-  """Restrict to positions whose pickConfig settled with this result."""
+  """
+  Restrict to positions whose pickConfig settled with this result.
+  """
   result: SettlementResultFilter
-  """Restrict to positions where the pickConfig is settled / unsettled."""
+  """
+  Restrict to positions where the pickConfig is settled / unsettled.
+  """
   settled: Boolean
-  """Filter by pickConfig end epoch seconds."""
+  """
+  Filter by pickConfig end epoch seconds.
+  """
   endsAt: IntRangeFilter
 }
 
@@ -983,7 +1077,9 @@ type CloseConnection {
 input CloseFilter {
   chainId: Int
   pickConfigId: String
-  """Restrict to closes where the address is on either side (predictor or counterparty)."""
+  """
+  Restrict to closes where the address is on either side (predictor or counterparty).
+  """
   participant: Address
 }
 
@@ -1013,7 +1109,9 @@ type CollateralTransfer implements Node {
   logIndex: Int!
   from: Address!
   to: Address!
-  """Transfer amount in wei (18 decimals)."""
+  """
+  Transfer amount in wei (18 decimals).
+  """
   value: BigInt!
   createdAt: DateTimeISO!
 }
@@ -1030,19 +1128,25 @@ type CollateralTransferConnection {
   totalCount: Int!
 }
 
-"""Date/time range filter; both bounds inclusive."""
+"""
+Date/time range filter; both bounds inclusive.
+"""
 input DateTimeRangeFilter {
   gte: DateTimeISO
   lte: DateTimeISO
 }
 
 input CollateralTransferFilter {
-  """OR across from/to (account is on either side of the transfer)."""
+  """
+  OR across from/to (account is on either side of the transfer).
+  """
   account: Address
   chainId: Int
   timestamp: DateTimeRangeFilter
   transactionHash: Bytes32
-  """Exclude transfers to/from configured protocol addresses (vault, escrow)."""
+  """
+  Exclude transfers to/from configured protocol addresses (vault, escrow).
+  """
   excludeProtocol: Boolean
 }
 
@@ -1084,7 +1188,9 @@ should select through `edges { node { ... } }` with inline fragments.
 type ActivityConnection {
   edges: [ActivityEdge!]!
   pageInfo: PageInfo!
-  """Sum of matching predictions + trades. Two indexed COUNT(*) queries."""
+  """
+  Sum of matching predictions + trades. Two indexed COUNT(*) queries.
+  """
   totalCount: Int!
 }
 
@@ -1094,14 +1200,20 @@ enum ActivityType {
 }
 
 input ActivityFilter {
-  """OR across predictor/counterparty (predictions) and buyer/seller (trades)."""
+  """
+  OR across predictor/counterparty (predictions) and buyer/seller (trades).
+  """
   account: Address
   conditionId: String
   conditionIds: [String!]
   pickConfigId: String
-  """Restrict to a subset of activity types. `[]` is a zero-result query."""
+  """
+  Restrict to a subset of activity types. `[]` is a zero-result query.
+  """
   types: [ActivityType!]
-  """Filter by activity timestamp in epoch seconds."""
+  """
+  Filter by activity timestamp in epoch seconds.
+  """
   timestamp: IntRangeFilter
 }
 
@@ -1126,7 +1238,9 @@ enum LeaderboardMetric {
 }
 
 input AccountRankingFilter {
-  """Window selector in epoch seconds (inclusive). Ignored for ACCURACY."""
+  """
+  Window selector in epoch seconds (inclusive). Ignored for ACCURACY.
+  """
   timestamp: IntRangeFilter
 }
 
@@ -1200,11 +1314,15 @@ type ProtocolStatConnection {
 }
 
 input ProtocolStatFilter {
-  """Snapshot timestamp window in epoch seconds (inclusive)."""
+  """
+  Snapshot timestamp window in epoch seconds (inclusive).
+  """
   timestamp: IntRangeFilter
 }
 
-"""Open-interest broken down by category."""
+"""
+Open-interest broken down by category.
+"""
 type CategoryOpenInterest {
   category: Category!
   openInterest: BigInt!
@@ -1215,9 +1333,13 @@ Open-interest bucketed by time-to-resolution. Each unsettled prediction
 is bucketed by the latest endTime among its constituent conditions.
 """
 type TimeToResolutionBucket {
-  """Sort key: 1 = soonest, ascending for further-out buckets."""
+  """
+  Sort key: 1 = soonest, ascending for further-out buckets.
+  """
   bucket: Int!
-  """Display label, e.g. ≤1d / 2-7d / 1-2mo."""
+  """
+  Display label, e.g. ≤1d / 2-7d / 1-2mo.
+  """
   label: String!
   openInterest: BigInt!
   predictionCount: Int!
@@ -1322,41 +1444,77 @@ column drives the sort (e.g. `OPEN_INTEREST`,
 `SIMILAR_MARKET_VOLUME_*`), the same filter dimension is exposed here.
 """
 input QuestionFilter {
-  """Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present."""
+  """
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.
+  """
   chainId: Int
-  """Resolver (oracle) contract address that owns the underlying condition."""
+  """
+  Resolver (oracle) contract address that owns the underlying condition.
+  """
   resolverAddress: Address
-  """Match any of these resolver contract addresses."""
+  """
+  Match any of these resolver contract addresses.
+  """
   resolverAddressIn: [Address!]
-  """Restrict to questions whose category slug is in this set."""
+  """
+  Restrict to questions whose category slug is in this set.
+  """
   categorySlugs: [String!]
-  """Resolution-status filter; defaults to ALL when omitted."""
+  """
+  Resolution-status filter; defaults to ALL when omitted.
+  """
   resolutionStatus: ResolutionStatus
-  """Range over the Polymarket-derived `estimatedPrice` 0–1 probability."""
+  """
+  Range over the Polymarket-derived `estimatedPrice` 0–1 probability.
+  """
   estimatedPrice: FloatFilter
-  """Range over similar-market volume (USD). Window selected by `similarMarketVolumeWindow`."""
+  """
+  Range over similar-market volume (USD). Window selected by `similarMarketVolumeWindow`.
+  """
   similarMarketVolume: FloatFilter
-  """Volume window the `similarMarketVolume` filter and the corresponding sort look at. All-time when omitted."""
+  """
+  Volume window the `similarMarketVolume` filter looks at. All-time
+  when omitted. Sorting by `SIMILAR_MARKET_VOLUME_*` carries its own
+  window in the sort enum and ignores this field.
+  """
   similarMarketVolumeWindow: VolumeWindow
-  """Free-text search across the wrapped condition/group title and description (case-insensitive)."""
+  """
+  Free-text search across the wrapped condition/group title and description (case-insensitive).
+  """
   search: String
-  """Restrict to questions tagged with this value."""
+  """
+  Restrict to questions tagged with this value.
+  """
   tag: String
+  """
+  Range over resolution time (epoch seconds). For Conditions the
+  endpoint is `endTime`; for ConditionGroups it's `maxEndTime` across
+  the group's conditions. Inclusive on both bounds.
+  """
+  endsAt: IntRangeFilter
 }
 
 """
-Sort fields for the `questions` connection. `OPEN_INTEREST` is
-supported because the union runner sorts via raw SQL with a numeric
-cast — the narrower `conditions` / `conditionGroups` connections fall
-back to offset for that field.
+Sort fields for the `questions` connection. `OPEN_INTEREST` and the
+windowed `SIMILAR_MARKET_VOLUME_*` variants are supported because the
+union runner sorts via raw SQL with a numeric cast — the narrower
+`conditions` / `conditionGroups` connections fall back to offset for
+these columns. `_FILTERED` variants exclude pre-resolution /
+off-platform volume.
 """
 enum QuestionOrderField {
   CREATED_AT
-  RESOLVES_AT
+  END_TIME
   OPEN_INTEREST
   PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_1H
+  SIMILAR_MARKET_VOLUME_4H
   SIMILAR_MARKET_VOLUME_24H
   SIMILAR_MARKET_VOLUME_7D
+  SIMILAR_MARKET_VOLUME_1H_FILTERED
+  SIMILAR_MARKET_VOLUME_4H_FILTERED
+  SIMILAR_MARKET_VOLUME_24H_FILTERED
+  SIMILAR_MARKET_VOLUME_7D_FILTERED
 }
 
 input QuestionOrder {
@@ -1401,7 +1559,9 @@ type Query {
   """
   nodes(ids: [ID!]!): [Node]!
 
-  """Endpoint health / schema-version probe."""
+  """
+  Endpoint health / schema-version probe.
+  """
   _v2Health: V2Health!
 
   """
@@ -1445,7 +1605,9 @@ type Query {
     orderBy: VaultOrder
   ): VaultConnection!
 
-  """Look up a single condition group by its integer primary key."""
+  """
+  Look up a single condition group by its integer primary key.
+  """
   conditionGroup(id: Int!): ConditionGroup
 
   """
@@ -1459,10 +1621,14 @@ type Query {
     orderBy: ConditionGroupOrder
   ): ConditionGroupConnection!
 
-  """The protocol singleton — aggregate dashboards over all accounts/conditions."""
+  """
+  The protocol singleton — aggregate dashboards over all accounts/conditions.
+  """
   protocol: Protocol!
 
-  """Top 20 most-used tags across public conditions."""
+  """
+  Top 20 most-used tags across public conditions.
+  """
   popularTags: [String!]!
 
   """
@@ -1500,7 +1666,9 @@ type Query {
     filter: AccountRankingFilter
   ): AccountRankingConnection!
 
-  """Look up a single collateral transfer by its globalId-encoded row id."""
+  """
+  Look up a single collateral transfer by its globalId-encoded row id.
+  """
   collateralTransfer(id: ID!): CollateralTransfer
 
   """
@@ -1514,7 +1682,9 @@ type Query {
     orderBy: CollateralTransferOrder
   ): CollateralTransferConnection!
 
-  """Look up a single claim by its globalId-encoded row id."""
+  """
+  Look up a single claim by its globalId-encoded row id.
+  """
   claim(id: ID!): Claim
 
   """
@@ -1528,7 +1698,9 @@ type Query {
     orderBy: ClaimOrder
   ): ClaimConnection!
 
-  """Look up a single position-close record by its globalId-encoded row id."""
+  """
+  Look up a single position-close record by its globalId-encoded row id.
+  """
   close(id: ID!): Close
 
   """
@@ -1542,7 +1714,9 @@ type Query {
     orderBy: CloseOrder
   ): CloseConnection!
 
-  """Look up a single position by its globalId-encoded row id."""
+  """
+  Look up a single position by its globalId-encoded row id.
+  """
   position(id: ID!): Position
 
   """
@@ -1556,7 +1730,9 @@ type Query {
     orderBy: PositionOrder
   ): PositionConnection!
 
-  """Look up a single prediction by its on-chain `predictionId`."""
+  """
+  Look up a single prediction by its on-chain `predictionId`.
+  """
   prediction(predictionId: String!): Prediction
 
   """
@@ -1570,7 +1746,9 @@ type Query {
     orderBy: PredictionOrder
   ): PredictionConnection!
 
-  """Look up a single pick configuration by its on-chain `pickConfigId`."""
+  """
+  Look up a single pick configuration by its on-chain `pickConfigId`.
+  """
   pickConfiguration(pickConfigId: String!): PickConfiguration
 
   """
@@ -1584,7 +1762,9 @@ type Query {
     orderBy: PickConfigurationOrder
   ): PickConfigurationConnection!
 
-  """Look up a single condition by its on-chain CTF condition id."""
+  """
+  Look up a single condition by its on-chain CTF condition id.
+  """
   condition(conditionId: String!): Condition
 
   """
@@ -1599,7 +1779,9 @@ type Query {
     orderBy: ConditionOrder
   ): ConditionConnection!
 
-  """Look up a single trade by its on-chain `tradeHash`."""
+  """
+  Look up a single trade by its on-chain `tradeHash`.
+  """
   trade(tradeHash: Bytes32!): Trade
 
   """
@@ -1613,7 +1795,9 @@ type Query {
     orderBy: TradeOrder
   ): TradeConnection!
 
-  """Look up a single forecast by its on-chain `uid`."""
+  """
+  Look up a single forecast by its on-chain `uid`.
+  """
   forecast(uid: Bytes32!): Forecast
 
   """
@@ -1627,7 +1811,9 @@ type Query {
     orderBy: ForecastOrder
   ): ForecastConnection!
 
-  """Look up a single category by its integer primary key."""
+  """
+  Look up a single category by its integer primary key.
+  """
   category(id: Int!): Category
 
   """

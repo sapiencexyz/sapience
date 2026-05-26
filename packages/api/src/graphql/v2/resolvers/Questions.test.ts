@@ -4,21 +4,18 @@ const {
   mockRunQuestionsData,
   mockEncodeQuestionCursor,
   mockDecodeQuestionCursor,
-  mockMapOrderField,
 } = vi.hoisted(() => ({
   mockRunQuestionsData: vi.fn(),
   mockEncodeQuestionCursor: vi.fn(
     (row: { sort_value: number }) => `cursor:${row.sort_value}`
   ),
   mockDecodeQuestionCursor: vi.fn(),
-  mockMapOrderField: vi.fn(),
 }));
 
 vi.mock('../../sdl/resolvers/queries/questions', () => ({
   runQuestionsData: mockRunQuestionsData,
   encodeQuestionCursor: mockEncodeQuestionCursor,
   decodeQuestionCursor: mockDecodeQuestionCursor,
-  mapOrderField: mockMapOrderField,
 }));
 
 import { QuestionItem } from './queries/questions';
@@ -48,10 +45,6 @@ describe('QuestionItem (v2)', () => {
 describe('questions (v2)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockMapOrderField.mockReturnValue({
-      sortField: null,
-      volumeWindow: null,
-    });
     mockDecodeQuestionCursor.mockReturnValue(null);
     mockRunQuestionsData.mockResolvedValue({
       items: [],
@@ -124,5 +117,135 @@ describe('questions (v2)', () => {
     expect(result.edges).toEqual([]);
     expect(result.pageInfo.hasNextPage).toBe(false);
     expect(result.pageInfo.startCursor).toBeNull();
+  });
+
+  it('projects END_TIME range filter to minEndTime/maxEndTime', async () => {
+    await callResolver(questions)(
+      null,
+      {
+        first: 50,
+        filter: { endsAt: { gte: 1_700_000_000, lte: 1_800_000_000 } },
+      },
+      {},
+      null
+    );
+    expect(mockRunQuestionsData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        minEndTime: 1_700_000_000,
+        maxEndTime: 1_800_000_000,
+      })
+    );
+  });
+
+  it('projects every SIMILAR_MARKET_VOLUME_* sort to its window', async () => {
+    const cases: Array<[string, string]> = [
+      ['SIMILAR_MARKET_VOLUME_1H', 'oneHour'],
+      ['SIMILAR_MARKET_VOLUME_4H', 'fourHours'],
+      ['SIMILAR_MARKET_VOLUME_24H', 'twentyFourHours'],
+      ['SIMILAR_MARKET_VOLUME_7D', 'sevenDays'],
+      ['SIMILAR_MARKET_VOLUME_1H_FILTERED', 'oneHourFiltered'],
+      ['SIMILAR_MARKET_VOLUME_4H_FILTERED', 'fourHoursFiltered'],
+      ['SIMILAR_MARKET_VOLUME_24H_FILTERED', 'twentyFourHoursFiltered'],
+      ['SIMILAR_MARKET_VOLUME_7D_FILTERED', 'sevenDaysFiltered'],
+    ];
+    for (const [v2Field, v1Window] of cases) {
+      mockRunQuestionsData.mockClear();
+      await callResolver(questions)(
+        null,
+        { first: 25, orderBy: { field: v2Field, direction: 'DESC' } },
+        {},
+        null
+      );
+      expect(mockRunQuestionsData).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sortField: 'similarMarketVolume',
+          similarMarketVolumeWindow: v1Window,
+        })
+      );
+    }
+  });
+
+  it('END_TIME sort routes to v1 EndTime sortField', async () => {
+    await callResolver(questions)(
+      null,
+      { first: 25, orderBy: { field: 'END_TIME', direction: 'ASC' } },
+      {},
+      null
+    );
+    expect(mockRunQuestionsData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sortField: 'endTime',
+        sortDirection: 'asc',
+        similarMarketVolumeWindow: null,
+      })
+    );
+  });
+
+  it('filter.similarMarketVolumeWindow drives the window when sort is non-volume', async () => {
+    await callResolver(questions)(
+      null,
+      {
+        first: 25,
+        filter: {
+          similarMarketVolume: { gte: 1000 },
+          similarMarketVolumeWindow: 'SEVEN_DAYS',
+        },
+        orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+      },
+      {},
+      null
+    );
+    expect(mockRunQuestionsData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        minSimilarMarketVolume: 1000,
+        similarMarketVolumeWindow: 'sevenDays',
+        sortField: 'createdAt',
+      })
+    );
+  });
+
+  it('volume sort window takes precedence over filter window', async () => {
+    await callResolver(questions)(
+      null,
+      {
+        first: 25,
+        filter: { similarMarketVolumeWindow: 'TWENTY_FOUR_HOURS' },
+        orderBy: { field: 'SIMILAR_MARKET_VOLUME_7D', direction: 'DESC' },
+      },
+      {},
+      null
+    );
+    expect(mockRunQuestionsData).toHaveBeenCalledWith(
+      expect.objectContaining({ similarMarketVolumeWindow: 'sevenDays' })
+    );
+  });
+
+  it('passes resolverAddress / resolverAddressIn / categorySlugs / search / tag through unchanged', async () => {
+    await callResolver(questions)(
+      null,
+      {
+        first: 25,
+        filter: {
+          chainId: 13374202,
+          resolverAddress: '0xabc',
+          resolverAddressIn: ['0xdef', '0x123'],
+          categorySlugs: ['crypto', 'sports'],
+          search: 'fed rate',
+          tag: 'AI',
+        },
+      },
+      {},
+      null
+    );
+    expect(mockRunQuestionsData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chainId: 13374202,
+        contractAddress: '0xabc',
+        contractAddressIn: ['0xdef', '0x123'],
+        categorySlugs: ['crypto', 'sports'],
+        search: 'fed rate',
+        tag: 'AI',
+      })
+    );
   });
 });

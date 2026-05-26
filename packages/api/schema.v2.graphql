@@ -1285,7 +1285,9 @@ input QuestionFilter {
   similarMarketVolume: FloatFilter
 
   """
-  Volume window the `similarMarketVolume` filter and the corresponding sort look at. All-time when omitted.
+  Volume window the `similarMarketVolume` filter looks at. All-time
+  when omitted. Sorting by `SIMILAR_MARKET_VOLUME_*` carries its own
+  window in the sort enum and ignores this field.
   """
   similarMarketVolumeWindow: VolumeWindow
 
@@ -1296,21 +1298,36 @@ input QuestionFilter {
 
   """Restrict to questions tagged with this value."""
   tag: String
+
+  """
+  Range over resolution time (epoch seconds). For Conditions the
+  endpoint is `endTime`; for ConditionGroups it's `maxEndTime` across
+  the group's conditions. Inclusive on both bounds.
+  """
+  endsAt: IntRangeFilter
 }
 
 """
-Sort fields for the `questions` connection. `OPEN_INTEREST` is
-supported because the union runner sorts via raw SQL with a numeric
-cast — the narrower `conditions` / `conditionGroups` connections fall
-back to offset for that field.
+Sort fields for the `questions` connection. `OPEN_INTEREST` and the
+windowed `SIMILAR_MARKET_VOLUME_*` variants are supported because the
+union runner sorts via raw SQL with a numeric cast — the narrower
+`conditions` / `conditionGroups` connections fall back to offset for
+these columns. `_FILTERED` variants exclude pre-resolution /
+off-platform volume.
 """
 enum QuestionOrderField {
   CREATED_AT
-  RESOLVES_AT
+  END_TIME
   OPEN_INTEREST
   PREDICTION_COUNT
+  SIMILAR_MARKET_VOLUME_1H
+  SIMILAR_MARKET_VOLUME_4H
   SIMILAR_MARKET_VOLUME_24H
   SIMILAR_MARKET_VOLUME_7D
+  SIMILAR_MARKET_VOLUME_1H_FILTERED
+  SIMILAR_MARKET_VOLUME_4H_FILTERED
+  SIMILAR_MARKET_VOLUME_24H_FILTERED
+  SIMILAR_MARKET_VOLUME_7D_FILTERED
 }
 
 input QuestionOrder {

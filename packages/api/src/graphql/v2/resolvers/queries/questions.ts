@@ -16,11 +16,11 @@
 import {
   decodeQuestionCursor,
   encodeQuestionCursor,
-  mapOrderField,
   runQuestionsData,
   type RunQuestionsInput,
 } from '../../../sdl/resolvers/queries/questions';
 import {
+  QuestionSortField,
   ResolutionStatus as V1ResolutionStatus,
   SortOrder as V1SortOrder,
   VolumeWindow as V1VolumeWindow,
@@ -58,6 +58,71 @@ const VOLUME_WINDOW_MAP: Record<VolumeWindow, V1VolumeWindow> = {
   SEVEN_DAYS_FILTERED: V1VolumeWindow.SevenDaysFiltered,
 } as Record<VolumeWindow, V1VolumeWindow>;
 
+/**
+ * v2 sort enum → (runner sortField, optional volumeWindow) projection.
+ *
+ * Every windowed `SIMILAR_MARKET_VOLUME_*` value resolves to the same
+ * SimilarMarketVolume sortField + the corresponding window; the v1
+ * runner reads that pair as "sort by SUM(volume<window>)". The four
+ * non-volume sorts return `volumeWindow: null` — the runner ignores
+ * the window when sortField isn't SimilarMarketVolume.
+ */
+type OrderProjection = {
+  sortField: QuestionSortField | null;
+  volumeWindow: V1VolumeWindow | null;
+};
+
+const ORDER_FIELD_PROJECTION: Record<string, OrderProjection> = {
+  CREATED_AT: { sortField: QuestionSortField.CreatedAt, volumeWindow: null },
+  END_TIME: { sortField: QuestionSortField.EndTime, volumeWindow: null },
+  OPEN_INTEREST: {
+    sortField: QuestionSortField.OpenInterest,
+    volumeWindow: null,
+  },
+  PREDICTION_COUNT: {
+    sortField: QuestionSortField.PredictionCount,
+    volumeWindow: null,
+  },
+  SIMILAR_MARKET_VOLUME_1H: {
+    sortField: QuestionSortField.SimilarMarketVolume,
+    volumeWindow: V1VolumeWindow.OneHour,
+  },
+  SIMILAR_MARKET_VOLUME_4H: {
+    sortField: QuestionSortField.SimilarMarketVolume,
+    volumeWindow: V1VolumeWindow.FourHours,
+  },
+  SIMILAR_MARKET_VOLUME_24H: {
+    sortField: QuestionSortField.SimilarMarketVolume,
+    volumeWindow: V1VolumeWindow.TwentyFourHours,
+  },
+  SIMILAR_MARKET_VOLUME_7D: {
+    sortField: QuestionSortField.SimilarMarketVolume,
+    volumeWindow: V1VolumeWindow.SevenDays,
+  },
+  SIMILAR_MARKET_VOLUME_1H_FILTERED: {
+    sortField: QuestionSortField.SimilarMarketVolume,
+    volumeWindow: V1VolumeWindow.OneHourFiltered,
+  },
+  SIMILAR_MARKET_VOLUME_4H_FILTERED: {
+    sortField: QuestionSortField.SimilarMarketVolume,
+    volumeWindow: V1VolumeWindow.FourHoursFiltered,
+  },
+  SIMILAR_MARKET_VOLUME_24H_FILTERED: {
+    sortField: QuestionSortField.SimilarMarketVolume,
+    volumeWindow: V1VolumeWindow.TwentyFourHoursFiltered,
+  },
+  SIMILAR_MARKET_VOLUME_7D_FILTERED: {
+    sortField: QuestionSortField.SimilarMarketVolume,
+    volumeWindow: V1VolumeWindow.SevenDaysFiltered,
+  },
+};
+
+const projectOrder = (field: string | null | undefined): OrderProjection =>
+  (field && ORDER_FIELD_PROJECTION[field]) || {
+    sortField: null,
+    volumeWindow: null,
+  };
+
 type FloatRange =
   | { gte?: number | null; lte?: number | null }
   | null
@@ -73,10 +138,18 @@ const toRunnerArgs = (
     | undefined,
   first: number
 ): RunQuestionsInput => {
-  const mapped = orderBy?.field
-    ? mapOrderField(orderBy.field)
-    : { sortField: null, volumeWindow: null };
+  const order = projectOrder(orderBy?.field);
   const direction = normalizeDirection(orderBy?.direction, 'desc');
+  // When sort is `SIMILAR_MARKET_VOLUME_*`, the sort enum carries the
+  // window — it overrides the filter's window (which controls only the
+  // filter side). For other sorts, fall back to filter window so the
+  // filter's `similarMarketVolume` predicate still uses the right column.
+  const resolvedWindow =
+    order.volumeWindow ??
+    (filter?.similarMarketVolumeWindow
+      ? VOLUME_WINDOW_MAP[filter.similarMarketVolumeWindow]
+      : null);
+
   return {
     take: first,
     skip: 0,
@@ -86,8 +159,8 @@ const toRunnerArgs = (
     chainId: filter?.chainId ?? null,
     contractAddress: filter?.resolverAddress ?? null,
     contractAddressIn: filter?.resolverAddressIn ?? null,
-    minEndTime: null,
-    maxEndTime: null,
+    minEndTime: filter?.endsAt?.gte ?? null,
+    maxEndTime: filter?.endsAt?.lte ?? null,
     resolutionStatus: filter?.resolutionStatus
       ? RESOLUTION_STATUS_MAP[filter.resolutionStatus]
       : null,
@@ -95,10 +168,8 @@ const toRunnerArgs = (
     maxEstimatedPrice: rangeMax(filter?.estimatedPrice),
     minSimilarMarketVolume: rangeMin(filter?.similarMarketVolume),
     maxSimilarMarketVolume: rangeMax(filter?.similarMarketVolume),
-    similarMarketVolumeWindow: filter?.similarMarketVolumeWindow
-      ? VOLUME_WINDOW_MAP[filter.similarMarketVolumeWindow]
-      : mapped.volumeWindow,
-    sortField: mapped.sortField,
+    similarMarketVolumeWindow: resolvedWindow,
+    sortField: order.sortField,
     sortDirection: direction === 'asc' ? V1SortOrder.Asc : V1SortOrder.Desc,
     afterCursor: null,
   };
