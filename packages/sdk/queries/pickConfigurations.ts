@@ -2,19 +2,18 @@ import { graphqlRequest } from './client/graphqlClient';
 
 export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
   query PickConfigurations(
+    $take: Int
+    $skip: Int
     $chainId: Int
     $resolved: Boolean
-    $skip: Int!
-    $take: Int!
   ) {
     pickConfigurations(
+      take: $take
+      skip: $skip
       chainId: $chainId
       resolved: $resolved
-      skip: $skip
-      take: $take
     ) {
-      id: pickConfigId
-      pickConfigId
+      id
       chainId
       totalPredictorCollateral
       totalCounterpartyCollateral
@@ -24,8 +23,7 @@ export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
         conditionResolver
         predictedOutcome
         condition {
-          id: conditionId
-          conditionId
+          id
           shortName
           optionName
           question
@@ -47,7 +45,6 @@ export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
 
 export interface PickConfigurationCondition {
   id: string;
-  conditionId: string;
   shortName?: string | null;
   optionName?: string | null;
   question?: string | null;
@@ -63,7 +60,6 @@ export interface PickConfigurationCondition {
 
 export interface PickConfigurationResult {
   id: string;
-  pickConfigId: string;
   chainId: number;
   totalPredictorCollateral: string;
   totalCounterpartyCollateral: string;
@@ -87,8 +83,8 @@ export async function fetchPickConfigurations(opts?: {
   }>(GET_PICK_CONFIGURATIONS, {
     take: opts?.take ?? 10,
     skip: opts?.skip ?? 0,
-    chainId: opts?.chainId ?? null,
-    resolved: opts?.resolved ?? null,
+    chainId: opts?.chainId,
+    resolved: opts?.resolved,
   });
   return data.pickConfigurations ?? [];
 }

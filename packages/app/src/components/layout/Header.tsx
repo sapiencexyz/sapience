@@ -62,11 +62,11 @@ import { StatusIndicators } from '~/components/layout/StatusIndicators';
 
 const USER_REFERRAL_STATUS_QUERY = `
   query UserReferralStatus($wallet: String!) {
-    account(address: $wallet) {
+    user(where: { address: $wallet }) {
       address
       refCodeHash
       referredBy {
-        address
+        id
       }
       referredByCode {
         id
@@ -349,20 +349,20 @@ const Header = () => {
 
       try {
         const data = await graphqlRequest<{
-          account: {
+          user: {
             address: string;
             refCodeHash?: string | null;
-            referredBy?: { address: string } | null;
+            referredBy?: { id: number } | null;
             referredByCode?: { id: number } | null;
           } | null;
         }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
 
         if (cancelled) return;
 
-        const account = data?.account;
+        const user = data?.user;
         const hasServerReferral = !!(
-          account &&
-          (account.refCodeHash || account.referredBy || account.referredByCode)
+          user &&
+          (user.refCodeHash || user.referredBy || user.referredByCode)
         );
 
         // Update ref only after successful check to avoid race conditions

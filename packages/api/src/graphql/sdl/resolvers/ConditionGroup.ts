@@ -24,27 +24,18 @@ import { loadRelation } from './relationHelpers';
 
 type PrismaConditionGroup = {
   id: number;
-  name?: string | null;
-  categoryId?: number | null;
-  category?: unknown;
   negRiskMarketId?: string | null;
   [k: string]: unknown;
 };
 
 export const ConditionGroup: ConditionGroupResolvers = {
-  title: (parent) => (parent as PrismaConditionGroup).name ?? '',
-  category: async (parent, args, ctx) => {
-    const p = parent as PrismaConditionGroup;
-    if (p.category !== undefined) return p.category as never;
-    if (p.categoryId == null) return null;
-    if (ctx.loaders) return ctx.loaders.categoryById.load(p.categoryId);
-    return loadRelation(p, 'category', {
+  category: async (parent, args) =>
+    loadRelation(parent as PrismaConditionGroup, 'category', {
       parentModel: 'conditionGroup',
-      parentWhere: { id: p.id },
+      parentWhere: { id: (parent as PrismaConditionGroup).id },
       prismaRelationName: 'category',
       args,
-    });
-  },
+    }),
 
   negRisk: (parent) =>
     Boolean((parent as PrismaConditionGroup).negRiskMarketId),

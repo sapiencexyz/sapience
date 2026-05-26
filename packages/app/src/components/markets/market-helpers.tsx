@@ -72,7 +72,6 @@ export function groupConditionToConditionType(
 ): ConditionType {
   return {
     id: gc.id,
-    conditionId: gc.conditionId,
     createdAt: gc.createdAt,
     question: gc.question,
     shortName: gc.shortName,

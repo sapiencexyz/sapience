@@ -102,27 +102,23 @@ async function fetchAllUnsettledConditions(
   const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
   const PAGE_SIZE = 100;
   const out: PageItem[] = [];
-  const seen = new Set<string>();
-  let after: string | null = null;
+  let skip = 0;
   let pageCount = 0;
-  let lastSize = 0;
-  let zeroGrowthStreak = 0;
 
-  // Relay-shaped `conditionsConnection` with cursor pagination. Sort by
-  // CREATED_AT DESC so a --limit sample biases toward newest markets
-  // (most likely to match today/tomorrow's date).
+  // Public + unsettled conditions, sorted createdAt DESC so a --limit
+  // sample biases toward newest markets (most likely to match today's
+  // or tomorrow's date).
   const query = `
-    query ImminentTagCandidates($filter: ConditionFilter!, $first: Int!, $after: String) {
-      conditionsConnection(filter: $filter, first: $first, after: $after, orderBy: { field: CREATED_AT, direction: DESC }) {
-        nodes {
-          id: conditionId
-          question
-          tags
-        }
-        pageInfo {
-          hasNextPage
-          endCursor
-        }
+    query ImminentTagCandidates($where: ConditionWhereInput, $take: Int, $skip: Int) {
+      conditions(
+        where: $where
+        take: $take
+        skip: $skip
+        orderBy: [{ createdAt: desc }]
+      ) {
+        id
+        question
+        tags
       }
     }
   `;
@@ -136,41 +132,34 @@ async function fetchAllUnsettledConditions(
       body: JSON.stringify({
         query,
         variables: {
-          filter: { visibility: 'PUBLIC', settled: false },
-          first: PAGE_SIZE,
-          after,
+          where: {
+            public: { equals: true },
+            settled: { equals: false },
+          },
+          take: PAGE_SIZE,
+          skip,
         },
       }),
     });
     if (!response.ok) {
       const body = await response.text().catch(() => '(unreadable body)');
       throw new Error(
-        `GraphQL conditionsConnection failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
+        `GraphQL conditions query failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
       );
     }
     const result = (await response.json()) as {
       data?: {
-        conditionsConnection?: {
-          nodes?: Array<{ id: string; question: string; tags: string[] }>;
-          pageInfo?: {
-            hasNextPage?: boolean | null;
-            endCursor?: string | null;
-          } | null;
-        };
+        conditions?: Array<{ id: string; question: string; tags: string[] }>;
       };
       errors?: Array<{ message: string }>;
     };
     if (result.errors && result.errors.length > 0) {
       throw new Error(
-        `GraphQL conditionsConnection returned errors: ${JSON.stringify(result.errors, null, 2)}`
+        `GraphQL conditions query returned errors: ${JSON.stringify(result.errors, null, 2)}`
       );
     }
-    const nodes = result.data?.conditionsConnection?.nodes ?? [];
-    const pageInfo = result.data?.conditionsConnection?.pageInfo;
-    const hasMore = pageInfo?.hasNextPage ?? false;
+    const nodes = result.data?.conditions ?? [];
     for (const c of nodes) {
-      if (seen.has(c.id)) continue;
-      seen.add(c.id);
       out.push({ id: c.id, question: c.question, tags: c.tags ?? [] });
       if (maxResults !== null && out.length >= maxResults) {
         log(
@@ -179,26 +168,12 @@ async function fetchAllUnsettledConditions(
         return out;
       }
     }
+    const hasMore = nodes.length === PAGE_SIZE;
     log(
       `[TodayTag]   page ${pageCount}: fetched ${nodes.length} (cumulative ${out.length}, ${Date.now() - pageStart}ms, hasMore=${hasMore})`
     );
-    // Safety: cursor pagination shouldn't loop, but protect against a
-    // server-side bug where the same endCursor keeps coming back.
-    if (out.length === lastSize) {
-      zeroGrowthStreak++;
-      if (zeroGrowthStreak >= 3) {
-        logError(
-          `[TodayTag] WARN: 3 consecutive pages added 0 unique rows (hasMore=${hasMore}, after=${after}); aborting pagination to avoid an infinite loop`
-        );
-        break;
-      }
-    } else {
-      zeroGrowthStreak = 0;
-    }
-    lastSize = out.length;
     if (!hasMore) break;
-    after = pageInfo?.endCursor ?? null;
-    if (!after) break;
+    skip += PAGE_SIZE;
   }
   return out;
 }

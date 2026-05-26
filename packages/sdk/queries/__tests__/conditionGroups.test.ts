@@ -8,156 +8,188 @@ vi.mock('../client/graphqlClient', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockResolvedValue({
-    conditionGroupsConnection: {
-      nodes: [],
-      pageInfo: { hasNextPage: false, endCursor: null },
-    },
-  });
+  mockGraphqlRequest.mockResolvedValue({ conditionGroups: [] });
 });
+
+// Since buildGroupWhereClause and buildConditionsWhereClause are not exported,
+// we test them indirectly through fetchConditionGroups by inspecting the
+// variables passed to graphqlRequest.
 
 describe('fetchConditionGroups', () => {
   test('uses default take=100, skip=0', async () => {
     await fetchConditionGroups();
     const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].take).toBe(100);
-    expect(call[1].after).toBeNull();
+    expect(call[1].skip).toBe(0);
   });
 
   test('passes custom take and skip', async () => {
     await fetchConditionGroups({ take: 10, skip: 5 });
     const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].take).toBe(15);
-    expect(call[1].after).toBeNull();
+    expect(call[1].take).toBe(10);
+    expect(call[1].skip).toBe(5);
   });
 
-  test('returns groups from response unchanged (server filters server-side)', async () => {
-    const groups = [
-      {
-        id: 1,
-        name: 'Group 1',
-        conditions: [{ id: 'c1', chainId: 1, public: true }],
-      },
-    ];
-    mockGraphqlRequest.mockResolvedValue({
-      conditionGroupsConnection: {
-        nodes: groups,
-        pageInfo: { hasNextPage: false, endCursor: null },
-      },
-    });
+  test('returns conditionGroups from response', async () => {
+    const groups = [{ id: 1, name: 'Group 1', conditions: [] }];
+    mockGraphqlRequest.mockResolvedValue({ conditionGroups: groups });
 
     const result = await fetchConditionGroups();
     expect(result).toEqual(groups);
   });
 
-  test('returns empty array when response items is null', async () => {
-    mockGraphqlRequest.mockResolvedValue({
-      conditionGroupsConnection: {
-        nodes: null,
-        pageInfo: { hasNextPage: false, endCursor: null },
-      },
-    });
+  test('returns empty array when response is null', async () => {
+    mockGraphqlRequest.mockResolvedValue({ conditionGroups: null });
     const result = await fetchConditionGroups();
     expect(result).toEqual([]);
   });
 
-  // --- server-side filters (passed via `filters` arg) ----------------------
+  // --- buildGroupWhereClause tests (via fetchConditionGroups) ---
 
-  describe('filter (server-side)', () => {
-    test('no filters passes a `filter` payload with empty/undefined fields plus includeEmpty=false', async () => {
+  describe('group where clause (via variables)', () => {
+    test('no filters produces where with conditions.some (requires non-empty groups by default)', async () => {
       await fetchConditionGroups();
       const call = mockGraphqlRequest.mock.calls[0];
-      expect(call[1].filter).toEqual({
-        search: undefined,
-        categorySlugs: undefined,
-        chainId: undefined,
-        publicOnly: false,
-        includeEmpty: false,
+      // Default includeEmptyGroups=false → should require conditions.some
+      expect(call[1].where).toEqual({
+        AND: [{ conditions: { some: {} } }],
       });
     });
 
-    test('chainId is forwarded into the top-level filter', async () => {
-      await fetchConditionGroups({ chainId: 5064014 });
-      const call = mockGraphqlRequest.mock.calls[0];
-      expect(call[1].filter.chainId).toBe(5064014);
-    });
-
-    test('publicOnly is forwarded as a boolean (true)', async () => {
-      await fetchConditionGroups({ filters: { publicOnly: true } });
-      const call = mockGraphqlRequest.mock.calls[0];
-      expect(call[1].filter.publicOnly).toBe(true);
-    });
-
-    test('search and categorySlugs are forwarded server-side', async () => {
-      await fetchConditionGroups({
-        filters: { search: 'election', categorySlugs: ['crypto'] },
-      });
-      const call = mockGraphqlRequest.mock.calls[0];
-      expect(call[1].filter.search).toBe('election');
-      expect(call[1].filter.categorySlugs).toEqual(['crypto']);
-    });
-
-    test('includeEmptyGroups flips includeEmpty', async () => {
+    test('includeEmptyGroups=true with no other filters omits where', async () => {
       await fetchConditionGroups({ includeEmptyGroups: true });
       const call = mockGraphqlRequest.mock.calls[0];
-      expect(call[1].filter.includeEmpty).toBe(true);
+      // No conditions to add → where should be undefined
+      expect(call[1].where).toBeUndefined();
+    });
+
+    test('search filter adds name contains clause', async () => {
+      await fetchConditionGroups({ filters: { search: 'election' } });
+      const call = mockGraphqlRequest.mock.calls[0];
+      const andClauses = call[1].where.AND;
+      expect(andClauses).toContainEqual({
+        name: { contains: 'election', mode: 'insensitive' },
+      });
+    });
+
+    test('search is trimmed', async () => {
+      await fetchConditionGroups({ filters: { search: '  test  ' } });
+      const call = mockGraphqlRequest.mock.calls[0];
+      const nameClause = call[1].where.AND.find(
+        (c: Record<string, unknown>) => c.name
+      );
+      expect((nameClause.name as Record<string, string>).contains).toBe('test');
+    });
+
+    test('categorySlugs filter adds nested category clause', async () => {
+      await fetchConditionGroups({
+        filters: { categorySlugs: ['crypto'] },
+      });
+      const call = mockGraphqlRequest.mock.calls[0];
+      const andClauses = call[1].where.AND;
+      expect(andClauses).toContainEqual({
+        category: { is: { slug: { in: ['crypto'] } } },
+      });
+    });
+
+    test('chainId adds conditions.some with chainId filter', async () => {
+      await fetchConditionGroups({ chainId: 5064014 });
+      const call = mockGraphqlRequest.mock.calls[0];
+      const andClauses = call[1].where.AND;
+      const condSome = andClauses.find(
+        (c: Record<string, unknown>) => c.conditions
+      );
+      expect(condSome).toEqual({
+        conditions: {
+          some: { AND: [{ chainId: { equals: 5064014 } }] },
+        },
+      });
+    });
+
+    test('publicOnly adds conditions.some with public filter', async () => {
+      await fetchConditionGroups({ filters: { publicOnly: true } });
+      const call = mockGraphqlRequest.mock.calls[0];
+      const andClauses = call[1].where.AND;
+      const condSome = andClauses.find(
+        (c: Record<string, unknown>) => c.conditions
+      );
+      expect(condSome).toEqual({
+        conditions: {
+          some: { AND: [{ public: { equals: true } }] },
+        },
+      });
+    });
+
+    test('chainId + publicOnly combines in conditions.some AND', async () => {
+      await fetchConditionGroups({
+        chainId: 5064014,
+        filters: { publicOnly: true },
+      });
+      const call = mockGraphqlRequest.mock.calls[0];
+      const andClauses = call[1].where.AND;
+      const condSome = andClauses.find(
+        (c: Record<string, unknown>) => c.conditions
+      );
+      expect(condSome).toEqual({
+        conditions: {
+          some: {
+            AND: [
+              { public: { equals: true } },
+              { chainId: { equals: 5064014 } },
+            ],
+          },
+        },
+      });
+    });
+
+    test('includeEmptyGroups=true with chainId still adds conditions.some', async () => {
+      await fetchConditionGroups({
+        chainId: 5064014,
+        includeEmptyGroups: true,
+      });
+      const call = mockGraphqlRequest.mock.calls[0];
+      const andClauses = call[1].where.AND;
+      const condSome = andClauses.find(
+        (c: Record<string, unknown>) => c.conditions
+      );
+      expect(condSome).toBeDefined();
     });
   });
 
-  // --- conditionsWhere (nested ConditionGroup.conditions selection) --------
+  // --- buildConditionsWhereClause tests (via conditionsWhere variable) ---
 
-  describe('conditionsWhere (nested view of inner Condition rows)', () => {
-    test('no chainId produces undefined conditionsWhere', async () => {
+  describe('conditions where clause (via conditionsWhere variable)', () => {
+    test('no filters produces undefined conditionsWhere', async () => {
       await fetchConditionGroups();
       const call = mockGraphqlRequest.mock.calls[0];
       expect(call[1].conditionsWhere).toBeUndefined();
     });
 
-    test('chainId narrows the inner conditions list to that chain', async () => {
+    test('chainId adds chainId filter to conditionsWhere', async () => {
       await fetchConditionGroups({ chainId: 5064014 });
       const call = mockGraphqlRequest.mock.calls[0];
       expect(call[1].conditionsWhere).toEqual({
-        chainId: { equals: 5064014 },
+        AND: [{ chainId: { equals: 5064014 } }],
       });
     });
-  });
 
-  // --- trust the server: no client-side post-filtering --------------------
-
-  describe('no client-side post-filter', () => {
-    test('returns whatever the server returned even if a name does not match search', async () => {
-      mockGraphqlRequest.mockResolvedValue({
-        conditionGroupsConnection: {
-          nodes: [{ id: 99, name: 'unrelated', conditions: [{ id: 'c1' }] }],
-          pageInfo: { hasNextPage: false, endCursor: null },
-        },
+    test('publicOnly adds public filter to conditionsWhere', async () => {
+      await fetchConditionGroups({ filters: { publicOnly: true } });
+      const call = mockGraphqlRequest.mock.calls[0];
+      expect(call[1].conditionsWhere).toEqual({
+        AND: [{ public: { equals: true } }],
       });
-      const result = await fetchConditionGroups({
-        filters: { search: 'election' },
-      });
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe(99);
     });
 
-    test('returns whatever the server returned even if a category slug does not match', async () => {
-      mockGraphqlRequest.mockResolvedValue({
-        conditionGroupsConnection: {
-          nodes: [
-            {
-              id: 99,
-              name: 'A',
-              category: { id: 2, name: 'Other', slug: 'other' },
-              conditions: [{ id: 'c1' }],
-            },
-          ],
-          pageInfo: { hasNextPage: false, endCursor: null },
-        },
+    test('chainId + publicOnly combines in conditionsWhere', async () => {
+      await fetchConditionGroups({
+        chainId: 5064014,
+        filters: { publicOnly: true },
       });
-      const result = await fetchConditionGroups({
-        filters: { categorySlugs: ['crypto'] },
+      const call = mockGraphqlRequest.mock.calls[0];
+      expect(call[1].conditionsWhere).toEqual({
+        AND: [{ chainId: { equals: 5064014 } }, { public: { equals: true } }],
       });
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe(99);
     });
   });
 });

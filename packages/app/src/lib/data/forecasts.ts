@@ -3,38 +3,34 @@
 
 import { getGraphQLEndpoint } from './graphql';
 
-export const FORECAST_BY_UID_QUERY = `
-  query FindForecastByUid($filter: ForecastFilter) {
-    forecastsConnection(filter: $filter, first: 1) {
-      nodes {
+export const ATTESTATION_BY_UID_QUERY = `
+  query FindAttestationByUid($where: AttestationWhereInput!) {
+    attestations(where: $where, take: 1) {
+      id
+      uid
+      attester
+      time
+      prediction
+      comment
+      conditionId
+      condition {
         id
-        uid
-        forecaster
-        attestedAt
-        forecast
-        comment
-        conditionId
-        condition {
-          id: conditionId
-          conditionId
-          question
-          shortName
-          endTime
-          settled
-          resolvedToYes
-          resolver
-          category {
-            slug
-          }
+        question
+        shortName
+        endTime
+        settled
+        resolvedToYes
+        resolver
+        category {
+          slug
         }
       }
     }
   }
 `;
 
-export interface ForecastCondition {
+export interface AttestationCondition {
   id: string;
-  conditionId: string;
   question: string;
   shortName?: string | null;
   endTime?: number | null;
@@ -44,40 +40,42 @@ export interface ForecastCondition {
   category?: { slug: string } | null;
 }
 
-export interface ForecastData {
+export interface AttestationData {
   id: number;
   uid: string;
-  forecaster: string;
-  attestedAt: number;
-  forecast: string;
+  attester: string;
+  time: number;
+  prediction: string;
   comment?: string | null;
   conditionId?: string | null;
-  condition?: ForecastCondition | null;
+  condition?: AttestationCondition | null;
 }
 
-// Convert D18 forecast value to percentage (0-100)
+// Convert D18 prediction value to percentage (0-100)
 export function d18ToPercentage(d18Value: string): number {
   const value = BigInt(d18Value);
   return Number(value) / 1e18;
 }
 
-// Fetch forecast by uid from GraphQL API.
-// Returns null if the forecast doesn't exist.
+// Fetch attestation by uid from GraphQL API.
+// Returns null if the attestation doesn't exist.
 // Throws on network/parse errors so callers can distinguish failure from not-found.
-export async function fetchForecastByUid(
+export async function fetchAttestationByUid(
   uid: string
-): Promise<ForecastData | null> {
+): Promise<AttestationData | null> {
   const endpoint = getGraphQLEndpoint();
   const resp = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query: FORECAST_BY_UID_QUERY,
-      variables: { filter: { uid } },
+      query: ATTESTATION_BY_UID_QUERY,
+      variables: {
+        where: { uid: { equals: uid } },
+      },
     }),
   });
   if (!resp.ok) return null;
   const json = await resp.json();
-  const items: ForecastData[] = json?.data?.forecastsConnection?.nodes ?? [];
-  return items[0] ?? null;
+  const attestations: AttestationData[] = json?.data?.attestations ?? [];
+  return attestations[0] ?? null;
 }

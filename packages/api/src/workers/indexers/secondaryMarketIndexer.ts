@@ -5,6 +5,7 @@ import { IIndexer } from '../../interfaces';
 import { secondaryMarketEscrow } from '@sapience/sdk/contracts';
 import { secondaryMarketEscrowAbi } from '@sapience/sdk/abis';
 import { createLogger } from '../../core/logger';
+import { sendSecondaryTradeAlert } from '../../services/discordAlert';
 
 const logger = createLogger('secondaryMarketIndexer');
 
@@ -366,6 +367,18 @@ class SecondaryMarketIndexer implements IIndexer {
         blockNumber: Number(log.blockNumber),
       },
       update: {},
+    });
+
+    sendSecondaryTradeAlert({
+      seller: event.seller,
+      buyer: event.buyer,
+      token: event.token,
+      tokenAmount: event.tokenAmount.toString(),
+      price: event.price.toString(),
+      blockTimestamp: timestamp,
+      transactionHash: log.transactionHash || '',
+      chainId: this.chainId,
+      tradeHash: tradeHashLower,
     });
 
     logger.info(

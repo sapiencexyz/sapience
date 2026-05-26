@@ -11,19 +11,20 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { Tabs, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { Button } from '@sapience/ui/components/ui/button';
-import { predictionMarketVault } from '@sapience/sdk/contracts';
 import {
   buildVaultPnlChartData,
   calculateVaultPnlHeadlineApy,
   computeVaultPnlYDomain,
 } from './vaultPnlChartUtils';
-import { useVaultStats, type VaultStat } from '~/hooks/graphql/useAnalytics';
+import {
+  useProtocolStats,
+  type ProtocolStat,
+} from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
-import TimeRangeFilter, {
-  ALL_RANGE,
-  type TimeRange,
-} from '~/components/shared/TimeRangeFilter';
+import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
+import { type Period } from '~/components/shared/PeriodFilter';
 
 function formatLargeNumber(value: number): string {
   const abs = Math.abs(value);
@@ -159,15 +160,15 @@ const CHART_MARGIN = { top: 10, right: 0, left: -15, bottom: 0 };
 
 type VaultPnlChartProps = {
   /** Optional external protocol stats data. If not provided, will fetch internally. */
-  vaultStats?: VaultStat[];
+  protocolStats?: ProtocolStat[];
   /** Whether the data is loading */
   isLoading?: boolean;
   /** Chart height in pixels (ignored if className includes flex-1) */
   height?: number;
   /** Additional class names for the container */
   className?: string;
-  /** External time-range control - use instead of internal state when provided */
-  externalRange?: TimeRange;
+  /** External period control - use instead of internal state when provided */
+  externalPeriod?: Period;
   /** Hide entire internal header (title, APY, tabs). Defaults to true. */
   showHeader?: boolean;
   /** Optional lower bound on visible history (Unix seconds). Snapshots before this are dropped. */
@@ -175,28 +176,25 @@ type VaultPnlChartProps = {
 };
 
 export default function VaultPnlChart({
-  vaultStats: externalStats,
+  protocolStats: externalStats,
   isLoading: externalLoading,
   height = 200,
   className,
-  externalRange,
+  externalPeriod,
   showHeader = true,
   chartAnchorSec,
 }: VaultPnlChartProps) {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
-  const [internalRange, setInternalRange] = useState<TimeRange>(ALL_RANGE);
-  const range = externalRange ?? internalRange;
-  const setRange = setInternalRange;
+  const [internalPeriod, setInternalPeriod] = useState<Period>('ALL');
+  const period = externalPeriod ?? internalPeriod;
+  const setPeriod = setInternalPeriod;
   const [displayMode, setDisplayMode] = useState<DisplayMode>('pct');
 
-  // Internal fetch fallback when the caller doesn't pass `vaultStats`:
-  // default to the protocol vault, matching the prior single-tab default.
-  const protocolVaultAddress = predictionMarketVault[DEFAULT_CHAIN_ID]?.address;
-  const { data: internalStats, isLoading: internalLoading } = useVaultStats(
-    externalStats ? undefined : protocolVaultAddress
-  );
+  // Use internal fetch if no external data provided
+  const { data: internalStats, isLoading: internalLoading } =
+    useProtocolStats();
 
-  const vaultStats = externalStats ?? internalStats;
+  const protocolStats = externalStats ?? internalStats;
   const isLoading = externalLoading ?? internalLoading;
 
   // Trim pre-activity snapshots for every period so % mode and APY anchor off
@@ -207,12 +205,12 @@ export default function VaultPnlChart({
   const chartData = useMemo(
     () =>
       buildVaultPnlChartData(
-        vaultStats,
-        range,
+        protocolStats,
+        period,
         Math.floor(Date.now() / 1000),
         chartAnchorSec
       ),
-    [vaultStats, range, chartAnchorSec]
+    [protocolStats, period, chartAnchorSec]
   );
 
   // Headline APY uses wall-clock now for elapsed-days so it doesn't snap to
@@ -288,7 +286,14 @@ export default function VaultPnlChart({
                   '% APY'
                 : '\u00A0'}
             </span>
-            <TimeRangeFilter value={range} onChange={setRange} />
+            <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
+              <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
+                <TabsTrigger value="1W">1W</TabsTrigger>
+                <TabsTrigger value="1M">1M</TabsTrigger>
+                <TabsTrigger value="3M">3M</TabsTrigger>
+                <TabsTrigger value="ALL">ALL</TabsTrigger>
+              </SegmentedTabsList>
+            </Tabs>
           </div>
         </div>
       )}

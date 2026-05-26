@@ -6,7 +6,6 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { isPredictedYes } from '@sapience/sdk/types';
 import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
-import { RefreshCw } from 'lucide-react';
 import PercentChance from '~/components/shared/PercentChance';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
@@ -51,7 +50,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     chainId,
     count: NUM_TO_DISPLAY,
   });
-  const { quoteProbabilities, requestQuotes } = useComboQuotes(combos, chainId);
+  const { quoteProbabilities } = useComboQuotes(combos, chainId);
   const { addSelection, clearSelections } = useCreatePositionContext();
 
   const handlePickCombo = React.useCallback(
@@ -77,7 +76,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
 
   return (
     <div className={'w-full ' + (className ?? '')}>
-      <div className="flex items-center justify-between mb-1 px-1">
+      <div className="flex items-center mb-1 px-1">
         <h2 className="sc-heading text-foreground">
           Example combo
           <AnimatePresence mode="wait">
@@ -94,14 +93,6 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
             )}
           </AnimatePresence>
         </h2>
-        <button
-          type="button"
-          onClick={() => requestQuotes(true)}
-          className="p-1.5 rounded-md hover:bg-muted/50 transition-colors"
-          aria-label="Refresh quotes"
-        >
-          <RefreshCw className="h-4 w-4 text-accent-gold" />
-        </button>
       </div>
       <div className="rounded-md border border-brand-white/20 overflow-hidden bg-brand-black">
         <Table className="w-full table-fixed">
