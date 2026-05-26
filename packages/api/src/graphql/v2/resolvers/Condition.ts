@@ -52,13 +52,17 @@ export const Condition: ConditionResolvers = {
   resolverAddress: (parent) => parent.resolver.toLowerCase(),
   outcome: (parent) => computeOutcome(parent),
 
-  category: async (parent) => {
+  category: async (parent, _args, ctx) => {
     if (parent.categoryId == null) return null;
+    if (ctx.loaders?.categoryById)
+      return ctx.loaders.categoryById.load(parent.categoryId);
     return prisma.category.findUnique({ where: { id: parent.categoryId } });
   },
 
-  conditionGroup: async (parent) => {
+  conditionGroup: async (parent, _args, ctx) => {
     if (parent.conditionGroupId == null) return null;
+    if (ctx.loaders?.conditionGroupById)
+      return ctx.loaders.conditionGroupById.load(parent.conditionGroupId);
     return prisma.conditionGroup.findUnique({
       where: { id: parent.conditionGroupId },
     });

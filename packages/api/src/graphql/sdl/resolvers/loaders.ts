@@ -36,6 +36,7 @@ type UserRow = Prisma.UserGetPayload<true>;
 type CategoryRow = Prisma.CategoryGetPayload<true>;
 type ConditionGroupRow = Prisma.ConditionGroupGetPayload<true>;
 type ReferralCodeRow = Prisma.ReferralCodeGetPayload<true>;
+type PickRow = Prisma.PickGetPayload<true>;
 
 export interface GraphQLLoaders {
   // Single-key loaders
@@ -59,6 +60,18 @@ export interface GraphQLLoaders {
    * to fold a per-row count + findMany into a single batched fetch.
    */
   conditionsByGroupId: DataLoader<number, ConditionRow[]>;
+  /**
+   * pickConfigId → Pick[] for that configuration. Used by v2
+   * `PickConfiguration.picks` when the parent row didn't carry an
+   * eager `picks` include.
+   */
+  picksByPickConfigId: DataLoader<string, PickRow[]>;
+  /**
+   * referrerUserId → referred User[]. Used by v2 `Account.referrals`
+   * to fold the per-parent `count + findMany` into a single batched
+   * fetch across many parent rows.
+   */
+  usersByReferrerId: DataLoader<number, UserRow[]>;
 }
 
 export const createLoaders = (prisma: typeof prismaClient): GraphQLLoaders => ({
@@ -148,5 +161,34 @@ export const createLoaders = (prisma: typeof prismaClient): GraphQLLoaders => ({
       byGroupId.set(row.conditionGroupId, bucket);
     }
     return ids.map((id) => byGroupId.get(id) ?? []);
+  }),
+
+  picksByPickConfigId: new DataLoader<string, PickRow[]>(async (ids) => {
+    const lowered = ids.map((id) => id.toLowerCase());
+    const rows = await prisma.pick.findMany({
+      where: { pickConfigId: { in: Array.from(new Set(lowered)) } },
+    });
+    const byConfigId = new Map<string, PickRow[]>();
+    for (const row of rows) {
+      const bucket = byConfigId.get(row.pickConfigId) ?? [];
+      bucket.push(row);
+      byConfigId.set(row.pickConfigId, bucket);
+    }
+    return ids.map((id) => byConfigId.get(id.toLowerCase()) ?? []);
+  }),
+
+  usersByReferrerId: new DataLoader<number, UserRow[]>(async (ids) => {
+    const rows = await prisma.user.findMany({
+      where: { referredById: { in: Array.from(new Set(ids)) } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+    const byReferrerId = new Map<number, UserRow[]>();
+    for (const row of rows) {
+      if (row.referredById == null) continue;
+      const bucket = byReferrerId.get(row.referredById) ?? [];
+      bucket.push(row);
+      byReferrerId.set(row.referredById, bucket);
+    }
+    return ids.map((id) => byReferrerId.get(id) ?? []);
   }),
 });

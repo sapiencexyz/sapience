@@ -31,11 +31,13 @@ export const PickConfiguration: PickConfigurationResolvers = {
     parent.predictorToken ? parent.predictorToken.toLowerCase() : null,
   counterpartyToken: (parent) =>
     parent.counterpartyToken ? parent.counterpartyToken.toLowerCase() : null,
-  picks: async (parent) => {
+  picks: async (parent, _args, ctx) => {
     const withPicks = parent as typeof parent & {
       picks?: Awaited<ReturnType<typeof prisma.pick.findMany>>;
     };
     if (withPicks.picks) return withPicks.picks;
+    if (ctx.loaders?.picksByPickConfigId)
+      return ctx.loaders.picksByPickConfigId.load(parent.id);
     return prisma.pick.findMany({ where: { pickConfigId: parent.id } });
   },
 };
@@ -43,10 +45,10 @@ export const PickConfiguration: PickConfigurationResolvers = {
 export const Pick: PickResolvers = {
   conditionId: (parent) => parent.conditionId.toLowerCase(),
   conditionResolverAddress: (parent) => parent.conditionResolver.toLowerCase(),
-  condition: async (parent) => {
+  condition: async (parent, _args, ctx) => {
     if (!parent.conditionId) return null;
-    return prisma.condition.findUnique({
-      where: { id: parent.conditionId.toLowerCase() },
-    });
+    const id = parent.conditionId.toLowerCase();
+    if (ctx.loaders?.conditionById) return ctx.loaders.conditionById.load(id);
+    return prisma.condition.findUnique({ where: { id } });
   },
 };

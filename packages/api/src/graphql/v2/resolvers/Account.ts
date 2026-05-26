@@ -90,7 +90,7 @@ export const Account: AccountResolvers = {
    * Cursor key is `(createdAt, id)` to stay stable under concurrent
    * inserts; direction is DESC (newest referrals first).
    */
-  referrals: async (parent, args) => {
+  referrals: async (parent, args, ctx) => {
     if (!parent.id) return emptyAccountConnection();
 
     const first = clampTake(args.first ?? 50, {
@@ -99,6 +99,26 @@ export const Account: AccountResolvers = {
     });
     const cursor = args.after ? decodeCursor(args.after) : null;
     const baseWhere = { referredById: parent.id };
+
+    // First page: batch-load referrals across many parent rows in the
+    // same selection through the per-request DataLoader. Subsequent
+    // pages fall back to a direct keyset query — the loader can't be
+    // sliced cleanly under cursoring, and follow-on pages are rare.
+    if (!cursor && ctx.loaders?.usersByReferrerId) {
+      const all = await ctx.loaders.usersByReferrerId.load(parent.id);
+      const rows = all.slice(0, first + 1);
+      return buildConnection({
+        rows,
+        first,
+        totalCount: all.length,
+        getCursor: (row) =>
+          encodeCursor({
+            k: row.createdAt.toISOString(),
+            id: String(row.id),
+          }),
+      });
+    }
+
     const cursorWhere = cursor
       ? buildKeysetWhere<typeof baseWhere>({
           orderField: 'createdAt',

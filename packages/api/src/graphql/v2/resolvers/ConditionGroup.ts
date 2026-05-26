@@ -30,8 +30,10 @@ export const ConditionGroup: ConditionGroupResolvers = {
   id: (parent) => toGlobalIdV2('ConditionGroup', String(parent.id)),
   groupId: (parent) => parent.id,
 
-  category: async (parent) => {
+  category: async (parent, _args, ctx) => {
     if (parent.categoryId == null) return null;
+    if (ctx.loaders?.categoryById)
+      return ctx.loaders.categoryById.load(parent.categoryId);
     return prisma.category.findUnique({ where: { id: parent.categoryId } });
   },
 
