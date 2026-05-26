@@ -1,100 +1,129 @@
 /**
  * Codegen config for the SERVER-SIDE resolver types.
  *
- * Reads the hand-written SDL under src/graphql/sdl/schema/ and emits
- * `Resolvers<ApolloContext>` plus per-type aliases into
- * src/graphql/sdl/__generated__/resolvers.ts. Each resolver file in
- * src/graphql/sdl/resolvers/ imports its slice and gets full type
- * safety without a runtime schema builder.
+ * Two outputs:
  *
- * Separate from the frontend codegen (codegen.ts) — that one reads
- * the emitted schema.graphql and generates TypeScript types for the
- * SDK/app. This one reads the hand-written SDL and generates types
- * for the resolver map.
+ *   - `src/graphql/sdl/__generated__/resolvers.ts` — v1 resolver
+ *     types, generated from the v1 SDL under `src/graphql/sdl/schema/`.
+ *   - `src/graphql/v2/__generated__/resolvers.ts` — v2 resolver
+ *     types, generated from the v2 SDL under `src/graphql/v2/schema/`.
+ *
+ * Each resolver file imports its slice and gets full type safety
+ * without per-file generics. v1 and v2 keep separate generated
+ * modules because the SDLs declare overlapping type names
+ * (`Account`, `Connection`, etc.) and we don't want them to merge.
+ *
+ * Separate from the frontend codegen (codegen.ts), which reads the
+ * emitted `schema.graphql` / `schema.v2.graphql` files at the package
+ * root and emits SDK-side client types.
  */
 
 import type { CodegenConfig } from '@graphql-codegen/cli';
 
-const config: CodegenConfig = {
-  schema: './src/graphql/sdl/schema/**/*.graphql',
-  /**
-   * Post-write fixup for the Omit / Pick collision that happens
-   * because our SDL has a top-level `Pick` type (prediction pick) —
-   * see scripts/fixResolverTypesOmit.cjs for the rationale.
-   */
-  hooks: {
-    afterOneFileWrite: ['node src/scripts/fixResolverTypesOmit.cjs'],
-  },
-  generates: {
-    './src/graphql/sdl/__generated__/resolvers.ts': {
-      plugins: ['typescript', 'typescript-resolvers'],
-      config: {
-        // Point resolver `contextType` at our ApolloContext so every
-        // resolver's `ctx` parameter is typed without us writing
-        // per-file generics.
-        contextType: '../../startApolloServer#ApolloContext',
-        // Map SDL scalars to their TS runtime types. The deployed
-        // schema uses DateTimeISO (serialized as ISO-8601 strings on
-        // the wire, Date objects at the resolver boundary) rather
-        // than a plain DateTime scalar.
-        scalars: {
-          // Prisma hands us Date objects; graphql-js's serialize step
-          // converts to ISO strings at the edge. Clients send ISO
-          // strings but graphql-js parses them before the resolver
-          // sees them, so `input: Date` is also correct.
-          DateTimeISO: 'Date',
-          Decimal: 'string',
-          BigInt: 'bigint',
-          UnixSeconds: 'number',
-        },
-        // Resolver types accept both plain return values and Promises
-        // so resolvers can be `async` without being forced to wrap.
-        asyncResolverTypes: true,
-        // Map each model-backed GraphQL type to its Prisma row at
-        // the resolver-parent level. This lets us return `prisma.x
-        // .findMany()` rows directly without TS complaining that
-        // relation fields (forecasts, predictions, conditions,
-        // etc.) are missing — those are filled by field resolvers at
-        // runtime.
-        mappers: {
-          Account: '../../../../generated/prisma#User as PrismaUserRow',
-          Forecast:
-            '../../../../generated/prisma#Attestation as PrismaForecastRow',
-          ForecastScore:
-            '../../../../generated/prisma#AttestationScore as PrismaForecastScoreRow',
-          Category:
-            '../../../../generated/prisma#Category as PrismaCategoryRow',
-          Condition:
-            '../../../../generated/prisma#Condition as PrismaConditionRow',
-          ConditionGroup:
-            '../../../../generated/prisma#ConditionGroup as PrismaConditionGroupRow',
-          ReferralCode:
-            '../../../../generated/prisma#ReferralCode as PrismaReferralCodeRow',
-          User: '../../../../generated/prisma#User as PrismaUserRow',
-        },
-        avoidOptionals: false,
-        enumsAsTypes: false,
-        // Replace generated TS enums with hand-written ones for the
-        // three enums that intentionally carry both SCREAMING_SNAKE
-        // and camelCase (or lowercase/uppercase) wire values for
-        // older-client compatibility. graphql-codegen's default
-        // PascalCase transformation collides across casings; the
-        // hand-written enums in enumOverrides.ts give each member a
-        // unique TS identifier while preserving the original wire
-        // values for the canonical members so existing resolver
-        // references like `SortOrder.Asc` keep compiling.
-        enumValues: {
-          PredictionSortField: '../enumOverrides#PredictionSortField',
-          PositionSortField: '../enumOverrides#PositionSortField',
-          SortOrder: '../enumOverrides#SortOrder',
-          OrderDirection: '../enumOverrides#OrderDirection',
-        },
-        // Let `makeExecutableSchema` do the typename work at runtime
-        // via prisma-model mappers; we don't need __resolveType here
-        // unless we introduce a union/interface later in the port.
+const v1Output = {
+  './src/graphql/sdl/__generated__/resolvers.ts': {
+    schema: './src/graphql/sdl/schema/**/*.graphql',
+    plugins: ['typescript', 'typescript-resolvers'],
+    config: {
+      contextType: '../../startApolloServer#ApolloContext',
+      scalars: {
+        DateTimeISO: 'Date',
+        Decimal: 'string',
+        BigInt: 'bigint',
+        UnixSeconds: 'number',
+      },
+      asyncResolverTypes: true,
+      mappers: {
+        Account: '../../../../generated/prisma#User as PrismaUserRow',
+        Forecast:
+          '../../../../generated/prisma#Attestation as PrismaForecastRow',
+        ForecastScore:
+          '../../../../generated/prisma#AttestationScore as PrismaForecastScoreRow',
+        Category: '../../../../generated/prisma#Category as PrismaCategoryRow',
+        Condition:
+          '../../../../generated/prisma#Condition as PrismaConditionRow',
+        ConditionGroup:
+          '../../../../generated/prisma#ConditionGroup as PrismaConditionGroupRow',
+        ReferralCode:
+          '../../../../generated/prisma#ReferralCode as PrismaReferralCodeRow',
+        User: '../../../../generated/prisma#User as PrismaUserRow',
+      },
+      avoidOptionals: false,
+      enumsAsTypes: false,
+      enumValues: {
+        PredictionSortField: '../enumOverrides#PredictionSortField',
+        PositionSortField: '../enumOverrides#PositionSortField',
+        SortOrder: '../enumOverrides#SortOrder',
+        OrderDirection: '../enumOverrides#OrderDirection',
       },
     },
   },
+};
+
+/**
+ * v2 resolver types. Same context type as v1 (the Express
+ * middleware mounts both endpoints with `createLoaders(prisma)`), but
+ * the resolver shape (Relay connections, AddressEntity interface) is
+ * specific to v2.
+ *
+ * Mapped parents: v2 resolver functions are typed against the Prisma
+ * row, just like v1. Synthesized types (Vault — derived from the SDK
+ * config rather than a row, CollateralBalance — a value snapshot) and
+ * union/interface envelopes use the generated `*Type` parent.
+ */
+const v2Output = {
+  './src/graphql/v2/__generated__/resolvers.ts': {
+    schema: './src/graphql/v2/schema/**/*.graphql',
+    plugins: ['typescript', 'typescript-resolvers'],
+    config: {
+      // v2 reuses the v1 ApolloContext (same prisma + loaders + req
+      // shape per the shared `expressMiddleware` mount in core/server.ts).
+      // Path is relative to the generated file at
+      // src/graphql/v2/__generated__/resolvers.ts → up two → graphql/.
+      contextType: '../../startApolloServer#ApolloContext',
+      scalars: {
+        DateTimeISO: 'Date',
+        BigInt: 'bigint',
+        UnixSeconds: 'number',
+      },
+      asyncResolverTypes: true,
+      mappers: {
+        Account: '../../../../generated/prisma#User as PrismaUserRow',
+        Forecast:
+          '../../../../generated/prisma#Attestation as PrismaForecastRow',
+        Category: '../../../../generated/prisma#Category as PrismaCategoryRow',
+        Condition:
+          '../../../../generated/prisma#Condition as PrismaConditionRow',
+        ConditionGroup:
+          '../../../../generated/prisma#ConditionGroup as PrismaConditionGroupRow',
+        Prediction:
+          '../../../../generated/prisma#Prediction as PrismaPredictionRow',
+        Position: '../../../../generated/prisma#Position as PrismaPositionRow',
+        Trade:
+          '../../../../generated/prisma#SecondaryTrade as PrismaSecondaryTradeRow',
+        PickConfiguration: '../../../../generated/prisma#Picks as PrismaPicksRow',
+        Pick: '../../../../generated/prisma#Pick as PrismaPickRow',
+        Claim: '../../../../generated/prisma#Claim as PrismaClaimRow',
+        Close: '../../../../generated/prisma#Close as PrismaCloseRow',
+        CollateralTransfer:
+          '../../../../generated/prisma#CollateralTransfer as PrismaCollateralTransferRow',
+        ReferralCode:
+          '../../../../generated/prisma#ReferralCode as PrismaReferralCodeRow',
+      },
+      avoidOptionals: false,
+      enumsAsTypes: false,
+    },
+  },
+};
+
+const config: CodegenConfig = {
+  hooks: {
+    // Same Omit/Pick rename fixup as v1 — `type Pick` collides with the
+    // global `Pick<>` utility. The script targets both generated files
+    // by extension/path so it covers v2 too.
+    afterOneFileWrite: ['node src/scripts/fixResolverTypesOmit.cjs'],
+  },
+  generates: { ...v1Output, ...v2Output },
 };
 
 export default config;

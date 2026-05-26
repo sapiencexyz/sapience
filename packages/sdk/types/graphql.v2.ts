@@ -1,0 +1,1504 @@
+export type Maybe<T> = T | null;
+export type InputMaybe<T> = Maybe<T>;
+export type Exact<T extends { [key: string]: unknown }> = {
+  [K in keyof T]: T[K];
+};
+export type MakeOptional<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]?: Maybe<T[SubKey]>;
+};
+export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]: Maybe<T[SubKey]>;
+};
+export type MakeEmpty<
+  T extends { [key: string]: unknown },
+  K extends keyof T,
+> = { [_ in K]?: never };
+export type Incremental<T> =
+  | T
+  | {
+      [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never;
+    };
+/** All built-in and custom scalars, mapped to their actual values */
+export type Scalars = {
+  ID: { input: string; output: string };
+  String: { input: string; output: string };
+  Boolean: { input: boolean; output: boolean };
+  Int: { input: number; output: number };
+  Float: { input: number; output: number };
+  /** 0x-prefixed lowercase 20-byte Ethereum address. Mixed-case checksum input is accepted and normalized to lowercase. */
+  Address: { input: any; output: any };
+  /** The `BigInt` scalar type represents non-fractional signed whole numeric values. */
+  BigInt: { input: any; output: any };
+  /** 0x-prefixed lowercase 32-byte hex value. Used for transaction hashes, EAS UIDs, and other 32-byte on-chain identifiers. */
+  Bytes32: { input: any; output: any };
+  /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format. */
+  DateTimeISO: { input: any; output: any };
+  /** Integer Unix timestamp in seconds (UTC). Wire format is Int; the scalar carries the unit/TZ contract in the type system rather than the field name. */
+  UnixSeconds: { input: any; output: any };
+};
+
+/**
+ * Address-keyed account record — wallet-level identity. Synthesized for
+ * addresses that have no User row so every valid address resolves to an
+ * Account; persistent rows additionally carry referral metadata.
+ */
+export type Account = AddressEntity &
+  Node & {
+    __typename?: 'Account';
+    /** Canonical lowercase Ethereum wallet address. */
+    address: Scalars['Address']['output'];
+    /** Current wUSDe wallet balance at an optional block (defaults to head). */
+    collateralBalance: CollateralBalance;
+    /**
+     * Time-bucketed wUSDe wallet balance snapshots. Step size is
+     * `intervalSeconds` (default 7d); returns `first + 1` boundaries
+     * back from now.
+     */
+    collateralBalanceHistory: CollateralBalanceSnapshotConnection;
+    /** When this account first appeared in the database. Synthesized accounts return the unix epoch. */
+    createdAt: Scalars['DateTimeISO']['output'];
+    id: Scalars['ID']['output'];
+    /** Maximum number of referrals this account's code allows. Default 0. */
+    maxReferrals: Scalars['Int']['output'];
+    /** Rank of this account on a chosen metric, or null when unranked. */
+    rank?: Maybe<AccountRanking>;
+    /**
+     * keccak256(utf8(trimmed_lowercase_code)) of the user's referral code,
+     * 0x-prefixed hex, if they own one.
+     */
+    refCodeHash?: Maybe<Scalars['String']['output']>;
+    /** Accounts referred by this account, via its referral code. */
+    referrals: AccountConnection;
+    /** The account that referred this one, if any. */
+    referredBy?: Maybe<Account>;
+    /** The referral code this account was referred by, if any. */
+    referredByCode?: Maybe<ReferralCode>;
+  };
+
+/**
+ * Address-keyed account record — wallet-level identity. Synthesized for
+ * addresses that have no User row so every valid address resolves to an
+ * Account; persistent rows additionally carry referral metadata.
+ */
+export type AccountCollateralBalanceArgs = {
+  atBlock?: InputMaybe<Scalars['BigInt']['input']>;
+  chainId: Scalars['Int']['input'];
+};
+
+/**
+ * Address-keyed account record — wallet-level identity. Synthesized for
+ * addresses that have no User row so every valid address resolves to an
+ * Account; persistent rows additionally carry referral metadata.
+ */
+export type AccountCollateralBalanceHistoryArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  chainId: Scalars['Int']['input'];
+  first?: InputMaybe<Scalars['Int']['input']>;
+  intervalSeconds?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/**
+ * Address-keyed account record — wallet-level identity. Synthesized for
+ * addresses that have no User row so every valid address resolves to an
+ * Account; persistent rows additionally carry referral metadata.
+ */
+export type AccountRankArgs = {
+  filter?: InputMaybe<AccountRankingFilter>;
+  metric: LeaderboardMetric;
+};
+
+/**
+ * Address-keyed account record — wallet-level identity. Synthesized for
+ * addresses that have no User row so every valid address resolves to an
+ * Account; persistent rows additionally carry referral metadata.
+ */
+export type AccountReferralsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type AccountConnection = {
+  __typename?: 'AccountConnection';
+  edges: Array<AccountEdge>;
+  nodes: Array<Account>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type AccountEdge = {
+  __typename?: 'AccountEdge';
+  cursor: Scalars['String']['output'];
+  node: Account;
+};
+
+/**
+ * Filter input for `accounts`. Intentionally narrow — the only meaningful
+ * filter dimension for an address-keyed table is substring match against
+ * the address itself.
+ */
+export type AccountFilter = {
+  /** Substring search against the wallet address (case-insensitive). */
+  search?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AccountOrder = {
+  direction: OrderDirection;
+  field: AccountOrderField;
+};
+
+export type AccountOrderField = 'CREATED_AT';
+
+/**
+ * One row of an account ranking — the address, its rank (1-indexed), and
+ * the underlying metric value as a string (formatted per metric).
+ */
+export type AccountRanking = {
+  __typename?: 'AccountRanking';
+  account: Account;
+  rank: Scalars['Int']['output'];
+  value: Scalars['String']['output'];
+};
+
+export type AccountRankingConnection = {
+  __typename?: 'AccountRankingConnection';
+  edges: Array<AccountRankingEdge>;
+  metric: LeaderboardMetric;
+  nodes: Array<AccountRanking>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type AccountRankingEdge = {
+  __typename?: 'AccountRankingEdge';
+  cursor: Scalars['String']['output'];
+  node: AccountRanking;
+};
+
+export type AccountRankingFilter = {
+  /** Window selector in epoch seconds (inclusive). Ignored for ACCURACY. */
+  timestamp?: InputMaybe<IntRangeFilter>;
+};
+
+/**
+ * Relay-shaped connection over the interleaved Prediction + Trade feed.
+ * `nodes` is omitted because unions don't share a field set; clients
+ * should select through `edges { node { ... } }` with inline fragments.
+ */
+export type ActivityConnection = {
+  __typename?: 'ActivityConnection';
+  edges: Array<ActivityEdge>;
+  pageInfo: PageInfo;
+  /** Sum of matching predictions + trades. Two indexed COUNT(*) queries. */
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ActivityEdge = {
+  __typename?: 'ActivityEdge';
+  cursor: Scalars['String']['output'];
+  node: ActivityItem;
+};
+
+export type ActivityFilter = {
+  /** OR across predictor/counterparty (predictions) and buyer/seller (trades). */
+  account?: InputMaybe<Scalars['Address']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  conditionIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /** Filter by activity timestamp in epoch seconds. */
+  timestamp?: InputMaybe<IntRangeFilter>;
+  /** Restrict to a subset of activity types. `[]` is a zero-result query. */
+  types?: InputMaybe<Array<ActivityType>>;
+};
+
+/**
+ * A unified activity item — either an escrow `Prediction` or a
+ * secondary-market `Trade`. v2 returns the union directly; v1 wrapped
+ * each item in an `Activity` envelope, which forced clients to dereference
+ * through `.source` to get the entity. Here the union is the wire shape.
+ *
+ * `Forecast` is intentionally not in the union — see the v1 design doc's
+ * "Activity model" section. Forecasts are a separate timeline.
+ */
+export type ActivityItem = Prediction | Trade;
+
+export type ActivityType = 'PREDICTION' | 'TRADE';
+
+/**
+ * Anything addressable on-chain. Both wallet-keyed accounts and
+ * contract-controlled vaults expose an `address` and a Node identity, so
+ * v2 unifies them under one interface. Address-scoped fields shared by
+ * both kinds (`stats`, `collateralBalance`, `rank`, …) attach here in the
+ * phases that introduce them; this stub starts the interface narrow.
+ */
+export type AddressEntity = {
+  address: Scalars['Address']['output'];
+  id: Scalars['ID']['output'];
+};
+
+/**
+ * A category groups prediction conditions / condition groups for the
+ * UI. Backed by the Postgres `Category` table.
+ */
+export type Category = Node & {
+  __typename?: 'Category';
+  /** Internal integer primary key; stable per-row, not encoded in opaque ids. */
+  categoryId: Scalars['Int']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+};
+
+export type CategoryConnection = {
+  __typename?: 'CategoryConnection';
+  edges: Array<CategoryEdge>;
+  nodes: Array<Category>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type CategoryEdge = {
+  __typename?: 'CategoryEdge';
+  cursor: Scalars['String']['output'];
+  node: Category;
+};
+
+export type CategoryFilter = {
+  /** Case-insensitive substring match against `name`. */
+  search?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** Open-interest broken down by category. */
+export type CategoryOpenInterest = {
+  __typename?: 'CategoryOpenInterest';
+  category: Category;
+  openInterest: Scalars['BigInt']['output'];
+};
+
+export type CategoryOrder = {
+  direction: OrderDirection;
+  field: CategoryOrderField;
+};
+
+export type CategoryOrderField = 'CREATED_AT' | 'NAME';
+
+/**
+ * Token-redeem event — holder burned position tokens to redeem collateral
+ * after settlement. Identified by `(chainId, txHash, logIndex)`.
+ */
+export type Claim = Node & {
+  __typename?: 'Claim';
+  chainId: Scalars['Int']['output'];
+  collateralPaid: Scalars['BigInt']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  holder: Scalars['Address']['output'];
+  id: Scalars['ID']['output'];
+  logIndex: Scalars['Int']['output'];
+  marketAddress: Scalars['Address']['output'];
+  positionToken: Scalars['Address']['output'];
+  predictionId: Scalars['String']['output'];
+  redeemedAt: Scalars['UnixSeconds']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  tokensBurned: Scalars['BigInt']['output'];
+  txHash: Scalars['Bytes32']['output'];
+};
+
+export type ClaimConnection = {
+  __typename?: 'ClaimConnection';
+  edges: Array<ClaimEdge>;
+  nodes: Array<Claim>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ClaimEdge = {
+  __typename?: 'ClaimEdge';
+  cursor: Scalars['String']['output'];
+  node: Claim;
+};
+
+export type ClaimFilter = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  holder?: InputMaybe<Scalars['Address']['input']>;
+  predictionId?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type ClaimOrder = {
+  direction: OrderDirection;
+  field: ClaimOrderField;
+};
+
+export type ClaimOrderField = 'REDEEMED_AT';
+
+/**
+ * Position-close (burn) event — both sides burn their tokens after the
+ * pickConfig settles and receive the proportional payout.
+ */
+export type Close = Node & {
+  __typename?: 'Close';
+  burnedAt: Scalars['UnixSeconds']['output'];
+  chainId: Scalars['Int']['output'];
+  counterpartyHolder: Scalars['Address']['output'];
+  counterpartyPayout: Scalars['BigInt']['output'];
+  counterpartyTokensBurned: Scalars['BigInt']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['ID']['output'];
+  marketAddress: Scalars['Address']['output'];
+  pickConfigId: Scalars['String']['output'];
+  predictorHolder: Scalars['Address']['output'];
+  predictorPayout: Scalars['BigInt']['output'];
+  predictorTokensBurned: Scalars['BigInt']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  txHash: Scalars['Bytes32']['output'];
+};
+
+export type CloseConnection = {
+  __typename?: 'CloseConnection';
+  edges: Array<CloseEdge>;
+  nodes: Array<Close>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type CloseEdge = {
+  __typename?: 'CloseEdge';
+  cursor: Scalars['String']['output'];
+  node: Close;
+};
+
+export type CloseFilter = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to closes where the address is on either side (predictor or counterparty). */
+  participant?: InputMaybe<Scalars['Address']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type CloseOrder = {
+  direction: OrderDirection;
+  field: CloseOrderField;
+};
+
+export type CloseOrderField = 'BURNED_AT';
+
+/**
+ * Wallet wUSDe collateral balance at a point in time. Not a Node —
+ * snapshots are derived rather than persistent entities.
+ */
+export type CollateralBalance = {
+  __typename?: 'CollateralBalance';
+  address: Scalars['Address']['output'];
+  amount: Scalars['BigInt']['output'];
+  atBlock?: Maybe<Scalars['Int']['output']>;
+  chainId: Scalars['Int']['output'];
+};
+
+/** Single time-bucketed wUSDe wallet balance snapshot. */
+export type CollateralBalanceSnapshot = {
+  __typename?: 'CollateralBalanceSnapshot';
+  address: Scalars['Address']['output'];
+  amount: Scalars['BigInt']['output'];
+  blockNumber: Scalars['BigInt']['output'];
+  chainId: Scalars['Int']['output'];
+  timestamp: Scalars['DateTimeISO']['output'];
+};
+
+export type CollateralBalanceSnapshotConnection = {
+  __typename?: 'CollateralBalanceSnapshotConnection';
+  edges: Array<CollateralBalanceSnapshotEdge>;
+  nodes: Array<CollateralBalanceSnapshot>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type CollateralBalanceSnapshotEdge = {
+  __typename?: 'CollateralBalanceSnapshotEdge';
+  cursor: Scalars['String']['output'];
+  node: CollateralBalanceSnapshot;
+};
+
+/**
+ * On-chain ERC-20 Transfer of the collateral token (wUSDe). The
+ * `(chainId, transactionHash, logIndex)` tuple is the natural key.
+ */
+export type CollateralTransfer = Node & {
+  __typename?: 'CollateralTransfer';
+  blockNumber: Scalars['Int']['output'];
+  chainId: Scalars['Int']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  from: Scalars['Address']['output'];
+  id: Scalars['ID']['output'];
+  logIndex: Scalars['Int']['output'];
+  timestamp: Scalars['DateTimeISO']['output'];
+  to: Scalars['Address']['output'];
+  transactionHash: Scalars['Bytes32']['output'];
+  /** Transfer amount in wei (18 decimals). */
+  value: Scalars['BigInt']['output'];
+};
+
+export type CollateralTransferConnection = {
+  __typename?: 'CollateralTransferConnection';
+  edges: Array<CollateralTransferEdge>;
+  nodes: Array<CollateralTransfer>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type CollateralTransferEdge = {
+  __typename?: 'CollateralTransferEdge';
+  cursor: Scalars['String']['output'];
+  node: CollateralTransfer;
+};
+
+export type CollateralTransferFilter = {
+  /** OR across from/to (account is on either side of the transfer). */
+  account?: InputMaybe<Scalars['Address']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Exclude transfers to/from configured protocol addresses (vault, escrow). */
+  excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
+  timestamp?: InputMaybe<DateTimeRangeFilter>;
+  transactionHash?: InputMaybe<Scalars['Bytes32']['input']>;
+};
+
+export type CollateralTransferOrder = {
+  direction: OrderDirection;
+  field: CollateralTransferOrderField;
+};
+
+export type CollateralTransferOrderField = 'BLOCK_NUMBER' | 'TIMESTAMP';
+
+/**
+ * On-chain prediction condition. v2 drops v1's legacy boolean flags
+ * (`settled`, `resolvedToYes`, `nonDecisive`) in favour of the single
+ * nullable `outcome` enum; clients should filter "settled" as
+ * `outcome: { isNull: false }` (or `null` means not yet settled).
+ *
+ * Heavy `similarMarket*` fields collapse into a nested `similarMarket`
+ * value type — wire-weight reduction and grouping by source.
+ */
+export type Condition = Node & {
+  __typename?: 'Condition';
+  category?: Maybe<Category>;
+  categoryId?: Maybe<Scalars['Int']['output']>;
+  chainId: Scalars['Int']['output'];
+  conditionGroup?: Maybe<ConditionGroup>;
+  conditionGroupId?: Maybe<Scalars['Int']['output']>;
+  /** CTF on-chain condition id, lowercase 0x-hex. */
+  conditionId: Scalars['String']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  description: Scalars['String']['output'];
+  displayOrder?: Maybe<Scalars['Int']['output']>;
+  endTime: Scalars['UnixSeconds']['output'];
+  /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket. */
+  estimatedPrice?: Maybe<Scalars['Float']['output']>;
+  id: Scalars['ID']['output'];
+  /** Cumulative on-chain open interest, wei. */
+  openInterest: Scalars['BigInt']['output'];
+  optionName?: Maybe<Scalars['String']['output']>;
+  /**
+   * Resolved state — `null` until the on-chain resolver returns. `YES` /
+   * `NO` are decisive resolutions of the binary outcome; `NON_DECISIVE`
+   * covers voided / tied / unresolvable settlements.
+   */
+  outcome?: Maybe<ConditionOutcome>;
+  /** Visibility — false hides this condition from public listing surfaces. */
+  public: Scalars['Boolean']['output'];
+  question: Scalars['String']['output'];
+  /** Resolver (oracle) contract address that settles this condition. */
+  resolverAddress: Scalars['Address']['output'];
+  settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
+  shortName?: Maybe<Scalars['String']['output']>;
+  /** Bundled similar-market signal from external sources (Polymarket). */
+  similarMarket?: Maybe<SimilarMarket>;
+  tags: Array<Scalars['String']['output']>;
+};
+
+export type ConditionConnection = {
+  __typename?: 'ConditionConnection';
+  edges: Array<ConditionEdge>;
+  nodes: Array<Condition>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ConditionEdge = {
+  __typename?: 'ConditionEdge';
+  cursor: Scalars['String']['output'];
+  node: Condition;
+};
+
+export type ConditionFilter = {
+  categoryId?: InputMaybe<Scalars['Int']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  conditionIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  endTime?: InputMaybe<IntRangeFilter>;
+  outcome?: InputMaybe<ConditionOutcome>;
+  /** Restrict to public conditions only (default true when omitted on listing surfaces). */
+  publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Substring search across `question` / `description`, case-insensitive. */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to settled (`outcome` non-null) / unsettled (null). */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Restrict to conditions tagged with at least one of these. */
+  tags?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+/**
+ * A named bundle of related conditions — used by the UI to group e.g.
+ * "Who wins the Super Bowl" into one card with per-option conditions
+ * underneath. The bundle exposes aggregated counters across its
+ * constituent conditions.
+ */
+export type ConditionGroup = Node & {
+  __typename?: 'ConditionGroup';
+  category?: Maybe<Category>;
+  categoryId?: Maybe<Scalars['Int']['output']>;
+  /** Conditions in this group, ordered by `displayOrder` then `createdAt`. */
+  conditions: ConditionConnection;
+  createdAt: Scalars['DateTimeISO']['output'];
+  /** Internal integer primary key — stable per row. */
+  groupId: Scalars['Int']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  similarMarkets: Array<Scalars['String']['output']>;
+  /** Aggregated counters across this group's public conditions. */
+  totals: ConditionGroupTotals;
+};
+
+/**
+ * A named bundle of related conditions — used by the UI to group e.g.
+ * "Who wins the Super Bowl" into one card with per-option conditions
+ * underneath. The bundle exposes aggregated counters across its
+ * constituent conditions.
+ */
+export type ConditionGroupConditionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type ConditionGroupConnection = {
+  __typename?: 'ConditionGroupConnection';
+  edges: Array<ConditionGroupEdge>;
+  nodes: Array<ConditionGroup>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ConditionGroupEdge = {
+  __typename?: 'ConditionGroupEdge';
+  cursor: Scalars['String']['output'];
+  node: ConditionGroup;
+};
+
+export type ConditionGroupFilter = {
+  categoryId?: InputMaybe<Scalars['Int']['input']>;
+  /** Substring search against `name`, case-insensitive. */
+  search?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type ConditionGroupOrder = {
+  direction: OrderDirection;
+  field: ConditionGroupOrderField;
+};
+
+export type ConditionGroupOrderField =
+  | 'CREATED_AT'
+  | 'MAX_END_TIME'
+  | 'NAME'
+  | 'TOTAL_OPEN_INTEREST'
+  | 'TOTAL_PREDICTION_COUNT';
+
+/**
+ * Pre-computed aggregates over a ConditionGroup's public conditions.
+ * Recomputed by the indexer; clients should treat the numbers as
+ * near-real-time.
+ */
+export type ConditionGroupTotals = {
+  __typename?: 'ConditionGroupTotals';
+  maxCreatedAtEpoch?: Maybe<Scalars['UnixSeconds']['output']>;
+  maxEndTime?: Maybe<Scalars['UnixSeconds']['output']>;
+  publicConditionCount: Scalars['Int']['output'];
+  totalOpenInterest: Scalars['BigInt']['output'];
+  totalPredictionCount: Scalars['Int']['output'];
+  totalSimilarMarketVolume1h: Scalars['Float']['output'];
+  totalSimilarMarketVolume4h: Scalars['Float']['output'];
+  totalSimilarMarketVolume7d: Scalars['Float']['output'];
+  totalSimilarMarketVolume24h: Scalars['Float']['output'];
+  totalSimilarMarketVolumeFiltered1h: Scalars['Float']['output'];
+  totalSimilarMarketVolumeFiltered4h: Scalars['Float']['output'];
+  totalSimilarMarketVolumeFiltered7d: Scalars['Float']['output'];
+  totalSimilarMarketVolumeFiltered24h: Scalars['Float']['output'];
+};
+
+export type ConditionOrder = {
+  direction: OrderDirection;
+  field: ConditionOrderField;
+};
+
+export type ConditionOrderField =
+  | 'CREATED_AT'
+  | 'DISPLAY_ORDER'
+  | 'END_TIME'
+  | 'OPEN_INTEREST';
+
+export type ConditionOutcome = 'NO' | 'NON_DECISIVE' | 'YES';
+
+/** Date/time range filter; both bounds inclusive. */
+export type DateTimeRangeFilter = {
+  gte?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  lte?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+/**
+ * EAS attestation-backed forecast made by `forecaster` against `resolverAddress`.
+ * Identified by its on-chain `uid`. Wire shape drops the leaked Prisma column
+ * names (`attester`, `time`) in favour of the public-API names (`forecaster`,
+ * `attestedAt`); the raw on-chain value is renamed `forecastValue` to avoid
+ * the type-vs-field naming collision v1 had.
+ */
+export type Forecast = Node & {
+  __typename?: 'Forecast';
+  attestedAt: Scalars['UnixSeconds']['output'];
+  blockNumber: Scalars['Int']['output'];
+  comment?: Maybe<Scalars['String']['output']>;
+  /** CTF condition id this forecast targets, lowercase 0x-hex. May be null for non-condition-backed forecasts. */
+  conditionId?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTimeISO']['output'];
+  /**
+   * Raw on-chain forecast value — D18 fixed-point probability in
+   * `[0, 1e18]`. Divide by 1e18 to render as a 0–1 float.
+   */
+  forecastValue: Scalars['BigInt']['output'];
+  forecaster: Scalars['Address']['output'];
+  id: Scalars['ID']['output'];
+  recipient: Scalars['Address']['output'];
+  resolverAddress?: Maybe<Scalars['Address']['output']>;
+  schemaId: Scalars['Bytes32']['output'];
+  transactionHash: Scalars['Bytes32']['output'];
+  uid: Scalars['Bytes32']['output'];
+};
+
+export type ForecastConnection = {
+  __typename?: 'ForecastConnection';
+  edges: Array<ForecastEdge>;
+  nodes: Array<Forecast>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ForecastEdge = {
+  __typename?: 'ForecastEdge';
+  cursor: Scalars['String']['output'];
+  node: Forecast;
+};
+
+export type ForecastFilter = {
+  attestedAt?: InputMaybe<IntRangeFilter>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  conditionIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  forecaster?: InputMaybe<Scalars['Address']['input']>;
+  recipient?: InputMaybe<Scalars['Address']['input']>;
+  schemaId?: InputMaybe<Scalars['Bytes32']['input']>;
+  uid?: InputMaybe<Scalars['Bytes32']['input']>;
+};
+
+export type ForecastOrder = {
+  direction: OrderDirection;
+  field: ForecastOrderField;
+};
+
+export type ForecastOrderField = 'ATTESTED_AT' | 'CREATED_AT';
+
+/** Range filter for an integer/UnixSeconds field; both bounds inclusive. */
+export type IntRangeFilter = {
+  gte?: InputMaybe<Scalars['Int']['input']>;
+  lte?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/**
+ * Metric an `AccountRanking` is sorted by.
+ *
+ * - `ACCURACY`: lifetime time-weighted Brier-style score; ignores the
+ *   window filter (the score already weights by recency).
+ * - `PNL`: net profit/loss across settled positions over the window.
+ * - `VOLUME`: total trade volume over the window.
+ * - `ROI`: PnL / volume ratio (`null`-safe).
+ */
+export type LeaderboardMetric = 'ACCURACY' | 'PNL' | 'ROI' | 'VOLUME';
+
+/**
+ * Relay `Node` interface — every persistent entity in v2 implements it.
+ * The `id` is an opaque base64url-encoded `(TypeName, domainId)` pair;
+ * clients should treat it as a refetch handle and read the entity's named
+ * domain identifier (`address`, `predictionId`, `tradeHash`, …) for any
+ * display or persistence use.
+ */
+export type Node = {
+  id: Scalars['ID']['output'];
+};
+
+/** Order direction shared across every `*Order` input. */
+export type OrderDirection = 'ASC' | 'DESC';
+
+/** Standard Relay pagination metadata. */
+export type PageInfo = {
+  __typename?: 'PageInfo';
+  endCursor?: Maybe<Scalars['String']['output']>;
+  hasNextPage: Scalars['Boolean']['output'];
+  hasPreviousPage: Scalars['Boolean']['output'];
+  startCursor?: Maybe<Scalars['String']['output']>;
+};
+
+/**
+ * A single condition + outcome pair within a PickConfiguration. Not a Node —
+ * picks are only fetched in the context of their parent configuration.
+ */
+export type Pick = {
+  __typename?: 'Pick';
+  condition?: Maybe<Condition>;
+  conditionId: Scalars['String']['output'];
+  conditionResolverAddress: Scalars['Address']['output'];
+  predictedOutcome: Scalars['Int']['output'];
+};
+
+/**
+ * A pick configuration bundles the per-condition picks that make up a
+ * single prediction. The `pickConfigId` is a deterministic 0x-hash of
+ * the constituent picks — same picks produce the same pickConfigId.
+ */
+export type PickConfiguration = Node & {
+  __typename?: 'PickConfiguration';
+  chainId: Scalars['Int']['output'];
+  claimedCounterpartyCollateral: Scalars['BigInt']['output'];
+  claimedPredictorCollateral: Scalars['BigInt']['output'];
+  counterpartyToken?: Maybe<Scalars['Address']['output']>;
+  endsAt?: Maybe<Scalars['UnixSeconds']['output']>;
+  id: Scalars['ID']['output'];
+  isLegacy: Scalars['Boolean']['output'];
+  marketAddress: Scalars['Address']['output'];
+  pickConfigId: Scalars['String']['output'];
+  picks: Array<Pick>;
+  predictorToken?: Maybe<Scalars['Address']['output']>;
+  resolved: Scalars['Boolean']['output'];
+  resolvedAt?: Maybe<Scalars['UnixSeconds']['output']>;
+  result: SettlementResult;
+  totalCounterpartyCollateral: Scalars['BigInt']['output'];
+  totalPredictorCollateral: Scalars['BigInt']['output'];
+};
+
+export type PickConfigurationConnection = {
+  __typename?: 'PickConfigurationConnection';
+  edges: Array<PickConfigurationEdge>;
+  nodes: Array<PickConfiguration>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type PickConfigurationEdge = {
+  __typename?: 'PickConfigurationEdge';
+  cursor: Scalars['String']['output'];
+  node: PickConfiguration;
+};
+
+export type PickConfigurationFilter = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  resolved?: InputMaybe<Scalars['Boolean']['input']>;
+  result?: InputMaybe<SettlementResultFilter>;
+  /** Either predictor or counterparty token matches one of these (case-insensitive). */
+  tokens?: InputMaybe<Array<Scalars['Address']['input']>>;
+};
+
+export type PickConfigurationOrder = {
+  direction: OrderDirection;
+  field: PickConfigurationOrderField;
+};
+
+export type PickConfigurationOrderField =
+  | 'CREATED_AT'
+  | 'ENDS_AT'
+  | 'RESOLVED_AT';
+
+/**
+ * Position-token balance held by `holder` on a specific pick configuration.
+ * The synthesized sell-event row format from v1 doesn't carry forward; v2
+ * returns raw balance rows. Cost-basis / realized-PnL surfaces will land
+ * behind opt-in fields in a later phase.
+ */
+export type Position = Node & {
+  __typename?: 'Position';
+  /** Number of position tokens still held, wei (18 decimals). */
+  balance: Scalars['BigInt']['output'];
+  chainId: Scalars['Int']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  holder: Scalars['Address']['output'];
+  id: Scalars['ID']['output'];
+  /** True if this is the predictor token side; false for counterparty. */
+  isPredictorToken: Scalars['Boolean']['output'];
+  pickConfig?: Maybe<PickConfiguration>;
+  pickConfigId: Scalars['String']['output'];
+  /** ERC-20 position token address. */
+  tokenAddress: Scalars['Address']['output'];
+  updatedAt: Scalars['DateTimeISO']['output'];
+};
+
+export type PositionConnection = {
+  __typename?: 'PositionConnection';
+  edges: Array<PositionEdge>;
+  nodes: Array<Position>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type PositionEdge = {
+  __typename?: 'PositionEdge';
+  cursor: Scalars['String']['output'];
+  node: Position;
+};
+
+export type PositionFilter = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Filter by pickConfig end epoch seconds. */
+  endsAt?: InputMaybe<IntRangeFilter>;
+  holder?: InputMaybe<Scalars['Address']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to positions whose pickConfig settled with this result. */
+  result?: InputMaybe<SettlementResultFilter>;
+  /** Restrict to positions where the pickConfig is settled / unsettled. */
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type PositionOrder = {
+  direction: OrderDirection;
+  field: PositionOrderField;
+};
+
+export type PositionOrderField = 'CREATED_AT' | 'UPDATED_AT';
+
+/**
+ * Escrow-based prediction — a two-sided bet between a predictor and a
+ * counterparty, settled by the pick configuration's underlying condition(s).
+ * Identified by its on-chain `predictionId`.
+ */
+export type Prediction = Node & {
+  __typename?: 'Prediction';
+  chainId: Scalars['Int']['output'];
+  collateralDeposited?: Maybe<Scalars['BigInt']['output']>;
+  collateralDepositedAt?: Maybe<Scalars['UnixSeconds']['output']>;
+  counterparty: Scalars['Address']['output'];
+  counterpartyClaimable?: Maybe<Scalars['BigInt']['output']>;
+  counterpartyCollateral: Scalars['BigInt']['output'];
+  counterpartyToken: Scalars['Address']['output'];
+  createTxHash: Scalars['Bytes32']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['ID']['output'];
+  isLegacy: Scalars['Boolean']['output'];
+  marketAddress: Scalars['Address']['output'];
+  pickConfig?: Maybe<PickConfiguration>;
+  predictionId: Scalars['String']['output'];
+  predictor: Scalars['Address']['output'];
+  predictorClaimable?: Maybe<Scalars['BigInt']['output']>;
+  predictorCollateral: Scalars['BigInt']['output'];
+  predictorToken: Scalars['Address']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  result: SettlementResult;
+  settleTxHash?: Maybe<Scalars['Bytes32']['output']>;
+  settled: Scalars['Boolean']['output'];
+  settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
+};
+
+export type PredictionConnection = {
+  __typename?: 'PredictionConnection';
+  edges: Array<PredictionEdge>;
+  nodes: Array<Prediction>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type PredictionEdge = {
+  __typename?: 'PredictionEdge';
+  cursor: Scalars['String']['output'];
+  node: Prediction;
+};
+
+export type PredictionFilter = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to predictions on a single condition (via the pickConfig join). */
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  /** Restrict to predictions on any of these conditions (via the pickConfig join). */
+  conditionIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  counterparty?: InputMaybe<Scalars['Address']['input']>;
+  /** Filter by pickConfig end epoch seconds. */
+  endsAt?: InputMaybe<IntRangeFilter>;
+  isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
+  /**
+   * Restrict to predictions where the address is predictor or counterparty.
+   * Convenience filter; mutually exclusive with `predictor` / `counterparty`.
+   */
+  participant?: InputMaybe<Scalars['Address']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  predictionId?: InputMaybe<Scalars['String']['input']>;
+  predictor?: InputMaybe<Scalars['Address']['input']>;
+  result?: InputMaybe<SettlementResultFilter>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type PredictionOrder = {
+  direction: OrderDirection;
+  field: PredictionOrderField;
+};
+
+export type PredictionOrderField = 'CREATED_AT' | 'SETTLED_AT';
+
+/**
+ * Top-level protocol surface — aggregated cross-account metrics and the
+ * breakdowns the dashboard renders. Lookup is via `protocol { … }`; no
+ * arguments needed.
+ */
+export type Protocol = {
+  __typename?: 'Protocol';
+  openInterestByCategory: Array<CategoryOpenInterest>;
+  openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
+  stats: ProtocolStatConnection;
+};
+
+/**
+ * Top-level protocol surface — aggregated cross-account metrics and the
+ * breakdowns the dashboard renders. Lookup is via `protocol { … }`; no
+ * arguments needed.
+ */
+export type ProtocolStatsArgs = {
+  filter?: InputMaybe<ProtocolStatFilter>;
+};
+
+/**
+ * Protocol-wide snapshot of cumulative + period metrics. v2 drops the
+ * vault-scoped fields v1 carried (`vault*`, `periodPnL`) — vault-specific
+ * stats live on `Vault.stats` in the same shape.
+ */
+export type ProtocolStat = {
+  __typename?: 'ProtocolStat';
+  cumulativeTradeCount: Scalars['Int']['output'];
+  cumulativeVolume: Scalars['BigInt']['output'];
+  escrowBalance: Scalars['BigInt']['output'];
+  openInterest: Scalars['BigInt']['output'];
+  periodTradeCount: Scalars['Int']['output'];
+  periodVolume: Scalars['BigInt']['output'];
+  timestamp: Scalars['UnixSeconds']['output'];
+};
+
+export type ProtocolStatConnection = {
+  __typename?: 'ProtocolStatConnection';
+  edges: Array<ProtocolStatEdge>;
+  nodes: Array<ProtocolStat>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ProtocolStatEdge = {
+  __typename?: 'ProtocolStatEdge';
+  cursor: Scalars['String']['output'];
+  node: ProtocolStat;
+};
+
+export type ProtocolStatFilter = {
+  /** Snapshot timestamp window in epoch seconds (inclusive). */
+  timestamp?: InputMaybe<IntRangeFilter>;
+};
+
+export type Query = {
+  __typename?: 'Query';
+  /** Endpoint health / schema-version probe. */
+  _v2Health: V2Health;
+  /**
+   * Look up a single account by canonical wallet address. Always returns
+   * an Account — addresses with no User row are synthesized (`createdAt`
+   * is the unix epoch, referral fields are null).
+   */
+  account: Account;
+  /**
+   * Relay-shaped connection over accounts (User-table rows). Single-address
+   * lookups should use `account(address:)`, which synthesizes for missing
+   * rows; `accounts` is for enumeration / search and only returns persisted
+   * rows. Defaults to `CREATED_AT DESC`.
+   */
+  accounts: AccountConnection;
+  /** Interleaved Prediction + Trade activity feed, sorted by timestamp DESC. */
+  activity: ActivityConnection;
+  /** Relay-shaped connection over categories. Defaults to `NAME ASC`. */
+  categories: CategoryConnection;
+  /** Look up a single category by its integer primary key. */
+  category?: Maybe<Category>;
+  /** Look up a single claim by its globalId-encoded row id. */
+  claim?: Maybe<Claim>;
+  /**
+   * Relay-shaped connection over claim (redemption) records. Defaults to
+   * `REDEEMED_AT DESC`.
+   */
+  claims: ClaimConnection;
+  /** Look up a single position-close record by its globalId-encoded row id. */
+  close?: Maybe<Close>;
+  /**
+   * Relay-shaped connection over position close (burn) records. Defaults
+   * to `BURNED_AT DESC`.
+   */
+  closes: CloseConnection;
+  /** Look up a single collateral transfer by its globalId-encoded row id. */
+  collateralTransfer?: Maybe<CollateralTransfer>;
+  /**
+   * Relay-shaped connection over collateral-token transfers. Defaults to
+   * `TIMESTAMP DESC`.
+   */
+  collateralTransfers: CollateralTransferConnection;
+  /** Look up a single condition by its on-chain CTF condition id. */
+  condition?: Maybe<Condition>;
+  /** Look up a single condition group by its integer primary key. */
+  conditionGroup?: Maybe<ConditionGroup>;
+  /**
+   * Relay-shaped connection over condition groups. Defaults to
+   * `MAX_END_TIME ASC` (next-to-resolve first).
+   */
+  conditionGroups: ConditionGroupConnection;
+  /**
+   * Relay-shaped connection over conditions. Defaults to `END_TIME ASC`
+   * (next-to-resolve first), but `CREATED_AT DESC` and `OPEN_INTEREST
+   * DESC` are common alternates.
+   */
+  conditions: ConditionConnection;
+  /** Look up a single forecast by its on-chain `uid`. */
+  forecast?: Maybe<Forecast>;
+  /**
+   * Relay-shaped connection over EAS-backed forecasts. Defaults to
+   * `ATTESTED_AT DESC`.
+   */
+  forecasts: ForecastConnection;
+  /**
+   * Account leaderboard ranked by `metric`. PnL / Volume / ROI accept a
+   * `filter.timestamp` window; Accuracy is lifetime-aggregated and ignores
+   * the window.
+   */
+  leaderboard: AccountRankingConnection;
+  /**
+   * Relay refetch by opaque global id. Returns `null` when the id is
+   * malformed, the type is not registered against the v2 registry, or
+   * the underlying entity has been deleted.
+   */
+  node?: Maybe<Node>;
+  /**
+   * Batched form of `node(id:)`. Preserves input order; each element is
+   * resolved independently and may be null.
+   */
+  nodes: Array<Maybe<Node>>;
+  /** Look up a single pick configuration by its on-chain `pickConfigId`. */
+  pickConfiguration?: Maybe<PickConfiguration>;
+  /**
+   * Relay-shaped connection over pick configurations. Defaults to
+   * `CREATED_AT DESC`.
+   */
+  pickConfigurations: PickConfigurationConnection;
+  /** Top 20 most-used tags across public conditions. */
+  popularTags: Array<Scalars['String']['output']>;
+  /** Look up a single position by its globalId-encoded row id. */
+  position?: Maybe<Position>;
+  /**
+   * Relay-shaped connection over token positions. Defaults to
+   * `UPDATED_AT DESC`.
+   */
+  positions: PositionConnection;
+  /** Look up a single prediction by its on-chain `predictionId`. */
+  prediction?: Maybe<Prediction>;
+  /**
+   * Relay-shaped connection over escrow predictions. Defaults to
+   * `CREATED_AT DESC`.
+   */
+  predictions: PredictionConnection;
+  /** The protocol singleton — aggregate dashboards over all accounts/conditions. */
+  protocol: Protocol;
+  /** Look up a single trade by its on-chain `tradeHash`. */
+  trade?: Maybe<Trade>;
+  /**
+   * Relay-shaped connection over secondary-market trades. Defaults to
+   * `EXECUTED_AT DESC`.
+   */
+  trades: TradeConnection;
+  /**
+   * Look up a single vault by its canonical lowercase contract address.
+   * Falls back to matching against any legacy alias the vault has been
+   * deployed at. `chainId` defaults to the SDK's default chain; pass it
+   * explicitly when querying a non-default chain.
+   */
+  vault?: Maybe<Vault>;
+  /**
+   * Relay-shaped connection over the configured vault set. Vaults are a
+   * small statically configured catalog, so paging matters less than
+   * filterability; the connection exists for completeness and symmetry
+   * with the other root entities.
+   */
+  vaults: VaultConnection;
+};
+
+export type QueryAccountArgs = {
+  address: Scalars['Address']['input'];
+};
+
+export type QueryAccountsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AccountFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<AccountOrder>;
+};
+
+export type QueryActivityArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ActivityFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type QueryCategoriesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<CategoryFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<CategoryOrder>;
+};
+
+export type QueryCategoryArgs = {
+  id: Scalars['Int']['input'];
+};
+
+export type QueryClaimArgs = {
+  id: Scalars['ID']['input'];
+};
+
+export type QueryClaimsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ClaimFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ClaimOrder>;
+};
+
+export type QueryCloseArgs = {
+  id: Scalars['ID']['input'];
+};
+
+export type QueryClosesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<CloseFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<CloseOrder>;
+};
+
+export type QueryCollateralTransferArgs = {
+  id: Scalars['ID']['input'];
+};
+
+export type QueryCollateralTransfersArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<CollateralTransferFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<CollateralTransferOrder>;
+};
+
+export type QueryConditionArgs = {
+  conditionId: Scalars['String']['input'];
+};
+
+export type QueryConditionGroupArgs = {
+  id: Scalars['Int']['input'];
+};
+
+export type QueryConditionGroupsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ConditionGroupFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ConditionGroupOrder>;
+};
+
+export type QueryConditionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ConditionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ConditionOrder>;
+};
+
+export type QueryForecastArgs = {
+  uid: Scalars['Bytes32']['input'];
+};
+
+export type QueryForecastsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ForecastFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ForecastOrder>;
+};
+
+export type QueryLeaderboardArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AccountRankingFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  metric: LeaderboardMetric;
+};
+
+export type QueryNodeArgs = {
+  id: Scalars['ID']['input'];
+};
+
+export type QueryNodesArgs = {
+  ids: Array<Scalars['ID']['input']>;
+};
+
+export type QueryPickConfigurationArgs = {
+  pickConfigId: Scalars['String']['input'];
+};
+
+export type QueryPickConfigurationsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PickConfigurationFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PickConfigurationOrder>;
+};
+
+export type QueryPositionArgs = {
+  id: Scalars['ID']['input'];
+};
+
+export type QueryPositionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PositionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PositionOrder>;
+};
+
+export type QueryPredictionArgs = {
+  predictionId: Scalars['String']['input'];
+};
+
+export type QueryPredictionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<PredictionFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<PredictionOrder>;
+};
+
+export type QueryTradeArgs = {
+  tradeHash: Scalars['Bytes32']['input'];
+};
+
+export type QueryTradesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<TradeFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<TradeOrder>;
+};
+
+export type QueryVaultArgs = {
+  address: Scalars['Address']['input'];
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type QueryVaultsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<VaultFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<VaultOrder>;
+};
+
+/**
+ * A referral code an account can issue or be referred by. Not a Node —
+ * referrals are looked up only through `Account.referredByCode`.
+ */
+export type ReferralCode = {
+  __typename?: 'ReferralCode';
+  createdAt: Scalars['DateTimeISO']['output'];
+  createdBy: Scalars['Address']['output'];
+  creatorType: Scalars['String']['output'];
+  expiresAt?: Maybe<Scalars['UnixSeconds']['output']>;
+  isActive: Scalars['Boolean']['output'];
+  maxClaims: Scalars['Int']['output'];
+};
+
+export type SettlementResult =
+  | 'COUNTERPARTY_WINS'
+  | 'NON_DECISIVE'
+  | 'PREDICTOR_WINS'
+  | 'UNRESOLVED';
+
+export type SettlementResultFilter = {
+  equals?: InputMaybe<SettlementResult>;
+  in?: InputMaybe<Array<SettlementResult>>;
+};
+
+/**
+ * Bundled similar-market signal for a Condition. All `volume*` fields are
+ * USD trading volume on the linked external market over the listed window;
+ * `volumeFiltered*` exclude pre-resolution / off-platform volume. Image
+ * and `markets` carry the source-side metadata used to render an
+ * attribution chip in the UI.
+ */
+export type SimilarMarket = {
+  __typename?: 'SimilarMarket';
+  image?: Maybe<Scalars['String']['output']>;
+  markets: Array<Scalars['String']['output']>;
+  volume: Scalars['Float']['output'];
+  volume1h: Scalars['Float']['output'];
+  volume4h: Scalars['Float']['output'];
+  volume7d: Scalars['Float']['output'];
+  volume24h: Scalars['Float']['output'];
+  volumeFiltered1h: Scalars['Float']['output'];
+  volumeFiltered4h: Scalars['Float']['output'];
+  volumeFiltered7d: Scalars['Float']['output'];
+  volumeFiltered24h: Scalars['Float']['output'];
+};
+
+/**
+ * Open-interest bucketed by time-to-resolution. Each unsettled prediction
+ * is bucketed by the latest endTime among its constituent conditions.
+ */
+export type TimeToResolutionBucket = {
+  __typename?: 'TimeToResolutionBucket';
+  /** Sort key: 1 = soonest, ascending for further-out buckets. */
+  bucket: Scalars['Int']['output'];
+  /** Display label, e.g. ≤1d / 2-7d / 1-2mo. */
+  label: Scalars['String']['output'];
+  openInterest: Scalars['BigInt']['output'];
+  predictionCount: Scalars['Int']['output'];
+};
+
+/**
+ * Secondary-market trade — a peer-to-peer transfer of position tokens.
+ * Identified by its canonical on-chain `tradeHash`. v2 wire shape uses
+ * typed scalars throughout (`Address`, `Bytes32`, `BigInt`) where v1
+ * returned plain `String!`.
+ */
+export type Trade = Node & {
+  __typename?: 'Trade';
+  blockNumber: Scalars['Int']['output'];
+  buyer: Scalars['Address']['output'];
+  chainId: Scalars['Int']['output'];
+  /** Collateral asset paid by the buyer. */
+  collateral: Scalars['Address']['output'];
+  executedAt: Scalars['UnixSeconds']['output'];
+  id: Scalars['ID']['output'];
+  /** Total collateral paid by the buyer, wei. `price / tokenAmount` is the per-share price. */
+  price: Scalars['BigInt']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  seller: Scalars['Address']['output'];
+  /** Position token being transferred. */
+  token: Scalars['Address']['output'];
+  /** Quantity of position tokens transferred, wei (18-dec). */
+  tokenAmount: Scalars['BigInt']['output'];
+  tradeHash: Scalars['Bytes32']['output'];
+  txHash: Scalars['Bytes32']['output'];
+};
+
+export type TradeConnection = {
+  __typename?: 'TradeConnection';
+  edges: Array<TradeEdge>;
+  nodes: Array<Trade>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type TradeEdge = {
+  __typename?: 'TradeEdge';
+  cursor: Scalars['String']['output'];
+  node: Trade;
+};
+
+export type TradeFilter = {
+  buyer?: InputMaybe<Scalars['Address']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  executedAt?: InputMaybe<IntRangeFilter>;
+  /**
+   * Restrict to trades where the address is on either side (buyer or seller).
+   * Convenience filter for per-account activity feeds; mutually exclusive
+   * with `buyer` / `seller` (passing both wins toward `participant`).
+   */
+  participant?: InputMaybe<Scalars['Address']['input']>;
+  seller?: InputMaybe<Scalars['Address']['input']>;
+  token?: InputMaybe<Scalars['Address']['input']>;
+  tokens?: InputMaybe<Array<Scalars['Address']['input']>>;
+  tradeHash?: InputMaybe<Scalars['Bytes32']['input']>;
+};
+
+export type TradeOrder = {
+  direction: OrderDirection;
+  field: TradeOrderField;
+};
+
+export type TradeOrderField = 'BLOCK_NUMBER' | 'EXECUTED_AT';
+
+/**
+ * Endpoint health / version probe. Clients can read `schemaVersion` to
+ * detect when the v2 surface evolves.
+ */
+export type V2Health = {
+  __typename?: 'V2Health';
+  schemaVersion: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+};
+
+/**
+ * A statically configured protocol vault. Vaults are address-keyed like
+ * accounts but contract-controlled, with their own deployment kind and
+ * historical legacy aliases. The small total count means the connection
+ * exists primarily for enumeration; per-vault refetch goes through
+ * `vault(address:)`.
+ */
+export type Vault = AddressEntity &
+  Node & {
+    __typename?: 'Vault';
+    /** Canonical lowercase vault contract address (current primary). */
+    address: Scalars['Address']['output'];
+    /** Chain the vault is deployed on. */
+    chainId: Scalars['Int']['output'];
+    id: Scalars['ID']['output'];
+    /** Deployment kind — one of a small enum set. */
+    kind: VaultKind;
+    /**
+     * Previously-active vault contract addresses (lowercase). Old refs may
+     * still appear in indexer data; the canonical `address` is the current
+     * primary deployment.
+     */
+    legacyAddresses: Array<Scalars['Address']['output']>;
+  };
+
+export type VaultConnection = {
+  __typename?: 'VaultConnection';
+  edges: Array<VaultEdge>;
+  nodes: Array<Vault>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type VaultEdge = {
+  __typename?: 'VaultEdge';
+  cursor: Scalars['String']['output'];
+  node: Vault;
+};
+
+/**
+ * Filter for the `vaults` connection. Address filter exists primarily for
+ * enumeration patterns that want to scope to a known vault — single-row
+ * lookup should use `vault(address:)` instead.
+ */
+export type VaultFilter = {
+  /** Restrict to a single vault address (case-insensitive). Matches both the current primary and any legacy alias. */
+  address?: InputMaybe<Scalars['Address']['input']>;
+  /** Restrict to a single chain. Defaults to the SDK's default chain when omitted. */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  /** Restrict to a single deployment kind. */
+  kind?: InputMaybe<VaultKind>;
+};
+
+/**
+ * Identifies which "family" of vault a row belongs to. Maps 1:1 to the
+ * keys under `predictionMarketVault` in the SDK contracts module.
+ */
+export type VaultKind = 'PROTOCOL' | 'PYTH' | 'SINGLE_LEG' | 'STRATEGY_B';
+
+export type VaultOrder = {
+  direction: OrderDirection;
+  field: VaultOrderField;
+};
+
+export type VaultOrderField = 'ADDRESS';

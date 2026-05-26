@@ -1,0 +1,1369 @@
+"""
+0x-prefixed lowercase 20-byte Ethereum address. Mixed-case checksum input is accepted and normalized to lowercase.
+"""
+scalar Address
+
+"""
+Integer Unix timestamp in seconds (UTC). Wire format is Int; the scalar carries the unit/TZ contract in the type system rather than the field name.
+"""
+scalar UnixSeconds
+
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
+"""
+scalar DateTimeISO
+
+"""
+The `BigInt` scalar type represents non-fractional signed whole numeric values.
+"""
+scalar BigInt
+
+"""
+0x-prefixed lowercase 32-byte hex value. Used for transaction hashes, EAS UIDs, and other 32-byte on-chain identifiers.
+"""
+scalar Bytes32
+
+"""
+Relay `Node` interface — every persistent entity in v2 implements it.
+The `id` is an opaque base64url-encoded `(TypeName, domainId)` pair;
+clients should treat it as a refetch handle and read the entity's named
+domain identifier (`address`, `predictionId`, `tradeHash`, …) for any
+display or persistence use.
+"""
+interface Node {
+  id: ID!
+}
+
+"""
+Anything addressable on-chain. Both wallet-keyed accounts and
+contract-controlled vaults expose an `address` and a Node identity, so
+v2 unifies them under one interface. Address-scoped fields shared by
+both kinds (`stats`, `collateralBalance`, `rank`, …) attach here in the
+phases that introduce them; this stub starts the interface narrow.
+"""
+interface AddressEntity implements Node {
+  id: ID!
+  address: Address!
+}
+
+"""Standard Relay pagination metadata."""
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+"""Order direction shared across every `*Order` input."""
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+"""
+Endpoint health / version probe. Clients can read `schemaVersion` to
+detect when the v2 surface evolves.
+"""
+type V2Health {
+  status: String!
+  schemaVersion: String!
+}
+
+"""
+Address-keyed account record — wallet-level identity. Synthesized for
+addresses that have no User row so every valid address resolves to an
+Account; persistent rows additionally carry referral metadata.
+"""
+type Account implements Node & AddressEntity {
+  id: ID!
+
+  """Canonical lowercase Ethereum wallet address."""
+  address: Address!
+
+  """
+  When this account first appeared in the database. Synthesized accounts return the unix epoch.
+  """
+  createdAt: DateTimeISO!
+
+  """
+  keccak256(utf8(trimmed_lowercase_code)) of the user's referral code,
+  0x-prefixed hex, if they own one.
+  """
+  refCodeHash: String
+
+  """Maximum number of referrals this account's code allows. Default 0."""
+  maxReferrals: Int!
+
+  """The account that referred this one, if any."""
+  referredBy: Account
+
+  """The referral code this account was referred by, if any."""
+  referredByCode: ReferralCode
+
+  """Accounts referred by this account, via its referral code."""
+  referrals(first: Int = 50, after: String): AccountConnection!
+
+  """Rank of this account on a chosen metric, or null when unranked."""
+  rank(metric: LeaderboardMetric!, filter: AccountRankingFilter): AccountRanking
+
+  """Current wUSDe wallet balance at an optional block (defaults to head)."""
+  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
+
+  """
+  Time-bucketed wUSDe wallet balance snapshots. Step size is
+  `intervalSeconds` (default 7d); returns `first + 1` boundaries
+  back from now.
+  """
+  collateralBalanceHistory(chainId: Int!, first: Int = 12, after: String, intervalSeconds: Int): CollateralBalanceSnapshotConnection!
+}
+
+"""
+A referral code an account can issue or be referred by. Not a Node —
+referrals are looked up only through `Account.referredByCode`.
+"""
+type ReferralCode {
+  createdAt: DateTimeISO!
+  createdBy: Address!
+  creatorType: String!
+  maxClaims: Int!
+  isActive: Boolean!
+  expiresAt: UnixSeconds
+}
+
+type AccountEdge {
+  cursor: String!
+  node: Account!
+}
+
+type AccountConnection {
+  edges: [AccountEdge!]!
+  nodes: [Account!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Filter input for `accounts`. Intentionally narrow — the only meaningful
+filter dimension for an address-keyed table is substring match against
+the address itself.
+"""
+input AccountFilter {
+  """Substring search against the wallet address (case-insensitive)."""
+  search: String
+}
+
+enum AccountOrderField {
+  CREATED_AT
+}
+
+input AccountOrder {
+  field: AccountOrderField!
+  direction: OrderDirection!
+}
+
+"""
+A statically configured protocol vault. Vaults are address-keyed like
+accounts but contract-controlled, with their own deployment kind and
+historical legacy aliases. The small total count means the connection
+exists primarily for enumeration; per-vault refetch goes through
+`vault(address:)`.
+"""
+type Vault implements Node & AddressEntity {
+  id: ID!
+
+  """Canonical lowercase vault contract address (current primary)."""
+  address: Address!
+
+  """Chain the vault is deployed on."""
+  chainId: Int!
+
+  """Deployment kind — one of a small enum set."""
+  kind: VaultKind!
+
+  """
+  Previously-active vault contract addresses (lowercase). Old refs may
+  still appear in indexer data; the canonical `address` is the current
+  primary deployment.
+  """
+  legacyAddresses: [Address!]!
+}
+
+"""
+Identifies which "family" of vault a row belongs to. Maps 1:1 to the
+keys under `predictionMarketVault` in the SDK contracts module.
+"""
+enum VaultKind {
+  PROTOCOL
+  PYTH
+  SINGLE_LEG
+  STRATEGY_B
+}
+
+type VaultEdge {
+  cursor: String!
+  node: Vault!
+}
+
+type VaultConnection {
+  edges: [VaultEdge!]!
+  nodes: [Vault!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Filter for the `vaults` connection. Address filter exists primarily for
+enumeration patterns that want to scope to a known vault — single-row
+lookup should use `vault(address:)` instead.
+"""
+input VaultFilter {
+  """
+  Restrict to a single vault address (case-insensitive). Matches both the current primary and any legacy alias.
+  """
+  address: Address
+
+  """
+  Restrict to a single chain. Defaults to the SDK's default chain when omitted.
+  """
+  chainId: Int
+
+  """Restrict to a single deployment kind."""
+  kind: VaultKind
+}
+
+enum VaultOrderField {
+  ADDRESS
+}
+
+input VaultOrder {
+  field: VaultOrderField!
+  direction: OrderDirection!
+}
+
+"""
+A category groups prediction conditions / condition groups for the
+UI. Backed by the Postgres `Category` table.
+"""
+type Category implements Node {
+  id: ID!
+
+  """
+  Internal integer primary key; stable per-row, not encoded in opaque ids.
+  """
+  categoryId: Int!
+  name: String!
+  slug: String!
+  createdAt: DateTimeISO!
+}
+
+type CategoryEdge {
+  cursor: String!
+  node: Category!
+}
+
+type CategoryConnection {
+  edges: [CategoryEdge!]!
+  nodes: [Category!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input CategoryFilter {
+  """Case-insensitive substring match against `name`."""
+  search: String
+}
+
+enum CategoryOrderField {
+  NAME
+  CREATED_AT
+}
+
+input CategoryOrder {
+  field: CategoryOrderField!
+  direction: OrderDirection!
+}
+
+"""
+EAS attestation-backed forecast made by `forecaster` against `resolverAddress`.
+Identified by its on-chain `uid`. Wire shape drops the leaked Prisma column
+names (`attester`, `time`) in favour of the public-API names (`forecaster`,
+`attestedAt`); the raw on-chain value is renamed `forecastValue` to avoid
+the type-vs-field naming collision v1 had.
+"""
+type Forecast implements Node {
+  id: ID!
+  uid: Bytes32!
+  schemaId: Bytes32!
+  forecaster: Address!
+  recipient: Address!
+  resolverAddress: Address
+
+  """
+  CTF condition id this forecast targets, lowercase 0x-hex. May be null for non-condition-backed forecasts.
+  """
+  conditionId: String
+
+  """
+  Raw on-chain forecast value — D18 fixed-point probability in
+  `[0, 1e18]`. Divide by 1e18 to render as a 0–1 float.
+  """
+  forecastValue: BigInt!
+  comment: String
+  attestedAt: UnixSeconds!
+  blockNumber: Int!
+  transactionHash: Bytes32!
+  createdAt: DateTimeISO!
+}
+
+type ForecastEdge {
+  cursor: String!
+  node: Forecast!
+}
+
+type ForecastConnection {
+  edges: [ForecastEdge!]!
+  nodes: [Forecast!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Range filter for an integer/UnixSeconds field; both bounds inclusive."""
+input IntRangeFilter {
+  gte: Int
+  lte: Int
+}
+
+input ForecastFilter {
+  uid: Bytes32
+  forecaster: Address
+  recipient: Address
+  conditionId: String
+  conditionIds: [String!]
+  schemaId: Bytes32
+  attestedAt: IntRangeFilter
+}
+
+enum ForecastOrderField {
+  ATTESTED_AT
+  CREATED_AT
+}
+
+input ForecastOrder {
+  field: ForecastOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Secondary-market trade — a peer-to-peer transfer of position tokens.
+Identified by its canonical on-chain `tradeHash`. v2 wire shape uses
+typed scalars throughout (`Address`, `Bytes32`, `BigInt`) where v1
+returned plain `String!`.
+"""
+type Trade implements Node {
+  id: ID!
+  tradeHash: Bytes32!
+  chainId: Int!
+  buyer: Address!
+  seller: Address!
+
+  """Position token being transferred."""
+  token: Address!
+
+  """Collateral asset paid by the buyer."""
+  collateral: Address!
+
+  """
+  Total collateral paid by the buyer, wei. `price / tokenAmount` is the per-share price.
+  """
+  price: BigInt!
+
+  """Quantity of position tokens transferred, wei (18-dec)."""
+  tokenAmount: BigInt!
+  txHash: Bytes32!
+  blockNumber: Int!
+  executedAt: UnixSeconds!
+  refCode: String
+}
+
+type TradeEdge {
+  cursor: String!
+  node: Trade!
+}
+
+type TradeConnection {
+  edges: [TradeEdge!]!
+  nodes: [Trade!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input TradeFilter {
+  tradeHash: Bytes32
+
+  """
+  Restrict to trades where the address is on either side (buyer or seller).
+  Convenience filter for per-account activity feeds; mutually exclusive
+  with `buyer` / `seller` (passing both wins toward `participant`).
+  """
+  participant: Address
+  buyer: Address
+  seller: Address
+  token: Address
+  tokens: [Address!]
+  chainId: Int
+  executedAt: IntRangeFilter
+}
+
+enum TradeOrderField {
+  EXECUTED_AT
+  BLOCK_NUMBER
+}
+
+input TradeOrder {
+  field: TradeOrderField!
+  direction: OrderDirection!
+}
+
+"""
+On-chain prediction condition. v2 drops v1's legacy boolean flags
+(`settled`, `resolvedToYes`, `nonDecisive`) in favour of the single
+nullable `outcome` enum; clients should filter "settled" as
+`outcome: { isNull: false }` (or `null` means not yet settled).
+
+Heavy `similarMarket*` fields collapse into a nested `similarMarket`
+value type — wire-weight reduction and grouping by source.
+"""
+type Condition implements Node {
+  id: ID!
+
+  """CTF on-chain condition id, lowercase 0x-hex."""
+  conditionId: String!
+  chainId: Int!
+  question: String!
+  description: String!
+  shortName: String
+  optionName: String
+
+  """Resolver (oracle) contract address that settles this condition."""
+  resolverAddress: Address!
+  endTime: UnixSeconds!
+  settledAt: UnixSeconds
+
+  """
+  Resolved state — `null` until the on-chain resolver returns. `YES` /
+  `NO` are decisive resolutions of the binary outcome; `NON_DECISIVE`
+  covers voided / tied / unresolvable settlements.
+  """
+  outcome: ConditionOutcome
+
+  """Cumulative on-chain open interest, wei."""
+  openInterest: BigInt!
+
+  """YES probability from Polymarket (0.0–1.0), null for non-Polymarket."""
+  estimatedPrice: Float
+
+  """Visibility — false hides this condition from public listing surfaces."""
+  public: Boolean!
+  displayOrder: Int
+  tags: [String!]!
+  createdAt: DateTimeISO!
+  categoryId: Int
+  category: Category
+  conditionGroupId: Int
+  conditionGroup: ConditionGroup
+
+  """Bundled similar-market signal from external sources (Polymarket)."""
+  similarMarket: SimilarMarket
+}
+
+enum ConditionOutcome {
+  YES
+  NO
+  NON_DECISIVE
+}
+
+"""
+Bundled similar-market signal for a Condition. All `volume*` fields are
+USD trading volume on the linked external market over the listed window;
+`volumeFiltered*` exclude pre-resolution / off-platform volume. Image
+and `markets` carry the source-side metadata used to render an
+attribution chip in the UI.
+"""
+type SimilarMarket {
+  image: String
+  markets: [String!]!
+  volume: Float!
+  volume1h: Float!
+  volume4h: Float!
+  volume24h: Float!
+  volume7d: Float!
+  volumeFiltered1h: Float!
+  volumeFiltered4h: Float!
+  volumeFiltered24h: Float!
+  volumeFiltered7d: Float!
+}
+
+type ConditionEdge {
+  cursor: String!
+  node: Condition!
+}
+
+type ConditionConnection {
+  edges: [ConditionEdge!]!
+  nodes: [Condition!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input ConditionFilter {
+  conditionId: String
+  conditionIds: [String!]
+  chainId: Int
+  categoryId: Int
+
+  """Restrict to settled (`outcome` non-null) / unsettled (null)."""
+  settled: Boolean
+  outcome: ConditionOutcome
+
+  """
+  Restrict to public conditions only (default true when omitted on listing surfaces).
+  """
+  publicOnly: Boolean
+
+  """Restrict to conditions tagged with at least one of these."""
+  tags: [String!]
+
+  """Substring search across `question` / `description`, case-insensitive."""
+  search: String
+  endTime: IntRangeFilter
+}
+
+enum ConditionOrderField {
+  CREATED_AT
+  END_TIME
+  DISPLAY_ORDER
+  OPEN_INTEREST
+}
+
+input ConditionOrder {
+  field: ConditionOrderField!
+  direction: OrderDirection!
+}
+
+"""
+A named bundle of related conditions — used by the UI to group e.g.
+"Who wins the Super Bowl" into one card with per-option conditions
+underneath. The bundle exposes aggregated counters across its
+constituent conditions.
+"""
+type ConditionGroup implements Node {
+  id: ID!
+
+  """Internal integer primary key — stable per row."""
+  groupId: Int!
+  name: String!
+  similarMarkets: [String!]!
+  createdAt: DateTimeISO!
+  categoryId: Int
+  category: Category
+
+  """Aggregated counters across this group's public conditions."""
+  totals: ConditionGroupTotals!
+
+  """Conditions in this group, ordered by `displayOrder` then `createdAt`."""
+  conditions(first: Int = 50, after: String): ConditionConnection!
+}
+
+"""
+Pre-computed aggregates over a ConditionGroup's public conditions.
+Recomputed by the indexer; clients should treat the numbers as
+near-real-time.
+"""
+type ConditionGroupTotals {
+  publicConditionCount: Int!
+  totalPredictionCount: Int!
+  totalOpenInterest: BigInt!
+  maxEndTime: UnixSeconds
+  maxCreatedAtEpoch: UnixSeconds
+  totalSimilarMarketVolume1h: Float!
+  totalSimilarMarketVolume4h: Float!
+  totalSimilarMarketVolume24h: Float!
+  totalSimilarMarketVolume7d: Float!
+  totalSimilarMarketVolumeFiltered1h: Float!
+  totalSimilarMarketVolumeFiltered4h: Float!
+  totalSimilarMarketVolumeFiltered24h: Float!
+  totalSimilarMarketVolumeFiltered7d: Float!
+}
+
+type ConditionGroupEdge {
+  cursor: String!
+  node: ConditionGroup!
+}
+
+type ConditionGroupConnection {
+  edges: [ConditionGroupEdge!]!
+  nodes: [ConditionGroup!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input ConditionGroupFilter {
+  categoryId: Int
+
+  """Substring search against `name`, case-insensitive."""
+  search: String
+}
+
+enum ConditionGroupOrderField {
+  CREATED_AT
+  NAME
+  MAX_END_TIME
+  TOTAL_OPEN_INTEREST
+  TOTAL_PREDICTION_COUNT
+}
+
+input ConditionGroupOrder {
+  field: ConditionGroupOrderField!
+  direction: OrderDirection!
+}
+
+"""
+A pick configuration bundles the per-condition picks that make up a
+single prediction. The `pickConfigId` is a deterministic 0x-hash of
+the constituent picks — same picks produce the same pickConfigId.
+"""
+type PickConfiguration implements Node {
+  id: ID!
+  pickConfigId: String!
+  chainId: Int!
+  marketAddress: Address!
+  predictorToken: Address
+  counterpartyToken: Address
+  isLegacy: Boolean!
+  resolved: Boolean!
+  resolvedAt: UnixSeconds
+  result: SettlementResult!
+  endsAt: UnixSeconds
+  totalPredictorCollateral: BigInt!
+  totalCounterpartyCollateral: BigInt!
+  claimedPredictorCollateral: BigInt!
+  claimedCounterpartyCollateral: BigInt!
+  picks: [Pick!]!
+}
+
+"""
+A single condition + outcome pair within a PickConfiguration. Not a Node —
+picks are only fetched in the context of their parent configuration.
+"""
+type Pick {
+  conditionId: String!
+  conditionResolverAddress: Address!
+  predictedOutcome: Int!
+  condition: Condition
+}
+
+enum SettlementResult {
+  COUNTERPARTY_WINS
+  PREDICTOR_WINS
+  NON_DECISIVE
+  UNRESOLVED
+}
+
+input SettlementResultFilter {
+  equals: SettlementResult
+  in: [SettlementResult!]
+}
+
+type PickConfigurationEdge {
+  cursor: String!
+  node: PickConfiguration!
+}
+
+type PickConfigurationConnection {
+  edges: [PickConfigurationEdge!]!
+  nodes: [PickConfiguration!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input PickConfigurationFilter {
+  chainId: Int
+  resolved: Boolean
+  result: SettlementResultFilter
+
+  """
+  Either predictor or counterparty token matches one of these (case-insensitive).
+  """
+  tokens: [Address!]
+}
+
+enum PickConfigurationOrderField {
+  CREATED_AT
+  ENDS_AT
+  RESOLVED_AT
+}
+
+input PickConfigurationOrder {
+  field: PickConfigurationOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Escrow-based prediction — a two-sided bet between a predictor and a
+counterparty, settled by the pick configuration's underlying condition(s).
+Identified by its on-chain `predictionId`.
+"""
+type Prediction implements Node {
+  id: ID!
+  predictionId: String!
+  chainId: Int!
+  marketAddress: Address!
+  predictor: Address!
+  counterparty: Address!
+  predictorToken: Address!
+  counterpartyToken: Address!
+  predictorCollateral: BigInt!
+  counterpartyCollateral: BigInt!
+  collateralDeposited: BigInt
+  collateralDepositedAt: UnixSeconds
+  settled: Boolean!
+  settledAt: UnixSeconds
+  result: SettlementResult!
+  predictorClaimable: BigInt
+  counterpartyClaimable: BigInt
+  createdAt: DateTimeISO!
+  createTxHash: Bytes32!
+  settleTxHash: Bytes32
+  refCode: String
+  isLegacy: Boolean!
+  pickConfig: PickConfiguration
+}
+
+type PredictionEdge {
+  cursor: String!
+  node: Prediction!
+}
+
+type PredictionConnection {
+  edges: [PredictionEdge!]!
+  nodes: [Prediction!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input PredictionFilter {
+  predictionId: String
+
+  """
+  Restrict to predictions where the address is predictor or counterparty.
+  Convenience filter; mutually exclusive with `predictor` / `counterparty`.
+  """
+  participant: Address
+  predictor: Address
+  counterparty: Address
+  chainId: Int
+  pickConfigId: String
+
+  """
+  Restrict to predictions on a single condition (via the pickConfig join).
+  """
+  conditionId: String
+
+  """
+  Restrict to predictions on any of these conditions (via the pickConfig join).
+  """
+  conditionIds: [String!]
+  isLegacy: Boolean
+  settled: Boolean
+  result: SettlementResultFilter
+
+  """Filter by pickConfig end epoch seconds."""
+  endsAt: IntRangeFilter
+}
+
+enum PredictionOrderField {
+  CREATED_AT
+  SETTLED_AT
+}
+
+input PredictionOrder {
+  field: PredictionOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Position-token balance held by `holder` on a specific pick configuration.
+The synthesized sell-event row format from v1 doesn't carry forward; v2
+returns raw balance rows. Cost-basis / realized-PnL surfaces will land
+behind opt-in fields in a later phase.
+"""
+type Position implements Node {
+  id: ID!
+  chainId: Int!
+  holder: Address!
+  pickConfigId: String!
+  pickConfig: PickConfiguration
+
+  """ERC-20 position token address."""
+  tokenAddress: Address!
+
+  """True if this is the predictor token side; false for counterparty."""
+  isPredictorToken: Boolean!
+
+  """Number of position tokens still held, wei (18 decimals)."""
+  balance: BigInt!
+  createdAt: DateTimeISO!
+  updatedAt: DateTimeISO!
+}
+
+type PositionEdge {
+  cursor: String!
+  node: Position!
+}
+
+type PositionConnection {
+  edges: [PositionEdge!]!
+  nodes: [Position!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input PositionFilter {
+  holder: Address
+  chainId: Int
+  conditionId: String
+  pickConfigId: String
+
+  """Restrict to positions whose pickConfig settled with this result."""
+  result: SettlementResultFilter
+
+  """Restrict to positions where the pickConfig is settled / unsettled."""
+  settled: Boolean
+
+  """Filter by pickConfig end epoch seconds."""
+  endsAt: IntRangeFilter
+}
+
+enum PositionOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+
+input PositionOrder {
+  field: PositionOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Token-redeem event — holder burned position tokens to redeem collateral
+after settlement. Identified by `(chainId, txHash, logIndex)`.
+"""
+type Claim implements Node {
+  id: ID!
+  chainId: Int!
+  marketAddress: Address!
+  predictionId: String!
+  holder: Address!
+  positionToken: Address!
+  tokensBurned: BigInt!
+  collateralPaid: BigInt!
+  redeemedAt: UnixSeconds!
+  txHash: Bytes32!
+  logIndex: Int!
+  refCode: String
+  createdAt: DateTimeISO!
+}
+
+type ClaimEdge {
+  cursor: String!
+  node: Claim!
+}
+
+type ClaimConnection {
+  edges: [ClaimEdge!]!
+  nodes: [Claim!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input ClaimFilter {
+  chainId: Int
+  holder: Address
+  predictionId: String
+}
+
+enum ClaimOrderField {
+  REDEEMED_AT
+}
+
+input ClaimOrder {
+  field: ClaimOrderField!
+  direction: OrderDirection!
+}
+
+"""
+Position-close (burn) event — both sides burn their tokens after the
+pickConfig settles and receive the proportional payout.
+"""
+type Close implements Node {
+  id: ID!
+  chainId: Int!
+  marketAddress: Address!
+  pickConfigId: String!
+  predictorHolder: Address!
+  counterpartyHolder: Address!
+  predictorTokensBurned: BigInt!
+  counterpartyTokensBurned: BigInt!
+  predictorPayout: BigInt!
+  counterpartyPayout: BigInt!
+  burnedAt: UnixSeconds!
+  txHash: Bytes32!
+  refCode: String
+  createdAt: DateTimeISO!
+}
+
+type CloseEdge {
+  cursor: String!
+  node: Close!
+}
+
+type CloseConnection {
+  edges: [CloseEdge!]!
+  nodes: [Close!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input CloseFilter {
+  chainId: Int
+  pickConfigId: String
+
+  """
+  Restrict to closes where the address is on either side (predictor or counterparty).
+  """
+  participant: Address
+}
+
+enum CloseOrderField {
+  BURNED_AT
+}
+
+input CloseOrder {
+  field: CloseOrderField!
+  direction: OrderDirection!
+}
+
+"""
+On-chain ERC-20 Transfer of the collateral token (wUSDe). The
+`(chainId, transactionHash, logIndex)` tuple is the natural key.
+"""
+type CollateralTransfer implements Node {
+  id: ID!
+  chainId: Int!
+  blockNumber: Int!
+  timestamp: DateTimeISO!
+  transactionHash: Bytes32!
+  logIndex: Int!
+  from: Address!
+  to: Address!
+
+  """Transfer amount in wei (18 decimals)."""
+  value: BigInt!
+  createdAt: DateTimeISO!
+}
+
+type CollateralTransferEdge {
+  cursor: String!
+  node: CollateralTransfer!
+}
+
+type CollateralTransferConnection {
+  edges: [CollateralTransferEdge!]!
+  nodes: [CollateralTransfer!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Date/time range filter; both bounds inclusive."""
+input DateTimeRangeFilter {
+  gte: DateTimeISO
+  lte: DateTimeISO
+}
+
+input CollateralTransferFilter {
+  """OR across from/to (account is on either side of the transfer)."""
+  account: Address
+  chainId: Int
+  timestamp: DateTimeRangeFilter
+  transactionHash: Bytes32
+
+  """
+  Exclude transfers to/from configured protocol addresses (vault, escrow).
+  """
+  excludeProtocol: Boolean
+}
+
+enum CollateralTransferOrderField {
+  BLOCK_NUMBER
+  TIMESTAMP
+}
+
+input CollateralTransferOrder {
+  field: CollateralTransferOrderField!
+  direction: OrderDirection!
+}
+
+"""
+A unified activity item — either an escrow `Prediction` or a
+secondary-market `Trade`. v2 returns the union directly; v1 wrapped
+each item in an `Activity` envelope, which forced clients to dereference
+through `.source` to get the entity. Here the union is the wire shape.
+
+`Forecast` is intentionally not in the union — see the v1 design doc's
+"Activity model" section. Forecasts are a separate timeline.
+"""
+union ActivityItem = Prediction | Trade
+
+type ActivityEdge {
+  cursor: String!
+  node: ActivityItem!
+}
+
+"""
+Relay-shaped connection over the interleaved Prediction + Trade feed.
+`nodes` is omitted because unions don't share a field set; clients
+should select through `edges { node { ... } }` with inline fragments.
+"""
+type ActivityConnection {
+  edges: [ActivityEdge!]!
+  pageInfo: PageInfo!
+
+  """Sum of matching predictions + trades. Two indexed COUNT(*) queries."""
+  totalCount: Int!
+}
+
+enum ActivityType {
+  PREDICTION
+  TRADE
+}
+
+input ActivityFilter {
+  """
+  OR across predictor/counterparty (predictions) and buyer/seller (trades).
+  """
+  account: Address
+  conditionId: String
+  conditionIds: [String!]
+  pickConfigId: String
+
+  """Restrict to a subset of activity types. `[]` is a zero-result query."""
+  types: [ActivityType!]
+
+  """Filter by activity timestamp in epoch seconds."""
+  timestamp: IntRangeFilter
+}
+
+"""
+Metric an `AccountRanking` is sorted by.
+
+- `ACCURACY`: lifetime time-weighted Brier-style score; ignores the
+  window filter (the score already weights by recency).
+- `PNL`: net profit/loss across settled positions over the window.
+- `VOLUME`: total trade volume over the window.
+- `ROI`: PnL / volume ratio (`null`-safe).
+"""
+enum LeaderboardMetric {
+  ACCURACY
+  PNL
+  VOLUME
+  ROI
+}
+
+input AccountRankingFilter {
+  """Window selector in epoch seconds (inclusive). Ignored for ACCURACY."""
+  timestamp: IntRangeFilter
+}
+
+"""
+One row of an account ranking — the address, its rank (1-indexed), and
+the underlying metric value as a string (formatted per metric).
+"""
+type AccountRanking {
+  account: Account!
+  rank: Int!
+  value: String!
+}
+
+type AccountRankingEdge {
+  cursor: String!
+  node: AccountRanking!
+}
+
+type AccountRankingConnection {
+  edges: [AccountRankingEdge!]!
+  nodes: [AccountRanking!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+  metric: LeaderboardMetric!
+}
+
+"""
+Top-level protocol surface — aggregated cross-account metrics and the
+breakdowns the dashboard renders. Lookup is via `protocol { … }`; no
+arguments needed.
+"""
+type Protocol {
+  stats(filter: ProtocolStatFilter): ProtocolStatConnection!
+  openInterestByCategory: [CategoryOpenInterest!]!
+  openInterestByTimeToResolution: [TimeToResolutionBucket!]!
+}
+
+"""
+Protocol-wide snapshot of cumulative + period metrics. v2 drops the
+vault-scoped fields v1 carried (`vault*`, `periodPnL`) — vault-specific
+stats live on `Vault.stats` in the same shape.
+"""
+type ProtocolStat {
+  timestamp: UnixSeconds!
+  cumulativeVolume: BigInt!
+  cumulativeTradeCount: Int!
+  periodVolume: BigInt!
+  periodTradeCount: Int!
+  openInterest: BigInt!
+  escrowBalance: BigInt!
+}
+
+type ProtocolStatEdge {
+  cursor: String!
+  node: ProtocolStat!
+}
+
+type ProtocolStatConnection {
+  edges: [ProtocolStatEdge!]!
+  nodes: [ProtocolStat!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input ProtocolStatFilter {
+  """Snapshot timestamp window in epoch seconds (inclusive)."""
+  timestamp: IntRangeFilter
+}
+
+"""Open-interest broken down by category."""
+type CategoryOpenInterest {
+  category: Category!
+  openInterest: BigInt!
+}
+
+"""
+Open-interest bucketed by time-to-resolution. Each unsettled prediction
+is bucketed by the latest endTime among its constituent conditions.
+"""
+type TimeToResolutionBucket {
+  """Sort key: 1 = soonest, ascending for further-out buckets."""
+  bucket: Int!
+
+  """Display label, e.g. ≤1d / 2-7d / 1-2mo."""
+  label: String!
+  openInterest: BigInt!
+  predictionCount: Int!
+}
+
+"""
+Wallet wUSDe collateral balance at a point in time. Not a Node —
+snapshots are derived rather than persistent entities.
+"""
+type CollateralBalance {
+  address: Address!
+  chainId: Int!
+  amount: BigInt!
+  atBlock: Int
+}
+
+"""Single time-bucketed wUSDe wallet balance snapshot."""
+type CollateralBalanceSnapshot {
+  address: Address!
+  chainId: Int!
+  amount: BigInt!
+  blockNumber: BigInt!
+  timestamp: DateTimeISO!
+}
+
+type CollateralBalanceSnapshotEdge {
+  cursor: String!
+  node: CollateralBalanceSnapshot!
+}
+
+type CollateralBalanceSnapshotConnection {
+  edges: [CollateralBalanceSnapshotEdge!]!
+  nodes: [CollateralBalanceSnapshot!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type Query {
+  """
+  Relay refetch by opaque global id. Returns `null` when the id is
+  malformed, the type is not registered against the v2 registry, or
+  the underlying entity has been deleted.
+  """
+  node(id: ID!): Node
+
+  """
+  Batched form of `node(id:)`. Preserves input order; each element is
+  resolved independently and may be null.
+  """
+  nodes(ids: [ID!]!): [Node]!
+
+  """Endpoint health / schema-version probe."""
+  _v2Health: V2Health!
+
+  """
+  Look up a single account by canonical wallet address. Always returns
+  an Account — addresses with no User row are synthesized (`createdAt`
+  is the unix epoch, referral fields are null).
+  """
+  account(address: Address!): Account!
+
+  """
+  Relay-shaped connection over accounts (User-table rows). Single-address
+  lookups should use `account(address:)`, which synthesizes for missing
+  rows; `accounts` is for enumeration / search and only returns persisted
+  rows. Defaults to `CREATED_AT DESC`.
+  """
+  accounts(first: Int = 50, after: String, filter: AccountFilter, orderBy: AccountOrder): AccountConnection!
+
+  """
+  Look up a single vault by its canonical lowercase contract address.
+  Falls back to matching against any legacy alias the vault has been
+  deployed at. `chainId` defaults to the SDK's default chain; pass it
+  explicitly when querying a non-default chain.
+  """
+  vault(address: Address!, chainId: Int): Vault
+
+  """
+  Relay-shaped connection over the configured vault set. Vaults are a
+  small statically configured catalog, so paging matters less than
+  filterability; the connection exists for completeness and symmetry
+  with the other root entities.
+  """
+  vaults(first: Int = 50, after: String, filter: VaultFilter, orderBy: VaultOrder): VaultConnection!
+
+  """Look up a single condition group by its integer primary key."""
+  conditionGroup(id: Int!): ConditionGroup
+
+  """
+  Relay-shaped connection over condition groups. Defaults to
+  `MAX_END_TIME ASC` (next-to-resolve first).
+  """
+  conditionGroups(first: Int = 50, after: String, filter: ConditionGroupFilter, orderBy: ConditionGroupOrder): ConditionGroupConnection!
+
+  """
+  The protocol singleton — aggregate dashboards over all accounts/conditions.
+  """
+  protocol: Protocol!
+
+  """Top 20 most-used tags across public conditions."""
+  popularTags: [String!]!
+
+  """
+  Interleaved Prediction + Trade activity feed, sorted by timestamp DESC.
+  """
+  activity(first: Int = 50, after: String, filter: ActivityFilter): ActivityConnection!
+
+  """
+  Account leaderboard ranked by `metric`. PnL / Volume / ROI accept a
+  `filter.timestamp` window; Accuracy is lifetime-aggregated and ignores
+  the window.
+  """
+  leaderboard(metric: LeaderboardMetric!, first: Int = 25, after: String, filter: AccountRankingFilter): AccountRankingConnection!
+
+  """Look up a single collateral transfer by its globalId-encoded row id."""
+  collateralTransfer(id: ID!): CollateralTransfer
+
+  """
+  Relay-shaped connection over collateral-token transfers. Defaults to
+  `TIMESTAMP DESC`.
+  """
+  collateralTransfers(first: Int = 100, after: String, filter: CollateralTransferFilter, orderBy: CollateralTransferOrder): CollateralTransferConnection!
+
+  """Look up a single claim by its globalId-encoded row id."""
+  claim(id: ID!): Claim
+
+  """
+  Relay-shaped connection over claim (redemption) records. Defaults to
+  `REDEEMED_AT DESC`.
+  """
+  claims(first: Int = 50, after: String, filter: ClaimFilter, orderBy: ClaimOrder): ClaimConnection!
+
+  """Look up a single position-close record by its globalId-encoded row id."""
+  close(id: ID!): Close
+
+  """
+  Relay-shaped connection over position close (burn) records. Defaults
+  to `BURNED_AT DESC`.
+  """
+  closes(first: Int = 50, after: String, filter: CloseFilter, orderBy: CloseOrder): CloseConnection!
+
+  """Look up a single position by its globalId-encoded row id."""
+  position(id: ID!): Position
+
+  """
+  Relay-shaped connection over token positions. Defaults to
+  `UPDATED_AT DESC`.
+  """
+  positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
+
+  """Look up a single prediction by its on-chain `predictionId`."""
+  prediction(predictionId: String!): Prediction
+
+  """
+  Relay-shaped connection over escrow predictions. Defaults to
+  `CREATED_AT DESC`.
+  """
+  predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
+
+  """Look up a single pick configuration by its on-chain `pickConfigId`."""
+  pickConfiguration(pickConfigId: String!): PickConfiguration
+
+  """
+  Relay-shaped connection over pick configurations. Defaults to
+  `CREATED_AT DESC`.
+  """
+  pickConfigurations(first: Int = 50, after: String, filter: PickConfigurationFilter, orderBy: PickConfigurationOrder): PickConfigurationConnection!
+
+  """Look up a single condition by its on-chain CTF condition id."""
+  condition(conditionId: String!): Condition
+
+  """
+  Relay-shaped connection over conditions. Defaults to `END_TIME ASC`
+  (next-to-resolve first), but `CREATED_AT DESC` and `OPEN_INTEREST
+  DESC` are common alternates.
+  """
+  conditions(first: Int = 50, after: String, filter: ConditionFilter, orderBy: ConditionOrder): ConditionConnection!
+
+  """Look up a single trade by its on-chain `tradeHash`."""
+  trade(tradeHash: Bytes32!): Trade
+
+  """
+  Relay-shaped connection over secondary-market trades. Defaults to
+  `EXECUTED_AT DESC`.
+  """
+  trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
+
+  """Look up a single forecast by its on-chain `uid`."""
+  forecast(uid: Bytes32!): Forecast
+
+  """
+  Relay-shaped connection over EAS-backed forecasts. Defaults to
+  `ATTESTED_AT DESC`.
+  """
+  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
+
+  """Look up a single category by its integer primary key."""
+  category(id: Int!): Category
+
+  """Relay-shaped connection over categories. Defaults to `NAME ASC`."""
+  categories(first: Int = 100, after: String, filter: CategoryFilter, orderBy: CategoryOrder): CategoryConnection!
+}
