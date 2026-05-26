@@ -25,6 +25,7 @@ import {
   useProtocolStats,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
+import AccountsLeaderboardCard from '~/components/analytics/AccountsLeaderboardCard';
 import OpenInterestByCategoryChart from '~/components/analytics/OpenInterestByCategoryChart';
 import OpenInterestByTimeToResolutionChart from '~/components/analytics/OpenInterestByTimeToResolutionChart';
 import PeriodFilter, {
@@ -418,10 +419,17 @@ function AnalyticsPageContent(): React.ReactElement {
 
         {/* Charts */}
         <div className="space-y-4">
-          {/* Open Interest distribution: by category + by time-to-resolution */}
+          {/* Top accounts + Open Interest distribution */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <OpenInterestByCategoryChart />
-            <OpenInterestByTimeToResolutionChart />
+            <AccountsLeaderboardCard />
+            <div className="flex flex-col gap-4 lg:h-full min-h-0">
+              <div className="flex-1 min-h-0">
+                <OpenInterestByCategoryChart />
+              </div>
+              <div className="flex-1 min-h-0">
+                <OpenInterestByTimeToResolutionChart />
+              </div>
+            </div>
           </div>
 
           <Card className="bg-brand-black border border-brand-white/10">

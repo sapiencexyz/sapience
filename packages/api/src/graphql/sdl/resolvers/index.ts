@@ -65,6 +65,10 @@ import {
   predictionCount,
   predictions,
 } from './queries/escrow';
+import {
+  accountStatsLeaderboardPage,
+  accountStatsRank,
+} from './queries/accountStats';
 import { accountProfitRank, profitLeaderboard } from './queries/pnl';
 import { questions } from './queries/questions';
 import {
@@ -92,6 +96,8 @@ export const resolvers: Resolvers = {
     accountAccuracyRank,
     accuracyLeaderboard,
     accountProfitRank,
+    accountStatsLeaderboardPage,
+    accountStatsRank,
     profitLeaderboard,
     // Time series
     accountBalance,

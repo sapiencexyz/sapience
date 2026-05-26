@@ -1483,7 +1483,91 @@ type ProtocolStat {
   vaultWithdrawals: String!
 }
 
+"""
+Account-stats leaderboard metric. NET_PNL is the default. PnL components
+(GAINS / LOSSES) come from settlement-time attribution; VOLUME comes from
+trade-time attribution.
+"""
+enum AccountStatsMetric {
+  NET_PNL
+  GAINS
+  LOSSES
+  VOLUME
+}
+
+"""
+One row of the account-stats leaderboard — an address with its net PnL,
+gross gains, gross losses, and trading volume over a window. All amounts
+are wei strings (18 decimals); `losses` is negative.
+"""
+type AccountStatsLeaderboardEntry {
+  address: String!
+  netPnL: String!
+  gains: String!
+  losses: String!
+  volume: String!
+}
+
+"""
+Filters for `accountStatsLeaderboardPage` and `accountStatsRank`. All
+fields are optional: omit the input entirely to rank by `NET_PNL` over
+all time. `from` omitted ⇒ no lower bound (all-time); `to` omitted ⇒
+now. Both bounds are inclusive epoch seconds.
+"""
+input AccountStatsFilters {
+  metric: AccountStatsMetric = NET_PNL
+  from: Int
+  to: Int
+}
+
+"""
+Page of `AccountStatsLeaderboardEntry` rows, sorted by the selected
+metric descending. `hasMore` is server-truth; `totalCount` is populated
+unconditionally (cheap in-memory derivation).
+"""
+type AccountStatsLeaderboardPage {
+  items: [AccountStatsLeaderboardEntry!]!
+  hasMore: Boolean!
+  totalCount: Int
+}
+
+"""
+Stats + rank for a single address against the same ranked set the
+leaderboard slices. Stat fields mirror `AccountStatsLeaderboardEntry`
+and are always populated (zero when the address has no activity in the
+window). `rank` is 1-indexed against the ranked set, or null when the
+address is absent from it; `totalParticipants` is the ranked-set size
+(0 when the window has no participants — distinguishes empty window
+from present-window-unranked).
+"""
+type AccountStatsRank {
+  address: String!
+  netPnL: String!
+  gains: String!
+  losses: String!
+  volume: String!
+  rank: Int
+  totalParticipants: Int!
+}
+
 type Query {
+  """
+  Page of accounts ranked by the selected metric over an optional epoch-second window. Default metric is `NET_PNL`; default window is all-time.
+  """
+  accountStatsLeaderboardPage(
+    filters: AccountStatsFilters
+    take: Int! = 25
+    skip: Int! = 0
+  ): AccountStatsLeaderboardPage!
+
+  """
+  Stats + rank for a single address against the same ranked set `accountStatsLeaderboardPage` slices. Falls back to NET_PNL / all-time when `filters` is omitted.
+  """
+  accountStatsRank(
+    address: String!
+    filters: AccountStatsFilters
+  ): AccountStatsRank!
+
   """
   Accuracy score for a single forecaster address, or null if no scored attestations exist
   """
