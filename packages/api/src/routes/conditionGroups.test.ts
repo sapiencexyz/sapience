@@ -107,6 +107,30 @@ describe('conditionGroups routes', () => {
       );
     });
 
+    it('clears negRiskMarketId when explicitly passed an empty string', async () => {
+      mockPrisma.conditionGroup.findUnique.mockResolvedValue({
+        id: 42,
+        name: 'NBA winner',
+        negRiskMarketId: '12345',
+      });
+      mockPrisma.conditionGroup.update.mockResolvedValue({
+        id: 42,
+        name: 'NBA winner',
+        negRiskMarketId: null,
+      });
+
+      const res = await request(app)
+        .put('/admin/conditionGroups/42')
+        .send({ negRiskMarketId: '   ' });
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.conditionGroup.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ negRiskMarketId: null }),
+        })
+      );
+    });
+
     it('sets negRiskMarketId when promoting a group to a basket', async () => {
       mockPrisma.conditionGroup.findUnique.mockResolvedValue({
         id: 42,
