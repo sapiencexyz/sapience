@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { computeSmartAccountAddress } from '@sapience/sdk/session';
 import AmountScreen from './screens/AmountScreen';
@@ -7,19 +7,37 @@ import MintingScreen, { type MintResult } from './screens/MintingScreen';
 import CardScreen, { type Side } from './screens/CardScreen';
 import LockedScreen from './screens/LockedScreen';
 import AdminScreen from './screens/AdminScreen';
+import MintScreen from './screens/MintScreen';
+import CardDetailScreen from './screens/CardDetailScreen';
+import ReferScreen from './screens/ReferScreen';
+import Nav from './components/Nav';
 import { useSubmitCard } from './hooks/useSubmitCard';
 
 export type Tier = 1 | 5 | 25;
 export type Step = 'amount' | 'prepare' | 'minting' | 'card' | 'locked';
 
 export default function App() {
-  if (
-    typeof window !== 'undefined' &&
-    window.location.pathname.startsWith('/admin')
-  ) {
-    return <AdminScreen />;
-  }
+  // Pathname-driven routing. MintScreen pushes /card/:id then dispatches a
+  // popstate so we re-render. Pure router — every screen owns its own hooks.
+  const [pathname, setPathname] = useState<string>(() =>
+    typeof window === 'undefined' ? '/' : window.location.pathname,
+  );
+  useEffect(() => {
+    const onNav = () => setPathname(window.location.pathname);
+    window.addEventListener('popstate', onNav);
+    return () => window.removeEventListener('popstate', onNav);
+  }, []);
 
+  if (pathname.startsWith('/admin')) return <AdminScreen />;
+  const cardMatch = pathname.match(/^\/card\/(\d+)\/?$/);
+  if (cardMatch) return <CardDetailScreen cardId={BigInt(cardMatch[1])} />;
+  if (pathname.startsWith('/refer')) return <ReferScreen />;
+  if (pathname.startsWith('/play')) return <MintScreen />;
+
+  return <DemoFlow />;
+}
+
+function DemoFlow() {
   const [step, setStep] = useState<Step>('amount');
   const [tier, setTier] = useState<Tier | null>(null);
   const [mintResult, setMintResult] = useState<MintResult | null>(null);
@@ -42,6 +60,7 @@ export default function App() {
 
   return (
     <main>
+      <Nav />
       <header className="header">
         <div className="title-block">
           <svg

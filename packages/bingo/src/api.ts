@@ -7,6 +7,16 @@ export interface BingoCondition {
   optionName?: string | null;
   estimatedPrice: number;
   groupName?: string | null;
+  similarMarketImage?: string | null;
+}
+
+/** Minimal display info for a single on-chain conditionId. */
+export interface BingoConditionDetail {
+  id: string;
+  question: string;
+  shortName?: string | null;
+  optionName?: string | null;
+  similarMarketImage?: string | null;
 }
 
 const GRAPHQL_ENDPOINT = 'https://api.sapience.xyz/graphql';
@@ -42,6 +52,7 @@ const QUERY = /* GraphQL */ `
           shortName
           optionName
           estimatedPrice
+          similarMarketImage
           settled
         }
       }
@@ -51,6 +62,7 @@ const QUERY = /* GraphQL */ `
         question
         shortName
         estimatedPrice
+        similarMarketImage
         settled
       }
     }
@@ -65,6 +77,7 @@ interface RawCondition {
   optionName?: string | null;
   estimatedPrice?: number | null;
   settled?: boolean | null;
+  similarMarketImage?: string | null;
 }
 
 interface RawGroup {
@@ -145,6 +158,7 @@ export async function fetchProductionPool(
       optionName: raw.optionName ?? null,
       estimatedPrice: raw.estimatedPrice,
       groupName: group?.name ?? null,
+      similarMarketImage: raw.similarMarketImage ?? null,
     });
   };
 
@@ -188,6 +202,7 @@ const SEARCH_QUERY = /* GraphQL */ `
           shortName
           optionName
           estimatedPrice
+          similarMarketImage
           settled
         }
       }
@@ -197,6 +212,7 @@ const SEARCH_QUERY = /* GraphQL */ `
         question
         shortName
         estimatedPrice
+        similarMarketImage
         settled
       }
     }
@@ -242,6 +258,7 @@ export async function fetchConditions(opts: {
       optionName: raw.optionName ?? null,
       estimatedPrice: raw.estimatedPrice,
       groupName: group?.name ?? null,
+      similarMarketImage: raw.similarMarketImage ?? null,
     });
   };
 
@@ -251,6 +268,59 @@ export async function fetchConditions(opts: {
     } else if (q.questionType === 'group' && q.group) {
       for (const c of q.group.conditions ?? []) push(c, { name: q.group.name });
     }
+  }
+  return out;
+}
+
+/**
+ * Fetch condition display info by on-chain bytes32 ids. Used by the player
+ * card to render images + questions for the 16 cells. Returns a map keyed by
+ * lowercase id.
+ */
+const BY_IDS_QUERY = /* GraphQL */ `
+  query BingoConditionsByIds($ids: [String!]!) {
+    conditions(take: 100, where: { id: { in: $ids } }) {
+      id
+      question
+      shortName
+      optionName
+      similarMarketImage
+    }
+  }
+`;
+
+export async function fetchConditionsByIds(
+  ids: string[],
+): Promise<Map<string, BingoConditionDetail>> {
+  const out = new Map<string, BingoConditionDetail>();
+  const lower = Array.from(new Set(ids.map((i) => i.toLowerCase()))).filter(
+    (i) => /^0x[0-9a-f]{64}$/.test(i),
+  );
+  if (lower.length === 0) return out;
+
+  const res = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ query: BY_IDS_QUERY, variables: { ids: lower } }),
+  });
+  if (!res.ok) {
+    throw new Error(`API ${res.status}: ${await res.text().catch(() => '')}`);
+  }
+  const body = (await res.json()) as {
+    data?: { conditions?: RawCondition[] };
+    errors?: Array<{ message: string }>;
+  };
+  if (body.errors?.length) {
+    throw new Error(body.errors.map((e) => e.message).join('; '));
+  }
+  for (const c of body.data?.conditions ?? []) {
+    out.set(c.id.toLowerCase(), {
+      id: c.id,
+      question: c.question,
+      shortName: c.shortName ?? null,
+      optionName: c.optionName ?? null,
+      similarMarketImage: c.similarMarketImage ?? null,
+    });
   }
   return out;
 }

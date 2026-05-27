@@ -10,13 +10,20 @@ import {
 // Use CORS-friendly public RPCs (viem's defaults like eth.merkle.io block
 // browser CORS). These match the URLs the main app falls back to when there's
 // no NEXT_PUBLIC_INFURA_API_KEY configured.
+//
+// VITE_ETHEREAL_RPC_URL overrides the Ethereal transport — set it to
+// http://localhost:8545 when running against an Anvil fork.
+const etherealRpc =
+  import.meta.env.VITE_ETHEREAL_RPC_URL ??
+  etherealChain.rpcUrls.default.http[0];
+
 const transports = {
   [arbitrum.id]: http('https://arbitrum-rpc.publicnode.com'),
   [mainnet.id]: http('https://ethereum-rpc.publicnode.com'),
   [base.id]: http('https://base-rpc.publicnode.com'),
   [bsc.id]: http('https://bsc-rpc.publicnode.com'),
   [hyperEvmChain.id]: http(hyperEvmChain.rpcUrls.default.http[0]),
-  [etherealChain.id]: http(etherealChain.rpcUrls.default.http[0]),
+  [etherealChain.id]: http(etherealRpc),
   [etherealTestnetChain.id]: http(etherealTestnetChain.rpcUrls.default.http[0]),
 } as const;
 

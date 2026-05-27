@@ -60,7 +60,17 @@ export default function CardScreen({
         {conditions.map((c, idx) => {
           const pick = picks[idx];
           return (
-            <article key={c.id} className={`cell ${pick ? 'cell-picked' : ''}`}>
+            <article
+              key={c.id}
+              className={`cell ${pick ? 'cell-picked' : ''} ${c.similarMarketImage ? 'cell-has-bg' : ''}`}
+              style={
+                c.similarMarketImage
+                  ? {
+                      backgroundImage: `linear-gradient(180deg, rgba(8,12,24,0.55) 0%, rgba(8,12,24,0.92) 100%), url(${c.similarMarketImage})`,
+                    }
+                  : undefined
+              }
+            >
               <div className="cell-text">{cellLabel(c)}</div>
               <div className="pick-toggle">
                 <button

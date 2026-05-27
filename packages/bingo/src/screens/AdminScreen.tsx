@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { formatUnits, isAddress, parseUnits, type Address } from 'viem';
+import {
+  formatUnits,
+  isAddress,
+  parseUnits,
+  type Address,
+  type Hex,
+} from 'viem';
 import {
   useAccount,
   useConnect,
+  usePublicClient,
   useReadContracts,
   useWriteContract,
 } from 'wagmi';
@@ -10,10 +17,12 @@ import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import {
   BINGO_CARD_ABI,
   ERC20_ABI,
+  MOCK_ENTROPY_ABI,
   loadContractAddress,
   saveContractAddress,
 } from '../lib/bingoCard';
 import { fetchConditions, type BingoCondition } from '../api';
+import Nav from '../components/Nav';
 
 const CHAIN_ID = CHAIN_ID_ETHEREAL;
 const DECIMALS = 18;
@@ -43,6 +52,28 @@ export default function AdminScreen() {
     ? { address: contractAddress, abi: BINGO_CARD_ABI, chainId: CHAIN_ID }
     : null;
 
+  // Multiplier reads (one read per slot).
+  const multReads = useReadContracts({
+    contracts: baseContract
+      ? Array.from({ length: 11 }, (_, i) => ({
+          ...baseContract,
+          functionName: 'multiplierBps' as const,
+          args: [BigInt(i)],
+        }))
+      : [],
+    query: { enabled: !!baseContract },
+  });
+
+  useEffect(() => {
+    if (!multReads.data) return;
+    const next = multReads.data.map((r) =>
+      r?.result != null ? String(r.result as number) : '',
+    );
+    setMultipliers((prev) =>
+      prev.every((v, i) => v === next[i]) ? prev : next,
+    );
+  }, [multReads.data]);
+
   // ---------- reads ----------
   const reads = useReadContracts({
     contracts: baseContract
@@ -56,6 +87,13 @@ export default function AdminScreen() {
           { ...baseContract, functionName: 'referralBps' },
           { ...baseContract, functionName: 'cardExpirySeconds' },
           { ...baseContract, functionName: 'bonusPool' },
+          { ...baseContract, functionName: 'escrow' },
+          { ...baseContract, functionName: 'entropyFee' },
+          { ...baseContract, functionName: 'outstandingSponsorBalance' },
+          { ...baseContract, functionName: 'outstandingReferralEarnings' },
+          { ...baseContract, functionName: 'entropy' },
+          { ...baseContract, functionName: 'entropyProvider' },
+          { ...baseContract, functionName: 'nextCardId' },
         ]
       : [],
     query: { enabled: !!baseContract },
@@ -70,6 +108,13 @@ export default function AdminScreen() {
   const referralBps = reads.data?.[6]?.result as number | undefined;
   const cardExpirySeconds = reads.data?.[7]?.result as bigint | undefined;
   const bonusPool = reads.data?.[8]?.result as bigint | undefined;
+  const escrowAddress = reads.data?.[9]?.result as Address | undefined;
+  const entropyFee = reads.data?.[10]?.result as bigint | undefined;
+  const outstandingSponsor = reads.data?.[11]?.result as bigint | undefined;
+  const outstandingReferral = reads.data?.[12]?.result as bigint | undefined;
+  const entropyAddress = reads.data?.[13]?.result as Address | undefined;
+  const entropyProvider = reads.data?.[14]?.result as Address | undefined;
+  const nextCardId = reads.data?.[15]?.result as bigint | undefined;
 
   const isOwner =
     !!owner && !!eoa && owner.toLowerCase() === eoa.toLowerCase();
@@ -85,6 +130,11 @@ export default function AdminScreen() {
   const [depositInput, setDepositInput] = useState('');
   const [withdrawInput, setWithdrawInput] = useState('');
   const [withdrawTo, setWithdrawTo] = useState('');
+  const [escrowInput, setEscrowInput] = useState('');
+  const [codeInput, setCodeInput] = useState('');
+  const [multipliers, setMultipliers] = useState<string[]>(
+    Array(11).fill('') as string[],
+  );
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searchResults, setSearchResults] = useState<BingoCondition[]>([]);
@@ -137,6 +187,51 @@ export default function AdminScreen() {
     });
   };
 
+  const submitMultipliers = () => {
+    if (!baseContract) return;
+    const parsed: number[] = [];
+    for (const v of multipliers) {
+      const n = Number(v || '0');
+      if (!Number.isInteger(n) || n < 0 || n > 65_535) return;
+      parsed.push(n);
+    }
+    writeContract({
+      ...baseContract,
+      functionName: 'setMultipliers',
+      args: [parsed as unknown as readonly [number, number, number, number, number, number, number, number, number, number, number]],
+    });
+  };
+
+  const submitEscrow = () => {
+    if (!baseContract) return;
+    if (!isAddress(escrowInput)) return;
+    writeContract({
+      ...baseContract,
+      functionName: 'setEscrow',
+      args: [escrowInput as Address],
+    });
+  };
+
+  const submitRegisterCode = () => {
+    if (!baseContract) return;
+    const code = codeInput.trim();
+    if (!code) return;
+    // Pad/encode the code as bytes32. Keep it simple: utf-8 right-padded.
+    const enc = new TextEncoder().encode(code);
+    if (enc.length > 32) return;
+    const bytes = new Uint8Array(32);
+    bytes.set(enc);
+    const hex = ('0x' +
+      Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')) as `0x${string}`;
+    writeContract({
+      ...baseContract,
+      functionName: 'registerCode',
+      args: [hex],
+    });
+  };
+
   const submitWithdraw = () => {
     if (!baseContract) return;
     if (!isAddress(withdrawTo)) return;
@@ -186,6 +281,86 @@ export default function AdminScreen() {
     setSelected((prev) => prev.filter((p) => p.id !== id));
   };
 
+  // ---------- pending reveals (fork-only helper) ----------
+  // On a fork, BingoCard is wired to MockEntropy which does not auto-callback
+  // like real Pyth. Admin scans CardMinted events, finds unrevealed cards, and
+  // exposes a button that drives MockEntropy.pushCallback.
+  const publicClient = usePublicClient({ chainId: CHAIN_ID });
+  const [pendingReveals, setPendingReveals] = useState<
+    { cardId: bigint; seq: bigint }[]
+  >([]);
+  const [revealScanError, setRevealScanError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!publicClient || !contractAddress || nextCardId == null) return;
+    let stop = false;
+    void (async () => {
+      try {
+        const events = await publicClient.getContractEvents({
+          address: contractAddress,
+          abi: BINGO_CARD_ABI,
+          eventName: 'CardMinted',
+          fromBlock: 'earliest',
+          toBlock: 'latest',
+        });
+        if (stop) return;
+        const seqByCardId = new Map<string, bigint>();
+        for (const e of events) {
+          const args = e.args as
+            | { cardId?: bigint; sequenceNumber?: bigint }
+            | undefined;
+          if (args?.cardId != null && args?.sequenceNumber != null) {
+            seqByCardId.set(args.cardId.toString(), args.sequenceNumber);
+          }
+        }
+        // Filter to unrevealed cards by reading cardOf for each minted id.
+        const out: { cardId: bigint; seq: bigint }[] = [];
+        for (const [cardIdStr, seq] of seqByCardId) {
+          const cardId = BigInt(cardIdStr);
+          try {
+            const c = (await publicClient.readContract({
+              address: contractAddress,
+              abi: BINGO_CARD_ABI,
+              functionName: 'cardOf',
+              args: [cardId],
+            })) as { revealed: boolean };
+            if (!c.revealed) out.push({ cardId, seq });
+          } catch {
+            // skip
+          }
+        }
+        if (stop) return;
+        out.sort((a, b) => Number(a.cardId - b.cardId));
+        setPendingReveals(out);
+        setRevealScanError(null);
+      } catch (e) {
+        if (stop) return;
+        setRevealScanError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      stop = true;
+    };
+  }, [publicClient, contractAddress, nextCardId, writePending]);
+
+  const submitPushReveal = (seq: bigint) => {
+    if (!entropyAddress || !entropyProvider) return;
+    // Fresh random per push so re-pushing the same card yields a different
+    // shuffle (useful when debugging).
+    const rand =
+      ('0x' +
+        Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')) as Hex;
+    writeContract({
+      address: entropyAddress,
+      abi: MOCK_ENTROPY_ABI,
+      chainId: CHAIN_ID,
+      functionName: 'pushCallback',
+      args: [seq, entropyProvider, rand],
+    });
+  };
+
   const submitPool = () => {
     if (!baseContract || selected.length === 0) return;
     const ids = selected.map((c) => c.id as `0x${string}`);
@@ -201,6 +376,7 @@ export default function AdminScreen() {
 
   return (
     <main>
+      <Nav />
       <header className="header">
         <div className="title-block">
           <h1>BingoCard Admin</h1>
@@ -263,6 +439,10 @@ export default function AdminScreen() {
             <div>Referral bps</div><div className="mono">{referralBps ?? '—'}</div>
             <div>Card expiry (s)</div><div className="mono">{cardExpirySeconds?.toString() ?? '—'}</div>
             <div>Bonus pool</div><div className="mono">{fmtUnits(bonusPool)}</div>
+            <div>Escrow</div><div className="mono">{shortAddress(escrowAddress)}</div>
+            <div>Entropy fee (wei)</div><div className="mono">{entropyFee?.toString() ?? '—'}</div>
+            <div>Outstanding sponsor</div><div className="mono">{fmtUnits(outstandingSponsor)}</div>
+            <div>Outstanding referral</div><div className="mono">{fmtUnits(outstandingReferral)}</div>
           </div>
         </section>
 
@@ -310,6 +490,91 @@ export default function AdminScreen() {
                 onClick={submitBps}
               >
                 Submit
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-action">
+            <div className="wizard-step-title">Bonus multipliers</div>
+            <p className="muted small">
+              Bonus payout = cardPrice × multiplier[winningLines] ÷ 10000. Values
+              are bps, max 65535 (≈6.55×). Read at claim time — not stamped on
+              the card.
+            </p>
+            <div className="admin-multipliers">
+              {multipliers.map((v, i) => (
+                <label key={i} className="admin-multiplier-row">
+                  <span className="admin-multiplier-label">{i} wins</span>
+                  <input
+                    className="admin-input"
+                    placeholder="0"
+                    value={v}
+                    onChange={(e) =>
+                      setMultipliers((prev) => {
+                        const next = prev.slice();
+                        next[i] = e.target.value;
+                        return next;
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="admin-row">
+              <button
+                type="button"
+                className="primary"
+                disabled={writePending || !baseContract}
+                onClick={submitMultipliers}
+              >
+                Save table
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-action">
+            <div className="wizard-step-title">Set escrow</div>
+            <p className="muted small">
+              Authorized PredictionMarketEscrow that may call fundMint.
+            </p>
+            <div className="admin-row">
+              <input
+                className="admin-input"
+                placeholder="0x…"
+                value={escrowInput}
+                onChange={(e) => setEscrowInput(e.target.value.trim())}
+              />
+              <button
+                type="button"
+                className="primary"
+                disabled={writePending || !isAddress(escrowInput) || !baseContract}
+                onClick={submitEscrow}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-action">
+            <div className="wizard-step-title">Register referral code</div>
+            <p className="muted small">
+              Anyone can call this — admin can pre-register codes from this UI.
+              Encodes as utf-8 right-padded bytes32.
+            </p>
+            <div className="admin-row">
+              <input
+                className="admin-input"
+                placeholder="e.g. NOAH"
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+              />
+              <button
+                type="button"
+                className="primary"
+                disabled={writePending || !codeInput.trim() || !baseContract}
+                onClick={submitRegisterCode}
+              >
+                Register
               </button>
             </div>
           </div>
@@ -505,6 +770,48 @@ export default function AdminScreen() {
               </button>
             </div>
           </div>
+        </section>
+
+        <section className="screen admin-section">
+          <h2>Pending reveals (fork only)</h2>
+          <p className="muted small">
+            On a fork the entropy contract is{' '}
+            <span className="mono">MockEntropy</span> — it doesn't auto-fire
+            Pyth callbacks. Push reveals manually here. Each push uses a fresh
+            random seed.
+          </p>
+          <div className="admin-kv">
+            <div>Entropy contract</div>
+            <div className="mono small">
+              {entropyAddress ? entropyAddress : '—'}
+            </div>
+            <div>Entropy provider</div>
+            <div className="mono small">
+              {entropyProvider ? entropyProvider : '—'}
+            </div>
+            <div>Pending</div>
+            <div className="mono">{pendingReveals.length}</div>
+          </div>
+          {revealScanError && (
+            <p className="error small">Scan error: {revealScanError}</p>
+          )}
+          {pendingReveals.map((p) => (
+            <div key={p.cardId.toString()} className="admin-row">
+              <span className="mono">
+                #{p.cardId.toString()} · seq {p.seq.toString()}
+              </span>
+              <button
+                type="button"
+                className="primary"
+                disabled={
+                  writePending || !entropyAddress || !entropyProvider
+                }
+                onClick={() => submitPushReveal(p.seq)}
+              >
+                Push reveal
+              </button>
+            </div>
+          ))}
         </section>
     </main>
   );
