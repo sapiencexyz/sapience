@@ -6,7 +6,7 @@
  * down from the shared v1 scalar map to the narrower set v2 declares.
  */
 
-import { scalarResolvers } from '../../sdl/resolvers/scalars';
+import { scalarResolvers } from './scalars';
 import { node, nodes } from './queries/node';
 import { Account, ReferralCode } from './Account';
 import { account, accounts } from './queries/account';
@@ -14,8 +14,6 @@ import { Vault } from './Vault';
 import { vault, vaults } from './queries/vault';
 import { Category } from './Category';
 import { category, categories } from './queries/category';
-import { Forecast } from './Forecast';
-import { forecast, forecasts } from './queries/forecast';
 import { Trade } from './Trade';
 import { trade, trades } from './queries/trade';
 import { Condition } from './Condition';
@@ -45,23 +43,12 @@ import { Protocol, protocol } from './Protocol';
 import { QuestionItem, questions } from './queries/questions';
 import { popularTags } from '../../sdl/resolvers/queries/tags';
 
-// Project the shared scalar map down to the scalars actually declared in
-// v2's SDL. `makeExecutableSchema` warns when the resolver map mentions
-// types the schema doesn't define, and v2 starts with a narrower scalar
-// set than v1.
-const { Address, BigInt, Bytes32, DateTimeISO, UnixSeconds } = scalarResolvers;
-
 export const resolvers = {
-  Address,
-  BigInt,
-  Bytes32,
-  DateTimeISO,
-  UnixSeconds,
+  ...scalarResolvers,
   Account,
   ReferralCode,
   Vault,
   Category,
-  Forecast,
   Trade,
   Condition,
   ConditionGroup,
@@ -88,8 +75,6 @@ export const resolvers = {
     vaults,
     category,
     categories,
-    forecast,
-    forecasts,
     trade,
     trades,
     condition,

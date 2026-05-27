@@ -39,8 +39,8 @@ export const conditionGroups: NonNullable<
   const direction = normalizeDirection(args.orderBy?.direction, 'asc');
 
   const where: Prisma.ConditionGroupWhereInput = {};
-  if (args.filter?.categoryId != null)
-    where.categoryId = args.filter.categoryId;
+  if (args.filter?.categorySlug)
+    where.category = { is: { slug: args.filter.categorySlug } };
   if (args.filter?.search?.trim()) {
     where.name = { contains: args.filter.search.trim(), mode: 'insensitive' };
   }

@@ -10,7 +10,7 @@
  *    v1's `settled` / `resolvedToYes` / `nonDecisive` booleans don't
  *    carry forward.
  *  - `resolver` column is renamed to `resolverAddress` on the wire
- *    (matches `Forecast.resolverAddress` and v1's deprecated `marketAddress`).
+ *    (matches v1's deprecated `marketAddress`).
  *  - `similarMarket*` flatten under a nested `SimilarMarket` value type.
  *  - `predictionCount` drops — clients use `predictions(...).totalCount`
  *    once the prediction relation lands.

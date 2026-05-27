@@ -231,29 +231,6 @@ type Vault implements Node & AddressEntity {
   Chain the vault is deployed on.
   """
   chainId: Int!
-
-  """
-  Deployment kind — one of a small enum set.
-  """
-  kind: VaultKind!
-
-  """
-  Previously-active vault contract addresses (lowercase). Old refs may
-  still appear in indexer data; the canonical `address` is the current
-  primary deployment.
-  """
-  legacyAddresses: [Address!]!
-}
-
-"""
-Identifies which "family" of vault a row belongs to. Maps 1:1 to the
-keys under `predictionMarketVault` in the SDK contracts module.
-"""
-enum VaultKind {
-  PROTOCOL
-  PYTH
-  SINGLE_LEG
-  STRATEGY_B
 }
 
 type VaultEdge {
@@ -282,10 +259,6 @@ input VaultFilter {
   Restrict to a single chain. Defaults to the SDK's default chain when omitted.
   """
   chainId: Int
-  """
-  Restrict to a single deployment kind.
-  """
-  kind: VaultKind
 }
 
 enum VaultOrderField {
@@ -307,10 +280,6 @@ UI. Backed by the Postgres `Category` table.
 """
 type Category implements Node {
   id: ID!
-  """
-  Internal integer primary key; stable per-row, not encoded in opaque ids.
-  """
-  categoryId: Int!
   name: String!
   slug: String!
   createdAt: DateTimeISO!
@@ -346,50 +315,8 @@ input CategoryOrder {
 }
 
 # -----------------------------------------------
-# Forecast (Phase 4)
+# Shared filter inputs
 # -----------------------------------------------
-
-"""
-EAS attestation-backed forecast made by `forecaster` against `resolverAddress`.
-Identified by its on-chain `uid`. Wire shape drops the leaked Prisma column
-names (`attester`, `time`) in favour of the public-API names (`forecaster`,
-`attestedAt`); the raw on-chain value is renamed `forecastValue` to avoid
-the type-vs-field naming collision v1 had.
-"""
-type Forecast implements Node {
-  id: ID!
-  uid: Bytes32!
-  schemaId: Bytes32!
-  forecaster: Address!
-  recipient: Address!
-  resolverAddress: Address
-  """
-  CTF condition id this forecast targets, lowercase 0x-hex. May be null for non-condition-backed forecasts.
-  """
-  conditionId: String
-  """
-  Raw on-chain forecast value — D18 fixed-point probability in
-  `[0, 1e18]`. Divide by 1e18 to render as a 0–1 float.
-  """
-  forecastValue: BigInt!
-  comment: String
-  attestedAt: UnixSeconds!
-  blockNumber: Int!
-  transactionHash: Bytes32!
-  createdAt: DateTimeISO!
-}
-
-type ForecastEdge {
-  cursor: String!
-  node: Forecast!
-}
-
-type ForecastConnection {
-  edges: [ForecastEdge!]!
-  nodes: [Forecast!]!
-  pageInfo: PageInfo!
-  totalCount: Int!
-}
 
 """
 Range filter for an integer/UnixSeconds field; both bounds inclusive.
@@ -397,26 +324,6 @@ Range filter for an integer/UnixSeconds field; both bounds inclusive.
 input IntRangeFilter {
   gte: Int
   lte: Int
-}
-
-input ForecastFilter {
-  uid: Bytes32
-  forecaster: Address
-  recipient: Address
-  conditionId: String
-  conditionIds: [String!]
-  schemaId: Bytes32
-  attestedAt: IntRangeFilter
-}
-
-enum ForecastOrderField {
-  ATTESTED_AT
-  CREATED_AT
-}
-
-input ForecastOrder {
-  field: ForecastOrderField!
-  direction: OrderDirection!
 }
 
 # -----------------------------------------------
@@ -552,10 +459,7 @@ type Condition implements Node {
   tags: [String!]!
   createdAt: DateTimeISO!
 
-  categoryId: Int
   category: Category
-
-  conditionGroupId: Int
   conditionGroup: ConditionGroup
 
   """
@@ -579,6 +483,10 @@ attribution chip in the UI.
 """
 type SimilarMarket {
   image: String
+  """
+  External market URLs (typically Polymarket links) the volume signal was
+  aggregated from. Used by the UI to render an attribution chip.
+  """
   markets: [String!]!
   volume: Float!
   volume1h: Float!
@@ -607,7 +515,7 @@ input ConditionFilter {
   conditionId: String
   conditionIds: [String!]
   chainId: Int
-  categoryId: Int
+  categorySlug: String
   """
   Restrict to settled (`outcome` non-null) / unsettled (null).
   """
@@ -652,15 +560,14 @@ constituent conditions.
 """
 type ConditionGroup implements Node {
   id: ID!
-  """
-  Internal integer primary key — stable per row.
-  """
-  groupId: Int!
   name: String!
+  """
+  External market URLs (typically Polymarket links) associated with this
+  group, aggregated across its constituent conditions.
+  """
   similarMarkets: [String!]!
   createdAt: DateTimeISO!
 
-  categoryId: Int
   category: Category
 
   """
@@ -708,7 +615,7 @@ type ConditionGroupConnection {
 }
 
 input ConditionGroupFilter {
-  categoryId: Int
+  categorySlug: String
   """
   Substring search against `name`, case-insensitive.
   """
@@ -747,8 +654,6 @@ type PickConfiguration implements Node {
   predictorToken: Address
   counterpartyToken: Address
 
-  isLegacy: Boolean!
-
   resolved: Boolean!
   resolvedAt: UnixSeconds
   result: SettlementResult!
@@ -770,8 +675,18 @@ picks are only fetched in the context of their parent configuration.
 type Pick {
   conditionId: String!
   conditionResolverAddress: Address!
-  predictedOutcome: Int!
+  predictedOutcome: BinaryOutcome!
   condition: Condition
+}
+
+"""
+Predicted side of a binary condition — `YES` or `NO`. Picks never carry
+`NON_DECISIVE`; that state belongs on `ConditionOutcome` (the resolved
+result), not on what the predictor chose.
+"""
+enum BinaryOutcome {
+  YES
+  NO
 }
 
 enum SettlementResult {
@@ -859,7 +774,6 @@ type Prediction implements Node {
   settleTxHash: Bytes32
 
   refCode: String
-  isLegacy: Boolean!
 
   pickConfig: PickConfiguration
 }
@@ -895,7 +809,6 @@ input PredictionFilter {
   Restrict to predictions on any of these conditions (via the pickConfig join).
   """
   conditionIds: [String!]
-  isLegacy: Boolean
   settled: Boolean
   result: SettlementResultFilter
   """
@@ -1794,22 +1707,6 @@ type Query {
     filter: TradeFilter
     orderBy: TradeOrder
   ): TradeConnection!
-
-  """
-  Look up a single forecast by its on-chain `uid`.
-  """
-  forecast(uid: Bytes32!): Forecast
-
-  """
-  Relay-shaped connection over EAS-backed forecasts. Defaults to
-  `ATTESTED_AT DESC`.
-  """
-  forecasts(
-    first: Int = 50
-    after: String
-    filter: ForecastFilter
-    orderBy: ForecastOrder
-  ): ForecastConnection!
 
   """
   Look up a single category by its integer primary key.

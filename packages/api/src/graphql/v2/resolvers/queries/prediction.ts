@@ -54,7 +54,6 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
   if (args.filter?.chainId != null) where.chainId = args.filter.chainId;
   if (args.filter?.pickConfigId)
     where.pickConfigId = args.filter.pickConfigId.toLowerCase();
-  if (args.filter?.isLegacy != null) where.isLegacy = args.filter.isLegacy;
   if (args.filter?.settled != null) where.settled = args.filter.settled;
   if (args.filter?.result?.equals)
     where.result = args.filter.result

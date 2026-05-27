@@ -48,17 +48,16 @@ describe('Vault (v2)', () => {
       type: 'Vault',
       id: '13374202:0x000000000000000000000000000000000000aaaa',
     });
-    expect(row!.kind).toBe('PROTOCOL');
   });
 
   it('vault(address:) finds by current primary address', async () => {
-    const row = await callResolver<{ kind: string } | null>(vault)(
+    const row = await callResolver<{ address: string } | null>(vault)(
       null,
       { address: '0x000000000000000000000000000000000000bbbb' },
       {},
       null
     );
-    expect(row?.kind).toBe('PYTH');
+    expect(row?.address).toBe('0x000000000000000000000000000000000000bbbb');
   });
 
   it('vault(address:) returns null for an unknown address', async () => {
@@ -81,15 +80,5 @@ describe('Vault (v2)', () => {
       '0x000000000000000000000000000000000000aaaa',
       '0x000000000000000000000000000000000000bbbb',
     ]);
-  });
-
-  it('vaults(filter: { kind }) narrows the catalog', async () => {
-    const result = await callResolver<{ nodes: { kind: string }[] }>(vaults)(
-      null,
-      { filter: { kind: 'PROTOCOL' } },
-      {},
-      null
-    );
-    expect(result.nodes.map((n) => n.kind)).toEqual(['PROTOCOL']);
   });
 });

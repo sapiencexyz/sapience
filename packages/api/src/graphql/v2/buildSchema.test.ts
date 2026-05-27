@@ -35,8 +35,6 @@ describe('v2 schema stub', () => {
       'vaults',
       'category',
       'categories',
-      'forecast',
-      'forecasts',
       'trade',
       'trades',
       'condition',

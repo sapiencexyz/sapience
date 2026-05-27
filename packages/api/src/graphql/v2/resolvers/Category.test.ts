@@ -35,12 +35,6 @@ describe('Category (v2)', () => {
     expect(fromGlobalIdV2(id)).toEqual({ type: 'Category', id: '42' });
   });
 
-  it('exposes the row id via the named field `categoryId`', () => {
-    expect(
-      callResolver<number>(Category.categoryId)({ id: 42 }, {}, {}, null)
-    ).toBe(42);
-  });
-
   it('category(id:) returns null when not found', async () => {
     mockPrisma.category.findUnique.mockResolvedValueOnce(null);
     const result = await callResolver(category)(null, { id: 999 }, {}, null);

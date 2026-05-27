@@ -1,29 +1,20 @@
 /**
  * `Query.leaderboard` — Relay-shaped account ranking by metric.
  *
- * Delegates the ranking math to v1's `rankedAccountsForMetric` helper
- * (PnL/Volume/ROI window aggregation, Accuracy lifetime score). Slices
- * the materialized ranking with an offset cursor — the ranked set is
- * fully in-memory by the time we slice, so keyset paging buys nothing.
+ * The cursor is an offset (the ranked set is materialized in-memory by
+ * the time we slice, so keyset paging buys nothing). `Account.rank`
+ * reuses `rankedAccountsForMetric` from `./accountStats` so the two
+ * surfaces share one ordered set.
  */
 
-import { LeaderboardMetric as V1LeaderboardMetric } from '../../../sdl/__generated__/resolvers';
-import { rankedAccountsForMetric } from '../../../sdl/resolvers/queries/leaderboard';
-import { synthesizeAccount } from '../../../sdl/resolvers/accountSynthesis';
 import type {
   AccountResolvers,
-  LeaderboardMetric,
   QueryResolvers,
 } from '../../__generated__/resolvers';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { clampTake } from '../../../sdl/resolvers/queries/pagination';
-
-const V2_TO_V1_METRIC: Record<LeaderboardMetric, V1LeaderboardMetric> = {
-  ACCURACY: V1LeaderboardMetric.Accuracy,
-  PNL: V1LeaderboardMetric.Pnl,
-  VOLUME: V1LeaderboardMetric.Volume,
-  ROI: V1LeaderboardMetric.Roi,
-} as Record<LeaderboardMetric, V1LeaderboardMetric>;
+import { decodeCursor, encodeCursor } from '../../relay/cursor';
+import { clampTake } from '../../relay/pagination';
+import { synthesizeAccount } from '../accountSynthesis';
+import { rankedAccountsForMetric } from './accountStats';
 
 export const leaderboard: NonNullable<QueryResolvers['leaderboard']> = async (
   _parent,
@@ -39,7 +30,7 @@ export const leaderboard: NonNullable<QueryResolvers['leaderboard']> = async (
       ? Number(offsetPayload.k) + 1
       : 0;
 
-  const ranked = await rankedAccountsForMetric(V2_TO_V1_METRIC[args.metric], {
+  const ranked = await rankedAccountsForMetric(args.metric, {
     timestamp: args.filter?.timestamp ?? null,
   });
 
@@ -71,10 +62,6 @@ export const leaderboard: NonNullable<QueryResolvers['leaderboard']> = async (
   } as never;
 };
 
-/**
- * Account.rank field resolver — looks up the parent address in the
- * ranked set and returns the rank, or null when unranked.
- */
 export const accountRank: NonNullable<AccountResolvers['rank']> = async (
   parent,
   args
@@ -83,7 +70,7 @@ export const accountRank: NonNullable<AccountResolvers['rank']> = async (
     (parent as { address?: string }).address ?? ''
   ).toLowerCase();
   if (!address) return null;
-  const ranked = await rankedAccountsForMetric(V2_TO_V1_METRIC[args.metric], {
+  const ranked = await rankedAccountsForMetric(args.metric, {
     timestamp: args.filter?.timestamp ?? null,
   });
   const index = ranked.findIndex(

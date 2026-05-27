@@ -1,7 +1,7 @@
 /**
- * v2 ConditionGroup — Node-implementing entity. The row's integer pk
- * surfaces as `groupId`; aggregated counters collapse under
- * `totals: ConditionGroupTotals` to keep the top-level shape tight.
+ * v2 ConditionGroup — Node-implementing entity. Aggregated counters
+ * collapse under `totals: ConditionGroupTotals` to keep the top-level
+ * shape tight.
  */
 
 import type { Prisma } from '../../../../generated/prisma';
@@ -28,7 +28,6 @@ registerNodeTypeV2({
 
 export const ConditionGroup: ConditionGroupResolvers = {
   id: (parent) => toGlobalIdV2('ConditionGroup', String(parent.id)),
-  groupId: (parent) => parent.id,
 
   category: async (parent, _args, ctx) => {
     if (parent.categoryId == null) return null;

@@ -34,11 +34,6 @@ const v1Output = {
       },
       asyncResolverTypes: true,
       mappers: {
-        Account: '../../../../generated/prisma#User as PrismaUserRow',
-        Forecast:
-          '../../../../generated/prisma#Attestation as PrismaForecastRow',
-        ForecastScore:
-          '../../../../generated/prisma#AttestationScore as PrismaForecastScoreRow',
         Category: '../../../../generated/prisma#Category as PrismaCategoryRow',
         Condition:
           '../../../../generated/prisma#Condition as PrismaConditionRow',
@@ -50,12 +45,6 @@ const v1Output = {
       },
       avoidOptionals: false,
       enumsAsTypes: false,
-      enumValues: {
-        PredictionSortField: '../enumOverrides#PredictionSortField',
-        PositionSortField: '../enumOverrides#PositionSortField',
-        SortOrder: '../enumOverrides#SortOrder',
-        OrderDirection: '../enumOverrides#OrderDirection',
-      },
     },
   },
 };
@@ -89,8 +78,6 @@ const v2Output = {
       asyncResolverTypes: true,
       mappers: {
         Account: '../../../../generated/prisma#User as PrismaUserRow',
-        Forecast:
-          '../../../../generated/prisma#Attestation as PrismaForecastRow',
         Category: '../../../../generated/prisma#Category as PrismaCategoryRow',
         Condition:
           '../../../../generated/prisma#Condition as PrismaConditionRow',

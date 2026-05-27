@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockRanked = vi.hoisted(() => vi.fn());
 
-vi.mock('../../sdl/resolvers/queries/leaderboard', () => ({
+vi.mock('./queries/accountStats', () => ({
   rankedAccountsForMetric: mockRanked,
 }));
 

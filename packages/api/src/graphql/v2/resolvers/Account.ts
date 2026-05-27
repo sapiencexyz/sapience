@@ -3,15 +3,15 @@
  *
  *  - `id` encodes via the v2 registry (`toGlobalIdV2`) so opaque ids are
  *    scoped to the v2 endpoint.
- *  - Account-scoped entity feeds (`predictions`, `trades`, `forecasts`,
- *    `positions`, `collateralBalance`, `stats`, `rank`) attach in later
- *    phases as those entity types land. Phase 1 ships the address-keyed
- *    identity + the referral graph only.
+ *  - Account-scoped entity feeds (`predictions`, `trades`, `positions`,
+ *    `collateralBalance`, `stats`, `rank`) attach in later phases as
+ *    those entity types land. Phase 1 ships the address-keyed identity
+ *    + the referral graph only.
  */
 
 import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
-import { synthesizeAccount } from '../../sdl/resolvers/accountSynthesis';
+import { synthesizeAccount } from './accountSynthesis';
 import type {
   AccountResolvers,
   ReferralCodeResolvers,

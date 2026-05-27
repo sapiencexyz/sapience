@@ -1,7 +1,7 @@
 /**
  * v2 Category — Node-implementing record from the Postgres `Category`
- * table. Exposes its row id as the named `categoryId` field; the
- * opaque `id: ID!` is the globalId.
+ * table. The opaque `id: ID!` is the globalId; clients reference a
+ * category by `slug` for human-readable lookups.
  */
 
 import prisma from '../../../core/db';
@@ -19,5 +19,4 @@ registerNodeTypeV2({
 
 export const Category: CategoryResolvers = {
   id: (parent) => toGlobalIdV2('Category', String(parent.id)),
-  categoryId: (parent) => parent.id,
 };

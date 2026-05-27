@@ -39,12 +39,6 @@ describe('ConditionGroup (v2)', () => {
     expect(fromGlobalIdV2(id)).toEqual({ type: 'ConditionGroup', id: '7' });
   });
 
-  it('exposes the row id via the named field `groupId`', () => {
-    expect(
-      callResolver<number>(ConditionGroup.groupId)({ id: 7 }, {}, {}, null)
-    ).toBe(7);
-  });
-
   it('totals collapses denormalized counters into one struct', () => {
     type Totals = {
       publicConditionCount: number;
@@ -66,16 +60,18 @@ describe('ConditionGroup (v2)', () => {
     expect(result.totalSimilarMarketVolume24h).toBe(99.5);
   });
 
-  it('conditionGroups(filter: { categoryId }) narrows by category', async () => {
+  it('conditionGroups(filter: { categorySlug }) narrows by category slug', async () => {
     await callResolver(conditionGroups)(
       null,
-      { first: 50, filter: { categoryId: 3 } },
+      { first: 50, filter: { categorySlug: 'sports' } },
       {},
       null
     );
     expect(mockPrisma.conditionGroup.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ categoryId: 3 }),
+        where: expect.objectContaining({
+          category: { is: { slug: 'sports' } },
+        }),
       })
     );
   });

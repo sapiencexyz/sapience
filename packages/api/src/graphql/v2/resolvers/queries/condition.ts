@@ -74,8 +74,8 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
   if (args.filter?.conditionIds?.length)
     where.id = { in: args.filter.conditionIds.map((id) => id.toLowerCase()) };
   if (args.filter?.chainId != null) where.chainId = args.filter.chainId;
-  if (args.filter?.categoryId != null)
-    where.categoryId = args.filter.categoryId;
+  if (args.filter?.categorySlug)
+    where.category = { is: { slug: args.filter.categorySlug } };
   if (args.filter?.publicOnly === true) where.public = true;
   if (args.filter?.tags?.length) where.tags = { hasSome: args.filter.tags };
   if (args.filter?.search?.trim()) {

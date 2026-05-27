@@ -5,8 +5,8 @@
  */
 
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
-import { clampTake } from '../../../sdl/resolvers/queries/pagination';
+import { decodeCursor, encodeCursor } from '../../relay/cursor';
+import { clampTake } from '../../relay/pagination';
 import {
   findVaultByAddress,
   getCachedVaultRows,
@@ -39,11 +39,6 @@ export const vaults: NonNullable<QueryResolvers['vaults']> = async (
     nodes = node ? [node] : [];
   } else {
     nodes = [...getCachedVaultRows(chainId)];
-  }
-
-  if (args.filter?.kind) {
-    const kind = args.filter.kind;
-    nodes = nodes.filter((n) => n.kind === kind);
   }
 
   const direction =

@@ -19,19 +19,14 @@
  *   - `buildKeysetWhere` — assemble the canonical `(orderField, idField)`
  *     keyset predicate
  *
- * The final edge/pageInfo assembly continues to flow through
- * `buildConnection` (re-exported here for convenience) in
- * `../../sdl/resolvers/queries/pagination.ts`.
+ * Final edge/pageInfo assembly flows through `buildConnection` (re-exported
+ * here for convenience) in `./pagination.ts`.
  */
 
 export type OrderDirection = 'asc' | 'desc';
 
-export {
-  buildConnection,
-  clampTake,
-  offsetFromCursor,
-} from '../../sdl/resolvers/queries/pagination';
-export { decodeCursor, encodeCursor } from '../../relay/cursor';
+export { buildConnection, clampTake, offsetFromCursor } from './pagination';
+export { decodeCursor, encodeCursor } from './cursor';
 
 /**
  * Coerce a wire-string direction (`"ASC"` / `"DESC"` / undefined) to a

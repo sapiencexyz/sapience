@@ -16,21 +16,11 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { normalizeLegacyEntry } from '@sapience/sdk/contracts';
 import { getConfiguredVaults } from '../../../services/protocolStats';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
-import type { VaultKind } from '../__generated__/resolvers';
 
 export type VaultRow = {
   id: string; // pre-encoded global id
   address: string;
   chainId: number;
-  kind: VaultKind;
-  legacyAddresses: string[];
-};
-
-const KIND_MAP: Record<string, VaultKind> = {
-  protocol: 'PROTOCOL' as VaultKind,
-  pyth: 'PYTH' as VaultKind,
-  'single-leg': 'SINGLE_LEG' as VaultKind,
-  'strategy-b': 'STRATEGY_B' as VaultKind,
 };
 
 const vaultDomainId = (chainId: number, address: string) =>
@@ -50,10 +40,6 @@ export const mapVault = (
   id: toGlobalIdV2('Vault', vaultDomainId(chainId, v.address)),
   address: v.address.toLowerCase(),
   chainId,
-  kind: KIND_MAP[v.kind],
-  legacyAddresses: (v.config.legacy ?? []).map((le) =>
-    normalizeLegacyEntry(le).address.toLowerCase()
-  ),
 });
 
 // The configured vault catalog is static (set at deploy time) and tiny

@@ -6,7 +6,7 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { synthesizeAccount } from '../../../sdl/resolvers/accountSynthesis';
+import { synthesizeAccount } from '../accountSynthesis';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
