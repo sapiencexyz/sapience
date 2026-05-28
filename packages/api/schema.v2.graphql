@@ -1019,13 +1019,27 @@ input RankingFilter {
 }
 
 """
-One row of an account ranking — the address, its rank (1-indexed), and
-the underlying metric value as a string (formatted per metric).
+One row of an account ranking — the account, its rank (1-indexed), and
+the metric value in its native type. Exactly one of the four value
+fields is populated, matching the `metric` the ranking was queried with
+(`RankingConnection.metric`, or the `metric:` arg on `Account.ranking`);
+the rest are null.
 """
 type Ranking {
   account: Account!
   rank: Int!
-  value: String!
+
+  """Lifetime Brier-derived accuracy score (0–1). Populated for `ACCURACY`."""
+  accuracy: Float
+
+  """Net profit/loss in wUSDe wei (signed). Populated for `PNL`."""
+  pnl: BigInt
+
+  """Total trade volume in wUSDe wei. Populated for `VOLUME`."""
+  volume: BigInt
+
+  """PnL / volume ratio. Populated for `ROI`."""
+  roi: Float
 }
 
 type RankingEdge {

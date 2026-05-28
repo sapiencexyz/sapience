@@ -1361,14 +1361,24 @@ export type QuestionOrderField =
   | 'SIMILAR_MARKET_VOLUME_24H_FILTERED';
 
 /**
- * One row of an account ranking — the address, its rank (1-indexed), and
- * the underlying metric value as a string (formatted per metric).
+ * One row of an account ranking — the account, its rank (1-indexed), and
+ * the metric value in its native type. Exactly one of the four value
+ * fields is populated, matching the `metric` the ranking was queried with
+ * (`RankingConnection.metric`, or the `metric:` arg on `Account.ranking`);
+ * the rest are null.
  */
 export type Ranking = {
   __typename?: 'Ranking';
   account: Account;
+  /** Lifetime Brier-derived accuracy score (0–1). Populated for `ACCURACY`. */
+  accuracy?: Maybe<Scalars['Float']['output']>;
+  /** Net profit/loss in wUSDe wei (signed). Populated for `PNL`. */
+  pnl?: Maybe<Scalars['BigInt']['output']>;
   rank: Scalars['Int']['output'];
-  value: Scalars['String']['output'];
+  /** PnL / volume ratio. Populated for `ROI`. */
+  roi?: Maybe<Scalars['Float']['output']>;
+  /** Total trade volume in wUSDe wei. Populated for `VOLUME`. */
+  volume?: Maybe<Scalars['BigInt']['output']>;
 };
 
 export type RankingConnection = {
