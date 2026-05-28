@@ -128,6 +128,7 @@ export async function submitConditionGroup(
         name: group.title, // API uses 'name' field
         categorySlug: group.categorySlug,
         similarMarkets: group.similarMarkets,
+        negRiskMarketId: group.negRiskMarketId,
       }),
     });
 
@@ -190,6 +191,8 @@ export async function submitCondition(
         estimatedPrice: condition.estimatedPrice,
         similarMarketVolume: condition.similarMarketVolume,
         similarMarketImage: condition.similarMarketImage,
+        negRisk: condition.negRisk,
+        negRiskMarketId: condition.negRiskMarketId,
       }),
     });
 
@@ -686,6 +689,8 @@ export async function submitToAPI(
       estimatedPrice: condition.estimatedPrice,
       similarMarketVolume: condition.similarMarketVolume,
       similarMarketImage: condition.similarMarketImage,
+      negRisk: condition.negRisk,
+      negRiskMarketId: condition.negRiskMarketId,
     };
   });
 
@@ -735,9 +740,31 @@ export async function submitToAPI(
           const errorData = await response
             .json()
             .catch(() => ({ message: 'Unknown error' }));
-          console.error(
-            `${label} Batch ${batchNum} failed: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
-          );
+          const message =
+            (errorData as { message?: string }).message || response.statusText;
+          // Surface basket-id mismatches separately: the API rejects them with
+          // a 400 carrying the "non-matching negRisk conditions" phrase, and
+          // these are the cases operators want to triage. Keep this fail-closed:
+          // if one condition in the batch fails admission, do not retry a partial
+          // subset because that can split a negRisk basket across sync runs.
+          if (
+            response.status === 400 &&
+            /non-matching negRisk/i.test(message)
+          ) {
+            console.error(
+              `${label} Batch ${batchNum} unable to add to existing negRisk ` +
+                `group: ${message}. Conditions: ${batch
+                  .map(
+                    (c) =>
+                      `${c.conditionHash} (group=${c.groupName ?? 'none'}, negRiskMarketId=${c.negRiskMarketId ?? 'none'})`
+                  )
+                  .join('; ')}`
+            );
+          } else {
+            console.error(
+              `${label} Batch ${batchNum} failed: HTTP ${response.status}: ${message}`
+            );
+          }
           totalFailed += batch.length;
         }
       } catch (error) {

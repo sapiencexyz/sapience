@@ -105,6 +105,7 @@ function existingFromMarket(
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
     groupName: eventTitle,
+    conditionGroupNegRisk: false,
     ...overrides,
   };
 }
@@ -497,6 +498,78 @@ describe('computeMetadataUpdates', () => {
 });
 
 describe('computeGroupMetadataUpdates', () => {
+  it('stamps ConditionGroup.negRiskMarketId when fresh markets share a basket', () => {
+    const market = makeMarket({
+      conditionId: '0xbasket',
+      events: [
+        {
+          title: 'NBA champion',
+          slug: 'nba-champion',
+          negRisk: true,
+          negRiskMarketId: 'basket-a',
+        },
+      ],
+    });
+
+    const existing = new Map([
+      [
+        '0xbasket',
+        existingFromMarket(market, {
+          conditionGroupId: 7,
+          conditionGroupNegRisk: false,
+        }),
+      ],
+    ]);
+
+    const { groupMetadataUpdates } = runDiff([market], existing);
+
+    expect(groupMetadataUpdates).toHaveLength(1);
+    expect(groupMetadataUpdates[0].groupId).toBe(7);
+    expect(groupMetadataUpdates[0].fields.negRiskMarketId).toBe('basket-a');
+    expect(groupMetadataUpdates[0].old.negRiskMarketId).toBeNull();
+  });
+
+  it('refuses to demote ConditionGroup.negRisk from true to false; logs an error instead', () => {
+    const errors: string[] = [];
+    const errSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation((...args: unknown[]) => {
+        errors.push(args.map(String).join(' '));
+      });
+    try {
+      const market = makeMarket({
+        conditionId: '0xnobasket',
+        slug: 'nba-champion-celtics',
+        events: [{ title: 'NBA champion', slug: 'nba-champion' }],
+      });
+
+      const existing = new Map([
+        [
+          '0xnobasket',
+          existingFromMarket(market, {
+            conditionGroupId: 9,
+            conditionGroupNegRisk: true,
+            // Pre-set the group URL so the diff has nothing else to emit.
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com/event/nba-champion#nba-champion-celtics',
+            ],
+          }),
+        ],
+      ]);
+
+      const { groupMetadataUpdates } = runDiff([market], existing);
+
+      expect(groupMetadataUpdates).toHaveLength(0);
+      expect(
+        errors.some((msg) =>
+          /refused to demote group 9.*from negRisk/i.test(msg)
+        )
+      ).toBe(true);
+    } finally {
+      errSpy.mockRestore();
+    }
+  });
+
   it('detects stored group URL using the broken polymarket.com#slug format', () => {
     const market = makeMarket({
       conditionId: '0xfmt',
@@ -715,6 +788,92 @@ describe('groupMarkets new-condition routing', () => {
     );
     expect(new Set(conditionCategories).size).toBe(1);
     expect(conditionCategories[0]).toBe(categories[0]);
+  });
+
+  it('marks event siblings as a negRisk group only when they share one negRiskMarketId', async () => {
+    const events = [
+      {
+        id: 'event-1',
+        title: 'NBA champion',
+        slug: 'nba-champion',
+        negRisk: true,
+        negRiskMarketId: 'basket-123',
+      },
+    ];
+    const markets = [
+      makeMarket({ conditionId: '0xa', question: 'Will Celtics win?', events }),
+      makeMarket({ conditionId: '0xb', question: 'Will Knicks win?', events }),
+    ];
+
+    mockCheckExisting.mockResolvedValue(new Map());
+
+    const result = await groupMarkets(markets, API_URL);
+    const groups = result.groups.filter((g) => g.title === 'NBA champion');
+
+    expect(groups).toHaveLength(2);
+    expect(groups.every((g) => g.negRiskMarketId === 'basket-123')).toBe(true);
+    expect(
+      groups
+        .flatMap((g) => g.conditions)
+        .every((c) => c.negRisk === true && c.negRiskMarketId === 'basket-123')
+    ).toBe(true);
+  });
+
+  it('sends same-title markets from different baskets under one title; API decides what survives', async () => {
+    // The keeper no longer suffix-segments title collisions. Both
+    // single-market groups share the raw event title and carry their own
+    // basket ids; the API's strict basket invariant rejects whichever
+    // arrives second when the basket ids disagree, surfaced as a 400 in
+    // the batch-create response so operators see the conflict.
+    const markets = [
+      makeMarket({
+        conditionId: '0xa',
+        question: 'Will Celtics win?',
+        events: [
+          {
+            id: 'event-1',
+            title: 'NBA champion',
+            slug: 'nba-champion',
+            negRisk: true,
+            negRiskMarketId: 'basket-a',
+          },
+        ],
+      }),
+      makeMarket({
+        conditionId: '0xb',
+        question: 'Will Knicks win?',
+        events: [
+          {
+            id: 'event-1',
+            title: 'NBA champion',
+            slug: 'nba-champion',
+            negRisk: true,
+            negRiskMarketId: 'basket-b',
+          },
+        ],
+      }),
+    ];
+
+    mockCheckExisting.mockResolvedValue(new Map());
+
+    const result = await groupMarkets(markets, API_URL);
+    const groups = result.groups.filter((g) => g.title === 'NBA champion');
+
+    expect(groups).toHaveLength(2);
+    expect(groups.every((g) => g.title === 'NBA champion')).toBe(true);
+    expect(groups.map((g) => g.negRiskMarketId).sort()).toEqual([
+      'basket-a',
+      'basket-b',
+    ]);
+    expect(
+      groups
+        .flatMap((g) => g.conditions)
+        .map((c) => c.negRiskMarketId)
+        .sort()
+    ).toEqual(['basket-a', 'basket-b']);
+    expect(
+      groups.flatMap((g) => g.conditions).every((c) => c.negRisk === true)
+    ).toBe(true);
   });
 
   it('leaves a single-condition group alone (no siblings to vote against)', async () => {

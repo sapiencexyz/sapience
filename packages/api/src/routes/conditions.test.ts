@@ -11,7 +11,7 @@ const mockPrisma = {
     updateMany: vi.fn(),
   },
   category: { findFirst: vi.fn() },
-  conditionGroup: { findFirst: vi.fn(), create: vi.fn() },
+  conditionGroup: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn() },
   $transaction: vi.fn(),
 };
 
@@ -41,6 +41,8 @@ function baseBody(overrides: Record<string, unknown> = {}) {
 describe('conditions routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.condition.findMany.mockResolvedValue([]);
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
   });
 
   // ---------- POST /admin/conditions ----------
@@ -199,6 +201,7 @@ describe('conditions routes', () => {
       mockPrisma.conditionGroup.create.mockResolvedValue({
         id: 42,
         name: 'My Group',
+        negRiskMarketId: null,
       });
       mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
 
@@ -214,6 +217,133 @@ describe('conditions routes', () => {
       );
       const createCall = mockPrisma.condition.create.mock.calls[0][0];
       expect(createCall.data.conditionGroupId).toBe(42);
+    });
+
+    it('does not persist negRisk metadata on the condition row', async () => {
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ negRisk: true, negRiskMarketId: 'basket-a' }));
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.condition.create.mock.calls[0][0];
+      expect(createCall.data).not.toHaveProperty('negRisk');
+      expect(createCall.data).not.toHaveProperty('negRiskMarketId');
+    });
+
+    it('stamps a new group with the payload negRiskMarketId', async () => {
+      mockPrisma.conditionGroup.findFirst.mockResolvedValue(null);
+      mockPrisma.conditionGroup.create.mockResolvedValue({
+        id: 7,
+        name: 'NBA champion',
+        negRiskMarketId: 'basket-a',
+      });
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(
+          baseBody({
+            groupName: 'NBA champion',
+            negRisk: true,
+            negRiskMarketId: 'basket-a',
+          })
+        );
+
+      expect(res.status).toBe(201);
+      expect(mockPrisma.conditionGroup.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ negRiskMarketId: 'basket-a' }),
+        })
+      );
+    });
+
+    it('rejects negRisk conditions without a negRiskMarketId', async () => {
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ negRisk: true }));
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/negRiskMarketId/i);
+      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects negRisk conditions without a negRiskMarketId before creating a group', async () => {
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ groupName: 'NBA champion', negRisk: true }));
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/negRiskMarketId/i);
+      expect(mockPrisma.conditionGroup.create).not.toHaveBeenCalled();
+      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects assigning a condition to an existing negRisk group with a mismatched basket', async () => {
+      mockPrisma.conditionGroup.findFirst.mockResolvedValue({
+        id: 9,
+        name: 'NBA champion',
+        negRiskMarketId: 'basket-a',
+      });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(
+          baseBody({
+            groupName: 'NBA champion',
+            negRisk: true,
+            negRiskMarketId: 'basket-b',
+          })
+        );
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching condition/i);
+      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects assigning a non-basket condition to an existing negRisk group', async () => {
+      // Once a group has a basket id, it accepts ONLY matching members.
+      // A request that omits negRiskMarketId entirely is a non-basket
+      // condition trying to slip in, and must be rejected.
+      mockPrisma.conditionGroup.findFirst.mockResolvedValue({
+        id: 9,
+        name: 'NBA champion',
+        negRiskMarketId: 'basket-a',
+      });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ groupName: 'NBA champion' }));
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching condition/i);
+      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects assigning a basket condition to an existing non-basket group', async () => {
+      // The first condition added to a group decides the basket id (or
+      // null). A non-basket group must never silently absorb a basket
+      // condition — the symmetric case of the previous test.
+      mockPrisma.conditionGroup.findFirst.mockResolvedValue({
+        id: 11,
+        name: 'Mixed odds',
+        negRiskMarketId: null,
+      });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(
+          baseBody({
+            groupName: 'Mixed odds',
+            negRisk: true,
+            negRiskMarketId: 'basket-a',
+          })
+        );
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching condition/i);
+      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
     });
 
     it('stores similarMarketVolume when provided', async () => {
@@ -297,6 +427,242 @@ describe('conditions routes', () => {
   // ---------- POST /admin/conditions/batch-create ----------
 
   describe('POST /admin/conditions/batch-create', () => {
+    it('creates a new negRisk group when every batch sibling shares the same basket id', async () => {
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([]); // group is new
+      mockPrisma.conditionGroup.create.mockResolvedValue({
+        id: 77,
+        name: 'NBA champion',
+        negRiskMarketId: 'basket-a',
+      });
+      mockPrisma.condition.create.mockResolvedValue({});
+
+      const HASH_A = '0x' + 'aa'.repeat(32);
+      const HASH_B = '0x' + 'bb'.repeat(32);
+
+      const res = await request(app)
+        .post('/admin/conditions/batch-create')
+        .send({
+          conditions: [
+            {
+              conditionHash: HASH_A,
+              question: 'Will the home team win?',
+              endTime: FUTURE_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+              groupName: 'NBA champion',
+              negRisk: true,
+              negRiskMarketId: 'basket-a',
+            },
+            {
+              conditionHash: HASH_B,
+              question: 'Will the away team win?',
+              endTime: FUTURE_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+              groupName: 'NBA champion',
+              negRisk: true,
+              negRiskMarketId: 'basket-a',
+            },
+          ],
+        });
+
+      expect(res.status).toBe(201);
+      expect(mockPrisma.conditionGroup.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: 'NBA champion',
+            negRiskMarketId: 'basket-a',
+          }),
+        })
+      );
+      expect(mockPrisma.condition.create).toHaveBeenCalledTimes(2);
+      for (const call of mockPrisma.condition.create.mock.calls) {
+        expect(call[0].data.conditionGroupId).toBe(77);
+        expect(call[0].data).not.toHaveProperty('negRisk');
+        expect(call[0].data).not.toHaveProperty('negRiskMarketId');
+      }
+    });
+
+    it('lets the first item in a new group decide its basket id and rejects mismatched siblings', async () => {
+      // Leader-takes-all: when a batch creates a brand-new group, the
+      // first item's negRiskMarketId stamps the group, and every other
+      // item in the same batch+group must match (null counts as a value).
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([]); // group is new
+      mockPrisma.condition.create.mockResolvedValue({});
+
+      const HASH_A = '0x' + 'aa'.repeat(32);
+      const HASH_B = '0x' + 'bb'.repeat(32);
+
+      const res = await request(app)
+        .post('/admin/conditions/batch-create')
+        .send({
+          conditions: [
+            {
+              conditionHash: HASH_A,
+              question: 'Will the home team win?',
+              endTime: FUTURE_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+              groupName: 'NBA champion',
+              negRisk: true,
+              negRiskMarketId: 'basket-a',
+            },
+            {
+              conditionHash: HASH_B,
+              question: 'Will the away team win?',
+              endTime: FUTURE_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+              groupName: 'NBA champion',
+              negRisk: true,
+              negRiskMarketId: 'basket-b',
+            },
+          ],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching negRisk/i);
+      expect(mockPrisma.conditionGroup.create).not.toHaveBeenCalled();
+      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects batch items targeting an existing negRisk group without negRiskMarketId', async () => {
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([
+        {
+          id: 9,
+          name: 'NBA champion',
+          negRiskMarketId: 'basket-a',
+        },
+      ]);
+
+      const res = await request(app)
+        .post('/admin/conditions/batch-create')
+        .send({
+          conditions: [
+            {
+              conditionHash: '0x' + '33'.repeat(32),
+              question: 'Will the home team win?',
+              endTime: FUTURE_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+              groupName: 'NBA champion',
+              // no negRisk / negRiskMarketId in payload — a non-basket
+              // item must not be silently admitted to a basket group.
+            },
+          ],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching negRisk/i);
+      expect(res.body.code).toBe('NEG_RISK_BASKET_MISMATCH');
+      expect(res.body.mismatches).toEqual([
+        {
+          type: 'EXISTING_GROUP_MISMATCH',
+          groupName: 'NBA champion',
+          expectedNegRiskMarketId: 'basket-a',
+          mismatched: [
+            {
+              conditionHash: '0x' + '33'.repeat(32),
+              actualNegRiskMarketId: null,
+            },
+          ],
+        },
+      ]);
+      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
+    });
+
+    it('accepts batch items targeting an existing negRisk group when every basket id matches', async () => {
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([
+        {
+          id: 9,
+          name: 'NBA champion',
+          negRiskMarketId: 'basket-a',
+        },
+      ]);
+      mockPrisma.condition.create.mockResolvedValue({});
+
+      const res = await request(app)
+        .post('/admin/conditions/batch-create')
+        .send({
+          conditions: [
+            {
+              conditionHash: '0x' + '44'.repeat(32),
+              question: 'Will the home team win?',
+              endTime: FUTURE_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+              groupName: 'NBA champion',
+              negRisk: true,
+              negRiskMarketId: 'basket-a',
+            },
+            {
+              conditionHash: '0x' + '55'.repeat(32),
+              question: 'Will the away team win?',
+              endTime: FUTURE_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+              groupName: 'NBA champion',
+              negRisk: true,
+              negRiskMarketId: 'basket-a',
+            },
+          ],
+        });
+
+      expect(res.status).toBe(201);
+      expect(mockPrisma.conditionGroup.create).not.toHaveBeenCalled();
+      expect(mockPrisma.condition.create).toHaveBeenCalledTimes(2);
+      for (const call of mockPrisma.condition.create.mock.calls) {
+        expect(call[0].data.conditionGroupId).toBe(9);
+        expect(call[0].data).not.toHaveProperty('negRisk');
+        expect(call[0].data).not.toHaveProperty('negRiskMarketId');
+      }
+    });
+
+    it('rejects batch items targeting an existing non-basket group with a basket id', async () => {
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([
+        {
+          id: 11,
+          name: 'Mixed odds',
+          negRiskMarketId: null,
+        },
+      ]);
+
+      const res = await request(app)
+        .post('/admin/conditions/batch-create')
+        .send({
+          conditions: [
+            {
+              conditionHash: '0x' + '66'.repeat(32),
+              question: 'Will the home team win?',
+              endTime: FUTURE_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+              groupName: 'Mixed odds',
+              negRisk: true,
+              negRiskMarketId: 'basket-a',
+            },
+          ],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching negRisk/i);
+      expect(res.body.code).toBe('NEG_RISK_BASKET_MISMATCH');
+      expect(res.body.mismatches).toEqual([
+        {
+          type: 'EXISTING_GROUP_MISMATCH',
+          groupName: 'Mixed odds',
+          expectedNegRiskMarketId: null,
+          mismatched: [
+            {
+              conditionHash: '0x' + '66'.repeat(32),
+              actualNegRiskMarketId: 'basket-a',
+            },
+          ],
+        },
+      ]);
+      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
+    });
+
     it('persists optionName for every item in the batch', async () => {
       mockPrisma.condition.create.mockResolvedValue({});
       mockPrisma.category.findFirst.mockResolvedValue(null);
@@ -724,6 +1090,76 @@ describe('conditions routes', () => {
       const updateCall = mockPrisma.condition.update.mock.calls[0][0];
       expect(updateCall.data.optionName).toBeUndefined();
     });
+
+    it('rejects negRisk updates without a negRiskMarketId before creating a group', async () => {
+      mockPrisma.condition.findUnique.mockResolvedValue(existingCondition());
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        .send({ groupName: 'NBA champion', negRisk: true });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/negRiskMarketId/i);
+      expect(mockPrisma.conditionGroup.create).not.toHaveBeenCalled();
+      expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects assigning a non-basket condition to an existing negRisk group via groupName', async () => {
+      mockPrisma.condition.findUnique.mockResolvedValue(existingCondition());
+      mockPrisma.conditionGroup.findFirst.mockResolvedValue({
+        id: 9,
+        name: 'NBA champion',
+        negRiskMarketId: 'basket-a',
+      });
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        // groupName provided, but no negRiskMarketId: this is a non-basket
+        // condition trying to slip into a basket group.
+        .send({ groupName: 'NBA champion' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching condition/i);
+      expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects assigning a basket condition to an existing non-basket group via groupName', async () => {
+      mockPrisma.condition.findUnique.mockResolvedValue(existingCondition());
+      mockPrisma.conditionGroup.findFirst.mockResolvedValue({
+        id: 11,
+        name: 'Mixed odds',
+        negRiskMarketId: null,
+      });
+
+      const res = await request(app).put(`/admin/conditions/${VALID_ID}`).send({
+        groupName: 'Mixed odds',
+        negRisk: true,
+        negRiskMarketId: 'basket-a',
+      });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching condition/i);
+      expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+    });
+
+    it('allows metadata-only edits on conditions already in a negRisk group', async () => {
+      // Regression guard: once a condition is in the basket group, normal
+      // edits (e.g. changing the question) shouldn't require restating the
+      // basket id every time. The invariant guards new admissions, not
+      // continuing membership.
+      mockPrisma.condition.findUnique.mockResolvedValue(
+        existingCondition({ conditionGroupId: 9 })
+      );
+      mockPrisma.condition.update.mockResolvedValue({ id: VALID_ID });
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        .send({ question: 'Edited question' });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.question).toBe('Edited question');
+    });
   });
 
   // ---------- PUT /admin/conditions/batch-metadata ----------
@@ -759,6 +1195,118 @@ describe('conditions routes', () => {
       expect(updateCall.data.optionName).toBeNull();
     });
 
+    it('does not persist negRisk metadata onto the condition row', async () => {
+      mockPrisma.condition.update.mockResolvedValue({});
+
+      const res = await request(app)
+        .put('/admin/conditions/batch-metadata')
+        .send({
+          updates: [
+            {
+              id: VALID_ID,
+              fields: {
+                question: 'Q?',
+                negRisk: true,
+                negRiskMarketId: 'basket-123',
+              },
+            },
+          ],
+        });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data).not.toHaveProperty('negRisk');
+      expect(updateCall.data).not.toHaveProperty('negRiskMarketId');
+      expect(updateCall.data.question).toBe('Q?');
+    });
+
+    it('rejects batch assignment to an existing negRisk group when an item omits negRiskMarketId', async () => {
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([
+        {
+          id: 42,
+          name: 'NBA champion',
+          negRiskMarketId: 'basket-a',
+        },
+      ]);
+
+      const res = await request(app)
+        .put('/admin/conditions/batch-metadata')
+        .send({
+          updates: [
+            {
+              id: VALID_ID,
+              // groupName targets a basket group but the item carries no
+              // basket claim: must be rejected, not silently admitted.
+              fields: { groupName: 'NBA champion' },
+            },
+          ],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching condition/i);
+      expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects assigning batch metadata to an existing negRisk group with a mismatched basket', async () => {
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([
+        {
+          id: 42,
+          name: 'NBA champion',
+          negRiskMarketId: 'basket-a',
+        },
+      ]);
+
+      const res = await request(app)
+        .put('/admin/conditions/batch-metadata')
+        .send({
+          updates: [
+            {
+              id: VALID_ID,
+              fields: {
+                groupName: 'NBA champion',
+                negRisk: true,
+                negRiskMarketId: 'basket-b',
+              },
+            },
+          ],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching condition/i);
+      expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+    });
+
+    it('allows assigning batch metadata to an existing negRisk group with the matching basket', async () => {
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([
+        {
+          id: 42,
+          name: 'NBA champion',
+          negRiskMarketId: 'basket-a',
+        },
+      ]);
+      mockPrisma.condition.update.mockResolvedValue({});
+
+      const res = await request(app)
+        .put('/admin/conditions/batch-metadata')
+        .send({
+          updates: [
+            {
+              id: VALID_ID,
+              fields: {
+                groupName: 'NBA champion',
+                negRisk: true,
+                negRiskMarketId: 'basket-a',
+              },
+            },
+          ],
+        });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.conditionGroupId).toBe(42);
+      expect(updateCall.data).not.toHaveProperty('negRisk');
+      expect(updateCall.data).not.toHaveProperty('negRiskMarketId');
+    });
     describe('endTime field (Part C backfill support)', () => {
       it('updates endTime on unsettled rows', async () => {
         mockPrisma.condition.findMany.mockResolvedValue([

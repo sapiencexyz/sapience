@@ -447,6 +447,9 @@ type ConditionGroup {
   createdAt: DateTimeISO!
   id: Int!
   name: String!
+
+  """True when every child condition belongs to the same Polymarket negative-risk basket"""
+  negRisk: Boolean!
   similarMarkets: [String!]!
 }
 

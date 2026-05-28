@@ -5010,6 +5010,22 @@
             "deprecationReason": null
           },
           {
+            "name": "negRisk",
+            "description": "True when every child condition belongs to the same Polymarket negative-risk basket",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "similarMarkets",
             "description": null,
             "args": [],

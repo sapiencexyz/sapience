@@ -239,6 +239,24 @@ model ConditionGroup {
   categoryId     Int?
   category       Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   similarMarkets String[]    @default([])
+  /// Polymarket negative-risk basket identifier when every child condition
+  /// shares one. Null for non-basket groups. The GraphQL `negRisk: Boolean!`
+  /// field is derived from this being non-null; the boolean itself is not
+  /// stored as a column.
+  negRiskMarketId String?    @db.VarChar
+  /// Origin of the group's identity. Future-proofs for multi-platform support
+  /// without threading `(source, externalEventId)` through every resolver
+  /// today — application code still treats this column as implicitly
+  /// `'polymarket'`. Add new sources only when a non-Polymarket integration
+  /// actually lands.
+  source         String      @default("polymarket") @db.VarChar
+  /// Stable platform-level identifier for the group. For
+  /// `source = 'polymarket'` this is the Polymarket event id
+  /// (`events[0].id` on the Gamma /markets response). Null for legacy /
+  /// Sapience-native / curated groups that don't originate from a platform
+  /// event. Uniqueness is enforced together with `source` by a partial
+  /// unique index — see migration.
+  externalEventId String?    @db.VarChar
   condition      Condition[]
 
   // Denormalized aggregates maintained by trigger on condition table
@@ -268,6 +286,10 @@ model ConditionGroup {
   // - IDX_cg_total_prediction_count: "totalPredictionCount" DESC WHERE "publicConditionCount" > 0
   // - IDX_cg_max_created_at_epoch: "maxCreatedAtEpoch" DESC WHERE "publicConditionCount" > 0
   // - IDX_cg_total_volume_*: volume DESC WHERE "publicConditionCount" > 0
+  // - uq_condition_group_source_event: partial UNIQUE("source","externalEventId")
+  //   WHERE "externalEventId" IS NOT NULL — the canonical identity for
+  //   platform-sourced groups. Cannot be represented as a Prisma @@unique
+  //   because Prisma 6 doesn't support partial unique indexes natively.
   // Trigger: trg_condition_group_aggregates maintains aggregates on condition INSERT/UPDATE/DELETE
   @@map("condition_group")
 }
