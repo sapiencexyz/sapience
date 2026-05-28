@@ -19,27 +19,44 @@ import {
   withCursorWhere,
 } from '../../relay/connection';
 
-export const account: NonNullable<QueryResolvers['account']> = async (
-  _parent,
-  { address, chainId },
-  ctx
-) => {
+type AccountCtx = {
+  loaders?: { userByAddress?: { load: (a: string) => Promise<unknown> } };
+};
+
+type ResolvedAccount = NonNullable<
+  Awaited<ReturnType<typeof prisma.user.findUnique>>
+>;
+
+/**
+ * Resolve a chain-scoped account view for an address: load the persisted
+ * User row (via the request loader when available) or synthesize one, then
+ * attach the resolved `chainId`. Shared by the `account(address:)` query
+ * and `Vault.account` so both produce the identical Account parent shape.
+ * `chainId` defaults to the deployment's chain when the caller omits it.
+ */
+export const loadAccount = async (
+  address: string,
+  chainId: number | null | undefined,
+  ctx: AccountCtx | null | undefined
+): Promise<ResolvedAccount> => {
   const addressLc = address.toLowerCase();
-  const row = ctx.loaders?.userByAddress
+  const row = ctx?.loaders?.userByAddress
     ? await ctx.loaders.userByAddress.load(addressLc)
     : await prisma.user.findUnique({ where: { address: addressLc } });
   // synthesizeAccount returns a v1-typed Account; the runtime shape matches
-  // the Prisma row mapper used here, so the cast is purely a name-level fix.
-  // Schema declares this as non-null (`account(...): Account!`) — the
-  // synthesis path guarantees a value, never returns null. `chainId` scopes
-  // the account view; it defaults server-side when the caller omits it.
+  // the Prisma row mapper, so the cast is purely a name-level fix. The
+  // synthesis path guarantees a value, never null.
   return {
-    ...((row ?? synthesizeAccount(addressLc)) as NonNullable<
-      Awaited<ReturnType<typeof prisma.user.findUnique>>
-    >),
+    ...((row ?? synthesizeAccount(addressLc)) as ResolvedAccount),
     chainId: chainId ?? DEFAULT_CHAIN_ID,
-  } as NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>;
+  } as ResolvedAccount;
 };
+
+export const account: NonNullable<QueryResolvers['account']> = (
+  _parent,
+  { address, chainId },
+  ctx
+) => loadAccount(address, chainId, ctx);
 
 export const accounts: NonNullable<QueryResolvers['accounts']> = async (
   _parent,

@@ -930,14 +930,20 @@ export type Protocol = {
    * re-key when granularity becomes configurable.
    */
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
-  stats: ProtocolStatConnection;
   /**
-   * Total value locked across the protocol, wei. Escrow collateral (which
-   * includes settled-but-unclaimed winnings) plus undeployed available
-   * assets summed across **every** configured vault — not just the default
-   * one. Computed server-side from the latest per-vault stats snapshots.
+   * Live, current protocol-wide stats — a single `ProtocolStat` with
+   * `timestamp = now`. Volume / trade-count / open-interest reflect the
+   * in-progress period and `totalValueLocked` is read across every configured
+   * vault at query time. Use `statsHistory` for the recorded daily series.
    */
-  tvl: Scalars['BigInt']['output'];
+  stats: ProtocolStat;
+  /**
+   * Recorded protocol-wide snapshots, oldest first — backs the analytics
+   * volume / TVL / open-interest time-series charts. (Previously named
+   * `stats`; renamed to `statsHistory` so `stats` can be the live singular,
+   * matching the `Vault` access pattern.)
+   */
+  statsHistory: ProtocolStatConnection;
 };
 
 /**
@@ -945,7 +951,7 @@ export type Protocol = {
  * breakdowns the dashboard renders. Lookup is via `protocol { … }`; no
  * arguments needed.
  */
-export type ProtocolStatsArgs = {
+export type ProtocolStatsHistoryArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<ProtocolStatFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
@@ -953,9 +959,10 @@ export type ProtocolStatsArgs = {
 
 /**
  * Protocol-wide snapshot of cumulative + period metrics. v2 drops the
- * vault-scoped fields v1 carried (`vault*`, `periodPnL`); protocol-level
- * TVL is exposed directly as `Protocol.tvl`, and per-vault stat breakdowns
- * live on `Vault.stats` / `Vault.statsHistory`.
+ * vault-scoped fields v1 carried (`vault*`, `periodPnL`); per-vault stat
+ * breakdowns live on `Vault.stats` / `Vault.statsHistory`. Protocol-level
+ * TVL is carried here as `totalValueLocked` (read live on `Protocol.stats`,
+ * aggregated per snapshot on `Protocol.statsHistory`).
  */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
@@ -966,6 +973,14 @@ export type ProtocolStat = {
   periodTradeCount: Scalars['Int']['output'];
   periodVolume: Scalars['BigInt']['output'];
   timestamp: Scalars['UnixSeconds']['output'];
+  /**
+   * Total value locked across the protocol, wei: escrow collateral (which
+   * includes settled-but-unclaimed winnings) plus undeployed available assets
+   * summed across **every** configured vault family — not just the default
+   * one (the v1 series under-counted by scoping to a single family). Computed
+   * by read-time aggregation, so history and the live `Protocol.stats` agree.
+   */
+  totalValueLocked: Scalars['BigInt']['output'];
 };
 
 export type ProtocolStatConnection = {
@@ -1632,26 +1647,34 @@ export type TradeOrderField = 'BLOCK_NUMBER' | 'EXECUTED_AT';
  * exists primarily for enumeration; per-vault refetch goes through
  * `vault(address:)`.
  */
-export type Vault = AddressEntity &
-  Node & {
-    __typename?: 'Vault';
-    /** Canonical lowercase vault contract address (current primary). */
-    address: Scalars['Address']['output'];
-    /** Chain the vault is deployed on. */
-    chainId: Scalars['Int']['output'];
-    id: Scalars['ID']['output'];
-    /**
-     * Latest economic snapshot for this vault (balance, deployed/undeployed
-     * collateral, realized PnL, flows). `null` until the stats writer has
-     * recorded a first snapshot for the vault.
-     */
-    stats?: Maybe<VaultStat>;
-    /**
-     * Time-series of this vault's economic snapshots, newest first. Backs the
-     * vault dashboard's TVL / PnL charts. Defaults to `TIMESTAMP DESC`.
-     */
-    statsHistory: VaultStatConnection;
-  };
+export type Vault = Node & {
+  __typename?: 'Vault';
+  /**
+   * The vault's on-chain identity as an account: address, chainId, live wallet
+   * balance, ranking, and balance history. A vault *is* an account (by
+   * composition); its address and chain live here rather than being duplicated
+   * onto `Vault`.
+   */
+  account: Account;
+  id: Scalars['ID']['output'];
+  /**
+   * Latest economic snapshot for this vault (balance, deployed/undeployed
+   * collateral, realized PnL, flows). `null` until the stats writer has
+   * recorded a first snapshot for the vault.
+   *
+   * DEFERRED — not built yet: this is currently the latest *recorded*
+   * snapshot. The target is a live, non-null chain read computed at query time
+   * (reusing v1's live-candle helpers in `sdl/resolvers/queries/analytics.ts`)
+   * so `/vaults` can drop its own `usePassiveLiquidityVault` RPC reads. Big
+   * lift: needs per-request chain reads, not just a snapshot lookup.
+   */
+  stats?: Maybe<VaultStat>;
+  /**
+   * Time-series of this vault's economic snapshots, newest first. Backs the
+   * vault dashboard's TVL / PnL charts. Defaults to `TIMESTAMP DESC`.
+   */
+  statsHistory: VaultStatConnection;
+};
 
 /**
  * A statically configured protocol vault. Vaults are address-keyed like
@@ -1719,6 +1742,17 @@ export type VaultStat = {
   balance: Scalars['BigInt']['output'];
   collateralLost: Scalars['BigInt']['output'];
   collateralWon: Scalars['BigInt']['output'];
+  /**
+   * Cumulative trading PnL the vault dashboard plots: settlement PnL, plus
+   * wUSDe earmarked from resolved-but-unredeemed wins, plus net secondary-
+   * market flow (`realizedPnl + unredeemedClaim + secondarySold −
+   * secondaryBought`). This is the *same* numerator the account behind the
+   * vault carries; the vault presents it as a return on total assets
+   * (`balance + deployedCollateral`), where the account measures it against
+   * deployed capital. The unredeemed term cancels the transient phantom loss
+   * between a position resolving and its redeem being indexed.
+   */
+  cumulativePnl: Scalars['BigInt']['output'];
   /** Collateral deployed into escrow (backing open positions). */
   deployedCollateral: Scalars['BigInt']['output'];
   deposits: Scalars['BigInt']['output'];

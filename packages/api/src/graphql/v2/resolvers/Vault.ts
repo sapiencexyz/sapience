@@ -1,11 +1,11 @@
 /**
- * v2 Vault — implements Node & AddressEntity.
+ * v2 Vault — implements Node.
  *
  * The configured-vault catalog comes from `services/protocolStats/vaultConfig`,
- * the same source v1 reads from. v2's wire shape drops the leaked
- * `Account` relation and the `collateral` value type; both can be
- * derived (account by address, collateral via chainId mapping) and
- * neither is part of the "what is a vault" surface.
+ * the same source v1 reads from. A vault is an account by composition:
+ * `Vault.account` exposes its address, chainId, balance, and ranking, so the
+ * `Vault` type itself carries no `address`/`chainId` fields (the mapped row
+ * still holds them internally to key snapshot lookups).
  *
  * Global id encoding is `(Vault, "<chainId>:<address>")` because a
  * vault is uniquely identified by its (chainId, address) pair — two
@@ -26,6 +26,7 @@ import {
   decodeCursor,
   encodeCursor,
 } from '../relay/connection';
+import { loadAccount } from './queries/account';
 import type { VaultResolvers } from '../__generated__/resolvers';
 
 export type VaultRow = {
@@ -117,6 +118,14 @@ const mapVaultStat = (row: SnapshotRow) => ({
   deployedCollateral: BigInt(row.vaultDeployed ?? '0'),
   undeployedCollateral: BigInt(row.vaultAvailableAssets ?? '0'),
   realizedPnl: BigInt(row.vaultRealizedPnL ?? '0'),
+  // Cumulative trading PnL — same roll-up v1's analytics chart uses
+  // (settlement + unredeemed wins + net secondary flow). Sourced entirely
+  // from existing snapshot columns; no live recomputation here.
+  cumulativePnl:
+    BigInt(row.vaultRealizedPnL ?? '0') +
+    BigInt(row.vaultUnredeemedClaim ?? '0') +
+    BigInt(row.vaultSecondarySold ?? '0') -
+    BigInt(row.vaultSecondaryBought ?? '0'),
   deposits: BigInt(row.vaultDeposits ?? '0'),
   withdrawals: BigInt(row.vaultWithdrawals ?? '0'),
   positionsWon: row.vaultPositionsWon,
@@ -133,15 +142,34 @@ const mapVaultStat = (row: SnapshotRow) => ({
  * stays a plain property read off the mapped row.
  */
 export const Vault: VaultResolvers = {
-  stats: async (parent) => {
-    const snapshot = await getLatestProtocolStats(
+  // A vault is an account by composition. Resolve the same Account parent
+  // shape the `account(address:)` query produces, scoped to the vault's chain.
+  account: ((parent: VaultRow, _args: unknown, ctx: unknown) =>
+    loadAccount(
+      parent.address,
       parent.chainId,
-      parent.address.toLowerCase()
+      ctx as Parameters<typeof loadAccount>[2]
+    )) as never,
+
+  stats: async (parent) => {
+    // DEFERRED — not built yet: returns the latest *recorded* snapshot. The
+    // target is a live, non-null query-time chain read (reuse v1's live-candle
+    // helpers in sdl/resolvers/queries/analytics.ts) so /vaults can drop
+    // usePassiveLiquidityVault. Big lift — per-request RPC, not a snapshot map.
+    //
+    // The runtime parent is the mapped VaultRow (carries address/chainId for
+    // snapshot lookups); the generated parent type no longer surfaces them
+    // now that the public `Vault` reaches identity through `account`.
+    const row = parent as unknown as VaultRow;
+    const snapshot = await getLatestProtocolStats(
+      row.chainId,
+      row.address.toLowerCase()
     );
     return snapshot ? (mapVaultStat(snapshot) as never) : null;
   },
 
   statsHistory: async (parent, args) => {
+    const row = parent as unknown as VaultRow;
     const first = clampTake(args.first ?? 30, {
       defaultTake: 30,
       maxTake: 365,
@@ -150,8 +178,8 @@ export const Vault: VaultResolvers = {
     const skip = after && /^\d+$/.test(after.k) ? Number(after.k) + 1 : 0;
 
     const where = {
-      chainId: parent.chainId,
-      vaultAddress: parent.address.toLowerCase(),
+      chainId: row.chainId,
+      vaultAddress: row.address.toLowerCase(),
       ...(args.filter?.timestamp
         ? {
             timestamp: {

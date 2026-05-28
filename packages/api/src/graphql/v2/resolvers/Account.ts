@@ -79,4 +79,11 @@ export const Account: AccountResolvers = {
 
   collateralBalance: collateralBalanceField,
   collateralBalanceHistory: collateralBalanceHistoryField,
+
+  // DEFERRED — not built yet: `stats` / `statsHistory` (AccountStat), the
+  // account's return-on-deployed PnL series (same numerator a vault plots
+  // on-total). No per-account time-series source exists yet — accountStats.ts
+  // is a windowed leaderboard aggregate, not a bucketed series — so this needs
+  // a new per-account snapshot writer/table. No consumer today. See the
+  // matching note on the `Account` type in schema.graphql.
 };

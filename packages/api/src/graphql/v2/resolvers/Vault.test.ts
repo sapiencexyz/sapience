@@ -31,7 +31,15 @@ vi.mock('@sapience/sdk/constants', () => ({
 vi.mock('../../../core/db', () => ({
   default: {
     protocolStatsSnapshot: { findMany: vi.fn(), count: vi.fn() },
+    user: { findUnique: vi.fn().mockResolvedValue(null) },
   },
+}));
+
+vi.mock('../accountSynthesis', () => ({
+  synthesizeAccount: (address: string) => ({
+    address,
+    createdAt: new Date(0),
+  }),
 }));
 
 // Vault.ts registers `Vault` in the v2 Node registry at module import.
@@ -91,6 +99,14 @@ describe('Vault (v2)', () => {
     ]);
   });
 
+  it('account composes a chain-scoped Account from the vault row', async () => {
+    const acct = await callResolver<{ address: string; chainId: number }>(
+      Vault.account
+    )({ id: 'x', address: '0xAAAA', chainId: 13374202 }, {}, {}, null);
+    expect(acct.address).toBe('0xaaaa');
+    expect(acct.chainId).toBe(13374202);
+  });
+
   it('stats maps the latest snapshot to the VaultStat wire shape', async () => {
     mockGetLatestProtocolStats.mockResolvedValue({
       timestamp: 1700000000,
@@ -98,6 +114,9 @@ describe('Vault (v2)', () => {
       vaultDeployed: '500',
       vaultAvailableAssets: '1500',
       vaultRealizedPnL: '42',
+      vaultUnredeemedClaim: '10',
+      vaultSecondarySold: '5',
+      vaultSecondaryBought: '3',
       vaultDeposits: '2000',
       vaultWithdrawals: '300',
       vaultPositionsWon: 7,
@@ -110,12 +129,15 @@ describe('Vault (v2)', () => {
       undeployedCollateral: bigint;
       balance: bigint;
       realizedPnl: bigint;
+      cumulativePnl: bigint;
       positionsWon: number;
     }>(Vault.stats)({ chainId: 13374202, address: '0xAAAA' }, {}, {}, null);
     expect(stat.deployedCollateral).toBe(500n);
     expect(stat.undeployedCollateral).toBe(1500n);
     expect(stat.balance).toBe(1000n);
     expect(stat.realizedPnl).toBe(42n);
+    // cumulativePnl = realized + unredeemed + secondarySold − secondaryBought
+    expect(stat.cumulativePnl).toBe(54n);
     expect(stat.positionsWon).toBe(7);
   });
 
