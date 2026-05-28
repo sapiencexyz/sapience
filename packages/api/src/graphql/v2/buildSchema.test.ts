@@ -56,7 +56,7 @@ describe('v2 schema stub', () => {
       'activity',
       'leaderboard',
       'protocol',
-      'popularTags',
+      'tags',
     ];
     for (const name of expected) {
       expect(query[name], `Query.${name} should be declared`).toBeDefined();

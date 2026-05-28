@@ -41,7 +41,7 @@ import { activity } from './queries/activity';
 import { leaderboard } from './queries/leaderboard';
 import { Protocol, protocol } from './Protocol';
 import { QuestionItem, questions } from './queries/questions';
-import { popularTags } from '../../sdl/resolvers/queries/tags';
+import { tags } from './queries/tags';
 
 export const resolvers = {
   ...scalarResolvers,
@@ -97,6 +97,6 @@ export const resolvers = {
     leaderboard,
     protocol,
     questions,
-    popularTags,
+    tags,
   },
 };
