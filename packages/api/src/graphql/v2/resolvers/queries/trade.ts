@@ -50,7 +50,6 @@ export const trades: NonNullable<QueryResolvers['trades']> = async (
     if (args.filter?.buyer) where.buyer = args.filter.buyer.toLowerCase();
     if (args.filter?.seller) where.seller = args.filter.seller.toLowerCase();
   }
-  if (args.filter?.token) where.token = args.filter.token.toLowerCase();
   if (args.filter?.tokens?.length)
     where.token = { in: args.filter.tokens.map((t) => t.toLowerCase()) };
   if (args.filter?.chainId != null) where.chainId = args.filter.chainId;

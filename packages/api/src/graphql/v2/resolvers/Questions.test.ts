@@ -220,14 +220,13 @@ describe('questions (v2)', () => {
     );
   });
 
-  it('passes resolver / resolvers / categorySlugs / search / tag through unchanged', async () => {
+  it('passes resolvers / categorySlugs / search / tag through unchanged', async () => {
     await callResolver(questions)(
       null,
       {
         first: 25,
         filter: {
           chainId: 13374202,
-          resolver: '0xabc',
           resolvers: ['0xdef', '0x123'],
           categorySlugs: ['crypto', 'sports'],
           search: 'fed rate',
@@ -240,7 +239,6 @@ describe('questions (v2)', () => {
     expect(mockRunQuestionsData).toHaveBeenCalledWith(
       expect.objectContaining({
         chainId: 13374202,
-        contractAddress: '0xabc',
         contractAddressIn: ['0xdef', '0x123'],
         categorySlugs: ['crypto', 'sports'],
         search: 'fed rate',

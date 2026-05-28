@@ -46,14 +46,11 @@ const predictionTs = (row: { createdAt: Date }) =>
 const tradeTs = (row: { executedAt: number }) => row.executedAt;
 
 const conditionIdsFor = async (
-  conditionId: string | null | undefined,
   conditionIds: string[] | null | undefined
 ): Promise<string[] | null> => {
-  const ids: string[] = [];
-  if (conditionId) ids.push(conditionId.toLowerCase());
-  if (conditionIds?.length)
-    ids.push(...conditionIds.map((id) => id.toLowerCase()));
-  return ids.length ? Array.from(new Set(ids)) : null;
+  if (!conditionIds?.length) return null;
+  const ids = conditionIds.map((id) => id.toLowerCase());
+  return Array.from(new Set(ids));
 };
 
 export const activity: NonNullable<QueryResolvers['activity']> = async (
@@ -84,10 +81,7 @@ export const activity: NonNullable<QueryResolvers['activity']> = async (
     !args.filter?.types || args.filter.types.includes(ActivityType.Trade);
 
   // Resolve condition filter → pickConfig and token sets.
-  const condIds = await conditionIdsFor(
-    args.filter?.conditionId,
-    args.filter?.conditionIds
-  );
+  const condIds = await conditionIdsFor(args.filter?.conditionIds);
 
   // For trade-side condition filter we walk Pick → PickConfiguration to
   // collect the predictor / counterparty token addresses. The lookup is

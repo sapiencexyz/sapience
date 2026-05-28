@@ -155,7 +155,6 @@ export type ActivityEdge = {
 export type ActivityFilter = {
   /** OR across predictor/counterparty (predictions) and buyer/seller (trades). */
   account?: InputMaybe<Scalars['Address']['input']>;
-  conditionId?: InputMaybe<Scalars['Bytes']['input']>;
   conditionIds?: InputMaybe<Array<Scalars['Bytes']['input']>>;
   pickConfigId?: InputMaybe<Scalars['Bytes32']['input']>;
   /** Filter by activity timestamp in epoch seconds. */
@@ -508,7 +507,6 @@ export type ConditionEdge = {
 export type ConditionFilter = {
   categorySlug?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  conditionId?: InputMaybe<Scalars['Bytes']['input']>;
   conditionIds?: InputMaybe<Array<Scalars['Bytes']['input']>>;
   endTime?: InputMaybe<IntRangeFilter>;
   outcome?: InputMaybe<ConditionOutcome>;
@@ -745,7 +743,6 @@ export type PickConfigurationEdge = {
 export type PickConfigurationFilter = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   resolved?: InputMaybe<Scalars['Boolean']['input']>;
-  result?: InputMaybe<SettlementResult>;
   results?: InputMaybe<Array<SettlementResult>>;
   /** Either predictor or counterparty token matches one of these (case-insensitive). */
   tokens?: InputMaybe<Array<Scalars['Address']['input']>>;
@@ -804,13 +801,13 @@ export type PositionEdge = {
 
 export type PositionFilter = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  conditionId?: InputMaybe<Scalars['Bytes']['input']>;
+  /** Restrict to positions on any of these conditions (via the pickConfig join). */
+  conditionIds?: InputMaybe<Array<Scalars['Bytes']['input']>>;
   /** Filter by pickConfig end epoch seconds. */
   endsAt?: InputMaybe<IntRangeFilter>;
   holder?: InputMaybe<Scalars['Address']['input']>;
   pickConfigId?: InputMaybe<Scalars['Bytes32']['input']>;
-  /** Restrict to positions whose pickConfig settled with this result. */
-  result?: InputMaybe<SettlementResult>;
+  /** Restrict to positions whose pickConfig settled with any of these results. */
   results?: InputMaybe<Array<SettlementResult>>;
   /** Restrict to positions where the pickConfig is settled / unsettled. */
   settled?: InputMaybe<Scalars['Boolean']['input']>;
@@ -870,8 +867,6 @@ export type PredictionEdge = {
 
 export type PredictionFilter = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  /** Restrict to predictions on a single condition (via the pickConfig join). */
-  conditionId?: InputMaybe<Scalars['Bytes']['input']>;
   /** Restrict to predictions on any of these conditions (via the pickConfig join). */
   conditionIds?: InputMaybe<Array<Scalars['Bytes']['input']>>;
   counterparty?: InputMaybe<Scalars['Address']['input']>;
@@ -885,7 +880,6 @@ export type PredictionFilter = {
   pickConfigId?: InputMaybe<Scalars['Bytes32']['input']>;
   predictionId?: InputMaybe<Scalars['Bytes32']['input']>;
   predictor?: InputMaybe<Scalars['Address']['input']>;
-  result?: InputMaybe<SettlementResult>;
   results?: InputMaybe<Array<SettlementResult>>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -1298,9 +1292,10 @@ export type QuestionFilter = {
   estimatedPrice?: InputMaybe<FloatFilter>;
   /** Resolution-status filter; defaults to ALL when omitted. */
   resolutionStatus?: InputMaybe<ResolutionStatus>;
-  /** Resolver (oracle) contract that owns the underlying condition. */
-  resolver?: InputMaybe<Scalars['Address']['input']>;
-  /** Match any of these resolver contracts. */
+  /**
+   * Match any of these resolver (oracle) contracts that own the underlying
+   * condition.
+   */
   resolvers?: InputMaybe<Array<Scalars['Address']['input']>>;
   /** Free-text search across the wrapped condition/group title and description (case-insensitive). */
   search?: InputMaybe<Scalars['String']['input']>;
@@ -1578,7 +1573,6 @@ export type TradeFilter = {
    */
   participant?: InputMaybe<Scalars['Address']['input']>;
   seller?: InputMaybe<Scalars['Address']['input']>;
-  token?: InputMaybe<Scalars['Address']['input']>;
   tokens?: InputMaybe<Array<Scalars['Address']['input']>>;
   tradeHash?: InputMaybe<Scalars['Bytes32']['input']>;
 };

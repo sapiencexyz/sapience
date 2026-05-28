@@ -372,7 +372,6 @@ input TradeFilter {
   participant: Address
   buyer: Address
   seller: Address
-  token: Address
   tokens: [Address!]
   chainId: Int
   executedAt: IntRangeFilter
@@ -498,7 +497,6 @@ type ConditionConnection {
 }
 
 input ConditionFilter {
-  conditionId: Bytes
   conditionIds: [Bytes!]
   chainId: Int
   categorySlug: String
@@ -709,7 +707,6 @@ type PickConfigurationConnection {
 input PickConfigurationFilter {
   chainId: Int
   resolved: Boolean
-  result: SettlementResult
   results: [SettlementResult!]
   """
   Either predictor or counterparty token matches one of these (case-insensitive).
@@ -798,15 +795,10 @@ input PredictionFilter {
   chainId: Int
   pickConfigId: Bytes32
   """
-  Restrict to predictions on a single condition (via the pickConfig join).
-  """
-  conditionId: Bytes
-  """
   Restrict to predictions on any of these conditions (via the pickConfig join).
   """
   conditionIds: [Bytes!]
   settled: Boolean
-  result: SettlementResult
   results: [SettlementResult!]
   """
   Filter by pickConfig end epoch seconds.
@@ -886,12 +878,14 @@ type PositionConnection {
 input PositionFilter {
   holder: Address
   chainId: Int
-  conditionId: Bytes
+  """
+  Restrict to positions on any of these conditions (via the pickConfig join).
+  """
+  conditionIds: [Bytes!]
   pickConfigId: Bytes32
   """
-  Restrict to positions whose pickConfig settled with this result.
+  Restrict to positions whose pickConfig settled with any of these results.
   """
-  result: SettlementResult
   results: [SettlementResult!]
   """
   Restrict to positions where the pickConfig is settled / unsettled.
@@ -1139,7 +1133,6 @@ input ActivityFilter {
   OR across predictor/counterparty (predictions) and buyer/seller (trades).
   """
   account: Address
-  conditionId: Bytes
   conditionIds: [Bytes!]
   pickConfigId: Bytes32
   """
@@ -1407,11 +1400,8 @@ input QuestionFilter {
   """
   chainId: Int
   """
-  Resolver (oracle) contract that owns the underlying condition.
-  """
-  resolver: Address
-  """
-  Match any of these resolver contracts.
+  Match any of these resolver (oracle) contracts that own the underlying
+  condition.
   """
   resolvers: [Address!]
   """

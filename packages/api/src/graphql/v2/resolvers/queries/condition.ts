@@ -69,8 +69,6 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
   const where: Prisma.ConditionWhereInput = {
     ...projectOutcomeFilter(args.filter?.outcome, args.filter?.settled),
   };
-  if (args.filter?.conditionId)
-    where.id = args.filter.conditionId.toLowerCase();
   if (args.filter?.conditionIds?.length)
     where.id = { in: args.filter.conditionIds.map((id) => id.toLowerCase()) };
   if (args.filter?.chainId != null) where.chainId = args.filter.chainId;

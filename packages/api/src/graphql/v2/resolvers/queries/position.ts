@@ -55,15 +55,14 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
 
   const pickConfigFilter: Prisma.PicksWhereInput = {};
   let hasPickConfigFilter = false;
-  if (args.filter?.conditionId) {
+  if (args.filter?.conditionIds?.length) {
     pickConfigFilter.picks = {
-      some: { conditionId: args.filter.conditionId.toLowerCase() },
+      some: {
+        conditionId: {
+          in: args.filter.conditionIds.map((id) => id.toLowerCase()),
+        },
+      },
     };
-    hasPickConfigFilter = true;
-  }
-  if (args.filter?.result) {
-    pickConfigFilter.result = args.filter
-      .result as Prisma.PicksWhereInput['result'];
     hasPickConfigFilter = true;
   }
   if (args.filter?.results?.length) {

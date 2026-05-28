@@ -74,10 +74,10 @@ describe('Position (v2)', () => {
     expect(mockPrisma.position.findUnique).not.toHaveBeenCalled();
   });
 
-  it('positions(filter: { conditionId }) routes through the pickConfig join', async () => {
+  it('positions(filter: { conditionIds }) routes through the pickConfig join', async () => {
     await callResolver(positions)(
       null,
-      { first: 50, filter: { conditionId: '0xCOND' } },
+      { first: 50, filter: { conditionIds: ['0xCOND'] } },
       {},
       null
     );
@@ -85,7 +85,7 @@ describe('Position (v2)', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           pickConfiguration: expect.objectContaining({
-            picks: { some: { conditionId: '0xcond' } },
+            picks: { some: { conditionId: { in: ['0xcond'] } } },
           }),
         }),
       })

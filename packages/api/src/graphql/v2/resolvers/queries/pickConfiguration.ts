@@ -39,8 +39,6 @@ export const pickConfigurations: NonNullable<
   const where: Prisma.PicksWhereInput = {};
   if (args.filter?.chainId != null) where.chainId = args.filter.chainId;
   if (args.filter?.resolved != null) where.resolved = args.filter.resolved;
-  if (args.filter?.result)
-    where.result = args.filter.result as Prisma.PicksWhereInput['result'];
   if (args.filter?.results?.length)
     where.result = {
       in: args.filter.results as Prisma.EnumSettlementResultFilter['in'],
