@@ -899,6 +899,15 @@ export type PredictionOrderField = 'CREATED_AT' | 'SETTLED_AT';
 export type Protocol = {
   __typename?: 'Protocol';
   openInterestByCategory: Array<CategoryOpenInterest>;
+  /**
+   * Open interest distributed across fixed time-to-resolution windows
+   * (next 1d / 7d / 30d / 60d / 90d / 180d / beyond). The buckets are
+   * server-defined today; the field is shaped to accept a future
+   * `boundaries: [Int!]` argument (seconds-from-now cut points) without a
+   * breaking change — each bucket already carries explicit
+   * `minSecondsFromNow` / `maxSecondsFromNow`, so clients won't need to
+   * re-key when granularity becomes configurable.
+   */
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   stats: ProtocolStatConnection;
 };
