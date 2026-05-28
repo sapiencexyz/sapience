@@ -5,6 +5,9 @@ const mockPrisma = {
   category: {
     findMany: vi.fn(),
   },
+  popularTag: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
 };
 
 vi.mock('../../../../core/db', () => ({ default: mockPrisma }));

@@ -38,13 +38,11 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import type {
-  QueryQuestionsConnectionArgs,
   QueryResolvers,
   ResolversTypes,
 } from '../../__generated__/resolvers';
 import {
   QuestionItemType,
-  QuestionOrderField,
   QuestionSortField,
   SortOrder,
   VolumeWindow,
@@ -77,17 +75,6 @@ type QuestionCursor = {
   itemType: string;
   groupId: number;
   conditionId: string;
-};
-
-type ScalarRangeFilter = {
-  equals?: number | null;
-  gt?: number | null;
-  gte?: number | null;
-  lt?: number | null;
-  lte?: number | null;
-  in?: number[] | null;
-  notIn?: number[] | null;
-  not?: number | null;
 };
 
 const volumeColumnFragments = {
@@ -282,12 +269,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
     minSimilarMarketVolume: args.minSimilarMarketVolume,
     maxSimilarMarketVolume: args.maxSimilarMarketVolume,
     sortField,
-    // SortOrder enum carries `asc`/`desc` plus uppercase ASC/DESC aliases
-    // for older clients.
-    sortDirectionRaw:
-      args.sortDirection === 'asc' || args.sortDirection === 'ASC'
-        ? 'ASC'
-        : 'DESC',
+    sortDirectionRaw: args.sortDirection === 'asc' ? 'ASC' : 'DESC',
     afterCursor: args.afterCursor ?? null,
     volumeKey,
     useWindowedSimilarMarketVolume,
@@ -618,41 +600,6 @@ const buildQuestionCursorWhere = (n: NormalizedArgs): Prisma.Sql => {
   `;
 };
 
-// Mirrors the UNION ALL in `fetchSortedItems` but discards sort/cursor/LIMIT.
-// The connection field resolver calls this only when clients select
-// `QuestionConnection.totalCount`.
-const fetchTotalCount = async (n: NormalizedArgs): Promise<number> => {
-  const filters = buildConditionFilterFragments(n);
-  const sort = buildSortFragments(n, filters);
-  const search = buildSearchFragments(n);
-
-  const rows = await prisma.$queryRaw<{ total: number | bigint }[]>`
-    WITH combined AS (
-      SELECT 1
-      FROM condition_group cg
-      ${sort.groupConditionJoin}
-      WHERE cg."publicConditionCount" > 0
-        ${search.groupSearch}
-        ${search.groupCategory}
-        ${search.groupTag}
-      ${sort.groupByClause}
-
-      UNION ALL
-
-      SELECT 1
-      FROM condition c
-      WHERE c.public = true
-        AND c."conditionGroupId" IS NULL
-        ${filters.conditionFilters}
-        ${search.condSearch}
-        ${search.condCategory}
-        ${search.condTag}
-    )
-    SELECT COUNT(*)::int AS total FROM combined
-  `;
-  return Number(rows[0]?.total ?? 0);
-};
-
 const fetchSortedItems = async (
   n: NormalizedArgs
 ): Promise<SortedItemRow[]> => {
@@ -951,126 +898,31 @@ export const runQuestions = async (
   return { items, hasMore };
 };
 
-// ---------------------------------------------------------------------
-// Relay-shaped `questions` connection (PR 2)
-// ---------------------------------------------------------------------
-// `questionsConnection` uses the same SQL UNION runner as the deprecated bare-array
-// `questions` resolver, but passes a decoded ordering tuple after the first page so pagination is
-// keyset-based rather than OFFSET-based.
-
 /**
- * Map the public `QuestionOrderField` enum to the internal
- * `QuestionSortField` (plus a `VolumeWindow` for windowed-volume sorts).
- * `OPEN_INTEREST` is supported here because the questions feed already
- * sorts via raw SQL; the narrower Condition/ConditionGroup connections
- * still omit it because their Prisma orderBy path cannot cast varchar OI.
+ * v1 `Query.questions` resolver — thin wrapper around `runQuestionsData`
+ * that drops the cursor/`hasMore` envelope and returns the bare
+ * `[Question!]!` array the v1 SDL surface declares.
  */
-export const mapOrderField = (
-  field: QuestionOrderField | string
-): { sortField: QuestionSortField; volumeWindow: VolumeWindow | null } => {
-  switch (String(field)) {
-    case QuestionOrderField.CreatedAt:
-      return { sortField: QuestionSortField.CreatedAt, volumeWindow: null };
-    case QuestionOrderField.ResolvesAt:
-      return { sortField: QuestionSortField.EndTime, volumeWindow: null };
-    case 'OPEN_INTEREST':
-      return { sortField: QuestionSortField.OpenInterest, volumeWindow: null };
-    case QuestionOrderField.PredictionCount:
-      return {
-        sortField: QuestionSortField.PredictionCount,
-        volumeWindow: null,
-      };
-    case QuestionOrderField.SimilarMarketVolume_24H:
-      return {
-        sortField: QuestionSortField.SimilarMarketVolume,
-        volumeWindow: VolumeWindow.TwentyFourHours,
-      };
-    case QuestionOrderField.SimilarMarketVolume_7D:
-      return {
-        sortField: QuestionSortField.SimilarMarketVolume,
-        volumeWindow: VolumeWindow.SevenDays,
-      };
-    default:
-      return { sortField: QuestionSortField.CreatedAt, volumeWindow: null };
-  }
-};
-
-const rangeMin = (filter: ScalarRangeFilter | null | undefined) =>
-  filter?.gte ?? filter?.gt ?? filter?.equals ?? null;
-
-const rangeMax = (filter: ScalarRangeFilter | null | undefined) =>
-  filter?.lte ?? filter?.lt ?? filter?.equals ?? null;
-
-const questionsConnectionResolver = async (
-  _parent: unknown,
-  { first, after, filter, orderBy }: Partial<QueryQuestionsConnectionArgs>
+export const questions: NonNullable<QueryResolvers['questions']> = async (
+  _parent,
+  args
 ) => {
-  const cappedFirst = clampTake(first ?? 50, {
-    defaultTake: 50,
-    maxTake: 100,
+  const { items } = await runQuestionsData({
+    take: args.take,
+    skip: args.skip,
+    search: args.search ?? null,
+    categorySlugs: args.categorySlugs ?? null,
+    tag: args.tag ?? null,
+    chainId: args.chainId ?? null,
+    minEndTime: args.minEndTime ?? null,
+    resolutionStatus: args.resolutionStatus ?? null,
+    minEstimatedPrice: args.minEstimatedPrice ?? null,
+    maxEstimatedPrice: args.maxEstimatedPrice ?? null,
+    minSimilarMarketVolume: args.minSimilarMarketVolume ?? null,
+    maxSimilarMarketVolume: args.maxSimilarMarketVolume ?? null,
+    similarMarketVolumeWindow: args.similarMarketVolumeWindow ?? null,
+    sortField: args.sortField ?? null,
+    sortDirection: args.sortDirection ?? null,
   });
-  const afterCursor = decodeQuestionCursor(after);
-
-  const mapped = orderBy?.field
-    ? mapOrderField(orderBy.field)
-    : { sortField: null, volumeWindow: null };
-  const sortDirection: SortOrder | null =
-    orderBy?.direction == null
-      ? null
-      : String(orderBy.direction).toLowerCase() === 'asc'
-        ? SortOrder.Asc
-        : SortOrder.Desc;
-  const operatorFilter = filter as typeof filter & {
-    resolvesAt?: ScalarRangeFilter | null;
-    estimatedPrice?: ScalarRangeFilter | null;
-    similarMarketVolume?: ScalarRangeFilter | null;
-  };
-
-  const baseArgs: RunQuestionsInput = {
-    take: cappedFirst,
-    skip: 0,
-    search: filter?.search ?? null,
-    categorySlugs: filter?.categorySlugs ?? null,
-    tag: filter?.tag ?? null,
-    chainId: filter?.chainId ?? null,
-    contractAddress: filter?.resolverAddress ?? filter?.marketAddress ?? null,
-    contractAddressIn:
-      filter?.resolverAddressIn ?? filter?.marketAddressIn ?? null,
-    minEndTime: rangeMin(operatorFilter?.resolvesAt),
-    maxEndTime: rangeMax(operatorFilter?.resolvesAt),
-    resolutionStatus: filter?.resolutionStatus ?? null,
-    minEstimatedPrice: rangeMin(operatorFilter?.estimatedPrice),
-    maxEstimatedPrice: rangeMax(operatorFilter?.estimatedPrice),
-    minSimilarMarketVolume: rangeMin(operatorFilter?.similarMarketVolume),
-    maxSimilarMarketVolume: rangeMax(operatorFilter?.similarMarketVolume),
-    similarMarketVolumeWindow:
-      filter?.similarMarketVolumeWindow ?? mapped.volumeWindow,
-    sortField: mapped.sortField,
-    sortDirection,
-    afterCursor,
-  };
-
-  const { items, hasMore, pageItems } = await runQuestionsData(baseArgs);
-
-  const edges = items.map((item, idx) => ({
-    node: item,
-    cursor: encodeQuestionCursor(pageItems[idx]),
-  }));
-
-  return {
-    edges,
-    nodes: items,
-    _totalCount: () => fetchTotalCount(normalizeArgs(baseArgs)),
-    pageInfo: {
-      hasNextPage: hasMore,
-      hasPreviousPage: afterCursor != null,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+  return items;
 };
-
-export const questionsConnection =
-  questionsConnectionResolver as unknown as NonNullable<
-    QueryResolvers['questionsConnection']
-  >;
