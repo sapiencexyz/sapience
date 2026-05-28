@@ -29,23 +29,47 @@ export function handleViemError(
  * Session key policy errors from ZeroDev smart accounts.
  *
  * These occur when the session key's permission policy doesn't match the
- * current contract addresses (e.g. after an escrow redeploy). The session
- * must be re-created to pick up the new addresses.
+ * current contract addresses (e.g. after an escrow redeploy, or when a flow
+ * starts calling a contract that the existing session was never authorized to
+ * call). The session must be re-created to pick up the new addresses/policies.
  *
  * We require both conditions:
- * - AA23 (account validation reverted) — the bundler rejection code
- * - CallViolatesParamRule / 0x59d52e40 — the specific revert reason
+ * - a user-op/account-validation failure marker from the bundler/paymaster path
+ * - a call-policy / not-authorized marker from the session policy validation
  *
- * AA23 alone is too broad (any validation failure), and the revert selector
- * alone could appear in non-bundler contexts. Together they're precise.
+ * AA23 alone is too broad (any validation failure), and the policy markers alone
+ * could appear in non-session contexts. Together they're precise enough to
+ * clear the stale session and offer recovery.
  */
-const REVERT_PATTERNS = ['CallViolatesParamRule', '0x59d52e40'] as const;
+const USER_OP_VALIDATION_PATTERNS = [
+  'AA23',
+  'account validation reverted',
+  'UserOperation reverted during simulation',
+  'user operation reverted during simulation',
+] as const;
+
+const SESSION_POLICY_PATTERNS = [
+  'CallViolatesParamRule',
+  'CallViolatesTarget',
+  'CallViolatesTargetAddress',
+  'CallNotAllowed',
+  'TargetNotAllowed',
+  'not authorized',
+  'not authorised',
+  '0x59d52e40',
+] as const;
 
 /** Returns true if the error indicates a stale session key policy. */
 export function isSessionPolicyError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? '');
-  return (
-    message.includes('AA23') &&
-    REVERT_PATTERNS.some((pattern) => message.includes(pattern))
+  const lowerMessage = message.toLowerCase();
+
+  const hasUserOpValidationFailure = USER_OP_VALIDATION_PATTERNS.some(
+    (pattern) => lowerMessage.includes(pattern.toLowerCase())
   );
+  const hasSessionPolicyFailure = SESSION_POLICY_PATTERNS.some((pattern) =>
+    lowerMessage.includes(pattern.toLowerCase())
+  );
+
+  return hasUserOpValidationFailure && hasSessionPolicyFailure;
 }

@@ -1,6 +1,13 @@
 'use client';
 import * as Sentry from '@sentry/nextjs';
-import { useCallback, useMemo, useRef, useState, useContext } from 'react';
+import {
+  createElement,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useContext,
+} from 'react';
 import type { useTransactionReceipt } from 'wagmi';
 import {
   useWriteContract,
@@ -12,6 +19,10 @@ import type { EIP1193Provider, Hash, Hex } from 'viem';
 import { useRouter } from 'next/navigation';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import {
+  ToastAction,
+  type ToastActionElement,
+} from '@sapience/ui/components/ui/toast';
 
 import { arbitrum } from 'viem/chains';
 import { useSwitchChain } from 'wagmi';
@@ -35,6 +46,10 @@ import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 import { CreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { useSession } from '~/lib/context/SessionContext';
+import {
+  DEFAULT_CONNECTION_DURATION_HOURS,
+  useSettings,
+} from '~/lib/context/SettingsContext';
 import {
   ethereal,
   executeSudoTransaction,
@@ -137,7 +152,10 @@ export function useSapienceWriteContract({
     hasArbitrumSession,
     createArbitrumSessionIfNeeded,
     endSession,
+    startSession,
+    isStartingSession,
   } = useSession();
+  const { connectionDurationHours } = useSettings();
 
   // Check if session can handle a specific chain
   // Returns true ONLY if user is in smart-account mode AND session is active
@@ -409,6 +427,41 @@ export function useSapienceWriteContract({
     }
   }, [createArbitrumSessionIfNeeded]);
 
+  const startReplacementSession = useCallback(async () => {
+    if (isStartingSession) return;
+
+    try {
+      await startSession({
+        durationHours:
+          connectionDurationHours ?? DEFAULT_CONNECTION_DURATION_HOURS,
+      });
+      toast({
+        title: 'Session Created',
+        description:
+          'Your new session is ready. Please try the transaction again.',
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error(
+        '[Session] Failed to refresh session after policy error:',
+        error
+      );
+      Sentry.captureException(error, {
+        tags: { component: 'session' },
+        extra: { function: 'startReplacementSession' },
+      });
+      toast({
+        title: 'Failed to Start Session',
+        description: handleViemError(
+          error,
+          'Please create a new session from the connection menu.'
+        ),
+        duration: 8000,
+        variant: 'destructive',
+      });
+    }
+  }, [connectionDurationHours, isStartingSession, startSession, toast]);
+
   /** Handle catch errors from writeContract / sendCalls — detects stale session keys */
   const handleCatchError = useCallback(
     (
@@ -425,10 +478,21 @@ export function useSapienceWriteContract({
         );
         endSession();
         toast({
-          title: 'Session Expired',
-          description: 'Please start a new session.',
-          duration: 8000,
+          title: 'Session Needs Refresh',
+          description:
+            'This transaction uses a contract your current session was not authorized for. Create a new session, then try again.',
+          duration: 12000,
           variant: 'destructive',
+          action: createElement(
+            ToastAction,
+            {
+              altText: 'Create new session',
+              onClick: () => {
+                void startReplacementSession();
+              },
+            },
+            isStartingSession ? 'Creating...' : 'Create session'
+          ) as unknown as ToastActionElement,
         });
       } else {
         toast({
@@ -451,7 +515,14 @@ export function useSapienceWriteContract({
       });
       onError?.(error as Error);
     },
-    [endSession, toast, fallbackErrorMessage, onError]
+    [
+      endSession,
+      toast,
+      fallbackErrorMessage,
+      onError,
+      startReplacementSession,
+      isStartingSession,
+    ]
   );
 
   // Custom write contract function that handles chain validation
