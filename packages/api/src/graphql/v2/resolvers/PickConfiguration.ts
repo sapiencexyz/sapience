@@ -27,6 +27,12 @@ export const PickConfiguration: PickConfigurationResolvers = {
   id: (parent) => toGlobalIdV2('PickConfiguration', parent.id),
   pickConfigId: (parent) => parent.id,
   escrow: (parent) => parent.marketAddress.toLowerCase(),
+
+  // Prisma column is non-null and defaults to UNRESOLVED; the v2 wire
+  // shape uses null for that state so the enum only carries terminal
+  // outcomes.
+  result: (parent) =>
+    parent.result === 'UNRESOLVED' ? null : (parent.result as never),
   predictorToken: (parent) =>
     parent.predictorToken ? parent.predictorToken.toLowerCase() : null,
   counterpartyToken: (parent) =>

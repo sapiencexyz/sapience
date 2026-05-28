@@ -663,7 +663,7 @@ type PickConfiguration implements Node {
   and this configuration is closed out.
   """
   resolvedAt: UnixSeconds
-  result: SettlementResult!
+  result: SettlementResult
 
   endsAt: UnixSeconds
 
@@ -696,11 +696,15 @@ enum BinaryOutcome {
   NO
 }
 
+"""
+Terminal settlement state. `null` on the parent field means not yet
+settled; `NON_DECISIVE` is a settled-but-no-winner outcome (void, tie,
+oracle abstain).
+"""
 enum SettlementResult {
   COUNTERPARTY_WINS
   PREDICTOR_WINS
   NON_DECISIVE
-  UNRESOLVED
 }
 
 input SettlementResultFilter {
@@ -773,7 +777,7 @@ type Prediction implements Node {
   Settlement timestamp; `null` until the prediction settles on-chain.
   """
   settledAt: UnixSeconds
-  result: SettlementResult!
+  result: SettlementResult
 
   predictorClaimable: BigInt
   counterpartyClaimable: BigInt

@@ -32,6 +32,12 @@ export const Prediction: PredictionResolvers = {
   predictor: (parent) => parent.predictor.toLowerCase(),
   counterparty: (parent) => parent.counterparty.toLowerCase(),
 
+  // Prisma column is non-null and defaults to UNRESOLVED; the v2 wire
+  // shape uses null for that state so the enum only carries terminal
+  // outcomes.
+  result: (parent) =>
+    parent.result === 'UNRESOLVED' ? null : (parent.result as never),
+
   // The Prisma row holds `pickConfiguration` (eager join). v2 surface
   // calls it `pickConfig` for brevity — same value, renamed at the
   // resolver boundary.
