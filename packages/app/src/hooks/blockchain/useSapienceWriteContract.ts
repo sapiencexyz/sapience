@@ -1,13 +1,6 @@
 'use client';
 import * as Sentry from '@sentry/nextjs';
-import {
-  createElement,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  useContext,
-} from 'react';
+import { useCallback, useMemo, useRef, useState, useContext } from 'react';
 import type { useTransactionReceipt } from 'wagmi';
 import {
   useWriteContract,
@@ -19,10 +12,6 @@ import type { EIP1193Provider, Hash, Hex } from 'viem';
 import { useRouter } from 'next/navigation';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import {
-  ToastAction,
-  type ToastActionElement,
-} from '@sapience/ui/components/ui/toast';
 
 import { arbitrum } from 'viem/chains';
 import { useSwitchChain } from 'wagmi';
@@ -480,20 +469,11 @@ export function useSapienceWriteContract({
         toast({
           title: 'Session Needs Refresh',
           description:
-            'This transaction uses a contract your current session was not authorized for. Create a new session, then try again.',
+            'This transaction uses a contract your current session was not authorized for. Please approve the new session request in your wallet, then try again.',
           duration: 12000,
           variant: 'destructive',
-          action: createElement(
-            ToastAction,
-            {
-              altText: 'Create new session',
-              onClick: () => {
-                void startReplacementSession();
-              },
-            },
-            isStartingSession ? 'Creating...' : 'Create session'
-          ) as unknown as ToastActionElement,
         });
+        void startReplacementSession();
       } else {
         toast({
           title: 'Transaction Failed',
@@ -515,14 +495,7 @@ export function useSapienceWriteContract({
       });
       onError?.(error as Error);
     },
-    [
-      endSession,
-      toast,
-      fallbackErrorMessage,
-      onError,
-      startReplacementSession,
-      isStartingSession,
-    ]
+    [endSession, toast, fallbackErrorMessage, onError, startReplacementSession]
   );
 
   // Custom write contract function that handles chain validation
