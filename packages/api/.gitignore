@@ -11,6 +11,9 @@ data
 
 tsconfig.tsbuildinfo
 
+# One-shot backfill / verification script run logs
+scripts/logs/
+
 # Test NFT storage
 test-nft-ids.json
 test-assertion-data.json
