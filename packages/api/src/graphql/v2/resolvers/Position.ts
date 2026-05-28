@@ -28,6 +28,8 @@ export const Position: PositionResolvers = {
   id: (parent) => toGlobalIdV2('Position', String(parent.id)),
   holder: (parent) => parent.holder.toLowerCase(),
   token: (parent) => parent.tokenAddress.toLowerCase(),
+  side: (parent) =>
+    (parent.isPredictorToken ? 'PREDICTOR' : 'COUNTERPARTY') as never,
   pickConfig: (parent) => {
     const withConfig = parent as typeof parent & {
       pickConfiguration?: Awaited<

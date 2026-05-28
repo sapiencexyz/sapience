@@ -862,9 +862,11 @@ type Position implements Node {
   """
   token: Address!
   """
-  True if this is the predictor token side; false for counterparty.
+  Which side of the pick configuration this position is on. Derived
+  from `token` against `pickConfig.predictorToken` / `counterpartyToken`,
+  exposed directly so clients don't have to reconstruct the comparison.
   """
-  isPredictorToken: Boolean!
+  side: Side!
 
   """
   Number of position tokens still held, wei (18 decimals).
@@ -873,6 +875,16 @@ type Position implements Node {
 
   createdAt: DateTimeISO!
   updatedAt: DateTimeISO!
+}
+
+"""
+Which side of a pick configuration an entity is on. Mirrors the
+`predictor` / `counterparty` vocabulary used on `Prediction` and
+`PickConfiguration`.
+"""
+enum Side {
+  PREDICTOR
+  COUNTERPARTY
 }
 
 type PositionEdge {
