@@ -11,6 +11,7 @@
  */
 
 import prisma from '../../../core/db';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
 import { synthesizeAccount } from './accountSynthesis';
 import type { AccountResolvers } from '../__generated__/resolvers';
@@ -20,10 +21,27 @@ import {
   collateralBalanceHistoryField,
 } from './CollateralBalance';
 
+// Account global ids are keyed `(chainId, address)` — an account is a
+// wallet view scoped to one chain, so the same address on two chains is
+// two distinct nodes. Mirrors the Vault id encoding.
+const splitAccountDomainId = (
+  id: string
+): { chainId: number; address: string } => {
+  const sep = id.indexOf(':');
+  if (sep <= 0) {
+    return { chainId: DEFAULT_CHAIN_ID, address: id.toLowerCase() };
+  }
+  const chainId = Number(id.slice(0, sep));
+  return {
+    chainId: Number.isInteger(chainId) ? chainId : DEFAULT_CHAIN_ID,
+    address: id.slice(sep + 1).toLowerCase(),
+  };
+};
+
 registerNodeTypeV2({
   type: 'Account',
   loader: async (id, ctx) => {
-    const address = id.toLowerCase();
+    const { chainId, address } = splitAccountDomainId(id);
     const loaders = (
       ctx as {
         loaders?: { userByAddress?: { load: (a: string) => Promise<unknown> } };
@@ -32,15 +50,24 @@ registerNodeTypeV2({
     const row = loaders?.userByAddress
       ? await loaders.userByAddress.load(address)
       : await prisma.user.findUnique({ where: { address } });
-    return row ?? synthesizeAccount(address);
+    const base = (row ?? synthesizeAccount(address)) as Record<string, unknown>;
+    return { ...base, chainId };
   },
 });
 
 const addressOf = (parent: { address?: string | null }): string =>
   (parent.address ?? '').toLowerCase();
 
+// Parent is the Prisma User row (chain-agnostic); chainId is attached at
+// the resolution boundary (query/loader), so read it off defensively.
+const chainIdOf = (parent: unknown): number =>
+  (parent as { chainId?: number | null }).chainId ?? DEFAULT_CHAIN_ID;
+
 export const Account: AccountResolvers = {
-  id: (parent) => toGlobalIdV2('Account', addressOf(parent)),
+  id: (parent) =>
+    toGlobalIdV2('Account', `${chainIdOf(parent)}:${addressOf(parent)}`),
+
+  chainId: (parent) => chainIdOf(parent),
 
   /**
    * Account ranking on the chosen metric. Delegates to the leaderboard

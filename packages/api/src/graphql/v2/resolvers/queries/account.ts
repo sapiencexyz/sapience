@@ -6,6 +6,7 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { synthesizeAccount } from '../accountSynthesis';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
@@ -20,7 +21,7 @@ import {
 
 export const account: NonNullable<QueryResolvers['account']> = async (
   _parent,
-  { address },
+  { address, chainId },
   ctx
 ) => {
   const addressLc = address.toLowerCase();
@@ -30,10 +31,14 @@ export const account: NonNullable<QueryResolvers['account']> = async (
   // synthesizeAccount returns a v1-typed Account; the runtime shape matches
   // the Prisma row mapper used here, so the cast is purely a name-level fix.
   // Schema declares this as non-null (`account(...): Account!`) — the
-  // synthesis path guarantees a value, never returns null.
-  return (row ?? synthesizeAccount(addressLc)) as NonNullable<
-    Awaited<ReturnType<typeof prisma.user.findUnique>>
-  >;
+  // synthesis path guarantees a value, never returns null. `chainId` scopes
+  // the account view; it defaults server-side when the caller omits it.
+  return {
+    ...((row ?? synthesizeAccount(addressLc)) as NonNullable<
+      Awaited<ReturnType<typeof prisma.user.findUnique>>
+    >),
+    chainId: chainId ?? DEFAULT_CHAIN_ID,
+  } as NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>;
 };
 
 export const accounts: NonNullable<QueryResolvers['accounts']> = async (
@@ -43,6 +48,9 @@ export const accounts: NonNullable<QueryResolvers['accounts']> = async (
   const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');
   const search = args.filter?.search?.trim();
+  // User rows are chain-agnostic; chainId only scopes the returned
+  // account view, so it's attached to each node rather than filtered in SQL.
+  const chainId = args.filter?.chainId ?? DEFAULT_CHAIN_ID;
 
   const where: Prisma.UserWhereInput = search
     ? { address: { contains: search.toLowerCase(), mode: 'insensitive' } }
@@ -64,9 +72,10 @@ export const accounts: NonNullable<QueryResolvers['accounts']> = async (
     orderBy: [{ createdAt: direction }, { id: direction }],
     take: first + 1,
   });
+  const scopedRows = rows.map((row) => ({ ...row, chainId }));
 
   return buildConnection({
-    rows,
+    rows: scopedRows,
     first,
     totalCount: () => prisma.user.count({ where }),
     getCursor: (row) =>

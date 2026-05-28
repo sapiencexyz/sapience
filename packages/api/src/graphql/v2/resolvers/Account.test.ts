@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { fromGlobalIdV2 } from '../relay/nodeRegistry';
 
 const mockPrisma = vi.hoisted(() => ({
@@ -37,14 +38,67 @@ describe('Account (v2)', () => {
     mockPrisma.user.count.mockResolvedValue(0);
   });
 
-  it('encodes the global id as v2 Account:<lowercase-address>', async () => {
+  it('encodes the global id as v2 Account:<chainId>:<address>, defaulting the chain', async () => {
     const id = await callResolver<string>(Account.id)(
       { address: ADDRESS.toUpperCase() },
       {},
       ctx,
       null
     );
-    expect(fromGlobalIdV2(id)).toEqual({ type: 'Account', id: ADDRESS });
+    expect(fromGlobalIdV2(id)).toEqual({
+      type: 'Account',
+      id: `${DEFAULT_CHAIN_ID}:${ADDRESS}`,
+    });
+  });
+
+  it('encodes the requested chain into the global id when the parent carries one', async () => {
+    const id = await callResolver<string>(Account.id)(
+      { address: ADDRESS, chainId: 8453 },
+      {},
+      ctx,
+      null
+    );
+    expect(fromGlobalIdV2(id)).toEqual({
+      type: 'Account',
+      id: `8453:${ADDRESS}`,
+    });
+  });
+
+  it('resolves chainId from the parent, defaulting when absent', async () => {
+    expect(
+      await callResolver<number>(Account.chainId)(
+        { address: ADDRESS, chainId: 8453 },
+        {},
+        ctx,
+        null
+      )
+    ).toBe(8453);
+    expect(
+      await callResolver<number>(Account.chainId)(
+        { address: ADDRESS },
+        {},
+        ctx,
+        null
+      )
+    ).toBe(DEFAULT_CHAIN_ID);
+  });
+
+  it('attaches the requested chainId to the looked-up account, defaulting when omitted', async () => {
+    const pinned = await callResolver<{ chainId: number }>(account)(
+      null,
+      { address: ADDRESS, chainId: 8453 },
+      ctx,
+      null
+    );
+    expect(pinned.chainId).toBe(8453);
+
+    const defaulted = await callResolver<{ chainId: number }>(account)(
+      null,
+      { address: ADDRESS },
+      ctx,
+      null
+    );
+    expect(defaulted.chainId).toBe(DEFAULT_CHAIN_ID);
   });
 
   it('synthesizes an Account when no User row exists', async () => {

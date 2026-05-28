@@ -49,12 +49,20 @@ export type Account = AddressEntity &
     __typename?: 'Account';
     /** Canonical lowercase Ethereum wallet address. */
     address: Scalars['Address']['output'];
-    /** Current wUSDe wallet balance at an optional block (defaults to head). */
+    /**
+     * Chain this account view is scoped to. Defaults to the deployment's chain
+     * when the account was resolved without an explicit `chainId`.
+     */
+    chainId: Scalars['Int']['output'];
+    /**
+     * Current wUSDe wallet balance at an optional block (defaults to head).
+     * Scoped to the account's `chainId`.
+     */
     collateralBalance: CollateralBalance;
     /**
-     * Time-bucketed wUSDe wallet balance snapshots. Step size is
-     * `intervalSeconds` (default 7d); returns `first + 1` boundaries
-     * back from now.
+     * Time-bucketed wUSDe wallet balance snapshots, scoped to the account's
+     * `chainId`. Step size is `intervalSeconds` (default 7d); returns
+     * `first + 1` boundaries back from now.
      */
     collateralBalanceHistory: CollateralBalanceConnection;
     /** When this account first appeared in the database. Synthesized accounts return the unix epoch. */
@@ -71,7 +79,6 @@ export type Account = AddressEntity &
  */
 export type AccountCollateralBalanceArgs = {
   atBlock?: InputMaybe<Scalars['Int']['input']>;
-  chainId: Scalars['Int']['input'];
 };
 
 /**
@@ -81,7 +88,6 @@ export type AccountCollateralBalanceArgs = {
  */
 export type AccountCollateralBalanceHistoryArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
-  chainId: Scalars['Int']['input'];
   first?: InputMaybe<Scalars['Int']['input']>;
   intervalSeconds?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -116,6 +122,11 @@ export type AccountEdge = {
  * the address itself.
  */
 export type AccountFilter = {
+  /**
+   * Chain to scope returned accounts to. Defaults to the deployment's chain
+   * (prod → mainnet, staging → testnet) when omitted.
+   */
+  chainId?: InputMaybe<Scalars['Int']['input']>;
   /** Substring search against the wallet address (case-insensitive). */
   search?: InputMaybe<Scalars['String']['input']>;
 };
@@ -185,6 +196,11 @@ export type ActivityType = 'PREDICTION' | 'TRADE';
  */
 export type AddressEntity = {
   address: Scalars['Address']['output'];
+  /**
+   * Chain this address is scoped to. An on-chain address is only meaningful
+   * paired with its chain, so every address entity carries one.
+   */
+  chainId: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
 };
 
@@ -963,7 +979,9 @@ export type Query = {
   /**
    * Look up a single account by canonical wallet address. Always returns
    * an Account — addresses with no User row are synthesized (`createdAt`
-   * is the unix epoch, referral fields are null).
+   * is the unix epoch, referral fields are null). `chainId` defaults to the
+   * deployment's chain (prod → mainnet, staging → testnet); pass it
+   * explicitly to scope the account to a non-default chain.
    */
   account: Account;
   /**
@@ -1095,6 +1113,7 @@ export type Query = {
 
 export type QueryAccountArgs = {
   address: Scalars['Address']['input'];
+  chainId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type QueryAccountsArgs = {

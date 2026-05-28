@@ -8,6 +8,7 @@
  * paging would buy nothing over slicing.
  */
 
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import type { AccountResolvers } from '../__generated__/resolvers';
 import {
   buildConnection,
@@ -23,12 +24,16 @@ import {
 const addressOf = (parent: { address?: string | null }): string =>
   (parent.address ?? '').toLowerCase();
 
+// chainId comes from the (chain-scoped) parent account, not a field arg.
+const chainIdOf = (parent: unknown): number =>
+  (parent as { chainId?: number | null }).chainId ?? DEFAULT_CHAIN_ID;
+
 export const collateralBalanceField: NonNullable<
   AccountResolvers['collateralBalance']
 > = async (parent, args) => {
   const row = await getCollateralBalance({
     address: addressOf(parent),
-    chainId: args.chainId,
+    chainId: chainIdOf(parent),
     atBlock: args.atBlock ?? null,
   });
   // Point-lookup populates `blockNumber`; `timestamp` is the other axis
@@ -51,7 +56,7 @@ export const collateralBalanceHistoryField: NonNullable<
   const totalNeeded = offset + first + 1;
   const rows = await getCollateralBalanceHistory({
     address: addressOf(parent),
-    chainId: args.chainId,
+    chainId: chainIdOf(parent),
     count: totalNeeded,
     intervalSeconds: args.intervalSeconds ?? null,
   });

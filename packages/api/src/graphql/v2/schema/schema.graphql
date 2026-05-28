@@ -69,6 +69,12 @@ phases that introduce them; this stub starts the interface narrow.
 interface AddressEntity implements Node {
   id: ID!
   address: Address!
+
+  """
+  Chain this address is scoped to. An on-chain address is only meaningful
+  paired with its chain, so every address entity carries one.
+  """
+  chainId: Int!
 }
 
 """
@@ -107,6 +113,12 @@ type Account implements Node & AddressEntity {
   address: Address!
 
   """
+  Chain this account view is scoped to. Defaults to the deployment's chain
+  when the account was resolved without an explicit `chainId`.
+  """
+  chainId: Int!
+
+  """
   When this account first appeared in the database. Synthesized accounts return the unix epoch.
   """
   createdAt: DateTimeISO!
@@ -118,16 +130,16 @@ type Account implements Node & AddressEntity {
 
   """
   Current wUSDe wallet balance at an optional block (defaults to head).
+  Scoped to the account's `chainId`.
   """
-  collateralBalance(chainId: Int!, atBlock: Int): CollateralBalance!
+  collateralBalance(atBlock: Int): CollateralBalance!
 
   """
-  Time-bucketed wUSDe wallet balance snapshots. Step size is
-  `intervalSeconds` (default 7d); returns `first + 1` boundaries
-  back from now.
+  Time-bucketed wUSDe wallet balance snapshots, scoped to the account's
+  `chainId`. Step size is `intervalSeconds` (default 7d); returns
+  `first + 1` boundaries back from now.
   """
   collateralBalanceHistory(
-    chainId: Int!
     first: Int = 12
     after: String
     intervalSeconds: Int
@@ -156,6 +168,12 @@ input AccountFilter {
   Substring search against the wallet address (case-insensitive).
   """
   search: String
+
+  """
+  Chain to scope returned accounts to. Defaults to the deployment's chain
+  (prod → mainnet, staging → testnet) when omitted.
+  """
+  chainId: Int
 }
 
 """
@@ -1565,9 +1583,11 @@ type Query {
   """
   Look up a single account by canonical wallet address. Always returns
   an Account — addresses with no User row are synthesized (`createdAt`
-  is the unix epoch, referral fields are null).
+  is the unix epoch, referral fields are null). `chainId` defaults to the
+  deployment's chain (prod → mainnet, staging → testnet); pass it
+  explicitly to scope the account to a non-default chain.
   """
-  account(address: Address!): Account!
+  account(address: Address!, chainId: Int): Account!
 
   """
   Relay-shaped connection over accounts (User-table rows). Single-address
