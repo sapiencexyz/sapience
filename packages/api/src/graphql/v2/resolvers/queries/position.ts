@@ -61,14 +61,14 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     };
     hasPickConfigFilter = true;
   }
-  if (args.filter?.result?.equals) {
-    pickConfigFilter.result = args.filter.result
-      .equals as Prisma.PicksWhereInput['result'];
+  if (args.filter?.result) {
+    pickConfigFilter.result = args.filter
+      .result as Prisma.PicksWhereInput['result'];
     hasPickConfigFilter = true;
   }
-  if (args.filter?.result?.in?.length) {
+  if (args.filter?.resultIn?.length) {
     pickConfigFilter.result = {
-      in: args.filter.result.in as Prisma.EnumSettlementResultFilter['in'],
+      in: args.filter.resultIn as Prisma.EnumSettlementResultFilter['in'],
     };
     hasPickConfigFilter = true;
   }

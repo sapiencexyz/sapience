@@ -454,7 +454,7 @@ type Condition implements Node {
   """
   Visibility — false hides this condition from public listing surfaces.
   """
-  public: Boolean!
+  isPublic: Boolean!
   displayOrder: Int
   tags: [String!]!
   createdAt: DateTimeISO!
@@ -522,9 +522,10 @@ input ConditionFilter {
   settled: Boolean
   outcome: ConditionOutcome
   """
-  Restrict to public conditions only (default true when omitted on listing surfaces).
+  Restrict to public (`true`) / hidden (`false`) conditions. Omit for
+  both; listing surfaces default to public-only when this is omitted.
   """
-  publicOnly: Boolean
+  public: Boolean
   """
   Restrict to conditions tagged with at least one of these.
   """
@@ -707,11 +708,6 @@ enum SettlementResult {
   NON_DECISIVE
 }
 
-input SettlementResultFilter {
-  equals: SettlementResult
-  in: [SettlementResult!]
-}
-
 type PickConfigurationEdge {
   cursor: String!
   node: PickConfiguration!
@@ -727,7 +723,8 @@ type PickConfigurationConnection {
 input PickConfigurationFilter {
   chainId: Int
   resolved: Boolean
-  result: SettlementResultFilter
+  result: SettlementResult
+  resultIn: [SettlementResult!]
   """
   Either predictor or counterparty token matches one of these (case-insensitive).
   """
@@ -823,7 +820,8 @@ input PredictionFilter {
   """
   conditionIds: [String!]
   settled: Boolean
-  result: SettlementResultFilter
+  result: SettlementResult
+  resultIn: [SettlementResult!]
   """
   Filter by pickConfig end epoch seconds.
   """
@@ -907,7 +905,8 @@ input PositionFilter {
   """
   Restrict to positions whose pickConfig settled with this result.
   """
-  result: SettlementResultFilter
+  result: SettlementResult
+  resultIn: [SettlementResult!]
   """
   Restrict to positions where the pickConfig is settled / unsettled.
   """

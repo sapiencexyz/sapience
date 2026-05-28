@@ -51,6 +51,7 @@ export const Condition: ConditionResolvers = {
   conditionId: (parent) => parent.id,
   resolver: (parent) => parent.resolver.toLowerCase(),
   outcome: (parent) => computeOutcome(parent),
+  isPublic: (parent) => parent.public,
 
   category: async (parent, _args, ctx) => {
     if (parent.categoryId == null) return null;

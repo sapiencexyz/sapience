@@ -76,7 +76,7 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
   if (args.filter?.chainId != null) where.chainId = args.filter.chainId;
   if (args.filter?.categorySlug)
     where.category = { is: { slug: args.filter.categorySlug } };
-  if (args.filter?.publicOnly === true) where.public = true;
+  if (args.filter?.public != null) where.public = args.filter.public;
   if (args.filter?.tags?.length) where.tags = { hasSome: args.filter.tags };
   if (args.filter?.search?.trim()) {
     const q = args.filter.search.trim();

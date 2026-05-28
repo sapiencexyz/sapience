@@ -55,12 +55,11 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
   if (args.filter?.pickConfigId)
     where.pickConfigId = args.filter.pickConfigId.toLowerCase();
   if (args.filter?.settled != null) where.settled = args.filter.settled;
-  if (args.filter?.result?.equals)
-    where.result = args.filter.result
-      .equals as Prisma.PredictionWhereInput['result'];
-  if (args.filter?.result?.in?.length)
+  if (args.filter?.result)
+    where.result = args.filter.result as Prisma.PredictionWhereInput['result'];
+  if (args.filter?.resultIn?.length)
     where.result = {
-      in: args.filter.result.in as Prisma.EnumSettlementResultFilter['in'],
+      in: args.filter.resultIn as Prisma.EnumSettlementResultFilter['in'],
     };
 
   if (args.filter?.conditionId) {
