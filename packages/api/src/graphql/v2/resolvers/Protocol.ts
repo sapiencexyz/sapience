@@ -24,6 +24,26 @@ import { CACHE_HINTS, setCacheHint } from '../cacheHints';
 
 type V1Resolver = (parent: null, args: unknown, ctx: unknown) => unknown;
 
+const DAY = 86400;
+
+// Maps v1's magic `bucket` int to the v2 `[min, max)` seconds-from-now
+// window. Must stay in sync with the CASE ladder in
+// `sdl/resolvers/queries/analytics.ts`. Bucket 1's lower bound is null
+// (it absorbs overdue predictions); bucket 7's upper bound is null
+// (open-ended tail).
+const TTR_BUCKET_BOUNDS: Record<
+  number,
+  { minSecondsFromNow: number | null; maxSecondsFromNow: number | null }
+> = {
+  1: { minSecondsFromNow: null, maxSecondsFromNow: DAY },
+  2: { minSecondsFromNow: DAY, maxSecondsFromNow: 7 * DAY },
+  3: { minSecondsFromNow: 7 * DAY, maxSecondsFromNow: 30 * DAY },
+  4: { minSecondsFromNow: 30 * DAY, maxSecondsFromNow: 60 * DAY },
+  5: { minSecondsFromNow: 60 * DAY, maxSecondsFromNow: 90 * DAY },
+  6: { minSecondsFromNow: 90 * DAY, maxSecondsFromNow: 180 * DAY },
+  7: { minSecondsFromNow: 180 * DAY, maxSecondsFromNow: null },
+};
+
 export const protocol: NonNullable<QueryResolvers['protocol']> = () =>
   ({}) as never;
 
@@ -61,6 +81,20 @@ export const Protocol: ProtocolResolvers = {
 
   openInterestByCategory: () =>
     (v1OIByCategory as unknown as V1Resolver)(null, {}, null) as never,
-  openInterestByTimeToResolution: () =>
-    (v1OIByTTR as unknown as V1Resolver)(null, {}, null) as never,
+  openInterestByTimeToResolution: async () => {
+    const rows = (await (v1OIByTTR as unknown as V1Resolver)(
+      null,
+      {},
+      null
+    )) as Array<{
+      bucket: number;
+      openInterest: string;
+      predictionCount: number;
+    }>;
+    return rows.map((row) => ({
+      ...TTR_BUCKET_BOUNDS[row.bucket],
+      openInterest: row.openInterest,
+      predictionCount: row.predictionCount,
+    })) as never;
+  },
 };

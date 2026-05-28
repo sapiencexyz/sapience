@@ -1483,14 +1483,22 @@ export type TagOrderField = 'CONDITION_COUNT' | 'NAME';
 
 /**
  * Open-interest bucketed by time-to-resolution. Each unsettled prediction
- * is bucketed by the latest endTime among its constituent conditions.
+ * is bucketed by the latest endTime among its constituent conditions; the
+ * window is `[minSecondsFromNow, maxSecondsFromNow)`. Buckets come back in
+ * ascending order — sort by `maxSecondsFromNow` (nulls last) to be explicit.
  */
 export type TimeToResolutionBucket = {
   __typename?: 'TimeToResolutionBucket';
-  /** Sort key: 1 = soonest, ascending for further-out buckets. */
-  bucket: Scalars['Int']['output'];
-  /** Display label, e.g. ≤1d / 2-7d / 1-2mo. */
-  label: Scalars['String']['output'];
+  /**
+   * Exclusive upper bound, in seconds from now. `null` on the open-ended
+   * tail bucket.
+   */
+  maxSecondsFromNow?: Maybe<Scalars['Int']['output']>;
+  /**
+   * Inclusive lower bound, in seconds from now. `null` on the first bucket,
+   * which also absorbs overdue (past-endTime, not-yet-resolved) predictions.
+   */
+  minSecondsFromNow?: Maybe<Scalars['Int']['output']>;
   openInterest: Scalars['BigInt']['output'];
   predictionCount: Scalars['Int']['output'];
 };

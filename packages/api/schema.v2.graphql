@@ -1092,14 +1092,22 @@ type CategoryOpenInterest {
 
 """
 Open-interest bucketed by time-to-resolution. Each unsettled prediction
-is bucketed by the latest endTime among its constituent conditions.
+is bucketed by the latest endTime among its constituent conditions; the
+window is `[minSecondsFromNow, maxSecondsFromNow)`. Buckets come back in
+ascending order — sort by `maxSecondsFromNow` (nulls last) to be explicit.
 """
 type TimeToResolutionBucket {
-  """Sort key: 1 = soonest, ascending for further-out buckets."""
-  bucket: Int!
+  """
+  Inclusive lower bound, in seconds from now. `null` on the first bucket,
+  which also absorbs overdue (past-endTime, not-yet-resolved) predictions.
+  """
+  minSecondsFromNow: Int
 
-  """Display label, e.g. ≤1d / 2-7d / 1-2mo."""
-  label: String!
+  """
+  Exclusive upper bound, in seconds from now. `null` on the open-ended
+  tail bucket.
+  """
+  maxSecondsFromNow: Int
   openInterest: BigInt!
   predictionCount: Int!
 }
