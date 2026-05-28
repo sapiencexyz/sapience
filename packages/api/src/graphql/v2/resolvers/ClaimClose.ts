@@ -35,14 +35,14 @@ registerNodeTypeV2({
 
 export const Claim: ClaimResolvers = {
   id: (parent) => toGlobalIdV2('Claim', String(parent.id)),
-  marketAddress: (parent) => parent.marketAddress.toLowerCase(),
+  escrow: (parent) => parent.marketAddress.toLowerCase(),
   holder: (parent) => parent.holder.toLowerCase(),
   positionToken: (parent) => parent.positionToken.toLowerCase(),
 };
 
 export const Close: CloseResolvers = {
   id: (parent) => toGlobalIdV2('Close', String(parent.id)),
-  marketAddress: (parent) => parent.marketAddress.toLowerCase(),
+  escrow: (parent) => parent.marketAddress.toLowerCase(),
   predictorHolder: (parent) => parent.predictorHolder.toLowerCase(),
   counterpartyHolder: (parent) => parent.counterpartyHolder.toLowerCase(),
 };

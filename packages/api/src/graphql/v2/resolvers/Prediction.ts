@@ -28,7 +28,7 @@ const eagerPickConfig = (parent: unknown): EagerPickConfig =>
 export const Prediction: PredictionResolvers = {
   id: (parent) => toGlobalIdV2('Prediction', parent.predictionId),
 
-  marketAddress: (parent) => parent.marketAddress.toLowerCase(),
+  escrow: (parent) => parent.marketAddress.toLowerCase(),
   predictor: (parent) => parent.predictor.toLowerCase(),
   counterparty: (parent) => parent.counterparty.toLowerCase(),
 

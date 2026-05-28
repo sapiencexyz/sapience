@@ -649,7 +649,11 @@ type PickConfiguration implements Node {
   pickConfigId: String!
 
   chainId: Int!
-  marketAddress: Address!
+  """
+  PredictionMarketEscrow contract this pick configuration lives on —
+  the core escrow that handles mint / settle / redeem / burn. Lowercase.
+  """
+  escrow: Address!
 
   predictorToken: Address
   counterpartyToken: Address
@@ -748,7 +752,7 @@ type Prediction implements Node {
   predictionId: String!
 
   chainId: Int!
-  marketAddress: Address!
+  escrow: Address!
 
   predictor: Address!
   counterparty: Address!
@@ -914,7 +918,7 @@ after settlement. Identified by `(chainId, txHash, logIndex)`.
 type Claim implements Node {
   id: ID!
   chainId: Int!
-  marketAddress: Address!
+  escrow: Address!
   predictionId: String!
   holder: Address!
   positionToken: Address!
@@ -961,7 +965,7 @@ pickConfig settles and receive the proportional payout.
 type Close implements Node {
   id: ID!
   chainId: Int!
-  marketAddress: Address!
+  escrow: Address!
   pickConfigId: String!
   predictorHolder: Address!
   counterpartyHolder: Address!

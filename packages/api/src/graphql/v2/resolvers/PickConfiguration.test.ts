@@ -46,9 +46,9 @@ describe('PickConfiguration (v2)', () => {
     });
   });
 
-  it('marketAddress is canonicalized to lowercase', () => {
+  it('escrow is canonicalized to lowercase', () => {
     expect(
-      callResolver<string>(PickConfiguration.marketAddress)(
+      callResolver<string>(PickConfiguration.escrow)(
         { marketAddress: '0xABCDEF0000000000000000000000000000000000' },
         {},
         {},

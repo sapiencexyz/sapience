@@ -26,7 +26,7 @@ registerNodeTypeV2({
 export const PickConfiguration: PickConfigurationResolvers = {
   id: (parent) => toGlobalIdV2('PickConfiguration', parent.id),
   pickConfigId: (parent) => parent.id,
-  marketAddress: (parent) => parent.marketAddress.toLowerCase(),
+  escrow: (parent) => parent.marketAddress.toLowerCase(),
   predictorToken: (parent) =>
     parent.predictorToken ? parent.predictorToken.toLowerCase() : null,
   counterpartyToken: (parent) =>
