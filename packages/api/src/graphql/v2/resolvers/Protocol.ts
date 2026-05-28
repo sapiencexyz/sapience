@@ -15,11 +15,16 @@ import {
   decodeCursor,
   encodeCursor,
 } from '../relay/connection';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   protocolStats as v1ProtocolStats,
   openInterestByCategory as v1OIByCategory,
   openInterestByTimeToResolution as v1OIByTTR,
 } from '../../sdl/resolvers/queries/analytics';
+import {
+  getConfiguredVaults,
+  getLatestProtocolStats,
+} from '../../../services/protocolStats';
 import { CACHE_HINTS, setCacheHint } from '../cacheHints';
 
 type V1Resolver = (parent: null, args: unknown, ctx: unknown) => unknown;
@@ -77,6 +82,31 @@ export const Protocol: ProtocolResolvers = {
           id: String((row as { timestamp?: unknown }).timestamp ?? ''),
         }),
     });
+  },
+
+  tvl: async () => {
+    const chainId = DEFAULT_CHAIN_ID;
+    // TVL = chain-wide escrow balance + undeployed available assets summed
+    // across every configured vault family (protocol / pyth / single-leg /
+    // strategy-b), not just the default. escrowBalance is denormalized onto
+    // each vault's snapshot, so take it once from the most-recent snapshot.
+    const snapshots = await Promise.all(
+      getConfiguredVaults(chainId).map((v) =>
+        getLatestProtocolStats(chainId, v.address.toLowerCase())
+      )
+    );
+    let availableAssetsSum = 0n;
+    let latestEscrow = 0n;
+    let latestTimestamp = -1;
+    for (const snapshot of snapshots) {
+      if (!snapshot) continue;
+      availableAssetsSum += BigInt(snapshot.vaultAvailableAssets || '0');
+      if (snapshot.timestamp > latestTimestamp) {
+        latestTimestamp = snapshot.timestamp;
+        latestEscrow = BigInt(snapshot.escrowBalance || '0');
+      }
+    }
+    return (latestEscrow + availableAssetsSum) as never;
   },
 
   openInterestByCategory: () =>

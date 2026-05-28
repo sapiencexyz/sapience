@@ -42,9 +42,14 @@ interface Node {
 """
 Anything addressable on-chain. Both wallet-keyed accounts and
 contract-controlled vaults expose an `address` and a Node identity, so
-v2 unifies them under one interface. Address-scoped fields shared by
-both kinds (`stats`, `collateralBalance`, `rank`, …) attach here in the
-phases that introduce them; this stub starts the interface narrow.
+v2 unifies them under one interface.
+
+The interface is intentionally narrow: `id` + `address`. Account-scoped
+analytics (`ranking`, `collateralBalance`, …) live on `Account`
+directly rather than the interface, because the vault equivalents are
+different metrics (a vault's balance is its on-chain `availableAssets` /
+`deployed`, not a wallet transfer-sum). If a genuinely shared
+address-scoped field emerges, promote it here then.
 """
 interface AddressEntity implements Node {
   id: ID!
@@ -168,6 +173,70 @@ type Vault implements Node & AddressEntity {
 
   """Chain the vault is deployed on."""
   chainId: Int!
+
+  """
+  Latest economic snapshot for this vault (balance, deployed/undeployed
+  collateral, realized PnL, flows). `null` until the stats writer has
+  recorded a first snapshot for the vault.
+  """
+  stats: VaultStat
+
+  """
+  Time-series of this vault's economic snapshots, newest first. Backs the
+  vault dashboard's TVL / PnL charts. Defaults to `TIMESTAMP DESC`.
+  """
+  statsHistory(first: Int = 30, after: String, filter: VaultStatFilter): VaultStatConnection!
+}
+
+"""
+One economic snapshot of a vault, taken by the stats writer. Amounts are
+wUSDe wei. Field names drop the leaked `vault*` Prisma column prefixes
+(redundant under `Vault`) and use the schema's collateral vocabulary.
+"""
+type VaultStat {
+  timestamp: UnixSeconds!
+
+  """
+  Raw wUSDe held by the vault contract (`balanceOf`), excludes deployed
+  funds.
+  """
+  balance: BigInt!
+
+  """Collateral deployed into escrow (backing open positions)."""
+  deployedCollateral: BigInt!
+
+  """
+  Liquid collateral not yet deployed to escrow. `balance + deployed` is AUM.
+  """
+  undeployedCollateral: BigInt!
+
+  """
+  Settlement PnL: gross payouts to the vault minus its primary-creation collateral.
+  """
+  realizedPnl: BigInt!
+  deposits: BigInt!
+  withdrawals: BigInt!
+  positionsWon: Int!
+  positionsLost: Int!
+  collateralWon: BigInt!
+  collateralLost: BigInt!
+}
+
+type VaultStatEdge {
+  cursor: String!
+  node: VaultStat!
+}
+
+type VaultStatConnection {
+  edges: [VaultStatEdge!]!
+  nodes: [VaultStat!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input VaultStatFilter {
+  """Snapshot timestamp window in epoch seconds (inclusive)."""
+  timestamp: IntRangeFilter
 }
 
 type VaultEdge {
@@ -1105,12 +1174,21 @@ type Protocol {
   re-key when granularity becomes configurable.
   """
   openInterestByTimeToResolution: [TimeToResolutionBucket!]!
+
+  """
+  Total value locked across the protocol, wei. Escrow collateral (which
+  includes settled-but-unclaimed winnings) plus undeployed available
+  assets summed across **every** configured vault — not just the default
+  one. Computed server-side from the latest per-vault stats snapshots.
+  """
+  tvl: BigInt!
 }
 
 """
 Protocol-wide snapshot of cumulative + period metrics. v2 drops the
-vault-scoped fields v1 carried (`vault*`, `periodPnL`) — vault-specific
-stats live on `Vault.stats` in the same shape.
+vault-scoped fields v1 carried (`vault*`, `periodPnL`); protocol-level
+TVL is exposed directly as `Protocol.tvl`, and per-vault stat breakdowns
+live on `Vault.stats` / `Vault.statsHistory`.
 """
 type ProtocolStat {
   timestamp: UnixSeconds!

@@ -190,9 +190,14 @@ export type ActivityType = 'PREDICTION' | 'TRADE';
 /**
  * Anything addressable on-chain. Both wallet-keyed accounts and
  * contract-controlled vaults expose an `address` and a Node identity, so
- * v2 unifies them under one interface. Address-scoped fields shared by
- * both kinds (`stats`, `collateralBalance`, `rank`, …) attach here in the
- * phases that introduce them; this stub starts the interface narrow.
+ * v2 unifies them under one interface.
+ *
+ * The interface is intentionally narrow: `id` + `address`. Account-scoped
+ * analytics (`ranking`, `collateralBalance`, …) live on `Account`
+ * directly rather than the interface, because the vault equivalents are
+ * different metrics (a vault's balance is its on-chain `availableAssets` /
+ * `deployed`, not a wallet transfer-sum). If a genuinely shared
+ * address-scoped field emerges, promote it here then.
  */
 export type AddressEntity = {
   address: Scalars['Address']['output'];
@@ -926,6 +931,13 @@ export type Protocol = {
    */
   openInterestByTimeToResolution: Array<TimeToResolutionBucket>;
   stats: ProtocolStatConnection;
+  /**
+   * Total value locked across the protocol, wei. Escrow collateral (which
+   * includes settled-but-unclaimed winnings) plus undeployed available
+   * assets summed across **every** configured vault — not just the default
+   * one. Computed server-side from the latest per-vault stats snapshots.
+   */
+  tvl: Scalars['BigInt']['output'];
 };
 
 /**
@@ -941,8 +953,9 @@ export type ProtocolStatsArgs = {
 
 /**
  * Protocol-wide snapshot of cumulative + period metrics. v2 drops the
- * vault-scoped fields v1 carried (`vault*`, `periodPnL`) — vault-specific
- * stats live on `Vault.stats` in the same shape.
+ * vault-scoped fields v1 carried (`vault*`, `periodPnL`); protocol-level
+ * TVL is exposed directly as `Protocol.tvl`, and per-vault stat breakdowns
+ * live on `Vault.stats` / `Vault.statsHistory`.
  */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
@@ -1627,7 +1640,31 @@ export type Vault = AddressEntity &
     /** Chain the vault is deployed on. */
     chainId: Scalars['Int']['output'];
     id: Scalars['ID']['output'];
+    /**
+     * Latest economic snapshot for this vault (balance, deployed/undeployed
+     * collateral, realized PnL, flows). `null` until the stats writer has
+     * recorded a first snapshot for the vault.
+     */
+    stats?: Maybe<VaultStat>;
+    /**
+     * Time-series of this vault's economic snapshots, newest first. Backs the
+     * vault dashboard's TVL / PnL charts. Defaults to `TIMESTAMP DESC`.
+     */
+    statsHistory: VaultStatConnection;
   };
+
+/**
+ * A statically configured protocol vault. Vaults are address-keyed like
+ * accounts but contract-controlled, with their own deployment kind and
+ * historical legacy aliases. The small total count means the connection
+ * exists primarily for enumeration; per-vault refetch goes through
+ * `vault(address:)`.
+ */
+export type VaultStatsHistoryArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<VaultStatFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
 
 export type VaultConnection = {
   __typename?: 'VaultConnection';
@@ -1667,6 +1704,52 @@ export type VaultOrder = {
  * for future sort columns.
  */
 export type VaultOrderField = 'ADDRESS';
+
+/**
+ * One economic snapshot of a vault, taken by the stats writer. Amounts are
+ * wUSDe wei. Field names drop the leaked `vault*` Prisma column prefixes
+ * (redundant under `Vault`) and use the schema's collateral vocabulary.
+ */
+export type VaultStat = {
+  __typename?: 'VaultStat';
+  /**
+   * Raw wUSDe held by the vault contract (`balanceOf`), excludes deployed
+   * funds.
+   */
+  balance: Scalars['BigInt']['output'];
+  collateralLost: Scalars['BigInt']['output'];
+  collateralWon: Scalars['BigInt']['output'];
+  /** Collateral deployed into escrow (backing open positions). */
+  deployedCollateral: Scalars['BigInt']['output'];
+  deposits: Scalars['BigInt']['output'];
+  positionsLost: Scalars['Int']['output'];
+  positionsWon: Scalars['Int']['output'];
+  /** Settlement PnL: gross payouts to the vault minus its primary-creation collateral. */
+  realizedPnl: Scalars['BigInt']['output'];
+  timestamp: Scalars['UnixSeconds']['output'];
+  /** Liquid collateral not yet deployed to escrow. `balance + deployed` is AUM. */
+  undeployedCollateral: Scalars['BigInt']['output'];
+  withdrawals: Scalars['BigInt']['output'];
+};
+
+export type VaultStatConnection = {
+  __typename?: 'VaultStatConnection';
+  edges: Array<VaultStatEdge>;
+  nodes: Array<VaultStat>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type VaultStatEdge = {
+  __typename?: 'VaultStatEdge';
+  cursor: Scalars['String']['output'];
+  node: VaultStat;
+};
+
+export type VaultStatFilter = {
+  /** Snapshot timestamp window in epoch seconds (inclusive). */
+  timestamp?: InputMaybe<IntRangeFilter>;
+};
 
 /**
  * Which similar-market-volume window the filter / sort looks at.

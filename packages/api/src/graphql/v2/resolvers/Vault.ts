@@ -14,8 +14,19 @@
 
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { normalizeLegacyEntry } from '@sapience/sdk/contracts';
-import { getConfiguredVaults } from '../../../services/protocolStats';
+import prisma from '../../../core/db';
+import {
+  getConfiguredVaults,
+  getLatestProtocolStats,
+} from '../../../services/protocolStats';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import {
+  buildConnection,
+  clampTake,
+  decodeCursor,
+  encodeCursor,
+} from '../relay/connection';
+import type { VaultResolvers } from '../__generated__/resolvers';
 
 export type VaultRow = {
   id: string; // pre-encoded global id
@@ -91,11 +102,88 @@ registerNodeTypeV2({
   },
 });
 
+type SnapshotRow = NonNullable<
+  Awaited<ReturnType<typeof getLatestProtocolStats>>
+>;
+
 /**
- * No custom field resolvers — every Vault field is a plain property on
- * the mapped row. The map lives in this module so resolvers and the
- * Node loader stay in sync.
+ * Map a `protocol_stats_snapshot` row to the public `VaultStat` wire
+ * shape — drops the `vault*` column prefixes (redundant under `Vault`)
+ * and coerces the VarChar-stored bigints.
  */
-export const Vault = {};
+const mapVaultStat = (row: SnapshotRow) => ({
+  timestamp: row.timestamp,
+  balance: BigInt(row.vaultBalance ?? '0'),
+  deployedCollateral: BigInt(row.vaultDeployed ?? '0'),
+  undeployedCollateral: BigInt(row.vaultAvailableAssets ?? '0'),
+  realizedPnl: BigInt(row.vaultRealizedPnL ?? '0'),
+  deposits: BigInt(row.vaultDeposits ?? '0'),
+  withdrawals: BigInt(row.vaultWithdrawals ?? '0'),
+  positionsWon: row.vaultPositionsWon,
+  positionsLost: row.vaultPositionsLost,
+  collateralWon: BigInt(row.vaultCollateralWon ?? '0'),
+  collateralLost: BigInt(row.vaultCollateralLost ?? '0'),
+});
+
+/**
+ * `stats` reads the vault's latest snapshot; `statsHistory` pages the
+ * time series newest-first with an offset cursor (snapshots are a
+ * bounded daily series). Both key on `(chainId, vaultAddress)`, indexed
+ * on `protocol_stats_snapshot`. Identity (`id`, `address`, `chainId`)
+ * stays a plain property read off the mapped row.
+ */
+export const Vault: VaultResolvers = {
+  stats: async (parent) => {
+    const snapshot = await getLatestProtocolStats(
+      parent.chainId,
+      parent.address.toLowerCase()
+    );
+    return snapshot ? (mapVaultStat(snapshot) as never) : null;
+  },
+
+  statsHistory: async (parent, args) => {
+    const first = clampTake(args.first ?? 30, {
+      defaultTake: 30,
+      maxTake: 365,
+    });
+    const after = args.after ? decodeCursor(args.after) : null;
+    const skip = after && /^\d+$/.test(after.k) ? Number(after.k) + 1 : 0;
+
+    const where = {
+      chainId: parent.chainId,
+      vaultAddress: parent.address.toLowerCase(),
+      ...(args.filter?.timestamp
+        ? {
+            timestamp: {
+              ...(args.filter.timestamp.gte != null
+                ? { gte: args.filter.timestamp.gte }
+                : {}),
+              ...(args.filter.timestamp.lte != null
+                ? { lte: args.filter.timestamp.lte }
+                : {}),
+            },
+          }
+        : {}),
+    };
+
+    const [rows, totalCount] = await Promise.all([
+      prisma.protocolStatsSnapshot.findMany({
+        where,
+        orderBy: { timestamp: 'desc' },
+        skip,
+        take: first + 1,
+      }),
+      prisma.protocolStatsSnapshot.count({ where }),
+    ]);
+
+    return buildConnection({
+      rows,
+      first,
+      totalCount,
+      getNode: (row) => mapVaultStat(row),
+      getCursor: (_row, idx) => encodeCursor({ k: String(skip + idx), id: '' }),
+    }) as never;
+  },
+};
 
 export { DEFAULT_CHAIN_ID };
