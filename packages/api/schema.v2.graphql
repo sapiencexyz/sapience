@@ -42,9 +42,14 @@ interface Node {
 """
 Anything addressable on-chain. Both wallet-keyed accounts and
 contract-controlled vaults expose an `address` and a Node identity, so
-v2 unifies them under one interface. Address-scoped fields shared by
-both kinds (`stats`, `collateralBalance`, `rank`, …) attach here in the
-phases that introduce them; this stub starts the interface narrow.
+v2 unifies them under one interface.
+
+The interface is intentionally narrow: `id` + `address`. Account-scoped
+analytics (`ranking`, `collateralBalance`, …) live on `Account`
+directly rather than the interface, because the vault equivalents are
+different metrics (a vault's balance is its on-chain `availableAssets` /
+`deployed`, not a wallet transfer-sum). If a genuinely shared
+address-scoped field emerges, promote it here then.
 """
 interface AddressEntity implements Node {
   id: ID!
@@ -160,14 +165,98 @@ historical legacy aliases. The small total count means the connection
 exists primarily for enumeration; per-vault refetch goes through
 `vault(address:)`.
 """
-type Vault implements Node & AddressEntity {
+type Vault implements Node {
   id: ID!
 
-  """Canonical lowercase vault contract address (current primary)."""
-  address: Address!
+  """
+  The vault's on-chain identity as an account: address, chainId, live wallet
+  balance, ranking, and balance history. A vault *is* an account (by
+  composition); its address and chain live here rather than being duplicated
+  onto `Vault`.
+  """
+  account: Account!
 
-  """Chain the vault is deployed on."""
-  chainId: Int!
+  """
+  Latest economic snapshot for this vault (balance, deployed/undeployed
+  collateral, realized PnL, flows). `null` until the stats writer has
+  recorded a first snapshot for the vault.
+
+  DEFERRED — not built yet: this is currently the latest *recorded*
+  snapshot. The target is a live, non-null chain read computed at query time
+  (reusing v1's live-candle helpers in `sdl/resolvers/queries/analytics.ts`)
+  so `/vaults` can drop its own `usePassiveLiquidityVault` RPC reads. Big
+  lift: needs per-request chain reads, not just a snapshot lookup.
+  """
+  stats: VaultStat
+
+  """
+  Time-series of this vault's economic snapshots, newest first. Backs the
+  vault dashboard's TVL / PnL charts. Defaults to `TIMESTAMP DESC`.
+  """
+  statsHistory(first: Int = 30, after: String, filter: VaultStatFilter): VaultStatConnection!
+}
+
+"""
+One economic snapshot of a vault, taken by the stats writer. Amounts are
+wUSDe wei. Field names drop the leaked `vault*` Prisma column prefixes
+(redundant under `Vault`) and use the schema's collateral vocabulary.
+"""
+type VaultStat {
+  timestamp: UnixSeconds!
+
+  """
+  Raw wUSDe held by the vault contract (`balanceOf`), excludes deployed
+  funds.
+  """
+  balance: BigInt!
+
+  """Collateral deployed into escrow (backing open positions)."""
+  deployedCollateral: BigInt!
+
+  """
+  Liquid collateral not yet deployed to escrow. `balance + deployed` is AUM.
+  """
+  undeployedCollateral: BigInt!
+
+  """
+  Settlement PnL: gross payouts to the vault minus its primary-creation collateral.
+  """
+  realizedPnl: BigInt!
+
+  """
+  Cumulative trading PnL the vault dashboard plots: settlement PnL, plus
+  wUSDe earmarked from resolved-but-unredeemed wins, plus net secondary-
+  market flow (`realizedPnl + unredeemedClaim + secondarySold −
+  secondaryBought`). This is the *same* numerator the account behind the
+  vault carries; the vault presents it as a return on total assets
+  (`balance + deployedCollateral`), where the account measures it against
+  deployed capital. The unredeemed term cancels the transient phantom loss
+  between a position resolving and its redeem being indexed.
+  """
+  cumulativePnl: BigInt!
+  deposits: BigInt!
+  withdrawals: BigInt!
+  positionsWon: Int!
+  positionsLost: Int!
+  collateralWon: BigInt!
+  collateralLost: BigInt!
+}
+
+type VaultStatEdge {
+  cursor: String!
+  node: VaultStat!
+}
+
+type VaultStatConnection {
+  edges: [VaultStatEdge!]!
+  nodes: [VaultStat!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input VaultStatFilter {
+  """Snapshot timestamp window in epoch seconds (inclusive)."""
+  timestamp: IntRangeFilter
 }
 
 type VaultEdge {
@@ -1092,7 +1181,21 @@ breakdowns the dashboard renders. Lookup is via `protocol { … }`; no
 arguments needed.
 """
 type Protocol {
-  stats(first: Int = 100, after: String, filter: ProtocolStatFilter): ProtocolStatConnection!
+  """
+  Live, current protocol-wide stats — a single `ProtocolStat` with
+  `timestamp = now`. Volume / trade-count / open-interest reflect the
+  in-progress period and `totalValueLocked` is read across every configured
+  vault at query time. Use `statsHistory` for the recorded daily series.
+  """
+  stats: ProtocolStat!
+
+  """
+  Recorded protocol-wide snapshots, oldest first — backs the analytics
+  volume / TVL / open-interest time-series charts. (Previously named
+  `stats`; renamed to `statsHistory` so `stats` can be the live singular,
+  matching the `Vault` access pattern.)
+  """
+  statsHistory(first: Int = 100, after: String, filter: ProtocolStatFilter): ProtocolStatConnection!
   openInterestByCategory: [CategoryOpenInterest!]!
 
   """
@@ -1109,8 +1212,10 @@ type Protocol {
 
 """
 Protocol-wide snapshot of cumulative + period metrics. v2 drops the
-vault-scoped fields v1 carried (`vault*`, `periodPnL`) — vault-specific
-stats live on `Vault.stats` in the same shape.
+vault-scoped fields v1 carried (`vault*`, `periodPnL`); per-vault stat
+breakdowns live on `Vault.stats` / `Vault.statsHistory`. Protocol-level
+TVL is carried here as `totalValueLocked` (read live on `Protocol.stats`,
+aggregated per snapshot on `Protocol.statsHistory`).
 """
 type ProtocolStat {
   timestamp: UnixSeconds!
@@ -1120,6 +1225,15 @@ type ProtocolStat {
   periodTradeCount: Int!
   openInterest: BigInt!
   escrowBalance: BigInt!
+
+  """
+  Total value locked across the protocol, wei: escrow collateral (which
+  includes settled-but-unclaimed winnings) plus undeployed available assets
+  summed across **every** configured vault family — not just the default
+  one (the v1 series under-counted by scoping to a single family). Computed
+  by read-time aggregation, so history and the live `Protocol.stats` agree.
+  """
+  totalValueLocked: BigInt!
 }
 
 type ProtocolStatEdge {
