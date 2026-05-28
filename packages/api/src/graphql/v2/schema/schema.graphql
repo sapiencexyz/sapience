@@ -333,6 +333,21 @@ type Trade implements Node {
   blockNumber: Int!
   executedAt: UnixSeconds!
   refCode: String
+
+  """
+  The pick configuration this trade's position `token` belongs to, or
+  null if the token isn't part of any known configuration. Resolved by
+  matching `token` against the configuration's predictor / counterparty
+  tokens.
+  """
+  pickConfig: PickConfiguration
+
+  """
+  Which side of the pick configuration was traded — `PREDICTOR` if
+  `token` is the predictor token, `COUNTERPARTY` otherwise. Null when
+  `pickConfig` is null.
+  """
+  side: Side
 }
 
 type TradeEdge {

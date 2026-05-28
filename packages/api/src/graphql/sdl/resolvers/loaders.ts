@@ -67,11 +67,12 @@ export interface GraphQLLoaders {
    */
   picksByPickConfigId: DataLoader<string, PickRow[]>;
   /**
-   * referrerUserId → referred User[]. Used by v2 `Account.referrals`
-   * to fold the per-parent `count + findMany` into a single batched
-   * fetch across many parent rows.
+   * position-token address → the Picks row (with nested `picks`) that
+   * token belongs to, or null. Used by v2 `Trade.pickConfig` /
+   * `Trade.side` to fold the per-trade token→pickConfig lookup into one
+   * batched fetch across an activity feed.
    */
-  usersByReferrerId: DataLoader<number, UserRow[]>;
+  pickConfigByToken: DataLoader<string, PicksRow | null>;
 }
 
 export const createLoaders = (prisma: typeof prismaClient): GraphQLLoaders => ({
@@ -177,18 +178,27 @@ export const createLoaders = (prisma: typeof prismaClient): GraphQLLoaders => ({
     return ids.map((id) => byConfigId.get(id.toLowerCase()) ?? []);
   }),
 
-  usersByReferrerId: new DataLoader<number, UserRow[]>(async (ids) => {
-    const rows = await prisma.user.findMany({
-      where: { referredById: { in: Array.from(new Set(ids)) } },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+  pickConfigByToken: new DataLoader<string, PicksRow | null>(async (tokens) => {
+    const lowered = tokens.map((t) => t.toLowerCase());
+    const unique = Array.from(new Set(lowered));
+    const rows = await prisma.picks.findMany({
+      where: {
+        OR: [
+          { predictorToken: { in: unique } },
+          { counterpartyToken: { in: unique } },
+        ],
+      },
+      include: { picks: true },
     });
-    const byReferrerId = new Map<number, UserRow[]>();
+    // A token belongs to exactly one pickConfig (it's one side of one
+    // configuration), so index both sides into a single map.
+    const byToken = new Map<string, PicksRow>();
     for (const row of rows) {
-      if (row.referredById == null) continue;
-      const bucket = byReferrerId.get(row.referredById) ?? [];
-      bucket.push(row);
-      byReferrerId.set(row.referredById, bucket);
+      if (row.predictorToken)
+        byToken.set(row.predictorToken.toLowerCase(), row);
+      if (row.counterpartyToken)
+        byToken.set(row.counterpartyToken.toLowerCase(), row);
     }
-    return ids.map((id) => byReferrerId.get(id) ?? []);
+    return lowered.map((t) => byToken.get(t) ?? null);
   }),
 });

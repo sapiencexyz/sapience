@@ -1528,10 +1528,23 @@ export type Trade = Node & {
   collateral: Scalars['Address']['output'];
   executedAt: Scalars['UnixSeconds']['output'];
   id: Scalars['ID']['output'];
+  /**
+   * The pick configuration this trade's position `token` belongs to, or
+   * null if the token isn't part of any known configuration. Resolved by
+   * matching `token` against the configuration's predictor / counterparty
+   * tokens.
+   */
+  pickConfig?: Maybe<PickConfiguration>;
   /** Total collateral paid by the buyer, wei. `price / tokenAmount` is the per-share price. */
   price: Scalars['BigInt']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
   seller: Scalars['Address']['output'];
+  /**
+   * Which side of the pick configuration was traded — `PREDICTOR` if
+   * `token` is the predictor token, `COUNTERPARTY` otherwise. Null when
+   * `pickConfig` is null.
+   */
+  side?: Maybe<Side>;
   /** Position token being transferred. */
   token: Scalars['Address']['output'];
   /** Quantity of position tokens transferred, wei (18-dec). */

@@ -85,4 +85,65 @@ describe('Trade (v2)', () => {
       })
     );
   });
+
+  it('pickConfig resolves the token through the pickConfigByToken loader', async () => {
+    const load = vi.fn().mockResolvedValue({
+      id: '0xcfg',
+      predictorToken: '0xpredictor',
+      counterpartyToken: '0xcounterparty',
+    });
+    const ctx = { loaders: { pickConfigByToken: { load } } };
+    const result = await callResolver<{ id: string } | null>(Trade.pickConfig)(
+      { token: '0xPREDICTOR' },
+      {},
+      ctx,
+      null
+    );
+    expect(load).toHaveBeenCalledWith('0xpredictor');
+    expect(result?.id).toBe('0xcfg');
+  });
+
+  it('side returns PREDICTOR when the token is the predictor side', async () => {
+    const load = vi.fn().mockResolvedValue({
+      id: '0xcfg',
+      predictorToken: '0xpredictor',
+      counterpartyToken: '0xcounterparty',
+    });
+    const ctx = { loaders: { pickConfigByToken: { load } } };
+    const side = await callResolver<string | null>(Trade.side)(
+      { token: '0xPREDICTOR' },
+      {},
+      ctx,
+      null
+    );
+    expect(side).toBe('PREDICTOR');
+  });
+
+  it('side returns COUNTERPARTY when the token is the counterparty side', async () => {
+    const load = vi.fn().mockResolvedValue({
+      id: '0xcfg',
+      predictorToken: '0xpredictor',
+      counterpartyToken: '0xcounterparty',
+    });
+    const ctx = { loaders: { pickConfigByToken: { load } } };
+    const side = await callResolver<string | null>(Trade.side)(
+      { token: '0xCOUNTERPARTY' },
+      {},
+      ctx,
+      null
+    );
+    expect(side).toBe('COUNTERPARTY');
+  });
+
+  it('side returns null when the token has no pickConfig', async () => {
+    const load = vi.fn().mockResolvedValue(null);
+    const ctx = { loaders: { pickConfigByToken: { load } } };
+    const side = await callResolver<string | null>(Trade.side)(
+      { token: '0xUNKNOWN' },
+      {},
+      ctx,
+      null
+    );
+    expect(side).toBeNull();
+  });
 });
