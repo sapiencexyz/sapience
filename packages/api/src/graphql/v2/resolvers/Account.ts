@@ -73,11 +73,10 @@ export const Account: AccountResolvers = {
   /**
    * Account ranking on the chosen metric. Delegates to the leaderboard
    * resolver to share materialization. The shared helper returns a
-   * synthesized AccountRanking row; cast at the boundary because the
-   * generated resolver type wraps the parent in a strict
-   * ResolverTypeWrapper.
+   * synthesized Ranking row; cast at the boundary because the generated
+   * resolver type wraps the parent in a strict ResolverTypeWrapper.
    */
-  rank: accountRank as AccountResolvers['rank'],
+  ranking: accountRank as AccountResolvers['ranking'],
 
   collateralBalance: collateralBalanceField,
   collateralBalanceHistory: collateralBalanceHistoryField,

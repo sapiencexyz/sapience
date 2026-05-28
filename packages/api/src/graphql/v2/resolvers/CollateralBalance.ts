@@ -25,12 +25,16 @@ const addressOf = (parent: { address?: string | null }): string =>
 
 export const collateralBalanceField: NonNullable<
   AccountResolvers['collateralBalance']
-> = async (parent, args) =>
-  getCollateralBalance({
+> = async (parent, args) => {
+  const row = await getCollateralBalance({
     address: addressOf(parent),
     chainId: args.chainId,
     atBlock: args.atBlock ?? null,
-  }) as never;
+  });
+  // Point-lookup populates `blockNumber`; `timestamp` is the other axis
+  // and stays null here.
+  return { ...row, timestamp: null } as never;
+};
 
 export const collateralBalanceHistoryField: NonNullable<
   AccountResolvers['collateralBalanceHistory']
@@ -52,7 +56,12 @@ export const collateralBalanceHistoryField: NonNullable<
     intervalSeconds: args.intervalSeconds ?? null,
   });
 
-  const slice = rows.slice(offset, offset + first + 1);
+  const slice = rows.slice(offset, offset + first + 1).map((row) => ({
+    ...row,
+    // History buckets populate `timestamp`; `blockNumber` is the other
+    // axis and stays null here (no block is pinned per bucket).
+    blockNumber: null,
+  }));
 
   return buildConnection({
     rows: slice,

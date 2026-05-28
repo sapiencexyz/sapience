@@ -65,7 +65,7 @@ export const resolvers = {
   Query: {
     node,
     nodes,
-    _v2Health: () => ({
+    _health: () => ({
       status: 'ok',
       schemaVersion: 'v2.0.0',
     }),

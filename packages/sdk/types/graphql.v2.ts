@@ -56,14 +56,14 @@ export type Account = AddressEntity &
      * `intervalSeconds` (default 7d); returns `first + 1` boundaries
      * back from now.
      */
-    collateralBalanceHistory: CollateralBalanceSnapshotConnection;
+    collateralBalanceHistory: CollateralBalanceConnection;
     /** When this account first appeared in the database. Synthesized accounts return the unix epoch. */
     createdAt: Scalars['DateTimeISO']['output'];
     id: Scalars['ID']['output'];
     /** Maximum number of referrals this account's code allows. Default 0. */
     maxReferrals: Scalars['Int']['output'];
-    /** Rank of this account on a chosen metric, or null when unranked. */
-    rank?: Maybe<AccountRanking>;
+    /** This account's ranking on a chosen metric, or `null` when unranked. */
+    ranking?: Maybe<Ranking>;
     /**
      * keccak256(utf8(trimmed_lowercase_code)) of the user's referral code,
      * 0x-prefixed hex, if they own one.
@@ -104,8 +104,8 @@ export type AccountCollateralBalanceHistoryArgs = {
  * addresses that have no User row so every valid address resolves to an
  * Account; persistent rows additionally carry referral metadata.
  */
-export type AccountRankArgs = {
-  filter?: InputMaybe<AccountRankingFilter>;
+export type AccountRankingArgs = {
+  filter?: InputMaybe<RankingFilter>;
   metric: LeaderboardMetric;
 };
 
@@ -155,37 +155,6 @@ export type AccountOrder = {
  * change to the `orderBy` arg shape.
  */
 export type AccountOrderField = 'CREATED_AT';
-
-/**
- * One row of an account ranking — the address, its rank (1-indexed), and
- * the underlying metric value as a string (formatted per metric).
- */
-export type AccountRanking = {
-  __typename?: 'AccountRanking';
-  account: Account;
-  rank: Scalars['Int']['output'];
-  value: Scalars['String']['output'];
-};
-
-export type AccountRankingConnection = {
-  __typename?: 'AccountRankingConnection';
-  edges: Array<AccountRankingEdge>;
-  metric: LeaderboardMetric;
-  nodes: Array<AccountRanking>;
-  pageInfo: PageInfo;
-  totalCount: Scalars['Int']['output'];
-};
-
-export type AccountRankingEdge = {
-  __typename?: 'AccountRankingEdge';
-  cursor: Scalars['String']['output'];
-  node: AccountRanking;
-};
-
-export type AccountRankingFilter = {
-  /** Window selector in epoch seconds (inclusive). Ignored for ACCURACY. */
-  timestamp?: InputMaybe<IntRangeFilter>;
-};
 
 /**
  * Relay-shaped connection over the interleaved Prediction + Trade feed.
@@ -407,45 +376,48 @@ export type CloseOrderField = 'BURNED_AT';
 
 /**
  * Wallet wUSDe collateral balance at a point in time. Not a Node —
- * snapshots are derived rather than persistent entities.
+ * balances are derived rather than persistent entities.
+ *
+ * Carries two mutually-exclusive timing axes — exactly one is populated
+ * depending on which resolver produced the value:
+ *
+ * - `blockNumber` is set by `Account.collateralBalance`, which is keyed
+ *   by block (echoes the caller's `atBlock` arg, or `null` for the head
+ *   balance).
+ * - `timestamp` is set by `Account.collateralBalanceHistory`, which
+ *   buckets balances by `intervalSeconds`-spaced time boundaries (no
+ *   block is pinned per bucket).
  */
 export type CollateralBalance = {
   __typename?: 'CollateralBalance';
   address: Scalars['Address']['output'];
   amount: Scalars['BigInt']['output'];
   /**
-   * Block the balance was computed against — echoes the caller's `atBlock`
-   * arg, or `null` for the head balance.
+   * Block the balance was computed against. Set by `collateralBalance`
+   * point lookups; `null` for time-bucketed snapshots and for the head
+   * balance.
    */
   blockNumber?: Maybe<Scalars['Int']['output']>;
   chainId: Scalars['Int']['output'];
+  /**
+   * Time the balance was computed at. Set by `collateralBalanceHistory`
+   * bucket boundaries; `null` for point lookups.
+   */
+  timestamp?: Maybe<Scalars['DateTimeISO']['output']>;
 };
 
-/**
- * Single time-bucketed wUSDe wallet balance snapshot. Buckets are spaced
- * by `intervalSeconds` boundaries derived from `timestamp` — no block
- * number is pinned per bucket (the underlying query is time-indexed).
- */
-export type CollateralBalanceSnapshot = {
-  __typename?: 'CollateralBalanceSnapshot';
-  address: Scalars['Address']['output'];
-  amount: Scalars['BigInt']['output'];
-  chainId: Scalars['Int']['output'];
-  timestamp: Scalars['DateTimeISO']['output'];
-};
-
-export type CollateralBalanceSnapshotConnection = {
-  __typename?: 'CollateralBalanceSnapshotConnection';
-  edges: Array<CollateralBalanceSnapshotEdge>;
-  nodes: Array<CollateralBalanceSnapshot>;
+export type CollateralBalanceConnection = {
+  __typename?: 'CollateralBalanceConnection';
+  edges: Array<CollateralBalanceEdge>;
+  nodes: Array<CollateralBalance>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
 };
 
-export type CollateralBalanceSnapshotEdge = {
-  __typename?: 'CollateralBalanceSnapshotEdge';
+export type CollateralBalanceEdge = {
+  __typename?: 'CollateralBalanceEdge';
   cursor: Scalars['String']['output'];
-  node: CollateralBalanceSnapshot;
+  node: CollateralBalance;
 };
 
 /**
@@ -696,6 +668,16 @@ export type FloatFilter = {
   lte?: InputMaybe<Scalars['Float']['input']>;
 };
 
+/**
+ * Endpoint health / version probe. Clients can read `schemaVersion` to
+ * detect when the surface evolves.
+ */
+export type Health = {
+  __typename?: 'Health';
+  schemaVersion: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+};
+
 /** Range filter for an integer/UnixSeconds field; both bounds inclusive. */
 export type IntRangeFilter = {
   gte?: InputMaybe<Scalars['Int']['input']>;
@@ -703,7 +685,7 @@ export type IntRangeFilter = {
 };
 
 /**
- * Metric an `AccountRanking` is sorted by.
+ * Metric an `Ranking` is sorted by.
  *
  * - `ACCURACY`: lifetime time-weighted Brier-style score; ignores the
  *   window filter (the score already weights by recency).
@@ -1009,7 +991,7 @@ export type ProtocolStatFilter = {
 export type Query = {
   __typename?: 'Query';
   /** Endpoint health / schema-version probe. */
-  _v2Health: V2Health;
+  _health: Health;
   /**
    * Look up a single account by canonical wallet address. Always returns
    * an Account — addresses with no User row are synthesized (`createdAt`
@@ -1070,7 +1052,7 @@ export type Query = {
    * `filter.timestamp` window; Accuracy is lifetime-aggregated and ignores
    * the window.
    */
-  leaderboard: AccountRankingConnection;
+  leaderboard: RankingConnection;
   /**
    * Relay refetch by opaque global id. Returns `null` when the id is
    * malformed, the type is not registered against the v2 registry, or
@@ -1228,7 +1210,7 @@ export type QueryConditionsArgs = {
 
 export type QueryLeaderboardArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<AccountRankingFilter>;
+  filter?: InputMaybe<RankingFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   metric: LeaderboardMetric;
 };
@@ -1414,6 +1396,37 @@ export type QuestionOrderField =
   | 'SIMILAR_MARKET_VOLUME_24H_FILTERED';
 
 /**
+ * One row of an account ranking — the address, its rank (1-indexed), and
+ * the underlying metric value as a string (formatted per metric).
+ */
+export type Ranking = {
+  __typename?: 'Ranking';
+  account: Account;
+  rank: Scalars['Int']['output'];
+  value: Scalars['String']['output'];
+};
+
+export type RankingConnection = {
+  __typename?: 'RankingConnection';
+  edges: Array<RankingEdge>;
+  metric: LeaderboardMetric;
+  nodes: Array<Ranking>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type RankingEdge = {
+  __typename?: 'RankingEdge';
+  cursor: Scalars['String']['output'];
+  node: Ranking;
+};
+
+export type RankingFilter = {
+  /** Window selector in epoch seconds (inclusive). Ignored for ACCURACY. */
+  timestamp?: InputMaybe<IntRangeFilter>;
+};
+
+/**
  * A referral code an account can issue or be referred by. Not a Node —
  * referrals are looked up only through `Account.referredByCode`.
  */
@@ -1594,16 +1607,6 @@ export type TradeOrder = {
 };
 
 export type TradeOrderField = 'BLOCK_NUMBER' | 'EXECUTED_AT';
-
-/**
- * Endpoint health / version probe. Clients can read `schemaVersion` to
- * detect when the v2 surface evolves.
- */
-export type V2Health = {
-  __typename?: 'V2Health';
-  schemaVersion: Scalars['String']['output'];
-  status: Scalars['String']['output'];
-};
 
 /**
  * A statically configured protocol vault. Vaults are address-keyed like

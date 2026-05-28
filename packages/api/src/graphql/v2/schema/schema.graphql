@@ -91,9 +91,9 @@ enum OrderDirection {
 
 """
 Endpoint health / version probe. Clients can read `schemaVersion` to
-detect when the v2 surface evolves.
+detect when the surface evolves.
 """
-type V2Health {
+type Health {
   status: String!
   schemaVersion: String!
 }
@@ -147,9 +147,9 @@ type Account implements Node & AddressEntity {
   referrals(first: Int = 50, after: String): AccountConnection!
 
   """
-  Rank of this account on a chosen metric, or null when unranked.
+  This account's ranking on a chosen metric, or `null` when unranked.
   """
-  rank(metric: LeaderboardMetric!, filter: AccountRankingFilter): AccountRanking
+  ranking(metric: LeaderboardMetric!, filter: RankingFilter): Ranking
 
   """
   Current wUSDe wallet balance at an optional block (defaults to head).
@@ -166,7 +166,7 @@ type Account implements Node & AddressEntity {
     first: Int = 12
     after: String
     intervalSeconds: Int
-  ): CollateralBalanceSnapshotConnection!
+  ): CollateralBalanceConnection!
 }
 
 """
@@ -1190,7 +1190,7 @@ input ActivityFilter {
 # -----------------------------------------------
 
 """
-Metric an `AccountRanking` is sorted by.
+Metric an `Ranking` is sorted by.
 
 - `ACCURACY`: lifetime time-weighted Brier-style score; ignores the
   window filter (the score already weights by recency).
@@ -1205,7 +1205,7 @@ enum LeaderboardMetric {
   ROI
 }
 
-input AccountRankingFilter {
+input RankingFilter {
   """
   Window selector in epoch seconds (inclusive). Ignored for ACCURACY.
   """
@@ -1216,20 +1216,20 @@ input AccountRankingFilter {
 One row of an account ranking — the address, its rank (1-indexed), and
 the underlying metric value as a string (formatted per metric).
 """
-type AccountRanking {
+type Ranking {
   account: Account!
   rank: Int!
   value: String!
 }
 
-type AccountRankingEdge {
+type RankingEdge {
   cursor: String!
-  node: AccountRanking!
+  node: Ranking!
 }
 
-type AccountRankingConnection {
-  edges: [AccountRankingEdge!]!
-  nodes: [AccountRanking!]!
+type RankingConnection {
+  edges: [RankingEdge!]!
+  nodes: [Ranking!]!
   pageInfo: PageInfo!
   totalCount: Int!
   metric: LeaderboardMetric!
@@ -1319,39 +1319,43 @@ type TimeToResolutionBucket {
 
 """
 Wallet wUSDe collateral balance at a point in time. Not a Node —
-snapshots are derived rather than persistent entities.
+balances are derived rather than persistent entities.
+
+Carries two mutually-exclusive timing axes — exactly one is populated
+depending on which resolver produced the value:
+
+- `blockNumber` is set by `Account.collateralBalance`, which is keyed
+  by block (echoes the caller's `atBlock` arg, or `null` for the head
+  balance).
+- `timestamp` is set by `Account.collateralBalanceHistory`, which
+  buckets balances by `intervalSeconds`-spaced time boundaries (no
+  block is pinned per bucket).
 """
 type CollateralBalance {
   address: Address!
   chainId: Int!
   amount: BigInt!
   """
-  Block the balance was computed against — echoes the caller's `atBlock`
-  arg, or `null` for the head balance.
+  Block the balance was computed against. Set by `collateralBalance`
+  point lookups; `null` for time-bucketed snapshots and for the head
+  balance.
   """
   blockNumber: Int
+  """
+  Time the balance was computed at. Set by `collateralBalanceHistory`
+  bucket boundaries; `null` for point lookups.
+  """
+  timestamp: DateTimeISO
 }
 
-"""
-Single time-bucketed wUSDe wallet balance snapshot. Buckets are spaced
-by `intervalSeconds` boundaries derived from `timestamp` — no block
-number is pinned per bucket (the underlying query is time-indexed).
-"""
-type CollateralBalanceSnapshot {
-  address: Address!
-  chainId: Int!
-  amount: BigInt!
-  timestamp: DateTimeISO!
-}
-
-type CollateralBalanceSnapshotEdge {
+type CollateralBalanceEdge {
   cursor: String!
-  node: CollateralBalanceSnapshot!
+  node: CollateralBalance!
 }
 
-type CollateralBalanceSnapshotConnection {
-  edges: [CollateralBalanceSnapshotEdge!]!
-  nodes: [CollateralBalanceSnapshot!]!
+type CollateralBalanceConnection {
+  edges: [CollateralBalanceEdge!]!
+  nodes: [CollateralBalance!]!
   pageInfo: PageInfo!
   totalCount: Int!
 }
@@ -1581,7 +1585,7 @@ type Query {
   """
   Endpoint health / schema-version probe.
   """
-  _v2Health: V2Health!
+  _health: Health!
 
   """
   Look up a single account by canonical wallet address. Always returns
@@ -1689,8 +1693,8 @@ type Query {
     metric: LeaderboardMetric!
     first: Int = 25
     after: String
-    filter: AccountRankingFilter
-  ): AccountRankingConnection!
+    filter: RankingFilter
+  ): RankingConnection!
 
   """
   Look up a single collateral transfer by its globalId-encoded row id.

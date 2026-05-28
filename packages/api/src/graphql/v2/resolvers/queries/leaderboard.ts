@@ -62,7 +62,7 @@ export const leaderboard: NonNullable<QueryResolvers['leaderboard']> = async (
   } as never;
 };
 
-export const accountRank: NonNullable<AccountResolvers['rank']> = async (
+export const accountRank: NonNullable<AccountResolvers['ranking']> = async (
   parent,
   args
 ) => {
