@@ -668,16 +668,6 @@ export type FloatFilter = {
   lte?: InputMaybe<Scalars['Float']['input']>;
 };
 
-/**
- * Endpoint health / version probe. Clients can read `schemaVersion` to
- * detect when the surface evolves.
- */
-export type Health = {
-  __typename?: 'Health';
-  schemaVersion: Scalars['String']['output'];
-  status: Scalars['String']['output'];
-};
-
 /** Range filter for an integer/UnixSeconds field; both bounds inclusive. */
 export type IntRangeFilter = {
   gte?: InputMaybe<Scalars['Int']['input']>;
@@ -990,8 +980,6 @@ export type ProtocolStatFilter = {
 
 export type Query = {
   __typename?: 'Query';
-  /** Endpoint health / schema-version probe. */
-  _health: Health;
   /**
    * Look up a single account by canonical wallet address. Always returns
    * an Account — addresses with no User row are synthesized (`createdAt`

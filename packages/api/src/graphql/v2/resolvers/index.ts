@@ -65,10 +65,6 @@ export const resolvers = {
   Query: {
     node,
     nodes,
-    _health: () => ({
-      status: 'ok',
-      schemaVersion: 'v2.0.0',
-    }),
     account,
     accounts,
     vault,

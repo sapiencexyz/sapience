@@ -66,15 +66,6 @@ enum OrderDirection {
 }
 
 """
-Endpoint health / version probe. Clients can read `schemaVersion` to
-detect when the surface evolves.
-"""
-type Health {
-  status: String!
-  schemaVersion: String!
-}
-
-"""
 Address-keyed account record — wallet-level identity. Synthesized for
 addresses that have no User row so every valid address resolves to an
 Account; persistent rows additionally carry referral metadata.
@@ -1396,9 +1387,6 @@ type Query {
   resolved independently and may be null.
   """
   nodes(ids: [ID!]!): [Node]!
-
-  """Endpoint health / schema-version probe."""
-  _health: Health!
 
   """
   Look up a single account by canonical wallet address. Always returns

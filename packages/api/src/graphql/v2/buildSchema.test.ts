@@ -22,7 +22,6 @@ describe('v2 schema stub', () => {
     expect(fields).toBeDefined();
     expect(fields?.node).toBeDefined();
     expect(fields?.nodes).toBeDefined();
-    expect(fields?._health).toBeDefined();
   });
 
   it('declares the full v2 root query surface', async () => {

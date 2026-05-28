@@ -89,15 +89,6 @@ enum OrderDirection {
   DESC
 }
 
-"""
-Endpoint health / version probe. Clients can read `schemaVersion` to
-detect when the surface evolves.
-"""
-type Health {
-  status: String!
-  schemaVersion: String!
-}
-
 # -----------------------------------------------
 # Account (Phase 1)
 # -----------------------------------------------
@@ -1581,11 +1572,6 @@ type Query {
   resolved independently and may be null.
   """
   nodes(ids: [ID!]!): [Node]!
-
-  """
-  Endpoint health / schema-version probe.
-  """
-  _health: Health!
 
   """
   Look up a single account by canonical wallet address. Always returns
