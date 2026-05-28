@@ -60,21 +60,8 @@ export type Account = AddressEntity &
     /** When this account first appeared in the database. Synthesized accounts return the unix epoch. */
     createdAt: Scalars['DateTimeISO']['output'];
     id: Scalars['ID']['output'];
-    /** Maximum number of referrals this account's code allows. Default 0. */
-    maxReferrals: Scalars['Int']['output'];
     /** This account's ranking on a chosen metric, or `null` when unranked. */
     ranking?: Maybe<Ranking>;
-    /**
-     * keccak256(utf8(trimmed_lowercase_code)) of the user's referral code,
-     * 0x-prefixed hex, if they own one.
-     */
-    refCodeHash?: Maybe<Scalars['String']['output']>;
-    /** Accounts referred by this account, via its referral code. */
-    referrals: AccountConnection;
-    /** The account that referred this one, if any. */
-    referredBy?: Maybe<Account>;
-    /** The referral code this account was referred by, if any. */
-    referredByCode?: Maybe<ReferralCode>;
   };
 
 /**
@@ -107,16 +94,6 @@ export type AccountCollateralBalanceHistoryArgs = {
 export type AccountRankingArgs = {
   filter?: InputMaybe<RankingFilter>;
   metric: LeaderboardMetric;
-};
-
-/**
- * Address-keyed account record — wallet-level identity. Synthesized for
- * addresses that have no User row so every valid address resolves to an
- * Account; persistent rows additionally carry referral metadata.
- */
-export type AccountReferralsArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type AccountConnection = {
@@ -621,7 +598,7 @@ export type ConditionGroupOrderField =
  */
 export type ConditionGroupTotals = {
   __typename?: 'ConditionGroupTotals';
-  maxCreatedAtEpoch?: Maybe<Scalars['UnixSeconds']['output']>;
+  maxCreatedAt?: Maybe<Scalars['UnixSeconds']['output']>;
   maxEndTime?: Maybe<Scalars['UnixSeconds']['output']>;
   publicConditionCount: Scalars['Int']['output'];
   totalOpenInterest: Scalars['BigInt']['output'];
@@ -1412,20 +1389,6 @@ export type RankingEdge = {
 export type RankingFilter = {
   /** Window selector in epoch seconds (inclusive). Ignored for ACCURACY. */
   timestamp?: InputMaybe<IntRangeFilter>;
-};
-
-/**
- * A referral code an account can issue or be referred by. Not a Node —
- * referrals are looked up only through `Account.referredByCode`.
- */
-export type ReferralCode = {
-  __typename?: 'ReferralCode';
-  createdAt: Scalars['DateTimeISO']['output'];
-  createdBy: Scalars['Address']['output'];
-  creatorType: Scalars['String']['output'];
-  expiresAt?: Maybe<Scalars['UnixSeconds']['output']>;
-  isActive: Scalars['Boolean']['output'];
-  maxClaims: Scalars['Int']['output'];
 };
 
 /**

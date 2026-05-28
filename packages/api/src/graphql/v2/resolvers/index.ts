@@ -8,7 +8,7 @@
 
 import { scalarResolvers } from './scalars';
 import { node, nodes } from './queries/node';
-import { Account, ReferralCode } from './Account';
+import { Account } from './Account';
 import { account, accounts } from './queries/account';
 import { Vault } from './Vault';
 import { vault, vaults } from './queries/vault';
@@ -46,7 +46,6 @@ import { tags } from './queries/tags';
 export const resolvers = {
   ...scalarResolvers,
   Account,
-  ReferralCode,
   Vault,
   Category,
   Trade,

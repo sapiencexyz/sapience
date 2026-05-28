@@ -2,10 +2,9 @@ import type { User as PrismaUserRow } from '../../../../generated/prisma';
 
 /**
  * Build a non-null Account shape for address-backed GraphQL fields when no
- * profile row exists. The synthetic record deliberately carries no referral
- * identity; Account field resolvers treat `id === 0` as "no User row" and
- * short-circuit anything that would require one (`referrals` returns empty,
- * `referredBy*` already null out via the missing fk).
+ * profile row exists. The synthetic record carries `id: 0` as a sentinel for
+ * "no User row" — fields that would need a persisted row to resolve should
+ * short-circuit on that.
  */
 export const synthesizeAccount = (address: string): PrismaUserRow =>
   ({

@@ -41,7 +41,7 @@ export const ConditionGroup: ConditionGroupResolvers = {
     totalPredictionCount: parent.totalPredictionCount ?? 0,
     totalOpenInterest: BigInt(parent.totalOpenInterest?.toString() ?? '0'),
     maxEndTime: parent.maxEndTime ?? null,
-    maxCreatedAtEpoch:
+    maxCreatedAt:
       parent.maxCreatedAtEpoch != null
         ? Number(parent.maxCreatedAtEpoch)
         : null,

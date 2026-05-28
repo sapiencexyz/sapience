@@ -81,24 +81,6 @@ type Account implements Node & AddressEntity {
   """
   createdAt: DateTimeISO!
 
-  """
-  keccak256(utf8(trimmed_lowercase_code)) of the user's referral code,
-  0x-prefixed hex, if they own one.
-  """
-  refCodeHash: String
-
-  """Maximum number of referrals this account's code allows. Default 0."""
-  maxReferrals: Int!
-
-  """The account that referred this one, if any."""
-  referredBy: Account
-
-  """The referral code this account was referred by, if any."""
-  referredByCode: ReferralCode
-
-  """Accounts referred by this account, via its referral code."""
-  referrals(first: Int = 50, after: String): AccountConnection!
-
   """This account's ranking on a chosen metric, or `null` when unranked."""
   ranking(metric: LeaderboardMetric!, filter: RankingFilter): Ranking
 
@@ -111,19 +93,6 @@ type Account implements Node & AddressEntity {
   back from now.
   """
   collateralBalanceHistory(chainId: Int!, first: Int = 12, after: String, intervalSeconds: Int): CollateralBalanceConnection!
-}
-
-"""
-A referral code an account can issue or be referred by. Not a Node —
-referrals are looked up only through `Account.referredByCode`.
-"""
-type ReferralCode {
-  createdAt: DateTimeISO!
-  createdBy: Address!
-  creatorType: String!
-  maxClaims: Int!
-  isActive: Boolean!
-  expiresAt: UnixSeconds
 }
 
 type AccountEdge {
@@ -504,7 +473,7 @@ type ConditionGroupTotals {
   totalPredictionCount: Int!
   totalOpenInterest: BigInt!
   maxEndTime: UnixSeconds
-  maxCreatedAtEpoch: UnixSeconds
+  maxCreatedAt: UnixSeconds
   totalSimilarMarketVolume1h: Float!
   totalSimilarMarketVolume4h: Float!
   totalSimilarMarketVolume24h: Float!

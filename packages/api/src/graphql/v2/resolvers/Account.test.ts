@@ -23,19 +23,9 @@ const callResolver = <TResult = unknown>(resolver: unknown) =>
     info: unknown
   ) => Promise<TResult> | TResult;
 
-// totalCount on a connection may be either an eagerly-computed number or
-// a thunk; in production the default field resolver invokes the latter.
-// Unit tests inspect the raw return value, so resolve it manually here.
-const resolveTotal = async (v: unknown): Promise<number> =>
-  typeof v === 'function'
-    ? (v as () => Promise<number> | number)()
-    : (v as number);
-
 const ctx = {
   loaders: {
     userByAddress: { load: vi.fn() },
-    userById: { load: vi.fn() },
-    referralCodeById: { load: vi.fn() },
   },
 };
 
@@ -70,7 +60,6 @@ describe('Account (v2)', () => {
       id: 7,
       address: ADDRESS,
       createdAt: new Date('2026-01-01T00:00:00Z'),
-      referredById: null,
     };
     ctx.loaders.userByAddress.load.mockResolvedValueOnce(row);
     const result = await callResolver<{ id: number }>(account)(
@@ -80,35 +69,6 @@ describe('Account (v2)', () => {
       null
     );
     expect(result.id).toBe(7);
-  });
-
-  it('referrals on a synthesized account returns an empty connection without a query', async () => {
-    const result = await callResolver<{
-      nodes: unknown[];
-      totalCount: number;
-    }>(Account.referrals)({ id: 0, address: ADDRESS }, {}, ctx, null);
-    expect(result.nodes).toEqual([]);
-    expect(result.totalCount).toBe(0);
-    expect(mockPrisma.user.findMany).not.toHaveBeenCalled();
-  });
-
-  it('referrals on a persisted account queries by referredById', async () => {
-    mockPrisma.user.findMany.mockResolvedValueOnce([
-      { id: 11, address: '0xb', createdAt: new Date('2026-01-02T00:00:00Z') },
-      { id: 12, address: '0xc', createdAt: new Date('2026-01-03T00:00:00Z') },
-    ]);
-    mockPrisma.user.count.mockResolvedValueOnce(2);
-    const result = await callResolver<{
-      nodes: { id: number }[];
-      totalCount: number;
-    }>(Account.referrals)({ id: 5, address: ADDRESS }, {}, ctx, null);
-    expect(await resolveTotal(result.totalCount)).toBe(2);
-    expect(result.nodes.map((n) => n.id)).toEqual([11, 12]);
-    expect(mockPrisma.user.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { referredById: 5 },
-      })
-    );
   });
 });
 
