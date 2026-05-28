@@ -66,9 +66,9 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
       .result as Prisma.PicksWhereInput['result'];
     hasPickConfigFilter = true;
   }
-  if (args.filter?.resultIn?.length) {
+  if (args.filter?.results?.length) {
     pickConfigFilter.result = {
-      in: args.filter.resultIn as Prisma.EnumSettlementResultFilter['in'],
+      in: args.filter.results as Prisma.EnumSettlementResultFilter['in'],
     };
     hasPickConfigFilter = true;
   }

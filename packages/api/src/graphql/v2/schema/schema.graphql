@@ -710,7 +710,7 @@ input PickConfigurationFilter {
   chainId: Int
   resolved: Boolean
   result: SettlementResult
-  resultIn: [SettlementResult!]
+  results: [SettlementResult!]
   """
   Either predictor or counterparty token matches one of these (case-insensitive).
   """
@@ -807,7 +807,7 @@ input PredictionFilter {
   conditionIds: [Bytes!]
   settled: Boolean
   result: SettlementResult
-  resultIn: [SettlementResult!]
+  results: [SettlementResult!]
   """
   Filter by pickConfig end epoch seconds.
   """
@@ -892,7 +892,7 @@ input PositionFilter {
   Restrict to positions whose pickConfig settled with this result.
   """
   result: SettlementResult
-  resultIn: [SettlementResult!]
+  results: [SettlementResult!]
   """
   Restrict to positions where the pickConfig is settled / unsettled.
   """
@@ -1413,7 +1413,7 @@ input QuestionFilter {
   """
   Match any of these resolver contracts.
   """
-  resolverIn: [Address!]
+  resolvers: [Address!]
   """
   Restrict to questions whose category slug is in this set.
   """

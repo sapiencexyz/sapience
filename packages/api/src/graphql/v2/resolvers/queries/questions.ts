@@ -158,7 +158,7 @@ const toRunnerArgs = (
     tag: filter?.tag ?? null,
     chainId: filter?.chainId ?? null,
     contractAddress: filter?.resolver ?? null,
-    contractAddressIn: filter?.resolverIn ?? null,
+    contractAddressIn: filter?.resolvers ?? null,
     minEndTime: filter?.endsAt?.gte ?? null,
     maxEndTime: filter?.endsAt?.lte ?? null,
     resolutionStatus: filter?.resolutionStatus

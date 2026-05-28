@@ -746,7 +746,7 @@ export type PickConfigurationFilter = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   resolved?: InputMaybe<Scalars['Boolean']['input']>;
   result?: InputMaybe<SettlementResult>;
-  resultIn?: InputMaybe<Array<SettlementResult>>;
+  results?: InputMaybe<Array<SettlementResult>>;
   /** Either predictor or counterparty token matches one of these (case-insensitive). */
   tokens?: InputMaybe<Array<Scalars['Address']['input']>>;
 };
@@ -811,7 +811,7 @@ export type PositionFilter = {
   pickConfigId?: InputMaybe<Scalars['Bytes32']['input']>;
   /** Restrict to positions whose pickConfig settled with this result. */
   result?: InputMaybe<SettlementResult>;
-  resultIn?: InputMaybe<Array<SettlementResult>>;
+  results?: InputMaybe<Array<SettlementResult>>;
   /** Restrict to positions where the pickConfig is settled / unsettled. */
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -886,7 +886,7 @@ export type PredictionFilter = {
   predictionId?: InputMaybe<Scalars['Bytes32']['input']>;
   predictor?: InputMaybe<Scalars['Address']['input']>;
   result?: InputMaybe<SettlementResult>;
-  resultIn?: InputMaybe<Array<SettlementResult>>;
+  results?: InputMaybe<Array<SettlementResult>>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
@@ -1301,7 +1301,7 @@ export type QuestionFilter = {
   /** Resolver (oracle) contract that owns the underlying condition. */
   resolver?: InputMaybe<Scalars['Address']['input']>;
   /** Match any of these resolver contracts. */
-  resolverIn?: InputMaybe<Array<Scalars['Address']['input']>>;
+  resolvers?: InputMaybe<Array<Scalars['Address']['input']>>;
   /** Free-text search across the wrapped condition/group title and description (case-insensitive). */
   search?: InputMaybe<Scalars['String']['input']>;
   /** Range over similar-market volume (USD). Window selected by `similarMarketVolumeWindow`. */
