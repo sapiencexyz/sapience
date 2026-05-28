@@ -154,7 +154,7 @@ type Account implements Node & AddressEntity {
   """
   Current wUSDe wallet balance at an optional block (defaults to head).
   """
-  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
+  collateralBalance(chainId: Int!, atBlock: Int): CollateralBalance!
 
   """
   Time-bucketed wUSDe wallet balance snapshots. Step size is
@@ -1301,17 +1301,22 @@ type CollateralBalance {
   address: Address!
   chainId: Int!
   amount: BigInt!
-  atBlock: Int
+  """
+  Block the balance was computed against — echoes the caller's `atBlock`
+  arg, or `null` for the head balance.
+  """
+  blockNumber: Int
 }
 
 """
-Single time-bucketed wUSDe wallet balance snapshot.
+Single time-bucketed wUSDe wallet balance snapshot. Buckets are spaced
+by `intervalSeconds` boundaries derived from `timestamp` — no block
+number is pinned per bucket (the underlying query is time-indexed).
 """
 type CollateralBalanceSnapshot {
   address: Address!
   chainId: Int!
   amount: BigInt!
-  blockNumber: BigInt!
   timestamp: DateTimeISO!
 }
 

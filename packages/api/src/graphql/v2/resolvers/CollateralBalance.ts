@@ -1,14 +1,13 @@
 /**
  * `Account.collateralBalance` and `Account.collateralBalanceHistory`
- * field resolvers. Delegate to v1's `collateralBalance` /
- * `collateralBalanceHistory` query resolvers and reshape into v2's
- * narrower wire types.
+ * field resolvers. Backed by the v2-local SQL helpers in
+ * `./queries/collateralBalance`.
+ *
+ * The history connection is forward-only with an offset-style cursor —
+ * the row set is materialized in-memory by the SQL CTE, so keyset
+ * paging would buy nothing over slicing.
  */
 
-import {
-  collateralBalance as v1Balance,
-  collateralBalanceHistory as v1History,
-} from '../../sdl/resolvers/queries/collateralBalance';
 import type { AccountResolvers } from '../__generated__/resolvers';
 import {
   buildConnection,
@@ -16,53 +15,26 @@ import {
   decodeCursor,
   encodeCursor,
 } from '../relay/connection';
-
-type V1ResolverFn = (parent: null, args: unknown, ctx: unknown) => unknown;
+import {
+  getCollateralBalance,
+  getCollateralBalanceHistory,
+} from './queries/collateralBalance';
 
 const addressOf = (parent: { address?: string | null }): string =>
   (parent.address ?? '').toLowerCase();
 
-type V1BalanceResult = {
-  address: string;
-  chainId: number;
-  amount: string;
-  atBlock?: number | null;
-};
-
-type V1HistoryRow = {
-  address: string;
-  chainId: number;
-  amount: string;
-  blockNumber: bigint | number | string;
-  timestamp: Date;
-};
-
 export const collateralBalanceField: NonNullable<
   AccountResolvers['collateralBalance']
-> = async (parent, args) => {
-  const raw = (await (v1Balance as unknown as V1ResolverFn)(
-    null,
-    {
-      account: addressOf(parent),
-      chainId: args.chainId,
-      atBlock: args.atBlock != null ? Number(args.atBlock) : null,
-    },
-    null
-  )) as V1BalanceResult;
-  return {
-    address: raw.address,
-    chainId: raw.chainId,
-    amount: BigInt(raw.amount),
-    atBlock: raw.atBlock ?? null,
-  };
-};
+> = async (parent, args) =>
+  getCollateralBalance({
+    address: addressOf(parent),
+    chainId: args.chainId,
+    atBlock: args.atBlock ?? null,
+  }) as never;
 
 export const collateralBalanceHistoryField: NonNullable<
   AccountResolvers['collateralBalanceHistory']
 > = async (parent, args) => {
-  // Number of boundaries requested. v1's `count` is the *additional*
-  // snapshots beyond "now"; v2's `first` is the page size. Translate by
-  // requesting `first` boundaries.
   const first = clampTake(args.first ?? 12, {
     defaultTake: 12,
     maxTake: 200,
@@ -70,26 +42,17 @@ export const collateralBalanceHistoryField: NonNullable<
   const after = args.after ? decodeCursor(args.after) : null;
   const offset = after && /^\d+$/.test(after.k) ? Number(after.k) + 1 : 0;
 
-  // Fetch enough boundaries to cover offset + first + 1 for hasNextPage.
+  // Fetch enough boundaries to cover offset + first + 1 so the slice
+  // includes the lookahead row used by `buildConnection` for hasNextPage.
   const totalNeeded = offset + first + 1;
-  const rows = (await (v1History as unknown as V1ResolverFn)(
-    null,
-    {
-      account: addressOf(parent),
-      chainId: args.chainId,
-      count: totalNeeded,
-      intervalSeconds: args.intervalSeconds ?? null,
-    },
-    null
-  )) as V1HistoryRow[];
+  const rows = await getCollateralBalanceHistory({
+    address: addressOf(parent),
+    chainId: args.chainId,
+    count: totalNeeded,
+    intervalSeconds: args.intervalSeconds ?? null,
+  });
 
-  const slice = rows.slice(offset, offset + first + 1).map((row) => ({
-    address: row.address,
-    chainId: row.chainId,
-    amount: BigInt(row.amount),
-    blockNumber: BigInt(row.blockNumber),
-    timestamp: row.timestamp,
-  }));
+  const slice = rows.slice(offset, offset + first + 1);
 
   return buildConnection({
     rows: slice,
@@ -98,7 +61,7 @@ export const collateralBalanceHistoryField: NonNullable<
     getCursor: (_row, idx) =>
       encodeCursor({
         k: String(offset + idx),
-        id: String(slice[idx]?.blockNumber ?? ''),
+        id: slice[idx]?.timestamp.toISOString() ?? '',
       }),
-  });
+  }) as never;
 };
