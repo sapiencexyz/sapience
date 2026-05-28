@@ -658,7 +658,10 @@ type PickConfiguration implements Node {
   predictorToken: Address
   counterpartyToken: Address
 
-  resolved: Boolean!
+  """
+  Settlement timestamp; `null` until the underlying conditions resolve
+  and this configuration is closed out.
+  """
   resolvedAt: UnixSeconds
   result: SettlementResult!
 
@@ -766,7 +769,9 @@ type Prediction implements Node {
   collateralDeposited: BigInt
   collateralDepositedAt: UnixSeconds
 
-  settled: Boolean!
+  """
+  Settlement timestamp; `null` until the prediction settles on-chain.
+  """
   settledAt: UnixSeconds
   result: SettlementResult!
 
