@@ -143,6 +143,23 @@ describe('Protocol (v2)', () => {
     expect(conn.nodes.map((n) => n.cumulativeTradeCount)).toEqual([5, 9]);
   });
 
+  it('statsHistory honors the filter.timestamp window (display-ts, inclusive)', async () => {
+    // History display timestamps are 913_600 and 1_000_000 (live candle aside).
+    // gte = 1_000_000 should keep only the later row.
+    const conn = await callResolver<{
+      nodes: { timestamp: number; cumulativeVolume: string }[];
+      totalCount: number;
+    }>(Protocol.statsHistory)(
+      null,
+      { filter: { timestamp: { gte: 1_000_000 } } },
+      {},
+      null
+    );
+    expect(conn.totalCount).toBe(1);
+    expect(conn.nodes.map((n) => n.timestamp)).toEqual([1_000_000]);
+    expect(conn.nodes[0].cumulativeVolume).toBe('2000');
+  });
+
   it('stats returns the live candle with live cross-vault TVL', async () => {
     const stat = await callResolver<{
       cumulativeVolume: string;

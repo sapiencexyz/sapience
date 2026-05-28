@@ -172,25 +172,30 @@ export const Protocol: ProtocolResolvers = {
     const chainId = DEFAULT_CHAIN_ID;
     const interval = resolveSnapshotIntervalSeconds();
     const [allRows, availableByRawTs] = await Promise.all([
-      (v1ProtocolStats as unknown as V1Resolver)(
-        null,
-        {
-          from: args.filter?.timestamp?.gte ?? undefined,
-          to: args.filter?.timestamp?.lte ?? undefined,
-        },
-        null
-      ) as Promise<V1StatRow[]>,
+      // v1 `protocolStats` takes only `vaultAddress` (defaults to the protocol
+      // family) — it has no time-window args, so `filter.timestamp` is applied
+      // here, in-resolver, against each row's (display) timestamp.
+      (v1ProtocolStats as unknown as V1Resolver)(null, {}, null) as Promise<
+        V1StatRow[]
+      >,
       crossFamilyAvailableByRawTs(chainId),
     ]);
 
-    // Keep only recorded snapshots: a v1 row's display timestamp is
-    // `rawTimestamp − interval`, so a recorded row maps back to a known raw
-    // snapshot. The appended live candle (labelled at the current boundary)
-    // has no matching raw snapshot and is dropped — it's served by `stats`.
+    // Keep only recorded snapshots within the requested window. A v1 row's
+    // display timestamp is `rawTimestamp − interval`, so a recorded row maps
+    // back to a known raw snapshot; the appended live candle (labelled at the
+    // current boundary) has no matching raw snapshot and is dropped — it's
+    // served by `stats`. The `filter.timestamp` bounds are inclusive and match
+    // the node's surfaced (display) `timestamp`.
     const rawTsOf = (row: V1StatRow) => Number(row.timestamp ?? 0) + interval;
-    const historyRows = allRows.filter((row) =>
-      availableByRawTs.has(rawTsOf(row))
-    );
+    const window = args.filter?.timestamp;
+    const historyRows = allRows.filter((row) => {
+      if (!availableByRawTs.has(rawTsOf(row))) return false;
+      const ts = Number(row.timestamp ?? 0);
+      if (window?.gte != null && ts < window.gte) return false;
+      if (window?.lte != null && ts > window.lte) return false;
+      return true;
+    });
 
     const first = clampTake(args.first ?? historyRows.length, {
       defaultTake: historyRows.length || 100,
