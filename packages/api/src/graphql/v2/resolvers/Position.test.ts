@@ -35,7 +35,7 @@ describe('Position (v2)', () => {
     expect(fromGlobalIdV2(id)).toEqual({ type: 'Position', id: '42' });
   });
 
-  it('holder / tokenAddress are lowercased', () => {
+  it('holder / token are lowercased', () => {
     const row = {
       holder: '0xABCDEF',
       tokenAddress: '0xTOKEN',
@@ -43,7 +43,7 @@ describe('Position (v2)', () => {
     expect(callResolver<string>(Position.holder)(row, {}, {}, null)).toBe(
       '0xabcdef'
     );
-    expect(callResolver<string>(Position.tokenAddress)(row, {}, {}, null)).toBe(
+    expect(callResolver<string>(Position.token)(row, {}, {}, null)).toBe(
       '0xtoken'
     );
   });

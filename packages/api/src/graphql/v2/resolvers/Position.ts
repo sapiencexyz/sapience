@@ -27,7 +27,7 @@ registerNodeTypeV2({
 export const Position: PositionResolvers = {
   id: (parent) => toGlobalIdV2('Position', String(parent.id)),
   holder: (parent) => parent.holder.toLowerCase(),
-  tokenAddress: (parent) => parent.tokenAddress.toLowerCase(),
+  token: (parent) => parent.tokenAddress.toLowerCase(),
   pickConfig: (parent) => {
     const withConfig = parent as typeof parent & {
       pickConfiguration?: Awaited<

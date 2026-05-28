@@ -220,15 +220,15 @@ describe('questions (v2)', () => {
     );
   });
 
-  it('passes resolverAddress / resolverAddressIn / categorySlugs / search / tag through unchanged', async () => {
+  it('passes resolver / resolverIn / categorySlugs / search / tag through unchanged', async () => {
     await callResolver(questions)(
       null,
       {
         first: 25,
         filter: {
           chainId: 13374202,
-          resolverAddress: '0xabc',
-          resolverAddressIn: ['0xdef', '0x123'],
+          resolver: '0xabc',
+          resolverIn: ['0xdef', '0x123'],
           categorySlugs: ['crypto', 'sports'],
           search: 'fed rate',
           tag: 'AI',

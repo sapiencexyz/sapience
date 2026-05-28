@@ -74,9 +74,9 @@ describe('Condition (v2)', () => {
     ).toBe('NON_DECISIVE');
   });
 
-  it('resolverAddress lowercases the Prisma `resolver` column', () => {
+  it('resolver lowercases the Prisma `resolver` column', () => {
     expect(
-      callResolver<string>(Condition.resolverAddress)(
+      callResolver<string>(Condition.resolver)(
         { resolver: '0xABCDEF0000000000000000000000000000000000' },
         {},
         {},

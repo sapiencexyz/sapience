@@ -430,7 +430,7 @@ type Condition implements Node {
   """
   Resolver (oracle) contract address that settles this condition.
   """
-  resolverAddress: Address!
+  resolver: Address!
   endTime: UnixSeconds!
   settledAt: UnixSeconds
 
@@ -674,7 +674,7 @@ picks are only fetched in the context of their parent configuration.
 """
 type Pick {
   conditionId: String!
-  conditionResolverAddress: Address!
+  resolver: Address!
   predictedOutcome: BinaryOutcome!
   condition: Condition
 }
@@ -845,9 +845,9 @@ type Position implements Node {
   pickConfig: PickConfiguration
 
   """
-  ERC-20 position token address.
+  ERC-20 position token contract.
   """
-  tokenAddress: Address!
+  token: Address!
   """
   True if this is the predictor token side; false for counterparty.
   """
@@ -1358,17 +1358,17 @@ column drives the sort (e.g. `OPEN_INTEREST`,
 """
 input QuestionFilter {
   """
-  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver filter is present.
   """
   chainId: Int
   """
-  Resolver (oracle) contract address that owns the underlying condition.
+  Resolver (oracle) contract that owns the underlying condition.
   """
-  resolverAddress: Address
+  resolver: Address
   """
-  Match any of these resolver contract addresses.
+  Match any of these resolver contracts.
   """
-  resolverAddressIn: [Address!]
+  resolverIn: [Address!]
   """
   Restrict to questions whose category slug is in this set.
   """

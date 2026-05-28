@@ -57,9 +57,9 @@ describe('PickConfiguration (v2)', () => {
     ).toBe('0xabcdef0000000000000000000000000000000000');
   });
 
-  it('Pick maps Prisma `conditionResolver` to v2 `conditionResolverAddress`', () => {
+  it('Pick maps Prisma `conditionResolver` to v2 `resolver`', () => {
     expect(
-      callResolver<string>(Pick.conditionResolverAddress)(
+      callResolver<string>(Pick.resolver)(
         { conditionResolver: '0xRESOLVER000000000000000000000000000000000' },
         {},
         {},

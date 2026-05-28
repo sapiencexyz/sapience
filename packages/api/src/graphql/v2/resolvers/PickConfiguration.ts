@@ -44,7 +44,7 @@ export const PickConfiguration: PickConfigurationResolvers = {
 
 export const Pick: PickResolvers = {
   conditionId: (parent) => parent.conditionId.toLowerCase(),
-  conditionResolverAddress: (parent) => parent.conditionResolver.toLowerCase(),
+  resolver: (parent) => parent.conditionResolver.toLowerCase(),
   predictedOutcome: (parent) =>
     (parent.predictedOutcome === 1 ? 'YES' : 'NO') as never,
   condition: async (parent, _args, ctx) => {

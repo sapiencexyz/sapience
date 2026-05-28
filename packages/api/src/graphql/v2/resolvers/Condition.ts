@@ -9,8 +9,8 @@
  *  - Resolution state collapses to a single nullable `outcome` enum;
  *    v1's `settled` / `resolvedToYes` / `nonDecisive` booleans don't
  *    carry forward.
- *  - `resolver` column is renamed to `resolverAddress` on the wire
- *    (matches v1's deprecated `marketAddress`).
+ *  - `resolver` is the same Prisma column name; the Address scalar
+ *    already labels it.
  *  - `similarMarket*` flatten under a nested `SimilarMarket` value type.
  *  - `predictionCount` drops — clients use `predictions(...).totalCount`
  *    once the prediction relation lands.
@@ -49,7 +49,7 @@ const computeOutcome = (row: PrismaConditionRow): ConditionOutcome | null => {
 export const Condition: ConditionResolvers = {
   id: (parent) => toGlobalIdV2('Condition', parent.id),
   conditionId: (parent) => parent.id,
-  resolverAddress: (parent) => parent.resolver.toLowerCase(),
+  resolver: (parent) => parent.resolver.toLowerCase(),
   outcome: (parent) => computeOutcome(parent),
 
   category: async (parent, _args, ctx) => {
