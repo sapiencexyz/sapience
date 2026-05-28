@@ -206,6 +206,12 @@ input AccountFilter {
   search: String
 }
 
+"""
+Sort dimensions for the `accounts` connection. Intentionally kept as
+an enum even though it currently carries one value — additional sort
+columns (e.g. by stat-based ranking) can be added without a breaking
+change to the `orderBy` arg shape.
+"""
 enum AccountOrderField {
   CREATED_AT
 }
@@ -268,6 +274,12 @@ input VaultFilter {
   chainId: Int
 }
 
+"""
+Sort dimensions for the `vaults` connection. Intentionally kept as an
+enum even though it currently carries one value — symmetric with the
+other plural-query `*OrderField` enums and reserves an additive seam
+for future sort columns.
+"""
 enum VaultOrderField {
   ADDRESS
 }
@@ -976,6 +988,12 @@ input ClaimFilter {
   predictionId: Bytes32
 }
 
+"""
+Sort dimensions for the `claims` connection. Intentionally kept as an
+enum even though it currently carries one value — additional sort
+columns (e.g. by `collateralPaid`) can be added without a breaking
+change to the `orderBy` arg shape.
+"""
 enum ClaimOrderField {
   REDEEMED_AT
 }
@@ -1027,6 +1045,12 @@ input CloseFilter {
   participant: Address
 }
 
+"""
+Sort dimensions for the `closes` connection. Intentionally kept as an
+enum even though it currently carries one value — additional sort
+columns (e.g. by payout magnitude) can be added without a breaking
+change to the `orderBy` arg shape.
+"""
 enum CloseOrderField {
   BURNED_AT
 }
