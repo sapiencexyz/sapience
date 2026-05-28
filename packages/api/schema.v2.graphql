@@ -4,7 +4,7 @@
 scalar Address
 
 """
-Integer Unix timestamp in seconds (UTC). Wire format is Int; the scalar carries the unit/TZ contract in the type system rather than the field name.
+Integer epoch seconds. Wire format is Int; the scalar carries the unit/TZ contract in the type system rather than the field name.
 """
 scalar UnixSeconds
 
@@ -22,6 +22,11 @@ scalar BigInt
 0x-prefixed lowercase 32-byte hex value. Used for transaction hashes, EAS UIDs, and other 32-byte on-chain identifiers.
 """
 scalar Bytes32
+
+"""
+0x-prefixed lowercase hex of any byte length. Mixed-case input is accepted and normalized to lowercase.
+"""
+scalar Bytes
 
 """
 Relay `Node` interface — every persistent entity in v2 implements it.
@@ -107,7 +112,7 @@ type Account implements Node & AddressEntity {
   rank(metric: LeaderboardMetric!, filter: AccountRankingFilter): AccountRanking
 
   """Current wUSDe wallet balance at an optional block (defaults to head)."""
-  collateralBalance(chainId: Int!, atBlock: BigInt): CollateralBalance!
+  collateralBalance(chainId: Int!, atBlock: Int): CollateralBalance!
 
   """
   Time-bucketed wUSDe wallet balance snapshots. Step size is
@@ -152,6 +157,12 @@ input AccountFilter {
   search: String
 }
 
+"""
+Sort dimensions for the `accounts` connection. Intentionally kept as
+an enum even though it currently carries one value — additional sort
+columns (e.g. by stat-based ranking) can be added without a breaking
+change to the `orderBy` arg shape.
+"""
 enum AccountOrderField {
   CREATED_AT
 }
@@ -176,27 +187,6 @@ type Vault implements Node & AddressEntity {
 
   """Chain the vault is deployed on."""
   chainId: Int!
-
-  """Deployment kind — one of a small enum set."""
-  kind: VaultKind!
-
-  """
-  Previously-active vault contract addresses (lowercase). Old refs may
-  still appear in indexer data; the canonical `address` is the current
-  primary deployment.
-  """
-  legacyAddresses: [Address!]!
-}
-
-"""
-Identifies which "family" of vault a row belongs to. Maps 1:1 to the
-keys under `predictionMarketVault` in the SDK contracts module.
-"""
-enum VaultKind {
-  PROTOCOL
-  PYTH
-  SINGLE_LEG
-  STRATEGY_B
 }
 
 type VaultEdge {
@@ -226,11 +216,14 @@ input VaultFilter {
   Restrict to a single chain. Defaults to the SDK's default chain when omitted.
   """
   chainId: Int
-
-  """Restrict to a single deployment kind."""
-  kind: VaultKind
 }
 
+"""
+Sort dimensions for the `vaults` connection. Intentionally kept as an
+enum even though it currently carries one value — symmetric with the
+other plural-query `*OrderField` enums and reserves an additive seam
+for future sort columns.
+"""
 enum VaultOrderField {
   ADDRESS
 }
@@ -246,11 +239,6 @@ UI. Backed by the Postgres `Category` table.
 """
 type Category implements Node {
   id: ID!
-
-  """
-  Internal integer primary key; stable per-row, not encoded in opaque ids.
-  """
-  categoryId: Int!
   name: String!
   slug: String!
   createdAt: DateTimeISO!
@@ -283,74 +271,10 @@ input CategoryOrder {
   direction: OrderDirection!
 }
 
-"""
-EAS attestation-backed forecast made by `forecaster` against `resolverAddress`.
-Identified by its on-chain `uid`. Wire shape drops the leaked Prisma column
-names (`attester`, `time`) in favour of the public-API names (`forecaster`,
-`attestedAt`); the raw on-chain value is renamed `forecastValue` to avoid
-the type-vs-field naming collision v1 had.
-"""
-type Forecast implements Node {
-  id: ID!
-  uid: Bytes32!
-  schemaId: Bytes32!
-  forecaster: Address!
-  recipient: Address!
-  resolverAddress: Address
-
-  """
-  CTF condition id this forecast targets, lowercase 0x-hex. May be null for non-condition-backed forecasts.
-  """
-  conditionId: String
-
-  """
-  Raw on-chain forecast value — D18 fixed-point probability in
-  `[0, 1e18]`. Divide by 1e18 to render as a 0–1 float.
-  """
-  forecastValue: BigInt!
-  comment: String
-  attestedAt: UnixSeconds!
-  blockNumber: Int!
-  transactionHash: Bytes32!
-  createdAt: DateTimeISO!
-}
-
-type ForecastEdge {
-  cursor: String!
-  node: Forecast!
-}
-
-type ForecastConnection {
-  edges: [ForecastEdge!]!
-  nodes: [Forecast!]!
-  pageInfo: PageInfo!
-  totalCount: Int!
-}
-
 """Range filter for an integer/UnixSeconds field; both bounds inclusive."""
 input IntRangeFilter {
   gte: Int
   lte: Int
-}
-
-input ForecastFilter {
-  uid: Bytes32
-  forecaster: Address
-  recipient: Address
-  conditionId: String
-  conditionIds: [String!]
-  schemaId: Bytes32
-  attestedAt: IntRangeFilter
-}
-
-enum ForecastOrderField {
-  ATTESTED_AT
-  CREATED_AT
-}
-
-input ForecastOrder {
-  field: ForecastOrderField!
-  direction: OrderDirection!
 }
 
 """
@@ -437,7 +361,7 @@ type Condition implements Node {
   id: ID!
 
   """CTF on-chain condition id, lowercase 0x-hex."""
-  conditionId: String!
+  conditionId: Bytes!
   chainId: Int!
   question: String!
   description: String!
@@ -445,7 +369,7 @@ type Condition implements Node {
   optionName: String
 
   """Resolver (oracle) contract address that settles this condition."""
-  resolverAddress: Address!
+  resolver: Address!
   endTime: UnixSeconds!
   settledAt: UnixSeconds
 
@@ -463,13 +387,11 @@ type Condition implements Node {
   estimatedPrice: Float
 
   """Visibility — false hides this condition from public listing surfaces."""
-  public: Boolean!
+  isPublic: Boolean!
   displayOrder: Int
   tags: [String!]!
   createdAt: DateTimeISO!
-  categoryId: Int
   category: Category
-  conditionGroupId: Int
   conditionGroup: ConditionGroup
 
   """Bundled similar-market signal from external sources (Polymarket)."""
@@ -491,6 +413,11 @@ attribution chip in the UI.
 """
 type SimilarMarket {
   image: String
+
+  """
+  External market URLs (typically Polymarket links) the volume signal was
+  aggregated from. Used by the UI to render an attribution chip.
+  """
   markets: [String!]!
   volume: Float!
   volume1h: Float!
@@ -516,19 +443,20 @@ type ConditionConnection {
 }
 
 input ConditionFilter {
-  conditionId: String
-  conditionIds: [String!]
+  conditionId: Bytes
+  conditionIds: [Bytes!]
   chainId: Int
-  categoryId: Int
+  categorySlug: String
 
   """Restrict to settled (`outcome` non-null) / unsettled (null)."""
   settled: Boolean
   outcome: ConditionOutcome
 
   """
-  Restrict to public conditions only (default true when omitted on listing surfaces).
+  Restrict to public (`true`) / hidden (`false`) conditions. Omit for
+  both; listing surfaces default to public-only when this is omitted.
   """
-  publicOnly: Boolean
+  public: Boolean
 
   """Restrict to conditions tagged with at least one of these."""
   tags: [String!]
@@ -558,13 +486,14 @@ constituent conditions.
 """
 type ConditionGroup implements Node {
   id: ID!
-
-  """Internal integer primary key — stable per row."""
-  groupId: Int!
   name: String!
+
+  """
+  External market URLs (typically Polymarket links) associated with this
+  group, aggregated across its constituent conditions.
+  """
   similarMarkets: [String!]!
   createdAt: DateTimeISO!
-  categoryId: Int
   category: Category
 
   """Aggregated counters across this group's public conditions."""
@@ -608,7 +537,7 @@ type ConditionGroupConnection {
 }
 
 input ConditionGroupFilter {
-  categoryId: Int
+  categorySlug: String
 
   """Substring search against `name`, case-insensitive."""
   search: String
@@ -634,15 +563,23 @@ the constituent picks — same picks produce the same pickConfigId.
 """
 type PickConfiguration implements Node {
   id: ID!
-  pickConfigId: String!
+  pickConfigId: Bytes32!
   chainId: Int!
-  marketAddress: Address!
+
+  """
+  PredictionMarketEscrow contract this pick configuration lives on —
+  the core escrow that handles mint / settle / redeem / burn. Lowercase.
+  """
+  escrow: Address!
   predictorToken: Address
   counterpartyToken: Address
-  isLegacy: Boolean!
-  resolved: Boolean!
+
+  """
+  Settlement timestamp; `null` until the underlying conditions resolve
+  and this configuration is closed out.
+  """
   resolvedAt: UnixSeconds
-  result: SettlementResult!
+  result: SettlementResult
   endsAt: UnixSeconds
   totalPredictorCollateral: BigInt!
   totalCounterpartyCollateral: BigInt!
@@ -656,22 +593,31 @@ A single condition + outcome pair within a PickConfiguration. Not a Node —
 picks are only fetched in the context of their parent configuration.
 """
 type Pick {
-  conditionId: String!
-  conditionResolverAddress: Address!
-  predictedOutcome: Int!
+  conditionId: Bytes!
+  resolver: Address!
+  predictedOutcome: BinaryOutcome!
   condition: Condition
 }
 
+"""
+Predicted side of a binary condition — `YES` or `NO`. Picks never carry
+`NON_DECISIVE`; that state belongs on `ConditionOutcome` (the resolved
+result), not on what the predictor chose.
+"""
+enum BinaryOutcome {
+  YES
+  NO
+}
+
+"""
+Terminal settlement state. `null` on the parent field means not yet
+settled; `NON_DECISIVE` is a settled-but-no-winner outcome (void, tie,
+oracle abstain).
+"""
 enum SettlementResult {
   COUNTERPARTY_WINS
   PREDICTOR_WINS
   NON_DECISIVE
-  UNRESOLVED
-}
-
-input SettlementResultFilter {
-  equals: SettlementResult
-  in: [SettlementResult!]
 }
 
 type PickConfigurationEdge {
@@ -689,7 +635,8 @@ type PickConfigurationConnection {
 input PickConfigurationFilter {
   chainId: Int
   resolved: Boolean
-  result: SettlementResultFilter
+  result: SettlementResult
+  resultIn: [SettlementResult!]
 
   """
   Either predictor or counterparty token matches one of these (case-insensitive).
@@ -715,9 +662,9 @@ Identified by its on-chain `predictionId`.
 """
 type Prediction implements Node {
   id: ID!
-  predictionId: String!
+  predictionId: Bytes32!
   chainId: Int!
-  marketAddress: Address!
+  escrow: Address!
   predictor: Address!
   counterparty: Address!
   predictorToken: Address!
@@ -726,16 +673,16 @@ type Prediction implements Node {
   counterpartyCollateral: BigInt!
   collateralDeposited: BigInt
   collateralDepositedAt: UnixSeconds
-  settled: Boolean!
+
+  """Settlement timestamp; `null` until the prediction settles on-chain."""
   settledAt: UnixSeconds
-  result: SettlementResult!
+  result: SettlementResult
   predictorClaimable: BigInt
   counterpartyClaimable: BigInt
   createdAt: DateTimeISO!
   createTxHash: Bytes32!
   settleTxHash: Bytes32
   refCode: String
-  isLegacy: Boolean!
   pickConfig: PickConfiguration
 }
 
@@ -752,7 +699,7 @@ type PredictionConnection {
 }
 
 input PredictionFilter {
-  predictionId: String
+  predictionId: Bytes32
 
   """
   Restrict to predictions where the address is predictor or counterparty.
@@ -762,20 +709,20 @@ input PredictionFilter {
   predictor: Address
   counterparty: Address
   chainId: Int
-  pickConfigId: String
+  pickConfigId: Bytes32
 
   """
   Restrict to predictions on a single condition (via the pickConfig join).
   """
-  conditionId: String
+  conditionId: Bytes
 
   """
   Restrict to predictions on any of these conditions (via the pickConfig join).
   """
-  conditionIds: [String!]
-  isLegacy: Boolean
+  conditionIds: [Bytes!]
   settled: Boolean
-  result: SettlementResultFilter
+  result: SettlementResult
+  resultIn: [SettlementResult!]
 
   """Filter by pickConfig end epoch seconds."""
   endsAt: IntRangeFilter
@@ -801,19 +748,33 @@ type Position implements Node {
   id: ID!
   chainId: Int!
   holder: Address!
-  pickConfigId: String!
+  pickConfigId: Bytes32!
   pickConfig: PickConfiguration
 
-  """ERC-20 position token address."""
-  tokenAddress: Address!
+  """ERC-20 position token contract."""
+  token: Address!
 
-  """True if this is the predictor token side; false for counterparty."""
-  isPredictorToken: Boolean!
+  """
+  Which side of the pick configuration this position is on. Derived
+  from `token` against `pickConfig.predictorToken` / `counterpartyToken`,
+  exposed directly so clients don't have to reconstruct the comparison.
+  """
+  side: Side!
 
   """Number of position tokens still held, wei (18 decimals)."""
   balance: BigInt!
   createdAt: DateTimeISO!
   updatedAt: DateTimeISO!
+}
+
+"""
+Which side of a pick configuration an entity is on. Mirrors the
+`predictor` / `counterparty` vocabulary used on `Prediction` and
+`PickConfiguration`.
+"""
+enum Side {
+  PREDICTOR
+  COUNTERPARTY
 }
 
 type PositionEdge {
@@ -831,11 +792,12 @@ type PositionConnection {
 input PositionFilter {
   holder: Address
   chainId: Int
-  conditionId: String
-  pickConfigId: String
+  conditionId: Bytes
+  pickConfigId: Bytes32
 
   """Restrict to positions whose pickConfig settled with this result."""
-  result: SettlementResultFilter
+  result: SettlementResult
+  resultIn: [SettlementResult!]
 
   """Restrict to positions where the pickConfig is settled / unsettled."""
   settled: Boolean
@@ -861,8 +823,8 @@ after settlement. Identified by `(chainId, txHash, logIndex)`.
 type Claim implements Node {
   id: ID!
   chainId: Int!
-  marketAddress: Address!
-  predictionId: String!
+  escrow: Address!
+  predictionId: Bytes32!
   holder: Address!
   positionToken: Address!
   tokensBurned: BigInt!
@@ -889,9 +851,15 @@ type ClaimConnection {
 input ClaimFilter {
   chainId: Int
   holder: Address
-  predictionId: String
+  predictionId: Bytes32
 }
 
+"""
+Sort dimensions for the `claims` connection. Intentionally kept as an
+enum even though it currently carries one value — additional sort
+columns (e.g. by `collateralPaid`) can be added without a breaking
+change to the `orderBy` arg shape.
+"""
 enum ClaimOrderField {
   REDEEMED_AT
 }
@@ -908,8 +876,8 @@ pickConfig settles and receive the proportional payout.
 type Close implements Node {
   id: ID!
   chainId: Int!
-  marketAddress: Address!
-  pickConfigId: String!
+  escrow: Address!
+  pickConfigId: Bytes32!
   predictorHolder: Address!
   counterpartyHolder: Address!
   predictorTokensBurned: BigInt!
@@ -936,7 +904,7 @@ type CloseConnection {
 
 input CloseFilter {
   chainId: Int
-  pickConfigId: String
+  pickConfigId: Bytes32
 
   """
   Restrict to closes where the address is on either side (predictor or counterparty).
@@ -944,6 +912,12 @@ input CloseFilter {
   participant: Address
 }
 
+"""
+Sort dimensions for the `closes` connection. Intentionally kept as an
+enum even though it currently carries one value — additional sort
+columns (e.g. by payout magnitude) can be added without a breaking
+change to the `orderBy` arg shape.
+"""
 enum CloseOrderField {
   BURNED_AT
 }
@@ -1052,9 +1026,9 @@ input ActivityFilter {
   OR across predictor/counterparty (predictions) and buyer/seller (trades).
   """
   account: Address
-  conditionId: String
-  conditionIds: [String!]
-  pickConfigId: String
+  conditionId: Bytes
+  conditionIds: [Bytes!]
+  pickConfigId: Bytes32
 
   """Restrict to a subset of activity types. `[]` is a zero-result query."""
   types: [ActivityType!]
@@ -1178,15 +1152,23 @@ type CollateralBalance {
   address: Address!
   chainId: Int!
   amount: BigInt!
-  atBlock: Int
+
+  """
+  Block the balance was computed against — echoes the caller's `atBlock`
+  arg, or `null` for the head balance.
+  """
+  blockNumber: Int
 }
 
-"""Single time-bucketed wUSDe wallet balance snapshot."""
+"""
+Single time-bucketed wUSDe wallet balance snapshot. Buckets are spaced
+by `intervalSeconds` boundaries derived from `timestamp` — no block
+number is pinned per bucket (the underlying query is time-indexed).
+"""
 type CollateralBalanceSnapshot {
   address: Address!
   chainId: Int!
   amount: BigInt!
-  blockNumber: BigInt!
   timestamp: DateTimeISO!
 }
 
@@ -1260,15 +1242,15 @@ column drives the sort (e.g. `OPEN_INTEREST`,
 """
 input QuestionFilter {
   """
-  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver-address filter is present.
+  Restrict to a single chain. Defaults to DEFAULT_CHAIN_ID when a resolver filter is present.
   """
   chainId: Int
 
-  """Resolver (oracle) contract address that owns the underlying condition."""
-  resolverAddress: Address
+  """Resolver (oracle) contract that owns the underlying condition."""
+  resolver: Address
 
-  """Match any of these resolver contract addresses."""
-  resolverAddressIn: [Address!]
+  """Match any of these resolver contracts."""
+  resolverIn: [Address!]
 
   """Restrict to questions whose category slug is in this set."""
   categorySlugs: [String!]
@@ -1314,6 +1296,14 @@ union runner sorts via raw SQL with a numeric cast — the narrower
 `conditions` / `conditionGroups` connections fall back to offset for
 these columns. `_FILTERED` variants exclude pre-resolution /
 off-platform volume.
+
+The volume window is packed into the enum rather than collapsed into a
+single `SIMILAR_MARKET_VOLUME` + separate window arg. The two designs
+were considered (see findings doc); the packed form preserves
+independent sort and filter windows (`QuestionFilter.similarMarketVolumeWindow`
+is a separate axis) without adding a contextual field to `QuestionOrder`,
+which would be the only `*Order` input in v2 carrying more than
+`{ field, direction }`.
 """
 enum QuestionOrderField {
   CREATED_AT
@@ -1352,6 +1342,40 @@ SQL UNION can't produce a single COUNT cheaply; `hasNextPage` from
 type QuestionConnection {
   edges: [QuestionEdge!]!
   pageInfo: PageInfo!
+}
+
+"""
+A tag attached to public conditions. Not a Node — the `name` itself is
+the natural key, so refetch by globalId would be redundant.
+
+`conditionCount` is the denormalized usage count maintained by the
+keeper's `popular_tag` refresh; treat it as near-real-time.
+"""
+type Tag {
+  name: String!
+  conditionCount: Int!
+}
+
+type TagEdge {
+  cursor: String!
+  node: Tag!
+}
+
+type TagConnection {
+  edges: [TagEdge!]!
+  nodes: [Tag!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+enum TagOrderField {
+  CONDITION_COUNT
+  NAME
+}
+
+input TagOrder {
+  field: TagOrderField!
+  direction: OrderDirection!
 }
 
 type Query {
@@ -1416,8 +1440,13 @@ type Query {
   """
   protocol: Protocol!
 
-  """Top 20 most-used tags across public conditions."""
-  popularTags: [String!]!
+  """
+  Tags attached to public conditions, backed by the keeper-refreshed
+  `popular_tag` materialization. Default order is `CONDITION_COUNT DESC`
+  with `first: 20` — the canonical "popular tags" feed. Sort by `NAME`
+  for an alphabetical browse.
+  """
+  tags(first: Int = 20, after: String, orderBy: TagOrder): TagConnection!
 
   """
   Interleaved Prediction + Trade activity feed, sorted by timestamp DESC.
@@ -1477,7 +1506,7 @@ type Query {
   positions(first: Int = 50, after: String, filter: PositionFilter, orderBy: PositionOrder): PositionConnection!
 
   """Look up a single prediction by its on-chain `predictionId`."""
-  prediction(predictionId: String!): Prediction
+  prediction(predictionId: Bytes32!): Prediction
 
   """
   Relay-shaped connection over escrow predictions. Defaults to
@@ -1486,7 +1515,7 @@ type Query {
   predictions(first: Int = 50, after: String, filter: PredictionFilter, orderBy: PredictionOrder): PredictionConnection!
 
   """Look up a single pick configuration by its on-chain `pickConfigId`."""
-  pickConfiguration(pickConfigId: String!): PickConfiguration
+  pickConfiguration(pickConfigId: Bytes32!): PickConfiguration
 
   """
   Relay-shaped connection over pick configurations. Defaults to
@@ -1495,7 +1524,7 @@ type Query {
   pickConfigurations(first: Int = 50, after: String, filter: PickConfigurationFilter, orderBy: PickConfigurationOrder): PickConfigurationConnection!
 
   """Look up a single condition by its on-chain CTF condition id."""
-  condition(conditionId: String!): Condition
+  condition(conditionId: Bytes!): Condition
 
   """
   Relay-shaped connection over conditions. Defaults to `END_TIME ASC`
@@ -1512,15 +1541,6 @@ type Query {
   `EXECUTED_AT DESC`.
   """
   trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
-
-  """Look up a single forecast by its on-chain `uid`."""
-  forecast(uid: Bytes32!): Forecast
-
-  """
-  Relay-shaped connection over EAS-backed forecasts. Defaults to
-  `ATTESTED_AT DESC`.
-  """
-  forecasts(first: Int = 50, after: String, filter: ForecastFilter, orderBy: ForecastOrder): ForecastConnection!
 
   """Look up a single category by its integer primary key."""
   category(id: Int!): Category

@@ -1474,6 +1474,14 @@ union runner sorts via raw SQL with a numeric cast — the narrower
 `conditions` / `conditionGroups` connections fall back to offset for
 these columns. `_FILTERED` variants exclude pre-resolution /
 off-platform volume.
+
+The volume window is packed into the enum rather than collapsed into a
+single `SIMILAR_MARKET_VOLUME` + separate window arg. The two designs
+were considered (see findings doc); the packed form preserves
+independent sort and filter windows (`QuestionFilter.similarMarketVolumeWindow`
+is a separate axis) without adding a contextual field to `QuestionOrder`,
+which would be the only `*Order` input in v2 carrying more than
+`{ field, direction }`.
 """
 enum QuestionOrderField {
   CREATED_AT
