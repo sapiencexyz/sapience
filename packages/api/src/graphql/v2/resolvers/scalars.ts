@@ -14,6 +14,9 @@ import { DateTimeISOResolver, BigIntResolver } from 'graphql-scalars';
 
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
+// Any-length hex; the empty payload (`0x`) is allowed because on-chain
+// `bytes` can legitimately be zero-length.
+const BYTES_RE = /^0x[0-9a-fA-F]*$/;
 
 const parseHexScalar = (
   scalarName: string,
@@ -110,9 +113,36 @@ export const Bytes32 = new GraphQLScalarType({
   },
 });
 
+export const Bytes = new GraphQLScalarType({
+  name: 'Bytes',
+  description:
+    '0x-prefixed lowercase hex of any byte length. Mixed-case input is accepted and normalized to lowercase.',
+  serialize: (value: unknown): string => {
+    if (typeof value !== 'string') {
+      throw new TypeError(
+        `Bytes cannot serialize value of type ${typeof value}: ${String(value)}`
+      );
+    }
+    const normalized = value.toLowerCase();
+    if (!BYTES_RE.test(normalized)) {
+      throw new TypeError(`Bytes cannot serialize invalid value: ${value}`);
+    }
+    return normalized;
+  },
+  parseValue: (value: unknown): string =>
+    parseHexScalar('Bytes', BYTES_RE, value),
+  parseLiteral: (ast): string => {
+    if (ast.kind !== 'StringValue') {
+      throw new TypeError('Bytes must be a string literal');
+    }
+    return parseHexScalar('Bytes', BYTES_RE, ast.value);
+  },
+});
+
 export const scalarResolvers = {
   Address,
   BigInt: BigIntResolver,
+  Bytes,
   Bytes32,
   DateTimeISO: DateTimeISOResolver,
   UnixSeconds,

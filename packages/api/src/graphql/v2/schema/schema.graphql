@@ -42,6 +42,13 @@ EAS UIDs, and other 32-byte on-chain identifiers.
 scalar Bytes32
 
 """
+0x-prefixed lowercase hex of any byte length. Used for variable-width
+on-chain identifiers — notably `conditionId`, which is `bytes32` for
+most resolvers but longer for Pyth-encoded conditions.
+"""
+scalar Bytes
+
+"""
 Relay `Node` interface — every persistent entity in v2 implements it.
 The `id` is an opaque base64url-encoded `(TypeName, domainId)` pair;
 clients should treat it as a refetch handle and read the entity's named
@@ -420,7 +427,7 @@ type Condition implements Node {
   """
   CTF on-chain condition id, lowercase 0x-hex.
   """
-  conditionId: String!
+  conditionId: Bytes!
   chainId: Int!
   question: String!
   description: String!
@@ -512,8 +519,8 @@ type ConditionConnection {
 }
 
 input ConditionFilter {
-  conditionId: String
-  conditionIds: [String!]
+  conditionId: Bytes
+  conditionIds: [Bytes!]
   chainId: Int
   categorySlug: String
   """
@@ -647,7 +654,7 @@ the constituent picks — same picks produce the same pickConfigId.
 """
 type PickConfiguration implements Node {
   id: ID!
-  pickConfigId: String!
+  pickConfigId: Bytes32!
 
   chainId: Int!
   """
@@ -681,7 +688,7 @@ A single condition + outcome pair within a PickConfiguration. Not a Node —
 picks are only fetched in the context of their parent configuration.
 """
 type Pick {
-  conditionId: String!
+  conditionId: Bytes!
   resolver: Address!
   predictedOutcome: BinaryOutcome!
   condition: Condition
@@ -753,7 +760,7 @@ Identified by its on-chain `predictionId`.
 """
 type Prediction implements Node {
   id: ID!
-  predictionId: String!
+  predictionId: Bytes32!
 
   chainId: Int!
   escrow: Address!
@@ -801,7 +808,7 @@ type PredictionConnection {
 }
 
 input PredictionFilter {
-  predictionId: String
+  predictionId: Bytes32
   """
   Restrict to predictions where the address is predictor or counterparty.
   Convenience filter; mutually exclusive with `predictor` / `counterparty`.
@@ -810,15 +817,15 @@ input PredictionFilter {
   predictor: Address
   counterparty: Address
   chainId: Int
-  pickConfigId: String
+  pickConfigId: Bytes32
   """
   Restrict to predictions on a single condition (via the pickConfig join).
   """
-  conditionId: String
+  conditionId: Bytes
   """
   Restrict to predictions on any of these conditions (via the pickConfig join).
   """
-  conditionIds: [String!]
+  conditionIds: [Bytes!]
   settled: Boolean
   result: SettlementResult
   resultIn: [SettlementResult!]
@@ -852,7 +859,7 @@ type Position implements Node {
   id: ID!
   chainId: Int!
   holder: Address!
-  pickConfigId: String!
+  pickConfigId: Bytes32!
   pickConfig: PickConfiguration
 
   """
@@ -900,8 +907,8 @@ type PositionConnection {
 input PositionFilter {
   holder: Address
   chainId: Int
-  conditionId: String
-  pickConfigId: String
+  conditionId: Bytes
+  pickConfigId: Bytes32
   """
   Restrict to positions whose pickConfig settled with this result.
   """
@@ -939,7 +946,7 @@ type Claim implements Node {
   id: ID!
   chainId: Int!
   escrow: Address!
-  predictionId: String!
+  predictionId: Bytes32!
   holder: Address!
   positionToken: Address!
   tokensBurned: BigInt!
@@ -966,7 +973,7 @@ type ClaimConnection {
 input ClaimFilter {
   chainId: Int
   holder: Address
-  predictionId: String
+  predictionId: Bytes32
 }
 
 enum ClaimOrderField {
@@ -986,7 +993,7 @@ type Close implements Node {
   id: ID!
   chainId: Int!
   escrow: Address!
-  pickConfigId: String!
+  pickConfigId: Bytes32!
   predictorHolder: Address!
   counterpartyHolder: Address!
   predictorTokensBurned: BigInt!
@@ -1013,7 +1020,7 @@ type CloseConnection {
 
 input CloseFilter {
   chainId: Int
-  pickConfigId: String
+  pickConfigId: Bytes32
   """
   Restrict to closes where the address is on either side (predictor or counterparty).
   """
@@ -1141,9 +1148,9 @@ input ActivityFilter {
   OR across predictor/counterparty (predictions) and buyer/seller (trades).
   """
   account: Address
-  conditionId: String
-  conditionIds: [String!]
-  pickConfigId: String
+  conditionId: Bytes
+  conditionIds: [Bytes!]
+  pickConfigId: Bytes32
   """
   Restrict to a subset of activity types. `[]` is a zero-result query.
   """
@@ -1715,7 +1722,7 @@ type Query {
   """
   Look up a single prediction by its on-chain `predictionId`.
   """
-  prediction(predictionId: String!): Prediction
+  prediction(predictionId: Bytes32!): Prediction
 
   """
   Relay-shaped connection over escrow predictions. Defaults to
@@ -1731,7 +1738,7 @@ type Query {
   """
   Look up a single pick configuration by its on-chain `pickConfigId`.
   """
-  pickConfiguration(pickConfigId: String!): PickConfiguration
+  pickConfiguration(pickConfigId: Bytes32!): PickConfiguration
 
   """
   Relay-shaped connection over pick configurations. Defaults to
@@ -1747,7 +1754,7 @@ type Query {
   """
   Look up a single condition by its on-chain CTF condition id.
   """
-  condition(conditionId: String!): Condition
+  condition(conditionId: Bytes!): Condition
 
   """
   Relay-shaped connection over conditions. Defaults to `END_TIME ASC`
