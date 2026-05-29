@@ -13,7 +13,6 @@ import {
   encodeCode,
   fmtUnits,
   loadContractAddress,
-  saveContractAddress,
   shortAddress,
 } from '../lib/bingoCard';
 import Nav from '../components/Nav';
@@ -22,13 +21,10 @@ export default function ReferScreen() {
   const { address: eoa, isConnected } = useAccount();
   const { connectors, connect, isPending: connectPending } = useConnect();
 
-  const [addressInput, setAddressInput] = useState<string>(
-    loadContractAddress() ?? '',
-  );
-  const contractAddress: Address | null = useMemo(
-    () => (isAddress(addressInput) ? (addressInput as Address) : null),
-    [addressInput],
-  );
+  const contractAddress: Address | null = useMemo(() => {
+    const a = loadContractAddress();
+    return a && isAddress(a) ? (a as Address) : null;
+  }, []);
   const baseContract = contractAddress
     ? { address: contractAddress, abi: BINGO_CARD_ABI, chainId: CHAIN_ID }
     : null;
@@ -77,11 +73,6 @@ export default function ReferScreen() {
   });
   const earnings = earningsRead.data as bigint | undefined;
 
-  const saveAddress = () => {
-    if (!isAddress(addressInput)) return;
-    saveContractAddress(addressInput);
-  };
-
   const submitRegister = () => {
     if (!baseContract || !encodedCode) return;
     setStatusMsg(null);
@@ -119,25 +110,15 @@ export default function ReferScreen() {
         </div>
       </header>
 
-      <section className="screen admin-section">
-        <h2>Contract address</h2>
-        <div className="admin-row">
-          <input
-            className="admin-input"
-            placeholder="0x…"
-            value={addressInput}
-            onChange={(e) => setAddressInput(e.target.value.trim())}
-          />
-          <button
-            type="button"
-            className="primary"
-            disabled={!isAddress(addressInput)}
-            onClick={saveAddress}
-          >
-            Save
-          </button>
-        </div>
-        {!isConnected && injected && (
+      {!contractAddress && (
+        <section className="screen admin-section">
+          <p className="muted small">
+            Set the BingoCard contract address in Settings (gear icon).
+          </p>
+        </section>
+      )}
+      {contractAddress && !isConnected && injected && (
+        <section className="screen admin-section">
           <button
             type="button"
             className="primary block"
@@ -146,11 +127,11 @@ export default function ReferScreen() {
           >
             {connectPending ? 'Opening wallet…' : 'Connect wallet'}
           </button>
-        )}
-        {isConnected && (
-          <p className="muted small">Wallet: {shortAddress(eoa)}</p>
-        )}
-      </section>
+        </section>
+      )}
+      {contractAddress && isConnected && (
+        <p className="muted small">Wallet: {shortAddress(eoa)}</p>
+      )}
 
       <section className="screen admin-section">
         <h2>Create a code</h2>

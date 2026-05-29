@@ -12,7 +12,7 @@ import {
   parseUnits,
   type Address,
 } from 'viem';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { CHAIN_ID } from '~/lib/bingoCard';
 import {
   BUNGEE_NATIVE_TOKEN,
   BUNGEE_SOURCE_CHAIN_META,
@@ -30,7 +30,7 @@ import { formatBalance, formatTokenInput, formatUsd } from '~/lib/format/balance
 
 const NATIVE_PRICE_REFRESH_MS = 60_000;
 const TOKEN_LIST_REFRESH_MS = 10 * 60_000;
-const DEST_CHAIN_ID = CHAIN_ID_ETHEREAL;
+const DEST_CHAIN_ID = CHAIN_ID;
 
 interface SourceCombo {
   key: string;

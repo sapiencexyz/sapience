@@ -105,8 +105,10 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
 
     // ============ Storage: config ============
 
-    /// @notice Card price. Per-line stake is derived as cardPrice / 10.
-    uint256 public cardPrice;
+    /// @notice Floor on the price a player may mint a card for. Each mint
+    ///         carries its own card price (stamped on the card); this is the
+    ///         minimum to keep per-line stakes non-trivial.
+    uint256 public minCardPrice;
 
     /// @notice Referrer cut of card price, in bps. e.g. 200 = 2%.
     uint16 public referralBps;
@@ -118,9 +120,10 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
     address public escrow;
 
     /// @notice Bonus multiplier in bps indexed by winning-line count (0..10).
-    ///         e.g. `multiplierBps(2) == 11_000` → 1.1x of `cardPrice` paid
-    ///         out when 2 of the funded lines win.
-    uint16[11] public multiplierBps;
+    ///         e.g. `multiplierBps(2) == 20_000` → 2x of `cardPrice` paid out
+    ///         when 2 of the funded lines win. uint32 so multipliers can exceed
+    ///         6.55x (the old uint16 ceiling) — up to ~429496x.
+    uint32[11] public multiplierBps;
 
     /// @notice True once `claimBonus` has paid out the bonus for a card.
     mapping(uint256 => bool) public bonusClaimed;
@@ -128,7 +131,7 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
     // ============ Events ============
 
     event PoolSet(uint32 indexed version, uint256 size);
-    event CardPriceSet(uint256 cardPrice);
+    event MinCardPriceSet(uint256 minCardPrice);
     event ReferralBpsSet(uint16 bps);
     event CardExpirySet(uint64 cardExpirySeconds);
     event EscrowSet(address indexed escrow);
@@ -159,7 +162,7 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
         uint256 indexed cardId, address indexed to, uint256 amount
     );
     event SidesDeclared(uint256 indexed cardId, uint16 yesMask);
-    event MultipliersSet(uint16[11] bps);
+    event MultipliersSet(uint32[11] bps);
     event BonusClaimed(
         uint256 indexed cardId,
         address indexed player,
@@ -234,10 +237,10 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
 
     // ============ Admin: config ============
 
-    function setCardPrice(uint256 cardPrice_) external onlyOwner {
-        if (cardPrice_ < LINES_PER_CARD) revert CardPriceTooLow();
-        cardPrice = cardPrice_;
-        emit CardPriceSet(cardPrice_);
+    function setMinCardPrice(uint256 minCardPrice_) external onlyOwner {
+        if (minCardPrice_ < LINES_PER_CARD) revert CardPriceTooLow();
+        minCardPrice = minCardPrice_;
+        emit MinCardPriceSet(minCardPrice_);
     }
 
     function setReferralBps(uint16 bps) external onlyOwner {
@@ -257,14 +260,14 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
 
     /// @notice Replace the full multiplier table in one call. Each slot is
     ///         in bps where `10_000 == 1x`. Slot index = winning-line count.
-    function setMultipliers(uint16[11] calldata bps) external onlyOwner {
+    function setMultipliers(uint32[11] calldata bps) external onlyOwner {
         multiplierBps = bps;
         emit MultipliersSet(bps);
     }
 
-    /// @notice Per-line stake is fully derived from card price — no spread.
-    function perLineStake() public view returns (uint256) {
-        return cardPrice / LINES_PER_CARD;
+    /// @notice Minimum per-line stake derived from the minimum card price.
+    function minPerLineStake() external view returns (uint256) {
+        return minCardPrice / LINES_PER_CARD;
     }
 
     // ============ Admin: bonus pool ============
@@ -331,12 +334,23 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
         return entropy.getFeeV2(entropyProvider);
     }
 
-    /// @notice Mint a new card. Pulls `cardPrice` collateral from `msg.sender`
-    ///         (must be pre-approved) and pays the Pyth Entropy fee out of
-    ///         `msg.value`. Excess ETH is refunded. Returns the cardId.
+    /// @notice Mint a new card at `cardPrice_`. Pulls `cardPrice_` collateral
+    ///         from `msg.sender` (must be pre-approved) and pays the Pyth
+    ///         Entropy fee out of `msg.value`. Excess ETH is refunded. The
+    ///         price must be at least `minCardPrice` and a multiple of
+    ///         `LINES_PER_CARD` so per-line stakes are an exact share.
+    ///         Returns the cardId.
     /// @param refCode Optional referral code; pass bytes32(0) for none.
-    function mintCard(bytes32 refCode) external payable returns (uint256) {
-        if (cardPrice < LINES_PER_CARD) revert CardPriceTooLow();
+    /// @param cardPrice_ Caller-chosen card price; stamped onto the card.
+    function mintCard(bytes32 refCode, uint256 cardPrice_)
+        external
+        payable
+        returns (uint256)
+    {
+        if (cardPrice_ < minCardPrice || cardPrice_ < LINES_PER_CARD) {
+            revert CardPriceTooLow();
+        }
+        if (cardPrice_ % LINES_PER_CARD != 0) revert CardPriceTooLow();
         uint256 size = poolConditionIds.length;
         if (size < CELLS_PER_CARD) revert PoolTooSmall();
 
@@ -344,7 +358,7 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
         if (msg.value < fee) revert InsufficientEntropyFee();
 
         uint256 cardId = ++nextCardId;
-        uint256 price = cardPrice;
+        uint256 price = cardPrice_;
         uint16 bps = referralBps;
 
         Card storage c = _cards[cardId];
@@ -411,14 +425,26 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
         if (request.predictorCollateral != stake) revert StakeMismatch();
         if (request.picks.length != CELLS_PER_LINE) revert NoMatchingLine();
 
-        uint8 lineIndex = _matchLine(c, request.picks);
+        // Resolve each pick to its card cell. The escrow delivers picks in
+        // canonical (resolver, conditionId-hash) order — NOT cell order — so
+        // matching must be order-independent: map each pick to a unique cell,
+        // then require those 4 cells to form exactly one canonical line.
+        uint16 pickedCellMask;
+        uint8[CELLS_PER_LINE] memory pickCell;
+        for (uint256 i = 0; i < CELLS_PER_LINE; i++) {
+            uint8 cell = _findCell(c, request.picks[i]);
+            uint16 cellBit = uint16(1 << cell);
+            if (pickedCellMask & cellBit != 0) revert NoMatchingLine();
+            pickedCellMask |= cellBit;
+            pickCell[i] = cell;
+        }
+        uint8 lineIndex = _lineForCellMask(pickedCellMask);
         uint16 lineBit = uint16(1 << lineIndex);
         if (c.filledLineBitmap & lineBit != 0) revert LineAlreadyFilled();
 
-        // Each pick must match the side the player declared for that cell.
-        uint8[CELLS_PER_LINE] memory cells = _lineCells(lineIndex);
+        // Each pick must match the side the player declared for its cell.
         for (uint256 i = 0; i < CELLS_PER_LINE; i++) {
-            bool storedYes = (c.cellSides & uint16(1 << cells[i])) != 0;
+            bool storedYes = (c.cellSides & uint16(1 << pickCell[i])) != 0;
             bool predictedYes =
                 request.picks[i].predictedOutcome == IV2Types.OutcomeSide.YES;
             if (storedYes != predictedYes) revert SideMismatch();
@@ -437,32 +463,43 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
         }
     }
 
-    /// @dev Find which of the 10 canonical lines the supplied picks describe,
-    ///      in cell order. Reverts if no line matches in the given order.
-    function _matchLine(Card storage c, IV2Types.Pick[] calldata picks)
+    /// @dev Locate the card cell a pick refers to by matching (resolver,
+    ///      conditionId). Reverts if the pick isn't one of the card's 16 cells.
+    function _findCell(Card storage c, IV2Types.Pick calldata pick)
         internal
         view
         returns (uint8)
     {
-        for (uint8 line = 0; line < LINES_PER_CARD; line++) {
-            uint8[CELLS_PER_LINE] memory cells = _lineCells(line);
-            bool ok = true;
-            for (uint256 i = 0; i < CELLS_PER_LINE; i++) {
-                uint8 cell = cells[i];
-                if (picks[i].conditionResolver != c.resolvers[cell]) {
-                    ok = false;
-                    break;
-                }
-                if (!_bytesEqBytes32(
-                        picks[i].conditionId, c.conditionIds[cell]
-                    )) {
-                    ok = false;
-                    break;
-                }
+        for (uint8 cell = 0; cell < CELLS_PER_CARD; cell++) {
+            if (
+                pick.conditionResolver == c.resolvers[cell]
+                    && _bytesEqBytes32(pick.conditionId, c.conditionIds[cell])
+            ) {
+                return cell;
             }
-            if (ok) return line;
         }
         revert NoMatchingLine();
+    }
+
+    /// @dev Return the canonical line whose 4 cells are exactly `mask`.
+    ///      Reverts if the picked cells don't form one of the 10 lines.
+    function _lineForCellMask(uint16 mask) internal pure returns (uint8) {
+        for (uint8 line = 0; line < LINES_PER_CARD; line++) {
+            if (_lineCellMask(line) == mask) return line;
+        }
+        revert NoMatchingLine();
+    }
+
+    /// @dev Bitmask of the 4 cell indices that make up a line.
+    function _lineCellMask(uint8 lineIndex)
+        internal
+        pure
+        returns (uint16 mask)
+    {
+        uint8[CELLS_PER_LINE] memory cells = _lineCells(lineIndex);
+        for (uint256 i = 0; i < CELLS_PER_LINE; i++) {
+            mask |= uint16(1 << cells[i]);
+        }
     }
 
     /// @notice Public view of the canonical 4x4 bingo grid lines.

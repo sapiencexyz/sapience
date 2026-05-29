@@ -51,7 +51,7 @@ abstract contract BingoCardTestBase is Test {
 
     function _configureDefaults() internal {
         vm.startPrank(owner);
-        bingo.setCardPrice(CARD_PRICE);
+        bingo.setMinCardPrice(CARD_PRICE);
         bingo.setReferralBps(REFERRAL_BPS);
         bingo.setCardExpiry(CARD_EXPIRY);
         vm.stopPrank();

@@ -19,7 +19,7 @@ contract BingoCardWithdrawTest is BingoCardTestBase {
 
     function _mintCard() internal returns (uint256 cardId) {
         vm.prank(player);
-        cardId = bingo.mintCard{ value: ENTROPY_FEE }(bytes32(0));
+        cardId = bingo.mintCard{ value: ENTROPY_FEE }(bytes32(0), CARD_PRICE);
     }
 
     function test_withdrawUnused_revertsBeforeExpiry() public {

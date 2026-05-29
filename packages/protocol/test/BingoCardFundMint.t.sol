@@ -46,7 +46,7 @@ contract BingoCardFundMintTest is BingoCardTestBase {
         returns (uint256 cardId)
     {
         vm.prank(player);
-        cardId = bingo.mintCard{ value: ENTROPY_FEE }(refCode);
+        cardId = bingo.mintCard{ value: ENTROPY_FEE }(refCode, CARD_PRICE);
         entropy.pushCallback(uint64(cardId), entropyProvider, random);
         // These tests build all-YES picks via `_buildPicksForLine`; declare
         // matching sides up front so fundMint accepts them.
@@ -114,7 +114,8 @@ contract BingoCardFundMintTest is BingoCardTestBase {
 
     function test_fundMint_revertsIfCardNotRevealed() public {
         vm.prank(player);
-        uint256 cardId = bingo.mintCard{ value: ENTROPY_FEE }(REFCODE);
+        uint256 cardId =
+            bingo.mintCard{ value: ENTROPY_FEE }(REFCODE, CARD_PRICE);
         // Build a request with junk picks since the card hasn't revealed.
         IV2Types.MintRequest memory req;
         req.picks = new IV2Types.Pick[](4);
@@ -235,6 +236,58 @@ contract BingoCardFundMintTest is BingoCardTestBase {
             BingoCard.Card memory c = bingo.cardOf(cardId);
             assertEq(uint256(c.filledLineBitmap), uint256(expected));
         }
+    }
+
+    function _reversePicks(IV2Types.Pick[] memory picks)
+        internal
+        pure
+        returns (IV2Types.Pick[] memory out)
+    {
+        out = new IV2Types.Pick[](picks.length);
+        for (uint256 i = 0; i < picks.length; i++) {
+            out[i] = picks[picks.length - 1 - i];
+        }
+    }
+
+    function test_fundMint_acceptsPicksInAnyOrder() public {
+        // The real PredictionMarketEscrow requires picks in canonical
+        // (resolver, conditionId-hash) order and forwards that same array to
+        // fundMint — which is NOT cell order. Matching must be
+        // order-independent. Reverse the cell-order picks to prove it.
+        uint256 cardId = _mintAndReveal(REFCODE, bytes32(uint256(0xA)));
+        IV2Types.MintRequest memory req = _buildRequest(cardId, 5);
+        req.picks = _reversePicks(req.picks);
+
+        uint256 stake = CARD_PRICE / bingo.LINES_PER_CARD();
+        vm.expectEmit(true, true, false, true);
+        emit LineFunded(cardId, 5, stake, uint16(1 << 5));
+        vm.prank(escrow);
+        bingo.fundMint(escrow, req);
+
+        BingoCard.Card memory c = bingo.cardOf(cardId);
+        assertEq(uint256(c.filledLineBitmap), uint256(1 << 5));
+    }
+
+    function test_fundMint_revertsIfPicksAreNotAFullLine() public {
+        // Four valid card cells that don't form a line must not match.
+        uint256 cardId = _mintAndReveal(REFCODE, bytes32(uint256(0xA)));
+        BingoCard.Card memory c = bingo.cardOf(cardId);
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](4);
+        // cells 0,1,2,4 — a partial row plus a stray cell, not any line.
+        uint8[4] memory cells = [0, 1, 2, 4];
+        for (uint256 i = 0; i < 4; i++) {
+            picks[i] = IV2Types.Pick({
+                conditionResolver: c.resolvers[cells[i]],
+                conditionId: abi.encodePacked(c.conditionIds[cells[i]]),
+                predictedOutcome: IV2Types.OutcomeSide.YES
+            });
+        }
+        IV2Types.MintRequest memory req = _buildRequest(cardId, 0);
+        req.picks = picks;
+
+        vm.prank(escrow);
+        vm.expectRevert(BingoCard.NoMatchingLine.selector);
+        bingo.fundMint(escrow, req);
     }
 
     // ---- referral payout on completion ----

@@ -16,10 +16,16 @@ export interface BingoConditionDetail {
   question: string;
   shortName?: string | null;
   optionName?: string | null;
+  /** Estimated resolution time (unix seconds). */
+  endTime?: number | null;
   similarMarketImage?: string | null;
 }
 
-const GRAPHQL_ENDPOINT = 'https://api.sapience.xyz/graphql';
+// Staging API (Ethereal testnet). Override with VITE_SAPIENCE_API_URL.
+const API_BASE =
+  (import.meta.env.VITE_SAPIENCE_API_URL as string | undefined) ??
+  'https://api.staging.sapience.xyz';
+const GRAPHQL_ENDPOINT = `${API_BASE.replace(/\/$/, '')}/graphql`;
 
 // Pulls a pool of in-flight markets sorted by soonest end time. Same shape
 // as the production /app QuestionsTable query, trimmed to the fields a
@@ -77,6 +83,7 @@ interface RawCondition {
   optionName?: string | null;
   estimatedPrice?: number | null;
   settled?: boolean | null;
+  endTime?: number | null;
   similarMarketImage?: string | null;
 }
 
@@ -284,6 +291,7 @@ const BY_IDS_QUERY = /* GraphQL */ `
       question
       shortName
       optionName
+      endTime
       similarMarketImage
     }
   }
@@ -319,6 +327,7 @@ export async function fetchConditionsByIds(
       question: c.question,
       shortName: c.shortName ?? null,
       optionName: c.optionName ?? null,
+      endTime: c.endTime ?? null,
       similarMarketImage: c.similarMarketImage ?? null,
     });
   }

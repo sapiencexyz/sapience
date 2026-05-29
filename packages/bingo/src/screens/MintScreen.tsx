@@ -1,295 +1,466 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import {
-  isAddress,
-  maxUint256,
-  parseEventLogs,
-  type Address,
-  type Hex,
-} from 'viem';
-import {
-  useAccount,
-  useConnect,
-  useReadContracts,
-  useWaitForTransactionReceipt,
-  useWriteContract,
-} from 'wagmi';
+import { useMemo, useState } from 'react';
+import { isAddress, parseUnits, type Address, type Hex } from 'viem';
+import { useAccount, useConnect, useDisconnect, useReadContracts } from 'wagmi';
+import { computeSmartAccountAddress } from '@sapience/sdk/session';
 import {
   BINGO_CARD_ABI,
   CHAIN_ID,
-  ERC20_ABI,
   encodeCode,
   fmtUnits,
   loadContractAddress,
-  saveContractAddress,
   shortAddress,
 } from '../lib/bingoCard';
+import { useSession } from '../hooks/useSession';
+import { mintCardViaSession } from '../lib/session/sessionKeyManager';
+import { useCollateralBalance } from '../hooks/blockchain/useCollateralBalance';
+import { formatDollarLikeBalance } from '../lib/format/balance';
 import Nav from '../components/Nav';
+import BungeeBridge from '../components/BungeeBridge';
+
+type StepStatus = 'pending' | 'current' | 'done';
+
+const ZERO_BYTES32 = ('0x' + '00'.repeat(32)) as Hex;
 
 export default function MintScreen() {
   const { address: eoa, isConnected } = useAccount();
-  const { connectors, connect, isPending: connectPending } = useConnect();
+  const {
+    connectors,
+    connect,
+    isPending: connectPending,
+    error: connectError,
+  } = useConnect();
+  const { disconnect } = useDisconnect();
 
-  const [addressInput, setAddressInput] = useState<string>(
-    loadContractAddress() ?? '',
-  );
-  const contractAddress: Address | null = useMemo(
-    () => (isAddress(addressInput) ? (addressInput as Address) : null),
-    [addressInput],
-  );
+  const contractAddress: Address | null = useMemo(() => {
+    const a = loadContractAddress();
+    return a && isAddress(a) ? (a as Address) : null;
+  }, []);
   const baseContract = contractAddress
     ? { address: contractAddress, abi: BINGO_CARD_ABI, chainId: CHAIN_ID }
     : null;
 
+  // Smart account funded + acting as the card player (deterministic from EOA).
+  const sa = useMemo(
+    () => (eoa ? computeSmartAccountAddress(eoa) : undefined),
+    [eoa],
+  );
+
   const reads = useReadContracts({
     contracts: baseContract
       ? [
-          { ...baseContract, functionName: 'collateralToken' },
-          { ...baseContract, functionName: 'cardPrice' },
+          { ...baseContract, functionName: 'minCardPrice' },
           { ...baseContract, functionName: 'entropyFee' },
-          { ...baseContract, functionName: 'poolSize' },
         ]
       : [],
     query: { enabled: !!baseContract },
   });
-  const collateralToken = reads.data?.[0]?.result as Address | undefined;
-  const cardPrice = reads.data?.[1]?.result as bigint | undefined;
-  const entropyFee = reads.data?.[2]?.result as bigint | undefined;
-  const poolSize = reads.data?.[3]?.result as bigint | undefined;
+  const minCardPrice = reads.data?.[0]?.result as bigint | undefined;
+  const entropyFee = reads.data?.[1]?.result as bigint | undefined;
 
-  const multReads = useReadContracts({
-    contracts: baseContract
-      ? Array.from({ length: 11 }, (_, i) => ({
-          ...baseContract,
-          functionName: 'multiplierBps' as const,
-          args: [BigInt(i)],
-        }))
-      : [],
-    query: { enabled: !!baseContract },
-  });
-  const multipliers = multReads.data?.map(
-    (r) => (r?.result as number | undefined) ?? 0,
-  );
+  // ---------- chosen price (drives the rest of the flow) ----------
+  const [chosenPrice, setChosenPrice] = useState<bigint | null>(null);
 
-  const allowanceReads = useReadContracts({
-    contracts:
-      collateralToken && eoa && contractAddress
-        ? [
-            {
-              address: collateralToken,
-              abi: ERC20_ABI,
-              chainId: CHAIN_ID,
-              functionName: 'allowance',
-              args: [eoa, contractAddress],
-            },
-            {
-              address: collateralToken,
-              abi: ERC20_ABI,
-              chainId: CHAIN_ID,
-              functionName: 'balanceOf',
-              args: [eoa],
-            },
-          ]
-        : [],
-    query: { enabled: !!collateralToken && !!eoa && !!contractAddress },
-  });
-  const allowance = allowanceReads.data?.[0]?.result as bigint | undefined;
-  const balance = allowanceReads.data?.[1]?.result as bigint | undefined;
-  const needsApproval =
-    cardPrice != null && (allowance == null || allowance < cardPrice);
-
-  const [codeInput, setCodeInput] = useState('');
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
-
+  // ---------- smart-account balance (drives the Fund step) ----------
   const {
-    writeContract,
-    isPending: writePending,
-    error: writeError,
-    data: lastTxHash,
-  } = useWriteContract();
-  const { isLoading: txLoading, data: txReceipt } =
-    useWaitForTransactionReceipt({ hash: lastTxHash, chainId: CHAIN_ID });
+    rawBalance,
+    balance,
+    isLoading: balanceLoading,
+    refetch: refetchBalance,
+  } = useCollateralBalance({ address: sa, chainId: CHAIN_ID, enabled: !!sa });
 
-  // On CardMinted receipt, navigate to /card/:id.
-  useEffect(() => {
-    if (!txReceipt || !contractAddress) return;
-    const events = parseEventLogs({
-      abi: BINGO_CARD_ABI,
-      eventName: 'CardMinted',
-      logs: txReceipt.logs,
-    });
-    const own = events.find(
-      (e) => e.address.toLowerCase() === contractAddress.toLowerCase(),
-    );
-    if (own && own.args && 'cardId' in own.args) {
-      const id = own.args.cardId as bigint;
-      window.history.pushState({}, '', `/card/${id.toString()}`);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    }
-  }, [txReceipt, contractAddress]);
+  // Need the card price plus a small native buffer for the Pyth entropy fee.
+  const needed =
+    chosenPrice != null
+      ? chosenPrice + (entropyFee != null ? entropyFee * 4n : 0n)
+      : null;
+  const funded =
+    needed != null && rawBalance != null && rawBalance >= needed;
+  const deficitWei =
+    needed != null && rawBalance != null && !funded
+      ? needed - rawBalance
+      : (needed ?? 0n);
+  const deficit = Number(deficitWei) / 1e18;
 
-  const saveAddress = () => {
-    if (!isAddress(addressInput)) return;
-    saveContractAddress(addressInput);
-  };
+  // ---------- session ----------
+  const {
+    client: sessionClient,
+    isActive,
+    isStarting,
+    isRestoring,
+    error: sessionError,
+    start,
+  } = useSession();
 
-  const submitApprove = () => {
-    if (!collateralToken || !contractAddress) return;
-    writeContract({
-      address: collateralToken,
-      abi: ERC20_ABI,
-      chainId: CHAIN_ID,
-      functionName: 'approve',
-      args: [contractAddress, maxUint256],
-    });
-  };
+  // ---------- referral code ----------
+  const [codeInput, setCodeInput] = useState('');
+  const encodedCode = codeInput.trim() ? encodeCode(codeInput) : null;
 
-  const submitMint = () => {
-    if (!baseContract || entropyFee == null) return;
-    const refCode = codeInput.trim()
-      ? encodeCode(codeInput)
-      : (('0x' + '00'.repeat(32)) as Hex);
-    if (!refCode) {
-      setStatusMsg('Ref code too long (max 32 bytes).');
+  // ---------- mint ----------
+  const [minting, setMinting] = useState(false);
+  const [mintError, setMintError] = useState<string | null>(null);
+
+  const onMint = async () => {
+    if (!sessionClient || !sa || chosenPrice == null || entropyFee == null) {
       return;
     }
-    setStatusMsg('Submitting mint…');
-    // 2x current Pyth fee as a buffer against fee ticking up between read+send.
-    // The contract refunds excess in `mintCard`.
-    writeContract({
-      ...baseContract,
-      functionName: 'mintCard',
-      args: [refCode],
-      value: entropyFee * 2n,
-    });
+    setMintError(null);
+    setMinting(true);
+    try {
+      const refCode =
+        codeInput.trim() && encodedCode ? encodedCode : ZERO_BYTES32;
+      const { cardId } = await mintCardViaSession({
+        client: sessionClient,
+        smartAccountAddress: sa,
+        cardPriceWei: chosenPrice,
+        refCode,
+        entropyFeeWei: entropyFee,
+      });
+      window.history.pushState({}, '', `/card/${cardId.toString()}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } catch (e) {
+      setMintError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMinting(false);
+    }
   };
 
+  const started = chosenPrice != null;
   const injected = connectors.find((c) => c.id === 'injected');
+  const coinbase = connectors.find((c) => c.id === 'coinbaseWalletSDK');
+
+  // ---------- step states ----------
+  const connectStatus: StepStatus = isConnected ? 'done' : 'current';
+  const fundStatus: StepStatus = !isConnected
+    ? 'pending'
+    : funded
+      ? 'done'
+      : 'current';
+  const signStatus: StepStatus = !funded
+    ? 'pending'
+    : isActive
+      ? 'done'
+      : 'current';
+  const mintStatus: StepStatus = !isActive ? 'pending' : 'current';
+
+  if (!contractAddress) {
+    return (
+      <main>
+        <Nav />
+        <header className="header">
+          <div className="title-block">
+            <h1>Draw a card</h1>
+          </div>
+        </header>
+        <section className="screen">
+          <p className="muted small">
+            Set the BingoCard contract address in Settings (gear icon) to get
+            started.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  // Entry screen — pick the card amount.
+  if (!started) {
+    return <AmountPicker minCardPrice={minCardPrice} onPick={setChosenPrice} />;
+  }
 
   return (
     <main>
       <Nav />
-      <header className="header">
-        <div className="title-block">
-          <h1>BingoCard — Mint</h1>
-        </div>
-      </header>
-
-      <section className="screen admin-section">
+      <button
+        type="button"
+        className="back-link"
+        onClick={() => setChosenPrice(null)}
+      >
+        ← Back
+      </button>
+      <section className="screen">
         <div>
-          <h2>Contract address</h2>
-        </div>
-        <div className="admin-row">
-          <input
-            className="admin-input"
-            placeholder="0x…"
-            value={addressInput}
-            onChange={(e) => setAddressInput(e.target.value.trim())}
-          />
-          <button
-            type="button"
-            className="primary"
-            disabled={!isAddress(addressInput)}
-            onClick={saveAddress}
-          >
-            Save
-          </button>
-        </div>
-        {!isConnected && injected && (
-          <button
-            type="button"
-            className="primary block"
-            disabled={connectPending}
-            onClick={() => connect({ connector: injected })}
-          >
-            {connectPending ? 'Opening wallet…' : 'Connect wallet'}
-          </button>
-        )}
-        {isConnected && (
-          <p className="muted small">Wallet: {shortAddress(eoa)}</p>
-        )}
-      </section>
-
-      <section className="screen admin-section">
-        <h2>Mint a card</h2>
-        <div className="admin-kv">
-          <div>Card price</div>
-          <div className="mono">{fmtUnits(cardPrice)}</div>
-          <div>Entropy fee (wei)</div>
-          <div className="mono">{entropyFee?.toString() ?? '—'}</div>
-          <div>Pool size</div>
-          <div className="mono">{poolSize?.toString() ?? '—'}</div>
-          <div>Your balance</div>
-          <div className="mono">{fmtUnits(balance)}</div>
-          <div>Allowance</div>
-          <div className="mono">{fmtUnits(allowance)}</div>
+          <h2>Get ready</h2>
         </div>
 
-        {multipliers && cardPrice != null && (
-          <div className="admin-action">
-            <div className="wizard-step-title">Bonus prize curve</div>
-            <p className="muted small">
-              Paid out by <span className="mono">claimBonus</span> once all 10
-              lines are funded — payout = cardPrice × multiplier ÷ 10000.
-            </p>
-            <div className="admin-kv">
-              {multipliers.map((bps, i) => (
-                <Fragment key={i}>
-                  <div>
-                    {i} winning {i === 1 ? 'line' : 'lines'}
-                  </div>
-                  <div className="mono">
-                    {bps === 0
-                      ? '—'
-                      : `${(bps / 10_000).toFixed(2)}× (${fmtUnits(
-                          (cardPrice * BigInt(bps)) / 10_000n,
-                        )})`}
-                  </div>
-                </Fragment>
-              ))}
+        <ol className="wizard">
+          <li className={`wizard-step status-${connectStatus}`}>
+            <div className="wizard-step-marker" aria-hidden>
+              {connectStatus === 'done' ? '✓' : '1'}
             </div>
-          </div>
-        )}
+            <div className="wizard-step-body">
+              <div className="wizard-step-header">
+                <div className="wizard-step-title">Connect</div>
+                {isConnected && (
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => disconnect()}
+                  >
+                    Disconnect
+                  </button>
+                )}
+              </div>
+              {!isConnected ? (
+                <>
+                  <p className="muted small">
+                    Connect a wallet to fund your Sapience account.
+                  </p>
+                  {injected && (
+                    <button
+                      type="button"
+                      className="primary block"
+                      disabled={connectPending}
+                      onClick={() => connect({ connector: injected })}
+                    >
+                      {connectPending ? 'Opening wallet…' : 'Connect wallet'}
+                    </button>
+                  )}
+                  {coinbase && (
+                    <button
+                      type="button"
+                      className="ghost block"
+                      disabled={connectPending}
+                      onClick={() => connect({ connector: coinbase })}
+                    >
+                      Connect Coinbase Wallet
+                    </button>
+                  )}
+                  {connectError && (
+                    <p className="error small">{connectError.message}</p>
+                  )}
+                </>
+              ) : (
+                <div className="meta-strip">
+                  <div className="row">
+                    <span className="muted small">Wallet</span>
+                    <span className="mono small">{shortAddress(eoa!)}</span>
+                  </div>
+                  {sa && (
+                    <div className="row">
+                      <span className="muted small">Sapience account</span>
+                      <span className="mono small">{shortAddress(sa)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </li>
 
-        <div className="admin-action">
-          <div className="wizard-step-title">Referral code (optional)</div>
+          <li className={`wizard-step status-${fundStatus}`}>
+            <div className="wizard-step-marker" aria-hidden>
+              {fundStatus === 'done' ? '✓' : '2'}
+            </div>
+            <div className="wizard-step-body">
+              <div className="wizard-step-title">Fund</div>
+              {!isConnected ? (
+                <p className="muted small">
+                  Connect your wallet to check your balance.
+                </p>
+              ) : rawBalance == null && balanceLoading ? (
+                <p className="muted small">Checking balance…</p>
+              ) : funded ? (
+                <p className="muted small">
+                  {formatDollarLikeBalance(balance)} USDe available
+                </p>
+              ) : (
+                <>
+                  <p className="muted small">
+                    You have {formatDollarLikeBalance(balance)} USDe · need +
+                    {formatDollarLikeBalance(deficit)} USDe more.
+                  </p>
+                  {sa && eoa && (
+                    <BungeeBridge
+                      eoaAddress={eoa}
+                      receiverAddress={sa}
+                      prefillAmountWei={deficitWei}
+                      onBridged={() => {
+                        const id = window.setInterval(
+                          () => refetchBalance(),
+                          4000,
+                        );
+                        window.setTimeout(
+                          () => window.clearInterval(id),
+                          120_000,
+                        );
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          </li>
+
+          <li className={`wizard-step status-${signStatus}`}>
+            <div className="wizard-step-marker" aria-hidden>
+              {signStatus === 'done' ? '✓' : '3'}
+            </div>
+            <div className="wizard-step-body">
+              <div className="wizard-step-title">Sign</div>
+              {!funded ? (
+                <p className="muted small">
+                  Fund your account to enable signing.
+                </p>
+              ) : isActive ? (
+                <p className="muted small">Session active</p>
+              ) : isStarting ? (
+                <p className="muted small">Awaiting signature…</p>
+              ) : isRestoring ? (
+                <p className="muted small">Restoring session…</p>
+              ) : (
+                <>
+                  <p className="muted small">
+                    One signature authorizes Sapience to draw your card and
+                    fund its 10 lines for the next 7 days. Funds stay in your
+                    Sapience account.
+                  </p>
+                  <button
+                    type="button"
+                    className="primary block"
+                    disabled={isStarting}
+                    onClick={() => start(24 * 7)}
+                  >
+                    Sign &amp; continue
+                  </button>
+                </>
+              )}
+              {funded && sessionError && (
+                <p className="error small">{sessionError.message}</p>
+              )}
+            </div>
+          </li>
+
+          <li className={`wizard-step status-${mintStatus}`}>
+            <div className="wizard-step-marker" aria-hidden>
+              4
+            </div>
+            <div className="wizard-step-body">
+              <div className="wizard-step-title">Draw</div>
+              {!isActive ? (
+                <p className="muted small">
+                  Sign the session to draw your card.
+                </p>
+              ) : (
+                <>
+                  <div className="field">
+                    <label className="label" htmlFor="refcode">
+                      Referral code (optional)
+                    </label>
+                    <input
+                      id="refcode"
+                      className="admin-input"
+                      placeholder="e.g. NOAH"
+                      value={codeInput}
+                      onChange={(e) => setCodeInput(e.target.value)}
+                      disabled={minting}
+                    />
+                    {codeInput.trim() && encodedCode == null && (
+                      <p className="muted small">
+                        ⚠ Code too long (max 32 bytes).
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="primary block"
+                    style={{ marginTop: '0.75rem' }}
+                    disabled={minting || entropyFee == null}
+                    onClick={onMint}
+                  >
+                    {minting
+                      ? 'Drawing…'
+                      : `Draw Card for ${fmtUnits(chosenPrice ?? undefined)} USDe`}
+                  </button>
+                  {mintError && <p className="error small">{mintError}</p>}
+                </>
+              )}
+            </div>
+          </li>
+        </ol>
+      </section>
+    </main>
+  );
+}
+
+const PRESETS = [1n, 5n, 25n] as const;
+
+function AmountPicker({
+  minCardPrice,
+  onPick,
+}: {
+  minCardPrice: bigint | undefined;
+  onPick: (price: bigint) => void;
+}) {
+  const [customInput, setCustomInput] = useState('');
+
+  // Card price must be a multiple of LINES_PER_CARD (10).
+  const parseCustom = (): bigint | null => {
+    const v = customInput.trim();
+    if (!v) return null;
+    try {
+      const wei = parseUnits(v, 18);
+      if (wei <= 0n) return null;
+      if (wei % 10n !== 0n) return null;
+      if (minCardPrice != null && wei < minCardPrice) return null;
+      return wei;
+    } catch {
+      return null;
+    }
+  };
+  const customWei = parseCustom();
+
+  const presetAllowed = (n: bigint): boolean => {
+    const wei = n * 10n ** 18n;
+    return minCardPrice == null || wei >= minCardPrice;
+  };
+
+  return (
+    <main>
+      <Nav />
+      <section className="screen">
+        <h2 className="amount-heading">Pick an amount</h2>
+        <div className="tier-grid">
+          {PRESETS.map((n) => (
+            <button
+              key={n.toString()}
+              type="button"
+              className="tier-button"
+              disabled={!presetAllowed(n)}
+              onClick={() => onPick(n * 10n ** 18n)}
+            >
+              <span className="tier-price">${n.toString()}</span>
+              <span className="tier-label">per card</span>
+            </button>
+          ))}
+        </div>
+        <div className="field">
+          <div className="wizard-step-title">Or pick a custom amount</div>
           <div className="admin-row">
             <input
               className="admin-input"
-              placeholder="e.g. NOAH or leave blank"
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value)}
+              placeholder="e.g. 10"
+              inputMode="decimal"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
             />
+            <button
+              type="button"
+              className="primary"
+              disabled={customWei == null}
+              onClick={() => customWei != null && onPick(customWei)}
+            >
+              Use this amount
+            </button>
           </div>
+          {customInput.trim() && customWei == null && (
+            <p className="muted small">
+              Must be a positive multiple of 0.00000000000000001 (10 wei)
+              {minCardPrice != null
+                ? ` and at least ${fmtUnits(minCardPrice)}`
+                : ''}
+              .
+            </p>
+          )}
         </div>
-
-        <div className="admin-row">
-          <button
-            type="button"
-            className="ghost"
-            disabled={!needsApproval || writePending || !contractAddress}
-            onClick={submitApprove}
-          >
-            {needsApproval ? 'Approve collateral' : 'Approved ✓'}
-          </button>
-          <button
-            type="button"
-            className="primary"
-            disabled={
-              writePending ||
-              txLoading ||
-              !contractAddress ||
-              needsApproval ||
-              entropyFee == null
-            }
-            onClick={submitMint}
-          >
-            {writePending || txLoading ? 'Submitting…' : 'Mint card'}
-          </button>
-        </div>
-        {writeError && <p className="error">{writeError.message}</p>}
-        {statusMsg && <p className="muted small">{statusMsg}</p>}
       </section>
-
     </main>
   );
 }

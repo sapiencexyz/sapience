@@ -1,5 +1,6 @@
 import {
   createPublicClient,
+  encodeAbiParameters,
   http,
   stringToHex,
   type Address,
@@ -14,18 +15,19 @@ import {
 import { prepareAuctionRFQ } from '@sapience/sdk/auction/initiate';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
-import { CHAIN_ID_ETHEREAL, etherealChain } from '@sapience/sdk/constants';
+import {
+  CHAIN_ID_ETHEREAL_TESTNET,
+  etherealTestnetChain,
+} from '@sapience/sdk/constants';
 import {
   predictionMarketEscrow as escrowAddresses,
   collateralToken as collateralAddresses,
 } from '@sapience/sdk/contracts';
 import type { Pick } from '@sapience/sdk/types/escrow';
 import { buildLines, type Line } from '~/parlay';
-import type { BingoCondition } from '~/api';
-import type { Side } from '~/screens/CardScreen';
 
-const RELAYER_WS_URL = 'wss://relayer.sapience.xyz/auction';
-const CHAIN_ID = CHAIN_ID_ETHEREAL;
+const RELAYER_WS_URL = 'wss://relayer.staging.sapience.xyz/auction';
+const CHAIN_ID = CHAIN_ID_ETHEREAL_TESTNET;
 const BID_WAIT_MS = 25_000;
 
 export type LineStatus =
@@ -47,10 +49,18 @@ export interface LineProgress {
 export interface SubmitCardParams {
   sessionClient: KernelAccountClient;
   smartAccountAddress: Address;
-  conditions: BingoCondition[]; // length 16
-  picks: Side[]; // length 16
-  /** Per-line predictor collateral in wei. tier/10 in human units. */
+  /** On-chain card id; abi-encoded into predictorSponsorData per line. */
+  cardId: bigint;
+  /** The card's 16 cell conditionIds (bytes32) in cell order. */
+  conditionIds: readonly Hex[]; // length 16
+  /** Matching resolver per cell, same order as conditionIds. */
+  resolvers: readonly Address[]; // length 16
+  /** Declared sides as a bitmask: bit i set = YES on cell i, else NO. */
+  cellSides: number;
+  /** Per-line predictor collateral in wei (cardPriceAtMint / 10). */
   stakePerLineWei: bigint;
+  /** BingoCard address — funds the predictor side as the mint sponsor. */
+  bingoCardAddress: Address;
   onProgress?: (
     lineId: string,
     status: LineStatus,
@@ -74,13 +84,14 @@ interface BidShape {
 
 function linePicks(
   line: Line,
-  conditions: BingoCondition[],
-  picks: Side[],
+  conditionIds: readonly Hex[],
+  resolvers: readonly Address[],
+  cellSides: number,
 ): Pick[] {
   return line.cellIndices.map((i) => ({
-    conditionResolver: conditions[i].resolver,
-    conditionId: conditions[i].id as Hex,
-    predictedOutcome: picks[i] === 'YES' ? 1 : 0,
+    conditionResolver: resolvers[i],
+    conditionId: conditionIds[i],
+    predictedOutcome: (cellSides & (1 << i)) !== 0 ? 1 : 0,
   }));
 }
 
@@ -90,14 +101,18 @@ export async function submitCard(
   const {
     sessionClient,
     smartAccountAddress,
-    conditions,
-    picks,
+    cardId,
+    conditionIds,
+    resolvers,
+    cellSides,
     stakePerLineWei,
+    bingoCardAddress,
     onProgress,
   } = params;
 
-  if (conditions.length !== 16) throw new Error('Need 16 conditions');
-  if (picks.length !== 16) throw new Error('Need 16 picks');
+  if (conditionIds.length !== 16 || resolvers.length !== 16) {
+    throw new Error('Need 16 conditions + 16 resolvers');
+  }
 
   const account = sessionClient.account;
   if (!account) throw new Error('Session client has no account');
@@ -112,10 +127,17 @@ export async function submitCard(
     throw new Error('Escrow/collateral not configured for Ethereal');
   }
 
-  // SessionScreen.prepareAccount has already wrapped the full tier and
-  // approved the escrow for it, so each per-line mint just calls
-  // `escrow.mint(...)` — no wrap, no approve. We pass artificially-high
-  // balance + allowance hints so prepareMintCalls skips those calls.
+  // The BingoCard sponsors the predictor side: each line mint sets
+  // predictorSponsor = BingoCard and predictorSponsorData = abi.encode(cardId),
+  // so the escrow calls BingoCard.fundMint, which pulls the per-line stake from
+  // the card's sponsor balance. The smart account never transfers predictor
+  // collateral itself — so we pass artificially-high balance/allowance hints to
+  // skip any wrap/approve in prepareMintCalls.
+  const predictorSponsor = bingoCardAddress;
+  const predictorSponsorData = encodeAbiParameters(
+    [{ type: 'uint256' }],
+    [cardId],
+  );
   const HINT_LARGE = (1n << 255n) - 1n;
   const currentWusdeBalance = HINT_LARGE;
   const currentAllowance = HINT_LARGE;
@@ -137,8 +159,8 @@ export async function submitCard(
   // PublicClient type from a different abitype transitive; we cast at the
   // call site below since these are runtime-compatible.
   const publicClient = createPublicClient({
-    chain: etherealChain,
-    transport: http(etherealChain.rpcUrls.default.http[0]),
+    chain: etherealTestnetChain,
+    transport: http(etherealTestnetChain.rpcUrls.default.http[0]),
   });
 
   // ---------- shared WebSocket ----------
@@ -214,7 +236,7 @@ export async function submitCard(
     try {
       emit(line.id, 'quoting');
 
-      const picksForLine = linePicks(line, conditions, picks);
+      const picksForLine = linePicks(line, conditionIds, resolvers, cellSides);
       // PredictionMarketEscrow uses Permit2-style bitmap nonces — unordered,
       // any unused uint256 works. A random nonce per line is fine; we don't
       // need to coordinate ordering across the 10 in-flight mints.
@@ -233,7 +255,12 @@ export async function submitCard(
           sessionClient.signTypedData(
             typedData as Parameters<typeof sessionClient.signTypedData>[0],
           ),
-        options: { deadlineSeconds: 60, skipSelfValidation: true },
+        options: {
+          deadlineSeconds: 60,
+          skipSelfValidation: true,
+          predictorSponsor,
+          predictorSponsorData,
+        },
       });
 
       // 2. Stage a nonce-keyed waiter — fires when the relayer broadcasts
@@ -323,6 +350,8 @@ export async function submitCard(
                     conditionId: p.conditionId,
                     predictedOutcome: p.predictedOutcome,
                   })),
+                  predictorSponsor,
+                  predictorSponsorData,
                 },
                 {
                   chainId: CHAIN_ID,
@@ -369,7 +398,9 @@ export async function submitCard(
 
       emit(line.id, 'signing');
 
-      // 6. Sign predictor MintApproval — over the canonical picks
+      // 6. Sign predictor MintApproval — over the canonical picks. Must
+      //    include the sponsor + sponsorData since they're part of the
+      //    predictionHash the escrow verifies.
       const mintTypedData = buildPredictorMintTypedData({
         picks: canonicalPicks,
         predictorCollateral: stakePerLineWei,
@@ -378,6 +409,8 @@ export async function submitCard(
         counterparty: resolved.counterparty,
         predictorNonce: BigInt(predictorNonce),
         predictorDeadline: BigInt(payload.predictorDeadline),
+        predictorSponsor,
+        predictorSponsorData,
         verifyingContract: escrowAddress,
         chainId: CHAIN_ID,
       });
@@ -412,6 +445,8 @@ export async function submitCard(
           counterpartyClaimedNonce: resolved.counterpartyNonce,
           predictorSessionKeyData: payload.predictorSessionKeyData,
           counterpartySessionKeyData: resolved.counterpartySessionKeyData,
+          predictorSponsor,
+          predictorSponsorData,
           // "bingo" tagged as the affiliate code, right-padded to bytes32
           refCode: stringToHex('bingo', { size: 32 }),
         },

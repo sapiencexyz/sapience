@@ -1,7 +1,8 @@
 import { formatUnits, type Address, type Hex } from 'viem';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 
-export const CHAIN_ID = CHAIN_ID_ETHEREAL;
+// Bingo runs against Ethereal testnet (staging).
+export const CHAIN_ID = CHAIN_ID_ETHEREAL_TESTNET;
 export const DECIMALS = 18;
 
 const STORAGE_KEY = 'bingo-card-contract-address';
@@ -29,10 +30,16 @@ export function encodeCode(s: string): Hex | null {
       .join('')) as Hex;
 }
 
+const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
+
 export function loadContractAddress(): Address | null {
   if (typeof window === 'undefined') return null;
+  // UI override (Settings) wins; otherwise fall back to the build-time env so
+  // a fresh deploy is wired without manual paste.
   const v = window.localStorage.getItem(STORAGE_KEY);
-  return v && /^0x[a-fA-F0-9]{40}$/.test(v) ? (v as Address) : null;
+  if (v && ADDR_RE.test(v)) return v as Address;
+  const envAddr = import.meta.env.VITE_BINGO_CONTRACT_ADDRESS;
+  return envAddr && ADDR_RE.test(envAddr) ? (envAddr as Address) : null;
 }
 
 export function saveContractAddress(addr: string): void {
@@ -50,8 +57,8 @@ export const BINGO_CARD_ABI = [
   { type: 'function', name: 'escrow', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { type: 'function', name: 'poolVersion', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint32' }] },
   { type: 'function', name: 'poolSize', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
-  { type: 'function', name: 'cardPrice', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
-  { type: 'function', name: 'perLineStake', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { type: 'function', name: 'minCardPrice', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { type: 'function', name: 'minPerLineStake', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
   { type: 'function', name: 'referralBps', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint16' }] },
   { type: 'function', name: 'cardExpirySeconds', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint64' }] },
   { type: 'function', name: 'bonusPool', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
@@ -120,7 +127,7 @@ export const BINGO_CARD_ABI = [
     name: 'multiplierBps',
     stateMutability: 'view',
     inputs: [{ type: 'uint256', name: 'winCount' }],
-    outputs: [{ type: 'uint16' }],
+    outputs: [{ type: 'uint32' }],
   },
   {
     type: 'function',
@@ -152,9 +159,9 @@ export const BINGO_CARD_ABI = [
   },
   {
     type: 'function',
-    name: 'setCardPrice',
+    name: 'setMinCardPrice',
     stateMutability: 'nonpayable',
-    inputs: [{ type: 'uint256', name: 'cardPrice_' }],
+    inputs: [{ type: 'uint256', name: 'minCardPrice_' }],
     outputs: [],
   },
   {
@@ -182,7 +189,7 @@ export const BINGO_CARD_ABI = [
     type: 'function',
     name: 'setMultipliers',
     stateMutability: 'nonpayable',
-    inputs: [{ type: 'uint16[11]', name: 'bps' }],
+    inputs: [{ type: 'uint32[11]', name: 'bps' }],
     outputs: [],
   },
   {
@@ -207,7 +214,10 @@ export const BINGO_CARD_ABI = [
     type: 'function',
     name: 'mintCard',
     stateMutability: 'payable',
-    inputs: [{ type: 'bytes32', name: 'refCode' }],
+    inputs: [
+      { type: 'bytes32', name: 'refCode' },
+      { type: 'uint256', name: 'cardPrice_' },
+    ],
     outputs: [{ type: 'uint256' }],
   },
   {
@@ -305,18 +315,50 @@ export const BINGO_CARD_ABI = [
   },
 ] as const;
 
-/// MockEntropy interface used by the fork-test admin UI to drive reveals
-/// manually. Real Pyth Entropy does NOT expose this — only the test mock.
-export const MOCK_ENTROPY_ABI = [
+/// StaticEntropy interface — deployable stand-in for Pyth Entropy where the
+/// admin sets a fixed random and drives callbacks manually. Real Pyth does
+/// NOT expose these admin functions.
+export const STATIC_ENTROPY_ABI = [
+  {
+    type: 'function',
+    name: 'fixedRandom',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'bytes32' }],
+  },
+  {
+    type: 'function',
+    name: 'nextSequence',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint64' }],
+  },
+  {
+    type: 'function',
+    name: 'setRandom',
+    stateMutability: 'nonpayable',
+    inputs: [{ type: 'bytes32', name: 'r' }],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'setFee',
+    stateMutability: 'nonpayable',
+    inputs: [{ type: 'uint128', name: 'fee' }],
+    outputs: [],
+  },
   {
     type: 'function',
     name: 'pushCallback',
     stateMutability: 'nonpayable',
-    inputs: [
-      { type: 'uint64', name: 'sequenceNumber' },
-      { type: 'address', name: 'provider' },
-      { type: 'bytes32', name: 'randomNumber' },
-    ],
+    inputs: [{ type: 'uint64', name: 'seq' }],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'pushAll',
+    stateMutability: 'nonpayable',
+    inputs: [{ type: 'uint64', name: 'from' }],
     outputs: [],
   },
 ] as const;

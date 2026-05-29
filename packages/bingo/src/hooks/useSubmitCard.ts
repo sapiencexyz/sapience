@@ -1,22 +1,30 @@
 import { useCallback, useState } from 'react';
-import { parseUnits } from 'viem';
-import { useAccount } from 'wagmi';
+import type { Address, Hex } from 'viem';
 import {
   submitCard,
   type LineProgress,
   type LineStatus,
   type SubmitCardResult,
 } from '~/lib/submitCard';
-import { computeSmartAccountAddress } from '@sapience/sdk/session';
 import { useSession } from './useSession';
-import type { BingoCondition } from '~/api';
-import type { Side } from '~/screens/CardScreen';
-import type { Tier } from '~/App';
 import { buildLines } from '~/parlay';
 
+export interface SubmitCardArgs {
+  /** On-chain card id. */
+  cardId: bigint;
+  /** The card's 16 cell conditionIds + matching resolvers (cell order). */
+  conditionIds: readonly Hex[];
+  resolvers: readonly Address[];
+  /** Declared sides bitmask: bit i = YES on cell i. */
+  cellSides: number;
+  /** The card's stamped price in wei; each line stakes price / 10. */
+  cardPriceWei: bigint;
+  /** BingoCard address — the predictor's mint sponsor. */
+  bingoCardAddress: Address;
+}
+
 export function useSubmitCard() {
-  const { address: eoa } = useAccount();
-  const { client: sessionClient, isActive } = useSession();
+  const { client: sessionClient, isActive, config } = useSession();
   const [progress, setProgress] = useState<Record<string, LineProgress>>(() =>
     Object.fromEntries(
       buildLines().map((l) => [
@@ -30,26 +38,25 @@ export function useSubmitCard() {
   const [error, setError] = useState<string | null>(null);
 
   const submit = useCallback(
-    async (tier: Tier, conditions: BingoCondition[], picks: Side[]) => {
-      if (!eoa) throw new Error('Wallet not connected');
-      if (!isActive || !sessionClient) {
+    async (args: SubmitCardArgs) => {
+      if (!isActive || !sessionClient || !config) {
         throw new Error('Session not active');
       }
       setIsSubmitting(true);
       setError(null);
       setResult(null);
       try {
-        // 10 lines split the tier evenly: allowance covers the full tier,
-        // each line stakes tier/10. (Cells are just the picks display;
-        // the on-chain stake is per-line, not per-cell.)
-        const stakePerLineWei = parseUnits(String(tier / 10), 18);
-        const sa = computeSmartAccountAddress(eoa);
+        // 10 lines split the card price evenly; each line stakes price / 10.
+        const stakePerLineWei = args.cardPriceWei / 10n;
         const r = await submitCard({
           sessionClient,
-          smartAccountAddress: sa,
-          conditions,
-          picks,
+          smartAccountAddress: config.smartAccountAddress,
+          cardId: args.cardId,
+          conditionIds: args.conditionIds,
+          resolvers: args.resolvers,
+          cellSides: args.cellSides,
           stakePerLineWei,
+          bingoCardAddress: args.bingoCardAddress,
           onProgress: (lineId, status, extra) => {
             setProgress((prev) => ({
               ...prev,
@@ -65,7 +72,7 @@ export function useSubmitCard() {
         setIsSubmitting(false);
       }
     },
-    [eoa, isActive, sessionClient],
+    [isActive, sessionClient, config],
   );
 
   return { submit, progress, result, isSubmitting, error };

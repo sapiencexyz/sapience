@@ -39,7 +39,7 @@ contract RevertingResolver is IConditionResolver {
 contract BingoCardSettleTest is BingoCardTestBase {
     bytes32 internal constant REFCODE = bytes32("REF");
 
-    event MultipliersSet(uint16[11] bps);
+    event MultipliersSet(uint32[11] bps);
     event SidesDeclared(uint256 indexed cardId, uint16 yesMask);
     event BonusClaimed(
         uint256 indexed cardId,
@@ -72,8 +72,8 @@ contract BingoCardSettleTest is BingoCardTestBase {
 
         // Multipliers in bps, indexed by winning-line count (0..10).
         // uint16 caps multipliers at ~6.55x — plenty for a bingo bonus.
-        uint16[11] memory mults = [
-            uint16(0), //     0 wins → no bonus
+        uint32[11] memory mults = [
+            uint32(0), //     0 wins → no bonus
             uint16(0), //     1 win  → no bonus
             uint16(11_000), // 2     → 1.1x
             uint16(12_500), // 3
@@ -123,7 +123,7 @@ contract BingoCardSettleTest is BingoCardTestBase {
 
     function _mintAndReveal() internal returns (uint256 cardId) {
         vm.prank(player);
-        cardId = bingo.mintCard{ value: ENTROPY_FEE }(REFCODE);
+        cardId = bingo.mintCard{ value: ENTROPY_FEE }(REFCODE, CARD_PRICE);
         entropy.pushCallback(
             uint64(cardId), entropyProvider, bytes32(uint256(0xA))
         );
@@ -232,9 +232,9 @@ contract BingoCardSettleTest is BingoCardTestBase {
     // ---------- admin: setMultipliers ----------
 
     function test_setMultipliers_storesAndEmits() public {
-        uint16[11] memory mults;
+        uint32[11] memory mults;
         for (uint256 i = 0; i < 11; i++) {
-            mults[i] = uint16(1000 * (i + 1));
+            mults[i] = uint32(1000 * (i + 1));
         }
         vm.expectEmit(false, false, false, true);
         emit MultipliersSet(mults);
@@ -246,7 +246,7 @@ contract BingoCardSettleTest is BingoCardTestBase {
     }
 
     function test_setMultipliers_revertsIfNotOwner() public {
-        uint16[11] memory mults;
+        uint32[11] memory mults;
         vm.expectRevert();
         bingo.setMultipliers(mults);
     }
@@ -273,7 +273,8 @@ contract BingoCardSettleTest is BingoCardTestBase {
 
     function test_setCellSides_revertsIfNotRevealed() public {
         vm.prank(player);
-        uint256 cardId = bingo.mintCard{ value: ENTROPY_FEE }(REFCODE);
+        uint256 cardId =
+            bingo.mintCard{ value: ENTROPY_FEE }(REFCODE, CARD_PRICE);
         vm.prank(player);
         vm.expectRevert(BingoCard.CardNotRevealed.selector);
         bingo.setCellSides(cardId, 0xFFFF);
@@ -476,7 +477,7 @@ contract BingoCardSettleTest is BingoCardTestBase {
         // Admin halves the 2-win multiplier post-mint. Bonus payout follows
         // the current table — multipliers are NOT stamped at mint, since the
         // bonus pool itself is admin-controlled and stamping would be theater.
-        uint16[11] memory next;
+        uint32[11] memory next;
         next[2] = 5500;
         vm.prank(owner);
         bingo.setMultipliers(next);
@@ -495,7 +496,8 @@ contract BingoCardSettleTest is BingoCardTestBase {
 
     function test_claimBonus_revertsIfNotRevealed() public {
         vm.prank(player);
-        uint256 cardId = bingo.mintCard{ value: ENTROPY_FEE }(REFCODE);
+        uint256 cardId =
+            bingo.mintCard{ value: ENTROPY_FEE }(REFCODE, CARD_PRICE);
         // Don't push the entropy callback.
         vm.expectRevert(BingoCard.CardNotRevealed.selector);
         bingo.claimBonus(cardId);

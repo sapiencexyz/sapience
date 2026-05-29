@@ -23,7 +23,7 @@ contract BingoCardMintTest is BingoCardTestBase {
 
     function _mint(bytes32 refCode) internal returns (uint256 cardId) {
         vm.prank(player);
-        cardId = bingo.mintCard{ value: ENTROPY_FEE }(refCode);
+        cardId = bingo.mintCard{ value: ENTROPY_FEE }(refCode, CARD_PRICE);
     }
 
     // ---- mintCard ----
@@ -81,32 +81,40 @@ contract BingoCardMintTest is BingoCardTestBase {
             address(collateral), address(entropy), entropyProvider, owner
         );
         vm.startPrank(owner);
-        fresh.setCardPrice(CARD_PRICE);
+        fresh.setMinCardPrice(CARD_PRICE);
         vm.stopPrank();
         collateral.mint(player, CARD_PRICE);
         vm.startPrank(player);
         collateral.approve(address(fresh), type(uint256).max);
         vm.expectRevert(BingoCard.PoolTooSmall.selector);
-        fresh.mintCard{ value: ENTROPY_FEE }(bytes32(0));
+        fresh.mintCard{ value: ENTROPY_FEE }(bytes32(0), CARD_PRICE);
         vm.stopPrank();
     }
 
-    function test_mintCard_revertsIfCardPriceUnset() public {
-        BingoCard fresh = new BingoCard(
-            address(collateral), address(entropy), entropyProvider, owner
-        );
-        // Seed pool only — leave cardPrice at zero.
-        bytes32[] memory ids = new bytes32[](20);
-        address[] memory resolvers = new address[](20);
-        for (uint256 i = 0; i < 20; i++) {
-            ids[i] = keccak256(abi.encode("c", i));
-            resolvers[i] = address(uint160(i + 1));
-        }
-        vm.prank(owner);
-        fresh.setPool(ids, resolvers);
-        vm.expectRevert(BingoCard.CardPriceTooLow.selector);
+    function test_mintCard_revertsIfBelowMinCardPrice() public {
+        // Configure minCardPrice = CARD_PRICE; minting at half that must revert.
         vm.prank(player);
-        fresh.mintCard{ value: ENTROPY_FEE }(bytes32(0));
+        vm.expectRevert(BingoCard.CardPriceTooLow.selector);
+        bingo.mintCard{ value: ENTROPY_FEE }(bytes32(0), CARD_PRICE / 2);
+    }
+
+    function test_mintCard_revertsIfNotDivisibleByLines() public {
+        // Per-line stake math requires cardPrice_ % LINES_PER_CARD == 0.
+        vm.prank(player);
+        vm.expectRevert(BingoCard.CardPriceTooLow.selector);
+        bingo.mintCard{ value: ENTROPY_FEE }(bytes32(0), CARD_PRICE + 1);
+    }
+
+    function test_mintCard_acceptsAboveMinimum() public {
+        // Any multiple-of-LINES_PER_CARD price >= minCardPrice succeeds.
+        uint256 customPrice = CARD_PRICE * 5;
+        collateral.mint(player, customPrice);
+        vm.prank(player);
+        uint256 cardId =
+            bingo.mintCard{ value: ENTROPY_FEE }(bytes32(0), customPrice);
+        BingoCard.Card memory c = bingo.cardOf(cardId);
+        assertEq(c.cardPriceAtMint, customPrice);
+        assertEq(c.sponsorBalance, customPrice);
     }
 
     // ---- entropyCallback (reveal) ----

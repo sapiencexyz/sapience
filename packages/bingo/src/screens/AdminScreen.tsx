@@ -1,30 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  formatUnits,
-  isAddress,
-  parseUnits,
-  type Address,
-  type Hex,
-} from 'viem';
+import { formatUnits, isAddress, parseUnits, type Address } from 'viem';
 import {
   useAccount,
   useConnect,
-  usePublicClient,
   useReadContracts,
   useWriteContract,
 } from 'wagmi';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import {
   BINGO_CARD_ABI,
+  CHAIN_ID,
   ERC20_ABI,
-  MOCK_ENTROPY_ABI,
+  STATIC_ENTROPY_ABI,
   loadContractAddress,
-  saveContractAddress,
 } from '../lib/bingoCard';
 import { fetchConditions, type BingoCondition } from '../api';
 import Nav from '../components/Nav';
 
-const CHAIN_ID = CHAIN_ID_ETHEREAL;
 const DECIMALS = 18;
 
 function shortAddress(a?: string | null): string {
@@ -41,12 +32,10 @@ export default function AdminScreen() {
   const { address: eoa, isConnected } = useAccount();
   const { connectors, connect, isPending: connectPending } = useConnect();
 
-  const [addressInput, setAddressInput] = useState<string>(
-    loadContractAddress() ?? '',
-  );
   const contractAddress: Address | null = useMemo(() => {
-    return isAddress(addressInput) ? (addressInput as Address) : null;
-  }, [addressInput]);
+    const a = loadContractAddress();
+    return a && isAddress(a) ? (a as Address) : null;
+  }, []);
 
   const baseContract = contractAddress
     ? { address: contractAddress, abi: BINGO_CARD_ABI, chainId: CHAIN_ID }
@@ -82,8 +71,8 @@ export default function AdminScreen() {
           { ...baseContract, functionName: 'collateralToken' },
           { ...baseContract, functionName: 'poolVersion' },
           { ...baseContract, functionName: 'poolSize' },
-          { ...baseContract, functionName: 'cardPrice' },
-          { ...baseContract, functionName: 'perLineStake' },
+          { ...baseContract, functionName: 'minCardPrice' },
+          { ...baseContract, functionName: 'minPerLineStake' },
           { ...baseContract, functionName: 'referralBps' },
           { ...baseContract, functionName: 'cardExpirySeconds' },
           { ...baseContract, functionName: 'bonusPool' },
@@ -103,8 +92,8 @@ export default function AdminScreen() {
   const collateralToken = reads.data?.[1]?.result as Address | undefined;
   const poolVersion = reads.data?.[2]?.result as number | undefined;
   const poolSize = reads.data?.[3]?.result as bigint | undefined;
-  const cardPrice = reads.data?.[4]?.result as bigint | undefined;
-  const perLineStake = reads.data?.[5]?.result as bigint | undefined;
+  const minCardPrice = reads.data?.[4]?.result as bigint | undefined;
+  const minPerLineStake = reads.data?.[5]?.result as bigint | undefined;
   const referralBps = reads.data?.[6]?.result as number | undefined;
   const cardExpirySeconds = reads.data?.[7]?.result as bigint | undefined;
   const bonusPool = reads.data?.[8]?.result as bigint | undefined;
@@ -114,7 +103,6 @@ export default function AdminScreen() {
   const outstandingReferral = reads.data?.[12]?.result as bigint | undefined;
   const entropyAddress = reads.data?.[13]?.result as Address | undefined;
   const entropyProvider = reads.data?.[14]?.result as Address | undefined;
-  const nextCardId = reads.data?.[15]?.result as bigint | undefined;
 
   const isOwner =
     !!owner && !!eoa && owner.toLowerCase() === eoa.toLowerCase();
@@ -145,15 +133,14 @@ export default function AdminScreen() {
     selected,
   ]);
 
-  const saveAddress = () => {
-    if (!isAddress(addressInput)) return;
-    saveContractAddress(addressInput);
-  };
-
   const submitPrice = () => {
     if (!baseContract) return;
     const v = parseUnits(priceInput || '0', DECIMALS);
-    writeContract({ ...baseContract, functionName: 'setCardPrice', args: [v] });
+    writeContract({
+      ...baseContract,
+      functionName: 'setMinCardPrice',
+      args: [v],
+    });
   };
 
   const submitBps = () => {
@@ -192,7 +179,7 @@ export default function AdminScreen() {
     const parsed: number[] = [];
     for (const v of multipliers) {
       const n = Number(v || '0');
-      if (!Number.isInteger(n) || n < 0 || n > 65_535) return;
+      if (!Number.isInteger(n) || n < 0 || n > 4_294_967_295) return;
       parsed.push(n);
     }
     writeContract({
@@ -281,83 +268,37 @@ export default function AdminScreen() {
     setSelected((prev) => prev.filter((p) => p.id !== id));
   };
 
-  // ---------- pending reveals (fork-only helper) ----------
-  // On a fork, BingoCard is wired to MockEntropy which does not auto-callback
-  // like real Pyth. Admin scans CardMinted events, finds unrevealed cards, and
-  // exposes a button that drives MockEntropy.pushCallback.
-  const publicClient = usePublicClient({ chainId: CHAIN_ID });
-  const [pendingReveals, setPendingReveals] = useState<
-    { cardId: bigint; seq: bigint }[]
-  >([]);
-  const [revealScanError, setRevealScanError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!publicClient || !contractAddress || nextCardId == null) return;
-    let stop = false;
-    void (async () => {
-      try {
-        const events = await publicClient.getContractEvents({
-          address: contractAddress,
-          abi: BINGO_CARD_ABI,
-          eventName: 'CardMinted',
-          fromBlock: 'earliest',
-          toBlock: 'latest',
-        });
-        if (stop) return;
-        const seqByCardId = new Map<string, bigint>();
-        for (const e of events) {
-          const args = e.args as
-            | { cardId?: bigint; sequenceNumber?: bigint }
-            | undefined;
-          if (args?.cardId != null && args?.sequenceNumber != null) {
-            seqByCardId.set(args.cardId.toString(), args.sequenceNumber);
-          }
-        }
-        // Filter to unrevealed cards by reading cardOf for each minted id.
-        const out: { cardId: bigint; seq: bigint }[] = [];
-        for (const [cardIdStr, seq] of seqByCardId) {
-          const cardId = BigInt(cardIdStr);
-          try {
-            const c = (await publicClient.readContract({
-              address: contractAddress,
-              abi: BINGO_CARD_ABI,
-              functionName: 'cardOf',
-              args: [cardId],
-            })) as { revealed: boolean };
-            if (!c.revealed) out.push({ cardId, seq });
-          } catch {
-            // skip
-          }
-        }
-        if (stop) return;
-        out.sort((a, b) => Number(a.cardId - b.cardId));
-        setPendingReveals(out);
-        setRevealScanError(null);
-      } catch (e) {
-        if (stop) return;
-        setRevealScanError(e instanceof Error ? e.message : String(e));
-      }
-    })();
-    return () => {
-      stop = true;
-    };
-  }, [publicClient, contractAddress, nextCardId, writePending]);
-
-  const submitPushReveal = (seq: bigint) => {
-    if (!entropyAddress || !entropyProvider) return;
-    // Fresh random per push so re-pushing the same card yields a different
-    // shuffle (useful when debugging).
-    const rand =
-      ('0x' +
-        Array.from(crypto.getRandomValues(new Uint8Array(32)))
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join('')) as Hex;
+  // ---------- entropy random (StaticEntropy helper) ----------
+  // Reveals are pushed from the card screen now; admin only rotates the
+  // stored random used by the StaticEntropy mock on staging.
+  const entropyReads = useReadContracts({
+    contracts:
+      entropyAddress != null
+        ? [
+            {
+              address: entropyAddress,
+              abi: STATIC_ENTROPY_ABI,
+              chainId: CHAIN_ID,
+              functionName: 'fixedRandom' as const,
+            },
+          ]
+        : [],
+    query: { enabled: !!entropyAddress },
+  });
+  const fixedRandom = entropyReads.data?.[0]?.result as
+    | `0x${string}`
+    | undefined;
+  const [entropyRandomInput, setEntropyRandomInput] = useState('');
+  const submitSetEntropyRandom = () => {
+    if (!entropyAddress) return;
+    const v = entropyRandomInput.trim();
+    if (!/^0x[0-9a-fA-F]{64}$/.test(v)) return;
     writeContract({
       address: entropyAddress,
-      abi: MOCK_ENTROPY_ABI,
+      abi: STATIC_ENTROPY_ABI,
       chainId: CHAIN_ID,
-      functionName: 'pushCallback',
-      args: [seq, entropyProvider, rand],
+      functionName: 'setRandom',
+      args: [v as `0x${string}`],
     });
   };
 
@@ -383,32 +324,16 @@ export default function AdminScreen() {
         </div>
       </header>
 
-      <section className="screen admin-section">
-        <div>
-          <h2>Contract address</h2>
+      {!contractAddress && (
+        <section className="screen admin-section">
           <p className="muted small">
-            Stored in localStorage. Reads/writes target chainId {CHAIN_ID}.
+            Set the BingoCard contract address in Settings (gear icon) to
+            load admin state. Reads/writes target chainId {CHAIN_ID}.
           </p>
-        </div>
-
-        <div className="admin-row">
-          <input
-            className="admin-input"
-            placeholder="0x…"
-            value={addressInput}
-            onChange={(e) => setAddressInput(e.target.value.trim())}
-          />
-          <button
-            type="button"
-            className="primary"
-            disabled={!isAddress(addressInput)}
-            onClick={saveAddress}
-          >
-            Save
-          </button>
-        </div>
-
-        {!isConnected && injected && (
+        </section>
+      )}
+      {contractAddress && !isConnected && injected && (
+        <section className="screen admin-section">
           <button
             type="button"
             className="primary block"
@@ -417,15 +342,14 @@ export default function AdminScreen() {
           >
             {connectPending ? 'Opening wallet…' : 'Connect wallet'}
           </button>
-        )}
-
-        {isConnected && (
-          <p className="muted small">
-            Wallet: {shortAddress(eoa)} ·{' '}
-            {isOwner ? 'is owner ✓' : 'NOT owner — writes will revert'}
-          </p>
-        )}
-      </section>
+        </section>
+      )}
+      {contractAddress && isConnected && (
+        <p className="muted small">
+          Wallet: {shortAddress(eoa)} ·{' '}
+          {isOwner ? 'is owner ✓' : 'NOT owner — writes will revert'}
+        </p>
+      )}
 
       <section className="screen admin-section">
         <h2>State</h2>
@@ -434,8 +358,8 @@ export default function AdminScreen() {
             <div>Collateral token</div><div className="mono">{shortAddress(collateralToken)}</div>
             <div>Pool version</div><div className="mono">{poolVersion ?? '—'}</div>
             <div>Pool size</div><div className="mono">{poolSize?.toString() ?? '—'}</div>
-            <div>Card price</div><div className="mono">{fmtUnits(cardPrice)}</div>
-            <div>Per-line stake (derived)</div><div className="mono">{fmtUnits(perLineStake)}</div>
+            <div>Min card price</div><div className="mono">{fmtUnits(minCardPrice)}</div>
+            <div>Min per-line stake</div><div className="mono">{fmtUnits(minPerLineStake)}</div>
             <div>Referral bps</div><div className="mono">{referralBps ?? '—'}</div>
             <div>Card expiry (s)</div><div className="mono">{cardExpirySeconds?.toString() ?? '—'}</div>
             <div>Bonus pool</div><div className="mono">{fmtUnits(bonusPool)}</div>
@@ -451,9 +375,10 @@ export default function AdminScreen() {
           {writeError && <p className="error">{writeError.message}</p>}
 
           <div className="admin-action">
-            <div className="wizard-step-title">Set card price</div>
+            <div className="wizard-step-title">Set minimum card price</div>
             <p className="muted small">
-              In tokens (18 dec). e.g. 5 = $5.00. Per-line stake auto-derives as price ÷ 10.
+              In tokens (18 dec). Floor — players pick their own card price at
+              mint time and must satisfy this minimum.
             </p>
             <div className="admin-row">
               <input
@@ -773,45 +698,44 @@ export default function AdminScreen() {
         </section>
 
         <section className="screen admin-section">
-          <h2>Pending reveals (fork only)</h2>
+          <h2>Entropy (StaticEntropy)</h2>
           <p className="muted small">
-            On a fork the entropy contract is{' '}
-            <span className="mono">MockEntropy</span> — it doesn't auto-fire
-            Pyth callbacks. Push reveals manually here. Each push uses a fresh
-            random seed.
+            Staging-only stand-in for Pyth Entropy. Every reveal uses the
+            stored random — update it here to vary the resulting card layout.
           </p>
           <div className="admin-kv">
             <div>Entropy contract</div>
-            <div className="mono small">
-              {entropyAddress ? entropyAddress : '—'}
-            </div>
+            <div className="mono small">{entropyAddress ?? '—'}</div>
             <div>Entropy provider</div>
-            <div className="mono small">
-              {entropyProvider ? entropyProvider : '—'}
-            </div>
-            <div>Pending</div>
-            <div className="mono">{pendingReveals.length}</div>
+            <div className="mono small">{entropyProvider ?? '—'}</div>
+            <div>Current random</div>
+            <div className="mono small">{fixedRandom ?? '—'}</div>
           </div>
-          {revealScanError && (
-            <p className="error small">Scan error: {revealScanError}</p>
-          )}
-          {pendingReveals.map((p) => (
-            <div key={p.cardId.toString()} className="admin-row">
-              <span className="mono">
-                #{p.cardId.toString()} · seq {p.seq.toString()}
-              </span>
+          <div className="admin-action">
+            <div className="wizard-step-title">Set entropy random</div>
+            <div className="admin-row">
+              <input
+                className="admin-input"
+                placeholder="0x… (32 bytes)"
+                value={entropyRandomInput}
+                onChange={(e) =>
+                  setEntropyRandomInput(e.target.value.trim())
+                }
+              />
               <button
                 type="button"
                 className="primary"
                 disabled={
-                  writePending || !entropyAddress || !entropyProvider
+                  writePending ||
+                  !entropyAddress ||
+                  !/^0x[0-9a-fA-F]{64}$/.test(entropyRandomInput.trim())
                 }
-                onClick={() => submitPushReveal(p.seq)}
+                onClick={submitSetEntropyRandom}
               >
-                Push reveal
+                Save
               </button>
             </div>
-          ))}
+          </div>
         </section>
     </main>
   );
