@@ -167,4 +167,40 @@ describe('Condition (v2)', () => {
       where: { id: CONDITION_ID },
     });
   });
+
+  it('conditions() defaults to public-only when no public/id filter is given', async () => {
+    await callResolver(conditions)(null, { first: 50 }, {}, null);
+    expect(mockPrisma.condition.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ public: true }),
+      })
+    );
+  });
+
+  it('conditions(filter: { public: false }) honors the explicit visibility filter', async () => {
+    await callResolver(conditions)(
+      null,
+      { first: 50, filter: { public: false } },
+      {},
+      null
+    );
+    expect(mockPrisma.condition.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ public: false }),
+      })
+    );
+  });
+
+  it('conditions(filter: { conditionIds }) does not force public — by-id lookups bypass the default', async () => {
+    await callResolver(conditions)(
+      null,
+      { first: 50, filter: { conditionIds: [CONDITION_ID] } },
+      {},
+      null
+    );
+    const where = mockPrisma.condition.findMany.mock.calls[0]?.[0]?.where as {
+      public?: boolean;
+    };
+    expect(where.public).toBeUndefined();
+  });
 });
