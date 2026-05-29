@@ -456,6 +456,7 @@ export async function prepareAccount(
   client: KernelAccountClient,
   cardPriceWei: bigint,
   smartAccountAddress: Address,
+  entropyFeeWei: bigint = 0n,
 ): Promise<{ skipped: boolean; opHash?: Hex }> {
   const contracts = getContractAddresses();
   if (!contracts.bingoCard) {
@@ -497,13 +498,20 @@ export async function prepareAccount(
 
   const calls: { to: Address; data: Hex; value: bigint }[] = [];
 
-  if (wusdeBalance < tierAmountWei) {
-    const amountToWrap = tierAmountWei - wusdeBalance;
-    if (nativeBalance < amountToWrap) {
-      throw new Error(
-        `Not enough native USDe on smart account to wrap: have ${nativeBalance}, need ${amountToWrap}`,
-      );
-    }
+  // mintCard forwards the Pyth entropy fee as native msg.value (sent as
+  // fee*2). Keep that much native UNWRAPPED — otherwise wrapping all of it
+  // leaves the account unable to pay the fee, and mintCard reverts with an
+  // opaque 0x during simulation. Reserve a small cushion (fee*3).
+  const feeReserve = entropyFeeWei * 3n;
+  const amountToWrap =
+    wusdeBalance < tierAmountWei ? tierAmountWei - wusdeBalance : 0n;
+  if (nativeBalance < amountToWrap + feeReserve) {
+    throw new Error(
+      `Smart account needs more native USDe: have ${nativeBalance}, ` +
+        `need ${amountToWrap + feeReserve} (collateral to wrap + entropy fee).`,
+    );
+  }
+  if (amountToWrap > 0n) {
     calls.push({
       to: contracts.wusde,
       data: encodeFunctionData({
@@ -600,7 +608,12 @@ export async function mintCardViaSession(params: {
   const bingoCard = contracts.bingoCard;
 
   // Ensure the SA holds wUSDe and has approved the BingoCard for the price.
-  await prepareAccount(client, cardPriceWei, smartAccountAddress);
+  await prepareAccount(
+    client,
+    cardPriceWei,
+    smartAccountAddress,
+    entropyFeeWei,
+  );
 
   // 2x entropy-fee buffer so a fee bump between read and submit doesn't revert;
   // the BingoCard refunds the unused remainder.
