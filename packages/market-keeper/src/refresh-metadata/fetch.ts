@@ -43,41 +43,33 @@ export async function fetchAllExistingConditions(
 ): Promise<Map<string, ExistingCondition>> {
   const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
-  // Uses the Relay-shaped `conditionsConnection` (the legacy bare
-  // `conditions(where:)` resolver is deprecated per the redesign).
-  // Cursor-paginated via `first` / `after`; reads `pageInfo.endCursor`
-  // and `pageInfo.hasNextPage` to drive the loop.
+  // Uses the staging-supported `conditions(where:)` resolver. Offset pagination
+  // is deterministic because we order by stable `id` ascending.
   const query = `
-    query RefreshMetadataConditions($filter: ConditionFilter!, $first: Int!, $after: String) {
-      conditionsConnection(filter: $filter, first: $first, after: $after, orderBy: { field: CREATED_AT, direction: ASC }) {
-        nodes {
-          id: conditionId
-          endTime
-          question
-          shortName
-          optionName
-          description
+    query RefreshMetadataConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!, $orderBy: [ConditionOrderByWithRelationInput!]) {
+      conditions(where: $where, take: $take, skip: $skip, orderBy: $orderBy) {
+        id
+        endTime
+        question
+        shortName
+        optionName
+        description
+        similarMarkets
+        tags
+        similarMarketVolume
+        similarMarketImage
+        conditionGroup {
+          id
+          name
           similarMarkets
-          tags
-          similarMarketVolume
-          similarMarketImage
-          conditionGroup {
-            id
-            name
-            similarMarkets
-            negRisk
-          }
-        }
-        pageInfo {
-          hasNextPage
-          endCursor
+          negRisk
         }
       }
     }
   `;
 
   const existing = new Map<string, ExistingCondition>();
-  let after: string | null = null;
+  let skip = 0;
   let pageCount = 0;
 
   while (true) {
@@ -89,13 +81,14 @@ export async function fetchAllExistingConditions(
       body: JSON.stringify({
         query,
         variables: {
-          filter: {
-            visibility: 'PUBLIC',
-            settled: false,
-            hasSimilarMarkets: true,
+          where: {
+            public: { equals: true },
+            settled: { equals: false },
+            similarMarkets: { isEmpty: false },
           },
-          first: SAPIENCE_PAGE_SIZE,
-          after,
+          take: SAPIENCE_PAGE_SIZE,
+          skip,
+          orderBy: [{ id: 'asc' }],
         },
       }),
     });
@@ -108,36 +101,29 @@ export async function fetchAllExistingConditions(
 
     const result = (await response.json()) as {
       data?: {
-        conditionsConnection?: {
-          nodes?: Array<{
-            id: string;
-            endTime: number;
-            question?: string | null;
-            shortName?: string | null;
-            optionName?: string | null;
-            description?: string | null;
+        conditions?: Array<{
+          id: string;
+          endTime: number;
+          question?: string | null;
+          shortName?: string | null;
+          optionName?: string | null;
+          description?: string | null;
+          similarMarkets?: string[] | null;
+          tags?: string[] | null;
+          similarMarketVolume?: number | null;
+          similarMarketImage?: string | null;
+          conditionGroup?: {
+            id?: number | null;
+            name?: string | null;
             similarMarkets?: string[] | null;
-            tags?: string[] | null;
-            similarMarketVolume?: number | null;
-            similarMarketImage?: string | null;
-            conditionGroup?: {
-              id?: number | null;
-              name?: string | null;
-              similarMarkets?: string[] | null;
-              negRisk?: boolean | null;
-            } | null;
-          }>;
-          pageInfo?: {
-            hasNextPage?: boolean | null;
-            endCursor?: string | null;
+            negRisk?: boolean | null;
           } | null;
-        };
+        }>;
       };
     };
 
-    const conditions = result.data?.conditionsConnection?.nodes ?? [];
-    const pageInfo = result.data?.conditionsConnection?.pageInfo;
-    const hasMore = pageInfo?.hasNextPage ?? false;
+    const conditions = result.data?.conditions ?? [];
+    const hasMore = conditions.length === SAPIENCE_PAGE_SIZE;
 
     for (const c of conditions) {
       existing.set(c.id, {
@@ -163,8 +149,7 @@ export async function fetchAllExistingConditions(
     );
 
     if (!hasMore) break;
-    after = pageInfo?.endCursor ?? null;
-    if (!after) break;
+    skip += SAPIENCE_PAGE_SIZE;
   }
 
   return existing;
