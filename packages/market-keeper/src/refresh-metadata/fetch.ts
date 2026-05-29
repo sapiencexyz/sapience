@@ -66,6 +66,7 @@ export async function fetchAllExistingConditions(
             name
             similarMarkets
             negRisk
+            externalEventId
           }
         }
         pageInfo {
@@ -125,6 +126,7 @@ export async function fetchAllExistingConditions(
               name?: string | null;
               similarMarkets?: string[] | null;
               negRisk?: boolean | null;
+              externalEventId?: string | null;
             } | null;
           }>;
           pageInfo?: {
@@ -151,6 +153,7 @@ export async function fetchAllExistingConditions(
         similarMarketVolume: c.similarMarketVolume ?? undefined,
         similarMarketImage: c.similarMarketImage ?? undefined,
         groupName: c.conditionGroup?.name ?? undefined,
+        externalEventId: c.conditionGroup?.externalEventId ?? undefined,
         conditionGroupId: c.conditionGroup?.id ?? undefined,
         conditionGroupSimilarMarkets:
           c.conditionGroup?.similarMarkets ?? undefined,

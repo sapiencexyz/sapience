@@ -18,11 +18,12 @@ export interface ExistingCondition {
   similarMarketImage?: string;
   groupName?: string;
   /**
-   * Polymarket event id of the group this condition belongs to, if any.
-   * Currently not pulled from GraphQL (the field isn't exposed yet) — kept
-   * on the shape for SyncableFields parity so the diff loop type-checks.
-   * Always undefined in practice today; the diff key list intentionally
-   * excludes it.
+   * Polymarket event id of the group this condition currently belongs to,
+   * fetched as `conditionGroup.externalEventId` via GraphQL. Drives the
+   * diff against the fresh Polymarket value: when they disagree, the
+   * keeper emits a batch-metadata update carrying the new externalEventId,
+   * which the admin route uses to re-route the condition to the correct
+   * group via the canonical (source, externalEventId) lookup.
    */
   externalEventId?: string;
   conditionGroupId?: number;

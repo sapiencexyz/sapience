@@ -459,6 +459,13 @@ export function computeMetadataUpdates(
     // Per-condition negRisk fields are not GraphQL-exposed, so the keeper
     // does not drift-detect them here — only the ConditionGroup.negRisk
     // bucket flag is tracked, in computeGroupMetadataUpdates below.
+    //
+    // externalEventId is included so the admin route can re-resolve the
+    // group via the canonical (source, externalEventId) lookup. Without it,
+    // batch-metadata payloads would carry only groupName, which is no
+    // longer unique after migration 20260529001202 dropped UNIQUE(name) —
+    // and the route's name-fallback could attach the condition to the
+    // wrong group when multiple groups share a display title.
     const keys: (keyof SyncableFields)[] = [
       'question',
       'optionName',
@@ -468,6 +475,7 @@ export function computeMetadataUpdates(
       'similarMarketVolume',
       'similarMarketImage',
       'groupName',
+      'externalEventId',
     ];
     for (const key of keys) {
       const newVal = fresh[key];

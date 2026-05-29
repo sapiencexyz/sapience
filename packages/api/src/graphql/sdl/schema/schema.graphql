@@ -445,6 +445,9 @@ type ConditionGroup {
   categoryId: Int
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
   createdAt: DateTimeISO!
+
+  """Polymarket event id (events[0].id on Gamma /markets). The canonical identity for platform-sourced groups. Null for legacy / Sapience-native / curated groups that don't originate from a platform event."""
+  externalEventId: String
   id: Int!
   name: String!
 

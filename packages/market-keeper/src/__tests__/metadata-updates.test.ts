@@ -215,6 +215,57 @@ describe('computeMetadataUpdates', () => {
     });
   });
 
+  it('detects externalEventId change when the stored group is keyed by a different event', () => {
+    // Reviewer-flagged scenario for #1813: the keeper was computing
+    // externalEventId for fresh metadata but not emitting it in the diff,
+    // so batch-metadata payloads fell back to groupName — and with the
+    // dropped UNIQUE(name) constraint, the API's name-fallback could
+    // attach the condition to the wrong (newest-id-wins) group. Asserting
+    // here that the diff actually carries the field when it differs.
+    const market = makeMarket({
+      conditionId: '0xevtid',
+      events: [{ id: 'evt-week-13', title: 'Top US Netflix Movie This Week' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xevtid',
+        existingFromMarket(market, {
+          externalEventId: 'evt-week-12',
+          groupName: 'Top US Netflix Movie This Week',
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(1);
+    expect(metadataUpdates[0].fields.externalEventId).toBe('evt-week-13');
+    expect(metadataUpdates[0].old.externalEventId).toBe('evt-week-12');
+  });
+
+  it('does not emit externalEventId when fresh matches the stored value', () => {
+    // Regression guard against emitting a noisy update on every refresh.
+    const market = makeMarket({
+      conditionId: '0xevtsame',
+      events: [{ id: 'evt-stable', title: 'Some Event' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xevtsame',
+        existingFromMarket(market, {
+          externalEventId: 'evt-stable',
+          groupName: 'Some Event',
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(0);
+  });
+
   it('detects similarMarkets URL change when event slug changes', () => {
     const market = makeMarket({
       conditionId: '0xslug',
