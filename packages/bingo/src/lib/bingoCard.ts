@@ -32,14 +32,20 @@ export function encodeCode(s: string): Hex | null {
 
 const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
 
+/** Deployed BingoCard on Ethereal testnet (2026-05-29). Baked-in default so
+ *  hosted builds work without env config; override via Settings or
+ *  VITE_BINGO_CONTRACT_ADDRESS. */
+const DEFAULT_CONTRACT_ADDRESS =
+  '0xd114777e84a9ab029445ca50ae1672ce30b8b025' as const;
+
 export function loadContractAddress(): Address | null {
   if (typeof window === 'undefined') return null;
-  // UI override (Settings) wins; otherwise fall back to the build-time env so
-  // a fresh deploy is wired without manual paste.
+  // Precedence: UI override (Settings) → build-time env → baked-in default.
   const v = window.localStorage.getItem(STORAGE_KEY);
   if (v && ADDR_RE.test(v)) return v as Address;
   const envAddr = import.meta.env.VITE_BINGO_CONTRACT_ADDRESS;
-  return envAddr && ADDR_RE.test(envAddr) ? (envAddr as Address) : null;
+  if (envAddr && ADDR_RE.test(envAddr)) return envAddr as Address;
+  return DEFAULT_CONTRACT_ADDRESS as Address;
 }
 
 export function saveContractAddress(addr: string): void {
