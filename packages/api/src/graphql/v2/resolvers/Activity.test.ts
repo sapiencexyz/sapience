@@ -44,13 +44,20 @@ type WhereNode = {
   predictionId?: { lt?: string };
 };
 
+type TradeWhereNode = {
+  AND?: TradeWhereNode[];
+  OR?: TradeWhereNode[];
+  executedAt?: { lt?: number; equals?: number };
+  tradeHash?: { lt?: string };
+};
+
+type PredictionRow = { predictionId: string; createdAt: Date };
+type TradeRow = { tradeHash: string; executedAt: number };
+
 // Minimal evaluator for the prediction-side Prisma `where` the activity
 // resolver builds — lets us assert which rows the cursor predicate admits
 // onto the next page without coupling to its exact AND/OR nesting.
-const matchPrediction = (
-  where: WhereNode,
-  row: { predictionId: string; createdAt: Date }
-): boolean => {
+const matchPrediction = (where: WhereNode, row: PredictionRow): boolean => {
   if (!where || Object.keys(where).length === 0) return true;
   if (where.AND) return where.AND.every((w) => matchPrediction(w, row));
   if (where.OR) return where.OR.some((w) => matchPrediction(w, row));
@@ -68,6 +75,59 @@ const matchPrediction = (
     return false;
   return true;
 };
+
+const matchTrade = (where: TradeWhereNode, row: TradeRow): boolean => {
+  if (!where || Object.keys(where).length === 0) return true;
+  if (where.AND) return where.AND.every((w) => matchTrade(w, row));
+  if (where.OR) return where.OR.some((w) => matchTrade(w, row));
+  if (where.executedAt) {
+    const e = where.executedAt;
+    if (e.lt != null && !(row.executedAt < e.lt)) return false;
+    if (e.equals != null && !(row.executedAt === e.equals)) return false;
+  }
+  if (where.tradeHash?.lt != null && !(row.tradeHash < where.tradeHash.lt))
+    return false;
+  return true;
+};
+
+const sortPredictions = (rows: PredictionRow[]) =>
+  [...rows].sort((a, b) => {
+    const t = b.createdAt.getTime() - a.createdAt.getTime();
+    if (t !== 0) return t;
+    return a.predictionId < b.predictionId
+      ? 1
+      : a.predictionId > b.predictionId
+        ? -1
+        : 0;
+  });
+
+const sortTrades = (rows: TradeRow[]) =>
+  [...rows].sort((a, b) => {
+    const t = b.executedAt - a.executedAt;
+    if (t !== 0) return t;
+    return a.tradeHash < b.tradeHash ? 1 : a.tradeHash > b.tradeHash ? -1 : 0;
+  });
+
+const installPaginationFixture = (
+  predictions: PredictionRow[],
+  trades: TradeRow[]
+) => {
+  mockPrisma.prediction.count.mockResolvedValue(predictions.length);
+  mockPrisma.secondaryTrade.count.mockResolvedValue(trades.length);
+  mockPrisma.prediction.findMany.mockImplementation(
+    async ({ where, take }: { where: WhereNode; take: number }) =>
+      sortPredictions(predictions.filter((p) => matchPrediction(where, p)))
+        .slice(0, take)
+        .map((row) => ({ ...row, pickConfiguration: null }))
+  );
+  mockPrisma.secondaryTrade.findMany.mockImplementation(
+    async ({ where, take }: { where: TradeWhereNode; take: number }) =>
+      sortTrades(trades.filter((t) => matchTrade(where, t))).slice(0, take)
+  );
+};
+
+const activityRowId = (node: { predictionId?: string; tradeHash?: string }) =>
+  node.predictionId ?? node.tradeHash ?? '';
 
 describe('activity (v2)', () => {
   beforeEach(() => {
@@ -184,5 +244,41 @@ describe('activity (v2)', () => {
 
     expect(matchPrediction(where, after)).toBe(true);
     expect(matchPrediction(where, before)).toBe(false);
+  });
+
+  it('paginates through interleaved rows without duplicates or gaps', async () => {
+    const ts0 = Math.floor(new Date('2026-01-02T00:00:00Z').getTime() / 1000);
+    const predictions: PredictionRow[] = [
+      { predictionId: '0xp_BB', createdAt: new Date(ts0 * 1000) },
+      { predictionId: '0xp_AA', createdAt: new Date(ts0 * 1000) },
+      { predictionId: '0xp_mid', createdAt: new Date((ts0 - 3600) * 1000) },
+    ];
+    const trades: TradeRow[] = [
+      { tradeHash: '0xt_TT', executedAt: ts0 },
+      { tradeHash: '0xt_new', executedAt: ts0 + 3600 },
+    ];
+    const expectedOrder = ['0xt_new', '0xp_BB', '0xp_AA', '0xt_TT', '0xp_mid'];
+
+    for (const first of [2, 3]) {
+      vi.clearAllMocks();
+      installPaginationFixture(predictions, trades);
+
+      const seen: string[] = [];
+      let after: string | null = null;
+
+      do {
+        const result = await callResolver<{
+          edges: { node: { predictionId?: string; tradeHash?: string } }[];
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        }>(activity)(null, { first, after }, {}, null);
+
+        seen.push(...result.edges.map((e) => activityRowId(e.node)));
+        if (!result.pageInfo.hasNextPage) break;
+        after = result.pageInfo.endCursor;
+      } while (after);
+
+      expect(seen).toEqual(expectedOrder);
+      expect(new Set(seen).size).toBe(expectedOrder.length);
+    }
   });
 });
