@@ -131,7 +131,7 @@ export function isAllowedCorsOrigin(
     /^https?:\/\/([a-zA-Z0-9-]+\.)*ethereal\.trade$/.test(origin) ||
     /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealtest\.net$/.test(origin) ||
     /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealdev\.net$/.test(origin) ||
-    /^https?:\/\/(app|docs)\.vercel\.app$/.test(origin) ||
+    /^https?:\/\/(app|docs|combo-bingo)\.vercel\.app$/.test(origin) ||
     /^https?:\/\/(app|docs)-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(
       origin
     ) ||
