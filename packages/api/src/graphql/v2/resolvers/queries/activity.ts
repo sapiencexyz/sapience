@@ -143,21 +143,33 @@ export const activity: NonNullable<QueryResolvers['activity']> = async (
   let tradePageWhere = tradeWhere;
   if (cursor) {
     const cursorBoundaryDate = new Date(cursor.ts * 1000);
+    // The global feed order is: ts DESC, then PREDICTION before TRADE at an
+    // equal ts, then id DESC. A prediction belongs on the NEXT page iff it
+    // sorts strictly AFTER the cursor row in that order. Predictions strictly
+    // before the boundary ts always qualify (the `lt` clause below); the
+    // same-ts case depends on what kind of row the cursor points at.
+    const predictionSameTs: Prisma.PredictionWhereInput | null =
+      cursor.type === ActivityType.Prediction
+        ? {
+            AND: [
+              {
+                createdAt: {
+                  gte: cursorBoundaryDate,
+                  lt: new Date((cursor.ts + 1) * 1000),
+                },
+              },
+              { predictionId: { lt: cursor.id } },
+            ],
+          }
+        : null;
+
     predictionPageWhere = {
       AND: [
         predictionWhere,
         {
           OR: [
             { createdAt: { lt: cursorBoundaryDate } },
-            // Same timestamp + later-than-cursor in stable order
-            cursor.type === 'PREDICTION'
-              ? {
-                  AND: [
-                    { createdAt: { equals: cursorBoundaryDate } },
-                    { predictionId: { lt: cursor.id } },
-                  ],
-                }
-              : { createdAt: { equals: cursorBoundaryDate } },
+            ...(predictionSameTs ? [predictionSameTs] : []),
           ],
         } as Prisma.PredictionWhereInput,
       ],

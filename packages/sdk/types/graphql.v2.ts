@@ -854,7 +854,7 @@ export type Prediction = Node & {
   counterparty: Scalars['Address']['output'];
   counterpartyClaimable?: Maybe<Scalars['BigInt']['output']>;
   counterpartyCollateral: Scalars['BigInt']['output'];
-  counterpartyToken: Scalars['Address']['output'];
+  counterpartyToken?: Maybe<Scalars['Address']['output']>;
   createTxHash: Scalars['Bytes32']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   escrow: Scalars['Address']['output'];
@@ -864,7 +864,12 @@ export type Prediction = Node & {
   predictor: Scalars['Address']['output'];
   predictorClaimable?: Maybe<Scalars['BigInt']['output']>;
   predictorCollateral: Scalars['BigInt']['output'];
-  predictorToken: Scalars['Address']['output'];
+  /**
+   * Null when the prediction has no pickConfiguration (e.g. an RPC-error row)
+   * or the underlying token has not been minted yet — sourced from the
+   * nullable `Picks.predictorToken` / `counterpartyToken` columns.
+   */
+  predictorToken?: Maybe<Scalars['Address']['output']>;
   refCode?: Maybe<Scalars['String']['output']>;
   result?: Maybe<SettlementResult>;
   settleTxHash?: Maybe<Scalars['Bytes32']['output']>;

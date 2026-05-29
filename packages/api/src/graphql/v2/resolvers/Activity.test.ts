@@ -11,6 +11,7 @@ vi.mock('../../../core/db', () => ({ default: mockPrisma }));
 
 import { ActivityItem } from './Activity';
 import { activity } from './queries/activity';
+import { encodeCursor } from '../relay/cursor';
 
 const callResolver = <TResult = unknown>(resolver: unknown) =>
   resolver as (
@@ -35,6 +36,38 @@ describe('ActivityItem (v2)', () => {
     expect(resolveType({})).toBeNull();
   });
 });
+
+type WhereNode = {
+  AND?: WhereNode[];
+  OR?: WhereNode[];
+  createdAt?: { lt?: Date; equals?: Date; gte?: Date };
+  predictionId?: { lt?: string };
+};
+
+// Minimal evaluator for the prediction-side Prisma `where` the activity
+// resolver builds — lets us assert which rows the cursor predicate admits
+// onto the next page without coupling to its exact AND/OR nesting.
+const matchPrediction = (
+  where: WhereNode,
+  row: { predictionId: string; createdAt: Date }
+): boolean => {
+  if (!where || Object.keys(where).length === 0) return true;
+  if (where.AND) return where.AND.every((w) => matchPrediction(w, row));
+  if (where.OR) return where.OR.some((w) => matchPrediction(w, row));
+  if (where.createdAt) {
+    const c = where.createdAt;
+    if (c.gte && !(row.createdAt.getTime() >= c.gte.getTime())) return false;
+    if (c.lt && !(row.createdAt.getTime() < c.lt.getTime())) return false;
+    if (c.equals && !(row.createdAt.getTime() === c.equals.getTime()))
+      return false;
+  }
+  if (
+    where.predictionId?.lt != null &&
+    !(row.predictionId < where.predictionId.lt)
+  )
+    return false;
+  return true;
+};
 
 describe('activity (v2)', () => {
   beforeEach(() => {
@@ -110,5 +143,46 @@ describe('activity (v2)', () => {
     expect(
       result.edges.map((e) => e.node.predictionId ?? e.node.tradeHash)
     ).toEqual(['0xp_new', '0xt_mid', '0xp_old']);
+  });
+
+  it('paging after a TRADE cursor excludes same-timestamp predictions (no cross-page duplication)', async () => {
+    // Boundary landed on a trade at ts=1000. In the global order
+    // (ts DESC, PREDICTION before TRADE, id DESC) every prediction at
+    // ts=1000 sorts BEFORE this trade and was already emitted last page.
+    const tradeCursor = encodeCursor({ k: '1000', id: 'TRADE:0xdd' });
+    await callResolver(activity)(
+      null,
+      { first: 3, after: tradeCursor },
+      {},
+      null
+    );
+
+    const where = mockPrisma.prediction.findMany.mock.calls[0]?.[0]
+      ?.where as WhereNode;
+    const sameTs = { predictionId: '0xbb', createdAt: new Date(1000 * 1000) };
+    const earlier = { predictionId: '0xaa', createdAt: new Date(999 * 1000) };
+
+    expect(matchPrediction(where, sameTs)).toBe(false); // must NOT re-include
+    expect(matchPrediction(where, earlier)).toBe(true); // strictly earlier stays
+  });
+
+  it('paging after a PREDICTION cursor keeps only same-timestamp predictions that sort after it', async () => {
+    // Boundary landed on prediction 0xcc at ts=1000; ordering is id DESC,
+    // so only predictions with id < 0xcc remain for the next page.
+    const predCursor = encodeCursor({ k: '1000', id: 'PREDICTION:0xcc' });
+    await callResolver(activity)(
+      null,
+      { first: 3, after: predCursor },
+      {},
+      null
+    );
+
+    const where = mockPrisma.prediction.findMany.mock.calls[0]?.[0]
+      ?.where as WhereNode;
+    const after = { predictionId: '0xbb', createdAt: new Date(1000 * 1000) };
+    const before = { predictionId: '0xdd', createdAt: new Date(1000 * 1000) };
+
+    expect(matchPrediction(where, after)).toBe(true);
+    expect(matchPrediction(where, before)).toBe(false);
   });
 });

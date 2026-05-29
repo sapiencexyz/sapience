@@ -853,8 +853,13 @@ type Prediction implements Node {
   predictor: Address!
   counterparty: Address!
 
-  predictorToken: Address!
-  counterpartyToken: Address!
+  """
+  Null when the prediction has no pickConfiguration (e.g. an RPC-error row)
+  or the underlying token has not been minted yet — sourced from the
+  nullable `Picks.predictorToken` / `counterpartyToken` columns.
+  """
+  predictorToken: Address
+  counterpartyToken: Address
 
   predictorCollateral: BigInt!
   counterpartyCollateral: BigInt!

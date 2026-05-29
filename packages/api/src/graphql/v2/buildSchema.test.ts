@@ -110,4 +110,18 @@ describe('v2 schema stub', () => {
       expect(fields[name]).toBeDefined();
     }
   });
+
+  it('types Prediction.predictorToken / counterpartyToken as nullable (a prediction may lack a pickConfiguration)', async () => {
+    const schema = await buildV2Schema();
+    const fields = (
+      schema.getType('Prediction') as {
+        getFields: () => Record<string, { type: { toString(): string } }>;
+      }
+    ).getFields();
+    // The token values come from the nullable pickConfiguration relation,
+    // so the field must be nullable — `Address`, not `Address!`. (toString()
+    // avoids cross-graphql-copy instanceof checks.)
+    expect(fields.predictorToken.type.toString()).toBe('Address');
+    expect(fields.counterpartyToken.type.toString()).toBe('Address');
+  });
 });
