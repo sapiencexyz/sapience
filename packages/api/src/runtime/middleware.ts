@@ -99,7 +99,6 @@ const PRIVATE_LAN_DEV_PORTS = new Set(['5173']);
 
 type CorsOriginOptions = {
   allowPrivateLanDevOrigins?: boolean;
-  allowStagingPreviewOrigins?: boolean;
 };
 
 function isPrivateIpv4(hostname: string): boolean {
@@ -132,21 +131,13 @@ export function isAllowedCorsOrigin(
     /^https?:\/\/([a-zA-Z0-9-]+\.)*ethereal\.trade$/.test(origin) ||
     /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealtest\.net$/.test(origin) ||
     /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealdev\.net$/.test(origin) ||
-    /^https?:\/\/(app|docs)\.vercel\.app$/.test(origin) ||
+    /^https?:\/\/(app|docs|combo-bingo)\.vercel\.app$/.test(origin) ||
     /^https?:\/\/(app|docs)-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(
       origin
     ) ||
     /^https?:\/\/([a-zA-Z0-9-]+-)?meridianxyz\.vercel\.app$/.test(origin) ||
     /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
     /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
-  ) {
-    return true;
-  }
-
-  // Staging-only preview origins (e.g. external collaborators' Vercel previews).
-  if (
-    options.allowStagingPreviewOrigins === true &&
-    /^https?:\/\/combo-bingo\.vercel\.app$/.test(origin)
   ) {
     return true;
   }
@@ -198,7 +189,6 @@ function createCorsOptions(request: Request): cors.CorsOptions {
       if (
         isAllowedCorsOrigin(origin, {
           allowPrivateLanDevOrigins: isStagingRequest(request),
-          allowStagingPreviewOrigins: isStagingRequest(request),
         })
       ) {
         callback(null, true);

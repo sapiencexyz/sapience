@@ -53,18 +53,17 @@ describe('CORS origin allowlist', () => {
     expect(isAllowedCorsOrigin('https://evil.example:5173')).toBe(false);
   });
 
-  it('allows combo-bingo.vercel.app only when staging origins are enabled', async () => {
+  it('allows combo-bingo.vercel.app in all environments', async () => {
     const { isAllowedCorsOrigin } = await import('./middleware');
 
-    expect(
-      isAllowedCorsOrigin('https://combo-bingo.vercel.app', {
-        allowStagingPreviewOrigins: true,
-      })
-    ).toBe(true);
-    expect(isAllowedCorsOrigin('https://combo-bingo.vercel.app')).toBe(false);
+    expect(isAllowedCorsOrigin('https://combo-bingo.vercel.app')).toBe(true);
+    expect(isAllowedCorsOrigin('http://combo-bingo.vercel.app')).toBe(true);
+    expect(isAllowedCorsOrigin('https://combo-bingo-evil.vercel.app')).toBe(
+      false
+    );
   });
 
-  it('allows combo-bingo preflight on staging API host only', async () => {
+  it('allows combo-bingo preflight on production API host', async () => {
     vi.doMock('../core/config', () => ({
       config: {
         isProd: true,
@@ -78,22 +77,14 @@ describe('CORS origin allowlist', () => {
     const app = createApp();
     const origin = 'https://combo-bingo.vercel.app';
 
-    const stagingRes = await request(app)
-      .options('/graphql')
-      .set('Host', 'api.staging.sapience.xyz')
-      .set('Origin', origin)
-      .set('Access-Control-Request-Method', 'POST');
-
-    expect(stagingRes.status).toBe(200);
-    expect(stagingRes.headers['access-control-allow-origin']).toBe(origin);
-
     const prodRes = await request(app)
       .options('/graphql')
       .set('Host', 'api.sapience.xyz')
       .set('Origin', origin)
       .set('Access-Control-Request-Method', 'POST');
 
-    expect(prodRes.headers['access-control-allow-origin']).toBeUndefined();
+    expect(prodRes.status).toBe(200);
+    expect(prodRes.headers['access-control-allow-origin']).toBe(origin);
   });
 
   it('allows LAN dev preflight on staging API host only', async () => {
