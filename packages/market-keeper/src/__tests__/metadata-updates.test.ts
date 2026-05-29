@@ -529,6 +529,67 @@ describe('computeGroupMetadataUpdates', () => {
     expect(groupMetadataUpdates[0].old.negRiskMarketId).toBeNull();
   });
 
+  it('does not promote a Sapience group to negRisk when its siblings disagree on basket id', () => {
+    // refresh-metadata feeds one-market synthetic groups in. Without
+    // aggregating by the Sapience conditionGroupId first, the FIRST
+    // synthetic group's basket would stamp the whole group — even
+    // when another sibling has a different (or no) basket. Reject
+    // mixed sets the same way generate's grouping does.
+    const childA = makeMarket({
+      conditionId: '0xchildA',
+      slug: 'foo-a',
+      events: [
+        {
+          title: 'Mixed group',
+          slug: 'mixed-group',
+          negRisk: true,
+          negRiskMarketId: 'basket-x',
+        },
+      ],
+    });
+    const childB = makeMarket({
+      conditionId: '0xchildB',
+      slug: 'foo-b',
+      events: [
+        {
+          title: 'Mixed group',
+          slug: 'mixed-group',
+          negRisk: true,
+          negRiskMarketId: 'basket-y',
+        },
+      ],
+    });
+
+    const existing = new Map([
+      [
+        '0xchildA',
+        existingFromMarket(childA, {
+          conditionGroupId: 11,
+          conditionGroupNegRisk: false,
+          conditionGroupSimilarMarkets: [
+            'https://polymarket.com/event/mixed-group#foo-a',
+          ],
+        }),
+      ],
+      [
+        '0xchildB',
+        existingFromMarket(childB, {
+          conditionGroupId: 11,
+          conditionGroupNegRisk: false,
+          conditionGroupSimilarMarkets: [
+            'https://polymarket.com/event/mixed-group#foo-a',
+          ],
+        }),
+      ],
+    ]);
+
+    const { groupMetadataUpdates } = runDiff([childA, childB], existing);
+
+    // No negRiskMarketId set, because the siblings disagree. No
+    // similarMarkets update either (the stored URL is already current).
+    expect(groupMetadataUpdates).toHaveLength(0);
+  });
+
   it('refuses to demote ConditionGroup.negRisk from true to false; logs an error instead', () => {
     const errors: string[] = [];
     const errSpy = vi
