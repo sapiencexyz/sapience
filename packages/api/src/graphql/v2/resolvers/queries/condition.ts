@@ -95,6 +95,10 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
     where.endTime = r;
   }
 
+  // Keyset soundness: displayOrder is nullable ("null when not in a group");
+  // exclude NULL-keyed rows so the (displayOrder, id) keyset is a total order.
+  if (field === 'displayOrder') where.displayOrder = { not: null };
+
   const cursor = args.after ? decodeCursor(args.after) : null;
   const usesOffset = field === 'openInterest';
   const skip = cursor && usesOffset ? Number(cursor.k) + 1 : 0;

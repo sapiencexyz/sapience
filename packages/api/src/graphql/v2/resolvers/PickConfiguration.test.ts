@@ -99,4 +99,45 @@ describe('PickConfiguration (v2)', () => {
       })
     );
   });
+
+  it('pickConfigurations(orderBy: RESOLVED_AT) restricts to non-null resolvedAt', async () => {
+    await callResolver(pickConfigurations)(
+      null,
+      { first: 50, orderBy: { field: 'RESOLVED_AT', direction: 'DESC' } },
+      {},
+      null
+    );
+    const where = mockPrisma.picks.findMany.mock.calls[0]?.[0]?.where as {
+      resolvedAt?: unknown;
+    };
+    expect(where.resolvedAt).toEqual({ not: null });
+  });
+
+  it('pickConfigurations(orderBy: ENDS_AT) restricts to non-null endsAt', async () => {
+    await callResolver(pickConfigurations)(
+      null,
+      { first: 50, orderBy: { field: 'ENDS_AT', direction: 'DESC' } },
+      {},
+      null
+    );
+    const where = mockPrisma.picks.findMany.mock.calls[0]?.[0]?.where as {
+      endsAt?: unknown;
+    };
+    expect(where.endsAt).toEqual({ not: null });
+  });
+
+  it('pickConfigurations(orderBy: CREATED_AT) leaves endsAt/resolvedAt unconstrained', async () => {
+    await callResolver(pickConfigurations)(
+      null,
+      { first: 50, orderBy: { field: 'CREATED_AT', direction: 'DESC' } },
+      {},
+      null
+    );
+    const where = mockPrisma.picks.findMany.mock.calls[0]?.[0]?.where as {
+      endsAt?: unknown;
+      resolvedAt?: unknown;
+    };
+    expect(where.endsAt).toBeUndefined();
+    expect(where.resolvedAt).toBeUndefined();
+  });
 });

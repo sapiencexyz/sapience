@@ -203,4 +203,30 @@ describe('Condition (v2)', () => {
     };
     expect(where.public).toBeUndefined();
   });
+
+  it('conditions(orderBy: DISPLAY_ORDER) restricts to non-null displayOrder so the keyset stays sound', async () => {
+    await callResolver(conditions)(
+      null,
+      { first: 50, orderBy: { field: 'DISPLAY_ORDER', direction: 'ASC' } },
+      {},
+      null
+    );
+    const where = mockPrisma.condition.findMany.mock.calls[0]?.[0]?.where as {
+      displayOrder?: unknown;
+    };
+    expect(where.displayOrder).toEqual({ not: null });
+  });
+
+  it('conditions(orderBy: END_TIME) leaves displayOrder unconstrained (non-null column)', async () => {
+    await callResolver(conditions)(
+      null,
+      { first: 50, orderBy: { field: 'END_TIME', direction: 'ASC' } },
+      {},
+      null
+    );
+    const where = mockPrisma.condition.findMany.mock.calls[0]?.[0]?.where as {
+      displayOrder?: unknown;
+    };
+    expect(where.displayOrder).toBeUndefined();
+  });
 });

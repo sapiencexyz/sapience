@@ -81,6 +81,12 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     };
   }
 
+  // Keyset soundness: settledAt is nullable; exclude NULL-keyed rows so the
+  // (settledAt, id) keyset is a total order (applied to every page).
+  if (field === 'settledAt') {
+    where.settledAt = { not: null };
+  }
+
   const cursor = args.after ? decodeCursor(args.after) : null;
   const cursorWhere = cursor
     ? buildKeysetWhere<Prisma.PredictionWhereInput>({

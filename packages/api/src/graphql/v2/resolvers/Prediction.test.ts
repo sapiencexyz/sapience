@@ -114,4 +114,31 @@ describe('Prediction (v2)', () => {
       include: { pickConfiguration: { include: { picks: true } } },
     });
   });
+
+  it('predictions(orderBy: SETTLED_AT) restricts to non-null settledAt so the keyset stays sound', async () => {
+    await callResolver(predictions)(
+      null,
+      { first: 50, orderBy: { field: 'SETTLED_AT', direction: 'DESC' } },
+      {},
+      null
+    );
+    const where = mockPrisma.prediction.findMany.mock.calls[0]?.[0]?.where as {
+      settledAt?: unknown;
+    };
+    // settledAt is nullable; keyset over it would silently drop unsettled rows.
+    expect(where.settledAt).toEqual({ not: null });
+  });
+
+  it('predictions(orderBy: CREATED_AT) leaves settledAt unconstrained (non-null column)', async () => {
+    await callResolver(predictions)(
+      null,
+      { first: 50, orderBy: { field: 'CREATED_AT', direction: 'DESC' } },
+      {},
+      null
+    );
+    const where = mockPrisma.prediction.findMany.mock.calls[0]?.[0]?.where as {
+      settledAt?: unknown;
+    };
+    expect(where.settledAt).toBeUndefined();
+  });
 });

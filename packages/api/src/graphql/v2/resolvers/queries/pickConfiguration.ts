@@ -51,6 +51,11 @@ export const pickConfigurations: NonNullable<
     ];
   }
 
+  // Keyset soundness: endsAt / resolvedAt are nullable; exclude NULL-keyed
+  // rows when ordering by them so the (field, id) keyset is a total order.
+  if (field === 'endsAt') where.endsAt = { not: null };
+  if (field === 'resolvedAt') where.resolvedAt = { not: null };
+
   const cursor = args.after ? decodeCursor(args.after) : null;
   const cursorWhere = cursor
     ? buildKeysetWhere<Prisma.PicksWhereInput>({
