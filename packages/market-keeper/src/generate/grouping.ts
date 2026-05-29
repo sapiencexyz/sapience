@@ -489,6 +489,28 @@ export function computeMetadataUpdates(
       }
     }
 
+    // When the diff emits groupName but not externalEventId, force the
+    // event id into the payload anyway. Reason: the admin route's
+    // group-resolution precedence is (source, externalEventId) → name
+    // fallback. If we send only groupName for a group-rename
+    // (e.g. Polymarket changes the event title but keeps the same id),
+    // the route hits the name fallback — and with UNIQUE(name) dropped
+    // by migration 20260529001202, that can attach the condition to a
+    // different newest-id-wins row sharing the title. Carrying
+    // externalEventId — even unchanged — keeps the lookup on the
+    // canonical event-keyed path.
+    if (
+      Object.prototype.hasOwnProperty.call(fields, 'groupName') &&
+      !Object.prototype.hasOwnProperty.call(fields, 'externalEventId') &&
+      typeof fresh.externalEventId === 'string' &&
+      fresh.externalEventId.length > 0
+    ) {
+      (fields as Record<string, unknown>).externalEventId =
+        fresh.externalEventId;
+      (old as Record<string, unknown>).externalEventId =
+        existing.externalEventId;
+    }
+
     // Only rewrite shortName when deterministic regex produces a non-null
     // result. Never fall back to question — that would overwrite nice
     // LLM-generated shortNames with the full question on every drift.
