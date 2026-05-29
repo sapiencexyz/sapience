@@ -17,6 +17,14 @@ export interface ExistingCondition {
   similarMarketVolume?: number;
   similarMarketImage?: string;
   groupName?: string;
+  /**
+   * Polymarket event id of the group this condition belongs to, if any.
+   * Currently not pulled from GraphQL (the field isn't exposed yet) — kept
+   * on the shape for SyncableFields parity so the diff loop type-checks.
+   * Always undefined in practice today; the diff key list intentionally
+   * excludes it.
+   */
+  externalEventId?: string;
   conditionGroupId?: number;
   conditionGroupSimilarMarkets?: string[];
   // Only ConditionGroup.negRisk is exposed via GraphQL; the per-condition

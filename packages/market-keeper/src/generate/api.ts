@@ -129,6 +129,7 @@ export async function submitConditionGroup(
         categorySlug: group.categorySlug,
         similarMarkets: group.similarMarkets,
         negRiskMarketId: group.negRiskMarketId,
+        externalEventId: group.externalEventId,
       }),
     });
 
@@ -186,6 +187,7 @@ export async function submitCondition(
         tags: condition.tags,
         chainId: condition.chainId,
         groupName: condition.groupTitle,
+        externalEventId: condition.externalEventId,
         resolver: RESOLVER_ADDRESS,
         public: true,
         estimatedPrice: condition.estimatedPrice,
@@ -685,6 +687,7 @@ export async function submitToAPI(
       tags: condition.tags,
       chainId: condition.chainId,
       groupName: condition.groupTitle,
+      externalEventId: condition.externalEventId,
       resolver: RESOLVER_ADDRESS,
       estimatedPrice: condition.estimatedPrice,
       similarMarketVolume: condition.similarMarketVolume,

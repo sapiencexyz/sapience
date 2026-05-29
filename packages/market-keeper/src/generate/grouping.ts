@@ -123,7 +123,8 @@ export function transformToSapienceCondition(
   enrichment?: MarketEnrichmentOutput,
   tags: string[] = [],
   llmEndTime?: LlmEndTimeResult,
-  negRiskMarketId?: string
+  negRiskMarketId?: string,
+  externalEventId?: string
 ): SapienceCondition {
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
@@ -150,6 +151,7 @@ export function transformToSapienceCondition(
     categorySlug: enrichment?.category || inferSapienceCategorySlug(market), // Use LLM category or fallback
     chainId: CHAIN_ID,
     groupTitle,
+    externalEventId,
     estimatedPrice: parseYesPrice(market.outcomePrices),
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
@@ -178,6 +180,7 @@ export async function groupMarkets(
         title: event.title,
         markets: [market],
         eventSlug: event.slug,
+        eventId: event.id,
       });
     } else {
       // Rare: Polymarket markets without an associated event.
@@ -270,13 +273,18 @@ export async function groupMarkets(
     // underlying data problem; let it surface.
     const conditionGroupTitle = group.title;
     const groupNegRiskMarketId = sharedNegRiskMarketId(group.markets);
+    // Use the (pre-injected) eventId on MarketGroup when present, falling
+    // back to the market's events[0].id. Both should agree.
+    const groupExternalEventId =
+      group.eventId ?? market.events?.[0]?.id ?? undefined;
     const condition = transformToSapienceCondition(
       market,
       conditionGroupTitle,
       enrichment,
       marketTags,
       endTimeMap.get(market.conditionId),
-      groupNegRiskMarketId
+      groupNegRiskMarketId,
+      groupExternalEventId
     );
 
     // Use event description if available, otherwise use market's description
@@ -294,6 +302,7 @@ export async function groupMarkets(
       similarMarkets: groupUrl ? [groupUrl] : [],
       tags: marketTags,
       negRiskMarketId: groupNegRiskMarketId,
+      externalEventId: groupExternalEventId,
       conditions: [condition],
     });
   }
@@ -308,7 +317,8 @@ export async function groupMarkets(
       enrichments.get(m.conditionId),
       mTags,
       endTimeMap.get(m.conditionId),
-      sharedNegRiskMarketId([m])
+      sharedNegRiskMarketId([m]),
+      m.events?.[0]?.id ?? undefined
     );
   });
 
@@ -376,6 +386,7 @@ export function freshMetadataFor(
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
     groupName: groupTitle,
+    externalEventId: market.events?.[0]?.id ?? undefined,
   };
 }
 
