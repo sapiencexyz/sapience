@@ -910,11 +910,15 @@ export default function CardDetailScreen({ cardId }: Props) {
                   const status = submitter.progress[l.id]?.status ?? 'pending';
                   const filled = (card.filledLineBitmap & (1 << i)) !== 0;
                   const done = filled || status === 'done';
-                  const submitFailed = status === 'failed';
+                  // On-chain `filled` wins over transient submitter status: a
+                  // retry re-attempts already-funded lines and they revert
+                  // (LineAlreadyFilled) — don't paint those red/in-flight.
+                  const submitFailed = !filled && status === 'failed';
                   const inflight =
-                    status === 'quoting' ||
-                    status === 'signing' ||
-                    status === 'submitting';
+                    !filled &&
+                    (status === 'quoting' ||
+                      status === 'signing' ||
+                      status === 'submitting');
                   const o = lineOutcomes[l.id];
 
                   // Resolve the line's display verb/amount/tone.
