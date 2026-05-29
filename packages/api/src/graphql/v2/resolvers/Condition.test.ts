@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fromGlobalIdV2 } from '../relay/nodeRegistry';
+import { encodeCursor } from '../relay/cursor';
 
 const mockPrisma = vi.hoisted(() => ({
   condition: { findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn() },
@@ -230,6 +231,30 @@ describe('Condition (v2)', () => {
       displayOrder?: unknown;
     };
     expect(where.displayOrder).toBeUndefined();
+  });
+
+  it('conditions(after:) totalCount counts the full filtered set, not just rows after the cursor', async () => {
+    const after = encodeCursor({ k: '2026-01-01T00:00:00.000Z', id: '0xabc' });
+    const result = (await callResolver(conditions)(
+      null,
+      { first: 10, after, orderBy: { field: 'CREATED_AT', direction: 'DESC' } },
+      {},
+      null
+    )) as { totalCount: unknown };
+
+    // totalCount is a lazy thunk — invoke it to trigger the count query.
+    const total = result.totalCount;
+    if (typeof total === 'function') await (total as () => Promise<number>)();
+
+    // The page query carries the cursor (keyset) predicate...
+    expect(
+      mockPrisma.condition.findMany.mock.calls[0]?.[0]?.where
+    ).toHaveProperty('AND');
+    // ...but the COUNT must use only the base where, so totalCount is the full
+    // filtered count and stays stable across pages — not "rows after the cursor".
+    expect(mockPrisma.condition.count.mock.calls[0]?.[0]?.where).toEqual({
+      public: true,
+    });
   });
 
   it('conditions(orderBy: OPEN_INTEREST) routes through a raw ::numeric query, not findMany', async () => {

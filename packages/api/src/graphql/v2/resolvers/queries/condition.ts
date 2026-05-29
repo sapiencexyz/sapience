@@ -96,7 +96,11 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
   return buildConnection({
     rows,
     first,
-    totalCount: () => prisma.condition.count({ where: effectiveWhere }),
+    // Count the full filtered set with the BASE where — NOT effectiveWhere,
+    // which folds in the cursor predicate and would make totalCount shrink to
+    // "rows after the cursor" on every paged request (Relay totalCount must be
+    // stable across pages).
+    totalCount: () => prisma.condition.count({ where }),
     getCursor: (row, idx) => {
       const k = usesOffset
         ? String(skip + idx)
