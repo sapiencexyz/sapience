@@ -31,11 +31,12 @@ export default [
   },
   {
     // instrument.ts runs Sentry init before the logger module loads, so it
-    // can't use `logger`. One-off scripts (src/scripts/*) and prisma/seed.ts
-    // are CLI tools where console output is the intentional UX.
+    // can't use `logger`. One-off scripts (src/scripts/*, scripts/*) and
+    // prisma/seed.ts are CLI tools where console output is the intentional UX.
     files: [
       'src/core/instrument.ts',
       'src/scripts/**',
+      'scripts/**',
       'prisma/seed.ts',
     ],
     rules: {
