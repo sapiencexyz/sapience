@@ -17,11 +17,15 @@ import {
   normalizeDirection,
   withCursorWhere,
 } from '../../relay/connection';
+import { tryFromGlobalIdV2 } from '../../relay/nodeRegistry';
 
 export const conditionGroup: NonNullable<
   QueryResolvers['conditionGroup']
-> = async (_parent, { id }) =>
-  prisma.conditionGroup.findUnique({ where: { id } });
+> = async (_parent, { id }) => {
+  const parts = tryFromGlobalIdV2(id);
+  if (!parts || parts.type !== 'ConditionGroup') return null;
+  return prisma.conditionGroup.findUnique({ where: { name: parts.id } });
+};
 
 const FIELD_TO_PRISMA: Record<string, string> = {
   CREATED_AT: 'createdAt',

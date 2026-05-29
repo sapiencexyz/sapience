@@ -15,11 +15,16 @@ import {
   withCursorWhere,
 } from '../../relay/connection';
 import { CACHE_HINTS, setCacheHint } from '../../cacheHints';
+import { tryFromGlobalIdV2 } from '../../relay/nodeRegistry';
 
 export const category: NonNullable<QueryResolvers['category']> = async (
   _parent,
   { id }
-) => prisma.category.findUnique({ where: { id } });
+) => {
+  const parts = tryFromGlobalIdV2(id);
+  if (!parts || parts.type !== 'Category') return null;
+  return prisma.category.findUnique({ where: { slug: parts.id } });
+};
 
 const FIELD_TO_PRISMA: Record<string, 'name' | 'createdAt'> = {
   NAME: 'name',

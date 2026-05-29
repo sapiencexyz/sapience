@@ -19,15 +19,12 @@ type ConditionRow = Prisma.ConditionGetPayload<true>;
 
 registerNodeTypeV2({
   type: 'ConditionGroup',
-  loader: async (id) => {
-    const rowId = Number(id);
-    if (!Number.isInteger(rowId)) return null;
-    return prisma.conditionGroup.findUnique({ where: { id: rowId } });
-  },
+  loader: async (id) =>
+    prisma.conditionGroup.findUnique({ where: { name: id } }),
 });
 
 export const ConditionGroup: ConditionGroupResolvers = {
-  id: (parent) => toGlobalIdV2('ConditionGroup', String(parent.id)),
+  id: (parent) => toGlobalIdV2('ConditionGroup', parent.name),
 
   category: async (parent, _args, ctx) => {
     if (parent.categoryId == null) return null;

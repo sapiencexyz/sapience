@@ -10,13 +10,9 @@ import type { CategoryResolvers } from '../__generated__/resolvers';
 
 registerNodeTypeV2({
   type: 'Category',
-  loader: async (id) => {
-    const rowId = Number(id);
-    if (!Number.isInteger(rowId)) return null;
-    return prisma.category.findUnique({ where: { id: rowId } });
-  },
+  loader: async (id) => prisma.category.findUnique({ where: { slug: id } }),
 });
 
 export const Category: CategoryResolvers = {
-  id: (parent) => toGlobalIdV2('Category', String(parent.id)),
+  id: (parent) => toGlobalIdV2('Category', parent.slug),
 };

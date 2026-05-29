@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fromGlobalIdV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import {
+  fromGlobalIdV2,
+  resolveNodeV2,
+  toGlobalIdV2,
+} from '../relay/nodeRegistry';
 
 const mockPrisma = vi.hoisted(() => ({
   claim: { findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn() },
@@ -28,28 +32,77 @@ describe('Claim + Close (v2)', () => {
     mockPrisma.close.count.mockResolvedValue(0);
   });
 
-  it('encodes Claim / Close global ids as v2 Claim:<rowId> / Close:<rowId>', async () => {
+  it('encodes a Claim global id from its natural key (chainId:txHash:logIndex), not the row id', async () => {
     const claimId = await callResolver<string>(Claim.id)(
-      { id: 11 },
+      { id: 11, chainId: 8453, txHash: '0xaa', logIndex: 3 },
       {},
       {},
       null
     );
-    const closeId = await callResolver<string>(Close.id)(
-      { id: 22 },
-      {},
-      {},
-      null
-    );
-    expect(fromGlobalIdV2(claimId)).toEqual({ type: 'Claim', id: '11' });
-    expect(fromGlobalIdV2(closeId)).toEqual({ type: 'Close', id: '22' });
+    expect(fromGlobalIdV2(claimId)).toEqual({
+      type: 'Claim',
+      id: '8453:0xaa:3',
+    });
   });
 
-  it('claim(id:) decodes a Claim globalId and queries by row id', async () => {
-    const id = toGlobalIdV2('Claim', '11');
+  it('encodes a Close global id from its natural key (chainId:txHash:pickConfigId)', async () => {
+    const closeId = await callResolver<string>(Close.id)(
+      { id: 22, chainId: 8453, txHash: '0xbb', pickConfigId: '0xpc' },
+      {},
+      {},
+      null
+    );
+    expect(fromGlobalIdV2(closeId)).toEqual({
+      type: 'Close',
+      id: '8453:0xbb:0xpc',
+    });
+  });
+
+  it('close(id:) decodes a natural-key Close globalId and queries by the unique tuple', async () => {
+    const id = toGlobalIdV2('Close', '8453:0xbb:0xpc');
+    await callResolver(close)(null, { id }, {}, null);
+    expect(mockPrisma.close.findUnique).toHaveBeenCalledWith({
+      where: {
+        chainId_txHash_pickConfigId: {
+          chainId: 8453,
+          txHash: '0xbb',
+          pickConfigId: '0xpc',
+        },
+      },
+    });
+  });
+
+  it('node() refetches a Close by its natural-key global id', async () => {
+    const id = toGlobalIdV2('Close', '8453:0xbb:0xpc');
+    await resolveNodeV2(id, {});
+    expect(mockPrisma.close.findUnique).toHaveBeenCalledWith({
+      where: {
+        chainId_txHash_pickConfigId: {
+          chainId: 8453,
+          txHash: '0xbb',
+          pickConfigId: '0xpc',
+        },
+      },
+    });
+  });
+
+  it('claim(id:) decodes a natural-key Claim globalId and queries by the unique tuple', async () => {
+    const id = toGlobalIdV2('Claim', '8453:0xaa:3');
     await callResolver(claim)(null, { id }, {}, null);
     expect(mockPrisma.claim.findUnique).toHaveBeenCalledWith({
-      where: { id: 11 },
+      where: {
+        chainId_txHash_logIndex: { chainId: 8453, txHash: '0xaa', logIndex: 3 },
+      },
+    });
+  });
+
+  it('node() refetches a Claim by its natural-key global id', async () => {
+    const id = toGlobalIdV2('Claim', '8453:0xaa:3');
+    await resolveNodeV2(id, {});
+    expect(mockPrisma.claim.findUnique).toHaveBeenCalledWith({
+      where: {
+        chainId_txHash_logIndex: { chainId: 8453, txHash: '0xaa', logIndex: 3 },
+      },
     });
   });
 

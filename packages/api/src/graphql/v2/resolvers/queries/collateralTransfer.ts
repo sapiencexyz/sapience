@@ -25,9 +25,20 @@ export const collateralTransfer: NonNullable<
 > = async (_parent, { id }) => {
   const parts = tryFromGlobalIdV2(id);
   if (!parts || parts.type !== 'CollateralTransfer') return null;
-  const rowId = Number(parts.id);
-  if (!Number.isInteger(rowId)) return null;
-  return prisma.collateralTransfer.findUnique({ where: { id: rowId } });
+  const [chainId, transactionHash, logIndex] = parts.id.split(':');
+  const c = Number(chainId);
+  const l = Number(logIndex);
+  if (!transactionHash || !Number.isInteger(c) || !Number.isInteger(l))
+    return null;
+  return prisma.collateralTransfer.findUnique({
+    where: {
+      chainId_transactionHash_logIndex: {
+        chainId: c,
+        transactionHash,
+        logIndex: l,
+      },
+    },
+  });
 };
 
 const FIELD_TO_PRISMA: Record<string, 'blockNumber' | 'timestamp'> = {

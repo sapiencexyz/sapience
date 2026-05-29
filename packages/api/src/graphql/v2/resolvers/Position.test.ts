@@ -25,14 +25,17 @@ describe('Position (v2)', () => {
     mockPrisma.position.count.mockResolvedValue(0);
   });
 
-  it('encodes the global id as v2 Position:<rowId>', async () => {
+  it('encodes the global id from its natural key (chainId:tokenAddress:holder)', async () => {
     const id = await callResolver<string>(Position.id)(
-      { id: 42 },
+      { id: 42, chainId: 8453, tokenAddress: '0xtok', holder: '0xhodler' },
       {},
       {},
       null
     );
-    expect(fromGlobalIdV2(id)).toEqual({ type: 'Position', id: '42' });
+    expect(fromGlobalIdV2(id)).toEqual({
+      type: 'Position',
+      id: '8453:0xtok:0xhodler',
+    });
   });
 
   it('holder / token are lowercased', () => {
@@ -48,11 +51,17 @@ describe('Position (v2)', () => {
     );
   });
 
-  it('position(id:) decodes a v2 globalId and queries by row id', async () => {
-    const globalId = toGlobalIdV2('Position', '42');
+  it('position(id:) decodes a natural-key globalId and queries by the unique tuple', async () => {
+    const globalId = toGlobalIdV2('Position', '8453:0xtok:0xhodler');
     await callResolver(position)(null, { id: globalId }, {}, null);
     expect(mockPrisma.position.findUnique).toHaveBeenCalledWith({
-      where: { id: 42 },
+      where: {
+        chainId_tokenAddress_holder: {
+          chainId: 8453,
+          tokenAddress: '0xtok',
+          holder: '0xhodler',
+        },
+      },
       include: { pickConfiguration: { include: { picks: true } } },
     });
   });

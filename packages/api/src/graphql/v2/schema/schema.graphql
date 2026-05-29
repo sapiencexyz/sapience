@@ -1746,7 +1746,7 @@ type Query {
   """
   Look up a single condition group by its integer primary key.
   """
-  conditionGroup(id: Int!): ConditionGroup
+  conditionGroup(id: ID!): ConditionGroup
 
   """
   Relay-shaped connection over condition groups. Defaults to
@@ -1943,7 +1943,7 @@ type Query {
   """
   Look up a single category by its integer primary key.
   """
-  category(id: Int!): Category
+  category(id: ID!): Category
 
   """
   Relay-shaped connection over categories. Defaults to `NAME ASC`.

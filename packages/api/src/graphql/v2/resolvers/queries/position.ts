@@ -26,10 +26,13 @@ export const position: NonNullable<QueryResolvers['position']> = async (
 ) => {
   const parts = tryFromGlobalIdV2(id);
   if (!parts || parts.type !== 'Position') return null;
-  const rowId = Number(parts.id);
-  if (!Number.isInteger(rowId)) return null;
+  const [chainId, tokenAddress, holder] = parts.id.split(':');
+  const c = Number(chainId);
+  if (!tokenAddress || !holder || !Number.isInteger(c)) return null;
   return prisma.position.findUnique({
-    where: { id: rowId },
+    where: {
+      chainId_tokenAddress_holder: { chainId: c, tokenAddress, holder },
+    },
     include: { pickConfiguration: { include: { picks: true } } },
   });
 };

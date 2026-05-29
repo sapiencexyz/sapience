@@ -1170,7 +1170,7 @@ export type QueryCategoriesArgs = {
 };
 
 export type QueryCategoryArgs = {
-  id: Scalars['Int']['input'];
+  id: Scalars['ID']['input'];
 };
 
 export type QueryClaimArgs = {
@@ -1211,7 +1211,7 @@ export type QueryConditionArgs = {
 };
 
 export type QueryConditionGroupArgs = {
-  id: Scalars['Int']['input'];
+  id: Scalars['ID']['input'];
 };
 
 export type QueryConditionGroupsArgs = {

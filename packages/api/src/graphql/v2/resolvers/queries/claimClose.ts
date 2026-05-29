@@ -16,25 +16,27 @@ import {
 } from '../../relay/connection';
 import { tryFromGlobalIdV2 } from '../../relay/nodeRegistry';
 
-const decodeRowId = (
-  id: string,
-  expectedType: 'Claim' | 'Close'
-): number | null => {
-  const parts = tryFromGlobalIdV2(id);
-  if (!parts || parts.type !== expectedType) return null;
-  const rowId = Number(parts.id);
-  return Number.isInteger(rowId) ? rowId : null;
-};
-
 // ---- Claim ----
+
+const decodeClaimKey = (
+  id: string
+): { chainId: number; txHash: string; logIndex: number } | null => {
+  const parts = tryFromGlobalIdV2(id);
+  if (!parts || parts.type !== 'Claim') return null;
+  const [chainId, txHash, logIndex] = parts.id.split(':');
+  const c = Number(chainId);
+  const l = Number(logIndex);
+  if (!txHash || !Number.isInteger(c) || !Number.isInteger(l)) return null;
+  return { chainId: c, txHash, logIndex: l };
+};
 
 export const claim: NonNullable<QueryResolvers['claim']> = async (
   _parent,
   { id }
 ) => {
-  const rowId = decodeRowId(id, 'Claim');
-  if (rowId == null) return null;
-  return prisma.claim.findUnique({ where: { id: rowId } });
+  const key = decodeClaimKey(id);
+  if (!key) return null;
+  return prisma.claim.findUnique({ where: { chainId_txHash_logIndex: key } });
 };
 
 export const claims: NonNullable<QueryResolvers['claims']> = async (
@@ -78,13 +80,26 @@ export const claims: NonNullable<QueryResolvers['claims']> = async (
 
 // ---- Close ----
 
+const decodeCloseKey = (
+  id: string
+): { chainId: number; txHash: string; pickConfigId: string } | null => {
+  const parts = tryFromGlobalIdV2(id);
+  if (!parts || parts.type !== 'Close') return null;
+  const [chainId, txHash, pickConfigId] = parts.id.split(':');
+  const c = Number(chainId);
+  if (!txHash || !pickConfigId || !Number.isInteger(c)) return null;
+  return { chainId: c, txHash, pickConfigId };
+};
+
 export const close: NonNullable<QueryResolvers['close']> = async (
   _parent,
   { id }
 ) => {
-  const rowId = decodeRowId(id, 'Close');
-  if (rowId == null) return null;
-  return prisma.close.findUnique({ where: { id: rowId } });
+  const key = decodeCloseKey(id);
+  if (!key) return null;
+  return prisma.close.findUnique({
+    where: { chainId_txHash_pickConfigId: key },
+  });
 };
 
 export const closes: NonNullable<QueryResolvers['closes']> = async (

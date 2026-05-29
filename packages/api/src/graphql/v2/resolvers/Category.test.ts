@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fromGlobalIdV2 } from '../relay/nodeRegistry';
+import { fromGlobalIdV2, toGlobalIdV2 } from '../relay/nodeRegistry';
 
 const mockPrisma = vi.hoisted(() => ({
   category: { findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn() },
@@ -25,20 +25,24 @@ describe('Category (v2)', () => {
     mockPrisma.category.count.mockResolvedValue(0);
   });
 
-  it('encodes the global id as v2 Category:<rowId>', async () => {
+  it('encodes the global id from its slug, not the row id', async () => {
     const id = await callResolver<string>(Category.id)(
-      { id: 42 },
+      { id: 42, slug: 'sports' },
       {},
       {},
       null
     );
-    expect(fromGlobalIdV2(id)).toEqual({ type: 'Category', id: '42' });
+    expect(fromGlobalIdV2(id)).toEqual({ type: 'Category', id: 'sports' });
   });
 
-  it('category(id:) returns null when not found', async () => {
+  it('category(id:) decodes the slug global id and queries by slug', async () => {
     mockPrisma.category.findUnique.mockResolvedValueOnce(null);
-    const result = await callResolver(category)(null, { id: 999 }, {}, null);
+    const id = toGlobalIdV2('Category', 'sports');
+    const result = await callResolver(category)(null, { id }, {}, null);
     expect(result).toBeNull();
+    expect(mockPrisma.category.findUnique).toHaveBeenCalledWith({
+      where: { slug: 'sports' },
+    });
   });
 
   it('categories(...) applies a case-insensitive search filter', async () => {

@@ -1574,7 +1574,7 @@ type Query {
   vaults(first: Int = 50, after: String, filter: VaultFilter, orderBy: VaultOrder): VaultConnection!
 
   """Look up a single condition group by its integer primary key."""
-  conditionGroup(id: Int!): ConditionGroup
+  conditionGroup(id: ID!): ConditionGroup
 
   """
   Relay-shaped connection over condition groups. Defaults to
@@ -1690,7 +1690,7 @@ type Query {
   trades(first: Int = 50, after: String, filter: TradeFilter, orderBy: TradeOrder): TradeConnection!
 
   """Look up a single category by its integer primary key."""
-  category(id: Int!): Category
+  category(id: ID!): Category
 
   """Relay-shaped connection over categories. Defaults to `NAME ASC`."""
   categories(first: Int = 100, after: String, filter: CategoryFilter, orderBy: CategoryOrder): CategoryConnection!

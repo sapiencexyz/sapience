@@ -1,11 +1,9 @@
 /**
  * v2 Claim + Close — settlement-side events.
  *
- * Both are identified by their integer row id (the natural key
- * `(chainId, txHash, logIndex)` is composite; we expose the row id as
- * the simpler handle). Domain id field is `claimId` / `closeId`
- * respectively for symmetry with other entities, in case the natural
- * key composite is preferred later.
+ * Global ids encode each event's natural key, never the Prisma row id:
+ * Claim → `(chainId, txHash, logIndex)`, Close → `(chainId, txHash,
+ * pickConfigId)`. The loaders refetch via the matching compound unique.
  */
 
 import prisma from '../../../core/db';
@@ -18,30 +16,49 @@ import type {
 registerNodeTypeV2({
   type: 'Claim',
   loader: async (id) => {
-    const rowId = Number(id);
-    if (!Number.isInteger(rowId)) return null;
-    return prisma.claim.findUnique({ where: { id: rowId } });
+    const [chainId, txHash, logIndex] = id.split(':');
+    const c = Number(chainId);
+    const l = Number(logIndex);
+    if (!txHash || !Number.isInteger(c) || !Number.isInteger(l)) return null;
+    return prisma.claim.findUnique({
+      where: {
+        chainId_txHash_logIndex: { chainId: c, txHash, logIndex: l },
+      },
+    });
   },
 });
 
 registerNodeTypeV2({
   type: 'Close',
   loader: async (id) => {
-    const rowId = Number(id);
-    if (!Number.isInteger(rowId)) return null;
-    return prisma.close.findUnique({ where: { id: rowId } });
+    const [chainId, txHash, pickConfigId] = id.split(':');
+    const c = Number(chainId);
+    if (!txHash || !pickConfigId || !Number.isInteger(c)) return null;
+    return prisma.close.findUnique({
+      where: {
+        chainId_txHash_pickConfigId: { chainId: c, txHash, pickConfigId },
+      },
+    });
   },
 });
 
 export const Claim: ClaimResolvers = {
-  id: (parent) => toGlobalIdV2('Claim', String(parent.id)),
+  id: (parent) =>
+    toGlobalIdV2(
+      'Claim',
+      `${parent.chainId}:${parent.txHash}:${parent.logIndex}`
+    ),
   escrow: (parent) => parent.marketAddress.toLowerCase(),
   holder: (parent) => parent.holder.toLowerCase(),
   positionToken: (parent) => parent.positionToken.toLowerCase(),
 };
 
 export const Close: CloseResolvers = {
-  id: (parent) => toGlobalIdV2('Close', String(parent.id)),
+  id: (parent) =>
+    toGlobalIdV2(
+      'Close',
+      `${parent.chainId}:${parent.txHash}:${parent.pickConfigId}`
+    ),
   escrow: (parent) => parent.marketAddress.toLowerCase(),
   predictorHolder: (parent) => parent.predictorHolder.toLowerCase(),
   counterpartyHolder: (parent) => parent.counterpartyHolder.toLowerCase(),

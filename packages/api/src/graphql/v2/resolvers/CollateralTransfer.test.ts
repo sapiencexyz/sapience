@@ -46,16 +46,16 @@ describe('CollateralTransfer (v2)', () => {
     mockPrisma.collateralTransfer.count.mockResolvedValue(0);
   });
 
-  it('encodes the global id as v2 CollateralTransfer:<rowId>', async () => {
+  it('encodes the global id from its natural key (chainId:transactionHash:logIndex)', async () => {
     const id = await callResolver<string>(CollateralTransfer.id)(
-      { id: 99 },
+      { id: 99, chainId: 8453, transactionHash: '0xtx', logIndex: 7 },
       {},
       {},
       null
     );
     expect(fromGlobalIdV2(id)).toEqual({
       type: 'CollateralTransfer',
-      id: '99',
+      id: '8453:0xtx:7',
     });
   });
 
@@ -70,11 +70,17 @@ describe('CollateralTransfer (v2)', () => {
     ).toBe('0xabc');
   });
 
-  it('collateralTransfer(id:) decodes a globalId and queries by row id', async () => {
-    const id = toGlobalIdV2('CollateralTransfer', '99');
+  it('collateralTransfer(id:) decodes a natural-key globalId and queries by the unique tuple', async () => {
+    const id = toGlobalIdV2('CollateralTransfer', '8453:0xtx:7');
     await callResolver(collateralTransfer)(null, { id }, {}, null);
     expect(mockPrisma.collateralTransfer.findUnique).toHaveBeenCalledWith({
-      where: { id: 99 },
+      where: {
+        chainId_transactionHash_logIndex: {
+          chainId: 8453,
+          transactionHash: '0xtx',
+          logIndex: 7,
+        },
+      },
     });
   });
 
