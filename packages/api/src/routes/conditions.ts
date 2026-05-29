@@ -210,6 +210,9 @@ router.post('/batch-create', async (req: Request, res: Response) => {
           message: `endTime must be a valid Unix timestamp for ${item.conditionHash}`,
         });
       }
+      // batch-create intentionally accepts past endTimes — historical
+      // backfills (PR #1581) rely on it. The keeper escalates a WARN
+      // log per past-dated submission so they're auditable post-hoc.
     }
 
     // Resolve category slugs (batch lookup)
@@ -339,12 +342,27 @@ router.post('/batch-create', async (req: Request, res: Response) => {
       const categoryId = firstItem?.categorySlug
         ? (categoryBySlug.get(firstItem.categorySlug) ?? null)
         : null;
+      // Seed the group's similarMarkets from the first item's payload so
+      // auto-created groups don't ship empty for the discovery surface.
+      // For event-keyed Polymarket groups every sibling carries the same
+      // list, so picking the first is safe; admins can curate later via
+      // PUT /admin/conditionGroups/:id.
+      const seedSimilarMarkets =
+        Array.isArray(firstItem?.similarMarkets) &&
+        firstItem!.similarMarkets!.every(
+          (s) => typeof s === 'string' && isHttpUrl(s)
+        )
+          ? firstItem!.similarMarkets
+          : undefined;
       try {
         const group = await prisma.conditionGroup.create({
           data: {
             name,
             categoryId,
             negRiskMarketId: leaderBasket,
+            ...(seedSimilarMarkets
+              ? { similarMarkets: seedSimilarMarkets }
+              : {}),
           },
         });
         groupIdByName.set(name, group.id);
@@ -578,12 +596,22 @@ router.post('/', async (req: Request, res: Response) => {
       });
       if (!group) {
         // Create with inherited category (smart default). When the payload
-        // claims a basket id, the brand-new group adopts it.
+        // claims a basket id, the brand-new group adopts it. Seed
+        // similarMarkets from the payload so auto-created groups don't
+        // ship empty for the discovery surface (admins can curate later).
+        const seedSimilarMarkets =
+          Array.isArray(similarMarkets) &&
+          similarMarkets.every((s) => typeof s === 'string' && isHttpUrl(s))
+            ? similarMarkets
+            : undefined;
         group = await prisma.conditionGroup.create({
           data: {
             name: groupName.trim(),
             categoryId: resolvedCategoryId ?? undefined,
             negRiskMarketId: normalizedNegRiskMarketId,
+            ...(seedSimilarMarkets
+              ? { similarMarkets: seedSimilarMarkets }
+              : {}),
           },
         });
       }
@@ -927,24 +955,43 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
       }
     }
 
-    // Pre-fetch existing rows ONLY when at least one update touches endTime.
-    // Mirrors the per-condition PUT /admin/conditions/:id guard at
-    // L832-L836: settled rows reject endTime changes; their other fields
-    // are still updatable. Skipping the query when no endTime is in scope
-    // keeps the common metadata-only flow on one round-trip per row.
+    // Pre-fetch existing rows when at least one update touches endTime
+    // OR groupName. endTime needs `settled` for the settled-row guard
+    // (mirrors per-condition PUT /admin/conditions/:id at L832-L836).
+    // groupName needs `conditionGroupId` so the basket invariant can
+    // grandfather conditions that are already in the target group —
+    // a routine metadata edit must not re-trip basket admission on a
+    // condition that's been a member all along.
     const touchesEndTime = updates.some(
       (u) => typeof u.fields.endTime === 'number'
     );
-    const existingById = touchesEndTime
-      ? new Map(
-          (
-            await prisma.condition.findMany({
-              where: { id: { in: [...new Set(updates.map((u) => u.id))] } },
-              select: { id: true, endTime: true, settled: true },
-            })
-          ).map((r) => [r.id, r])
-        )
-      : new Map<string, { id: string; endTime: number; settled: boolean }>();
+    const touchesGroup = updates.some((u) =>
+      Boolean(u.fields.groupName?.trim())
+    );
+    const existingById =
+      touchesEndTime || touchesGroup
+        ? new Map(
+            (
+              await prisma.condition.findMany({
+                where: { id: { in: [...new Set(updates.map((u) => u.id))] } },
+                select: {
+                  id: true,
+                  endTime: true,
+                  settled: true,
+                  conditionGroupId: true,
+                },
+              })
+            ).map((r) => [r.id, r])
+          )
+        : new Map<
+            string,
+            {
+              id: string;
+              endTime: number;
+              settled: boolean;
+              conditionGroupId: number | null;
+            }
+          >();
 
     // Resolve referenced groups: load existing ones by name and decide which
     // basket id (if any) to stamp onto groups we still need to create.
@@ -975,12 +1022,16 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
 
     // Validate basket invariants against any *already-persisted* groups
     // before creating new ones, otherwise a mid-batch reject would orphan
-    // empty rows.
+    // empty rows. Conditions already linked to the target group are
+    // grandfathered — admission is what the invariant guards, not
+    // continuing membership.
     for (const u of updates) {
       const groupName = u.fields.groupName?.trim();
       if (!groupName) continue;
       const group = existingGroupsByName.get(groupName);
       if (!group) continue;
+      const existingRow = existingById.get(u.id);
+      if (existingRow && existingRow.conditionGroupId === group.id) continue;
       const payloadBasket = normalizeNegRiskMarketId(u.fields.negRiskMarketId);
       if (!basketsAgree(group.negRiskMarketId, payloadBasket)) {
         return res.status(400).json({
@@ -1065,6 +1116,42 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
               where: { name },
             });
             if (found) {
+              // Re-check incoming updates against the now-existing group's
+              // basket. Without this, a race where our leader-stamp lost
+              // would silently admit every update into whatever basket the
+              // winner stamped. Mirrors the batch-create race path.
+              const raceMismatched = incomingForGroup.filter((u) => {
+                const existingRow = existingById.get(u.id);
+                if (existingRow && existingRow.conditionGroupId === found.id) {
+                  return false;
+                }
+                return !basketsAgree(
+                  found.negRiskMarketId,
+                  normalizeNegRiskMarketId(u.fields.negRiskMarketId)
+                );
+              });
+              if (raceMismatched.length > 0) {
+                return res.status(400).json({
+                  ...negRiskMismatchPayload(
+                    `Cannot add non-matching condition${raceMismatched.length > 1 ? 's' : ''} to negRisk group ${name}. ` +
+                      `Expected negRiskMarketId ${found.negRiskMarketId ?? 'null'}; ` +
+                      `mismatched: ${raceMismatched.map((u) => u.id).join(', ')}`,
+                    [
+                      {
+                        type: 'EXISTING_GROUP_MISMATCH',
+                        groupName: name,
+                        expectedNegRiskMarketId: found.negRiskMarketId,
+                        mismatched: raceMismatched.map((u) => ({
+                          conditionHash: u.id,
+                          actualNegRiskMarketId: normalizeNegRiskMarketId(
+                            u.fields.negRiskMarketId
+                          ),
+                        })),
+                      },
+                    ]
+                  ),
+                });
+              }
               groupByName.set(name, {
                 id: found.id,
                 negRiskMarketId: found.negRiskMarketId,
@@ -1326,13 +1413,23 @@ router.put('/:id', async (req: Request, res: Response) => {
         where: { name: groupName.trim() },
       });
       if (!group) {
-        // Create with inherited category (smart default: use resolved or existing category)
+        // Create with inherited category (smart default: use resolved or
+        // existing category). Seed similarMarkets from the payload so
+        // auto-created groups don't ship empty for the discovery surface.
         const categoryForGroup = resolvedCategoryId ?? existing.categoryId;
+        const seedSimilarMarkets =
+          Array.isArray(similarMarkets) &&
+          similarMarkets.every((s) => typeof s === 'string' && isHttpUrl(s))
+            ? similarMarkets
+            : undefined;
         group = await prisma.conditionGroup.create({
           data: {
             name: groupName.trim(),
             categoryId: categoryForGroup ?? undefined,
             negRiskMarketId: normalizedNegRiskMarketId,
+            ...(seedSimilarMarkets
+              ? { similarMarkets: seedSimilarMarkets }
+              : {}),
           },
         });
       }
@@ -1362,7 +1459,15 @@ router.put('/:id', async (req: Request, res: Response) => {
           .json({ message: 'tags must be an array of strings' });
       }
 
+      // Only validate the basket on *admission* — a condition already in
+      // the target group is grandfathered, matching the comment above.
+      // Routine metadata edits (description, tags, etc.) restate
+      // groupName without negRiskMarketId, so without this short-circuit
+      // every such edit on a negRisk group member would 400.
+      const isAdmission =
+        targetGroup && existing.conditionGroupId !== targetGroup.id;
       if (
+        isAdmission &&
         targetGroup &&
         !basketsAgree(targetGroup.negRiskMarketId, normalizedNegRiskMarketId)
       ) {
