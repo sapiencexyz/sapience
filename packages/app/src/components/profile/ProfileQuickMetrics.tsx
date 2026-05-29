@@ -1,10 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 import type { LegacyPosition as Position } from '@sapience/sdk/queries';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
