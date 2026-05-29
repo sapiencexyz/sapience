@@ -2,5 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "buildCommand": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/bingo run build",
-  "outputDirectory": "packages/bingo/dist"
+  "outputDirectory": "dist"
 }
