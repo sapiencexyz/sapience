@@ -89,6 +89,7 @@ export default function MintScreen() {
     isRestoring,
     error: sessionError,
     start,
+    end,
   } = useSession();
 
   // ---------- referral code ----------
@@ -300,7 +301,12 @@ export default function MintScreen() {
                   Fund your account to enable signing.
                 </p>
               ) : isActive ? (
-                <p className="muted small">Session active</p>
+                <div className="row">
+                  <span className="muted small">Session active</span>
+                  <button type="button" className="ghost" onClick={() => end()}>
+                    End session
+                  </button>
+                </div>
               ) : isStarting ? (
                 <p className="muted small">Awaiting signature…</p>
               ) : isRestoring ? (
