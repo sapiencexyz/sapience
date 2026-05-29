@@ -663,6 +663,86 @@ describe('conditions routes', () => {
       expect(mockPrisma.condition.create).not.toHaveBeenCalled();
     });
 
+    it('rejects batch items with an endTime in the past', async () => {
+      // The single-create path enforces endTime > now; batch-create now
+      // mirrors that. Without this guard, the keeper's LLM endtime parser
+      // (which intentionally surfaces past dates) could let an already-
+      // settled-on-arrival condition land in the DB via batch submission.
+      const res = await request(app)
+        .post('/admin/conditions/batch-create')
+        .send({
+          conditions: [
+            {
+              conditionHash: '0x' + '33'.repeat(32),
+              question: 'Past?',
+              endTime: PAST_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+            },
+          ],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/future Unix timestamp/i);
+      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
+    });
+
+    it('seeds new auto-created groups with similarMarkets from the first item', async () => {
+      // Auto-created groups previously landed without similarMarkets,
+      // making negRisk baskets show up empty on the discovery surface
+      // until a later refresh. Carry the first item's payload forward.
+      mockPrisma.condition.create.mockResolvedValue({});
+      mockPrisma.category.findFirst.mockResolvedValue(null);
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+      mockPrisma.conditionGroup.create.mockResolvedValue({
+        id: 77,
+        name: 'Auto group',
+        negRiskMarketId: 'basket-a',
+      });
+
+      const res = await request(app)
+        .post('/admin/conditions/batch-create')
+        .send({
+          conditions: [
+            {
+              conditionHash: '0x' + '44'.repeat(32),
+              question: 'Q1?',
+              endTime: FUTURE_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+              groupName: 'Auto group',
+              negRisk: true,
+              negRiskMarketId: 'basket-a',
+              similarMarkets: [
+                'https://polymarket.com/event/foo',
+                'https://polymarket.com/event/bar',
+              ],
+            },
+            {
+              conditionHash: '0x' + '55'.repeat(32),
+              question: 'Q2?',
+              endTime: FUTURE_END_TIME,
+              description: 'test',
+              resolver: VALID_RESOLVER,
+              groupName: 'Auto group',
+              negRisk: true,
+              negRiskMarketId: 'basket-a',
+              similarMarkets: [
+                'https://polymarket.com/event/foo',
+                'https://polymarket.com/event/bar',
+              ],
+            },
+          ],
+        });
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.conditionGroup.create.mock.calls[0][0];
+      expect(createCall.data.similarMarkets).toEqual([
+        'https://polymarket.com/event/foo',
+        'https://polymarket.com/event/bar',
+      ]);
+    });
+
     it('persists optionName for every item in the batch', async () => {
       mockPrisma.condition.create.mockResolvedValue({});
       mockPrisma.category.findFirst.mockResolvedValue(null);
@@ -1160,6 +1240,31 @@ describe('conditions routes', () => {
       const updateCall = mockPrisma.condition.update.mock.calls[0][0];
       expect(updateCall.data.question).toBe('Edited question');
     });
+
+    it('grandfathers a current basket-group member when groupName is restated without the basket id', async () => {
+      // The keeper's refresh flow restates groupName per condition but
+      // doesn't always restate the basket id. Without grandfathering,
+      // every routine edit on an existing basket-group member would 400.
+      mockPrisma.condition.findUnique.mockResolvedValue(
+        existingCondition({ conditionGroupId: 9 })
+      );
+      mockPrisma.conditionGroup.findFirst.mockResolvedValue({
+        id: 9,
+        name: 'NBA champion',
+        negRiskMarketId: 'basket-a',
+      });
+      mockPrisma.condition.update.mockResolvedValue({ id: VALID_ID });
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        // groupName restated, no negRiskMarketId — should be accepted
+        // because the condition is already in this exact group.
+        .send({ groupName: 'NBA champion', description: 'fresh copy' });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.description).toBe('fresh copy');
+    });
   });
 
   // ---------- PUT /admin/conditions/batch-metadata ----------
@@ -1307,6 +1412,79 @@ describe('conditions routes', () => {
       expect(updateCall.data).not.toHaveProperty('negRisk');
       expect(updateCall.data).not.toHaveProperty('negRiskMarketId');
     });
+
+    it('grandfathers an existing basket-group member when the batch item omits the basket id', async () => {
+      // The keeper's refresh pass restates groupName per condition but
+      // not the basket id. Without grandfathering, a metadata-only
+      // refresh on an existing basket-group member would always 400.
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([
+        {
+          id: 42,
+          name: 'NBA champion',
+          negRiskMarketId: 'basket-a',
+        },
+      ]);
+      mockPrisma.condition.findMany.mockResolvedValue([
+        {
+          id: VALID_ID,
+          endTime: FUTURE_END_TIME,
+          settled: false,
+          conditionGroupId: 42,
+        },
+      ]);
+      mockPrisma.condition.update.mockResolvedValue({});
+
+      const res = await request(app)
+        .put('/admin/conditions/batch-metadata')
+        .send({
+          updates: [
+            {
+              id: VALID_ID,
+              fields: { groupName: 'NBA champion', description: 'refreshed' },
+            },
+          ],
+        });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.description).toBe('refreshed');
+    });
+
+    it('re-validates the basket when the new-group create races and loses', async () => {
+      // Leader-takes-all says the first update's basket id stamps the
+      // new group. When prisma.create races and loses, the now-existing
+      // group's basket may not match what our leader stamped — every
+      // incoming update must be re-checked, not silently admitted.
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+      mockPrisma.conditionGroup.create.mockRejectedValue(
+        new Error('Unique constraint failed on conditionGroup.name')
+      );
+      mockPrisma.conditionGroup.findFirst.mockResolvedValue({
+        id: 99,
+        name: 'Race target',
+        negRiskMarketId: 'basket-b', // race winner stamped basket-b
+      });
+
+      const res = await request(app)
+        .put('/admin/conditions/batch-metadata')
+        .send({
+          updates: [
+            {
+              id: VALID_ID,
+              fields: {
+                groupName: 'Race target',
+                negRisk: true,
+                negRiskMarketId: 'basket-a', // we wanted basket-a
+              },
+            },
+          ],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/non-matching condition/i);
+      expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+    });
+
     describe('endTime field (Part C backfill support)', () => {
       it('updates endTime on unsettled rows', async () => {
         mockPrisma.condition.findMany.mockResolvedValue([
