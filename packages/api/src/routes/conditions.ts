@@ -210,17 +210,9 @@ router.post('/batch-create', async (req: Request, res: Response) => {
           message: `endTime must be a valid Unix timestamp for ${item.conditionHash}`,
         });
       }
-      // Mirror the single-create future-only guard. The keeper's LLM
-      // endtime parser intentionally surfaces past dates as a signal
-      // for manual review, but they must not slip into batch-create —
-      // an already-elapsed endTime ships a condition that's settle-
-      // ready the moment it's listed.
-      const nowSeconds = Math.floor(Date.now() / 1000);
-      if (endTimeInt <= nowSeconds) {
-        return res.status(400).json({
-          message: `endTime must be a future Unix timestamp (seconds) for ${item.conditionHash}, endTime: ${endTimeInt}, nowSeconds: ${nowSeconds}`,
-        });
-      }
+      // batch-create intentionally accepts past endTimes — historical
+      // backfills (PR #1581) rely on it. The keeper escalates a WARN
+      // log per past-dated submission so they're auditable post-hoc.
     }
 
     // Resolve category slugs (batch lookup)

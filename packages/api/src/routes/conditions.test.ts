@@ -663,11 +663,14 @@ describe('conditions routes', () => {
       expect(mockPrisma.condition.create).not.toHaveBeenCalled();
     });
 
-    it('rejects batch items with an endTime in the past', async () => {
-      // The single-create path enforces endTime > now; batch-create now
-      // mirrors that. Without this guard, the keeper's LLM endtime parser
-      // (which intentionally surfaces past dates) could let an already-
-      // settled-on-arrival condition land in the DB via batch submission.
+    it('accepts batch items with an endTime in the past (backfill path)', async () => {
+      // batch-create intentionally allows past endTimes for historical
+      // backfills (PR #1581). The keeper warns loudly when it submits
+      // one so they're auditable; the API itself stays permissive.
+      mockPrisma.condition.create.mockResolvedValue({});
+      mockPrisma.category.findFirst.mockResolvedValue(null);
+      mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+
       const res = await request(app)
         .post('/admin/conditions/batch-create')
         .send({
@@ -682,9 +685,8 @@ describe('conditions routes', () => {
           ],
         });
 
-      expect(res.status).toBe(400);
-      expect(res.body.message).toMatch(/future Unix timestamp/i);
-      expect(mockPrisma.condition.create).not.toHaveBeenCalled();
+      expect(res.status).toBe(201);
+      expect(mockPrisma.condition.create).toHaveBeenCalledTimes(1);
     });
 
     it('seeds new auto-created groups with similarMarkets from the first item', async () => {
