@@ -7,7 +7,8 @@
  *
  * `OPEN_INTEREST` is stored as a VarChar-encoded bigint and can't be
  * keyset-compared in SQL without a numeric cast, so that orderBy mode
- * falls back to offset paging (cursor `k` is an integer offset).
+ * falls back to offset paging (cursor `k` is an integer offset) and
+ * uses a raw `ORDER BY "openInterest"::numeric` query.
  */
 
 import type { Prisma } from '../../../../../generated/prisma';
@@ -22,6 +23,8 @@ import {
   normalizeDirection,
   withCursorWhere,
 } from '../../relay/connection';
+import { findConditionsOrderByOpenInterest } from './conditionOpenInterest';
+import { buildConditionListFilters } from './conditionListFilters';
 
 export const condition: NonNullable<QueryResolvers['condition']> = async (
   _parent,
@@ -41,23 +44,6 @@ const FIELD_TO_PRISMA: Record<
   OPEN_INTEREST: 'openInterest',
 };
 
-const projectOutcomeFilter = (
-  outcome?: 'YES' | 'NO' | 'NON_DECISIVE' | null,
-  settled?: boolean | null
-): Prisma.ConditionWhereInput => {
-  if (outcome != null) {
-    const base: Prisma.ConditionWhereInput = { settled: true };
-    if (outcome === 'YES')
-      return { ...base, resolvedToYes: true, nonDecisive: false };
-    if (outcome === 'NO')
-      return { ...base, resolvedToYes: false, nonDecisive: false };
-    return { ...base, nonDecisive: true };
-  }
-  if (settled === true) return { settled: true };
-  if (settled === false) return { settled: false };
-  return {};
-};
-
 export const conditions: NonNullable<QueryResolvers['conditions']> = async (
   _parent,
   args
@@ -66,38 +52,10 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'END_TIME'];
   const direction = normalizeDirection(args.orderBy?.direction, 'asc');
 
-  const where: Prisma.ConditionWhereInput = {
-    ...projectOutcomeFilter(args.filter?.outcome, args.filter?.settled),
-  };
-  if (args.filter?.conditionIds?.length)
-    where.id = { in: args.filter.conditionIds.map((id) => id.toLowerCase()) };
-  if (args.filter?.chainId != null) where.chainId = args.filter.chainId;
-  if (args.filter?.categorySlug)
-    where.category = { is: { slug: args.filter.categorySlug } };
-
-  if (args.filter?.public != null) {
-    where.public = args.filter.public;
-  } else if (!args.filter?.conditionIds?.length) {
-    where.public = true;
-  }
-  if (args.filter?.tags?.length) where.tags = { hasSome: args.filter.tags };
-  if (args.filter?.search?.trim()) {
-    const q = args.filter.search.trim();
-    where.OR = [
-      { question: { contains: q, mode: 'insensitive' } },
-      { description: { contains: q, mode: 'insensitive' } },
-    ];
-  }
-  if (args.filter?.endTime) {
-    const r: Prisma.IntFilter = {};
-    if (args.filter.endTime.gte != null) r.gte = args.filter.endTime.gte;
-    if (args.filter.endTime.lte != null) r.lte = args.filter.endTime.lte;
-    where.endTime = r;
-  }
-
-  // Keyset soundness: displayOrder is nullable ("null when not in a group");
-  // exclude NULL-keyed rows so the (displayOrder, id) keyset is a total order.
-  if (field === 'displayOrder') where.displayOrder = { not: null };
+  const { where, whereSql, needsCategoryJoin } = buildConditionListFilters(
+    args,
+    field
+  );
 
   const cursor = args.after ? decodeCursor(args.after) : null;
   const usesOffset = field === 'openInterest';
@@ -114,20 +72,31 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
         })
       : null;
 
-  const rows = await prisma.condition.findMany({
-    where: withCursorWhere(where, cursorWhere),
-    orderBy: [
-      { [field]: direction } as Prisma.ConditionOrderByWithRelationInput,
-      { id: direction },
-    ],
-    take: first + 1,
-    skip: skip || undefined,
-  });
+  const effectiveWhere = withCursorWhere(where, cursorWhere);
+
+  const rows =
+    field === 'openInterest'
+      ? await findConditionsOrderByOpenInterest({
+          whereSql,
+          needsCategoryJoin,
+          direction,
+          take: first + 1,
+          skip,
+        })
+      : await prisma.condition.findMany({
+          where: effectiveWhere,
+          orderBy: [
+            { [field]: direction } as Prisma.ConditionOrderByWithRelationInput,
+            { id: direction },
+          ],
+          take: first + 1,
+          skip: skip || undefined,
+        });
 
   return buildConnection({
     rows,
     first,
-    totalCount: () => prisma.condition.count({ where }),
+    totalCount: () => prisma.condition.count({ where: effectiveWhere }),
     getCursor: (row, idx) => {
       const k = usesOffset
         ? String(skip + idx)

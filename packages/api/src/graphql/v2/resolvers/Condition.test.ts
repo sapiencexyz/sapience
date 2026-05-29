@@ -4,6 +4,7 @@ import { fromGlobalIdV2 } from '../relay/nodeRegistry';
 const mockPrisma = vi.hoisted(() => ({
   condition: { findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn() },
   category: { findUnique: vi.fn() },
+  $queryRaw: vi.fn(),
 }));
 
 vi.mock('../../../core/db', () => ({ default: mockPrisma }));
@@ -27,6 +28,7 @@ describe('Condition (v2)', () => {
     vi.clearAllMocks();
     mockPrisma.condition.findMany.mockResolvedValue([]);
     mockPrisma.condition.count.mockResolvedValue(0);
+    mockPrisma.$queryRaw.mockResolvedValue([]);
   });
 
   it('encodes the global id as v2 Condition:<conditionId>', async () => {
@@ -228,5 +230,39 @@ describe('Condition (v2)', () => {
       displayOrder?: unknown;
     };
     expect(where.displayOrder).toBeUndefined();
+  });
+
+  it('conditions(orderBy: OPEN_INTEREST) routes through a raw ::numeric query, not findMany', async () => {
+    await callResolver(conditions)(
+      null,
+      { first: 50, orderBy: { field: 'OPEN_INTEREST', direction: 'DESC' } },
+      {},
+      null
+    );
+
+    // OI ordering must use the raw numeric-cast path, never the
+    // lexicographic Prisma findMany on the VarChar column.
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.condition.findMany).not.toHaveBeenCalled();
+
+    // `$queryRaw` is invoked as a tagged template, so the first arg is the
+    // TemplateStringsArray; the literal `::numeric` cast lives in the static
+    // SQL text (not in an interpolated value).
+    const [strings] = mockPrisma.$queryRaw.mock.calls[0] as [
+      TemplateStringsArray,
+      ...unknown[],
+    ];
+    expect(strings.join('')).toContain('::numeric');
+  });
+
+  it('conditions(orderBy: CREATED_AT) uses findMany and never touches the raw query', async () => {
+    await callResolver(conditions)(
+      null,
+      { first: 50, orderBy: { field: 'CREATED_AT', direction: 'DESC' } },
+      {},
+      null
+    );
+    expect(mockPrisma.condition.findMany).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
   });
 });
