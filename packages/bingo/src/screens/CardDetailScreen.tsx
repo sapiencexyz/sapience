@@ -702,7 +702,9 @@ export default function CardDetailScreen({ cardId }: Props) {
             <div className="reveal-pending-body">
               <div className="wizard-step-title">Revealing your card…</div>
               <p className="muted small">
-                Drawing 16 conditions from the pool and shuffling your board.
+                {isMockEntropy
+                  ? 'Staging uses a fixed placeholder instead of Pyth Entropy. Submit it to draw your 16 cells.'
+                  : 'Drawing 16 conditions from the pool and shuffling your board.'}
               </p>
             </div>
             {isMockEntropy && pendingSeq != null && (
@@ -712,7 +714,7 @@ export default function CardDetailScreen({ cardId }: Props) {
                 disabled={revealPending}
                 onClick={pushReveal}
               >
-                {revealPending ? 'Revealing…' : 'Reveal (testnet)'}
+                {revealPending ? 'Submitting…' : 'Submit placeholder randomness'}
               </button>
             )}
           </div>
