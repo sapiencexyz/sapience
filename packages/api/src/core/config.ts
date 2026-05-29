@@ -39,8 +39,8 @@ const validators = {
     desc: 'Postgres connection string',
   }),
   CONNECTION_POOL_SIZE: num({
-    default: 20,
-    desc: 'Max Prisma connection pool size',
+    default: 60,
+    desc: 'Max Prisma connection pool size. Sized to exceed GRAPHQL_MAX_CONCURRENT_OPERATIONS so admitted requests do not queue at the driver while holding global slots.',
   }),
   GRAPHQL_MAX_CONCURRENT_OPERATIONS: num({
     default: 50,
@@ -49,6 +49,10 @@ const validators = {
   GRAPHQL_MAX_CONCURRENT_PER_IP: num({
     default: 25,
     desc: 'Max concurrent GraphQL operations per IP before rejecting with 429',
+  }),
+  GRAPHQL_INFLIGHT_DUMP_INTERVAL_MS: num({
+    default: 0,
+    desc: 'Periodic gql_inflight gauge dump interval in ms (0 = disabled). Set to ~60000 in prod or ~5000 during benchmarking.',
   }),
   LOG_LEVEL: str({
     choices: [

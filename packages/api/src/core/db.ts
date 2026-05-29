@@ -86,8 +86,54 @@ function getInstance(): PrismaClient {
   return _instance;
 }
 
+/**
+ * Hostname substrings that mean "this is the production Postgres."
+ * Matched against DATABASE_URL (case-insensitive). Add more patterns
+ * here if prod ever moves off Railway.
+ */
+const PROD_DB_HOST_PATTERNS = ['railway.app', 'railway.internal'];
+
+/**
+ * Refuse to start when NODE_ENV is not production but DATABASE_URL
+ * points at a known production host. Prevents the foot-gun where a
+ * developer's `pnpm dev` accidentally connects local indexers and
+ * `prisma migrate dev` to prod via a copy-pasted env value.
+ *
+ * Override with `ALLOW_PROD_DB_FROM_DEV=true` if you genuinely need
+ * to point dev tooling at prod (e.g. read-only debugging). When
+ * overridden, a loud warning is logged on every boot.
+ */
+const guardAgainstProdFromDev = (): void => {
+  // Only fire on developer laptops or CI — a deployed environment
+  // (production, staging, etc.) has its DATABASE_URL wired in by
+  // deploy config, not a copy-pasted .env, and is allowed to point
+  // wherever its platform configures.
+  if (!config.isDev && !config.isTest) return;
+  const url = config.DATABASE_URL.toLowerCase();
+  const looksLikeProd = PROD_DB_HOST_PATTERNS.some((p) => url.includes(p));
+  if (!looksLikeProd) return;
+
+  if (process.env.ALLOW_PROD_DB_FROM_DEV === 'true') {
+    log.warn(
+      'NODE_ENV is not production but DATABASE_URL looks like prod. ' +
+        'Proceeding because ALLOW_PROD_DB_FROM_DEV=true. Be careful — ' +
+        'local indexers and prisma migrate dev will write to prod.'
+    );
+    return;
+  }
+
+  log.fatal(
+    {
+      hint: 'Set DATABASE_URL to a local dev DB, or pass ALLOW_PROD_DB_FROM_DEV=true to override.',
+    },
+    'REFUSING TO START: DATABASE_URL matches a production hostname pattern but NODE_ENV is not production'
+  );
+  process.exit(1);
+};
+
 // Initialize database connection
 export const initializeDataSource = async () => {
+  guardAgainstProdFromDev();
   try {
     await getInstance().$connect();
     log.info('Prisma connected');
