@@ -10,6 +10,10 @@ export type MarketGroup = {
   title: string;
   markets: PolymarketMarket[];
   eventSlug?: string;
+  /** Polymarket event id (`events[0].id`). Canonical group identity going
+   *  forward; flows through to SapienceConditionGroup.externalEventId in
+   *  the admin POST payload. */
+  eventId?: string;
 };
 
 export class VolumeThresholdFilter implements Filter<MarketGroup> {

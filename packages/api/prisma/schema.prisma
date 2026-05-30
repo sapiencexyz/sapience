@@ -231,7 +231,11 @@ model Condition {
 model ConditionGroup {
   id             Int         @id @default(autoincrement())
   createdAt      DateTime    @default(now()) @db.Timestamp(6)
-  name           String      @unique @db.VarChar
+  /// Display name. NOT unique — the same human-readable title can recur
+  /// across multiple Polymarket events (e.g. weekly "Top US Netflix
+  /// Movie This Week"). Identity for platform-sourced groups is the
+  /// partial unique index on (source, externalEventId) below.
+  name           String      @db.VarChar
   categoryId     Int?
   category       Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   similarMarkets String[]    @default([])
@@ -276,6 +280,7 @@ model ConditionGroup {
   totalSimilarMarketVolumeFiltered7d  Decimal @default(0) @db.Decimal @map("totalVolumeFiltered7d")
 
   @@index([categoryId])
+  @@index([name], map: "IDX_condition_group_name")
   // Raw SQL indexes (not representable in Prisma, managed via migration):
   // - IDX_cg_total_oi: "totalOpenInterest" DESC WHERE "publicConditionCount" > 0
   // - IDX_cg_max_end_time: "maxEndTime" DESC WHERE "publicConditionCount" > 0

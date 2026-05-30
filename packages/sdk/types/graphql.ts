@@ -544,6 +544,8 @@ export type ConditionGroup = {
   categoryId?: Maybe<Scalars['Int']['output']>;
   conditions: Array<Condition>;
   createdAt: Scalars['DateTimeISO']['output'];
+  /** Polymarket event id (events[0].id on Gamma /markets). The canonical identity for platform-sourced groups. Null for legacy / Sapience-native / curated groups that don't originate from a platform event. */
+  externalEventId?: Maybe<Scalars['String']['output']>;
   id: Scalars['Int']['output'];
   name: Scalars['String']['output'];
   /** True when every child condition belongs to the same Polymarket negative-risk basket */

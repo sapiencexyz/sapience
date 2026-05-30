@@ -123,7 +123,8 @@ export function transformToSapienceCondition(
   enrichment?: MarketEnrichmentOutput,
   tags: string[] = [],
   llmEndTime?: LlmEndTimeResult,
-  negRiskMarketId?: string
+  negRiskMarketId?: string,
+  externalEventId?: string
 ): SapienceCondition {
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
@@ -150,6 +151,7 @@ export function transformToSapienceCondition(
     categorySlug: enrichment?.category || inferSapienceCategorySlug(market), // Use LLM category or fallback
     chainId: CHAIN_ID,
     groupTitle,
+    externalEventId,
     estimatedPrice: parseYesPrice(market.outcomePrices),
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
@@ -178,6 +180,7 @@ export async function groupMarkets(
         title: event.title,
         markets: [market],
         eventSlug: event.slug,
+        eventId: event.id,
       });
     } else {
       // Rare: Polymarket markets without an associated event.
@@ -270,13 +273,18 @@ export async function groupMarkets(
     // underlying data problem; let it surface.
     const conditionGroupTitle = group.title;
     const groupNegRiskMarketId = sharedNegRiskMarketId(group.markets);
+    // Use the (pre-injected) eventId on MarketGroup when present, falling
+    // back to the market's events[0].id. Both should agree.
+    const groupExternalEventId =
+      group.eventId ?? market.events?.[0]?.id ?? undefined;
     const condition = transformToSapienceCondition(
       market,
       conditionGroupTitle,
       enrichment,
       marketTags,
       endTimeMap.get(market.conditionId),
-      groupNegRiskMarketId
+      groupNegRiskMarketId,
+      groupExternalEventId
     );
 
     // Use event description if available, otherwise use market's description
@@ -294,6 +302,7 @@ export async function groupMarkets(
       similarMarkets: groupUrl ? [groupUrl] : [],
       tags: marketTags,
       negRiskMarketId: groupNegRiskMarketId,
+      externalEventId: groupExternalEventId,
       conditions: [condition],
     });
   }
@@ -308,7 +317,8 @@ export async function groupMarkets(
       enrichments.get(m.conditionId),
       mTags,
       endTimeMap.get(m.conditionId),
-      sharedNegRiskMarketId([m])
+      sharedNegRiskMarketId([m]),
+      m.events?.[0]?.id ?? undefined
     );
   });
 
@@ -376,6 +386,7 @@ export function freshMetadataFor(
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
     groupName: groupTitle,
+    externalEventId: market.events?.[0]?.id ?? undefined,
   };
 }
 
@@ -448,6 +459,13 @@ export function computeMetadataUpdates(
     // Per-condition negRisk fields are not GraphQL-exposed, so the keeper
     // does not drift-detect them here — only the ConditionGroup.negRisk
     // bucket flag is tracked, in computeGroupMetadataUpdates below.
+    //
+    // externalEventId is included so the admin route can re-resolve the
+    // group via the canonical (source, externalEventId) lookup. Without it,
+    // batch-metadata payloads would carry only groupName, which is no
+    // longer unique after migration 20260529001202 dropped UNIQUE(name) —
+    // and the route's name-fallback could attach the condition to the
+    // wrong group when multiple groups share a display title.
     const keys: (keyof SyncableFields)[] = [
       'question',
       'optionName',
@@ -457,6 +475,7 @@ export function computeMetadataUpdates(
       'similarMarketVolume',
       'similarMarketImage',
       'groupName',
+      'externalEventId',
     ];
     for (const key of keys) {
       const newVal = fresh[key];
@@ -468,6 +487,28 @@ export function computeMetadataUpdates(
         (fields as Record<string, unknown>)[key] = newVal;
         (old as Record<string, unknown>)[key] = oldVal;
       }
+    }
+
+    // When the diff emits groupName but not externalEventId, force the
+    // event id into the payload anyway. Reason: the admin route's
+    // group-resolution precedence is (source, externalEventId) → name
+    // fallback. If we send only groupName for a group-rename
+    // (e.g. Polymarket changes the event title but keeps the same id),
+    // the route hits the name fallback — and with UNIQUE(name) dropped
+    // by migration 20260529001202, that can attach the condition to a
+    // different newest-id-wins row sharing the title. Carrying
+    // externalEventId — even unchanged — keeps the lookup on the
+    // canonical event-keyed path.
+    if (
+      Object.prototype.hasOwnProperty.call(fields, 'groupName') &&
+      !Object.prototype.hasOwnProperty.call(fields, 'externalEventId') &&
+      typeof fresh.externalEventId === 'string' &&
+      fresh.externalEventId.length > 0
+    ) {
+      (fields as Record<string, unknown>).externalEventId =
+        fresh.externalEventId;
+      (old as Record<string, unknown>).externalEventId =
+        existing.externalEventId;
     }
 
     // Only rewrite shortName when deterministic regex produces a non-null

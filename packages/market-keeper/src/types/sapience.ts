@@ -30,7 +30,16 @@ export interface SapienceCondition {
   similarMarkets: string[]; // Polymarket URLs (slug is in the URL)
   tags: string[]; // Event tags from Polymarket (e.g., "Politics", "Crypto")
   chainId: number; // Chain ID where condition will be deployed (Ethereal: 5064014)
-  groupTitle?: string; // Group title for API submission (API will find-or-create group by name)
+  groupTitle?: string; // Group display name (used for new-group create and as legacy lookup fallback)
+  /**
+   * Polymarket event id (`events[0].id` on the Gamma /markets response).
+   * When set, the admin route looks up the group by
+   * (source='polymarket', externalEventId) instead of by name. This is
+   * the canonical identity that lets weekly recurring events ("Top US
+   * Netflix Movie This Week", "Pacers vs Wizards", etc.) land in fresh
+   * groups instead of getting folded by name.
+   */
+  externalEventId?: string;
   estimatedPrice?: number; // 0-1, YES probability from Polymarket outcomePrices[0]
   similarMarketVolume?: number; // USD total trading volume from Polymarket
   similarMarketImage?: string; // Image URL from Polymarket
@@ -52,6 +61,14 @@ export interface SapienceConditionGroup {
   // derives `ConditionGroup.negRisk` from this being non-null; the
   // keeper sends only the id.
   negRiskMarketId?: string;
+  /**
+   * Polymarket event id — the canonical group identity. When the keeper
+   * includes this, the admin route looks up by
+   * (source='polymarket', externalEventId) instead of by name, so
+   * weekly recurring titles get their own fresh groups instead of
+   * collapsing.
+   */
+  externalEventId?: string;
   conditions: SapienceCondition[];
 }
 
@@ -78,6 +95,14 @@ export interface SyncableFields {
   similarMarketVolume?: number;
   similarMarketImage?: string;
   groupName?: string;
+  /**
+   * Polymarket event id. When present in a batch-metadata payload, the
+   * admin route looks up the group by (source, externalEventId) instead
+   * of by name — see packages/api/src/routes/conditions.ts. Going forward
+   * this is the canonical identity; groupName is kept as a display value
+   * and legacy lookup fallback.
+   */
+  externalEventId?: string;
   endTime?: number;
 }
 

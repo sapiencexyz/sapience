@@ -44,7 +44,9 @@ export async function fetchAllExistingConditions(
   const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
   // Uses the staging-supported `conditions(where:)` resolver. Offset pagination
-  // is deterministic because we order by stable `id` ascending.
+  // is deterministic because we order by stable `id` ascending. Keep selecting
+  // `conditionGroup.externalEventId` so group-name changes can still be sent
+  // with their stable event key.
   const query = `
     query RefreshMetadataConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!, $orderBy: [ConditionOrderByWithRelationInput!]) {
       conditions(where: $where, take: $take, skip: $skip, orderBy: $orderBy) {
@@ -63,6 +65,7 @@ export async function fetchAllExistingConditions(
           name
           similarMarkets
           negRisk
+          externalEventId
         }
       }
     }
@@ -117,6 +120,7 @@ export async function fetchAllExistingConditions(
             name?: string | null;
             similarMarkets?: string[] | null;
             negRisk?: boolean | null;
+            externalEventId?: string | null;
           } | null;
         }>;
       };
@@ -137,6 +141,7 @@ export async function fetchAllExistingConditions(
         similarMarketVolume: c.similarMarketVolume ?? undefined,
         similarMarketImage: c.similarMarketImage ?? undefined,
         groupName: c.conditionGroup?.name ?? undefined,
+        externalEventId: c.conditionGroup?.externalEventId ?? undefined,
         conditionGroupId: c.conditionGroup?.id ?? undefined,
         conditionGroupSimilarMarkets:
           c.conditionGroup?.similarMarkets ?? undefined,
