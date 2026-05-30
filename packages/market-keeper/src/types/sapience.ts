@@ -12,6 +12,13 @@ export type SapienceCategorySlug =
   | 'culture'
   | 'unknown';
 
+export type LlmEndTimeConfidence = 'high' | 'low' | 'unknown';
+
+export interface LlmEndTimeResult {
+  ts: number | null;
+  confidence: LlmEndTimeConfidence;
+}
+
 export interface SapienceCondition {
   conditionHash: string; // Polymarket's conditionId - used to resolve via LZ
   question: string;
@@ -27,7 +34,11 @@ export interface SapienceCondition {
   estimatedPrice?: number; // 0-1, YES probability from Polymarket outcomePrices[0]
   similarMarketVolume?: number; // USD total trading volume from Polymarket
   similarMarketImage?: string; // Image URL from Polymarket
-  endTimeOverride?: number; // LLM-determined endTime (unix seconds, no buffer)
+  endTimeOverride?: number; // Regex-extracted endTime fallback (unix seconds), only trusted for templated markets
+  llmEndTime?: LlmEndTimeResult; // Perplexity Sonar result; primary source of truth when ts is non-null
+  isTemplated?: boolean; // True for sports/series/group templates; gates regex-fallback in decideEndTime
+  negRisk?: boolean; // True when this condition belongs to a Polymarket negative-risk basket
+  negRiskMarketId?: string; // Polymarket negative-risk basket identifier
 }
 
 export interface SapienceConditionGroup {
@@ -36,6 +47,11 @@ export interface SapienceConditionGroup {
   description: string;
   similarMarkets: string[];
   tags: string[];
+  // Polymarket negative-risk basket identifier. When set, every child
+  // condition is part of the same mutually-exclusive basket. The API
+  // derives `ConditionGroup.negRisk` from this being non-null; the
+  // keeper sends only the id.
+  negRiskMarketId?: string;
   conditions: SapienceCondition[];
 }
 
@@ -43,10 +59,14 @@ export interface SapienceConditionGroup {
  * Fields on a Condition that the generate cron is allowed to keep in sync
  * with fresh Polymarket data. Excludes fields that are owned by other
  * pipelines or are not Polymarket-derived:
- *   - endTime: owned by the relist pipeline; settled conditions reject changes
  *   - estimatedPrice: owned by the submitPriceUpdates cron (runs on its own cadence)
  *   - categoryId/categorySlug: LLM-derived, set once on create
  *   - public/settled/resolver/chainId: protocol/operator state, not metadata
+ *
+ * endTime is included so the backfill-endtimes script can correct historical
+ * Polymarket markets whose stored endTime drifted from Polymarket's
+ * end_date_iso. The batch-metadata API rejects endTime changes on settled
+ * rows; the keeper diff respects that and never proposes them.
  */
 export interface SyncableFields {
   question?: string;
@@ -58,6 +78,7 @@ export interface SyncableFields {
   similarMarketVolume?: number;
   similarMarketImage?: string;
   groupName?: string;
+  endTime?: number;
 }
 
 export interface MetadataUpdate {
@@ -70,9 +91,14 @@ export interface MetadataUpdate {
  * Fields on a ConditionGroup that the generate cron is allowed to keep in sync
  * with fresh Polymarket data. Intentionally narrow: name is excluded because
  * group names have a unique constraint, and category is LLM-derived.
+ *
+ * `negRiskMarketId` carries the basket id. The API derives
+ * `ConditionGroup.negRisk` from this column being non-null, so the keeper
+ * doesn't need a separate boolean field in the payload.
  */
 export interface GroupSyncableFields {
   similarMarkets?: string[];
+  negRiskMarketId?: string | null;
 }
 
 export interface GroupMetadataUpdate {

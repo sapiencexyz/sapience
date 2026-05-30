@@ -19,6 +19,11 @@ export interface ExistingCondition {
   groupName?: string;
   conditionGroupId?: number;
   conditionGroupSimilarMarkets?: string[];
+  // Only ConditionGroup.negRisk is exposed via GraphQL; the per-condition
+  // negRisk/negRiskMarketId pair and ConditionGroup.negRiskMarketId stay in
+  // the DB but are admin-only via REST, so the keeper can't drift-detect
+  // them.
+  conditionGroupNegRisk?: boolean;
 }
 
 /**
@@ -38,8 +43,8 @@ export async function checkExistingConditions(
     const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
     const query = `
-      query CheckConditions($where: ConditionWhereInput!) {
-        conditions(where: $where, take: 100) {
+      query CheckConditions($where: ConditionWhereInput!, $take: Int!) {
+        conditions(where: $where, take: $take) {
           id
           endTime
           question
@@ -54,6 +59,7 @@ export async function checkExistingConditions(
             id
             name
             similarMarkets
+            negRisk
           }
         }
       }
@@ -71,7 +77,9 @@ export async function checkExistingConditions(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query,
-          variables: { where: { id: { in: chunk } } },
+          // Query by primary id only — public and private rows both count as
+          // pre-existing, so the pipeline doesn't try to recreate them.
+          variables: { where: { id: { in: chunk } }, take: PAGE_SIZE },
         }),
       });
 
@@ -96,6 +104,7 @@ export async function checkExistingConditions(
           conditionGroupId: condition.conditionGroup?.id ?? undefined,
           conditionGroupSimilarMarkets:
             condition.conditionGroup?.similarMarkets ?? undefined,
+          conditionGroupNegRisk: condition.conditionGroup?.negRisk ?? undefined,
         });
       }
     }

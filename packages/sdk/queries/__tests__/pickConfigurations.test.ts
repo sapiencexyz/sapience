@@ -56,7 +56,9 @@ describe('fetchPickConfigurations', () => {
         totalPredictorCollateral: '100',
         totalCounterpartyCollateral: '200',
         resolved: false,
-        picks: [{ conditionId: 'c1', conditionResolver: 'r1', predictedOutcome: 1 }],
+        picks: [
+          { conditionId: 'c1', conditionResolver: 'r1', predictedOutcome: 1 },
+        ],
       },
     ];
     mockGraphqlRequest.mockResolvedValue({ pickConfigurations: configs });

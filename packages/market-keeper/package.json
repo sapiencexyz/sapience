@@ -28,6 +28,7 @@
     "refresh-volume:dry-run": "tsx scripts/refresh-volume.ts --dry-run",
     "refresh-metadata": "tsx scripts/refresh-metadata.ts",
     "refresh-metadata:dry-run": "tsx scripts/refresh-metadata.ts --dry-run",
+    "smoke-endtime-llm": "tsx scripts/smoke-endtime-llm.ts",
     "cleanup-polymarket": "tsx scripts/cleanup-polymarket.ts",
     "cleanup-polymarket:dry-run": "tsx scripts/cleanup-polymarket.ts --dry-run",
     "cleanup-polymarket:execute": "tsx scripts/cleanup-polymarket.ts --execute",

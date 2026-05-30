@@ -150,6 +150,7 @@ describe('fetchAllExistingConditions', () => {
                 id: 7,
                 name: 'Group Name',
                 similarMarkets: ['https://polymarket.com/event/foo#bar'],
+                negRisk: true,
               },
             },
           ],
@@ -173,6 +174,7 @@ describe('fetchAllExistingConditions', () => {
       groupName: 'Group Name',
       conditionGroupId: 7,
       conditionGroupSimilarMarkets: ['https://polymarket.com/event/foo#bar'],
+      conditionGroupNegRisk: true,
     });
   });
 
@@ -224,11 +226,8 @@ describe('fetchMarketsByConditionIds', () => {
 
   it('batches input into Gamma calls of at most 50 IDs (each batch = 2 requests)', async () => {
     const ids = Array.from({ length: 75 }, (_, i) => `0x${i + 1}`);
-    // 2 batches × 2 sides = 4 requests
-    fetchQueue.push(() => jsonResponse([])); // batch 1, closed=false
-    fetchQueue.push(() => jsonResponse([])); // batch 1, closed=true
-    fetchQueue.push(() => jsonResponse([])); // batch 2, closed=false
-    fetchQueue.push(() => jsonResponse([])); // batch 2, closed=true
+    // 2 batches × 2 sides = 4 requests.
+    for (let i = 0; i < 4; i++) fetchQueue.push(() => jsonResponse([]));
 
     await fetchMarketsByConditionIds(ids);
 
@@ -236,9 +235,7 @@ describe('fetchMarketsByConditionIds', () => {
     const idCounts = fetchCalls.map(
       (c) => (c.url.match(/condition_ids=/g) || []).length
     );
-    // First two requests are batch 1 (50 IDs each), second two are batch 2 (25 IDs each)
-    expect(idCounts.slice(0, 2).every((n) => n === 50)).toBe(true);
-    expect(idCounts.slice(2, 4).every((n) => n === 25)).toBe(true);
+    expect(idCounts).toEqual([50, 50, 25, 25]);
   });
 
   it('keys the returned Map by conditionId and merges open + closed markets', async () => {
@@ -263,8 +260,8 @@ describe('fetchMarketsByConditionIds', () => {
   });
 
   it('continues batching even if one side of one batch errors', async () => {
-    // Single batch (60 IDs, but limited to 1 batch worth = 50). Open side
-    // errors; closed side succeeds and contributes one market.
+    // Single batch at the current Gamma batch size. Open side errors;
+    // closed side succeeds and contributes one market.
     const ids = Array.from({ length: 50 }, (_, i) => `0x${i + 1}`);
     fetchQueue.push(
       () => new Response('oops', { status: 502, statusText: 'Bad Gateway' })

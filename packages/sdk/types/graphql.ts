@@ -546,6 +546,8 @@ export type ConditionGroup = {
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
   name: Scalars['String']['output'];
+  /** True when every child condition belongs to the same Polymarket negative-risk basket */
+  negRisk: Scalars['Boolean']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
 };
 

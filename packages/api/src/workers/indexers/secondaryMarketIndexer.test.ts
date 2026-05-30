@@ -6,6 +6,7 @@ import {
   toHex,
   type Block,
 } from 'viem';
+import { sendSecondaryTradeAlert } from '../../services/discordAlert';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,9 @@ vi.mock('@sapience/sdk/contracts', () => ({
       legacy: [],
     },
   },
+}));
+vi.mock('../../services/discordAlert', () => ({
+  sendSecondaryTradeAlert: vi.fn(),
 }));
 vi.mock('@sapience/sdk/abis', () => {
   const abi = [
@@ -180,6 +184,17 @@ describe('SecondaryMarketIndexer', () => {
     expect(call.create.refCode).toBeNull();
     expect(call.create.executedAt).toBe(1700000000);
     expect(call.create.blockNumber).toBe(50);
+    expect(sendSecondaryTradeAlert).toHaveBeenCalledWith({
+      seller: SELLER,
+      buyer: BUYER,
+      token: TOKEN,
+      tokenAmount: '1000000000000000000',
+      price: '500000000000000000',
+      blockTimestamp: 1700000000,
+      transactionHash: log.transactionHash,
+      chainId: 13374202,
+      tradeHash: TRADE_HASH.toLowerCase(),
+    });
   });
 
   it('should be idempotent — same tradeHash upserted twice without error', async () => {

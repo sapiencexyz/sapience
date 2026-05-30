@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { fetchCategories } from '../categories';
+import { fetchCategories, GET_CATEGORIES } from '../categories';
 
 const mockGraphqlRequest = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
@@ -11,6 +11,12 @@ beforeEach(() => {
 });
 
 describe('fetchCategories', () => {
+  test('uses the staging-supported categories field', async () => {
+    expect(GET_CATEGORIES).toContain('categories {');
+    expect(GET_CATEGORIES).not.toContain('categoriesConnection');
+    expect(GET_CATEGORIES).not.toContain('categoriesPage');
+  });
+
   test('returns categories from valid response', async () => {
     const categories = [
       { id: 1, name: 'Crypto', slug: 'crypto' },

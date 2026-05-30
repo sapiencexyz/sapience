@@ -3,9 +3,9 @@ import { useAccount } from 'wagmi';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { ToastAction } from '@sapience/ui/components/ui/toast';
-import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 import { useRouter } from 'next/navigation';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 
 const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
   query RecentCounterpartyPredictions(

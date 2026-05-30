@@ -54,8 +54,8 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
       take: $take
       skip: 0
       chainId: $chainId
-      sortField: "endTime"
-      sortDirection: "asc"
+      sortField: endTime
+      sortDirection: asc
       search: $search
     ) {
       questionType

@@ -4,11 +4,11 @@ import * as React from 'react';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 import type { LegacyPosition as Position } from '@sapience/sdk/queries';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 function useProfileBalance(
   address?: string,

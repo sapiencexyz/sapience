@@ -9,7 +9,7 @@ import type {
   SyncableFields,
   GroupMetadataUpdate,
 } from '../types';
-import { RESOLVER_ADDRESS, END_TIME_BUFFER_SECONDS } from '../constants';
+import { RESOLVER_ADDRESS } from '../constants';
 import { fetchWithRetry, getAdminAuthHeaders } from '../utils';
 import {
   runPipeline,
@@ -33,6 +33,97 @@ export function toUnixTimestamp(isoDate: string): number {
 }
 
 /**
+ * Pick the endTime for a condition payload, with logging for prod observability.
+ *
+ * Priority:
+ *   1. LLM (Sonar) — wins whenever it returned a timestamp, any confidence.
+ *      Confidence is logged but does NOT gate the decision. This is the
+ *      hallucination-guard knob: if logs show LLM is hallucinating, the
+ *      easy first knob is to re-introduce a `confidence === 'high'` gate.
+ *   2. Polymarket endDate — universal fallback for PM-sourced markets.
+ *      Only reachable when LLM returned UNKNOWN, errored, or was disabled.
+ *   3. Regex extraction (endTimeOverride) — only for templated markets
+ *      (sports/series/group) where the format is deterministic by
+ *      construction. For non-templated markets, regex is too brittle to
+ *      trust (the ETH/USDT $1,800 bug was a regex Tier 4e false positive).
+ *   4. Throw — non-templated, non-PM market with no LLM result. Better
+ *      to fail loud than to publish a confidently-wrong endTime.
+ *
+ * No buffer is added. The previous `+ END_TIME_BUFFER_SECONDS` was
+ * meant to cover UMA dispute liveness, but settlement scripts don't
+ * gate on `endTime + UMA` — the buffer was just over-conservative padding
+ * baked into the public-facing value.
+ */
+export function decideEndTime(c: SapienceCondition): {
+  ts: number;
+  source:
+    | 'llm-high'
+    | 'llm-low'
+    | 'llm-unknown'
+    | 'pm-fallback'
+    | 'regex-templated';
+} {
+  const llm = c.llmEndTime;
+  if (llm?.ts) {
+    return { ts: llm.ts, source: `llm-${llm.confidence}` as const };
+  }
+  const pm = c.endDate ? toUnixTimestamp(c.endDate) : null;
+  if (pm) {
+    return { ts: pm, source: 'pm-fallback' };
+  }
+  // Reachable only for non-Polymarket markets (Pyth, manual) that lack
+  // endDate. PM markets always have endDate, so they exit at pm-fallback.
+  if (c.isTemplated && c.endTimeOverride) {
+    return { ts: c.endTimeOverride, source: 'regex-templated' };
+  }
+  throw new Error(`[decideEndTime] no endTime source for ${c.conditionHash}`);
+}
+
+/**
+ * Emit one structured line per condition at create time. Consumed by the
+ * inspect-endtime-decisions script (queries Railway log GraphQL API).
+ * Self-contained so outliers can be triaged without DB cross-referencing.
+ */
+function logEndTimeDecision(
+  c: SapienceCondition,
+  decision: { ts: number; source: string }
+): void {
+  const llmTs = c.llmEndTime?.ts ?? null;
+  const pmTs = c.endDate ? toUnixTimestamp(c.endDate) : null;
+  const drift = llmTs !== null && pmTs !== null ? llmTs - pmTs : null;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const isPast = decision.ts <= nowSeconds;
+  const payload = {
+    event: 'endtime_decided',
+    conditionHash: c.conditionHash,
+    question: c.question.slice(0, 80),
+    source: decision.source,
+    llmTs,
+    pmTs,
+    regexTs: c.endTimeOverride ?? null,
+    llmConfidence: c.llmEndTime?.confidence ?? null,
+    isTemplated: c.isTemplated ?? false,
+    driftSeconds: drift,
+    finalTs: decision.ts,
+    isPast,
+    secondsPast: isPast ? nowSeconds - decision.ts : null,
+  };
+  // Past-dated submissions are legal (backfills rely on it) but rare
+  // enough that operators should see them in log scans. Anything else
+  // stays on console.log so the daily generate doesn't shout.
+  if (isPast) {
+    console.warn(
+      `[endtime_decided] PAST endTime submitted for ${c.conditionHash}: ` +
+        `finalTs=${decision.ts} (${nowSeconds - decision.ts}s ago), ` +
+        `source=${decision.source}`
+    );
+    console.warn(JSON.stringify(payload));
+  } else {
+    console.log(JSON.stringify(payload));
+  }
+}
+
+/**
  * Submit a condition group to the API
  */
 export async function submitConditionGroup(
@@ -53,6 +144,7 @@ export async function submitConditionGroup(
         name: group.title, // API uses 'name' field
         categorySlug: group.categorySlug,
         similarMarkets: group.similarMarkets,
+        negRiskMarketId: group.negRiskMarketId,
       }),
     });
 
@@ -89,6 +181,9 @@ export async function submitCondition(
   try {
     const authHeaders = await getAdminAuthHeaders(privateKey);
 
+    const decision = decideEndTime(condition);
+    logEndTimeDecision(condition, decision);
+
     const response = await fetchWithRetry(`${apiUrl}/admin/conditions`, {
       method: 'POST',
       headers: {
@@ -101,9 +196,7 @@ export async function submitCondition(
         shortName: condition.shortName,
         optionName: condition.optionName,
         categorySlug: condition.categorySlug,
-        endTime:
-          (condition.endTimeOverride ?? toUnixTimestamp(condition.endDate)) +
-          END_TIME_BUFFER_SECONDS,
+        endTime: decision.ts,
         description: condition.description,
         similarMarkets: condition.similarMarkets,
         tags: condition.tags,
@@ -114,6 +207,8 @@ export async function submitCondition(
         estimatedPrice: condition.estimatedPrice,
         similarMarketVolume: condition.similarMarketVolume,
         similarMarketImage: condition.similarMarketImage,
+        negRisk: condition.negRisk,
+        negRiskMarketId: condition.negRiskMarketId,
       }),
     });
 
@@ -591,25 +686,29 @@ export async function submitToAPI(
   }
 
   // Build batch payloads
-  const payloads = allConditions.map((condition) => ({
-    conditionHash: condition.conditionHash,
-    question: condition.question,
-    shortName: condition.shortName,
-    optionName: condition.optionName,
-    categorySlug: condition.categorySlug,
-    endTime:
-      (condition.endTimeOverride ?? toUnixTimestamp(condition.endDate)) +
-      END_TIME_BUFFER_SECONDS,
-    description: condition.description,
-    similarMarkets: condition.similarMarkets,
-    tags: condition.tags,
-    chainId: condition.chainId,
-    groupName: condition.groupTitle,
-    resolver: RESOLVER_ADDRESS,
-    estimatedPrice: condition.estimatedPrice,
-    similarMarketVolume: condition.similarMarketVolume,
-    similarMarketImage: condition.similarMarketImage,
-  }));
+  const payloads = allConditions.map((condition) => {
+    const decision = decideEndTime(condition);
+    logEndTimeDecision(condition, decision);
+    return {
+      conditionHash: condition.conditionHash,
+      question: condition.question,
+      shortName: condition.shortName,
+      optionName: condition.optionName,
+      categorySlug: condition.categorySlug,
+      endTime: decision.ts,
+      description: condition.description,
+      similarMarkets: condition.similarMarkets,
+      tags: condition.tags,
+      chainId: condition.chainId,
+      groupName: condition.groupTitle,
+      resolver: RESOLVER_ADDRESS,
+      estimatedPrice: condition.estimatedPrice,
+      similarMarketVolume: condition.similarMarketVolume,
+      similarMarketImage: condition.similarMarketImage,
+      negRisk: condition.negRisk,
+      negRiskMarketId: condition.negRiskMarketId,
+    };
+  });
 
   // Split into batches that fit within the API body size limit
   const batches = batchBySize(payloads, API_BODY_LIMIT_BYTES);
@@ -657,9 +756,31 @@ export async function submitToAPI(
           const errorData = await response
             .json()
             .catch(() => ({ message: 'Unknown error' }));
-          console.error(
-            `${label} Batch ${batchNum} failed: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
-          );
+          const message =
+            (errorData as { message?: string }).message || response.statusText;
+          // Surface basket-id mismatches separately: the API rejects them with
+          // a 400 carrying the "non-matching negRisk conditions" phrase, and
+          // these are the cases operators want to triage. Keep this fail-closed:
+          // if one condition in the batch fails admission, do not retry a partial
+          // subset because that can split a negRisk basket across sync runs.
+          if (
+            response.status === 400 &&
+            /non-matching negRisk/i.test(message)
+          ) {
+            console.error(
+              `${label} Batch ${batchNum} unable to add to existing negRisk ` +
+                `group: ${message}. Conditions: ${batch
+                  .map(
+                    (c) =>
+                      `${c.conditionHash} (group=${c.groupName ?? 'none'}, negRiskMarketId=${c.negRiskMarketId ?? 'none'})`
+                  )
+                  .join('; ')}`
+            );
+          } else {
+            console.error(
+              `${label} Batch ${batchNum} failed: HTTP ${response.status}: ${message}`
+            );
+          }
           totalFailed += batch.length;
         }
       } catch (error) {

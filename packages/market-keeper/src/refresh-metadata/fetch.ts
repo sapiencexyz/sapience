@@ -43,6 +43,8 @@ export async function fetchAllExistingConditions(
 ): Promise<Map<string, ExistingCondition>> {
   const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
+  // Uses the staging-supported `conditions(where:)` resolver. Offset pagination
+  // is deterministic because we order by stable `id` ascending.
   const query = `
     query RefreshMetadataConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!, $orderBy: [ConditionOrderByWithRelationInput!]) {
       conditions(where: $where, take: $take, skip: $skip, orderBy: $orderBy) {
@@ -60,6 +62,7 @@ export async function fetchAllExistingConditions(
           id
           name
           similarMarkets
+          negRisk
         }
       }
     }
@@ -113,12 +116,14 @@ export async function fetchAllExistingConditions(
             id?: number | null;
             name?: string | null;
             similarMarkets?: string[] | null;
+            negRisk?: boolean | null;
           } | null;
         }>;
       };
     };
 
     const conditions = result.data?.conditions ?? [];
+    const hasMore = conditions.length === SAPIENCE_PAGE_SIZE;
 
     for (const c of conditions) {
       existing.set(c.id, {
@@ -135,6 +140,7 @@ export async function fetchAllExistingConditions(
         conditionGroupId: c.conditionGroup?.id ?? undefined,
         conditionGroupSimilarMarkets:
           c.conditionGroup?.similarMarkets ?? undefined,
+        conditionGroupNegRisk: c.conditionGroup?.negRisk ?? undefined,
       });
     }
 
@@ -142,7 +148,7 @@ export async function fetchAllExistingConditions(
       `[RefreshMetadata]   GraphQL page ${pageCount}: fetched ${conditions.length} (cumulative ${existing.size}, ${Date.now() - pageStart}ms)`
     );
 
-    if (conditions.length < SAPIENCE_PAGE_SIZE) break;
+    if (!hasMore) break;
     skip += SAPIENCE_PAGE_SIZE;
   }
 

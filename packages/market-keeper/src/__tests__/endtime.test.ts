@@ -12,6 +12,7 @@ import {
   detectSportDuration,
   extractYear,
   toTs,
+  descHasTimingMarker,
 } from '../generate/endtime';
 
 // ============ Test Helpers ============
@@ -69,10 +70,13 @@ describe('buildEndTimePrompt', () => {
 });
 
 describe('ENDTIME_SYSTEM_PROMPT', () => {
-  it('instructs CSV format with ISO8601', () => {
-    expect(ENDTIME_SYSTEM_PROMPT).toContain('CSV');
+  it('instructs JSON format with confidence field', () => {
+    expect(ENDTIME_SYSTEM_PROMPT).toContain('JSON');
     expect(ENDTIME_SYSTEM_PROMPT).toContain('ISO8601');
-    expect(ENDTIME_SYSTEM_PROMPT).toContain('UNKNOWN');
+    expect(ENDTIME_SYSTEM_PROMPT).toContain('confidence');
+    expect(ENDTIME_SYSTEM_PROMPT).toContain('high');
+    expect(ENDTIME_SYSTEM_PROMPT).toContain('low');
+    expect(ENDTIME_SYSTEM_PROMPT).toContain('unknown');
   });
 });
 
@@ -156,19 +160,113 @@ describe('parseEndTimeResponse', () => {
     expect(results[0].conditionId).toBe(id1);
   });
 
-  it('rejects past dates', () => {
-    const content = `${id1},2020-01-01T00:00:00Z`;
+  it('accepts past dates (already-resolved events return when the outcome became known)', () => {
+    // Sonar's prompt explicitly returns the past resolution timestamp for
+    // events that have already happened — that's the right answer for
+    // endTime, not a near-future placeholder. The parser must let it through.
+    const pastDate = '2020-01-01T00:00:00Z';
+    const content = `${id1},${pastDate}`;
     const results = parseEndTimeResponse(content, markets);
 
     const result = results.find((r) => r.conditionId === id1);
-    if (result) {
-      expect(result.endTime).toBeNull();
-    }
+    expect(result?.endTime).toBe(
+      Math.floor(new Date(pastDate).getTime() / 1000)
+    );
   });
 
   it('handles empty response', () => {
     const results = parseEndTimeResponse('', markets);
     expect(results).toHaveLength(0);
+  });
+
+  describe('JSON response format (new)', () => {
+    it('parses JSON array with high confidence', () => {
+      const futureDate = '2099-04-01T16:00:00Z';
+      const content = JSON.stringify([
+        { id: id1, ts: futureDate, confidence: 'high' },
+      ]);
+      const results = parseEndTimeResponse(content, markets);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].conditionId).toBe(id1);
+      expect(results[0].endTime).toBe(
+        Math.floor(new Date(futureDate).getTime() / 1000)
+      );
+      expect(results[0].confidence).toBe('high');
+    });
+
+    it('parses JSON array with low confidence + EOD timestamp', () => {
+      const eod = '2099-04-01T23:59:59Z';
+      const content = JSON.stringify([{ id: id1, ts: eod, confidence: 'low' }]);
+      const results = parseEndTimeResponse(content, markets);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe('low');
+      expect(results[0].endTime).not.toBeNull();
+    });
+
+    it('parses JSON array with unknown confidence + null ts', () => {
+      const content = JSON.stringify([
+        { id: id1, ts: null, confidence: 'unknown' },
+      ]);
+      const results = parseEndTimeResponse(content, markets);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe('unknown');
+      expect(results[0].endTime).toBeNull();
+    });
+
+    it('strips ```json fences before parsing', () => {
+      const futureDate = '2099-04-01T16:00:00Z';
+      const content = `\`\`\`json\n${JSON.stringify([
+        { id: id1, ts: futureDate, confidence: 'high' },
+      ])}\n\`\`\``;
+      const results = parseEndTimeResponse(content, markets);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].endTime).toBe(
+        Math.floor(new Date(futureDate).getTime() / 1000)
+      );
+    });
+
+    it('falls back to CSV when JSON is malformed', () => {
+      // Not valid JSON; parser falls through to CSV. Confidence synthesized.
+      const content = `${id1},2099-04-01T16:00:00Z`;
+      const results = parseEndTimeResponse(content, markets);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].endTime).not.toBeNull();
+      expect(results[0].confidence).toBe('low'); // CSV → synthesized low
+    });
+
+    it('CSV with UNKNOWN gets synthesized unknown confidence', () => {
+      const content = `${id1},UNKNOWN`;
+      const results = parseEndTimeResponse(content, markets);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].endTime).toBeNull();
+      expect(results[0].confidence).toBe('unknown');
+    });
+
+    it('JSON entry with missing confidence field falls back to inferred', () => {
+      const futureDate = '2099-04-01T16:00:00Z';
+      const content = JSON.stringify([{ id: id1, ts: futureDate }]);
+      const results = parseEndTimeResponse(content, markets);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe('low'); // ts present, confidence missing → low
+    });
+
+    it('JSON entry with invalid confidence value falls back to inferred', () => {
+      const futureDate = '2099-04-01T16:00:00Z';
+      const content = JSON.stringify([
+        { id: id1, ts: futureDate, confidence: 'maybe' },
+      ]);
+      const results = parseEndTimeResponse(content, markets);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe('low');
+    });
   });
 });
 
@@ -874,6 +972,107 @@ describe('extractEndTime', () => {
 
     it('returns null for empty inputs', () => {
       expect(extractEndTime('', '')).toBeNull();
+    });
+  });
+
+  // Date-only tiers should decline when description has explicit timing
+  // markers the regex can't extract (noon, hour:min, AM/PM, named tz).
+  // Otherwise we stamp EOD and miss the real time-of-day buried in the
+  // description (the ETH/USDT $1,800 bug class).
+  describe('date-only tier guard (descHasTimingMarker)', () => {
+    it('declines on ETH/USDT $1,800-style market (Tier 4e + noon ET description)', () => {
+      // Title: "on May 16" matches Tier 4e; description has "noon" + "ET".
+      // Old behavior: Tier 4e returns EOD May 16. New: returns null so caller
+      // falls through to LLM or Polymarket endDate.
+      expect(
+        extractEndTime(
+          'Will the price of Ethereum be above $1,800 on May 16?',
+          'This market resolves at 12:00 in the ET timezone (noon) on the date specified in the title.'
+        )
+      ).toBeNull();
+    });
+
+    it('still returns date-only EOD when description has no timing markers (Tier 4e)', () => {
+      // Plain date-only market — description does not name a time of day.
+      expect(
+        extractEndTime(
+          'Will Trump speak on May 18?',
+          'Resolves to YES if Trump speaks anywhere on or before May 18.'
+        )
+      ).toBe(toTs(2026, 5, 18));
+    });
+
+    it('declines Tier 4b (with year) when description names noon ET', () => {
+      expect(
+        extractEndTime(
+          'Will SpaceX launch on May 16, 2026?',
+          'Final answer is determined at 12:00 ET (noon) on the date in the title.'
+        )
+      ).toBeNull();
+    });
+
+    it('declines Tier 4a ("by Month Day, Year") when description names a time', () => {
+      expect(
+        extractEndTime(
+          'Will the Fed cut rates by April 30, 2026?',
+          'Resolves based on the FOMC announcement at 2:00 PM ET on the meeting day.'
+        )
+      ).toBeNull();
+    });
+
+    it('does NOT decline Tier 4c (already extracts time) even if desc has timing markers', () => {
+      // Tier 4c parses "May 16 at 12:00 PM ET" directly from the question.
+      // We trust it — guard only applies to date-only tiers.
+      expect(
+        extractEndTime(
+          'Will SpaceX launch on May 16 at 12:00 PM ET?',
+          'Final answer is determined at noon ET.'
+        )
+      ).toBe(toTs(2026, 5, 16, 12, 0, -4));
+    });
+
+    it('does NOT decline Tier 2a (scheduled + time) even with timing markers in desc', () => {
+      // Tier 2a parses explicit time from "scheduled for ... at HH:MM TZ".
+      expect(
+        extractEndTime(
+          'NBA game tonight',
+          'Game is scheduled for May 16 at 8:00 PM ET.'
+        )
+      ).not.toBeNull();
+    });
+  });
+
+  describe('descHasTimingMarker', () => {
+    it('matches "noon"', () => {
+      expect(descHasTimingMarker('Resolves at noon on the day.')).toBe(true);
+    });
+    it('matches "12:00" (HH:MM)', () => {
+      expect(descHasTimingMarker('Settles at 12:00 sharp.')).toBe(true);
+    });
+    it('matches "4 PM" (H AM/PM)', () => {
+      expect(descHasTimingMarker('Closes 4 PM.')).toBe(true);
+    });
+    it('matches "ET" / "Eastern" timezone names', () => {
+      expect(descHasTimingMarker('Determined ET.')).toBe(true);
+      expect(descHasTimingMarker('Resolves Eastern time.')).toBe(true);
+    });
+    it('matches "PST", "UTC", "GMT"', () => {
+      expect(descHasTimingMarker('Cut-off PST.')).toBe(true);
+      expect(descHasTimingMarker('In UTC.')).toBe(true);
+      expect(descHasTimingMarker('Per GMT.')).toBe(true);
+    });
+    it('returns false for plain date-only descriptions', () => {
+      expect(
+        descHasTimingMarker(
+          'Resolves to YES if Trump speaks anywhere on or before May 18.'
+        )
+      ).toBe(false);
+    });
+    it('returns false for empty string', () => {
+      expect(descHasTimingMarker('')).toBe(false);
+    });
+    it('does not match "EAST" (not a tz abbreviation, word boundary)', () => {
+      expect(descHasTimingMarker('The EAST side of town.')).toBe(false);
     });
   });
 });
