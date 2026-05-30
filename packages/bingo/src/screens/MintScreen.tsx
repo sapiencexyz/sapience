@@ -62,24 +62,32 @@ export default function MintScreen() {
 
   // ---------- smart-account balance (drives the Fund step) ----------
   const {
-    rawBalance,
+    rawNativeBalance,
+    rawWrappedBalance,
     balance,
+    nativeBalance,
+    wrappedBalance,
     isLoading: balanceLoading,
     refetch: refetchBalance,
   } = useCollateralBalance({ address: sa, chainId: CHAIN_ID, enabled: !!sa });
 
-  // Need the card price plus a small native buffer for the Pyth entropy fee.
-  const needed =
-    chosenPrice != null
-      ? chosenPrice + (entropyFee != null ? entropyFee * 4n : 0n)
-      : null;
+  // The card price is paid in wUSDe, but mintCard also needs native USDe for
+  // the entropy msg.value. Existing wUSDe cannot pay that native fee, so the
+  // checkout gate must mirror prepareAccount instead of treating native+wUSDe
+  // as one fungible bucket.
+  const entropyReserveWei = entropyFee != null ? entropyFee * 3n : 0n;
+  const amountToWrapWei =
+    chosenPrice != null && rawWrappedBalance < chosenPrice
+      ? chosenPrice - rawWrappedBalance
+      : 0n;
+  const neededNativeWei =
+    chosenPrice != null ? amountToWrapWei + entropyReserveWei : null;
   const funded =
-    needed != null && rawBalance != null && rawBalance >= needed;
+    neededNativeWei != null && rawNativeBalance >= neededNativeWei;
   const deficitWei =
-    needed != null && rawBalance != null && !funded
-      ? needed - rawBalance
-      : (needed ?? 0n);
-  const deficit = Number(deficitWei) / 1e18;
+    neededNativeWei != null && !funded
+      ? neededNativeWei - rawNativeBalance
+      : (neededNativeWei ?? 0n);
 
   // ---------- session ----------
   const {
@@ -256,17 +264,21 @@ export default function MintScreen() {
                 <p className="muted small">
                   Connect your wallet to check your balance.
                 </p>
-              ) : rawBalance == null && balanceLoading ? (
+              ) : balanceLoading ? (
                 <p className="muted small">Checking balance…</p>
               ) : funded ? (
                 <p className="muted small">
-                  {formatDollarLikeBalance(balance)} USDe available
+                  {formatDollarLikeBalance(balance)} USDe available ·{' '}
+                  {formatDollarLikeBalance(nativeBalance)} native /{' '}
+                  {formatDollarLikeBalance(wrappedBalance)} wUSDe
                 </p>
               ) : (
                 <>
                   <p className="muted small">
-                    You have {formatDollarLikeBalance(balance)} USDe · need +
-                    {formatDollarLikeBalance(deficit)} USDe more.
+                    You have {formatDollarLikeBalance(balance)} USDe total ({' '}
+                    {formatDollarLikeBalance(nativeBalance)} native /{' '}
+                    {formatDollarLikeBalance(wrappedBalance)} wUSDe) · need +
+                    {fmtUnits(deficitWei)} native USDe more.
                   </p>
                   {sa && eoa && (
                     <BungeeBridge
