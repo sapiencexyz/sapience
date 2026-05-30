@@ -215,6 +215,120 @@ describe('computeMetadataUpdates', () => {
     });
   });
 
+  it('detects externalEventId change when the stored group is keyed by a different event', () => {
+    // Reviewer-flagged scenario for #1813: the keeper was computing
+    // externalEventId for fresh metadata but not emitting it in the diff,
+    // so batch-metadata payloads fell back to groupName — and with the
+    // dropped UNIQUE(name) constraint, the API's name-fallback could
+    // attach the condition to the wrong (newest-id-wins) group. Asserting
+    // here that the diff actually carries the field when it differs.
+    const market = makeMarket({
+      conditionId: '0xevtid',
+      events: [{ id: 'evt-week-13', title: 'Top US Netflix Movie This Week' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xevtid',
+        existingFromMarket(market, {
+          externalEventId: 'evt-week-12',
+          groupName: 'Top US Netflix Movie This Week',
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(1);
+    expect(metadataUpdates[0].fields.externalEventId).toBe('evt-week-13');
+    expect(metadataUpdates[0].old.externalEventId).toBe('evt-week-12');
+  });
+
+  it('does not emit externalEventId when fresh matches the stored value', () => {
+    // Regression guard against emitting a noisy update on every refresh.
+    const market = makeMarket({
+      conditionId: '0xevtsame',
+      events: [{ id: 'evt-stable', title: 'Some Event' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xevtsame',
+        existingFromMarket(market, {
+          externalEventId: 'evt-stable',
+          groupName: 'Some Event',
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(0);
+  });
+
+  it('forces externalEventId into the payload alongside a groupName change, even when the event id is unchanged', () => {
+    // Second half of the #1813 reviewer-flagged bug. Polymarket renames
+    // an event title but keeps the same event id. Without this fix, the
+    // diff would emit `{ groupName }` only, the admin route would fall
+    // back to name lookup, and — because UNIQUE(name) was dropped — could
+    // attach the condition to an unrelated newest-id-wins group sharing
+    // the new title. Including externalEventId forces the route through
+    // the canonical event-keyed lookup, which returns the right group.
+    const market = makeMarket({
+      conditionId: '0xrename',
+      events: [{ id: 'evt-stable', title: 'Top US Netflix Movie Week 13' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xrename',
+        existingFromMarket(market, {
+          externalEventId: 'evt-stable', // already correct
+          groupName: 'Top US Netflix Movie Week 12', // stale title
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(1);
+    expect(metadataUpdates[0].fields.groupName).toBe(
+      'Top US Netflix Movie Week 13'
+    );
+    expect(metadataUpdates[0].fields.externalEventId).toBe('evt-stable');
+    expect(metadataUpdates[0].old.externalEventId).toBe('evt-stable');
+  });
+
+  it('does not force externalEventId when groupName is not in the diff', () => {
+    // Regression guard: don't include externalEventId unnecessarily when
+    // the only changes are to non-group fields. Keeps refresh traffic
+    // narrow and avoids drifting from "only emit what changed" semantics
+    // except in the specific groupName-rename case above.
+    const market = makeMarket({
+      conditionId: '0xother',
+      description: 'updated description',
+      events: [{ id: 'evt-stable', title: 'Some Event' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xother',
+        existingFromMarket(market, {
+          externalEventId: 'evt-stable',
+          groupName: 'Some Event',
+          description: 'old description',
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(1);
+    expect(metadataUpdates[0].fields.description).toBe('updated description');
+    expect(metadataUpdates[0].fields.externalEventId).toBeUndefined();
+    expect(metadataUpdates[0].fields.groupName).toBeUndefined();
+  });
+
   it('detects similarMarkets URL change when event slug changes', () => {
     const market = makeMarket({
       conditionId: '0xslug',

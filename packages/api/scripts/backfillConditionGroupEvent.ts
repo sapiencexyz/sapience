@@ -294,6 +294,15 @@ interface Counters {
   groupsEventConflictSkipped: number;
   groupsNoEventOnPolymarket: number;
   basketAlsoBackfilled: number;
+  groupsCollisionSkipped: number;
+}
+
+interface CollisionRecord {
+  groupId: number;
+  groupName: string;
+  eventId: string;
+  eventTitle: string;
+  conflictResolved: boolean;
 }
 
 async function main(): Promise<void> {
@@ -320,6 +329,7 @@ async function main(): Promise<void> {
     groupsEventConflictSkipped: 0,
     groupsNoEventOnPolymarket: 0,
     basketAlsoBackfilled: 0,
+    groupsCollisionSkipped: 0,
   };
 
   console.log(`[backfill] scanning ${groups.length} condition_groups…`);
@@ -388,11 +398,48 @@ async function main(): Promise<void> {
   // for groups it already populated.
   interface GroupUpdate {
     id: EligibleGroup['id'];
+    name: string;
     eventId: string;
+    eventTitle: string;
     basketId: string | null;
     writeBasket: boolean;
+    conflictResolved: boolean;
   }
   const updates: GroupUpdate[] = [];
+  const collisions: CollisionRecord[] = [];
+
+  // Pre-flight (source, externalEventId) collision detection.
+  //
+  // The partial unique index on (source, externalEventId) lives at the DB
+  // layer, so without this pre-flight a dry-run can't surface collisions
+  // — only the runtime catch around prisma.update can. By snapshotting
+  // existing claims from the same `groups` query we already issued, plus
+  // tracking in-run claims as we plan them, we can predict every collision
+  // an --apply run would hit. The apply path still keeps the runtime catch
+  // as a safety net against concurrent operators racing the same script,
+  // but in practice that's rare; the pre-flight catches the vast majority.
+  //
+  // The output format below matches what scripts/inspectConditionGroupEventCollisions.ts
+  // already parses, so an operator can run inspect against a dry-run log
+  // and see the per-collision winner/loser breakdown without committing
+  // to --apply.
+  const existingClaimsByEventId = new Map<
+    string,
+    { groupId: number; groupName: string }
+  >();
+  for (const g of groups) {
+    if (g.externalEventId) {
+      existingClaimsByEventId.set(g.externalEventId, {
+        groupId: g.id,
+        groupName: g.name,
+      });
+    }
+  }
+  const plannedClaimsByEventId = new Map<
+    string,
+    { groupId: number; groupName: string }
+  >();
+
   for (const g of eligibleGroups) {
     const memberIds = g.condition.map((c) => c.id);
     let unknownCount = 0;
@@ -481,6 +528,39 @@ async function main(): Promise<void> {
     }
 
     const writeBasket = g.negRiskMarketId === null && chosenBucket.basketId !== null;
+
+    // Pre-flight collision check, BEFORE counting the group as
+    // backfilled/conflict-resolved. The partial UNIQUE on
+    // (source, externalEventId) means at most one group can own a given
+    // event id. If another group already owns this event (either persisted
+    // in DB or planned earlier in this same run), record as a predicted
+    // collision and skip the update. Same record shape the runtime catch
+    // would produce, so the inspect script consumes both identically.
+    const existingClaim = existingClaimsByEventId.get(chosenEventId);
+    const plannedClaim = plannedClaimsByEventId.get(chosenEventId);
+    if (existingClaim || plannedClaim) {
+      counters.groupsCollisionSkipped++;
+      const winner = existingClaim ?? plannedClaim!;
+      console.log(
+        `  ⊘ group ${g.id} "${g.name}" COLLISION → event ${chosenEventId}` +
+          (chosenBucket.title ? ` (${chosenBucket.title})` : '') +
+          ` already owned by group ${winner.groupId} "${winner.groupName}"` +
+          (conflicted ? ' [conflict-resolved]' : '')
+      );
+      collisions.push({
+        groupId: g.id,
+        groupName: g.name,
+        eventId: chosenEventId,
+        eventTitle: chosenBucket.title,
+        conflictResolved: conflicted,
+      });
+      continue;
+    }
+    plannedClaimsByEventId.set(chosenEventId, {
+      groupId: g.id,
+      groupName: g.name,
+    });
+
     if (conflicted) {
       counters.groupsEventConflictResolved++;
       console.log(
@@ -506,9 +586,12 @@ async function main(): Promise<void> {
     if (writeBasket) counters.basketAlsoBackfilled++;
     updates.push({
       id: g.id,
+      name: g.name,
       eventId: chosenEventId,
+      eventTitle: chosenBucket.title,
       basketId: chosenBucket.basketId,
       writeBasket,
+      conflictResolved: conflicted,
     });
   }
 
@@ -517,13 +600,37 @@ async function main(): Promise<void> {
       `[backfill] writing ${updates.length} UPDATEs (concurrency=${UPDATE_CONCURRENCY})…`
     );
     await mapWithConcurrency(updates, UPDATE_CONCURRENCY, async (u) => {
-      await prisma.conditionGroup.update({
-        where: { id: u.id },
-        data: {
-          externalEventId: u.eventId,
-          ...(u.writeBasket ? { negRiskMarketId: u.basketId } : {}),
-        },
-      });
+      try {
+        await prisma.conditionGroup.update({
+          where: { id: u.id },
+          data: {
+            externalEventId: u.eventId,
+            ...(u.writeBasket ? { negRiskMarketId: u.basketId } : {}),
+          },
+        });
+      } catch (err) {
+        // P2002 = unique violation on the partial (source, externalEventId)
+        // index. The pre-flight check upstream catches every in-batch
+        // collision and every claim that was already persisted in this DB
+        // snapshot — anything that reaches here lost a race to a
+        // *concurrent* operator running --apply at the same time. Rare,
+        // but record-and-continue so a single late collision doesn't abort
+        // the run.
+        const isUniqueViolation =
+          err !== null &&
+          typeof err === 'object' &&
+          'code' in err &&
+          (err as { code?: unknown }).code === 'P2002';
+        if (!isUniqueViolation) throw err;
+        counters.groupsCollisionSkipped++;
+        collisions.push({
+          groupId: u.id,
+          groupName: u.name,
+          eventId: u.eventId,
+          eventTitle: u.eventTitle,
+          conflictResolved: u.conflictResolved,
+        });
+      }
     });
   }
 
@@ -554,6 +661,43 @@ async function main(): Promise<void> {
   console.log(
     `  basket also populated           : ${counters.basketAlsoBackfilled}  (groups with null negRiskMarketId that got filled)`
   );
+  console.log(
+    `  group collisions (skipped)      : ${counters.groupsCollisionSkipped}` +
+      (counters.groupsCollisionSkipped > 0
+        ? '  ← another group already owns the event; details below'
+        : '')
+  );
+
+  if (collisions.length > 0) {
+    // Cluster by eventId so the operator can see which groups are fighting
+    // over the same Polymarket event. The "winner" — the group whose UPDATE
+    // landed first — isn't listed here; query the DB by externalEventId to
+    // find it. All entries below are the losers that need manual triage
+    // (merge into the winner, leave NULL, or pick a different event).
+    const byEvent = new Map<string, CollisionRecord[]>();
+    for (const c of collisions) {
+      const arr = byEvent.get(c.eventId) ?? [];
+      arr.push(c);
+      byEvent.set(c.eventId, arr);
+    }
+    const sortedEvents = [...byEvent.entries()].sort(
+      (a, b) => b[1].length - a[1].length
+    );
+    console.log(
+      `\n[backfill] ${collisions.length} group(s) skipped due to (source, externalEventId) collisions across ${sortedEvents.length} event(s):`
+    );
+    for (const [eventId, recs] of sortedEvents) {
+      const title = recs.find((r) => r.eventTitle)?.eventTitle ?? '';
+      console.log(
+        `  event ${eventId}${title ? ` (${title})` : ''} — ${recs.length} losing group(s):`
+      );
+      for (const r of recs) {
+        console.log(
+          `    · group ${r.groupId} "${r.groupName}"${r.conflictResolved ? ' [conflict-resolved]' : ''}`
+        );
+      }
+    }
+  }
 }
 
 const logger = setupFileLogger();
