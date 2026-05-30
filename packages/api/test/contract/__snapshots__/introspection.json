@@ -186,7 +186,7 @@
       {
         "kind": "OBJECT",
         "name": "ActivityItem",
-        "description": "A single activity entry — either a prediction or a trade, sorted by timestamp",
+        "description": "A single activity entry \u2014 either a prediction or a trade, sorted by timestamp",
         "fields": [
           {
             "name": "prediction",
@@ -4242,7 +4242,7 @@
           },
           {
             "name": "estimatedPrice",
-            "description": "YES probability from Polymarket (0.0–1.0), null for non-Polymarket",
+            "description": "YES probability from Polymarket (0.0\u20131.0), null for non-Polymarket",
             "args": [],
             "type": {
               "kind": "SCALAR",
@@ -4973,6 +4973,18 @@
                 "name": "DateTimeISO",
                 "ofType": null
               }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "externalEventId",
+            "description": "Polymarket event id (events[0].id on Gamma /markets). The canonical identity for platform-sourced groups. Null for legacy / Sapience-native / curated groups that don't originate from a platform event.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
             },
             "isDeprecated": false,
             "deprecationReason": null
@@ -7893,7 +7905,7 @@
       {
         "kind": "SCALAR",
         "name": "Decimal",
-        "description": "Prisma.Decimal — round-tripped as a decimal string with arbitrary precision.",
+        "description": "Prisma.Decimal \u2014 round-tripped as a decimal string with arbitrary precision.",
         "fields": null,
         "inputFields": null,
         "interfaces": null,
@@ -14401,7 +14413,7 @@
           },
           {
             "name": "accountActivity",
-            "description": "Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.",
+            "description": "Unified activity feed \u2014 predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.",
             "args": [
               {
                 "name": "address",
@@ -16490,7 +16502,7 @@
           },
           {
             "name": "profitLeaderboard",
-            "description": "Profit leaderboard — addresses ranked by total PnL across all positions",
+            "description": "Profit leaderboard \u2014 addresses ranked by total PnL across all positions",
             "args": [
               {
                 "name": "limit",
@@ -16543,7 +16555,7 @@
           },
           {
             "name": "openInterestByCategory",
-            "description": "Open interest aggregated per category — protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.",
+            "description": "Open interest aggregated per category \u2014 protocol-wide. Sums each ConditionGroup's pre-computed totalOpenInterest plus each ungrouped public condition's openInterest, returning categories with non-zero OI sorted descending.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -16567,7 +16579,7 @@
           },
           {
             "name": "openInterestByTimeToResolution",
-            "description": "Open interest bucketed by time-to-resolution — protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.",
+            "description": "Open interest bucketed by time-to-resolution \u2014 protocol-wide. Each unsettled prediction's collateral falls into the bucket of its latest condition endTime; expired-but-pending predictions roll into the soonest bucket.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -16591,7 +16603,7 @@
           },
           {
             "name": "protocolStats",
-            "description": "Protocol statistics time series at the configured snapshot cadence — vault balance, volume, PnL, and open interest",
+            "description": "Protocol statistics time series at the configured snapshot cadence \u2014 vault balance, volume, PnL, and open interest",
             "args": [
               {
                 "name": "vaultAddress",
@@ -16685,7 +16697,7 @@
           },
           {
             "name": "questions",
-            "description": "Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field",
+            "description": "Sorted, paginated list of questions \u2014 groups and ungrouped conditions interleaved by the chosen sort field",
             "args": [
               {
                 "name": "categorySlugs",
@@ -17272,7 +17284,7 @@
       {
         "kind": "OBJECT",
         "name": "Question",
-        "description": "A question item — either a group of related conditions or a single ungrouped condition",
+        "description": "A question item \u2014 either a group of related conditions or a single ungrouped condition",
         "fields": [
           {
             "name": "condition",
@@ -18649,7 +18661,7 @@
           },
           {
             "name": "label",
-            "description": "Display label, e.g. ≤1d / 2-7d / 1-2mo",
+            "description": "Display label, e.g. \u22641d / 2-7d / 1-2mo",
             "args": [],
             "type": {
               "kind": "NON_NULL",
