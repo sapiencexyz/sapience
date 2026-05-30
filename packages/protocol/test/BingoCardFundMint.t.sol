@@ -45,9 +45,9 @@ contract BingoCardFundMintTest is BingoCardTestBase {
         internal
         returns (uint256 cardId)
     {
+        random; // cells are drawn on-chain at mint; no external randomness
         vm.prank(player);
-        cardId = bingo.mintCard{ value: ENTROPY_FEE }(refCode, CARD_PRICE);
-        entropy.pushCallback(uint64(cardId), entropyProvider, random);
+        cardId = bingo.mintCard(refCode, CARD_PRICE);
         // These tests build all-YES picks via `_buildPicksForLine`; declare
         // matching sides up front so fundMint accepts them.
         vm.prank(player);
@@ -112,20 +112,15 @@ contract BingoCardFundMintTest is BingoCardTestBase {
         bingo.fundMint(escrow, req);
     }
 
-    function test_fundMint_revertsIfCardNotRevealed() public {
+    function test_fundMint_revertsIfSidesNotDeclared() public {
+        // Cells are drawn at mint, but fundMint still requires the player to
+        // have declared their YES/NO sides first.
         vm.prank(player);
-        uint256 cardId =
-            bingo.mintCard{ value: ENTROPY_FEE }(REFCODE, CARD_PRICE);
-        // Build a request with junk picks since the card hasn't revealed.
-        IV2Types.MintRequest memory req;
-        req.picks = new IV2Types.Pick[](4);
-        req.predictorCollateral = CARD_PRICE / bingo.LINES_PER_CARD();
-        req.predictor = player;
-        req.predictorSponsor = address(bingo);
-        req.predictorSponsorData = abi.encode(cardId);
+        uint256 cardId = bingo.mintCard(REFCODE, CARD_PRICE);
+        IV2Types.MintRequest memory req = _buildRequest(cardId, 0);
 
         vm.prank(escrow);
-        vm.expectRevert(BingoCard.CardNotRevealed.selector);
+        vm.expectRevert(BingoCard.SidesNotDeclared.selector);
         bingo.fundMint(escrow, req);
     }
 

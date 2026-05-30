@@ -5,22 +5,19 @@ import "forge-std/Test.sol";
 
 import "../src/bingo/BingoCard.sol";
 import "./mocks/MockERC20.sol";
-import "./mocks/MockEntropy.sol";
 
 /// @notice Shared setup for BingoCard tests. Deploys the contract with a mock
-///         ERC20 as collateral and a MockEntropy as the randomness source.
+///         ERC20 as collateral. Cells are drawn on-chain at mint (block
+///         timestamp seed), so there is no entropy contract or reveal step.
 abstract contract BingoCardTestBase is Test {
     BingoCard internal bingo;
     MockERC20 internal collateral;
-    MockEntropy internal entropy;
 
     address internal owner = address(0xA11CE);
     address internal player = address(0xB0B);
     address internal referrer = address(0xCAFE);
     address internal escrow = address(0xE5C0);
-    address internal entropyProvider = address(0xBEEF);
 
-    uint128 internal constant ENTROPY_FEE = 1 wei;
     uint256 internal constant DECIMALS = 1e18;
     uint256 internal constant CARD_PRICE = 5 * DECIMALS;
     uint16 internal constant REFERRAL_BPS = 200; // 2%
@@ -28,11 +25,7 @@ abstract contract BingoCardTestBase is Test {
 
     function setUp() public virtual {
         collateral = new MockERC20("USDe", "USDe", 18);
-        entropy = new MockEntropy();
-        entropy.setFee(ENTROPY_FEE);
-        bingo = new BingoCard(
-            address(collateral), address(entropy), entropyProvider, owner
-        );
+        bingo = new BingoCard(address(collateral), owner);
 
         vm.deal(player, 1 ether);
     }

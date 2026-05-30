@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IConditionResolver.sol";
 import "../interfaces/IMintSponsor.sol";
 import "../interfaces/IV2Types.sol";
-import "./IEntropy.sol";
 
 /**
  * @title BingoCard
@@ -20,7 +19,7 @@ import "./IEntropy.sol";
  *         Referrers earn a fixed bps cut from the bonus pool, credited only
  *         when the referred player fills all 10 lines on a card.
  */
-contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
+contract BingoCard is Ownable, IMintSponsor {
     using SafeERC20 for IERC20;
 
     // ============ Types ============
@@ -37,7 +36,6 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
         uint256 cardPriceAtMint;
         /// @dev Referral bps stamped at mint time, same reason.
         uint16 referralBpsAtMint;
-        bool revealed;
         bool referrerPaid;
         /// @dev True once the player has declared their YES/NO choice on each
         ///      of the 16 cells. fundMint reverts until this is set.
@@ -64,8 +62,6 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
     // ============ Immutables ============
 
     IERC20 public immutable collateralToken;
-    IEntropy public immutable entropy;
-    address public immutable entropyProvider;
 
     // ============ Storage: pool ============
 
@@ -81,14 +77,6 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
     /// @notice Sum of `card.sponsorBalance` across all cards. Reserved from
     ///         `rescueTokens` so admin can't drain in-flight line stakes.
     uint256 public outstandingSponsorBalance;
-
-    /// @dev Map a pending entropy sequence to the cardId it reveals.
-    mapping(uint64 => uint256) public pendingReveal;
-
-    /// @dev Snapshot of pool at mint time, kept until reveal so admin
-    ///      `setPool` calls don't corrupt in-flight draws.
-    mapping(uint256 => bytes32[]) internal _cardPoolCondIds;
-    mapping(uint256 => address[]) internal _cardPoolResolvers;
 
     // ============ Storage: bonus + referrals ============
 
@@ -142,12 +130,11 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
         address indexed referrer, address indexed to, uint256 amount
     );
     event CardMinted(
-        uint256 indexed cardId,
-        address indexed player,
-        bytes32 refCode,
-        uint64 sequenceNumber
+        uint256 indexed cardId, address indexed player, bytes32 refCode
     );
-    event CardRevealed(uint256 indexed cardId, bytes32 randomNumber);
+    /// @notice Emitted once the 16 cells are drawn (same tx as the mint).
+    ///         `seed` is the final hashed pseudo-random seed used for the draw.
+    event CardRevealed(uint256 indexed cardId, bytes32 seed);
     event LineFunded(
         uint256 indexed cardId,
         uint8 indexed lineIndex,
@@ -180,12 +167,7 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
     error InvalidCode();
     error CodeTaken();
     error NothingToClaim();
-    error InsufficientEntropyFee();
-    error RefundFailed();
-    error UnknownSequence();
-    error AlreadyRevealed();
     error UnauthorizedEscrow();
-    error CardNotRevealed();
     error PlayerMismatch();
     error StakeMismatch();
     error NoMatchingLine();
@@ -201,15 +183,8 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
 
     // ============ Constructor ============
 
-    constructor(
-        address collateralToken_,
-        address entropy_,
-        address entropyProvider_,
-        address owner_
-    ) Ownable(owner_) {
+    constructor(address collateralToken_, address owner_) Ownable(owner_) {
         collateralToken = IERC20(collateralToken_);
-        entropy = IEntropy(entropy_);
-        entropyProvider = entropyProvider_;
     }
 
     // ============ Admin: pool ============
@@ -329,37 +304,25 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
 
     // ============ Mint ============
 
-    /// @notice Pyth Entropy fee currently required for a mint, in wei.
-    function entropyFee() external view returns (uint128) {
-        return entropy.getFeeV2(entropyProvider);
-    }
-
     /// @notice Mint a new card at `cardPrice_`. Pulls `cardPrice_` collateral
-    ///         from `msg.sender` (must be pre-approved) and pays the Pyth
-    ///         Entropy fee out of `msg.value`. Excess ETH is refunded. The
-    ///         price must be at least `minCardPrice` and a multiple of
-    ///         `LINES_PER_CARD` so per-line stakes are an exact share.
-    ///         Returns the cardId.
+    ///         from `msg.sender` (must be pre-approved) and draws the card's 16
+    ///         cells synchronously from on-chain pseudo-randomness. The price
+    ///         must be at least `minCardPrice` and a multiple of `LINES_PER_CARD`
+    ///         so per-line stakes are an exact share. Returns the cardId.
     /// @param refCode Optional referral code; pass bytes32(0) for none.
     /// @param cardPrice_ Caller-chosen card price; stamped onto the card.
     function mintCard(bytes32 refCode, uint256 cardPrice_)
         external
-        payable
         returns (uint256)
     {
         if (cardPrice_ < minCardPrice || cardPrice_ < LINES_PER_CARD) {
             revert CardPriceTooLow();
         }
         if (cardPrice_ % LINES_PER_CARD != 0) revert CardPriceTooLow();
-        uint256 size = poolConditionIds.length;
-        if (size < CELLS_PER_CARD) revert PoolTooSmall();
-
-        uint128 fee = entropy.getFeeV2(entropyProvider);
-        if (msg.value < fee) revert InsufficientEntropyFee();
+        if (poolConditionIds.length < CELLS_PER_CARD) revert PoolTooSmall();
 
         uint256 cardId = ++nextCardId;
         uint256 price = cardPrice_;
-        uint16 bps = referralBps;
 
         Card storage c = _cards[cardId];
         c.player = msg.sender;
@@ -369,31 +332,16 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
         c.expiresAt = uint64(block.timestamp) + cardExpirySeconds;
         c.sponsorBalance = price;
         c.cardPriceAtMint = price;
-        c.referralBpsAtMint = bps;
+        c.referralBpsAtMint = referralBps;
 
         outstandingSponsorBalance += price;
 
-        // Snapshot the pool so reveal is independent of later admin changes.
-        bytes32[] storage condIds = _cardPoolCondIds[cardId];
-        address[] storage resolvers = _cardPoolResolvers[cardId];
-        for (uint256 i = 0; i < size; i++) {
-            condIds.push(poolConditionIds[i]);
-            resolvers.push(poolResolvers[i]);
-        }
-
         collateralToken.safeTransferFrom(msg.sender, address(this), price);
 
-        uint64 seq = entropy.requestWithCallback{ value: fee }(
-            entropyProvider, bytes32(cardId)
-        );
-        pendingReveal[seq] = cardId;
+        emit CardMinted(cardId, msg.sender, refCode);
 
-        emit CardMinted(cardId, msg.sender, refCode, seq);
-
-        if (msg.value > fee) {
-            (bool ok,) = msg.sender.call{ value: msg.value - fee }("");
-            if (!ok) revert RefundFailed();
-        }
+        // Draw the 16 cells immediately — no async entropy callback.
+        _drawCells(cardId, c);
 
         return cardId;
     }
@@ -416,7 +364,6 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
 
         Card storage c = _cards[cardId];
         if (c.player == address(0)) revert CardNotFound();
-        if (!c.revealed) revert CardNotRevealed();
         if (request.predictor != c.player) revert PlayerMismatch();
 
         if (!c.sidesDeclared) revert SidesNotDeclared();
@@ -575,40 +522,32 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
         emit ReferralCredited(ref, cardId, payout);
     }
 
-    // ============ IEntropyConsumer ============
+    // ============ Draw ============
 
-    function getEntropy() public view override returns (address) {
-        return address(entropy);
-    }
-
-    function _entropyCallback(
-        uint64 sequenceNumber,
-        address, /* provider */
-        bytes32 randomNumber
-    ) internal override {
-        uint256 cardId = pendingReveal[sequenceNumber];
-        if (cardId == 0) revert UnknownSequence();
-        delete pendingReveal[sequenceNumber];
-
-        _revealCard(cardId, randomNumber);
-    }
-
-    function _revealCard(uint256 cardId, bytes32 randomNumber) internal {
-        Card storage c = _cards[cardId];
-        if (c.revealed) revert AlreadyRevealed();
-
-        // Fisher-Yates partial shuffle over the per-card snapshot. We re-hash
-        // the seed each step so a single bytes32 yields well-distributed
-        // picks rather than reusing one number mod-N.
-        bytes32[] storage poolIds = _cardPoolCondIds[cardId];
-        address[] storage poolResolvers_ = _cardPoolResolvers[cardId];
+    /// @dev Draws the card's 16 cells from the active pool at mint time using
+    ///      on-chain pseudo-randomness seeded primarily by `block.timestamp`.
+    ///      This is mock-grade randomness — predictable and nudgeable by a
+    ///      block proposer. Fine for a testnet/demo; replace with a verifiable
+    ///      RNG (Pyth Entropy / VRF) before any value is at risk.
+    function _drawCells(uint256 cardId, Card storage c) internal {
+        // Copy the live pool into memory so the partial Fisher-Yates shuffle
+        // doesn't mutate the shared pool storage.
+        bytes32[] memory poolIds = poolConditionIds;
+        address[] memory poolResolvers_ = poolResolvers;
         uint256 n = poolIds.length;
-        uint256 seed = uint256(randomNumber);
+
+        // Re-hash the seed each step so a single value yields well-distributed
+        // picks rather than reusing one number mod-N.
+        uint256 seed = uint256(
+            keccak256(
+                abi.encode(block.timestamp, block.prevrandao, cardId, c.player)
+            )
+        );
 
         for (uint256 i = 0; i < CELLS_PER_CARD; i++) {
             seed = uint256(keccak256(abi.encode(seed, i)));
             uint256 j = i + (seed % (n - i));
-            // swap pool[i] <-> pool[j] in-place
+            // swap pool[i] <-> pool[j] in the in-memory copy
             (poolIds[i], poolIds[j]) = (poolIds[j], poolIds[i]);
             (poolResolvers_[i], poolResolvers_[j]) =
             (poolResolvers_[j], poolResolvers_[i]);
@@ -616,11 +555,7 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
             c.resolvers[i] = poolResolvers_[i];
         }
 
-        c.revealed = true;
-        delete _cardPoolCondIds[cardId];
-        delete _cardPoolResolvers[cardId];
-
-        emit CardRevealed(cardId, randomNumber);
+        emit CardRevealed(cardId, bytes32(seed));
     }
 
     // ============ Bonus: preview + claim ============
@@ -635,7 +570,6 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
     {
         Card storage c = _cards[cardId];
         if (c.player == address(0)) revert CardNotFound();
-        if (!c.revealed) revert CardNotRevealed();
         if (c.filledLineBitmap != COMPLETE_BITMAP) revert CardNotComplete();
 
         wins = _countWinningLines(c);
@@ -653,7 +587,6 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
     function claimBonus(uint256 cardId) external {
         Card storage c = _cards[cardId];
         if (c.player == address(0)) revert CardNotFound();
-        if (!c.revealed) revert CardNotRevealed();
         if (msg.sender != c.player) revert PlayerMismatch();
         if (c.filledLineBitmap != COMPLETE_BITMAP) revert CardNotComplete();
         if (bonusClaimed[cardId]) revert BonusAlreadyClaimed();
@@ -717,16 +650,14 @@ contract BingoCard is Ownable, IEntropyConsumer, IMintSponsor {
     // ============ Player: declare sides ============
 
     /// @notice Declare YES/NO on each of the 16 cells. One-shot; reverts if
-    ///         already declared. Must be called between reveal and the first
-    ///         `fundMint` — the 10 line submissions read their per-cell side
-    ///         from this mask.
+    ///         already declared. Must be called before the first `fundMint` —
+    ///         the 10 line submissions read their per-cell side from this mask.
     /// @param yesMask Bit i: 1 = YES, 0 = NO for cell i (0..15). Bits 16..255
     ///        are ignored.
     function setCellSides(uint256 cardId, uint16 yesMask) external {
         Card storage c = _cards[cardId];
         if (c.player == address(0)) revert CardNotFound();
         if (msg.sender != c.player) revert PlayerMismatch();
-        if (!c.revealed) revert CardNotRevealed();
         if (c.sidesDeclared) revert SidesAlreadyDeclared();
         c.cellSides = yesMask;
         c.sidesDeclared = true;

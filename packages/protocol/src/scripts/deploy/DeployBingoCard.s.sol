@@ -4,12 +4,13 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BingoCard } from "../../bingo/BingoCard.sol";
-import { StaticEntropy } from "../../bingo/StaticEntropy.sol";
 
 /// @title Deploy + configure BingoCard on Ethereal testnet (staging)
-/// @notice Deploys StaticEntropy + BingoCard, wires the escrow + config
-///         defaults, and seeds the condition pool — so the only manual step
-///         left is depositing the bonus pool (if BONUS_DEPOSIT_WEI is unset).
+/// @notice Deploys BingoCard, wires the escrow + config defaults, and seeds
+///         the condition pool — so the only manual step left is depositing the
+///         bonus pool (if BONUS_DEPOSIT_WEI is unset). The 16 cells are drawn
+///         on-chain at mint (block.timestamp seed), so there is no entropy
+///         contract and no reveal step.
 ///
 /// Required env:
 ///   - PM_NETWORK_DEPLOYER_PRIVATE_KEY  signer key (becomes owner)
@@ -18,8 +19,6 @@ import { StaticEntropy } from "../../bingo/StaticEntropy.sol";
 /// Optional env (testnet defaults):
 ///   - COLLATERAL_TOKEN_ADDRESS  wUSDe; defaults to Ethereal testnet collateral.
 ///   - ESCROW_ADDRESS            PredictionMarketEscrow; defaults to testnet.
-///   - ENTROPY_FEE_WEI           StaticEntropy fee, default 1 wei.
-///   - ENTROPY_RANDOM            bytes32 fixed random, default 0x4242…42.
 ///   - MIN_CARD_PRICE_WEI        Floor card price, default 1e18 ($1).
 ///   - REFERRAL_BPS              Referrer cut in bps, default 200 (2%).
 ///   - CARD_EXPIRY_SECONDS       Time until withdrawUnused, default 30 days.
@@ -39,37 +38,20 @@ contract DeployBingoCard is Script {
 
         vm.startBroadcast(vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
-        StaticEntropy entropy = new StaticEntropy(deployer);
-        entropy.setFee(uint128(vm.envOr("ENTROPY_FEE_WEI", uint256(1))));
-        entropy.setRandom(
-            vm.envOr(
-                "ENTROPY_RANDOM",
-                bytes32(
-                    uint256(
-                        0x4242424242424242424242424242424242424242424242424242424242424242
-                    )
-                )
-            )
-        );
-
-        BingoCard bingo =
-            new BingoCard(collateral, address(entropy), deployer, deployer);
+        BingoCard bingo = new BingoCard(collateral, deployer);
 
         _configure(bingo, collateral);
 
         vm.stopBroadcast();
 
         console.log("=== Deployed + configured (Ethereal testnet) ===");
-        console.log("StaticEntropy:", address(entropy));
         console.log("BingoCard:    ", address(bingo));
         console.log("Pool size:    ", bingo.poolSize());
         console.log("");
         console.log("Next:");
         console.log("  1. Paste the BingoCard address into Settings (gear)");
         console.log("  2. If bonus pool is 0, /admin -> Deposit bonus pool");
-        console.log(
-            "  Reveals: /admin -> Pending reveals -> Push (StaticEntropy)"
-        );
+        console.log("  Cards draw their cells at mint (no reveal step).");
     }
 
     /// @dev Applies all owner config in its own stack frame (the broadcast set

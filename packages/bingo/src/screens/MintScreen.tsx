@@ -47,15 +47,11 @@ export default function MintScreen() {
 
   const reads = useReadContracts({
     contracts: baseContract
-      ? [
-          { ...baseContract, functionName: 'minCardPrice' },
-          { ...baseContract, functionName: 'entropyFee' },
-        ]
+      ? [{ ...baseContract, functionName: 'minCardPrice' }]
       : [],
     query: { enabled: !!baseContract },
   });
   const minCardPrice = reads.data?.[0]?.result as bigint | undefined;
-  const entropyFee = reads.data?.[1]?.result as bigint | undefined;
 
   // ---------- chosen price (drives the rest of the flow) ----------
   const [chosenPrice, setChosenPrice] = useState<bigint | null>(null);
@@ -71,23 +67,14 @@ export default function MintScreen() {
     refetch: refetchBalance,
   } = useCollateralBalance({ address: sa, chainId: CHAIN_ID, enabled: !!sa });
 
-  // The card price is paid in wUSDe, but mintCard also needs native USDe for
-  // the entropy msg.value. Existing wUSDe cannot pay that native fee, so the
-  // checkout gate must mirror prepareAccount instead of treating native+wUSDe
-  // as one fungible bucket.
-  const entropyReserveWei = entropyFee != null ? entropyFee * 3n : 0n;
-  const amountToWrapWei =
-    chosenPrice != null && rawWrappedBalance < chosenPrice
-      ? chosenPrice - rawWrappedBalance
-      : 0n;
-  const neededNativeWei =
-    chosenPrice != null ? amountToWrapWei + entropyReserveWei : null;
-  const funded =
-    neededNativeWei != null && rawNativeBalance >= neededNativeWei;
+  // mintCard is non-payable now — the SA just needs the card price in
+  // collateral. prepareAccount wraps native USDe to cover any wUSDe shortfall,
+  // so native + wUSDe is one fungible bucket for the checkout gate.
+  const rawCollateralWei = rawNativeBalance + rawWrappedBalance;
+  const needed = chosenPrice;
+  const funded = needed != null && rawCollateralWei >= needed;
   const deficitWei =
-    neededNativeWei != null && !funded
-      ? neededNativeWei - rawNativeBalance
-      : (neededNativeWei ?? 0n);
+    needed != null && !funded ? needed - rawCollateralWei : (needed ?? 0n);
 
   // ---------- session ----------
   const {
@@ -109,7 +96,7 @@ export default function MintScreen() {
   const [mintError, setMintError] = useState<string | null>(null);
 
   const onMint = async () => {
-    if (!sessionClient || !sa || chosenPrice == null || entropyFee == null) {
+    if (!sessionClient || !sa || chosenPrice == null) {
       return;
     }
     setMintError(null);
@@ -122,7 +109,6 @@ export default function MintScreen() {
         smartAccountAddress: sa,
         cardPriceWei: chosenPrice,
         refCode,
-        entropyFeeWei: entropyFee,
       });
       window.history.pushState({}, '', `/card/${cardId.toString()}`);
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -278,7 +264,7 @@ export default function MintScreen() {
                     You have {formatDollarLikeBalance(balance)} USDe total ({' '}
                     {formatDollarLikeBalance(nativeBalance)} native /{' '}
                     {formatDollarLikeBalance(wrappedBalance)} wUSDe) · need +
-                    {fmtUnits(deficitWei)} native USDe more.
+                    {fmtUnits(deficitWei)} USDe more.
                   </p>
                   {sa && eoa && (
                     <BungeeBridge
@@ -380,7 +366,7 @@ export default function MintScreen() {
                     type="button"
                     className="primary block"
                     style={{ marginTop: '0.75rem' }}
-                    disabled={minting || entropyFee == null}
+                    disabled={minting}
                     onClick={onMint}
                   >
                     {minting

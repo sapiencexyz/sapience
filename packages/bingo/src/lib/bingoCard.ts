@@ -32,11 +32,11 @@ export function encodeCode(s: string): Hex | null {
 
 const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
 
-/** Deployed BingoCard on Ethereal testnet (2026-05-29). Baked-in default so
- *  hosted builds work without env config; override via Settings or
- *  VITE_BINGO_CONTRACT_ADDRESS. */
+/** Deployed BingoCard on Ethereal testnet (2026-05-30, on-chain cell draw —
+ *  no entropy contract). Baked-in default so hosted builds work without env
+ *  config; override via Settings or VITE_BINGO_CONTRACT_ADDRESS. */
 const DEFAULT_CONTRACT_ADDRESS =
-  '0xd114777e84a9ab029445ca50ae1672ce30b8b025' as const;
+  '0x4c1fac4c78f4afac7852769cdfd41bf158b6b765' as const;
 
 export function loadContractAddress(): Address | null {
   if (typeof window === 'undefined') return null;
@@ -57,9 +57,6 @@ export const BINGO_CARD_ABI = [
   // ---- views: config ----
   { type: 'function', name: 'owner', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { type: 'function', name: 'collateralToken', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
-  { type: 'function', name: 'entropy', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
-  { type: 'function', name: 'entropyProvider', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
-  { type: 'function', name: 'entropyFee', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint128' }] },
   { type: 'function', name: 'escrow', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
   { type: 'function', name: 'poolVersion', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint32' }] },
   { type: 'function', name: 'poolSize', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
@@ -89,7 +86,6 @@ export const BINGO_CARD_ABI = [
           { type: 'uint256', name: 'sponsorBalance' },
           { type: 'uint256', name: 'cardPriceAtMint' },
           { type: 'uint16', name: 'referralBpsAtMint' },
-          { type: 'bool', name: 'revealed' },
           { type: 'bool', name: 'referrerPaid' },
           { type: 'bool', name: 'sidesDeclared' },
           { type: 'uint16', name: 'filledLineBitmap' },
@@ -99,13 +95,6 @@ export const BINGO_CARD_ABI = [
         ],
       },
     ],
-  },
-  {
-    type: 'function',
-    name: 'pendingReveal',
-    stateMutability: 'view',
-    inputs: [{ type: 'uint64', name: 'sequence' }],
-    outputs: [{ type: 'uint256' }],
   },
   {
     type: 'function',
@@ -219,7 +208,7 @@ export const BINGO_CARD_ABI = [
   {
     type: 'function',
     name: 'mintCard',
-    stateMutability: 'payable',
+    stateMutability: 'nonpayable',
     inputs: [
       { type: 'bytes32', name: 'refCode' },
       { type: 'uint256', name: 'cardPrice_' },
@@ -272,7 +261,6 @@ export const BINGO_CARD_ABI = [
       { type: 'uint256', name: 'cardId', indexed: true },
       { type: 'address', name: 'player', indexed: true },
       { type: 'bytes32', name: 'refCode', indexed: false },
-      { type: 'uint64', name: 'sequenceNumber', indexed: false },
     ],
   },
   {
@@ -280,7 +268,7 @@ export const BINGO_CARD_ABI = [
     name: 'CardRevealed',
     inputs: [
       { type: 'uint256', name: 'cardId', indexed: true },
-      { type: 'bytes32', name: 'randomNumber', indexed: false },
+      { type: 'bytes32', name: 'seed', indexed: false },
     ],
   },
   {
@@ -318,54 +306,6 @@ export const BINGO_CARD_ABI = [
       { type: 'uint8', name: 'winCount', indexed: false },
       { type: 'uint256', name: 'payout', indexed: false },
     ],
-  },
-] as const;
-
-/// StaticEntropy interface — deployable stand-in for Pyth Entropy where the
-/// admin sets a fixed random and drives callbacks manually. Real Pyth does
-/// NOT expose these admin functions.
-export const STATIC_ENTROPY_ABI = [
-  {
-    type: 'function',
-    name: 'fixedRandom',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'bytes32' }],
-  },
-  {
-    type: 'function',
-    name: 'nextSequence',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'uint64' }],
-  },
-  {
-    type: 'function',
-    name: 'setRandom',
-    stateMutability: 'nonpayable',
-    inputs: [{ type: 'bytes32', name: 'r' }],
-    outputs: [],
-  },
-  {
-    type: 'function',
-    name: 'setFee',
-    stateMutability: 'nonpayable',
-    inputs: [{ type: 'uint128', name: 'fee' }],
-    outputs: [],
-  },
-  {
-    type: 'function',
-    name: 'pushCallback',
-    stateMutability: 'nonpayable',
-    inputs: [{ type: 'uint64', name: 'seq' }],
-    outputs: [],
-  },
-  {
-    type: 'function',
-    name: 'pushAll',
-    stateMutability: 'nonpayable',
-    inputs: [{ type: 'uint64', name: 'from' }],
-    outputs: [],
   },
 ] as const;
 

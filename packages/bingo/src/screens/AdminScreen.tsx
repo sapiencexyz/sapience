@@ -10,7 +10,6 @@ import {
   BINGO_CARD_ABI,
   CHAIN_ID,
   ERC20_ABI,
-  STATIC_ENTROPY_ABI,
   loadContractAddress,
 } from '../lib/bingoCard';
 import { fetchConditions, type BingoCondition } from '../api';
@@ -77,11 +76,8 @@ export default function AdminScreen() {
           { ...baseContract, functionName: 'cardExpirySeconds' },
           { ...baseContract, functionName: 'bonusPool' },
           { ...baseContract, functionName: 'escrow' },
-          { ...baseContract, functionName: 'entropyFee' },
           { ...baseContract, functionName: 'outstandingSponsorBalance' },
           { ...baseContract, functionName: 'outstandingReferralEarnings' },
-          { ...baseContract, functionName: 'entropy' },
-          { ...baseContract, functionName: 'entropyProvider' },
           { ...baseContract, functionName: 'nextCardId' },
         ]
       : [],
@@ -98,11 +94,8 @@ export default function AdminScreen() {
   const cardExpirySeconds = reads.data?.[7]?.result as bigint | undefined;
   const bonusPool = reads.data?.[8]?.result as bigint | undefined;
   const escrowAddress = reads.data?.[9]?.result as Address | undefined;
-  const entropyFee = reads.data?.[10]?.result as bigint | undefined;
-  const outstandingSponsor = reads.data?.[11]?.result as bigint | undefined;
-  const outstandingReferral = reads.data?.[12]?.result as bigint | undefined;
-  const entropyAddress = reads.data?.[13]?.result as Address | undefined;
-  const entropyProvider = reads.data?.[14]?.result as Address | undefined;
+  const outstandingSponsor = reads.data?.[10]?.result as bigint | undefined;
+  const outstandingReferral = reads.data?.[11]?.result as bigint | undefined;
 
   const isOwner =
     !!owner && !!eoa && owner.toLowerCase() === eoa.toLowerCase();
@@ -268,40 +261,6 @@ export default function AdminScreen() {
     setSelected((prev) => prev.filter((p) => p.id !== id));
   };
 
-  // ---------- entropy random (StaticEntropy helper) ----------
-  // Reveals are pushed from the card screen now; admin only rotates the
-  // stored random used by the StaticEntropy mock on staging.
-  const entropyReads = useReadContracts({
-    contracts:
-      entropyAddress != null
-        ? [
-            {
-              address: entropyAddress,
-              abi: STATIC_ENTROPY_ABI,
-              chainId: CHAIN_ID,
-              functionName: 'fixedRandom' as const,
-            },
-          ]
-        : [],
-    query: { enabled: !!entropyAddress },
-  });
-  const fixedRandom = entropyReads.data?.[0]?.result as
-    | `0x${string}`
-    | undefined;
-  const [entropyRandomInput, setEntropyRandomInput] = useState('');
-  const submitSetEntropyRandom = () => {
-    if (!entropyAddress) return;
-    const v = entropyRandomInput.trim();
-    if (!/^0x[0-9a-fA-F]{64}$/.test(v)) return;
-    writeContract({
-      address: entropyAddress,
-      abi: STATIC_ENTROPY_ABI,
-      chainId: CHAIN_ID,
-      functionName: 'setRandom',
-      args: [v as `0x${string}`],
-    });
-  };
-
   const submitPool = () => {
     if (!baseContract || selected.length === 0) return;
     const ids = selected.map((c) => c.id as `0x${string}`);
@@ -364,7 +323,6 @@ export default function AdminScreen() {
             <div>Card expiry (s)</div><div className="mono">{cardExpirySeconds?.toString() ?? '—'}</div>
             <div>Bonus pool</div><div className="mono">{fmtUnits(bonusPool)}</div>
             <div>Escrow</div><div className="mono">{shortAddress(escrowAddress)}</div>
-            <div>Entropy fee (wei)</div><div className="mono">{entropyFee?.toString() ?? '—'}</div>
             <div>Outstanding sponsor</div><div className="mono">{fmtUnits(outstandingSponsor)}</div>
             <div>Outstanding referral</div><div className="mono">{fmtUnits(outstandingReferral)}</div>
           </div>
@@ -692,47 +650,6 @@ export default function AdminScreen() {
                 onClick={submitWithdraw}
               >
                 Submit
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="screen admin-section">
-          <h2>Entropy (StaticEntropy)</h2>
-          <p className="muted small">
-            Staging-only stand-in for Pyth Entropy. Every reveal uses the
-            stored random — update it here to vary the resulting card layout.
-          </p>
-          <div className="admin-kv">
-            <div>Entropy contract</div>
-            <div className="mono small">{entropyAddress ?? '—'}</div>
-            <div>Entropy provider</div>
-            <div className="mono small">{entropyProvider ?? '—'}</div>
-            <div>Current random</div>
-            <div className="mono small">{fixedRandom ?? '—'}</div>
-          </div>
-          <div className="admin-action">
-            <div className="wizard-step-title">Set entropy random</div>
-            <div className="admin-row">
-              <input
-                className="admin-input"
-                placeholder="0x… (32 bytes)"
-                value={entropyRandomInput}
-                onChange={(e) =>
-                  setEntropyRandomInput(e.target.value.trim())
-                }
-              />
-              <button
-                type="button"
-                className="primary"
-                disabled={
-                  writePending ||
-                  !entropyAddress ||
-                  !/^0x[0-9a-fA-F]{64}$/.test(entropyRandomInput.trim())
-                }
-                onClick={submitSetEntropyRandom}
-              >
-                Save
               </button>
             </div>
           </div>

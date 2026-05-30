@@ -211,12 +211,11 @@ export async function createSession(
         abi: predictionMarketEscrowAbi,
         functionName: 'redeem',
       },
-      // Buy a card (payable: pays the Pyth entropy fee out of native USDe).
+      // Buy a card (non-payable: cells are drawn on-chain at mint).
       {
         target: contracts.bingoCard,
         abi: BINGO_CARD_ABI,
         functionName: 'mintCard',
-        valueLimit: BigInt(1e18),
       },
       // Declare YES/NO on the 16 cells.
       {
@@ -446,8 +445,8 @@ export function clearSession(): void {
  * Wraps as much native USDe as needed for `cardPriceWei` and ensures the
  * smart account has at least `cardPriceWei` allowance to the BingoCard, which
  * pulls the card price at mint. Both calls are batched into a single sponsored
- * UserOp via the session key. Native USDe beyond the wrapped amount stays on
- * the account to cover the Pyth entropy fee on `mintCard`.
+ * UserOp via the session key. `mintCard` is non-payable (cells are drawn
+ * on-chain), so the account only needs enough native to wrap into collateral.
  *
  * Idempotent: skips wrap if the SA already has enough wUSDe, skips approve
  * if allowance ≥ price. Returns `{ skipped: true }` if nothing was needed.
@@ -456,7 +455,6 @@ export async function prepareAccount(
   client: KernelAccountClient,
   cardPriceWei: bigint,
   smartAccountAddress: Address,
-  entropyFeeWei: bigint = 0n,
 ): Promise<{ skipped: boolean; opHash?: Hex }> {
   const contracts = getContractAddresses();
   if (!contracts.bingoCard) {
@@ -498,17 +496,14 @@ export async function prepareAccount(
 
   const calls: { to: Address; data: Hex; value: bigint }[] = [];
 
-  // mintCard forwards the Pyth entropy fee as native msg.value (sent as
-  // fee*2). Keep that much native UNWRAPPED — otherwise wrapping all of it
-  // leaves the account unable to pay the fee, and mintCard reverts with an
-  // opaque 0x during simulation. Reserve a small cushion (fee*3).
-  const feeReserve = entropyFeeWei * 3n;
+  // Only collateral matters now — mintCard is non-payable. Wrap the wUSDe
+  // shortfall; the account needs that much native USDe on hand.
   const amountToWrap =
     wusdeBalance < tierAmountWei ? tierAmountWei - wusdeBalance : 0n;
-  if (nativeBalance < amountToWrap + feeReserve) {
+  if (nativeBalance < amountToWrap) {
     throw new Error(
       `Smart account needs more native USDe: have ${nativeBalance}, ` +
-        `need ${amountToWrap + feeReserve} (collateral to wrap + entropy fee).`,
+        `need ${amountToWrap} to wrap into collateral.`,
     );
   }
   if (amountToWrap > 0n) {
@@ -590,34 +585,24 @@ export async function prepareAccount(
  * Mints a BingoCard as the session's smart account so `card.player` is the SA
  * (required for the sponsored per-line escrow mints and the bonus claim, which
  * all run as the same identity). Wraps + approves the card price first, then
- * sends the payable `mintCard` UserOp and recovers the new cardId from the
- * `CardMinted` event.
+ * sends the (non-payable) `mintCard` UserOp and recovers the new cardId from
+ * the `CardMinted` event.
  */
 export async function mintCardViaSession(params: {
   client: KernelAccountClient;
   smartAccountAddress: Address;
   cardPriceWei: bigint;
   refCode: Hex;
-  entropyFeeWei: bigint;
 }): Promise<{ cardId: bigint; opHash: Hex; txHash?: Hex }> {
-  const { client, smartAccountAddress, cardPriceWei, refCode, entropyFeeWei } =
-    params;
+  const { client, smartAccountAddress, cardPriceWei, refCode } = params;
   const contracts = getContractAddresses();
   if (!contracts.bingoCard) throw new Error('BingoCard address not set');
   if (!client.account) throw new Error('Session client account missing');
   const bingoCard = contracts.bingoCard;
 
   // Ensure the SA holds wUSDe and has approved the BingoCard for the price.
-  await prepareAccount(
-    client,
-    cardPriceWei,
-    smartAccountAddress,
-    entropyFeeWei,
-  );
+  await prepareAccount(client, cardPriceWei, smartAccountAddress);
 
-  // 2x entropy-fee buffer so a fee bump between read and submit doesn't revert;
-  // the BingoCard refunds the unused remainder.
-  const value = entropyFeeWei * 2n;
   const opHash = await client.sendUserOperation({
     callData: await client.account.encodeCalls([
       {
@@ -627,7 +612,7 @@ export async function mintCardViaSession(params: {
           functionName: 'mintCard',
           args: [refCode, cardPriceWei],
         }),
-        value,
+        value: 0n,
       },
     ]),
   });

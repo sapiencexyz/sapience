@@ -5,12 +5,9 @@ import "./BingoCardTestBase.sol";
 
 contract BingoCardMintTest is BingoCardTestBase {
     event CardMinted(
-        uint256 indexed cardId,
-        address indexed player,
-        bytes32 refCode,
-        uint64 sequenceNumber
+        uint256 indexed cardId, address indexed player, bytes32 refCode
     );
-    event CardRevealed(uint256 indexed cardId, bytes32 randomNumber);
+    event CardRevealed(uint256 indexed cardId, bytes32 seed);
 
     function setUp() public override {
         super.setUp();
@@ -23,7 +20,7 @@ contract BingoCardMintTest is BingoCardTestBase {
 
     function _mint(bytes32 refCode) internal returns (uint256 cardId) {
         vm.prank(player);
-        cardId = bingo.mintCard{ value: ENTROPY_FEE }(refCode, CARD_PRICE);
+        cardId = bingo.mintCard(refCode, CARD_PRICE);
     }
 
     // ---- mintCard ----
@@ -48,7 +45,6 @@ contract BingoCardMintTest is BingoCardTestBase {
         assertEq(c.sponsorBalance, CARD_PRICE);
         assertEq(c.cardPriceAtMint, CARD_PRICE);
         assertEq(uint256(c.referralBpsAtMint), REFERRAL_BPS);
-        assertEq(c.revealed, false);
         assertEq(uint256(c.filledLineBitmap), 0);
     }
 
@@ -66,20 +62,14 @@ contract BingoCardMintTest is BingoCardTestBase {
     }
 
     function test_mintCard_emitsCardMinted() public {
+        // cardId is known (nextCardId starts at 0 → first mint is 1); match all.
         vm.expectEmit(true, true, false, true);
-        emit CardMinted(1, player, bytes32("X"), 1);
+        emit CardMinted(1, player, bytes32("X"));
         _mint(bytes32("X"));
     }
 
-    function test_mintCard_storesPendingReveal() public {
-        uint256 cardId = _mint(bytes32(0));
-        assertEq(bingo.pendingReveal(1), cardId);
-    }
-
     function test_mintCard_revertsIfPoolTooSmall() public {
-        BingoCard fresh = new BingoCard(
-            address(collateral), address(entropy), entropyProvider, owner
-        );
+        BingoCard fresh = new BingoCard(address(collateral), owner);
         vm.startPrank(owner);
         fresh.setMinCardPrice(CARD_PRICE);
         vm.stopPrank();
@@ -87,7 +77,7 @@ contract BingoCardMintTest is BingoCardTestBase {
         vm.startPrank(player);
         collateral.approve(address(fresh), type(uint256).max);
         vm.expectRevert(BingoCard.PoolTooSmall.selector);
-        fresh.mintCard{ value: ENTROPY_FEE }(bytes32(0), CARD_PRICE);
+        fresh.mintCard(bytes32(0), CARD_PRICE);
         vm.stopPrank();
     }
 
@@ -95,14 +85,14 @@ contract BingoCardMintTest is BingoCardTestBase {
         // Configure minCardPrice = CARD_PRICE; minting at half that must revert.
         vm.prank(player);
         vm.expectRevert(BingoCard.CardPriceTooLow.selector);
-        bingo.mintCard{ value: ENTROPY_FEE }(bytes32(0), CARD_PRICE / 2);
+        bingo.mintCard(bytes32(0), CARD_PRICE / 2);
     }
 
     function test_mintCard_revertsIfNotDivisibleByLines() public {
         // Per-line stake math requires cardPrice_ % LINES_PER_CARD == 0.
         vm.prank(player);
         vm.expectRevert(BingoCard.CardPriceTooLow.selector);
-        bingo.mintCard{ value: ENTROPY_FEE }(bytes32(0), CARD_PRICE + 1);
+        bingo.mintCard(bytes32(0), CARD_PRICE + 1);
     }
 
     function test_mintCard_acceptsAboveMinimum() public {
@@ -110,34 +100,26 @@ contract BingoCardMintTest is BingoCardTestBase {
         uint256 customPrice = CARD_PRICE * 5;
         collateral.mint(player, customPrice);
         vm.prank(player);
-        uint256 cardId =
-            bingo.mintCard{ value: ENTROPY_FEE }(bytes32(0), customPrice);
+        uint256 cardId = bingo.mintCard(bytes32(0), customPrice);
         BingoCard.Card memory c = bingo.cardOf(cardId);
         assertEq(c.cardPriceAtMint, customPrice);
         assertEq(c.sponsorBalance, customPrice);
     }
 
-    // ---- entropyCallback (reveal) ----
+    // ---- draw (cells assigned synchronously at mint) ----
 
-    function _reveal(uint64 seq, bytes32 random) internal {
-        entropy.pushCallback(seq, entropyProvider, random);
-    }
-
-    function test_reveal_marksRevealedAndFillsCells() public {
+    function test_mint_fillsAll16Cells() public {
         uint256 cardId = _mint(bytes32(0));
-        _reveal(1, bytes32(uint256(0xABCD)));
 
         BingoCard.Card memory c = bingo.cardOf(cardId);
-        assertTrue(c.revealed);
         for (uint256 i = 0; i < 16; i++) {
             assertTrue(c.conditionIds[i] != bytes32(0));
             assertTrue(c.resolvers[i] != address(0));
         }
     }
 
-    function test_reveal_cellsAreUnique() public {
+    function test_mint_cellsAreUnique() public {
         uint256 cardId = _mint(bytes32(0));
-        _reveal(1, bytes32(uint256(0xDEADBEEF)));
 
         BingoCard.Card memory c = bingo.cardOf(cardId);
         for (uint256 i = 0; i < 16; i++) {
@@ -147,14 +129,13 @@ contract BingoCardMintTest is BingoCardTestBase {
         }
     }
 
-    function test_reveal_pairsConditionWithItsResolver() public {
+    function test_mint_pairsConditionWithItsResolver() public {
         uint256 cardId = _mint(bytes32(0));
-        _reveal(1, bytes32(uint256(0x42)));
         BingoCard.Card memory c = bingo.cardOf(cardId);
 
         for (uint256 i = 0; i < 16; i++) {
             // Pool was seeded with deterministic pairs: ids[k] = hash("cond",k),
-            // resolvers[k] = 0xC0DE000 + k. The reveal must keep each cell's
+            // resolvers[k] = 0xC0DE000 + k. The draw must keep each cell's
             // resolver aligned to its conditionId.
             bool found;
             for (uint256 k = 0; k < 20; k++) {
@@ -168,43 +149,35 @@ contract BingoCardMintTest is BingoCardTestBase {
         }
     }
 
-    function test_reveal_deterministicFromRandom() public {
-        uint256 cardA = _mint(bytes32(0));
-        uint256 cardB = _mint(bytes32(0));
-        _reveal(1, bytes32(uint256(0x1234)));
-        _reveal(2, bytes32(uint256(0x1234)));
+    function test_mint_doesNotMutateSharedPool() public {
+        // Drawing copies the pool into memory; the live pool is untouched so
+        // later cards still draw from the full set.
+        _mint(bytes32(0));
+        assertEq(bingo.poolSize(), 20, "pool size unchanged");
+        assertEq(
+            bingo.poolConditionIds(0),
+            keccak256(abi.encode("cond", 0)),
+            "pool[0] intact"
+        );
+    }
 
-        BingoCard.Card memory a = bingo.cardOf(cardA);
-        BingoCard.Card memory b = bingo.cardOf(cardB);
+    function test_mint_differentCardsDrawDifferentLayouts() public {
+        // Seed contributes block.timestamp + cardId + player; two cards minted
+        // in different blocks should not be forced to share a layout.
+        uint256 a = _mint(bytes32(0));
+        vm.warp(block.timestamp + 12);
+        vm.roll(block.number + 1);
+        uint256 b = _mint(bytes32(0));
+
+        BingoCard.Card memory ca = bingo.cardOf(a);
+        BingoCard.Card memory cb = bingo.cardOf(b);
+        bool anyDiff;
         for (uint256 i = 0; i < 16; i++) {
-            assertEq(a.conditionIds[i], b.conditionIds[i]);
+            if (ca.conditionIds[i] != cb.conditionIds[i]) {
+                anyDiff = true;
+                break;
+            }
         }
-    }
-
-    function test_reveal_emitsCardRevealed() public {
-        uint256 cardId = _mint(bytes32(0));
-        vm.expectEmit(true, false, false, true);
-        emit CardRevealed(cardId, bytes32(uint256(0x99)));
-        _reveal(1, bytes32(uint256(0x99)));
-    }
-
-    function test_reveal_clearsPendingReveal() public {
-        _mint(bytes32(0));
-        _reveal(1, bytes32(uint256(0x99)));
-        assertEq(bingo.pendingReveal(1), 0);
-    }
-
-    function test_entropyCallback_revertsIfNotEntropyContract() public {
-        _mint(bytes32(0));
-        vm.expectRevert(IEntropyConsumer.NotEntropyContract.selector);
-        bingo.entropyCallback(1, entropyProvider, bytes32(uint256(1)));
-    }
-
-    function test_entropyCallback_revertsOnUnknownSequence() public {
-        // Bypass MockEntropy's own bookkeeping by calling the consumer directly
-        // as the entropy contract would.
-        vm.prank(address(entropy));
-        vm.expectRevert(BingoCard.UnknownSequence.selector);
-        bingo.entropyCallback(99, entropyProvider, bytes32(uint256(1)));
+        assertTrue(anyDiff, "layouts should differ across blocks");
     }
 }

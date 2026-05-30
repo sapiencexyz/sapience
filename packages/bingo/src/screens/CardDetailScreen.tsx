@@ -11,7 +11,6 @@ import {
   useConnect,
   usePublicClient,
   useReadContracts,
-  useWriteContract,
 } from 'wagmi';
 import {
   BINGO_CARD_ABI,
@@ -19,7 +18,6 @@ import {
   fmtUnits,
   loadContractAddress,
   shortAddress,
-  STATIC_ENTROPY_ABI,
 } from '../lib/bingoCard';
 import {
   setCellSidesViaSession,
@@ -42,7 +40,6 @@ interface CardSnapshot {
   sponsorBalance: bigint;
   cardPriceAtMint: bigint;
   referralBpsAtMint: number;
-  revealed: boolean;
   referrerPaid: boolean;
   sidesDeclared: boolean;
   filledLineBitmap: number;
@@ -210,104 +207,6 @@ export default function CardDetailScreen({ cardId }: Props) {
 
   const submitter = useSubmitCard();
 
-  // ---------- entropy: detect mock + drive the reveal ----------
-  // Real Pyth reveals async via a keeper; the StaticEntropy mock used on
-  // staging needs someone to push the callback. pushCallback is permissionless,
-  // so the player can trigger their own reveal right here.
-  const [entropyAddr, setEntropyAddr] = useState<Address | null>(null);
-  const [isMockEntropy, setIsMockEntropy] = useState(false);
-  const [pendingSeq, setPendingSeq] = useState<bigint | null>(null);
-  const { writeContract: writeReveal, isPending: revealPending } =
-    useWriteContract();
-
-  useEffect(() => {
-    if (!publicClient || !contractAddress) return;
-    let stop = false;
-    void (async () => {
-      try {
-        const ent = (await publicClient.readContract({
-          address: contractAddress,
-          abi: BINGO_CARD_ABI,
-          functionName: 'entropy',
-        })) as Address;
-        if (stop) return;
-        setEntropyAddr(ent);
-        // Capability probe: only StaticEntropy exposes fixedRandom().
-        try {
-          await publicClient.readContract({
-            address: ent,
-            abi: STATIC_ENTROPY_ABI,
-            functionName: 'fixedRandom',
-          });
-          if (!stop) setIsMockEntropy(true);
-        } catch {
-          if (!stop) setIsMockEntropy(false);
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      stop = true;
-    };
-  }, [publicClient, contractAddress]);
-
-  // Find the pending entropy sequence for this card (cleared on reveal).
-  useEffect(() => {
-    if (
-      !publicClient ||
-      !contractAddress ||
-      !entropyAddr ||
-      !card ||
-      card.revealed
-    ) {
-      setPendingSeq(null);
-      return;
-    }
-    let stop = false;
-    void (async () => {
-      try {
-        const nextSeq = (await publicClient.readContract({
-          address: entropyAddr,
-          abi: STATIC_ENTROPY_ABI,
-          functionName: 'nextSequence',
-        })) as bigint;
-        for (let s = 1n; s < nextSeq; s++) {
-          const cid = (await publicClient.readContract({
-            address: contractAddress,
-            abi: BINGO_CARD_ABI,
-            functionName: 'pendingReveal',
-            args: [s],
-          })) as bigint;
-          if (cid === cardId) {
-            if (!stop) setPendingSeq(s);
-            return;
-          }
-        }
-        if (!stop) setPendingSeq(null);
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      stop = true;
-    };
-  }, [publicClient, contractAddress, entropyAddr, card, cardId, refreshKey]);
-
-  const pushReveal = () => {
-    if (!entropyAddr || pendingSeq == null) return;
-    writeReveal(
-      {
-        address: entropyAddr,
-        abi: STATIC_ENTROPY_ABI,
-        chainId: CHAIN_ID,
-        functionName: 'pushCallback',
-        args: [pendingSeq],
-      },
-      { onSuccess: () => setRefreshKey((k) => k + 1) },
-    );
-  };
-
   // Multiplier table for the bonus prize curve widget (shown post-submit).
   const multReads = useReadContracts({
     contracts: baseContract
@@ -359,7 +258,7 @@ export default function CardDetailScreen({ cardId }: Props) {
 
   // Bonus preview + claimed flag.
   useEffect(() => {
-    if (!publicClient || !contractAddress || !card?.revealed) {
+    if (!publicClient || !contractAddress || !card) {
       setPreview(null);
       return;
     }
@@ -395,7 +294,7 @@ export default function CardDetailScreen({ cardId }: Props) {
 
   // Pull condition images + titles from sapience API.
   useEffect(() => {
-    if (!card?.revealed) return;
+    if (!card) return;
     let stop = false;
     void (async () => {
       try {
@@ -695,37 +594,11 @@ export default function CardDetailScreen({ cardId }: Props) {
         </section>
       )}
 
-      {card && !card.revealed && (
-        <section className="screen admin-section">
-          <div className="reveal-pending">
-            <div className="reveal-orb" aria-hidden />
-            <div className="reveal-pending-body">
-              <div className="wizard-step-title">Revealing your card…</div>
-              <p className="muted small">
-                {isMockEntropy
-                  ? 'Staging uses a fixed placeholder instead of Pyth Entropy. Submit it to draw your 16 cells.'
-                  : 'Drawing 16 conditions from the pool and shuffling your board.'}
-              </p>
-            </div>
-            {isMockEntropy && pendingSeq != null && (
-              <button
-                type="button"
-                className="primary"
-                disabled={revealPending}
-                onClick={pushReveal}
-              >
-                {revealPending ? 'Submitting…' : 'Submit placeholder randomness'}
-              </button>
-            )}
-          </div>
-        </section>
-      )}
-
       {card && (
         <section className="screen admin-section">
           {sessionPrompt}
 
-          {card.revealed && !card.sidesDeclared && isPlayer && (
+          {!card.sidesDeclared && isPlayer && (
             <div className="admin-action">
               <div className="bingo-grid">
                 {card.conditionIds.map((id, i) => {
@@ -814,7 +687,7 @@ export default function CardDetailScreen({ cardId }: Props) {
             </div>
           )}
 
-          {card.revealed && card.sidesDeclared && (
+          {card.sidesDeclared && (
             <>
               {!cardComplete && isPlayer && (
                 <div className="wizard-step-title">
@@ -1113,8 +986,6 @@ export default function CardDetailScreen({ cardId }: Props) {
               <div className="mono">{card.refCode}</div>
               <div>Sponsor balance</div>
               <div className="mono">{fmtUnits(card.sponsorBalance)}</div>
-              <div>Revealed</div>
-              <div className="mono">{card.revealed ? 'yes' : 'no'}</div>
               <div>Sides declared</div>
               <div className="mono">{card.sidesDeclared ? 'yes' : 'no'}</div>
               <div>Lines funded</div>

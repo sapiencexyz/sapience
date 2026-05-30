@@ -123,10 +123,7 @@ contract BingoCardSettleTest is BingoCardTestBase {
 
     function _mintAndReveal() internal returns (uint256 cardId) {
         vm.prank(player);
-        cardId = bingo.mintCard{ value: ENTROPY_FEE }(REFCODE, CARD_PRICE);
-        entropy.pushCallback(
-            uint64(cardId), entropyProvider, bytes32(uint256(0xA))
-        );
+        cardId = bingo.mintCard(REFCODE, CARD_PRICE);
     }
 
     function _declareSides(uint256 cardId, uint16 yesMask) internal {
@@ -271,13 +268,14 @@ contract BingoCardSettleTest is BingoCardTestBase {
         bingo.setCellSides(cardId, 0xFFFF);
     }
 
-    function test_setCellSides_revertsIfNotRevealed() public {
+    function test_setCellSides_worksImmediatelyAfterMint() public {
+        // Cells are drawn synchronously at mint, so sides can be declared right
+        // away — there is no separate reveal gate anymore.
         vm.prank(player);
-        uint256 cardId =
-            bingo.mintCard{ value: ENTROPY_FEE }(REFCODE, CARD_PRICE);
+        uint256 cardId = bingo.mintCard(REFCODE, CARD_PRICE);
         vm.prank(player);
-        vm.expectRevert(BingoCard.CardNotRevealed.selector);
         bingo.setCellSides(cardId, 0xFFFF);
+        assertEq(bingo.cardOf(cardId).cellSides, 0xFFFF);
     }
 
     function test_setCellSides_revertsIfAlreadyDeclared() public {
@@ -492,15 +490,6 @@ contract BingoCardSettleTest is BingoCardTestBase {
     function test_claimBonus_revertsIfCardNotFound() public {
         vm.expectRevert(BingoCard.CardNotFound.selector);
         bingo.claimBonus(999);
-    }
-
-    function test_claimBonus_revertsIfNotRevealed() public {
-        vm.prank(player);
-        uint256 cardId =
-            bingo.mintCard{ value: ENTROPY_FEE }(REFCODE, CARD_PRICE);
-        // Don't push the entropy callback.
-        vm.expectRevert(BingoCard.CardNotRevealed.selector);
-        bingo.claimBonus(cardId);
     }
 
     function test_claimBonus_revertsIfNotPlayer() public {
