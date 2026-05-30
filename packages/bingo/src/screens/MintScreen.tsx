@@ -58,11 +58,8 @@ export default function MintScreen() {
 
   // ---------- smart-account balance (drives the Fund step) ----------
   const {
-    rawNativeBalance,
-    rawWrappedBalance,
+    rawBalance,
     balance,
-    nativeBalance,
-    wrappedBalance,
     isLoading: balanceLoading,
     refetch: refetchBalance,
   } = useCollateralBalance({ address: sa, chainId: CHAIN_ID, enabled: !!sa });
@@ -70,11 +67,13 @@ export default function MintScreen() {
   // mintCard is non-payable now — the SA just needs the card price in
   // collateral. prepareAccount wraps native USDe to cover any wUSDe shortfall,
   // so native + wUSDe is one fungible bucket for the checkout gate.
-  const rawCollateralWei = rawNativeBalance + rawWrappedBalance;
   const needed = chosenPrice;
-  const funded = needed != null && rawCollateralWei >= needed;
+  const funded =
+    needed != null && rawBalance != null && rawBalance >= needed;
   const deficitWei =
-    needed != null && !funded ? needed - rawCollateralWei : (needed ?? 0n);
+    needed != null && rawBalance != null && !funded
+      ? needed - rawBalance
+      : (needed ?? 0n);
 
   // ---------- session ----------
   const {
@@ -135,7 +134,7 @@ export default function MintScreen() {
     : isActive
       ? 'done'
       : 'current';
-  const mintStatus: StepStatus = !isActive ? 'pending' : 'current';
+  const mintStatus: StepStatus = !funded || !isActive ? 'pending' : 'current';
 
   if (!contractAddress) {
     return (
@@ -254,16 +253,12 @@ export default function MintScreen() {
                 <p className="muted small">Checking balance…</p>
               ) : funded ? (
                 <p className="muted small">
-                  {formatDollarLikeBalance(balance)} USDe available ·{' '}
-                  {formatDollarLikeBalance(nativeBalance)} native /{' '}
-                  {formatDollarLikeBalance(wrappedBalance)} wUSDe
+                  {formatDollarLikeBalance(balance)} USDe available
                 </p>
               ) : (
                 <>
                   <p className="muted small">
-                    You have {formatDollarLikeBalance(balance)} USDe total ({' '}
-                    {formatDollarLikeBalance(nativeBalance)} native /{' '}
-                    {formatDollarLikeBalance(wrappedBalance)} wUSDe) · need +
+                    You have {formatDollarLikeBalance(balance)} USDe · need +
                     {fmtUnits(deficitWei)} USDe more.
                   </p>
                   {sa && eoa && (
@@ -338,7 +333,11 @@ export default function MintScreen() {
             </div>
             <div className="wizard-step-body">
               <div className="wizard-step-title">Draw</div>
-              {!isActive ? (
+              {!funded ? (
+                <p className="muted small">
+                  Fund your account to draw your card.
+                </p>
+              ) : !isActive ? (
                 <p className="muted small">
                   Sign the session to draw your card.
                 </p>
@@ -366,7 +365,7 @@ export default function MintScreen() {
                     type="button"
                     className="primary block"
                     style={{ marginTop: '0.75rem' }}
-                    disabled={minting}
+                    disabled={minting || !funded}
                     onClick={onMint}
                   >
                     {minting
