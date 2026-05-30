@@ -91,6 +91,8 @@ function logEndTimeDecision(
   const llmTs = c.llmEndTime?.ts ?? null;
   const pmTs = c.endDate ? toUnixTimestamp(c.endDate) : null;
   const drift = llmTs !== null && pmTs !== null ? llmTs - pmTs : null;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const isPast = decision.ts <= nowSeconds;
   const payload = {
     event: 'endtime_decided',
     conditionHash: c.conditionHash,
@@ -103,8 +105,22 @@ function logEndTimeDecision(
     isTemplated: c.isTemplated ?? false,
     driftSeconds: drift,
     finalTs: decision.ts,
+    isPast,
+    secondsPast: isPast ? nowSeconds - decision.ts : null,
   };
-  console.log(JSON.stringify(payload));
+  // Past-dated submissions are legal (backfills rely on it) but rare
+  // enough that operators should see them in log scans. Anything else
+  // stays on console.log so the daily generate doesn't shout.
+  if (isPast) {
+    console.warn(
+      `[endtime_decided] PAST endTime submitted for ${c.conditionHash}: ` +
+        `finalTs=${decision.ts} (${nowSeconds - decision.ts}s ago), ` +
+        `source=${decision.source}`
+    );
+    console.warn(JSON.stringify(payload));
+  } else {
+    console.log(JSON.stringify(payload));
+  }
 }
 
 /**

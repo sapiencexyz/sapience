@@ -178,7 +178,7 @@ describe('conditionGroups routes', () => {
   });
 
   describe('PUT /admin/conditionGroups/:id/conditions', () => {
-    it('assigns conditions to a group without inspecting per-condition basket fields', async () => {
+    it('assigns conditions when every candidate already shares the target basket', async () => {
       mockPrisma.conditionGroup.findUnique
         .mockResolvedValueOnce({
           id: 42,
@@ -187,8 +187,8 @@ describe('conditionGroups routes', () => {
         })
         .mockResolvedValueOnce({ id: 42, condition: [] });
       mockPrisma.condition.findMany.mockResolvedValue([
-        { id: HASH_A },
-        { id: HASH_B },
+        { id: HASH_A, conditionGroup: { negRiskMarketId: 'basket-a' } },
+        { id: HASH_B, conditionGroup: { negRiskMarketId: 'basket-a' } },
       ]);
       mockPrisma.condition.updateMany.mockResolvedValue({ count: 0 });
       mockPrisma.condition.update.mockResolvedValue({});
@@ -198,9 +198,70 @@ describe('conditionGroups routes', () => {
         .send({ conditionIds: [HASH_A, HASH_B] });
 
       expect(res.status).toBe(200);
-      expect(mockPrisma.condition.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ select: { id: true } })
-      );
+      expect(mockPrisma.condition.update).toHaveBeenCalledTimes(2);
+    });
+
+    it('rejects attaching a non-basket condition to a basket group', async () => {
+      mockPrisma.conditionGroup.findUnique.mockResolvedValue({
+        id: 42,
+        name: 'NBA winner',
+        negRiskMarketId: 'basket-a',
+      });
+      mockPrisma.condition.findMany.mockResolvedValue([
+        { id: HASH_A, conditionGroup: null },
+        { id: HASH_B, conditionGroup: { negRiskMarketId: 'basket-a' } },
+      ]);
+
+      const res = await request(app)
+        .put('/admin/conditionGroups/42/conditions')
+        .send({ conditionIds: [HASH_A, HASH_B] });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/Cannot attach conditions/);
+      expect(res.body.message).toContain(HASH_A);
+      expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+      expect(mockPrisma.condition.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects attaching a cross-basket condition to a basket group', async () => {
+      mockPrisma.conditionGroup.findUnique.mockResolvedValue({
+        id: 42,
+        name: 'NBA winner',
+        negRiskMarketId: 'basket-a',
+      });
+      mockPrisma.condition.findMany.mockResolvedValue([
+        { id: HASH_A, conditionGroup: { negRiskMarketId: 'basket-b' } },
+      ]);
+
+      const res = await request(app)
+        .put('/admin/conditionGroups/42/conditions')
+        .send({ conditionIds: [HASH_A] });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/Cannot attach conditions/);
+      expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+    });
+
+    it('allows attaching unaffiliated conditions to a non-basket group', async () => {
+      mockPrisma.conditionGroup.findUnique
+        .mockResolvedValueOnce({
+          id: 50,
+          name: 'Misc',
+          negRiskMarketId: null,
+        })
+        .mockResolvedValueOnce({ id: 50, condition: [] });
+      mockPrisma.condition.findMany.mockResolvedValue([
+        { id: HASH_A, conditionGroup: null },
+        { id: HASH_B, conditionGroup: null },
+      ]);
+      mockPrisma.condition.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.condition.update.mockResolvedValue({});
+
+      const res = await request(app)
+        .put('/admin/conditionGroups/50/conditions')
+        .send({ conditionIds: [HASH_A, HASH_B] });
+
+      expect(res.status).toBe(200);
       expect(mockPrisma.condition.update).toHaveBeenCalledTimes(2);
     });
 
@@ -210,7 +271,9 @@ describe('conditionGroups routes', () => {
         name: 'NBA winner',
         negRiskMarketId: 'basket-a',
       });
-      mockPrisma.condition.findMany.mockResolvedValue([{ id: HASH_A }]);
+      mockPrisma.condition.findMany.mockResolvedValue([
+        { id: HASH_A, conditionGroup: null },
+      ]);
 
       const res = await request(app)
         .put('/admin/conditionGroups/42/conditions')

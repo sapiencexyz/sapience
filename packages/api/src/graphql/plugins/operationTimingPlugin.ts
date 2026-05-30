@@ -1,6 +1,7 @@
 import type { ApolloServerPlugin } from '@apollo/server';
 import type { ApolloContext } from '../startApolloServer';
 import { createLogger } from '../../core/logger';
+import { inflightRegistry } from '../../runtime/inflightRegistry';
 
 /**
  * Apollo plugin that emits one structured log line per GraphQL request.
@@ -49,12 +50,42 @@ const truncate = (s: string | undefined, max = 120): string | undefined => {
   return s.length > max ? `${s.slice(0, max)}…` : s;
 };
 
+type GetHeader = { get(name: string): string | null | undefined };
+
+function resolveRequestId(
+  contextValue: ApolloContext,
+  headers: GetHeader | undefined
+): string | undefined {
+  // pino-http types req.id as ReqId (string | number | object); coerce
+  // to string for stable log output. Falls back to upstream header so
+  // requests outside the Express stack (tests, scripts) still log a
+  // correlation id when available.
+  const reqIdRaw = contextValue.req?.id;
+  if (reqIdRaw != null) return String(reqIdRaw);
+  return headers?.get('x-request-id') ?? undefined;
+}
+
 export function operationTimingPlugin(): ApolloServerPlugin<ApolloContext> {
   return {
     async requestDidStart() {
       const startedAt = performance.now();
 
       return {
+        // didResolveOperation is the earliest hook that has the parsed
+        // operation name. Push it onto the inflight registry so a
+        // concurrency-limit dump shows "GetUserPositions" instead of
+        // the parsing/unknown placeholder. requestDidStart is too early
+        // (no operation yet); willSendResponse is too late (the slot is
+        // about to be removed anyway).
+        async didResolveOperation({ request, contextValue, operation }) {
+          const headers = request.http?.headers;
+          const requestId = resolveRequestId(contextValue, headers);
+          if (!requestId) return;
+          const operationName =
+            operation?.name?.value ?? request.operationName ?? 'anonymous';
+          inflightRegistry.setOperation(requestId, operationName);
+        },
+
         async willSendResponse({ request, response, contextValue, operation }) {
           const durationMs = Math.round(performance.now() - startedAt);
 
@@ -67,15 +98,7 @@ export function operationTimingPlugin(): ApolloServerPlugin<ApolloContext> {
           const headers = request.http?.headers;
           const clientName = headers?.get('apollographql-client-name');
           const userAgent = headers?.get('user-agent');
-          // pino-http types req.id as ReqId (string | number | object); coerce
-          // to string for stable log output. Falls back to upstream header so
-          // requests outside the Express stack (tests, scripts) still log a
-          // correlation id when available.
-          const reqIdRaw = contextValue.req?.id;
-          const requestId =
-            reqIdRaw != null
-              ? String(reqIdRaw)
-              : (headers?.get('x-request-id') ?? undefined);
+          const requestId = resolveRequestId(contextValue, headers);
 
           const fields = {
             event: 'gql_request',

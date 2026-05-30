@@ -275,16 +275,46 @@ router.put('/:id/conditions', async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Condition group not found' });
     }
 
-    // Validate all condition IDs exist
+    // Validate all condition IDs exist and load their current basket
+    // affiliation. A condition's effective basket is the negRiskMarketId
+    // of its current group (or null when unattached). Reuse this on the
+    // basket check below so we don't round-trip twice.
     const validConditions = await prisma.condition.findMany({
       where: { id: { in: conditionIds } },
-      select: { id: true },
+      select: {
+        id: true,
+        conditionGroup: { select: { negRiskMarketId: true } },
+      },
     });
     const validIds = new Set(validConditions.map((c) => c.id));
     const invalidIds = conditionIds.filter((cid) => !validIds.has(cid));
     if (invalidIds.length > 0) {
       return res.status(400).json({
         message: `Invalid condition IDs: ${invalidIds.join(', ')}`,
+      });
+    }
+
+    // Basket invariant: attaching a condition to a group is only legal
+    // when the condition's current basket matches the target group's
+    // basket exactly (null included). Without this, an unrelated market
+    // can drift into a mutually-exclusive negRisk basket and corrupt
+    // settlement. Conditions already in the target group trivially
+    // agree (the current group IS the target group).
+    const targetBasket = existing.negRiskMarketId;
+    const mismatched = validConditions.filter((c) => {
+      const currentBasket = c.conditionGroup?.negRiskMarketId ?? null;
+      return currentBasket !== targetBasket;
+    });
+    if (mismatched.length > 0) {
+      return res.status(400).json({
+        message:
+          `Cannot attach conditions to group ${groupId} ` +
+          `(expected negRiskMarketId ${targetBasket ?? 'null'}): ` +
+          mismatched
+            .map(
+              (c) => `${c.id}=${c.conditionGroup?.negRiskMarketId ?? 'null'}`
+            )
+            .join(', '),
       });
     }
 

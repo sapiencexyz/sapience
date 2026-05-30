@@ -52,25 +52,23 @@ export async function checkExistingConditions(
     const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
     const query = `
-      query CheckConditions($filters: ConditionFilter!) {
-        conditionsConnection(filter: $filters, first: 100) {
-          nodes {
-            id: conditionId
-            endTime
-            question
-            shortName
-            optionName
-            description
+      query CheckConditions($where: ConditionWhereInput!, $take: Int!) {
+        conditions(where: $where, take: $take) {
+          id
+          endTime
+          question
+          shortName
+          optionName
+          description
+          similarMarkets
+          tags
+          similarMarketVolume
+          similarMarketImage
+          conditionGroup {
+            id
+            name
             similarMarkets
-            tags
-            similarMarketVolume
-            similarMarketImage
-            conditionGroup {
-              id
-              name
-              similarMarkets
-              negRisk
-            }
+            negRisk
           }
         }
       }
@@ -88,9 +86,9 @@ export async function checkExistingConditions(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query,
-          // visibility: ALL — we want to detect any pre-existing row (public
-          // or private) so the pipeline doesn't try to recreate it.
-          variables: { filters: { ids: chunk, visibility: 'ALL' } },
+          // Query by primary id only — public and private rows both count as
+          // pre-existing, so the pipeline doesn't try to recreate them.
+          variables: { where: { id: { in: chunk } }, take: PAGE_SIZE },
         }),
       });
 
@@ -100,7 +98,7 @@ export async function checkExistingConditions(
       }
 
       const result = await response.json();
-      for (const condition of result.data?.conditionsConnection?.nodes ?? []) {
+      for (const condition of result.data?.conditions ?? []) {
         existing.set(condition.id, {
           endTime: condition.endTime,
           question: condition.question ?? undefined,
