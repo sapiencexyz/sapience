@@ -502,10 +502,14 @@ export function computeMetadataUpdates(
 /**
  * Compare stored ConditionGroup.similarMarkets against what we'd generate
  * fresh from Polymarket and emit an update for any group whose URL has
- * drifted (event slug rename, earlier broken format, etc.). Each filtered
- * group is processed once; we key by the existing conditionGroupId looked
- * up via the group's first market, so we can't double-emit even if future
- * changes allow multi-market groups.
+ * drifted (event slug rename, earlier broken format, etc.).
+ *
+ * Fresh markets are first aggregated by the existing Sapience
+ * `conditionGroupId` they map to, so `sharedNegRiskMarketId` evaluates the
+ * **full sibling set** instead of one market in isolation. Without this,
+ * refresh-metadata's one-market-per-synthetic-group input would let any
+ * single sibling unilaterally stamp the whole group's basket id, even
+ * when other siblings disagree.
  */
 export function computeGroupMetadataUpdates(
   groups: Array<{
@@ -515,26 +519,54 @@ export function computeGroupMetadataUpdates(
   }>,
   existingIds: Map<string, ExistingCondition>
 ): GroupMetadataUpdate[] {
-  const updates: GroupMetadataUpdate[] = [];
-  const seenGroupIds = new Set<number>();
+  // Aggregate fresh markets by the Sapience conditionGroupId they belong
+  // to. A single synthetic input group has at most one market, so we
+  // collapse across synthetic groups here.
+  type AggregatedGroup = {
+    sapienceGroupId: number;
+    sapienceGroupNegRisk: boolean;
+    sapienceGroupSimilarMarkets: string[] | undefined;
+    title: string;
+    markets: PolymarketMarket[];
+  };
+  const aggregated = new Map<number, AggregatedGroup>();
   for (const group of groups) {
-    const market = group.markets[0];
-    if (!market) continue;
+    for (const market of group.markets) {
+      const existing = existingIds.get(market.conditionId);
+      if (!existing?.conditionGroupId) continue;
+      const bucket = aggregated.get(existing.conditionGroupId);
+      if (bucket) {
+        bucket.markets.push(market);
+      } else {
+        aggregated.set(existing.conditionGroupId, {
+          sapienceGroupId: existing.conditionGroupId,
+          sapienceGroupNegRisk: existing.conditionGroupNegRisk ?? false,
+          sapienceGroupSimilarMarkets: existing.conditionGroupSimilarMarkets,
+          title: group.title,
+          markets: [market],
+        });
+      }
+    }
+  }
 
-    const existing = existingIds.get(market.conditionId);
-    if (!existing?.conditionGroupId) continue;
-    if (seenGroupIds.has(existing.conditionGroupId)) continue;
-    seenGroupIds.add(existing.conditionGroupId);
+  const updates: GroupMetadataUpdate[] = [];
+  for (const bucket of aggregated.values()) {
+    // Use the first market only to derive the URL — every Polymarket
+    // sibling under the same event resolves to the same canonical
+    // event URL, so picking one is fine and matches the prior behaviour.
+    const firstMarket = bucket.markets[0];
+    if (!firstMarket) continue;
 
     // If we can't build a correct fresh URL (market lacks an event slug),
     // skip rather than clear the existing value — matches the backfill's
     // "never overwrite with worse data" stance.
-    const freshUrl = getPolymarketUrl(market);
+    const freshUrl = getPolymarketUrl(firstMarket);
     if (!freshUrl) continue;
 
     const freshSimilarMarkets = [freshUrl];
-    const oldSimilarMarkets = existing.conditionGroupSimilarMarkets;
-    const freshNegRiskMarketId = sharedNegRiskMarketId(group.markets);
+    const oldSimilarMarkets = bucket.sapienceGroupSimilarMarkets;
+    // Now evaluated across the *full* sibling set, not a single market.
+    const freshNegRiskMarketId = sharedNegRiskMarketId(bucket.markets);
 
     const fields: GroupSyncableFields = {};
     const old: GroupSyncableFields = {};
@@ -552,20 +584,20 @@ export function computeGroupMetadataUpdates(
     // `negRiskMarketId` directly via PUT /admin/conditionGroups/:id and the
     // API computes the boolean from it being non-null.
     if (
-      existing.conditionGroupNegRisk === false &&
+      bucket.sapienceGroupNegRisk === false &&
       freshNegRiskMarketId !== undefined
     ) {
       fields.negRiskMarketId = freshNegRiskMarketId;
       old.negRiskMarketId = null;
     } else if (
-      existing.conditionGroupNegRisk === true &&
+      bucket.sapienceGroupNegRisk === true &&
       freshNegRiskMarketId === undefined
     ) {
       console.error(
-        `[Metadata] refused to demote group ${existing.conditionGroupId} ` +
-          `("${group.title}") from negRisk: fresh Polymarket markets disagree on ` +
+        `[Metadata] refused to demote group ${bucket.sapienceGroupId} ` +
+          `("${bucket.title}") from negRisk: fresh Polymarket markets disagree on ` +
           `basket id (or are missing it). Conditions: ` +
-          group.markets
+          bucket.markets
             .map((m) => `${m.conditionId}=${getNegRiskMarketId(m) ?? 'none'}`)
             .join(', ')
       );
@@ -573,7 +605,7 @@ export function computeGroupMetadataUpdates(
 
     if (Object.keys(fields).length > 0) {
       updates.push({
-        groupId: existing.conditionGroupId,
+        groupId: bucket.sapienceGroupId,
         fields,
         old,
       });
