@@ -142,12 +142,20 @@ export async function main() {
   const apiUrl = process.env.SAPIENCE_API_URL || DEFAULT_SAPIENCE_API_URL;
   const rawPrivateKey = process.env.ADMIN_PRIVATE_KEY;
 
+  // The key only signs *submitted* admin requests. --dry-run never
+  // submits, so don't make a missing key block a safe local preview.
   let privateKey: `0x${string}` | undefined;
   try {
     privateKey = validatePrivateKey(rawPrivateKey);
   } catch (error) {
-    logError(error instanceof Error ? error.message : String(error));
-    process.exit(1);
+    if (options.dryRun) {
+      log(
+        '[RefreshMetadata] No ADMIN_PRIVATE_KEY available; continuing in dry-run mode only.'
+      );
+    } else {
+      logError(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
   }
 
   const hasAPICredentials = apiUrl && privateKey;

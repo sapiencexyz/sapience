@@ -4978,6 +4978,18 @@
             "deprecationReason": null
           },
           {
+            "name": "externalEventId",
+            "description": "Polymarket event id (events[0].id on Gamma /markets). The canonical identity for platform-sourced groups. Null for legacy / Sapience-native / curated groups that don't originate from a platform event.",
+            "args": [],
+            "type": {
+              "kind": "SCALAR",
+              "name": "String",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "id",
             "description": null,
             "args": [],
