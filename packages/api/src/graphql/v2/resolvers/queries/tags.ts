@@ -10,6 +10,7 @@
  */
 
 import prisma from '../../../../core/db';
+import { refreshPopularTags } from '../../../sdl/resolvers/queries/tags';
 import { CACHE_HINTS, setCacheHint } from '../../cacheHints';
 import { decodeCursor, encodeCursor } from '../../relay/cursor';
 import { clampTake } from '../../relay/pagination';
@@ -37,7 +38,14 @@ export const tags: NonNullable<QueryResolvers['tags']> = async (
 
   // ≤20 rows in practice — pull the whole materialization, sort + slice
   // in memory rather than encoding a keyset over `(count, tag)`.
-  const rows = await prisma.popularTag.findMany();
+  let rows = await prisma.popularTag.findMany();
+  if (rows.length === 0) {
+    // Cold start (fresh deploy, before the keeper's first refreshPopularTags):
+    // compute + materialize inline so the surface isn't temporarily empty.
+    // Mirrors v1's popularTags fallback.
+    await refreshPopularTags();
+    rows = await prisma.popularTag.findMany();
+  }
   const sorted: TagRow[] = rows
     .map((r) => ({ name: r.tag, conditionCount: r.count }))
     .sort((a, b) => {
@@ -47,7 +55,10 @@ export const tags: NonNullable<QueryResolvers['tags']> = async (
           : b.name.localeCompare(a.name);
       }
       const diff = a.conditionCount - b.conditionCount;
-      return direction === 'asc' ? diff : -diff;
+      if (diff !== 0) return direction === 'asc' ? diff : -diff;
+      // Deterministic tie-break so equal-count tags keep a stable order across
+      // calls — otherwise the offset cursor can skip/duplicate a tag (#15).
+      return a.name.localeCompare(b.name);
     });
 
   const cursor = args.after ? decodeCursor(args.after) : null;
