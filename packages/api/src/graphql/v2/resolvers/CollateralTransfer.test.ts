@@ -118,4 +118,15 @@ describe('CollateralTransfer (v2)', () => {
     );
     expect(exclusion?.AND?.[0]?.from?.notIn).toContain('0xvault');
   });
+
+  it('collateralTransfers(filter: { excludeProtocol }) without chainId raises instead of silently no-opping', async () => {
+    await expect(
+      callResolver(collateralTransfers)(
+        null,
+        { first: 50, filter: { excludeProtocol: true } },
+        {},
+        null
+      )
+    ).rejects.toThrow(/chainId/i);
+  });
 });

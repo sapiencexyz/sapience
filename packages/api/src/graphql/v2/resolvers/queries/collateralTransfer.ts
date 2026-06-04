@@ -5,6 +5,7 @@
  * a stable keyset.
  */
 
+import { GraphQLError } from 'graphql';
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { getConfiguredVaultDeploymentAddresses } from '../../../../services/protocolStats/vaultConfig';
@@ -72,7 +73,16 @@ export const collateralTransfers: NonNullable<
       r.lte = new Date(args.filter.timestamp.lte as unknown as string);
     where.timestamp = r;
   }
-  if (args.filter?.excludeProtocol && args.filter?.chainId != null) {
+  if (args.filter?.excludeProtocol) {
+    // The protocol vault set is chain-scoped, so excludeProtocol is
+    // meaningless without a chainId. Surface that instead of silently
+    // returning over-inclusive (protocol-included) data.
+    if (args.filter?.chainId == null) {
+      throw new GraphQLError(
+        'collateralTransfers(filter.excludeProtocol) requires filter.chainId.',
+        { extensions: { code: 'BAD_USER_INPUT' } }
+      );
+    }
     const excluded = getConfiguredVaultDeploymentAddresses(args.filter.chainId);
     if (excluded.length > 0) {
       const exclusion: Prisma.CollateralTransferWhereInput = {
