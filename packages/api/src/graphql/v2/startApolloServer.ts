@@ -123,10 +123,35 @@ export const initializeApolloServerV2 = async () => {
 
               if (complexity > maxComplexity) {
                 const errorMessage = `Query complexity limit exceeded. Maximum allowed: ${maxComplexity}, Actual: ${complexity}`;
-                log.warn(
-                  { maxComplexity, actualComplexity: complexity },
-                  'v2 complexity limit exceeded'
-                );
+                const exceededBy = complexity - maxComplexity;
+                // Sentry only for genuinely abusive queries (>50% over).
+                // Bounded queries that just nudge the limit stay stdout-only.
+                const exceededThreshold = maxComplexity * 1.5;
+                if (complexity > exceededThreshold) {
+                  log.error(
+                    {
+                      err: new Error(errorMessage),
+                      sentryLevel: 'warning',
+                      tags: {
+                        type: 'query_complexity_exceeded',
+                        graphql: 'validation',
+                        endpoint: 'v2',
+                      },
+                      maxComplexity,
+                      actualComplexity: complexity,
+                      exceededBy,
+                      exceededByPercent: Math.round(
+                        (exceededBy / maxComplexity) * 100
+                      ),
+                    },
+                    'v2 complexity limit exceeded (Sentry-reported)'
+                  );
+                } else {
+                  log.warn(
+                    { maxComplexity, actualComplexity: complexity, exceededBy },
+                    'v2 complexity limit exceeded'
+                  );
+                }
                 throw new GraphQLError(errorMessage, {
                   extensions: {
                     code: 'QUERY_COMPLEXITY_EXCEEDED',
