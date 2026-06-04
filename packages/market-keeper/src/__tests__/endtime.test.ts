@@ -425,9 +425,10 @@ describe('extractEndTime', () => {
     });
 
     it('rolls to next year when date is past', () => {
-      // Jan 14 is past → 2027; 9 AM PT (UTC-7) = 16:00 UTC
+      // Jan 14 is past → 2027; January = winter, so PT = PST (UTC-8).
+      // 9 AM PST = 17:00 UTC. (Pre-DST-fix this test asserted UTC-7 = 16:00.)
       expect(extractEndTime('Up or Down – Jan 14, 9:00 AM PT', '')).toBe(
-        Math.floor(new Date('2027-01-14T16:00:00Z').getTime() / 1000)
+        Math.floor(new Date('2027-01-14T17:00:00Z').getTime() / 1000)
       );
     });
 
@@ -484,6 +485,107 @@ describe('extractEndTime', () => {
     });
   });
 
+  // ── Tier 1e ───────────────────────────────────────────────────────────────
+  describe('tier 1e — "by Month Day, Year, HH:MM AM/PM TZ" deadline in desc', () => {
+    it('Ryanair-style deadline (year + comma + time + TZ)', () => {
+      // June 30 = EDT (UTC-4), 11:59 PM EDT = July 1 03:59 UTC
+      const ts = extractEndTime(
+        'Will Elon Musk buy Ryanair?',
+        '...enters into an agreement to buy Ryanair by June 30, 2026, 11:59 PM ET. Otherwise...'
+      );
+      expect(ts).toBe(
+        Math.floor(new Date('2026-07-01T03:59:00Z').getTime() / 1000)
+      );
+    });
+
+    it('reports tier 1e', () => {
+      const out = { tier: '' };
+      extractEndTime(
+        'Will X happen?',
+        'must happen by July 4, 2026, 5:00 PM ET',
+        out
+      );
+      expect(out.tier).toBe('1e');
+    });
+
+    it('no year given → inferred from current year', () => {
+      // Aug 15 is in the future; should infer 2026
+      const ts = extractEndTime(
+        'Will X happen?',
+        'event must occur by August 15, 11:59 PM ET'
+      );
+      // Aug = EDT (UTC-4), 23:59 EDT = Aug 16 03:59 UTC
+      expect(ts).toBe(
+        Math.floor(new Date('2026-08-16T03:59:00Z').getTime() / 1000)
+      );
+    });
+
+    it('no TZ given → falls back to UTC', () => {
+      // No TZ → 0 offset, 11:59 PM treated as UTC
+      const ts = extractEndTime(
+        'Will X happen?',
+        'must occur by Dec 1, 2026, 11:59 PM'
+      );
+      expect(ts).toBe(
+        Math.floor(new Date('2026-12-01T23:59:00Z').getTime() / 1000)
+      );
+    });
+
+    it('requires AM/PM — bare "by Jan 5" does NOT match this tier', () => {
+      // No time-of-day → tier 1e declines; other tiers may catch it
+      const out = { tier: '' };
+      extractEndTime('Will X happen?', 'must occur by Jan 5, 2026', out);
+      // Should match some other tier (4a/4b/4d), NOT 1e
+      expect(out.tier).not.toBe('1e');
+    });
+
+    it('does NOT swallow a past-tense "by" with no time', () => {
+      // "by Friday" with no time/TZ → declines (no AM/PM in time component)
+      const out = { tier: '' };
+      extractEndTime(
+        'Will X happen?',
+        'announcements made by Friday will not qualify',
+        out
+      );
+      expect(out.tier).not.toBe('1e');
+    });
+
+    it('skips cancellation-fallback "by [date] ... resolve to Other" (straight quotes)', () => {
+      const out = { tier: '' };
+      extractEndTime(
+        'Will Uzbekistan win the 2026 FIFA World Cup?',
+        'If the 2026 FIFA World Cup is permanently canceled or has not been completed by October 13, 2026, 11:59 PM this market will resolve to "Other".',
+        out
+      );
+      expect(out.tier).not.toBe('1e');
+    });
+
+    it('skips cancellation-fallback with curly quotes (real Polymarket shape)', () => {
+      // Polymarket descriptions use U+201C/201D (curly double quotes) around
+      // outcome names; the guard must match those too.
+      const out = { tier: '' };
+      extractEndTime(
+        'Will Uzbekistan win the 2026 FIFA World Cup?',
+        'If the 2026 FIFA World Cup is permanently canceled or has not been completed by October 13, 2026, 11:59 PM this market will resolve to “Other”.',
+        out
+      );
+      expect(out.tier).not.toBe('1e');
+    });
+
+    it('still catches a real deadline that appears AFTER a fallback in same description', () => {
+      // Description has two "by [date]" — a fallback first, a real deadline
+      // second. Iterative scan should skip the fallback and accept the real one.
+      const ts = extractEndTime(
+        'Will X happen?',
+        'If X is canceled by Aug 1, 2026, 11:59 PM ET this market will resolve to "Other". Otherwise this market will resolve YES if X happens by July 4, 2026, 11:59 PM ET.'
+      );
+      // July 4 = EDT (UTC-4), 23:59 EDT = July 5 03:59 UTC
+      expect(ts).toBe(
+        Math.floor(new Date('2026-07-05T03:59:00Z').getTime() / 1000)
+      );
+    });
+  });
+
   // ── Tier 2a ───────────────────────────────────────────────────────────────
   describe('tier 2a — scheduled with time + sport duration', () => {
     it('adds NBA duration (3h) to start time', () => {
@@ -513,18 +615,72 @@ describe('extractEndTime', () => {
 
   // ── Tier 2b ───────────────────────────────────────────────────────────────
   describe('tier 2b — scheduled date only', () => {
-    it('uses EOD + 4h default when no sport', () => {
-      // Apr 5 23:59 UTC + 4h = Apr 6 03:59 UTC
+    it('no sport keyword and no US/UK context → 23:59 UTC (no pad)', () => {
+      // Previously stamped EOD + 4h "sport duration" pad even for non-sports;
+      // now stamps a clean 23:59 UTC when nothing identifies a timezone.
       expect(extractEndTime('Event scheduled for April 5', '')).toBe(
-        Math.floor(new Date('2026-04-06T03:59:00Z').getTime() / 1000)
+        Math.floor(new Date('2026-04-05T23:59:00Z').getTime() / 1000)
       );
     });
 
-    it('uses soccer duration (2.5h)', () => {
+    it('soccer keyword → still uses soccer duration pad (2.5h)', () => {
       // Apr 5 23:59 UTC + 2.5h (9000s) = Apr 6 02:29 UTC
       expect(extractEndTime('Soccer match scheduled for April 5', '')).toBe(
         Math.floor(new Date('2026-04-06T02:29:00Z').getTime() / 1000)
       );
+    });
+
+    it('US-presidential context, winter date → 23:59 EST (UTC-5)', () => {
+      // The Tim Walz prod bug: regex previously returned 23:59 EDT
+      // because the +4h pad effectively bakes in a UTC-4 assumption,
+      // which is wrong in November (EST is UTC-5).
+      expect(
+        extractEndTime(
+          'Will Tim Walz win the 2028 US Presidential Election?',
+          'The 2028 US Presidential Election is scheduled to take place on November 7, 2028.'
+        )
+      ).toBe(Math.floor(new Date('2028-11-08T04:59:00Z').getTime() / 1000));
+    });
+
+    it('US context, summer date → 23:59 EDT (UTC-4)', () => {
+      // July 4 is EDT (UTC-4): 23:59 local = 03:59 UTC next day.
+      expect(
+        extractEndTime(
+          'Will the President declare a holiday?',
+          'Independence Day is scheduled to take place on July 4, 2026.'
+        )
+      ).toBe(Math.floor(new Date('2026-07-05T03:59:00Z').getTime() / 1000));
+    });
+
+    it('UK context, summer date → 23:59 BST (UTC+1)', () => {
+      // BST (British Summer Time) is UTC+1; 23:59 BST = 22:59 UTC.
+      expect(
+        extractEndTime(
+          'Will the British Prime Minister resign?',
+          'The next general election in the United Kingdom is scheduled for June 15, 2026.'
+        )
+      ).toBe(Math.floor(new Date('2026-06-15T22:59:00Z').getTime() / 1000));
+    });
+
+    it('UK context, winter date → 23:59 GMT (UTC+0)', () => {
+      // GMT is UTC+0; 23:59 GMT = 23:59 UTC same day.
+      expect(
+        extractEndTime(
+          'Will Parliament vote no confidence?',
+          'The Westminster vote is scheduled for January 15, 2027.'
+        )
+      ).toBe(Math.floor(new Date('2027-01-15T23:59:00Z').getTime() / 1000));
+    });
+
+    it('explicit timezone abbreviation overrides context', () => {
+      // Question carries US-themed words but description names PT explicitly;
+      // PT should win — and DST-aware (PDT = UTC-7 in July).
+      expect(
+        extractEndTime(
+          'Will the US congressional vote pass?',
+          'The vote is scheduled to take place on July 4, 2026 PT.'
+        )
+      ).toBe(Math.floor(new Date('2026-07-05T06:59:00Z').getTime() / 1000));
     });
   });
 
@@ -540,10 +696,10 @@ describe('extractEndTime', () => {
       ).toBe(Math.floor(new Date('2026-04-06T02:59:00Z').getTime() / 1000));
     });
 
-    it('parses ISO date from question', () => {
-      // 2026-04-10 23:59 UTC + 4h default = 2026-04-11 03:59 UTC
+    it('parses ISO date from question without sport context → 23:59 UTC', () => {
+      // No sport keyword, no US/UK context → falls back to UTC, no pad.
       expect(extractEndTime('Match scheduled for 2026-04-10', '')).toBe(
-        Math.floor(new Date('2026-04-11T03:59:00Z').getTime() / 1000)
+        Math.floor(new Date('2026-04-10T23:59:00Z').getTime() / 1000)
       );
     });
 

@@ -47,8 +47,6 @@ export const ALWAYS_INCLUDE_PATTERNS = [
   /\bspx\b/i, // S&P 500 (ticker)
   /price of Bitcoin.+on \w+ \d+/i, // "Will the price of Bitcoin be... on January 28?"
   /price of Ethereum.+on \w+ \d+/i, // "Will the price of Ethereum be above... on January 28?"
-  /\bMaine\b/i, // Maine
-  /\bMichigan\b/i, // Michigan
 ];
 
 // Supplementary event tag slugs to fetch from /events endpoint
