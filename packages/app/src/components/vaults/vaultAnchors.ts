@@ -21,7 +21,7 @@ export const VAULT_PNL_ANCHORS_SEC: Record<string, number> = {
   }),
   ...(EDGE_VAULT_ADDRESS && {
     [EDGE_VAULT_ADDRESS.toLowerCase()]: Math.floor(
-      Date.UTC(2026, 4, 14) / 1000
+      Date.UTC(2026, 4, 13) / 1000
     ),
   }),
 };
