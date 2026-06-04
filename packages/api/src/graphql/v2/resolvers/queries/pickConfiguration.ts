@@ -12,6 +12,7 @@ import {
   decodeCursor,
   encodeCursor,
   normalizeDirection,
+  timestampCursorArgs,
   withCursorWhere,
 } from '../../relay/connection';
 
@@ -56,17 +57,20 @@ export const pickConfigurations: NonNullable<
   if (field === 'endsAt') where.endsAt = { not: null };
   if (field === 'resolvedAt') where.resolvedAt = { not: null };
 
+  const isCreatedAt = field === 'createdAt';
   const cursor = args.after ? decodeCursor(args.after) : null;
-  const cursorWhere = cursor
-    ? buildKeysetWhere<Prisma.PicksWhereInput>({
-        orderField: field,
-        orderValue:
-          field === 'createdAt' ? new Date(cursor.k) : Number(cursor.k),
-        idField: 'id',
-        idValue: cursor.id,
-        direction,
-      })
-    : null;
+  // createdAt is Timestamp(6); a JS-Date keyset loses microseconds, so page it
+  // via Prisma's native id cursor. endsAt / resolvedAt keep the value keyset.
+  const cursorWhere =
+    cursor && !isCreatedAt
+      ? buildKeysetWhere<Prisma.PicksWhereInput>({
+          orderField: field,
+          orderValue: Number(cursor.k),
+          idField: 'id',
+          idValue: cursor.id,
+          direction,
+        })
+      : null;
 
   const rows = await prisma.picks.findMany({
     where: withCursorWhere(where, cursorWhere),
@@ -76,6 +80,7 @@ export const pickConfigurations: NonNullable<
     ],
     include: { picks: true },
     take: first + 1,
+    ...(isCreatedAt ? timestampCursorArgs(args.after, (s) => s) : {}),
   });
 
   return buildConnection({

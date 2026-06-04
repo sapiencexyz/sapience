@@ -14,6 +14,7 @@ import {
   decodeCursor,
   encodeCursor,
   normalizeDirection,
+  timestampCursorArgs,
   withCursorWhere,
 } from '../../relay/connection';
 
@@ -87,17 +88,21 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     where.settledAt = { not: null };
   }
 
+  const isCreatedAt = field === 'createdAt';
   const cursor = args.after ? decodeCursor(args.after) : null;
-  const cursorWhere = cursor
-    ? buildKeysetWhere<Prisma.PredictionWhereInput>({
-        orderField: field,
-        orderValue:
-          field === 'createdAt' ? new Date(cursor.k) : Number(cursor.k),
-        idField: 'id',
-        idValue: Number(cursor.id),
-        direction,
-      })
-    : null;
+  // createdAt is Timestamp(6); a JS-Date keyset loses microseconds, so page it
+  // via Prisma's native id cursor. settledAt keeps the value keyset (the
+  // NULL-exclusion above keeps that a total order).
+  const cursorWhere =
+    cursor && !isCreatedAt
+      ? buildKeysetWhere<Prisma.PredictionWhereInput>({
+          orderField: field,
+          orderValue: Number(cursor.k),
+          idField: 'id',
+          idValue: Number(cursor.id),
+          direction,
+        })
+      : null;
 
   const rows = await prisma.prediction.findMany({
     where: withCursorWhere(where, cursorWhere),
@@ -107,6 +112,7 @@ export const predictions: NonNullable<QueryResolvers['predictions']> = async (
     ],
     include: { pickConfiguration: { include: { picks: true } } },
     take: first + 1,
+    ...(isCreatedAt ? timestampCursorArgs(args.after, Number) : {}),
   });
 
   return buildConnection({

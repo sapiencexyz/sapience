@@ -15,6 +15,8 @@ import {
   decodeCursor,
   encodeCursor,
   normalizeDirection,
+  offsetFromCursor,
+  timestampCursorArgs,
   withCursorWhere,
 } from '../../relay/connection';
 import { tryFromGlobalIdV2 } from '../../relay/nodeRegistry';
@@ -24,7 +26,9 @@ export const conditionGroup: NonNullable<
 > = async (_parent, { id }) => {
   const parts = tryFromGlobalIdV2(id);
   if (!parts || parts.type !== 'ConditionGroup') return null;
-  return prisma.conditionGroup.findUnique({ where: { name: parts.id } });
+  const groupId = Number(parts.id);
+  if (!Number.isInteger(groupId)) return null;
+  return prisma.conditionGroup.findUnique({ where: { id: groupId } });
 };
 
 const FIELD_TO_PRISMA: Record<string, string> = {
@@ -51,18 +55,18 @@ export const conditionGroups: NonNullable<
 
   const usesOffset =
     field === 'totalOpenInterest' || field === 'totalPredictionCount';
+  const isCreatedAt = field === 'createdAt';
   const cursor = args.after ? decodeCursor(args.after) : null;
-  const skip = cursor && usesOffset ? Number(cursor.k) + 1 : 0;
+  // Guard the offset against a foreign/garbage `k`: offsetFromCursor resets
+  // to 0 rather than NaN (which would stick paging and emit "NaN" cursors).
+  const skip = usesOffset ? offsetFromCursor(args.after) : 0;
+  // createdAt is Timestamp(6); a JS-Date keyset loses microseconds, so page it
+  // via Prisma's native id cursor. name / maxEndTime keep the value keyset.
   const cursorWhere =
-    cursor && !usesOffset
+    cursor && !usesOffset && !isCreatedAt
       ? buildKeysetWhere<Prisma.ConditionGroupWhereInput>({
           orderField: field,
-          orderValue:
-            field === 'createdAt'
-              ? new Date(cursor.k)
-              : field === 'name'
-                ? cursor.k
-                : Number(cursor.k),
+          orderValue: field === 'name' ? cursor.k : Number(cursor.k),
           idField: 'id',
           idValue: Number(cursor.id),
           direction,
@@ -76,7 +80,9 @@ export const conditionGroups: NonNullable<
       { id: direction },
     ],
     take: first + 1,
-    skip: skip || undefined,
+    ...(isCreatedAt
+      ? timestampCursorArgs(args.after, Number)
+      : { skip: skip || undefined }),
   });
 
   return buildConnection({

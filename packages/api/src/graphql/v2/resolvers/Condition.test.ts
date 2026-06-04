@@ -246,10 +246,13 @@ describe('Condition (v2)', () => {
     const total = result.totalCount;
     if (typeof total === 'function') await (total as () => Promise<number>)();
 
-    // The page query carries the cursor (keyset) predicate...
-    expect(
-      mockPrisma.condition.findMany.mock.calls[0]?.[0]?.where
-    ).toHaveProperty('AND');
+    // The page query positions via Prisma's native id cursor — createdAt is
+    // Timestamp(6), so a JS-Date ms keyset would duplicate same-millisecond
+    // rows; the cursor lives in `cursor`/`skip`, not the where...
+    expect(mockPrisma.condition.findMany.mock.calls[0]?.[0]?.cursor).toEqual({
+      id: '0xabc',
+    });
+    expect(mockPrisma.condition.findMany.mock.calls[0]?.[0]?.skip).toBe(1);
     // ...but the COUNT must use only the base where, so totalCount is the full
     // filtered count and stays stable across pages — not "rows after the cursor".
     expect(mockPrisma.condition.count.mock.calls[0]?.[0]?.where).toEqual({

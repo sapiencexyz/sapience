@@ -11,12 +11,10 @@ import { synthesizeAccount } from '../accountSynthesis';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
-  buildKeysetWhere,
   clampTake,
-  decodeCursor,
   encodeCursor,
   normalizeDirection,
-  withCursorWhere,
+  timestampCursorArgs,
 } from '../../relay/connection';
 
 type AccountCtx = {
@@ -73,21 +71,14 @@ export const accounts: NonNullable<QueryResolvers['accounts']> = async (
     ? { address: { contains: search.toLowerCase(), mode: 'insensitive' } }
     : {};
 
-  const cursor = args.after ? decodeCursor(args.after) : null;
-  const cursorWhere = cursor
-    ? buildKeysetWhere<Prisma.UserWhereInput>({
-        orderField: 'createdAt',
-        orderValue: new Date(cursor.k),
-        idField: 'id',
-        idValue: Number(cursor.id),
-        direction,
-      })
-    : null;
-
+  // createdAt is Timestamp(6); a JS-Date keyset loses microseconds and would
+  // duplicate same-millisecond rows. Page via Prisma's native id cursor, which
+  // resolves order server-side at full precision.
   const rows = await prisma.user.findMany({
-    where: withCursorWhere(where, cursorWhere),
+    where,
     orderBy: [{ createdAt: direction }, { id: direction }],
     take: first + 1,
+    ...timestampCursorArgs(args.after, Number),
   });
   const scopedRows = rows.map((row) => ({ ...row, chainId }));
 

@@ -21,15 +21,46 @@ export const clampTake = (
   { defaultTake, maxTake = MAX_TAKE }: { defaultTake: number; maxTake?: number }
 ): number => {
   const value = take ?? defaultTake;
-  if (!Number.isFinite(value) || value <= 0)
+  // Fall back to the default only on null/undefined/NaN/negative. An explicit
+  // `first: 0` is a legal "count only" Relay request (fetch totalCount /
+  // pageInfo, no edges) — keep it 0 rather than coercing to a full page.
+  if (!Number.isFinite(value) || value < 0)
     return Math.min(defaultTake, maxTake);
-  return Math.max(1, Math.min(Math.floor(value), maxTake));
+  return Math.min(Math.floor(value), maxTake);
 };
 
 export const offsetFromCursor = (cursor: string | null | undefined): number => {
   const payload = cursor ? decodeCursor(cursor) : null;
   const offset = payload ? Number(payload.k) : Number.NaN;
   return Number.isInteger(offset) && offset >= 0 ? offset + 1 : 0;
+};
+
+/**
+ * Prisma native-cursor args for a `createdAt`-ordered connection.
+ *
+ * JS `Date` is millisecond-only, but `createdAt` is `@db.Timestamp(6)`
+ * (microsecond). A manual keyset built from `new Date(cursor.k)` therefore
+ * can't position the boundary when rows share a millisecond — most acutely
+ * for a batch insert under a single transaction's `now()`, which stamps every
+ * row identically — and duplicates or skips them at the page edge.
+ *
+ * Prisma's native cursor sidesteps the gap entirely: it positions on the row
+ * by its unique `id` and resolves that row's true (microsecond) order
+ * server-side, so precision is never round-tripped through a JS `Date`. Pass
+ * `parseId` to coerce the cursor payload to the model's id type (`Number` for
+ * Int PKs, identity for string PKs). Returns `{}` when there's no cursor.
+ *
+ * Caveat: if the cursor row is later deleted, the page resolves to empty
+ * (client refetches) rather than returning wrong data — an acceptable
+ * degradation for these append-mostly feeds.
+ */
+export const timestampCursorArgs = <TId>(
+  after: string | null | undefined,
+  parseId: (raw: string) => TId
+): { cursor?: { id: TId }; skip?: number } => {
+  const payload = after ? decodeCursor(after) : null;
+  if (!payload) return {};
+  return { cursor: { id: parseId(payload.id) }, skip: 1 };
 };
 
 type BuildConnectionArgs<TRow, TNode = TRow> = {

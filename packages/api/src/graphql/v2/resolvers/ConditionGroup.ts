@@ -11,20 +11,27 @@ import type { ConditionGroupResolvers } from '../__generated__/resolvers';
 import {
   buildConnection,
   clampTake,
-  decodeCursor,
   encodeCursor,
+  offsetFromCursor,
 } from '../relay/connection';
 
 type ConditionRow = Prisma.ConditionGetPayload<true>;
 
 registerNodeTypeV2({
   type: 'ConditionGroup',
-  loader: async (id) =>
-    prisma.conditionGroup.findUnique({ where: { name: id } }),
+  // `name` is no longer unique (identity moved to (source, externalEventId)),
+  // so the global id encodes the numeric DB id — the `groupId` domain id per
+  // PLAN.md. Decode defensively: a non-numeric payload resolves to null.
+  loader: async (id) => {
+    const groupId = Number(id);
+    return Number.isInteger(groupId)
+      ? prisma.conditionGroup.findUnique({ where: { id: groupId } })
+      : null;
+  },
 });
 
 export const ConditionGroup: ConditionGroupResolvers = {
-  id: (parent) => toGlobalIdV2('ConditionGroup', parent.name),
+  id: (parent) => toGlobalIdV2('ConditionGroup', String(parent.id)),
 
   category: async (parent, _args, ctx) => {
     if (parent.categoryId == null) return null;
@@ -67,8 +74,9 @@ export const ConditionGroup: ConditionGroupResolvers = {
       defaultTake: 50,
       maxTake: 100,
     });
-    const after = args.after ? decodeCursor(args.after) : null;
-    const skip = after ? Number(after.k) + 1 : 0;
+    // Guard against a foreign/garbage `k`: offsetFromCursor resets to 0
+    // rather than NaN (which would slice to an empty page and emit "NaN").
+    const skip = offsetFromCursor(args.after);
 
     // Conditions within a group order by displayOrder (nulls last) then
     // createdAt asc. Per-group sets are bounded; per-request loader

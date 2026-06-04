@@ -25,7 +25,12 @@
 
 export type OrderDirection = 'asc' | 'desc';
 
-export { buildConnection, clampTake, offsetFromCursor } from './pagination';
+export {
+  buildConnection,
+  clampTake,
+  offsetFromCursor,
+  timestampCursorArgs,
+} from './pagination';
 export { decodeCursor, encodeCursor } from './cursor';
 
 /**

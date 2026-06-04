@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fromGlobalIdV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import { encodeCursor } from '../relay/connection';
 
 const mockPrisma = vi.hoisted(() => ({
   category: { findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn() },
@@ -59,5 +60,41 @@ describe('Category (v2)', () => {
         }),
       })
     );
+  });
+
+  it('categories(orderBy CREATED_AT) pages via Prisma native id cursor, not a ms keyset', async () => {
+    const after = encodeCursor({ k: '2026-01-01T00:00:00.123Z', id: '42' });
+    await callResolver(categories)(
+      null,
+      { first: 50, orderBy: { field: 'CREATED_AT', direction: 'DESC' }, after },
+      {},
+      null
+    );
+    const arg = mockPrisma.category.findMany.mock.calls[0]?.[0] as {
+      cursor?: { id: number };
+      skip?: number;
+      where?: { AND?: unknown };
+    };
+    // Native cursor positioning — precision-safe for Timestamp(6) createdAt.
+    expect(arg.cursor).toEqual({ id: 42 });
+    expect(arg.skip).toBe(1);
+    // ...and NOT the old ms-truncating keyset folded into the where.
+    expect(arg.where?.AND).toBeUndefined();
+  });
+
+  it('categories(orderBy NAME) keeps the value keyset (string field, no precision issue)', async () => {
+    const after = encodeCursor({ k: 'Sports', id: '42' });
+    await callResolver(categories)(
+      null,
+      { first: 50, orderBy: { field: 'NAME', direction: 'ASC' }, after },
+      {},
+      null
+    );
+    const arg = mockPrisma.category.findMany.mock.calls[0]?.[0] as {
+      cursor?: unknown;
+      where?: { AND?: unknown };
+    };
+    expect(arg.cursor).toBeUndefined();
+    expect(arg.where?.AND).toBeDefined();
   });
 });

@@ -12,6 +12,7 @@ import {
   decodeCursor,
   encodeCursor,
   normalizeDirection,
+  timestampCursorArgs,
   withCursorWhere,
 } from '../../relay/connection';
 import { CACHE_HINTS, setCacheHint } from '../../cacheHints';
@@ -52,16 +53,20 @@ export const categories: NonNullable<QueryResolvers['categories']> = async (
     ? { name: { contains: search, mode: 'insensitive' } }
     : {};
 
+  const isCreatedAt = field === 'createdAt';
   const cursor = args.after ? decodeCursor(args.after) : null;
-  const cursorWhere = cursor
-    ? buildKeysetWhere<Prisma.CategoryWhereInput>({
-        orderField: field,
-        orderValue: field === 'createdAt' ? new Date(cursor.k) : cursor.k,
-        idField: 'id',
-        idValue: Number(cursor.id),
-        direction,
-      })
-    : null;
+  // createdAt is Timestamp(6); a JS-Date keyset loses microseconds, so page it
+  // via Prisma's native id cursor. The other field (name) keeps the keyset.
+  const cursorWhere =
+    cursor && !isCreatedAt
+      ? buildKeysetWhere<Prisma.CategoryWhereInput>({
+          orderField: field,
+          orderValue: cursor.k,
+          idField: 'id',
+          idValue: Number(cursor.id),
+          direction,
+        })
+      : null;
 
   const rows = await prisma.category.findMany({
     where: withCursorWhere(where, cursorWhere),
@@ -70,6 +75,7 @@ export const categories: NonNullable<QueryResolvers['categories']> = async (
       { id: direction },
     ],
     take: first + 1,
+    ...(isCreatedAt ? timestampCursorArgs(args.after, Number) : {}),
   });
 
   return buildConnection({

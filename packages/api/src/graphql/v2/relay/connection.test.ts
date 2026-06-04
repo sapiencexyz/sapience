@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildKeysetWhere,
+  clampTake,
   normalizeDirection,
   withCursorWhere,
 } from './connection';
@@ -72,5 +73,24 @@ describe('withCursorWhere', () => {
     expect(withCursorWhere<W>(base, cursor)).toEqual({
       AND: [{ chainId: 1 }, { OR: [{ x: 1 }] }],
     });
+  });
+});
+
+describe('clampTake', () => {
+  it('treats an explicit first: 0 as a valid empty page', () => {
+    // first: 0 is a legal Relay request (fetch only totalCount / pageInfo).
+    expect(clampTake(0, { defaultTake: 50 })).toBe(0);
+  });
+
+  it('falls back to the default only on null / undefined / NaN / negative', () => {
+    expect(clampTake(null, { defaultTake: 50 })).toBe(50);
+    expect(clampTake(undefined, { defaultTake: 50 })).toBe(50);
+    expect(clampTake(Number.NaN, { defaultTake: 50 })).toBe(50);
+    expect(clampTake(-5, { defaultTake: 50 })).toBe(50);
+  });
+
+  it('clamps to maxTake and floors fractional input', () => {
+    expect(clampTake(200, { defaultTake: 50, maxTake: 100 })).toBe(100);
+    expect(clampTake(7, { defaultTake: 50, maxTake: 100 })).toBe(7);
   });
 });

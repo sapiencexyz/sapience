@@ -21,6 +21,8 @@ import {
   decodeCursor,
   encodeCursor,
   normalizeDirection,
+  offsetFromCursor,
+  timestampCursorArgs,
   withCursorWhere,
 } from '../../relay/connection';
 import { findConditionsOrderByOpenInterest } from './conditionOpenInterest';
@@ -59,13 +61,19 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
 
   const cursor = args.after ? decodeCursor(args.after) : null;
   const usesOffset = field === 'openInterest';
-  const skip = cursor && usesOffset ? Number(cursor.k) + 1 : 0;
+  const isCreatedAt = field === 'createdAt';
+  // Guard the offset against a foreign/garbage `k` (e.g. a keyset cursor
+  // minted under a different orderBy): offsetFromCursor resets to 0 instead
+  // of producing NaN, which would stick pagination and emit "NaN" cursors.
+  const skip = usesOffset ? offsetFromCursor(args.after) : 0;
+  // createdAt is Timestamp(6); a JS-Date keyset loses microseconds and would
+  // duplicate same-millisecond rows, so page createdAt via Prisma's native id
+  // cursor. endTime / displayOrder are integers and keep the value keyset.
   const cursorWhere =
-    cursor && !usesOffset
+    cursor && !usesOffset && !isCreatedAt
       ? buildKeysetWhere<Prisma.ConditionWhereInput>({
           orderField: field,
-          orderValue:
-            field === 'createdAt' ? new Date(cursor.k) : Number(cursor.k),
+          orderValue: Number(cursor.k),
           idField: 'id',
           idValue: cursor.id,
           direction,
@@ -90,7 +98,9 @@ export const conditions: NonNullable<QueryResolvers['conditions']> = async (
             { id: direction },
           ],
           take: first + 1,
-          skip: skip || undefined,
+          ...(isCreatedAt
+            ? timestampCursorArgs(args.after, (s) => s)
+            : { skip: skip || undefined }),
         });
 
   return buildConnection({
