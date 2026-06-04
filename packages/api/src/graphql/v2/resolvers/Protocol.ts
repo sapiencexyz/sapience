@@ -43,11 +43,12 @@ type V1StatRow = Record<string, unknown>;
 
 const DAY = 86400;
 
-// Maps v1's magic `bucket` int to the v2 `[min, max)` seconds-from-now
-// window. Must stay in sync with the CASE ladder in
-// `sdl/resolvers/queries/analytics.ts`. Bucket 1's lower bound is null
-// (it absorbs overdue predictions); bucket 7's upper bound is null
-// (open-ended tail).
+// Maps v1's magic `bucket` int to the v2 `(min, max]` seconds-from-now
+// window — left-exclusive, right-inclusive, matching the SQL `delta <= bound`
+// ladder in `sdl/resolvers/queries/analytics.ts` (a prediction at exactly a
+// boundary lands in the lower bucket). Must stay in sync with that ladder.
+// Bucket 1's lower bound is null (it absorbs overdue predictions); bucket 7's
+// upper bound is null (open-ended tail).
 const TTR_BUCKET_BOUNDS: Record<
   number,
   { minSecondsFromNow: number | null; maxSecondsFromNow: number | null }

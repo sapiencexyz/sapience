@@ -1550,18 +1550,19 @@ export type TagOrderField = 'CONDITION_COUNT' | 'NAME';
 /**
  * Open-interest bucketed by time-to-resolution. Each unsettled prediction
  * is bucketed by the latest endTime among its constituent conditions; the
- * window is `[minSecondsFromNow, maxSecondsFromNow)`. Buckets come back in
- * ascending order — sort by `maxSecondsFromNow` (nulls last) to be explicit.
+ * window is `(minSecondsFromNow, maxSecondsFromNow]` — left-exclusive,
+ * right-inclusive, matching the SQL `delta <= bound` ladder. Buckets come back
+ * in ascending order — sort by `maxSecondsFromNow` (nulls last) to be explicit.
  */
 export type TimeToResolutionBucket = {
   __typename?: 'TimeToResolutionBucket';
   /**
-   * Exclusive upper bound, in seconds from now. `null` on the open-ended
+   * Inclusive upper bound, in seconds from now. `null` on the open-ended
    * tail bucket.
    */
   maxSecondsFromNow?: Maybe<Scalars['Int']['output']>;
   /**
-   * Inclusive lower bound, in seconds from now. `null` on the first bucket,
+   * Exclusive lower bound, in seconds from now. `null` on the first bucket,
    * which also absorbs overdue (past-endTime, not-yet-resolved) predictions.
    */
   minSecondsFromNow?: Maybe<Scalars['Int']['output']>;
