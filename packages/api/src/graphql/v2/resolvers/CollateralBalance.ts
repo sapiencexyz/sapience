@@ -10,12 +10,7 @@
 
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import type { AccountResolvers } from '../__generated__/resolvers';
-import {
-  buildConnection,
-  clampTake,
-  decodeCursor,
-  encodeCursor,
-} from '../relay/connection';
+import { clampTake, decodeCursor, encodeCursor } from '../relay/connection';
 import {
   getCollateralBalance,
   getCollateralBalanceHistory,
@@ -51,31 +46,50 @@ export const collateralBalanceHistoryField: NonNullable<
   const after = args.after ? decodeCursor(args.after) : null;
   const offset = after && /^\d+$/.test(after.k) ? Number(after.k) + 1 : 0;
 
-  // Fetch enough boundaries to cover offset + first + 1 so the slice
-  // includes the lookahead row used by `buildConnection` for hasNextPage.
-  const totalNeeded = offset + first + 1;
+  // The history series is a synthetic generate_series grid of FIXED extent:
+  // HISTORY_BUCKETS boundaries back from now (≈1 year at the 7-day default
+  // stride). Fetch the whole grid (its running-sum needs every boundary to be
+  // correct) and slice the page out — at this size the per-page full-grid
+  // fetch is negligible, so no windowed over-fetch optimization is needed.
+  const HISTORY_BUCKETS = 52;
   const rows = await getCollateralBalanceHistory({
     address: addressOf(parent),
     chainId: chainIdOf(parent),
-    count: totalNeeded,
+    count: HISTORY_BUCKETS,
     intervalSeconds: args.intervalSeconds ?? null,
   });
+  // The grid always materializes the full series, so its length is the true,
+  // page-invariant extent. totalCount and hasNextPage are derived from it
+  // analytically — NOT from buildConnection's over-fetch-by-one heuristic,
+  // which a synthetic grid defeats: it ALWAYS has a lookahead row, so "ran
+  // out of rows" never fires, making totalCount drift up per page and
+  // hasNextPage never terminate (#7).
+  const extent = rows.length;
 
-  const slice = rows.slice(offset, offset + first + 1).map((row) => ({
+  const pageRows = rows.slice(offset, offset + first).map((row) => ({
     ...row,
     // History buckets populate `timestamp`; `blockNumber` is the other
     // axis and stays null here (no block is pinned per bucket).
     blockNumber: null,
   }));
 
-  return buildConnection({
-    rows: slice,
-    first,
-    totalCount: rows.length,
-    getCursor: (_row, idx) =>
-      encodeCursor({
-        k: String(offset + idx),
-        id: slice[idx]?.timestamp.toISOString() ?? '',
-      }),
-  }) as never;
+  const edges = pageRows.map((node, idx) => ({
+    node,
+    cursor: encodeCursor({
+      k: String(offset + idx),
+      id: node.timestamp.toISOString(),
+    }),
+  }));
+
+  return {
+    edges,
+    nodes: pageRows,
+    totalCount: extent,
+    pageInfo: {
+      hasNextPage: offset + first < extent,
+      hasPreviousPage: offset > 0,
+      startCursor: edges[0]?.cursor ?? null,
+      endCursor: edges.at(-1)?.cursor ?? null,
+    },
+  } as never;
 };
