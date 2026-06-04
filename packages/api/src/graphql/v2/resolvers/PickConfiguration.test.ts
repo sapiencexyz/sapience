@@ -57,6 +57,39 @@ describe('PickConfiguration (v2)', () => {
     ).toBe('0xabcdef0000000000000000000000000000000000');
   });
 
+  it('resolved is true once the configuration has a terminal result', () => {
+    expect(
+      callResolver<boolean>(PickConfiguration.resolved)(
+        { result: 'COUNTERPARTY_WINS' },
+        {},
+        {},
+        null
+      )
+    ).toBe(true);
+  });
+
+  it('resolved is false while the configuration is UNRESOLVED', () => {
+    expect(
+      callResolver<boolean>(PickConfiguration.resolved)(
+        { result: 'UNRESOLVED' },
+        {},
+        {},
+        null
+      )
+    ).toBe(false);
+  });
+
+  it('resolved tracks the nullable wire result (NON_DECISIVE counts as resolved)', () => {
+    expect(
+      callResolver<boolean>(PickConfiguration.resolved)(
+        { result: 'NON_DECISIVE' },
+        {},
+        {},
+        null
+      )
+    ).toBe(true);
+  });
+
   it('Pick maps Prisma `conditionResolver` to v2 `resolver`', () => {
     expect(
       callResolver<string>(Pick.resolver)(

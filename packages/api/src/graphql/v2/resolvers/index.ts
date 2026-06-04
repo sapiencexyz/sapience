@@ -39,6 +39,7 @@ import {
 import { ActivityItem } from './Activity';
 import { activity } from './queries/activity';
 import { leaderboard } from './queries/leaderboard';
+import { Ranking } from './Ranking';
 import { Protocol, protocol } from './Protocol';
 import { QuestionItem, questions } from './queries/questions';
 import { tags } from './queries/tags';
@@ -60,6 +61,7 @@ export const resolvers = {
   CollateralTransfer,
   ActivityItem,
   QuestionItem,
+  Ranking,
   Protocol,
   Query: {
     node,

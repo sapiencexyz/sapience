@@ -492,6 +492,12 @@ export type Condition = Node & {
   id: Scalars['ID']['output'];
   /** Visibility — false hides this condition from public listing surfaces. */
   isPublic: Scalars['Boolean']['output'];
+  /**
+   * Whether this condition settled non-decisively (void / tie / unresolvable).
+   * v1-compat convenience derived from `outcome` (true when
+   * `outcome == NON_DECISIVE`).
+   */
+  nonDecisive: Scalars['Boolean']['output'];
   /** Cumulative on-chain open interest, wei. */
   openInterest: Scalars['BigInt']['output'];
   optionName?: Maybe<Scalars['String']['output']>;
@@ -502,12 +508,46 @@ export type Condition = Node & {
    */
   outcome?: Maybe<ConditionOutcome>;
   question: Scalars['String']['output'];
+  /**
+   * Whether this condition settled decisively to YES. v1-compat convenience
+   * derived from `outcome` (true when `outcome == YES`).
+   */
+  resolvedToYes: Scalars['Boolean']['output'];
   /** Resolver (oracle) contract address that settles this condition. */
   resolver: Scalars['Address']['output'];
+  /**
+   * Whether this condition has settled. v1-compat convenience derived from
+   * `outcome` (true when `outcome != null`); saves consumers re-deriving
+   * resolution state from the enum.
+   */
+  settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   /** Bundled similar-market signal from external sources (Polymarket). */
   similarMarket?: Maybe<SimilarMarket>;
+  /**
+   * Flat mirror of `similarMarket.volume` — all-time external trading volume
+   * (USD). v1-compat convenience: v1 exposed these as flat string-indexed
+   * columns, so the flat form is kept alongside the nested `similarMarket`
+   * value type. `0` when no similar-market signal is present.
+   */
+  similarMarketVolume: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volume1h`. `0` when no signal is present. */
+  similarMarketVolume1h: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volume4h`. `0` when no signal is present. */
+  similarMarketVolume4h: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volume7d`. `0` when no signal is present. */
+  similarMarketVolume7d: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volume24h`. `0` when no signal is present. */
+  similarMarketVolume24h: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volumeFiltered1h`. `0` when no signal is present. */
+  similarMarketVolumeFiltered1h: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volumeFiltered4h`. `0` when no signal is present. */
+  similarMarketVolumeFiltered4h: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volumeFiltered7d`. `0` when no signal is present. */
+  similarMarketVolumeFiltered7d: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volumeFiltered24h`. `0` when no signal is present. */
+  similarMarketVolumeFiltered24h: Scalars['Float']['output'];
   tags: Array<Scalars['String']['output']>;
 };
 
@@ -536,6 +576,8 @@ export type ConditionFilter = {
    * both; listing surfaces default to public-only when this is omitted.
    */
   public?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Match any of these resolver (oracle) contract addresses (case-insensitive). */
+  resolvers?: InputMaybe<Array<Scalars['Address']['input']>>;
   /** Substring search across `question` / `description`, case-insensitive. */
   search?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to settled (`outcome` non-null) / unsettled (null). */
@@ -738,6 +780,13 @@ export type PickConfiguration = Node & {
   picks: Array<Pick>;
   predictorToken?: Maybe<Scalars['Address']['output']>;
   /**
+   * Convenience boolean: `true` once the configuration has a terminal
+   * `result` (any non-null `SettlementResult`, including `NON_DECISIVE`).
+   * Mirrors the v1 resolved flag that v2 dropped when `result` became
+   * nullable.
+   */
+  resolved: Scalars['Boolean']['output'];
+  /**
    * Settlement timestamp; `null` until the underlying conditions resolve
    * and this configuration is closed out.
    */
@@ -873,6 +922,12 @@ export type Prediction = Node & {
   refCode?: Maybe<Scalars['String']['output']>;
   result?: Maybe<SettlementResult>;
   settleTxHash?: Maybe<Scalars['Bytes32']['output']>;
+  /**
+   * Convenience boolean: `true` once the prediction has a terminal `result`
+   * (any non-null `SettlementResult`, including `NON_DECISIVE`). Mirrors the
+   * v1 settled flag that v2 dropped when `result` became nullable.
+   */
+  settled: Scalars['Boolean']['output'];
   /** Settlement timestamp; `null` until the prediction settles on-chain. */
   settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
 };
@@ -1430,6 +1485,12 @@ export type Ranking = {
   accuracy?: Maybe<Scalars['Float']['output']>;
   /** Net profit/loss in wUSDe wei (signed). Populated for `PNL`. */
   pnl?: Maybe<Scalars['BigInt']['output']>;
+  /**
+   * `pnl` pre-scaled to a v1-shaped decimal string via `formatUnits(pnl, 18)`
+   * — a convenience so leaderboard/profile consumers don't divide by 1e18
+   * themselves. `"0"` when `pnl` is null (non-`PNL` rankings).
+   */
+  pnlFormatted: Scalars['String']['output'];
   rank: Scalars['Int']['output'];
   /** PnL / volume ratio. Populated for `ROI`. */
   roi?: Maybe<Scalars['Float']['output']>;

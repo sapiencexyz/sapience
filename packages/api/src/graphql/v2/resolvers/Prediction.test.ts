@@ -64,6 +64,39 @@ describe('Prediction (v2)', () => {
     ).toBe(eager);
   });
 
+  it('settled is true once the prediction has a terminal result', () => {
+    expect(
+      callResolver<boolean>(Prediction.settled)(
+        { result: 'PREDICTOR_WINS' },
+        {},
+        {},
+        null
+      )
+    ).toBe(true);
+  });
+
+  it('settled is false while the prediction is UNRESOLVED', () => {
+    expect(
+      callResolver<boolean>(Prediction.settled)(
+        { result: 'UNRESOLVED' },
+        {},
+        {},
+        null
+      )
+    ).toBe(false);
+  });
+
+  it('settled tracks the nullable wire result (NON_DECISIVE counts as settled)', () => {
+    expect(
+      callResolver<boolean>(Prediction.settled)(
+        { result: 'NON_DECISIVE' },
+        {},
+        {},
+        null
+      )
+    ).toBe(true);
+  });
+
   it('predictions(filter: { participant }) ORs across predictor/counterparty', async () => {
     await callResolver(predictions)(
       null,

@@ -464,6 +464,26 @@ type Condition implements Node {
   """
   outcome: ConditionOutcome
 
+  """
+  Whether this condition has settled. v1-compat convenience derived from
+  `outcome` (true when `outcome != null`); saves consumers re-deriving
+  resolution state from the enum.
+  """
+  settled: Boolean!
+
+  """
+  Whether this condition settled decisively to YES. v1-compat convenience
+  derived from `outcome` (true when `outcome == YES`).
+  """
+  resolvedToYes: Boolean!
+
+  """
+  Whether this condition settled non-decisively (void / tie / unresolvable).
+  v1-compat convenience derived from `outcome` (true when
+  `outcome == NON_DECISIVE`).
+  """
+  nonDecisive: Boolean!
+
   """Cumulative on-chain open interest, wei."""
   openInterest: BigInt!
 
@@ -480,6 +500,54 @@ type Condition implements Node {
 
   """Bundled similar-market signal from external sources (Polymarket)."""
   similarMarket: SimilarMarket
+
+  """
+  Flat mirror of `similarMarket.volume` — all-time external trading volume
+  (USD). v1-compat convenience: v1 exposed these as flat string-indexed
+  columns, so the flat form is kept alongside the nested `similarMarket`
+  value type. `0` when no similar-market signal is present.
+  """
+  similarMarketVolume: Float!
+
+  """
+  Flat mirror of `similarMarket.volume1h`. `0` when no signal is present.
+  """
+  similarMarketVolume1h: Float!
+
+  """
+  Flat mirror of `similarMarket.volume4h`. `0` when no signal is present.
+  """
+  similarMarketVolume4h: Float!
+
+  """
+  Flat mirror of `similarMarket.volume24h`. `0` when no signal is present.
+  """
+  similarMarketVolume24h: Float!
+
+  """
+  Flat mirror of `similarMarket.volume7d`. `0` when no signal is present.
+  """
+  similarMarketVolume7d: Float!
+
+  """
+  Flat mirror of `similarMarket.volumeFiltered1h`. `0` when no signal is present.
+  """
+  similarMarketVolumeFiltered1h: Float!
+
+  """
+  Flat mirror of `similarMarket.volumeFiltered4h`. `0` when no signal is present.
+  """
+  similarMarketVolumeFiltered4h: Float!
+
+  """
+  Flat mirror of `similarMarket.volumeFiltered24h`. `0` when no signal is present.
+  """
+  similarMarketVolumeFiltered24h: Float!
+
+  """
+  Flat mirror of `similarMarket.volumeFiltered7d`. `0` when no signal is present.
+  """
+  similarMarketVolumeFiltered7d: Float!
 }
 
 enum ConditionOutcome {
@@ -528,6 +596,11 @@ type ConditionConnection {
 
 input ConditionFilter {
   conditionIds: [Bytes!]
+
+  """
+  Match any of these resolver (oracle) contract addresses (case-insensitive).
+  """
+  resolvers: [Address!]
   chainId: Int
   categorySlug: String
 
@@ -663,6 +736,14 @@ type PickConfiguration implements Node {
   """
   resolvedAt: UnixSeconds
   result: SettlementResult
+
+  """
+  Convenience boolean: `true` once the configuration has a terminal
+  `result` (any non-null `SettlementResult`, including `NON_DECISIVE`).
+  Mirrors the v1 resolved flag that v2 dropped when `result` became
+  nullable.
+  """
+  resolved: Boolean!
   endsAt: UnixSeconds
   totalPredictorCollateral: BigInt!
   totalCounterpartyCollateral: BigInt!
@@ -765,6 +846,13 @@ type Prediction implements Node {
   """Settlement timestamp; `null` until the prediction settles on-chain."""
   settledAt: UnixSeconds
   result: SettlementResult
+
+  """
+  Convenience boolean: `true` once the prediction has a terminal `result`
+  (any non-null `SettlementResult`, including `NON_DECISIVE`). Mirrors the
+  v1 settled flag that v2 dropped when `result` became nullable.
+  """
+  settled: Boolean!
   predictorClaimable: BigInt
   counterpartyClaimable: BigInt
   createdAt: DateTimeISO!
@@ -1160,6 +1248,13 @@ type Ranking {
 
   """Net profit/loss in wUSDe wei (signed). Populated for `PNL`."""
   pnl: BigInt
+
+  """
+  `pnl` pre-scaled to a v1-shaped decimal string via `formatUnits(pnl, 18)`
+  — a convenience so leaderboard/profile consumers don't divide by 1e18
+  themselves. `"0"` when `pnl` is null (non-`PNL` rankings).
+  """
+  pnlFormatted: String!
 
   """Total trade volume in wUSDe wei. Populated for `VOLUME`."""
   volume: BigInt

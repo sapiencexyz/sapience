@@ -77,6 +77,60 @@ describe('Condition (v2)', () => {
     ).toBe('NON_DECISIVE');
   });
 
+  it('settled/resolvedToYes/nonDecisive derive from outcome (v1-compat conveniences)', () => {
+    // Unsettled: outcome === null → all three false.
+    const unsettled = {
+      settled: false,
+      resolvedToYes: false,
+      nonDecisive: false,
+    };
+    expect(
+      callResolver<boolean>(Condition.settled)(unsettled, {}, {}, null)
+    ).toBe(false);
+    expect(
+      callResolver<boolean>(Condition.resolvedToYes)(unsettled, {}, {}, null)
+    ).toBe(false);
+    expect(
+      callResolver<boolean>(Condition.nonDecisive)(unsettled, {}, {}, null)
+    ).toBe(false);
+
+    // Settled YES: outcome === YES.
+    const yes = { settled: true, resolvedToYes: true, nonDecisive: false };
+    expect(callResolver<boolean>(Condition.settled)(yes, {}, {}, null)).toBe(
+      true
+    );
+    expect(
+      callResolver<boolean>(Condition.resolvedToYes)(yes, {}, {}, null)
+    ).toBe(true);
+    expect(
+      callResolver<boolean>(Condition.nonDecisive)(yes, {}, {}, null)
+    ).toBe(false);
+
+    // Settled NO: outcome === NO.
+    const no = { settled: true, resolvedToYes: false, nonDecisive: false };
+    expect(callResolver<boolean>(Condition.settled)(no, {}, {}, null)).toBe(
+      true
+    );
+    expect(
+      callResolver<boolean>(Condition.resolvedToYes)(no, {}, {}, null)
+    ).toBe(false);
+    expect(callResolver<boolean>(Condition.nonDecisive)(no, {}, {}, null)).toBe(
+      false
+    );
+
+    // Settled NON_DECISIVE: outcome === NON_DECISIVE.
+    const nd = { settled: true, resolvedToYes: false, nonDecisive: true };
+    expect(callResolver<boolean>(Condition.settled)(nd, {}, {}, null)).toBe(
+      true
+    );
+    expect(
+      callResolver<boolean>(Condition.resolvedToYes)(nd, {}, {}, null)
+    ).toBe(false);
+    expect(callResolver<boolean>(Condition.nonDecisive)(nd, {}, {}, null)).toBe(
+      true
+    );
+  });
+
   it('resolver lowercases the Prisma `resolver` column', () => {
     expect(
       callResolver<string>(Condition.resolver)(
@@ -122,6 +176,81 @@ describe('Condition (v2)', () => {
     expect(result.volume24h).toBe(50);
   });
 
+  it('flat similarMarketVolume* mirrors return the matching nested similarMarket value', () => {
+    const parent = {
+      similarMarketVolume: 100,
+      similarMarketVolume1h: 1,
+      similarMarketVolume4h: 4,
+      similarMarketVolume24h: 24,
+      similarMarketVolume7d: 7,
+      similarMarketVolumeFiltered1h: 11,
+      similarMarketVolumeFiltered4h: 44,
+      similarMarketVolumeFiltered24h: 244,
+      similarMarketVolumeFiltered7d: 77,
+    };
+    const flat = (field: keyof typeof parent) =>
+      callResolver<number>(Condition[field as keyof typeof Condition])(
+        parent,
+        {},
+        {},
+        null
+      );
+    expect(flat('similarMarketVolume')).toBe(100);
+    expect(flat('similarMarketVolume1h')).toBe(1);
+    expect(flat('similarMarketVolume4h')).toBe(4);
+    expect(flat('similarMarketVolume24h')).toBe(24);
+    expect(flat('similarMarketVolume7d')).toBe(7);
+    expect(flat('similarMarketVolumeFiltered1h')).toBe(11);
+    expect(flat('similarMarketVolumeFiltered4h')).toBe(44);
+    expect(flat('similarMarketVolumeFiltered24h')).toBe(244);
+    expect(flat('similarMarketVolumeFiltered7d')).toBe(77);
+  });
+
+  it('flat similarMarketVolume* mirrors are 0 when similarMarket is null (no signal present)', () => {
+    // A condition with no Polymarket linkage — `similarMarket` resolves to
+    // null, and every flat mirror must read 0 rather than null for v1
+    // string-index compatibility.
+    const parent = {
+      similarMarketImage: null,
+      similarMarkets: [],
+      similarMarketVolume: null,
+      similarMarketVolume1h: null,
+      similarMarketVolume4h: null,
+      similarMarketVolume24h: null,
+      similarMarketVolume7d: null,
+      similarMarketVolumeFiltered1h: null,
+      similarMarketVolumeFiltered4h: null,
+      similarMarketVolumeFiltered24h: null,
+      similarMarketVolumeFiltered7d: null,
+    };
+    // Guard: this parent really does produce a null nested similarMarket.
+    expect(
+      callResolver<unknown>(Condition.similarMarket)(parent, {}, {}, null)
+    ).toBeNull();
+
+    const fields = [
+      'similarMarketVolume',
+      'similarMarketVolume1h',
+      'similarMarketVolume4h',
+      'similarMarketVolume24h',
+      'similarMarketVolume7d',
+      'similarMarketVolumeFiltered1h',
+      'similarMarketVolumeFiltered4h',
+      'similarMarketVolumeFiltered24h',
+      'similarMarketVolumeFiltered7d',
+    ] as const;
+    for (const field of fields) {
+      expect(
+        callResolver<number>(Condition[field as keyof typeof Condition])(
+          parent,
+          {},
+          {},
+          null
+        )
+      ).toBe(0);
+    }
+  });
+
   it('conditions(filter: { outcome: YES }) translates to settled + resolvedToYes', async () => {
     await callResolver(conditions)(
       null,
@@ -138,6 +267,61 @@ describe('Condition (v2)', () => {
         }),
       })
     );
+  });
+
+  it('conditions(filter: { resolvers }) is a case-insensitive IN over the lowercase resolver column', async () => {
+    await callResolver(conditions)(
+      null,
+      {
+        first: 50,
+        filter: {
+          resolvers: [
+            '0xABCDEF0000000000000000000000000000000000',
+            '0x1111111111111111111111111111111111111111',
+          ],
+        },
+      },
+      {},
+      null
+    );
+    expect(mockPrisma.condition.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          resolver: {
+            in: [
+              '0xabcdef0000000000000000000000000000000000',
+              '0x1111111111111111111111111111111111111111',
+            ],
+          },
+        }),
+      })
+    );
+  });
+
+  it('conditions(filter: { resolvers }, orderBy: OPEN_INTEREST) carries the resolver IN into the raw SQL path', async () => {
+    await callResolver(conditions)(
+      null,
+      {
+        first: 50,
+        orderBy: { field: 'OPEN_INTEREST', direction: 'DESC' },
+        filter: { resolvers: ['0xABCDEF0000000000000000000000000000000000'] },
+      },
+      {},
+      null
+    );
+    // OI ordering routes through the raw numeric query; the resolver filter
+    // is interpolated as a lowercased bind value on the nested whereSql
+    // fragment, not lost.
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    const rawArgs = mockPrisma.$queryRaw.mock.calls[0] as unknown[];
+    const boundValues = rawArgs.flatMap((arg) =>
+      arg &&
+      typeof arg === 'object' &&
+      Array.isArray((arg as { values?: unknown[] }).values)
+        ? (arg as { values: unknown[] }).values
+        : []
+    );
+    expect(boundValues).toContain('0xabcdef0000000000000000000000000000000000');
   });
 
   it('conditions(filter: { search }) ORs across question and description', async () => {

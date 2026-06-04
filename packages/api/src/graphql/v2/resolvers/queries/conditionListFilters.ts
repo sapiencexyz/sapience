@@ -86,6 +86,14 @@ export const buildConditionListFilters = (
     where.id = { in: ids };
     sqlParts.push(Prisma.sql`c.id IN (${Prisma.join(ids)})`);
   }
+  if (args.filter?.resolvers?.length) {
+    // `resolver` is stored lowercase, so a case-insensitive IN is just an IN
+    // over the lowercased inputs — mirrors v1's QuestionFilter.resolvers
+    // (`resolver: { in: [...] }` / `c."resolver" = ANY(...)`).
+    const resolvers = args.filter.resolvers.map((r) => r.toLowerCase());
+    where.resolver = { in: resolvers };
+    sqlParts.push(Prisma.sql`c."resolver" IN (${Prisma.join(resolvers)})`);
+  }
   if (args.filter?.chainId != null) {
     where.chainId = args.filter.chainId;
     sqlParts.push(Prisma.sql`c."chainId" = ${args.filter.chainId}`);

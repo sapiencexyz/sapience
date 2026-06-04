@@ -33,6 +33,10 @@ export const PickConfiguration: PickConfigurationResolvers = {
   // outcomes.
   result: (parent) =>
     parent.result === 'UNRESOLVED' ? null : (parent.result as never),
+  // Convenience boolean mirroring the v1 resolved flag: true once the wire
+  // `result` is non-null, i.e. any terminal outcome including NON_DECISIVE.
+  // UNRESOLVED is the only state that maps to a null result.
+  resolved: (parent) => parent.result !== 'UNRESOLVED',
   predictorToken: (parent) =>
     parent.predictorToken ? parent.predictorToken.toLowerCase() : null,
   counterpartyToken: (parent) =>

@@ -38,6 +38,11 @@ export const Prediction: PredictionResolvers = {
   result: (parent) =>
     parent.result === 'UNRESOLVED' ? null : (parent.result as never),
 
+  // Convenience boolean mirroring the v1 settled flag: true once the wire
+  // `result` is non-null, i.e. any terminal outcome including NON_DECISIVE.
+  // UNRESOLVED is the only state that maps to a null result.
+  settled: (parent) => parent.result !== 'UNRESOLVED',
+
   // The Prisma row holds `pickConfiguration` (eager join). v2 surface
   // calls it `pickConfig` for brevity — same value, renamed at the
   // resolver boundary.
