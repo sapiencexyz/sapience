@@ -76,7 +76,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
 
   return (
     <div className={'w-full ' + (className ?? '')}>
-      <div className="flex items-center mb-3 px-1 pt-1">
+      <div className="flex items-center mb-2 px-1 pt-1">
         <h2 className="sc-heading text-foreground">
           Example combo
           <AnimatePresence mode="wait">
