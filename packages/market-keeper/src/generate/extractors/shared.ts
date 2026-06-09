@@ -1,9 +1,6 @@
 /// <reference types="node" />
 /** Shared date helpers for the category-specific endTime extractors. */
 
-/** Labeling snapshot used for deterministic year inference (today ~2026-06-04). */
-export const REF = Date.UTC(2026, 5, 4);
-
 export const MONTHS: Record<string, number> = {
   january: 0,
   february: 1,
@@ -53,12 +50,19 @@ export function parseClock(s: string): { h: number; m: number } | null {
   return { h, m: min };
 }
 
-/** Year for a bare month/day: the occurrence nearest the reference snapshot. */
+/**
+ * Year for a bare month/day with no year in the text: the calendar year
+ * (previous / current / next) whose month-day lands nearest to *today*.
+ * Anchored on the current date so it stays correct as time passes — month is
+ * 0-indexed to match the MONTHS map above.
+ */
 export function inferYear(month: number, day: number): number {
-  let best = 2026;
+  const now = Date.now();
+  const curYear = new Date(now).getUTCFullYear();
+  let best = curYear;
   let bestDist = Infinity;
-  for (const y of [2025, 2026, 2027]) {
-    const dist = Math.abs(Date.UTC(y, month, day) - REF);
+  for (const y of [curYear - 1, curYear, curYear + 1]) {
+    const dist = Math.abs(Date.UTC(y, month, day) - now);
     if (dist < bestDist) {
       bestDist = dist;
       best = y;
