@@ -12,6 +12,7 @@
  */
 
 import type { ClientConnection, SubscriptionManager } from './transport/types';
+import { config } from './config';
 import type {
   SecondaryAuctionRequestPayload,
   SecondaryBidPayload,
@@ -251,6 +252,22 @@ export async function handleSecondaryBidSubmit(
     return true;
   }
 
+  // Per-connection cap — one connection cannot monopolize a listing's bid
+  // slots. Offline validation passes legitimate smart-account (session-key)
+  // bids through as 'unverified' alongside forged ones, so without this cap a
+  // single connection could fill the listing's bid cap and lock out real
+  // buyers.
+  const bidCountKey = `secondary:${payload.auctionId}`;
+  const priorBidsFromConnection = client.bidCounts?.get(bidCountKey) ?? 0;
+  if (priorBidsFromConnection >= config.MAX_BIDS_PER_CONNECTION_PER_AUCTION) {
+    secondaryBidsSubmitted.inc({ status: 'rejected' });
+    client.send({
+      type: 'secondary.bid.ack',
+      payload: { error: 'bid_rejected' },
+    });
+    return false; // capacity limit, not a validation failure
+  }
+
   const validated: SecondaryValidatedBid = {
     auctionId: payload.auctionId,
     buyer: payload.buyer,
@@ -271,6 +288,10 @@ export async function handleSecondaryBidSubmit(
     });
     return false; // capacity limit, not a validation failure
   }
+
+  // Count this accepted bid against the per-connection cap.
+  if (!client.bidCounts) client.bidCounts = new Map();
+  client.bidCounts.set(bidCountKey, priorBidsFromConnection + 1);
 
   secondaryBidsSubmitted.inc({ status: 'success' });
 

@@ -318,6 +318,24 @@ export async function handleBidSubmit(
     return false; // Not a validation failure — just a capacity limit
   }
 
+  // Per-connection cap — one connection cannot monopolize an auction's bid
+  // slots. Offline signature verification can't tell a forged bid from a
+  // legitimate smart-account (session-key) bid — both pass through as
+  // 'unverified' — so without this a single connection could fill the global
+  // cap with unverifiable bids and lock out real counterparties.
+  const priorBidsFromConnection = client.bidCounts?.get(bid.auctionId) ?? 0;
+  if (priorBidsFromConnection >= config.MAX_BIDS_PER_CONNECTION_PER_AUCTION) {
+    bidsSubmitted.inc({ status: 'rejected' });
+    client.send({
+      type: 'bid.ack',
+      payload: { error: 'bid_limit_reached' },
+    });
+    console.warn(
+      `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=connection_bid_limit_reached (${priorBidsFromConnection}/${config.MAX_BIDS_PER_CONNECTION_PER_AUCTION})`
+    );
+    return false; // Not a validation failure — just a capacity limit
+  }
+
   // Validate bid structure + signature (offline only, no publicClient)
   const bidValidation = await validateBid(bid, rec.auction, {
     verifyingContract: rec.auction.escrowContract as Address,
@@ -353,6 +371,10 @@ export async function handleBidSubmit(
     return false;
   }
   logTiming(bid.auctionId, 'bid_validated', bidStartTime);
+
+  // Count this accepted bid against the per-connection cap.
+  if (!client.bidCounts) client.bidCounts = new Map();
+  client.bidCounts.set(bid.auctionId, priorBidsFromConnection + 1);
 
   bidsSubmitted.inc({ status: 'success' });
   client.send({ type: 'bid.ack', payload: {} });
