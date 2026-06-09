@@ -1,8 +1,8 @@
 name: Build, push, and deploy (Robinhood mainnet)
 # SCAFFOLD — the Robinhood mainnet chain/infra does not exist yet. This workflow
 # is wired against the robinhood-mainnet Terraform stacks (cluster
-# sapience-robinhood-mainnet, ECR repos *-rh-main, role
-# github-actions-sapience-robinhood-mainnet). It will only work once those are
+# v1-robinhood-mainnet, ECR repos *-rh-main, role
+# github-actions-sapience-v1-robinhood-mainnet). It will only work once those are
 # applied and the mainnet chain config is filled in.
 on:
   push:
@@ -15,8 +15,8 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  CI_ROLE_ARN: arn:aws:iam::372110443321:role/github-actions-sapience-robinhood-mainnet
-  ECS_CLUSTER: sapience-robinhood-mainnet
+  CI_ROLE_ARN: arn:aws:iam::372110443321:role/github-actions-sapience-v1-robinhood-mainnet
+  ECS_CLUSTER: v1-robinhood-mainnet
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
