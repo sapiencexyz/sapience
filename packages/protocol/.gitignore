@@ -17,5 +17,8 @@ src/scripts/*/.env
 src/scripts/*/deployments.json
 src/scripts/*/deployments.log
 
+# Manifest deploy secrets (config.json is committed; .env is not)
+deployment/*/.env
+
 # Test deployment files
 deployments/test/

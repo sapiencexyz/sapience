@@ -1,0 +1,22 @@
+{
+  "_comment": "Robinhood testnet (chain 46630) deploy config for the manifest tool. Non-secret values only; the deployer private key lives in deployment/testnet/.env (gitignored). Replace every 0x0000…0000 placeholder before running manifest:apply. COLLATERAL_TOKEN_ADDRESS is an EXTERNAL token: for now deploy a test mock ERC20 manually (see deployment/README.md → 'Test collateral') and paste its address here; later swap it for the real Robinhood token — one-line change, no manifest edits. Other addresses (FACTORY_ADDRESS, PREDICTION_MARKET_ADDRESS, …) are appended by apply.ts.",
+  "PM_NETWORK_NAME": "Robinhood Testnet",
+  "PM_NETWORK_RPC_URL": "https://rpc.testnet.chain.robinhood.com",
+  "PM_NETWORK_CHAIN_ID": "46630",
+  "PM_NETWORK_EXPLORER_URL": "https://explorer.testnet.chain.robinhood.com/api/",
+  "PM_NETWORK_DEPLOYER_ADDRESS": "0xefA0E8Aa84A713f6A6d4De8cC761Fe86c5957d72",
+  "DEPLOYER_ADDRESS": "0xefA0E8Aa84A713f6A6d4De8cC761Fe86c5957d72",
+  "COLLATERAL_TOKEN_ADDRESS": "0x4aB1dECB7D8Dd00091e2A6285E99F319aABD5c5E",
+  "VAULT_MANAGER": "0xefA0E8Aa84A713f6A6d4De8cC761Fe86c5957d72",
+  "VAULT_NAME": "Sapience Robinhood Vault",
+  "VAULT_SYMBOL": "SRHV",
+  "VAULT_EXPIRATION_TIME": 86400,
+  "BUDGET_MANAGER": "0xefA0E8Aa84A713f6A6d4De8cC761Fe86c5957d72",
+  "MAX_ENTRY_PRICE_BPS": "7000",
+  "RESOLVER_ADDRESS": "0xf596e96dCc7C1E84017F15B1A884EAA5DbC9A046",
+  "FACTORY_ADDRESS": "0xb1c97B09B62F398296481f9Df65eea0c6b78A441",
+  "PREDICTION_MARKET_ADDRESS": "0x1847e316e6e4302b23B5Ab5BE078926386D78E95",
+  "VAULT_ADDRESS": "0x887aB0a9e185795A4279D136EcEc208146a915E3",
+  "ONBOARDING_SPONSOR_ADDRESS": "0x4252a5dc77997ED60b4D33741867cDAe7a4A7c54",
+  "SECONDARY_MARKET_ESCROW_ADDRESS": "0xc1525CF7d9b9ed81Ce277c2Bf96fb1E0e85E1e7E"
+}
