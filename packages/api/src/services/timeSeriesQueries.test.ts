@@ -291,15 +291,22 @@ describe('queryAccountPnl', () => {
     expect(queryText).toContain('"counterpartyToken"');
   });
 
-  // A holder may redeem the same (pickConfig, side) across several claims; the
-  // staked collateral must be split across them so it is not subtracted twice.
-  it('splits stake across multiple claims to avoid double-counting cost basis', async () => {
+  // A holder may redeem the same (pickConfig, side) across several unequal
+  // claims. Cost basis must be allocated in proportion to the tokens each claim
+  // redeemed (not split evenly), so partial redemptions land the right PnL in
+  // the right bucket. The denominator totals tokens across all of the holder's
+  // claims, guarded with NULLIF against divide-by-zero.
+  it('allocates claim cost basis proportionally to tokens redeemed, not evenly', async () => {
     mockQueryRaw.mockResolvedValue([]);
 
     await queryAccountPnl('0xabc', TimeInterval.DAY, from, to);
 
     const queryText = mockQueryRaw.mock.calls[0][0].join(' ');
-    expect(queryText).toContain('claim_count');
+    expect(queryText).toContain('total_burned');
+    expect(queryText).toContain('tokensBurned');
+    expect(queryText).toMatch(/NULLIF/i);
+    // must not fall back to the naive even split
+    expect(queryText).not.toContain('claim_count');
   });
 
   it('maps rows to the PnlDataPoint shape', async () => {

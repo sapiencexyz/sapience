@@ -175,11 +175,19 @@ export async function queryAccountVolume(
 
 // ─── Account PnL ─────────────────────────────────────────────────────────────
 
+/**
+ * Minimal surface of the Prisma client used here. Accepting it as a parameter
+ * (defaulting to the shared singleton) lets tests run the real query against an
+ * isolated database without touching production wiring.
+ */
+type RawQueryClient = Pick<typeof prisma, '$queryRaw'>;
+
 export async function queryAccountPnl(
   address: string,
   interval: TimeInterval,
   from?: Date,
-  to?: Date
+  to?: Date,
+  db: RawQueryClient = prisma
 ): Promise<PnlDataPoint[]> {
   const { fromEpoch, toEpoch, pgTrunc, pgStep } = resolveDefaults(
     interval,
@@ -188,7 +196,7 @@ export async function queryAccountPnl(
   );
   const addr = address.toLowerCase();
 
-  const rows = await prisma.$queryRaw<PnlRow[]>`
+  const rows = await db.$queryRaw<PnlRow[]>`
     WITH buckets AS (
       SELECT
         EXTRACT(EPOCH FROM gs)::BIGINT AS bucket_epoch,
@@ -216,11 +224,14 @@ export async function queryAccountPnl(
       WHERE counterparty = ${addr} AND "pickConfigId" IS NOT NULL
       GROUP BY "pickConfigId"
     ),
-    -- The holder may redeem the same (pickConfig, side) across several claims;
-    -- split the staked cost basis evenly across them so it is only subtracted
-    -- once in aggregate.
-    claim_counts AS (
-      SELECT "predictionId", "positionToken", COUNT(*) AS claim_count
+    -- The holder may redeem the same (pickConfig, side) across several unequal
+    -- claims. Total the tokens they redeemed per (pickConfig, side) across ALL
+    -- of their claims — deliberately NOT time-filtered, so a claim outside the
+    -- queried window still counts toward the denominator and the in-window
+    -- claim's basis share is not inflated.
+    claim_totals AS (
+      SELECT "predictionId", "positionToken",
+             SUM(CAST("tokensBurned" AS DECIMAL)) AS total_burned
       FROM "Claim"
       WHERE holder = ${addr}
       GROUP BY "predictionId", "positionToken"
@@ -229,16 +240,24 @@ export async function queryAccountPnl(
       -- Claims: account redeems a settled pickConfig position.
       -- Claim.predictionId holds a pickConfigId (not a Prediction.predictionId);
       -- side is identified by the redeemed positionToken matching the pick
-      -- configuration's predictor/counterparty token.
+      -- configuration's predictor/counterparty token. Cost basis is the holder's
+      -- staked collateral on that side, allocated to each claim in proportion to
+      -- the tokens it redeemed so unequal partial redemptions book the right PnL
+      -- in the right bucket (and the basis still sums to the full stake).
       SELECT
         cl."redeemedAt" AS event_ts,
         CAST(cl."collateralPaid" AS DECIMAL)
-          - COALESCE(cs.stake, 0) / cc.claim_count AS pnl
+          - COALESCE(
+              cs.stake
+                * CAST(cl."tokensBurned" AS DECIMAL)
+                / NULLIF(ct.total_burned, 0),
+              0
+            ) AS pnl
       FROM "Claim" cl
       LEFT JOIN "Picks" pk ON cl."predictionId" = pk.id
-      JOIN claim_counts cc
-        ON cc."predictionId" = cl."predictionId"
-       AND cc."positionToken" = cl."positionToken"
+      JOIN claim_totals ct
+        ON ct."predictionId" = cl."predictionId"
+       AND ct."positionToken" = cl."positionToken"
       LEFT JOIN claim_stake cs
         ON cs.pc = cl."predictionId"
        AND cs.side = CASE
