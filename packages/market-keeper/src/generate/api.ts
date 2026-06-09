@@ -33,49 +33,62 @@ export function toUnixTimestamp(isoDate: string): number {
 }
 
 /**
+ * One day in seconds — the pad added to Polymarket's endDate at the cascade
+ * floor. PM stores endDate as a loose "trading closes ~here" value that
+ * usually sits before true resolution; +1d is the benchmark-tuned correction
+ * for the long tail nothing else resolves.
+ */
+const PM_FALLBACK_PAD_SECONDS = 86_400;
+
+/**
  * Pick the endTime for a condition payload, with logging for prod observability.
  *
- * Priority:
- *   1. LLM (Sonar) — wins whenever it returned a timestamp, any confidence.
- *      Confidence is logged but does NOT gate the decision. This is the
- *      hallucination-guard knob: if logs show LLM is hallucinating, the
- *      easy first knob is to re-introduce a `confidence === 'high'` gate.
- *   2. Polymarket endDate — universal fallback for PM-sourced markets.
- *      Only reachable when LLM returned UNKNOWN, errored, or was disabled.
- *   3. Regex extraction (endTimeOverride) — only for templated markets
- *      (sports/series/group) where the format is deterministic by
- *      construction. For non-templated markets, regex is too brittle to
- *      trust (the ETH/USDT $1,800 bug was a regex Tier 4e false positive).
- *   4. Throw — non-templated, non-PM market with no LLM result. Better
- *      to fail loud than to publish a confidently-wrong endTime.
+ * Deterministic-first cascade (each rung fits-or-declines; first hit wins):
+ *   1. Category specialist (categoryEndTime) — high-precision regex for the
+ *      templated families (weather/crypto/sports/social/snapshot). Read
+ *      directly from the description, so it outranks the LLM. Markets it
+ *      resolves also skip Sonar entirely (gated upstream in grouping).
+ *   2. LLM (Sonar) — the smart generalist for everything the specialists
+ *      decline. Any confidence wins; confidence is logged, not gated (the
+ *      hallucination-guard knob is re-introducing a `confidence === 'high'`
+ *      check here).
+ *   3. Regex extraction (endTimeOverride) — the BROAD general regex, trusted
+ *      only for templated markets (sports/series/group) where the format is
+ *      deterministic. Sits BELOW the LLM so a confident-wrong regex date
+ *      can't out-rank Sonar (the ETH/USDT $1,800 bug was a Tier 4e false
+ *      positive). Non-templated general-regex is never trusted.
+ *   4. Polymarket endDate + 1 day — universal floor for PM-sourced markets.
+ *   5. Throw — non-templated, non-PM market with no source. Fail loud rather
+ *      than publish a confidently-wrong endTime.
  *
- * No buffer is added. The previous `+ END_TIME_BUFFER_SECONDS` was
- * meant to cover UMA dispute liveness, but settlement scripts don't
- * gate on `endTime + UMA` — the buffer was just over-conservative padding
- * baked into the public-facing value.
+ * No UMA buffer is added; settlement scripts don't gate on `endTime + UMA`.
  */
 export function decideEndTime(c: SapienceCondition): {
   ts: number;
   source:
+    | 'category'
     | 'llm-high'
     | 'llm-low'
     | 'llm-unknown'
-    | 'pm-fallback'
-    | 'regex-templated';
+    | 'regex-templated'
+    | 'pm-fallback';
 } {
+  if (c.categoryEndTime != null) {
+    return { ts: c.categoryEndTime, source: 'category' };
+  }
   const llm = c.llmEndTime;
   if (llm?.ts) {
     return { ts: llm.ts, source: `llm-${llm.confidence}` as const };
   }
-  const pm = c.endDate ? toUnixTimestamp(c.endDate) : null;
-  if (pm) {
-    return { ts: pm, source: 'pm-fallback' };
-  }
-  // Reachable only for non-Polymarket markets (Pyth, manual) that lack
-  // endDate. PM markets always have endDate, so they exit at pm-fallback.
+  // General regex, templated-only — below the LLM, above the PM floor.
   if (c.isTemplated && c.endTimeOverride) {
     return { ts: c.endTimeOverride, source: 'regex-templated' };
   }
+  const pm = c.endDate ? toUnixTimestamp(c.endDate) : null;
+  if (pm != null && Number.isFinite(pm)) {
+    return { ts: pm + PM_FALLBACK_PAD_SECONDS, source: 'pm-fallback' };
+  }
+  // Reachable only for non-Polymarket markets (Pyth, manual) that lack endDate.
   throw new Error(`[decideEndTime] no endTime source for ${c.conditionHash}`);
 }
 
@@ -100,6 +113,7 @@ function logEndTimeDecision(
     source: decision.source,
     llmTs,
     pmTs,
+    categoryTs: c.categoryEndTime ?? null,
     regexTs: c.endTimeOverride ?? null,
     llmConfidence: c.llmEndTime?.confidence ?? null,
     isTemplated: c.isTemplated ?? false,
