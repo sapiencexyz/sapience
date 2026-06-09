@@ -20,6 +20,12 @@ export const collateralToken: ChainAddressMap = {
     address: '0xfeb8c4d5efbaff6e928ea090bc660c363f883dba',
     legacy: [] as const,
   },
+  // Robinhood testnet — TEST mock collateral (tUSDe, 18 decimals). Swap for the
+  // real token when it lands (also update vault-ops terraform + manifest config).
+  46630: {
+    address: '0x4aB1dECB7D8Dd00091e2A6285E99F319aABD5c5E',
+    legacy: [] as const,
+  },
   5064014: {
     address: '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D',
     blockCreated: 18537,
