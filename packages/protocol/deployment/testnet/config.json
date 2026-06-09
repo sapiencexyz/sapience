@@ -1,0 +1,16 @@
+{
+  "_comment": "Robinhood testnet (chain 46630) deploy config for the manifest tool. Non-secret values only; the deployer private key lives in deployment/testnet/.env (gitignored). Replace every 0x0000…0000 placeholder before running manifest:apply. Addresses written by the deploy (FACTORY_ADDRESS, PREDICTION_MARKET_ADDRESS, …) are appended here automatically by apply.ts.",
+  "PM_NETWORK_NAME": "Robinhood Testnet",
+  "PM_NETWORK_RPC_URL": "https://rpc.testnet.chain.robinhood.com",
+  "PM_NETWORK_CHAIN_ID": "46630",
+  "PM_NETWORK_EXPLORER_URL": "https://explorer.testnet.chain.robinhood.com/api/",
+  "PM_NETWORK_DEPLOYER_ADDRESS": "0x0000000000000000000000000000000000000000",
+  "DEPLOYER_ADDRESS": "0x0000000000000000000000000000000000000000",
+  "COLLATERAL_TOKEN_ADDRESS": "0xbf4479C07Dc6fdc6dAa764A0ccA06969e894275F",
+  "VAULT_MANAGER": "0x0000000000000000000000000000000000000000",
+  "VAULT_NAME": "Sapience Robinhood Vault",
+  "VAULT_SYMBOL": "SRHV",
+  "VAULT_EXPIRATION_TIME": 86400,
+  "BUDGET_MANAGER": "0x0000000000000000000000000000000000000000",
+  "MAX_ENTRY_PRICE_BPS": "7000"
+}

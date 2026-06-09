@@ -1,0 +1,93 @@
+{
+  "env": "robinhood-testnet",
+  "chain": {
+    "name": "Robinhood Testnet",
+    "chainId": 46630,
+    "rpcUrlEnv": "PM_NETWORK_RPC_URL",
+    "deployerPrivateKeyEnv": "PM_NETWORK_DEPLOYER_PRIVATE_KEY",
+    "deployerAddressEnv": "PM_NETWORK_DEPLOYER_ADDRESS",
+    "verifier": {
+      "kind": "blockscout",
+      "explorerUrlEnv": "PM_NETWORK_EXPLORER_URL"
+    }
+  },
+  "bundle": "testnet",
+  "bridgeEnabled": false,
+  "units": {
+    "ManualConditionResolver": {
+      "name": "ManualConditionResolver",
+      "contract": "ManualConditionResolver",
+      "contractPath": "src/resolvers/mocks/ManualConditionResolver.sol:ManualConditionResolver",
+      "script": "src/scripts/deploy/DeployResolver.s.sol:DeployResolver",
+      "produces": ["RESOLVER_ADDRESS"],
+      "constructorDeps": [],
+      "wiringPeers": [],
+      "configureScripts": [],
+      "sdkExport": "manualConditionResolver",
+      "notes": "Admin-controlled resolver. Standalone — no deps. Default resolver for Robinhood testnet until Pyth is available on-chain."
+    },
+    "PredictionMarketTokenFactory": {
+      "name": "PredictionMarketTokenFactory",
+      "contract": "PredictionMarketTokenFactory",
+      "contractPath": "src/PredictionMarketTokenFactory.sol:PredictionMarketTokenFactory",
+      "script": "src/scripts/deploy/DeployFactory.s.sol:DeployFactory",
+      "produces": ["FACTORY_ADDRESS"],
+      "constructorDeps": [],
+      "stateInvalidatedBy": ["PredictionMarketEscrow"],
+      "wiringPeers": [],
+      "configureScripts": [
+        "src/scripts/deploy/ConfigureFactory.s.sol:ConfigureFactory"
+      ],
+      "sdkExport": "predictionMarketTokenFactory",
+      "notes": "CREATE3 factory. Standalone deploy (no arbitrum twin — bridge disabled), so no twinOf. Configure-step sets escrow as authorized deployer."
+    },
+    "PredictionMarketEscrow": {
+      "name": "PredictionMarketEscrow",
+      "contract": "PredictionMarketEscrow",
+      "contractPath": "src/PredictionMarketEscrow.sol:PredictionMarketEscrow",
+      "script": "src/scripts/deploy/DeployPredictionMarket.s.sol:DeployPredictionMarket",
+      "produces": ["PREDICTION_MARKET_ADDRESS"],
+      "constructorDeps": ["PredictionMarketTokenFactory"],
+      "wiringPeers": [],
+      "configureScripts": [],
+      "sdkExport": "predictionMarketEscrow",
+      "notes": "Takes factory + COLLATERAL_TOKEN_ADDRESS (USDC on Robinhood testnet) in constructor. Redeploy re-runs ConfigureFactory on the factory."
+    },
+    "SecondaryMarketEscrow": {
+      "name": "SecondaryMarketEscrow",
+      "contract": "SecondaryMarketEscrow",
+      "contractPath": "src/SecondaryMarketEscrow.sol:SecondaryMarketEscrow",
+      "script": "src/scripts/deploy/DeploySecondaryMarketEscrow.s.sol:DeploySecondaryMarketEscrow",
+      "produces": ["SECONDARY_MARKET_ESCROW_ADDRESS"],
+      "constructorDeps": [],
+      "wiringPeers": [],
+      "configureScripts": [],
+      "sdkExport": "secondaryMarketEscrow",
+      "notes": "Permissionless atomic OTC swap. No constructor args, no deps."
+    },
+    "PredictionMarketVault": {
+      "name": "PredictionMarketVault",
+      "contract": "PredictionMarketVault",
+      "contractPath": "src/vault/PredictionMarketVault.sol:PredictionMarketVault",
+      "script": "src/scripts/deploy/vault/DeployVault.s.sol:DeployVault",
+      "produces": ["VAULT_ADDRESS"],
+      "constructorDeps": [],
+      "wiringPeers": [],
+      "configureScripts": [],
+      "sdkExport": "predictionMarketVault",
+      "notes": "Default vault instance. Reads VAULT_MANAGER/NAME/SYMBOL env vars; collateral is COLLATERAL_TOKEN_ADDRESS."
+    },
+    "OnboardingSponsor": {
+      "name": "OnboardingSponsor",
+      "contract": "OnboardingSponsor",
+      "contractPath": "src/sponsors/OnboardingSponsor.sol:OnboardingSponsor",
+      "script": "src/scripts/deploy/DeployOnboardingSponsor.s.sol:DeployOnboardingSponsor",
+      "produces": ["ONBOARDING_SPONSOR_ADDRESS"],
+      "constructorDeps": ["PredictionMarketEscrow", "PredictionMarketVault"],
+      "wiringPeers": [],
+      "configureScripts": [],
+      "sdkExport": "onboardingSponsor",
+      "notes": "Reads MAX_ENTRY_PRICE_BPS + VAULT_ADDRESS. Optional — remove this unit if onboarding sponsorship is not needed on Robinhood testnet."
+    }
+  }
+}
