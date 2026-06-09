@@ -5,6 +5,9 @@ export const CHAIN_ID_POLYGON = 137 as const;
 export const CHAIN_ID_ETHEREAL = 5064014 as const;
 export const CHAIN_ID_ETHEREAL_TESTNET = 13374202 as const;
 export const CHAIN_ID_ROBINHOOD_TESTNET = 46630 as const;
+// SCAFFOLD: Robinhood mainnet chain id is not known yet. 0 is a placeholder —
+// set the real id before deploying to Robinhood mainnet.
+export const CHAIN_ID_ROBINHOOD_MAINNET = 0 as const;
 
 /**
  * Default chain ID — configurable via environment variable.
@@ -23,6 +26,8 @@ export const COLLATERAL_SYMBOLS: Record<number, string> = {
   [CHAIN_ID_ETHEREAL_TESTNET]: 'USDe',
   // Robinhood testnet uses an existing USDC as collateral (no USDe yet).
   [CHAIN_ID_ROBINHOOD_TESTNET]: 'USDC',
+  // SCAFFOLD: Robinhood mainnet collateral TBD.
+  [CHAIN_ID_ROBINHOOD_MAINNET]: 'USDC',
 } as const;
 
 /**
@@ -124,6 +129,29 @@ export const robinhoodTestnetChain = {
 } as const satisfies Chain;
 
 /**
+ * SCAFFOLD: Robinhood mainnet definition. chain id + RPC + explorer are
+ * placeholders — the chain does not exist yet. Fill in before any mainnet use.
+ */
+export const robinhoodMainnetChain = {
+  id: CHAIN_ID_ROBINHOOD_MAINNET,
+  name: 'Robinhood Mainnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Ether',
+    symbol: 'ETH',
+  },
+  rpcUrls: {
+    default: { http: ['https://rpc.mainnet.chain.robinhood.com'] },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Robinhood Explorer',
+      url: 'https://explorer.mainnet.chain.robinhood.com',
+    },
+  },
+} as const satisfies Chain;
+
+/**
  * Get chain configuration with optional env-var RPC override.
  * Env var: CHAIN_{chainId}_RPC_URL (e.g., CHAIN_5064014_RPC_URL)
  */
@@ -142,6 +170,10 @@ export function getChainConfig(chainId: number): Chain {
       return envRpc
         ? { ...robinhoodTestnetChain, rpcUrls: { default: { http: [envRpc] } } }
         : robinhoodTestnetChain;
+    case CHAIN_ID_ROBINHOOD_MAINNET:
+      return envRpc
+        ? { ...robinhoodMainnetChain, rpcUrls: { default: { http: [envRpc] } } }
+        : robinhoodMainnetChain;
     default:
       throw new Error(`Unsupported chain: ${chainId}`);
   }

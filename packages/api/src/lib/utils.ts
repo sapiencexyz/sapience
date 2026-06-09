@@ -14,9 +14,11 @@ import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
   CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
   etherealChain,
   etherealTestnetChain,
   robinhoodTestnetChain,
+  robinhoodMainnetChain,
 } from '@sapience/sdk/constants';
 
 import { createLogger } from '../core/logger';
@@ -115,6 +117,9 @@ export function getProviderForChain(chainId: number): PublicClient {
       break;
     case CHAIN_ID_ROBINHOOD_TESTNET:
       newClient = createChainClient(robinhoodTestnetChain, 'robinhood-testnet');
+      break;
+    case CHAIN_ID_ROBINHOOD_MAINNET:
+      newClient = createChainClient(robinhoodMainnetChain, 'robinhood-mainnet');
       break;
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);
