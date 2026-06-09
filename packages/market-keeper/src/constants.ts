@@ -1,4 +1,7 @@
-import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import {
+  CHAIN_ID_ETHEREAL_TESTNET,
+  CHAIN_ID_ROBINHOOD_TESTNET,
+} from '@sapience/sdk/constants';
 import { getResolverConfig, type ResolverType } from './resolver';
 
 /**
@@ -12,11 +15,19 @@ export const ADMIN_AUTHENTICATE_MSG =
 // Chain ID — configurable via env var, defaults to Ethereal mainnet
 export const CHAIN_ID = Number(process.env.CHAIN_ID || '5064014');
 
-// Resolver type — derived from chain ID:
-//   Testnet (13374202) → 'manual' (ManualConditionResolver, direct admin settlement)
-//   Everything else    → 'ct'     (ConditionalTokensConditionResolver, LZ bridge from Polygon)
+// Resolver type — env-overridable (RESOLVER_TYPE=manual|ct), otherwise derived
+// from chain ID:
+//   Ethereal testnet (13374202) + Robinhood testnet (46630) → 'manual'
+//     (ManualConditionResolver, direct admin settlement; no LZ bridge on these)
+//   Everything else → 'ct' (ConditionalTokensConditionResolver, LZ bridge from Polygon)
+const ENV_RESOLVER_TYPE = process.env.RESOLVER_TYPE;
 export const RESOLVER_TYPE: ResolverType =
-  CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET ? 'manual' : 'ct';
+  ENV_RESOLVER_TYPE === 'manual' || ENV_RESOLVER_TYPE === 'ct'
+    ? ENV_RESOLVER_TYPE
+    : CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET ||
+        CHAIN_ID === CHAIN_ID_ROBINHOOD_TESTNET
+      ? 'manual'
+      : 'ct';
 
 const resolverConfig = getResolverConfig(CHAIN_ID, RESOLVER_TYPE);
 
