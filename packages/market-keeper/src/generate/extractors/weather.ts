@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { MONTHS, inferYear, toSec } from './shared';
-import { cityOffsetJune } from './weather-tz';
+import { cityOffsetForDate } from './weather-tz';
 
 /**
  * Weather: "...temperature in <City> be ... on <Month Day>?" — the resolution
@@ -32,6 +32,8 @@ export function weatherEndTime(
 
   // city -> timezone -> end of the local day (23:59 local), expressed in UTC
   const cm = question.match(/temperature in (.+?)\s+(?:be|on)\b/i);
-  const offset = (cm ? cityOffsetJune(cm[1]) : null) ?? DEFAULT_OFFSET;
+  const offset =
+    (cm ? cityOffsetForDate(cm[1], year, month + 1, day) : null) ??
+    DEFAULT_OFFSET;
   return toSec(Date.UTC(year, month, day, 23, 59) - offset * 3_600_000);
 }

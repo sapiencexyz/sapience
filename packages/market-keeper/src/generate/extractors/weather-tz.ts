@@ -1,74 +1,87 @@
+import { getDstAwareOffsetHours } from '../endtime';
+
 /**
- * City -> UTC offset (hours) for the Polymarket daily-temperature markets.
+ * City -> IANA timezone for the Polymarket daily-temperature markets.
  *
- * Values are the *June* offset (DST-aware where applicable) since these markets
- * are summer-dated; they decide the local end-of-day the labels are pinned to.
- * For year-round correctness this would become IANA zones + a tz library, but a
- * static summer table is exact for the current snapshot. City names in the
- * corpus are ASCII (e.g. "Sao Paulo"), so a plain lowercase key matches.
+ * Weather markets resolve at local end-of-day for the city in the title. Use
+ * IANA zones instead of fixed summer offsets so winter markets land on EST/GMT
+ * rather than stale EDT/BST offsets. City names in the corpus are ASCII (e.g.
+ * "Sao Paulo"), so a plain lowercase key matches.
  */
-export const CITY_TZ_JUNE: Record<string, number> = {
+export const CITY_TIMEZONE: Record<string, string> = {
   // East Asia (no DST)
-  tokyo: 9,
-  seoul: 9,
-  busan: 9,
-  'hong kong': 8,
-  shanghai: 8,
-  beijing: 8,
-  qingdao: 8,
-  guangzhou: 8,
-  shenzhen: 8,
-  chongqing: 8,
-  chengdu: 8,
-  wuhan: 8,
-  taipei: 8,
-  singapore: 8,
-  'kuala lumpur': 8,
-  manila: 8,
+  tokyo: 'Asia/Tokyo',
+  seoul: 'Asia/Seoul',
+  busan: 'Asia/Seoul',
+  'hong kong': 'Asia/Hong_Kong',
+  shanghai: 'Asia/Shanghai',
+  beijing: 'Asia/Shanghai',
+  qingdao: 'Asia/Shanghai',
+  guangzhou: 'Asia/Shanghai',
+  shenzhen: 'Asia/Shanghai',
+  chongqing: 'Asia/Shanghai',
+  chengdu: 'Asia/Shanghai',
+  wuhan: 'Asia/Shanghai',
+  taipei: 'Asia/Taipei',
+  singapore: 'Asia/Singapore',
+  'kuala lumpur': 'Asia/Kuala_Lumpur',
+  manila: 'Asia/Manila',
   // South Asia
-  karachi: 5,
-  lucknow: 5.5,
-  // Middle East / Turkey (no DST)
-  jeddah: 3,
-  'tel aviv': 3,
-  istanbul: 3,
-  ankara: 3,
-  // Europe (summer DST)
-  london: 1,
-  paris: 2,
-  amsterdam: 2,
-  milan: 2,
-  madrid: 2,
-  munich: 2,
-  warsaw: 2,
-  helsinki: 3,
-  moscow: 3,
+  karachi: 'Asia/Karachi',
+  lucknow: 'Asia/Kolkata',
+  // Middle East / Turkey
+  jeddah: 'Asia/Riyadh',
+  'tel aviv': 'Asia/Jerusalem',
+  istanbul: 'Europe/Istanbul',
+  ankara: 'Europe/Istanbul',
+  // Europe
+  london: 'Europe/London',
+  paris: 'Europe/Paris',
+  amsterdam: 'Europe/Amsterdam',
+  milan: 'Europe/Rome',
+  madrid: 'Europe/Madrid',
+  munich: 'Europe/Berlin',
+  warsaw: 'Europe/Warsaw',
+  helsinki: 'Europe/Helsinki',
+  moscow: 'Europe/Moscow',
   // Africa
-  'cape town': 2,
-  // North America (summer DST)
-  'new york city': -4,
-  miami: -4,
-  atlanta: -4,
-  toronto: -4,
-  chicago: -5,
-  austin: -5,
-  houston: -5,
-  dallas: -5,
-  'panama city': -5,
-  denver: -6,
-  'mexico city': -6,
-  'los angeles': -7,
-  'san francisco': -7,
-  seattle: -7,
-  // South America (no DST)
-  'sao paulo': -3,
-  'buenos aires': -3,
-  // Oceania (June = winter, standard)
-  wellington: 12,
+  'cape town': 'Africa/Johannesburg',
+  // North America
+  'new york city': 'America/New_York',
+  miami: 'America/New_York',
+  atlanta: 'America/New_York',
+  toronto: 'America/Toronto',
+  chicago: 'America/Chicago',
+  austin: 'America/Chicago',
+  houston: 'America/Chicago',
+  dallas: 'America/Chicago',
+  'panama city': 'America/Panama',
+  denver: 'America/Denver',
+  'mexico city': 'America/Mexico_City',
+  'los angeles': 'America/Los_Angeles',
+  'san francisco': 'America/Los_Angeles',
+  seattle: 'America/Los_Angeles',
+  // South America
+  'sao paulo': 'America/Sao_Paulo',
+  'buenos aires': 'America/Argentina/Buenos_Aires',
+  // Oceania
+  wellington: 'Pacific/Auckland',
 };
 
-/** June UTC offset (hours) for a city, or null if unknown. */
-export function cityOffsetJune(city: string): number | null {
+/** IANA timezone for a city, or null if unknown. */
+export function cityTimezone(city: string): string | null {
   const key = city.toLowerCase().trim();
-  return key in CITY_TZ_JUNE ? CITY_TZ_JUNE[key] : null;
+  return key in CITY_TIMEZONE ? CITY_TIMEZONE[key] : null;
+}
+
+/** UTC offset (hours) for a city on a specific date, or null if unknown. */
+export function cityOffsetForDate(
+  city: string,
+  year: number,
+  month: number,
+  day: number
+): number | null {
+  const zone = cityTimezone(city);
+  if (!zone) return null;
+  return getDstAwareOffsetHours(year, month, day, zone);
 }
