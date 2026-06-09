@@ -10,8 +10,8 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  CI_ROLE_ARN: arn:aws:iam::372110443321:role/github-actions-sapience-robinhood-testnet
-  ECS_CLUSTER: sapience-robinhood-testnet
+  CI_ROLE_ARN: arn:aws:iam::372110443321:role/github-actions-sapience-v1-robinhood-testnet
+  ECS_CLUSTER: v1-robinhood-testnet
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
