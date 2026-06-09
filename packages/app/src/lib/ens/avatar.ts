@@ -113,8 +113,14 @@ function parseEnsAvatarCaip(
 }
 
 async function fetchJson<T = unknown>(url: string): Promise<T | null> {
+  // SSRF guard: token metadata URLs come from attacker-controllable on-chain
+  // tokenURI/uri values, so host-check every URL before fetching — not just the
+  // final image URL. Blocks private/link-local/cloud-metadata hosts and
+  // non-http(s) schemes.
+  const safe = sanitizeAvatarUrl(url);
+  if (!safe) return null;
   try {
-    const res = await fetch(url, {
+    const res = await fetch(safe, {
       cache: 'force-cache',
       signal: AbortSignal.timeout(5000),
     });

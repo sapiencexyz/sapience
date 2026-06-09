@@ -81,3 +81,77 @@ describe('sanitizeAvatarUrl', () => {
     expect(sanitizeAvatarUrl('/etc/passwd')).toBeNull();
   });
 });
+
+// ── SSRF regression: the metadata fetch (not just the final image URL) must be
+// host-checked. tokenURI/uri are attacker-controllable on-chain values. ──────
+const ensMocks = vi.hoisted(() => ({
+  getEnsName: vi.fn(),
+  getEnsText: vi.fn(),
+  readContract: vi.fn(),
+}));
+
+vi.mock('~/lib/utils/util', () => ({
+  mainnetClient: {
+    getEnsName: ensMocks.getEnsName,
+    getEnsText: ensMocks.getEnsText,
+    readContract: ensMocks.readContract,
+  },
+  getPublicClientForChainId: () => ({ readContract: ensMocks.readContract }),
+}));
+
+describe('getEnsAvatarUrlForAddress SSRF guard', () => {
+  const OWNER = '0x1111111111111111111111111111111111111111';
+  const CONTRACT = '0x2222222222222222222222222222222222222222';
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    ensMocks.getEnsName.mockResolvedValue('evil.eth');
+    ensMocks.getEnsText.mockResolvedValue(`eip155:1/erc721:${CONTRACT}/1`);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('never fetches a metadata URL pointing at a link-local/internal host', async () => {
+    ensMocks.readContract.mockImplementation(
+      (args: { functionName: string }) => {
+        if (args.functionName === 'ownerOf') return Promise.resolve(OWNER);
+        if (args.functionName === 'tokenURI')
+          return Promise.resolve('http://169.254.169.254/latest/meta-data/');
+        return Promise.resolve(undefined);
+      }
+    );
+
+    const { getEnsAvatarUrlForAddress } = await import('./avatar');
+    const result = await getEnsAvatarUrlForAddress(OWNER);
+
+    expect(result).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('still resolves the image for a metadata URL on an allowed host', async () => {
+    ensMocks.readContract.mockImplementation(
+      (args: { functionName: string }) => {
+        if (args.functionName === 'ownerOf') return Promise.resolve(OWNER);
+        if (args.functionName === 'tokenURI')
+          return Promise.resolve('https://example.com/meta.json');
+        return Promise.resolve(undefined);
+      }
+    );
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ image: 'https://example.com/img.png' }),
+    });
+
+    const { getEnsAvatarUrlForAddress } = await import('./avatar');
+    const result = await getEnsAvatarUrlForAddress(OWNER);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.com/meta.json');
+    expect(result).toBe('https://example.com/img.png');
+  });
+});
