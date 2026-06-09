@@ -13,6 +13,7 @@ import {
   etherealChain,
   etherealTestnetChain,
   hyperEvmChain,
+  robinhoodTestnetChain,
 } from '@sapience/sdk/constants';
 import { httpWithRetry } from '~/lib/utils/util';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
@@ -58,6 +59,9 @@ const buildChainsAndTransports = () => {
     [etherealTestnetChain.id]: httpWithRetry(
       etherealTestnetChain.rpcUrls.default.http[0]
     ),
+    [robinhoodTestnetChain.id]: httpWithRetry(
+      robinhoodTestnetChain.rpcUrls.default.http[0]
+    ),
   };
 
   const chains: Chain[] = [
@@ -68,6 +72,7 @@ const buildChainsAndTransports = () => {
     hyperEvmChain,
     etherealChain,
     etherealTestnetChain,
+    robinhoodTestnetChain,
   ];
 
   return { chains, transports };
