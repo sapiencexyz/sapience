@@ -1,0 +1,16 @@
+{
+  "_comment": "SCAFFOLD — Robinhood MAINNET deploy config. The mainnet chain does not exist yet; every value here is a placeholder. Fill in (chain id is set in the manifest env file, not here) before running manifest:apply --bundle mainnet. The deployer private key lives in deployment/mainnet/.env (gitignored).",
+  "PM_NETWORK_NAME": "Robinhood Mainnet",
+  "PM_NETWORK_RPC_URL": "https://rpc.mainnet.chain.robinhood.com",
+  "PM_NETWORK_CHAIN_ID": "0",
+  "PM_NETWORK_EXPLORER_URL": "https://explorer.mainnet.chain.robinhood.com/api/",
+  "PM_NETWORK_DEPLOYER_ADDRESS": "0x0000000000000000000000000000000000000000",
+  "DEPLOYER_ADDRESS": "0x0000000000000000000000000000000000000000",
+  "COLLATERAL_TOKEN_ADDRESS": "0x0000000000000000000000000000000000000000",
+  "VAULT_MANAGER": "0x0000000000000000000000000000000000000000",
+  "VAULT_NAME": "Sapience Robinhood Vault",
+  "VAULT_SYMBOL": "SRHV",
+  "VAULT_EXPIRATION_TIME": 86400,
+  "BUDGET_MANAGER": "0x0000000000000000000000000000000000000000",
+  "MAX_ENTRY_PRICE_BPS": "7000"
+}
