@@ -26,6 +26,7 @@ import {
   type TransactionCall,
   type WriteContractParams,
   type SessionClient,
+  type ExecutionDeps,
 } from './transactionExecutor';
 import {
   handleViemError,
@@ -259,6 +260,10 @@ export function useSapienceWriteContract({
   // Capture the address that submitted the transaction to avoid race conditions
   // if user toggles account mode while transaction is in-flight
   const transactionAddressRef = useRef<`0x${string}` | null>(null);
+  // Guards stale-session auto-recovery to ONE attempt per user action. Once a
+  // recovery (refresh + retry) is in flight, a second session-policy error
+  // surfaces normally instead of looping into another refresh/retry.
+  const sessionRecoveryInFlightRef = useRef(false);
   // Get position form context - may be undefined if not within provider
   const createPositionContext = useContext(CreatePositionContext);
 
@@ -416,86 +421,154 @@ export function useSapienceWriteContract({
     }
   }, [createArbitrumSessionIfNeeded]);
 
-  const startReplacementSession = useCallback(async () => {
-    if (isStartingSession) return;
+  // Create a fresh session to replace a stale one. Returns the session
+  // client/config for `chainId` so the caller can retry the failed transaction
+  // immediately, or null if a new session could not be created.
+  const startReplacementSession = useCallback(
+    async (
+      _chainId: number
+    ): Promise<Pick<
+      ExecutionDeps,
+      'sessionClient' | 'sessionConfig'
+    > | null> => {
+      if (isStartingSession) return null;
 
-    try {
-      await startSession({
-        durationHours:
-          connectionDurationHours ?? DEFAULT_CONNECTION_DURATION_HOURS,
-      });
-      toast({
-        title: 'Session Created',
-        description:
-          'Your new session is ready. Please try the transaction again.',
-        duration: 5000,
-      });
-    } catch (error) {
-      console.error(
-        '[Session] Failed to refresh session after policy error:',
-        error
-      );
-      Sentry.captureException(error, {
-        tags: { component: 'session' },
-        extra: { function: 'startReplacementSession' },
-      });
-      toast({
-        title: 'Failed to Start Session',
-        description: handleViemError(
-          error,
-          'Please create a new session from the connection menu.'
-        ),
-        duration: 8000,
-        variant: 'destructive',
-      });
-    }
-  }, [connectionDurationHours, isStartingSession, startSession, toast]);
+      try {
+        const result = await startSession({
+          durationHours:
+            connectionDurationHours ?? DEFAULT_CONNECTION_DURATION_HOURS,
+        });
+        const sessionClient =
+          _chainId === arbitrum.id
+            ? result.arbitrumClient
+            : result.etherealClient;
+        return { sessionClient, sessionConfig: result.config };
+      } catch (error) {
+        console.error(
+          '[Session] Failed to refresh session after policy error:',
+          error
+        );
+        Sentry.captureException(error, {
+          tags: { component: 'session' },
+          extra: { function: 'startReplacementSession' },
+        });
+        toast({
+          title: 'Failed to Start Session',
+          description: handleViemError(
+            error,
+            'Please create a new session from the connection menu.'
+          ),
+          duration: 8000,
+          variant: 'destructive',
+        });
+        return null;
+      }
+    },
+    [connectionDurationHours, isStartingSession, startSession, toast]
+  );
 
-  /** Handle catch errors from writeContract / sendCalls — detects stale session keys */
-  const handleCatchError = useCallback(
+  // Surface a plain transaction failure: toast, report, notify caller.
+  const reportTransactionFailure = useCallback(
     (
       error: unknown,
       label: string,
-      ctx: { chainId?: number; executionPath?: string } = {}
+      ctx: { chainId?: number; executionPath?: string }
     ) => {
-      setIsSubmitting(false);
-      const isStaleSession = isSessionPolicyError(error);
-      if (isStaleSession) {
-        console.warn(
-          `[${label}] Session key policy mismatch — clearing stale session`,
-          error
-        );
-        endSession();
-        toast({
-          title: 'Session Needs Refresh',
-          description:
-            'This transaction uses a contract your current session was not authorized for. Please approve the new session request in your wallet, then try again.',
-          duration: 12000,
-          variant: 'destructive',
-        });
-        void startReplacementSession();
-      } else {
-        toast({
-          title: 'Transaction Failed',
-          description: handleViemError(error, fallbackErrorMessage),
-          duration: 5000,
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Transaction Failed',
+        description: handleViemError(error, fallbackErrorMessage),
+        duration: 5000,
+        variant: 'destructive',
+      });
       Sentry.captureException(error, {
-        tags: {
-          component: isStaleSession ? 'session' : 'rpc',
-          executionPath: ctx.executionPath,
-        },
-        extra: {
-          function: label,
-          chainId: ctx.chainId,
-          isSessionPolicyError: isStaleSession,
-        },
+        tags: { component: 'rpc', executionPath: ctx.executionPath },
+        extra: { function: label, chainId: ctx.chainId },
       });
       onError?.(error as Error);
     },
-    [endSession, toast, fallbackErrorMessage, onError, startReplacementSession]
+    [toast, fallbackErrorMessage, onError]
+  );
+
+  /**
+   * Handle catch errors from writeContract / sendCalls.
+   *
+   * On a stale-session policy error we automatically tear down the dead session,
+   * create a fresh one, and retry the original transaction ONCE. The retry runs
+   * with the freshly-created session client (passed explicitly, since React
+   * state won't have propagated yet). `sessionRecoveryInFlightRef` caps this to a
+   * single recovery+retry per user action so a persistent failure can't loop.
+   */
+  const handleCatchError = useCallback(
+    async (
+      error: unknown,
+      label: string,
+      ctx: {
+        chainId?: number;
+        executionPath?: string;
+        retry?: (
+          override: Pick<ExecutionDeps, 'sessionClient' | 'sessionConfig'>
+        ) => Promise<void>;
+      } = {}
+    ) => {
+      setIsSubmitting(false);
+
+      const { chainId: _chainId, retry } = ctx;
+      // Only auto-recover for a genuine stale-session policy error, and only
+      // once per user action (guards against a retry that fails the same way).
+      if (
+        !isSessionPolicyError(error) ||
+        sessionRecoveryInFlightRef.current ||
+        _chainId == null ||
+        retry == null
+      ) {
+        reportTransactionFailure(error, label, ctx);
+        return;
+      }
+
+      sessionRecoveryInFlightRef.current = true;
+      console.warn(
+        `[${label}] Session key policy mismatch — refreshing session and retrying`,
+        error
+      );
+      Sentry.captureException(error, {
+        tags: { component: 'session', executionPath: ctx.executionPath },
+        extra: {
+          function: label,
+          chainId: _chainId,
+          isSessionPolicyError: true,
+        },
+      });
+      endSession();
+      toast({
+        title: 'Session Needs Refresh',
+        description:
+          'Approve the new session request in your wallet — we’ll retry your transaction automatically.',
+        duration: 12000,
+      });
+
+      try {
+        const replacement = await startReplacementSession(_chainId);
+        if (!replacement) {
+          // Session creation failed; startReplacementSession already toasted.
+          onError?.(error as Error);
+          return;
+        }
+        // Retry once with the fresh session. Any failure here is surfaced
+        // normally (and the guard below blocks a second recovery attempt).
+        await retry(replacement);
+      } catch (retryError) {
+        reportTransactionFailure(retryError, `${label} (retry)`, ctx);
+      } finally {
+        sessionRecoveryInFlightRef.current = false;
+      }
+    },
+    [
+      endSession,
+      toast,
+      startReplacementSession,
+      reportTransactionFailure,
+      onError,
+    ]
   );
 
   // Custom write contract function that handles chain validation
@@ -511,6 +584,37 @@ export function useSapienceWriteContract({
       // Lifted out of the try so it's available in catch for Sentry context.
       const executionPath = getExecutionPathForChain(_chainId);
 
+      const params = args[0] as WriteContractParams;
+      const calls = [encodeWriteContractToCall(params)];
+
+      // Re-runnable so a stale-session recovery can retry with a fresh session
+      // client (passed via `override`) instead of the dead one.
+      const runWrite = async (
+        override?: Pick<ExecutionDeps, 'sessionClient' | 'sessionConfig'>
+      ) => {
+        if (executionPath !== 'eoa') setIsSubmitting(true);
+        const result = await executeTransaction(
+          calls,
+          _chainId,
+          executionPath,
+          {
+            sessionClient:
+              override?.sessionClient ?? getSessionClient(_chainId),
+            sessionConfig: override?.sessionConfig ?? sessionConfig,
+            needsArbitrumSession: needsArbitrumSession(_chainId),
+            createArbitrumSessionIfNeeded: wrapArbitrumSessionCreation,
+            executeViaSessionKey,
+            executeViaOwnerSigning,
+            writeContractAsync,
+            sendCallsAsync,
+            validateAndSwitchChain,
+          },
+          'writeContract',
+          args[0]
+        );
+        completeTransaction(result.hash);
+      };
+
       try {
         // Reset state
         setTxHash(undefined);
@@ -525,35 +629,12 @@ export function useSapienceWriteContract({
             ? (wagmiAddress ?? null)
             : (smartAccountAddress ?? wagmiAddress ?? null);
 
-        if (executionPath !== 'eoa') setIsSubmitting(true);
-
-        const params = args[0] as WriteContractParams;
-        const calls = [encodeWriteContractToCall(params)];
-
-        const result = await executeTransaction(
-          calls,
-          _chainId,
-          executionPath,
-          {
-            sessionClient: getSessionClient(_chainId),
-            sessionConfig,
-            needsArbitrumSession: needsArbitrumSession(_chainId),
-            createArbitrumSessionIfNeeded: wrapArbitrumSessionCreation,
-            executeViaSessionKey,
-            executeViaOwnerSigning,
-            writeContractAsync,
-            sendCallsAsync,
-            validateAndSwitchChain,
-          },
-          'writeContract',
-          args[0]
-        );
-
-        completeTransaction(result.hash);
+        await runWrite();
       } catch (error) {
-        handleCatchError(error, 'WriteContract', {
+        await handleCatchError(error, 'WriteContract', {
           chainId: _chainId,
           executionPath,
+          retry: runWrite,
         });
       }
     },
@@ -590,43 +671,32 @@ export function useSapienceWriteContract({
       // Lifted out of the try so it's available in catch for Sentry context.
       const executionPath = getExecutionPathForChain(_chainId);
 
-      try {
-        // Reset state
-        setTxHash(undefined);
-        resetCalls();
-        didRedirectRef.current = false;
-        didShowSuccessToastRef.current = false;
+      // Convert SendCall[] to TransactionCall[]
+      const body = (args[0] ?? {}) as SendCallsParams;
+      const rawCalls: SendCall[] = Array.isArray(body?.calls) ? body.calls : [];
+      const calls: TransactionCall[] = rawCalls.map((call: SendCall) => ({
+        to: call.to,
+        data: call.data ?? ('0x' as Hex),
+        value: call.value ? BigInt(call.value) : 0n,
+      }));
 
-        // Capture the address at transaction submission time to avoid race conditions
-        // if user toggles account mode while transaction is in-flight
-        transactionAddressRef.current =
-          executionPath === 'eoa'
-            ? (wagmiAddress ?? null)
-            : (smartAccountAddress ?? wagmiAddress ?? null);
-
-        if (executionPath !== 'eoa') setIsSubmitting(true);
-
-        // Convert SendCall[] to TransactionCall[]
-        const body = (args[0] ?? {}) as SendCallsParams;
-        const rawCalls: SendCall[] = Array.isArray(body?.calls)
-          ? body.calls
-          : [];
+      // Re-runnable so a stale-session recovery can retry with a fresh session
+      // client (passed via `override`) instead of the dead one.
+      const runSendCalls = async (
+        override?: Pick<ExecutionDeps, 'sessionClient' | 'sessionConfig'>
+      ) => {
         if (rawCalls.length === 0) {
           throw new Error('No calls to execute');
         }
-        const calls: TransactionCall[] = rawCalls.map((call: SendCall) => ({
-          to: call.to,
-          data: call.data ?? ('0x' as Hex),
-          value: call.value ? BigInt(call.value) : 0n,
-        }));
-
+        if (executionPath !== 'eoa') setIsSubmitting(true);
         const result = await executeTransaction(
           calls,
           _chainId,
           executionPath,
           {
-            sessionClient: getSessionClient(_chainId),
-            sessionConfig,
+            sessionClient:
+              override?.sessionClient ?? getSessionClient(_chainId),
+            sessionConfig: override?.sessionConfig ?? sessionConfig,
             needsArbitrumSession: needsArbitrumSession(_chainId),
             createArbitrumSessionIfNeeded: wrapArbitrumSessionCreation,
             executeViaSessionKey,
@@ -646,10 +716,28 @@ export function useSapienceWriteContract({
             | undefined;
         }
         completeTransaction(finalHash);
+      };
+
+      try {
+        // Reset state
+        setTxHash(undefined);
+        resetCalls();
+        didRedirectRef.current = false;
+        didShowSuccessToastRef.current = false;
+
+        // Capture the address at transaction submission time to avoid race conditions
+        // if user toggles account mode while transaction is in-flight
+        transactionAddressRef.current =
+          executionPath === 'eoa'
+            ? (wagmiAddress ?? null)
+            : (smartAccountAddress ?? wagmiAddress ?? null);
+
+        await runSendCalls();
       } catch (error) {
-        handleCatchError(error, 'SendCalls', {
+        await handleCatchError(error, 'SendCalls', {
           chainId: _chainId,
           executionPath,
+          retry: runSendCalls,
         });
       }
     },

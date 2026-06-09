@@ -119,6 +119,18 @@ interface ChainClients {
   arbitrum: KernelAccountClient | null;
 }
 
+/**
+ * Result returned by {@link SessionContextValue.startSession}. Returning the
+ * freshly-created clients/config lets callers retry a transaction immediately
+ * with the new session, without waiting for React state (chainClients /
+ * sessionConfig) to propagate through a re-render.
+ */
+export interface StartSessionResult {
+  config: SessionConfig;
+  etherealClient: KernelAccountClient | null;
+  arbitrumClient: KernelAccountClient | null;
+}
+
 // Type for signTypedData parameters
 interface SignTypedDataParams {
   domain: {
@@ -161,7 +173,7 @@ interface SessionContextValue {
   startSession: (params: {
     durationHours: number;
     etherealChainId?: number;
-  }) => Promise<void>;
+  }) => Promise<StartSessionResult>;
   endSession: () => void;
 
   // Status
@@ -654,6 +666,14 @@ export function SessionProvider({ children }: SessionProviderProps) {
           '[SessionContext] Session active, smart account:',
           result.config.smartAccountAddress
         );
+
+        // Return the fresh clients/config so callers can retry immediately with
+        // the new session (state updates above won't be visible until re-render).
+        return {
+          config: result.config,
+          etherealClient: result.etherealClient,
+          arbitrumClient: result.arbitrumClient,
+        };
       } catch (error) {
         console.error('Failed to start session:', error);
         Sentry.captureException(error, {

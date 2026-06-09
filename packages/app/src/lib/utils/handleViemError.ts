@@ -33,13 +33,20 @@ export function handleViemError(
  * starts calling a contract that the existing session was never authorized to
  * call). The session must be re-created to pick up the new addresses/policies.
  *
- * We require both conditions:
+ * We require two conditions:
  * - a user-op/account-validation failure marker from the bundler/paymaster path
- * - a call-policy / not-authorized marker from the session policy validation
+ * - a session-policy marker (see below)
  *
- * AA23 alone is too broad (any validation failure), and the policy markers alone
- * could appear in non-session contexts. Together they're precise enough to
- * clear the stale session and offer recovery.
+ * The user-op marker alone is too broad (any validation failure). For the
+ * policy half we deliberately split the markers by confidence:
+ *
+ * - {@link SESSION_POLICY_NAMED_PATTERNS} are ZeroDev permission-validator revert
+ *   names / selectors. Each is an unambiguous session-policy failure on its own.
+ * - Generic authorization wording ("not authorized") is NOT trusted on its own:
+ *   a called contract's own access control reverts with the exact same words.
+ *   We only treat it as a session-policy failure when the message ALSO references
+ *   the session itself. Otherwise a stale-session recovery (which tears down the
+ *   session and re-prompts the wallet) would fire on unrelated contract reverts.
  */
 const USER_OP_VALIDATION_PATTERNS = [
   'AA23',
@@ -48,28 +55,39 @@ const USER_OP_VALIDATION_PATTERNS = [
   'user operation reverted during simulation',
 ] as const;
 
-const SESSION_POLICY_PATTERNS = [
+const SESSION_POLICY_NAMED_PATTERNS = [
   'CallViolatesParamRule',
   'CallViolatesTarget',
   'CallViolatesTargetAddress',
   'CallNotAllowed',
   'TargetNotAllowed',
-  'not authorized',
-  'not authorised',
   '0x59d52e40',
 ] as const;
+
+const AUTHORIZATION_FAILURE_PATTERNS = [
+  'not authorized',
+  'not authorised',
+] as const;
+
+const SESSION_CONTEXT_PATTERNS = ['session'] as const;
 
 /** Returns true if the error indicates a stale session key policy. */
 export function isSessionPolicyError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? '');
   const lowerMessage = message.toLowerCase();
+  const includes = (pattern: string) =>
+    lowerMessage.includes(pattern.toLowerCase());
 
-  const hasUserOpValidationFailure = USER_OP_VALIDATION_PATTERNS.some(
-    (pattern) => lowerMessage.includes(pattern.toLowerCase())
-  );
-  const hasSessionPolicyFailure = SESSION_POLICY_PATTERNS.some((pattern) =>
-    lowerMessage.includes(pattern.toLowerCase())
-  );
+  const hasUserOpValidationFailure = USER_OP_VALIDATION_PATTERNS.some(includes);
+  if (!hasUserOpValidationFailure) return false;
 
-  return hasUserOpValidationFailure && hasSessionPolicyFailure;
+  const hasNamedPolicyFailure = SESSION_POLICY_NAMED_PATTERNS.some(includes);
+
+  // Generic authorization wording only counts when the message is clearly about
+  // the session — not a target contract's own "not authorized" revert.
+  const hasSessionScopedAuthFailure =
+    AUTHORIZATION_FAILURE_PATTERNS.some(includes) &&
+    SESSION_CONTEXT_PATTERNS.some(includes);
+
+  return hasNamedPolicyFailure || hasSessionScopedAuthFailure;
 }
