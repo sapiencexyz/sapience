@@ -321,7 +321,8 @@ export async function queryAccountBalance(
   address: string,
   interval: TimeInterval,
   from?: Date,
-  to?: Date
+  to?: Date,
+  db: RawQueryClient = prisma
 ): Promise<BalanceDataPoint[]> {
   const { fromEpoch, toEpoch, pgTrunc, pgStep } = resolveDefaults(
     interval,
@@ -330,7 +331,7 @@ export async function queryAccountBalance(
   );
   const addr = address.toLowerCase();
 
-  const rows = await prisma.$queryRaw<BalanceRow[]>`
+  const rows = await db.$queryRaw<BalanceRow[]>`
     WITH buckets AS (
       SELECT
         EXTRACT(EPOCH FROM gs)::BIGINT AS bucket_epoch
@@ -367,15 +368,27 @@ export async function queryAccountBalance(
              WHEN p.counterparty = ${addr}
              THEN CAST(COALESCE(p."counterpartyClaimable", '0') AS DECIMAL)
              ELSE 0 END AS claimable,
-        p."predictionId"
+        p."pickConfigId" AS pick_config_id,
+        CASE WHEN p.predictor = ${addr} THEN 'predictor'
+             WHEN p.counterparty = ${addr} THEN 'counterparty'
+        END AS side
       FROM "Prediction" p
       WHERE (p.predictor = ${addr} OR p.counterparty = ${addr})
         AND p."settledAt" IS NOT NULL
     ),
+    -- A redeem burns the holder's whole position token for one (pickConfig,
+    -- side). Claim.pickConfigId gives the config; the side is identified by
+    -- matching the burned positionToken to the pick configuration's
+    -- predictor/counterparty token, the same way the accountPnl query does.
     account_claims AS (
-      SELECT "pickConfigId", "redeemedAt"
-      FROM "Claim"
-      WHERE holder = ${addr}
+      SELECT cl."pickConfigId" AS pick_config_id,
+             CASE WHEN cl."positionToken" = pk."predictorToken" THEN 'predictor'
+                  WHEN cl."positionToken" = pk."counterpartyToken" THEN 'counterparty'
+             END AS side,
+             cl."redeemedAt"
+      FROM "Claim" cl
+      LEFT JOIN "Picks" pk ON cl."pickConfigId" = pk.id
+      WHERE cl.holder = ${addr}
     )
     SELECT
       b.bucket_epoch AS timestamp,
@@ -390,13 +403,11 @@ export async function queryAccountBalance(
         FROM all_claimable ac
         WHERE ac.settled_ts <= b.bucket_epoch
           AND NOT EXISTS (
-            -- FIXME (pre-existing, behavior preserved by the rename): this
-            -- compares Claim.pickConfigId to Prediction.predictionId, which are
-            -- different identifier spaces, so it matches zero rows — claimable
-            -- collateral is never decremented when a position is redeemed. Same
-            -- root cause as the accountPnl bug; resolve through pickConfigId.
+            -- Stop counting this position's claimable once the holder has
+            -- redeemed that (pickConfig, side) at or before the bucket.
             SELECT 1 FROM account_claims c
-            WHERE c."pickConfigId" = ac."predictionId"
+            WHERE c.pick_config_id = ac.pick_config_id
+              AND c.side = ac.side
               AND c."redeemedAt" <= b.bucket_epoch
           )
       ), 0)::TEXT AS claimable_collateral
