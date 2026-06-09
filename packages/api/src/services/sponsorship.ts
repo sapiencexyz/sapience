@@ -8,7 +8,11 @@ import {
   parseUnits,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { etherealTestnetChain, etherealChain } from '@sapience/sdk/constants';
+import {
+  etherealTestnetChain,
+  etherealChain,
+  robinhoodTestnetChain,
+} from '@sapience/sdk/constants';
 import { computeSmartAccountAddress } from '@sapience/sdk/session';
 
 import { createLogger } from '../core/logger';
@@ -48,6 +52,8 @@ function getChainForId(chainId: number) {
       return etherealChain;
     case 13374202:
       return etherealTestnetChain;
+    case 46630:
+      return robinhoodTestnetChain;
     default:
       throw new Error(`Unsupported chain ${chainId} for sponsorship`);
   }

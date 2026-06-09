@@ -13,8 +13,10 @@ import * as viem from 'viem';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
+  CHAIN_ID_ROBINHOOD_TESTNET,
   etherealChain,
   etherealTestnetChain,
+  robinhoodTestnetChain,
 } from '@sapience/sdk/constants';
 
 import { createLogger } from '../core/logger';
@@ -110,6 +112,9 @@ export function getProviderForChain(chainId: number): PublicClient {
       break;
     case CHAIN_ID_ETHEREAL_TESTNET:
       newClient = createChainClient(etherealTestnetChain, 'ethereal-testnet');
+      break;
+    case CHAIN_ID_ROBINHOOD_TESTNET:
+      newClient = createChainClient(robinhoodTestnetChain, 'robinhood-testnet');
       break;
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);
