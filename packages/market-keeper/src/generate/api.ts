@@ -18,6 +18,7 @@ import {
   API_CONDITION_FILTERS,
   // matchesAlwaysIncludePatterns,
 } from './pipeline';
+import { gameEndTime } from './extractors/sports/game';
 
 /**
  * Delay between API submissions to avoid rate limiting
@@ -44,21 +45,23 @@ const PM_FALLBACK_PAD_SECONDS = 86_400;
  * Pick the endTime for a condition payload, with logging for prod observability.
  *
  * Deterministic-first cascade (each rung fits-or-declines; first hit wins):
- *   1. Category specialist (categoryEndTime) — high-precision regex for the
+ *   1. Game start time (gameStartTime + league duration) — the same sports
+ *      rung used by the scoring cascade. Exact, free, and outranks everything.
+ *   2. Category specialist (categoryEndTime) — high-precision regex for the
  *      templated families (weather/crypto/sports/social/snapshot). Read
  *      directly from the description, so it outranks the LLM. Markets it
  *      resolves also skip Sonar entirely (gated upstream in grouping).
- *   2. LLM (Sonar) — the smart generalist for everything the specialists
+ *   3. LLM (Sonar) — the smart generalist for everything the specialists
  *      decline. Any confidence wins; confidence is logged, not gated (the
  *      hallucination-guard knob is re-introducing a `confidence === 'high'`
  *      check here).
- *   3. Regex extraction (endTimeOverride) — the BROAD general regex, trusted
+ *   4. Regex extraction (endTimeOverride) — the BROAD general regex, trusted
  *      only for templated markets (sports/series/group) where the format is
  *      deterministic. Sits BELOW the LLM so a confident-wrong regex date
  *      can't out-rank Sonar (the ETH/USDT $1,800 bug was a Tier 4e false
  *      positive). Non-templated general-regex is never trusted.
- *   4. Polymarket endDate + 1 day — universal floor for PM-sourced markets.
- *   5. Throw — non-templated, non-PM market with no source. Fail loud rather
+ *   5. Polymarket endDate + 1 day — universal floor for PM-sourced markets.
+ *   6. Throw — non-templated, non-PM market with no source. Fail loud rather
  *      than publish a confidently-wrong endTime.
  *
  * No UMA buffer is added; settlement scripts don't gate on `endTime + UMA`.
@@ -66,6 +69,7 @@ const PM_FALLBACK_PAD_SECONDS = 86_400;
 export function decideEndTime(c: SapienceCondition): {
   ts: number;
   source:
+    | 'game'
     | 'category'
     | 'llm-high'
     | 'llm-low'
@@ -73,6 +77,10 @@ export function decideEndTime(c: SapienceCondition): {
     | 'regex-templated'
     | 'pm-fallback';
 } {
+  const game = gameEndTime(c.gameStartTime, c.league);
+  if (game != null) {
+    return { ts: game, source: 'game' };
+  }
   if (c.categoryEndTime != null) {
     return { ts: c.categoryEndTime, source: 'category' };
   }
@@ -114,6 +122,9 @@ function logEndTimeDecision(
     llmTs,
     pmTs,
     categoryTs: c.categoryEndTime ?? null,
+    gameTs: gameEndTime(c.gameStartTime, c.league),
+    gameStartTime: c.gameStartTime ?? null,
+    league: c.league ?? null,
     regexTs: c.endTimeOverride ?? null,
     llmConfidence: c.llmEndTime?.confidence ?? null,
     isTemplated: c.isTemplated ?? false,

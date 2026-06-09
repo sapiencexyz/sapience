@@ -46,6 +46,8 @@ export interface SapienceCondition {
   endTimeOverride?: number; // Regex-extracted endTime fallback (unix seconds), only trusted for templated markets
   categoryEndTime?: number; // High-precision category specialist (weather/crypto/sports/social/snapshot) endTime (unix seconds). Top of the cascade; when set, the market also skips Sonar.
   llmEndTime?: LlmEndTimeResult; // Perplexity Sonar result; runs only when categoryEndTime is null
+  gameStartTime?: string; // Polymarket sports game start time; top of the production/scoring endTime cascade
+  league?: string; // Normalized sports league slug used with gameStartTime duration offsets
   isTemplated?: boolean; // True for sports/series/group templates; gates regex-fallback in decideEndTime
   negRisk?: boolean; // True when this condition belongs to a Polymarket negative-risk basket
   negRiskMarketId?: string; // Polymarket negative-risk basket identifier
