@@ -1061,10 +1061,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     );
 
     const timestamp = Number(block.timestamp);
-    // NOTE: The on-chain event field is pickConfigId, but the DB column is named predictionId.
-    // This is a known misnomer — Claim.predictionId actually stores a pickConfigId.
-    // P&L code uses tokensBurned as cost basis to avoid depending on this field for joins.
-    const predictionIdLower = event.pickConfigId.toLowerCase();
+    const pickConfigIdLower = event.pickConfigId.toLowerCase();
     const positionTokenLower = event.positionToken.toLowerCase();
     const txHash = log.transactionHash || '';
     const logIdx = log.logIndex ?? 0;
@@ -1085,7 +1082,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         create: {
           chainId: this.chainId,
           marketAddress: this.contractAddress.toLowerCase(),
-          predictionId: predictionIdLower,
+          pickConfigId: pickConfigIdLower,
           holder: event.holder.toLowerCase(),
           positionToken: positionTokenLower,
           tokensBurned: event.tokensBurned.toString(),
@@ -1110,7 +1107,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     await this.checkFullyRedeemed(positionTokenLower);
 
     logger.info(
-      `[PredictionMarketEscrowIndexer:${this.chainId}] Created/replayed claim record for prediction ${predictionIdLower}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Created/replayed claim record for pickConfig ${pickConfigIdLower}`
     );
   }
 
