@@ -199,17 +199,52 @@ export async function queryAccountPnl(
         ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
       ) gs
     ),
+    -- Cost basis for claims: the holder's collateral staked per pick
+    -- configuration, per side. Claim.predictionId is a pickConfigId, and a
+    -- pickConfig fans out to many Predictions, so we aggregate the holder's
+    -- stake here (scoped to this address) before joining to claims.
+    claim_stake AS (
+      SELECT "pickConfigId" AS pc, 'predictor' AS side,
+             SUM(CAST("predictorCollateral" AS DECIMAL)) AS stake
+      FROM "Prediction"
+      WHERE predictor = ${addr} AND "pickConfigId" IS NOT NULL
+      GROUP BY "pickConfigId"
+      UNION ALL
+      SELECT "pickConfigId" AS pc, 'counterparty' AS side,
+             SUM(CAST("counterpartyCollateral" AS DECIMAL)) AS stake
+      FROM "Prediction"
+      WHERE counterparty = ${addr} AND "pickConfigId" IS NOT NULL
+      GROUP BY "pickConfigId"
+    ),
+    -- The holder may redeem the same (pickConfig, side) across several claims;
+    -- split the staked cost basis evenly across them so it is only subtracted
+    -- once in aggregate.
+    claim_counts AS (
+      SELECT "predictionId", "positionToken", COUNT(*) AS claim_count
+      FROM "Claim"
+      WHERE holder = ${addr}
+      GROUP BY "predictionId", "positionToken"
+    ),
     pnl_events AS (
-      -- Claims: account redeems settled prediction
+      -- Claims: account redeems a settled pickConfig position.
+      -- Claim.predictionId holds a pickConfigId (not a Prediction.predictionId);
+      -- side is identified by the redeemed positionToken matching the pick
+      -- configuration's predictor/counterparty token.
       SELECT
         cl."redeemedAt" AS event_ts,
-        CAST(cl."collateralPaid" AS DECIMAL) - CAST(
-          CASE WHEN p.predictor = ${addr}
-               THEN p."predictorCollateral"
-               ELSE p."counterpartyCollateral" END AS DECIMAL
-        ) AS pnl
+        CAST(cl."collateralPaid" AS DECIMAL)
+          - COALESCE(cs.stake, 0) / cc.claim_count AS pnl
       FROM "Claim" cl
-      JOIN "Prediction" p ON cl."predictionId" = p."predictionId"
+      LEFT JOIN "Picks" pk ON cl."predictionId" = pk.id
+      JOIN claim_counts cc
+        ON cc."predictionId" = cl."predictionId"
+       AND cc."positionToken" = cl."positionToken"
+      LEFT JOIN claim_stake cs
+        ON cs.pc = cl."predictionId"
+       AND cs.side = CASE
+             WHEN cl."positionToken" = pk."predictorToken" THEN 'predictor'
+             WHEN cl."positionToken" = pk."counterpartyToken" THEN 'counterparty'
+           END
       WHERE cl.holder = ${addr}
         AND cl."redeemedAt" >= ${fromEpoch} AND cl."redeemedAt" <= ${toEpoch}
       UNION ALL
