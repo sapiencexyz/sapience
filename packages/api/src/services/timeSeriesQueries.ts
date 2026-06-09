@@ -208,55 +208,49 @@ export async function queryAccountPnl(
       ) gs
     ),
     -- Cost basis for claims: the holder's collateral staked per pick
-    -- configuration, per side. A pickConfig fans out to many Predictions, so we
-    -- aggregate the holder's stake here (scoped to this address) before joining
-    -- to claims (keyed on Claim.pickConfigId).
+    -- configuration, per side, plus the tokens they were minted on that side.
+    -- Each mint issues totalCollateral (= predictor + counterparty stake) tokens
+    -- to BOTH sides — a 1:1 claim on collateral — so the holder's minted token
+    -- balance is SUM(predictor + counterparty collateral), not their own stake.
+    -- A pickConfig fans out to many Predictions, so aggregate here (scoped to
+    -- this address) before joining to claims (keyed on Claim.pickConfigId).
     claim_stake AS (
       SELECT "pickConfigId" AS pc, 'predictor' AS side,
-             SUM(CAST("predictorCollateral" AS DECIMAL)) AS stake
+             SUM(CAST("predictorCollateral" AS DECIMAL)) AS stake,
+             SUM(CAST("predictorCollateral" AS DECIMAL)
+                 + CAST("counterpartyCollateral" AS DECIMAL)) AS minted
       FROM "Prediction"
       WHERE predictor = ${addr} AND "pickConfigId" IS NOT NULL
       GROUP BY "pickConfigId"
       UNION ALL
       SELECT "pickConfigId" AS pc, 'counterparty' AS side,
-             SUM(CAST("counterpartyCollateral" AS DECIMAL)) AS stake
+             SUM(CAST("counterpartyCollateral" AS DECIMAL)) AS stake,
+             SUM(CAST("predictorCollateral" AS DECIMAL)
+                 + CAST("counterpartyCollateral" AS DECIMAL)) AS minted
       FROM "Prediction"
       WHERE counterparty = ${addr} AND "pickConfigId" IS NOT NULL
       GROUP BY "pickConfigId"
-    ),
-    -- The holder may redeem the same (pickConfig, side) across several unequal
-    -- claims. Total the tokens they redeemed per (pickConfig, side) across ALL
-    -- of their claims — deliberately NOT time-filtered, so a claim outside the
-    -- queried window still counts toward the denominator and the in-window
-    -- claim's basis share is not inflated.
-    claim_totals AS (
-      SELECT "pickConfigId", "positionToken",
-             SUM(CAST("tokensBurned" AS DECIMAL)) AS total_burned
-      FROM "Claim"
-      WHERE holder = ${addr}
-      GROUP BY "pickConfigId", "positionToken"
     ),
     pnl_events AS (
       -- Claims: account redeems a settled pickConfig position.
       -- Side is identified by the redeemed positionToken matching the pick
       -- configuration's predictor/counterparty token. Cost basis is the holder's
       -- staked collateral on that side, allocated to each claim in proportion to
-      -- the tokens it redeemed so unequal partial redemptions book the right PnL
-      -- in the right bucket (and the basis still sums to the full stake).
+      -- the tokens it redeemed OUT OF the holder's total minted tokens — so a
+      -- partial exit books only its share of basis and leaves the rest on the
+      -- still-held tokens (tokens sold on the secondary market are accounted for
+      -- there, not here). A full redemption books the entire stake.
       SELECT
         cl."redeemedAt" AS event_ts,
         CAST(cl."collateralPaid" AS DECIMAL)
           - COALESCE(
               cs.stake
                 * CAST(cl."tokensBurned" AS DECIMAL)
-                / NULLIF(ct.total_burned, 0),
+                / NULLIF(cs.minted, 0),
               0
             ) AS pnl
       FROM "Claim" cl
       LEFT JOIN "Picks" pk ON cl."pickConfigId" = pk.id
-      JOIN claim_totals ct
-        ON ct."pickConfigId" = cl."pickConfigId"
-       AND ct."positionToken" = cl."positionToken"
       LEFT JOIN claim_stake cs
         ON cs.pc = cl."pickConfigId"
        AND cs.side = CASE

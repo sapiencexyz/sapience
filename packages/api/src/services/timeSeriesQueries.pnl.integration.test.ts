@@ -26,6 +26,7 @@ const SCHEMA = `pnl_it_${process.pid}_${Date.now()}`;
 
 const HOLDER_PROP = '0xaaaa000000000000000000000000000000000001';
 const HOLDER_ZERO = '0xbbbb000000000000000000000000000000000002';
+const HOLDER_PARTIAL = '0xcccc000000000000000000000000000000000003';
 
 // Minimal slices of the tables the PnL query touches. Close/position exist only
 // so the UNION branches resolve; they stay empty for this test.
@@ -104,6 +105,25 @@ let dbAvailable = false;
       `INSERT INTO "Claim" (holder, "redeemedAt", "collateralPaid", "tokensBurned", "pickConfigId", "positionToken") VALUES
          ('${HOLDER_ZERO}', ${day(3)}, '5', '0', 'pcB', 'ptokB')`
     );
+
+    // Scenario C — PARTIAL redemption. Holder stakes 20 (predictor) against an
+    // 80 counterparty stake, so totalCollateral = 100 and they are minted 100
+    // predictor tokens (each token is a 1:1 claim on collateral). They redeem
+    // only 50 of those 100 tokens. Cost basis must be allocated against the
+    // TOTAL MINTED (100), not the total burned (50): basis = 20 * 50/100 = 10,
+    // so pnl = 60 - 10 = 50. The total-burned denominator would wrongly book the
+    // whole 20 stake on a half-exit (60 - 20 = 40).
+    await client.$executeRawUnsafe(
+      `INSERT INTO "Picks" (id, "predictorToken", "counterpartyToken") VALUES ('pcC', 'ptokC', 'ctokC')`
+    );
+    await client.$executeRawUnsafe(
+      `INSERT INTO "Prediction" ("pickConfigId", predictor, "predictorCollateral", counterparty, "counterpartyCollateral")
+       VALUES ('pcC', '${HOLDER_PARTIAL}', '20', '0xother', '80')`
+    );
+    await client.$executeRawUnsafe(
+      `INSERT INTO "Claim" (holder, "redeemedAt", "collateralPaid", "tokensBurned", "pickConfigId", "positionToken") VALUES
+         ('${HOLDER_PARTIAL}', ${day(2)}, '60', '50', 'pcC', 'ptokC')`
+    );
   }
 }
 
@@ -153,5 +173,24 @@ describe.skipIf(!dbAvailable)('queryAccountPnl (integration: real SQL)', () => {
 
     // basis falls back to 0, so pnl = collateralPaid = 5 (not 5 - 50)
     expect(nonzero).toEqual([5]);
+  });
+
+  it('allocates basis against total minted, not total redeemed, on a partial exit', async () => {
+    const points = await queryAccountPnl(
+      HOLDER_PARTIAL,
+      TimeInterval.DAY,
+      from,
+      to,
+      client
+    );
+
+    const nonzero = points
+      .filter((p) => Number(p.pnl) !== 0)
+      .map((p) => Number(p.pnl));
+
+    // minted = predictorCollateral + counterpartyCollateral = 100; redeemed 50.
+    // basis = stake(20) * 50/100 = 10 → pnl = 60 - 10 = 50.
+    // (total-burned denominator would give 60 - 20*50/50 = 40.)
+    expect(nonzero).toEqual([50]);
   });
 });
