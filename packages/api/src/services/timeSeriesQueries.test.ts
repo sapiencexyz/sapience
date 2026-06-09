@@ -265,9 +265,10 @@ describe('queryAccountPnl', () => {
     ).toBe(true);
   });
 
-  // Regression: Claim.predictionId actually stores a pickConfigId, so joining it
-  // to Prediction.predictionId matched zero rows and the Claims branch always
-  // contributed 0 PnL. Cost basis must resolve through the pick configuration.
+  // Regression: the Claim.pickConfigId column (formerly mislabeled predictionId)
+  // holds a pickConfigId, so joining it to Prediction.predictionId matched zero
+  // rows and the Claims branch always contributed 0 PnL. Cost basis must resolve
+  // through the pick configuration.
   it('attributes claim PnL via pickConfigId, not the empty predictionId join', async () => {
     mockQueryRaw.mockResolvedValue([]);
 

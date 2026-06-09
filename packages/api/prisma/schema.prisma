@@ -678,7 +678,9 @@ model Claim {
 
   chainId         Int
   marketAddress   String   @db.VarChar
-  predictionId    String   @db.VarChar
+  /// On-chain pickConfigId of the redeemed position. Historically mislabeled
+  /// `predictionId`; it has never stored a Prediction.predictionId.
+  pickConfigId    String   @db.VarChar
   holder          String   @db.VarChar
   positionToken   String   @db.VarChar
   tokensBurned    String   @db.VarChar
@@ -697,7 +699,7 @@ model Claim {
   @@unique([chainId, txHash, logIndex], map: "UQ_claim_chain_tx_log")
   @@index([chainId, marketAddress], map: "IDX_claim_chain_market")
   @@index([holder], map: "IDX_claim_holder")
-  @@index([predictionId], map: "IDX_claim_prediction")
+  @@index([pickConfigId], map: "IDX_claim_pick_config")
   @@index([redeemedAt], map: "IDX_claim_redeemed_at")
 }
 

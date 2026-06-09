@@ -29,8 +29,7 @@ import { resolveVaultAddress } from './vaultConfig';
  * for the same resolved-winning pickConfigs — otherwise a win exited via `burn()`
  * would be double-counted (once in `vaultRealizedPnL`, once in this residual).
  *
- * Clamped at 0n. The `Claim.predictionId` column actually stores the on-chain
- * pickConfigId (known indexer misnomer); we don't join through it — we just sum
+ * Clamped at 0n. We don't join through `Claim.pickConfigId` here — we just sum
  * Claim rows whose holder is the vault.
  */
 export async function calculateVaultUnredeemedClaim(

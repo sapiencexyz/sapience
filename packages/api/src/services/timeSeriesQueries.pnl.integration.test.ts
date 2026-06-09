@@ -32,7 +32,7 @@ const HOLDER_ZERO = '0xbbbb000000000000000000000000000000000002';
 const DDL = `
   CREATE TABLE "Picks" (id text PRIMARY KEY, "predictorToken" text, "counterpartyToken" text);
   CREATE TABLE "Prediction" ("pickConfigId" text, predictor text, "predictorCollateral" text, counterparty text, "counterpartyCollateral" text);
-  CREATE TABLE "Claim" (holder text, "redeemedAt" integer, "collateralPaid" text, "tokensBurned" text, "predictionId" text, "positionToken" text);
+  CREATE TABLE "Claim" (holder text, "redeemedAt" integer, "collateralPaid" text, "tokensBurned" text, "pickConfigId" text, "positionToken" text);
   CREATE TABLE "Close" ("burnedAt" integer, "predictorHolder" text, "predictorPayout" text, "predictorTokensBurned" text, "counterpartyHolder" text, "counterpartyPayout" text, "counterpartyTokensBurned" text);
   CREATE TABLE "position" (predictor text, "predictorWon" boolean, "totalCollateral" text, "predictorCollateral" text, counterparty text, "counterpartyCollateral" text, "settledAt" integer);
 `;
@@ -86,7 +86,7 @@ let dbAvailable = false;
        VALUES ('pcA', '${HOLDER_PROP}', '100', '0xother', '0')`
     );
     await client.$executeRawUnsafe(
-      `INSERT INTO "Claim" (holder, "redeemedAt", "collateralPaid", "tokensBurned", "predictionId", "positionToken") VALUES
+      `INSERT INTO "Claim" (holder, "redeemedAt", "collateralPaid", "tokensBurned", "pickConfigId", "positionToken") VALUES
          ('${HOLDER_PROP}', ${day(2)}, '30',  '10', 'pcA', 'ptokA'),
          ('${HOLDER_PROP}', ${day(5)}, '270', '90', 'pcA', 'ptokA')`
     );
@@ -101,7 +101,7 @@ let dbAvailable = false;
        VALUES ('pcB', '${HOLDER_ZERO}', '50', '0xother', '0')`
     );
     await client.$executeRawUnsafe(
-      `INSERT INTO "Claim" (holder, "redeemedAt", "collateralPaid", "tokensBurned", "predictionId", "positionToken") VALUES
+      `INSERT INTO "Claim" (holder, "redeemedAt", "collateralPaid", "tokensBurned", "pickConfigId", "positionToken") VALUES
          ('${HOLDER_ZERO}', ${day(3)}, '5', '0', 'pcB', 'ptokB')`
     );
   }

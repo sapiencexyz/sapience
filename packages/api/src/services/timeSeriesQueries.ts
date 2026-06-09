@@ -208,9 +208,9 @@ export async function queryAccountPnl(
       ) gs
     ),
     -- Cost basis for claims: the holder's collateral staked per pick
-    -- configuration, per side. Claim.predictionId is a pickConfigId, and a
-    -- pickConfig fans out to many Predictions, so we aggregate the holder's
-    -- stake here (scoped to this address) before joining to claims.
+    -- configuration, per side. A pickConfig fans out to many Predictions, so we
+    -- aggregate the holder's stake here (scoped to this address) before joining
+    -- to claims (keyed on Claim.pickConfigId).
     claim_stake AS (
       SELECT "pickConfigId" AS pc, 'predictor' AS side,
              SUM(CAST("predictorCollateral" AS DECIMAL)) AS stake
@@ -230,16 +230,15 @@ export async function queryAccountPnl(
     -- queried window still counts toward the denominator and the in-window
     -- claim's basis share is not inflated.
     claim_totals AS (
-      SELECT "predictionId", "positionToken",
+      SELECT "pickConfigId", "positionToken",
              SUM(CAST("tokensBurned" AS DECIMAL)) AS total_burned
       FROM "Claim"
       WHERE holder = ${addr}
-      GROUP BY "predictionId", "positionToken"
+      GROUP BY "pickConfigId", "positionToken"
     ),
     pnl_events AS (
       -- Claims: account redeems a settled pickConfig position.
-      -- Claim.predictionId holds a pickConfigId (not a Prediction.predictionId);
-      -- side is identified by the redeemed positionToken matching the pick
+      -- Side is identified by the redeemed positionToken matching the pick
       -- configuration's predictor/counterparty token. Cost basis is the holder's
       -- staked collateral on that side, allocated to each claim in proportion to
       -- the tokens it redeemed so unequal partial redemptions book the right PnL
@@ -254,12 +253,12 @@ export async function queryAccountPnl(
               0
             ) AS pnl
       FROM "Claim" cl
-      LEFT JOIN "Picks" pk ON cl."predictionId" = pk.id
+      LEFT JOIN "Picks" pk ON cl."pickConfigId" = pk.id
       JOIN claim_totals ct
-        ON ct."predictionId" = cl."predictionId"
+        ON ct."pickConfigId" = cl."pickConfigId"
        AND ct."positionToken" = cl."positionToken"
       LEFT JOIN claim_stake cs
-        ON cs.pc = cl."predictionId"
+        ON cs.pc = cl."pickConfigId"
        AND cs.side = CASE
              WHEN cl."positionToken" = pk."predictorToken" THEN 'predictor'
              WHEN cl."positionToken" = pk."counterpartyToken" THEN 'counterparty'
@@ -380,7 +379,7 @@ export async function queryAccountBalance(
         AND p."settledAt" IS NOT NULL
     ),
     account_claims AS (
-      SELECT "predictionId", "redeemedAt"
+      SELECT "pickConfigId", "redeemedAt"
       FROM "Claim"
       WHERE holder = ${addr}
     )
@@ -397,8 +396,13 @@ export async function queryAccountBalance(
         FROM all_claimable ac
         WHERE ac.settled_ts <= b.bucket_epoch
           AND NOT EXISTS (
+            -- FIXME (pre-existing, behavior preserved by the rename): this
+            -- compares Claim.pickConfigId to Prediction.predictionId, which are
+            -- different identifier spaces, so it matches zero rows — claimable
+            -- collateral is never decremented when a position is redeemed. Same
+            -- root cause as the accountPnl bug; resolve through pickConfigId.
             SELECT 1 FROM account_claims c
-            WHERE c."predictionId" = ac."predictionId"
+            WHERE c."pickConfigId" = ac."predictionId"
               AND c."redeemedAt" <= b.bucket_epoch
           )
       ), 0)::TEXT AS claimable_collateral
