@@ -28,6 +28,7 @@ import {
 import { inferSapienceCategorySlug } from './category';
 import { transformMatchQuestion, getPolymarketUrl } from './transform';
 import { extractEndTime } from './endtime';
+import { extractCategoryEndTime } from './extractors';
 import { isTemplatedMarket } from './templated';
 import {
   enrichMarketsWithLLM,
@@ -117,6 +118,25 @@ function sharedNegRiskMarketId(
   return allNegRisk && sameBasket ? firstId : undefined;
 }
 
+/**
+ * Deterministic category-specialist endTime for a market (unix seconds) or
+ * null. Reads the resolution time straight out of the title/description for the
+ * templated families (weather/crypto/sports/social/snapshot). When non-null it
+ * becomes the condition's endTime (top of decideEndTime's cascade) AND lets the
+ * market skip the Sonar endTime call. Tag routing uses the non-LLM inferred
+ * category since this runs before LLM enrichment.
+ */
+export function categoryEndTimeForMarket(
+  market: PolymarketMarket
+): number | null {
+  const question = transformMatchQuestion(market);
+  return extractCategoryEndTime(
+    question,
+    market.description ?? '',
+    inferSapienceCategorySlug(market)
+  );
+}
+
 export function transformToSapienceCondition(
   market: PolymarketMarket,
   groupTitle?: string,
@@ -139,6 +159,14 @@ export function transformToSapienceCondition(
   // Sonar returns UNKNOWN. Always compute it; the combiner decides whether to use it.
   const regexEndTime = extractEndTime(question, market.description ?? '');
 
+  // High-precision category specialist — top of decideEndTime's cascade, and
+  // the signal that gated this market out of the Sonar call upstream.
+  const categoryEndTime = extractCategoryEndTime(
+    question,
+    market.description ?? '',
+    inferSapienceCategorySlug(market)
+  );
+
   return {
     conditionHash: market.conditionId, // Use Polymarket's conditionId directly
     question,
@@ -156,6 +184,7 @@ export function transformToSapienceCondition(
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
     endTimeOverride: regexEndTime ?? undefined,
+    categoryEndTime: categoryEndTime ?? undefined,
     llmEndTime,
     isTemplated: isTemplatedMarket(market),
     negRisk: negRiskMarketId !== undefined,
@@ -236,6 +265,22 @@ export async function groupMarkets(
   );
   printPipelineStats(llmFilterStats, 'LLM Pre-Filter');
 
+  // Cascade gate: markets a deterministic category specialist
+  // (weather/crypto/sports/social/snapshot) can resolve skip the Sonar endTime
+  // call entirely — that's where the LLM cost is saved. Sonar still runs for
+  // every market the specialists decline. (category/shortName enrichment is
+  // unaffected and runs on all new markets.)
+  const sonarEndTimeMarkets = newMarkets.filter(
+    (m) => categoryEndTimeForMarket(m) == null
+  );
+  const gatedCount = newMarkets.length - sonarEndTimeMarkets.length;
+  if (gatedCount > 0) {
+    console.log(
+      `[LLM:endTime] cascade gate: ${gatedCount}/${newMarkets.length} markets ` +
+        `resolved by category specialists — skipping Sonar for those`
+    );
+  }
+
   // Enrich NEW markets with LLM — category/shortName and endTime run in parallel
   const [enrichments, endTimeMap] = await Promise.all([
     enrichMarketsWithLLM(newMarkets, {
@@ -243,7 +288,7 @@ export async function groupMarkets(
       apiKey: OPENROUTER_API_KEY,
       model: LLM_MODEL,
     }),
-    enrichEndTimesWithLLM(newMarkets, {
+    enrichEndTimesWithLLM(sonarEndTimeMarkets, {
       enabled: LLM_ENDTIME_SEARCH_ENABLED,
       apiKey: OPENROUTER_API_KEY,
       model: LLM_ENDTIME_MODEL,

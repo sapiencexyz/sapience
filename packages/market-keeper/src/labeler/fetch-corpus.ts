@@ -59,6 +59,11 @@ export type CorpusEntry = {
   sportsMarketType: string | null;
   groupItemTitle: string | null;
   sourceTagSlug: string | null;
+  // Sports game markets carry the scheduled start (the clean resolution signal)
+  // and the league (for the per-sport duration offset). Optional: only set by
+  // fetch-sports; absent on everything else.
+  gameStartTime?: string | null;
+  league?: string | null;
 };
 
 async function gammaGet(urlPath: string): Promise<unknown> {

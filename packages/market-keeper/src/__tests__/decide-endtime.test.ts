@@ -30,7 +30,24 @@ describe('decideEndTime', () => {
   });
 
   describe('priority table', () => {
-    it('llm-high wins over PM endDate and regex', () => {
+    it('categoryEndTime wins over LLM, regex, and PM endDate', () => {
+      const catTs = toUnixTimestamp('2099-04-01T03:59:00Z');
+      const c = makeCondition({
+        categoryEndTime: catTs,
+        llmEndTime: {
+          ts: toUnixTimestamp('2099-04-05T16:00:00Z'),
+          confidence: 'high',
+        },
+        endDate: '2099-04-01T20:00:00Z',
+        endTimeOverride: toUnixTimestamp('2099-04-02T23:59:00Z'),
+        isTemplated: true,
+      });
+      const { ts, source } = decideEndTime(c);
+      expect(ts).toBe(catTs);
+      expect(source).toBe('category');
+    });
+
+    it('llm-high wins over regex and PM endDate (no category)', () => {
       const llmTs = toUnixTimestamp('2099-04-01T16:00:00Z');
       const c = makeCondition({
         llmEndTime: { ts: llmTs, confidence: 'high' },
@@ -55,24 +72,25 @@ describe('decideEndTime', () => {
       expect(source).toBe('llm-low');
     });
 
-    it('llm-unknown (null ts) + PM endDate → pm-fallback', () => {
+    it('llm-unknown (null ts) + templated regex → regex-templated (regex now beats the PM floor)', () => {
+      const regexTs = toUnixTimestamp('2099-04-02T23:59:00Z');
       const c = makeCondition({
         llmEndTime: { ts: null, confidence: 'unknown' },
         endDate: '2099-04-01T16:00:00Z',
-        endTimeOverride: toUnixTimestamp('2099-04-02T23:59:00Z'),
+        endTimeOverride: regexTs,
         isTemplated: true,
       });
       const { ts, source } = decideEndTime(c);
-      expect(ts).toBe(toUnixTimestamp('2099-04-01T16:00:00Z'));
-      expect(source).toBe('pm-fallback');
+      expect(ts).toBe(regexTs);
+      expect(source).toBe('regex-templated');
     });
 
-    it('no LLM result + PM endDate → pm-fallback', () => {
+    it('no LLM result + PM endDate (no regex) → pm-fallback (+1 day)', () => {
       const c = makeCondition({
         endDate: '2099-04-01T16:00:00Z',
       });
       const { ts, source } = decideEndTime(c);
-      expect(ts).toBe(toUnixTimestamp('2099-04-01T16:00:00Z'));
+      expect(ts).toBe(toUnixTimestamp('2099-04-01T16:00:00Z') + 86_400);
       expect(source).toBe('pm-fallback');
     });
 
@@ -104,14 +122,15 @@ describe('decideEndTime', () => {
       expect(() => decideEndTime(c)).toThrow(/no endTime source/);
     });
 
-    it('does NOT add the legacy END_TIME_BUFFER (4h)', () => {
-      // The old combiner added 14400s (= 4h). The new one returns the
-      // resolved ts verbatim. The bug class went away when the buffer left.
+    it('pm-fallback adds exactly +1 day, not the legacy 4h buffer', () => {
+      // The old combiner added 14400s (= 4h) and the interim one returned raw
+      // endDate. The cascade floor now pads +1 day (86400s) — the
+      // benchmark-tuned correction for PM endDate sitting before true resolution.
       const pmTs = toUnixTimestamp('2099-04-01T16:00:00Z');
       const c = makeCondition({ endDate: '2099-04-01T16:00:00Z' });
-      expect(decideEndTime(c).ts).toBe(pmTs);
-      // (the legacy value would have been pmTs + 14400)
-      expect(decideEndTime(c).ts).not.toBe(pmTs + 14400);
+      expect(decideEndTime(c).ts).toBe(pmTs + 86_400);
+      expect(decideEndTime(c).ts).not.toBe(pmTs); // not raw
+      expect(decideEndTime(c).ts).not.toBe(pmTs + 14400); // not legacy 4h
     });
   });
 

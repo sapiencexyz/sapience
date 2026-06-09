@@ -44,7 +44,8 @@ export interface SapienceCondition {
   similarMarketVolume?: number; // USD total trading volume from Polymarket
   similarMarketImage?: string; // Image URL from Polymarket
   endTimeOverride?: number; // Regex-extracted endTime fallback (unix seconds), only trusted for templated markets
-  llmEndTime?: LlmEndTimeResult; // Perplexity Sonar result; primary source of truth when ts is non-null
+  categoryEndTime?: number; // High-precision category specialist (weather/crypto/sports/social/snapshot) endTime (unix seconds). Top of the cascade; when set, the market also skips Sonar.
+  llmEndTime?: LlmEndTimeResult; // Perplexity Sonar result; runs only when categoryEndTime is null
   isTemplated?: boolean; // True for sports/series/group templates; gates regex-fallback in decideEndTime
   negRisk?: boolean; // True when this condition belongs to a Polymarket negative-risk basket
   negRiskMarketId?: string; // Polymarket negative-risk basket identifier
