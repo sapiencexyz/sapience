@@ -51,7 +51,7 @@
       "wiringPeers": [],
       "configureScripts": [],
       "sdkExport": "predictionMarketEscrow",
-      "notes": "Takes factory + COLLATERAL_TOKEN_ADDRESS (USDC on Robinhood testnet) in constructor. Redeploy re-runs ConfigureFactory on the factory."
+      "notes": "Takes factory + COLLATERAL_TOKEN_ADDRESS (external, set in config.json) in constructor. Redeploy re-runs ConfigureFactory on the factory."
     },
     "SecondaryMarketEscrow": {
       "name": "SecondaryMarketEscrow",

@@ -54,22 +54,45 @@ cp deployment/testnet/.env.example deployment/testnet/.env
 #   → replace the 0x0000…0000 placeholders in deployment/testnet/config.json
 #     (PM_NETWORK_DEPLOYER_ADDRESS, DEPLOYER_ADDRESS, VAULT_MANAGER, BUDGET_MANAGER)
 
-# 2. Preview.
+# 2. Collateral: deploy the test mock once, paste the address (see below).
+
+# 3. Preview.
 pnpm manifest:plan -- --bundle testnet
 
-# 3. Dry simulation against the live RPC (no gas, no broadcast).
+# 4. Dry simulation against the live RPC (no gas, no broadcast).
 pnpm manifest:apply -- --bundle testnet --simulate
 
-# 4. Real deploy (writes addresses back to config.json + the manifest, and
+# 5. Real deploy (writes addresses back to config.json + the manifest, and
 #    regenerates the SDK addresses.ts).
 pnpm manifest:apply -- --bundle testnet
 ```
 
-Collateral on Robinhood testnet is the existing USDC
-`0xbf4479C07Dc6fdc6dAa764A0ccA06969e894275F` (referenced in `config.json`, not
-deployed). Pyth is not wired yet — `ManualConditionResolver` is the default
-resolver. Add a `PythConditionResolver` unit + `PYTH_LAZER_ADDRESS` once Pyth is
-available on Robinhood.
+### Test collateral (testnet)
+
+The collateral is treated as an **external token** — `COLLATERAL_TOKEN_ADDRESS`
+in `config.json`, exactly as the real Robinhood token will be. Until that token
+exists, deploy a throwaway mock ERC-20 (18 decimals) **once**, manually, and
+paste its address:
+
+```bash
+cd packages/protocol
+set -a; . deployment/testnet/.env; set +a   # loads PM_NETWORK_DEPLOYER_PRIVATE_KEY
+export PM_NETWORK_DEPLOYER_ADDRESS=0x<deployer>   # must match the private key
+# Optional overrides (defaults: "Test USDe" / "tUSDe" / 1,000,000e18):
+# export COLLATERAL_NAME="Test USDe" COLLATERAL_SYMBOL="tUSDe" COLLATERAL_INITIAL_SUPPLY=1000000000000000000000000
+
+forge script src/scripts/deploy/DeployCollateral.s.sol:DeployCollateral \
+  --rpc-url https://rpc.testnet.chain.robinhood.com --broadcast
+```
+
+Copy the logged `COLLATERAL_TOKEN_ADDRESS=` into `deployment/testnet/config.json`,
+then run the apply. It's NOT a manifest unit on purpose: keeping collateral
+external means the Escrow doesn't redeploy when the mock changes, and swapping to
+the real token later is a one-line config change.
+
+Pyth is not wired yet — `ManualConditionResolver` is the default resolver. Add a
+`PythConditionResolver` unit + `PYTH_LAZER_ADDRESS` once Pyth is available on
+Robinhood.
 
 ## Configuration
 
