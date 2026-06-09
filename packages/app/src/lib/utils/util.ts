@@ -6,9 +6,11 @@ import { mainnet } from 'viem/chains';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
+  CHAIN_ID_ROBINHOOD_TESTNET,
   DEFAULT_CHAIN_ID,
   etherealChain,
   etherealTestnetChain,
+  robinhoodTestnetChain,
 } from '@sapience/sdk/constants';
 import {
   DEFAULT_RETRY_COUNT,
@@ -61,6 +63,20 @@ export function getPublicClientForChainId(chainId: number) {
 
     const client = createPublicClient({
       chain: isTestnet ? etherealTestnetChain : etherealChain,
+      transport: httpWithRetry(rpcUrl),
+    });
+    publicClientCache.set(chainId, client);
+    return client;
+  }
+
+  // Robinhood testnet — not in viem/chains; resolve explicitly so reads don't
+  // fall back to viem's mainnet default RPC (eth.merkle.io).
+  if (chainId === CHAIN_ID_ROBINHOOD_TESTNET) {
+    const envKey = `NEXT_PUBLIC_RPC_${chainId}` as keyof NodeJS.ProcessEnv;
+    const envUrl = process.env[envKey as string];
+    const rpcUrl = envUrl || robinhoodTestnetChain.rpcUrls.default.http[0];
+    const client = createPublicClient({
+      chain: robinhoodTestnetChain,
       transport: httpWithRetry(rpcUrl),
     });
     publicClientCache.set(chainId, client);
