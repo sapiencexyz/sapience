@@ -515,9 +515,12 @@ export function useSapienceWriteContract({
       const { chainId: _chainId, retry } = ctx;
       // Only auto-recover for a genuine stale-session policy error, and only
       // once per user action (guards against a retry that fails the same way).
+      // Skip if a session creation is already in flight — don't tear down a
+      // session out from under a concurrent startSession.
       if (
         !isSessionPolicyError(error) ||
         sessionRecoveryInFlightRef.current ||
+        isStartingSession ||
         _chainId == null ||
         retry == null
       ) {
@@ -525,36 +528,56 @@ export function useSapienceWriteContract({
         return;
       }
 
+      // Set before any side effects so the finally always clears it, even if
+      // endSession()/toast() throw synchronously.
       sessionRecoveryInFlightRef.current = true;
-      console.warn(
-        `[${label}] Session key policy mismatch — refreshing session and retrying`,
-        error
-      );
-      Sentry.captureException(error, {
-        tags: { component: 'session', executionPath: ctx.executionPath },
-        extra: {
-          function: label,
-          chainId: _chainId,
-          isSessionPolicyError: true,
-        },
-      });
-      endSession();
-      toast({
-        title: 'Session Needs Refresh',
-        description:
-          'Approve the new session request in your wallet — we’ll retry your transaction automatically.',
-        duration: 12000,
-      });
-
       try {
+        console.warn(
+          `[${label}] Session key policy mismatch — refreshing session and retrying`,
+          error
+        );
+        Sentry.captureException(error, {
+          tags: { component: 'session', executionPath: ctx.executionPath },
+          extra: {
+            function: label,
+            chainId: _chainId,
+            isSessionPolicyError: true,
+          },
+        });
+        endSession();
+        toast({
+          title: 'Session Needs Refresh',
+          description:
+            'Approve the new session request in your wallet — we’ll retry your transaction automatically.',
+          duration: 12000,
+        });
+
         const replacement = await startReplacementSession(_chainId);
         if (!replacement) {
           // Session creation failed; startReplacementSession already toasted.
           onError?.(error as Error);
           return;
         }
+
+        // A fresh session is created eagerly only for the Ethereal/default
+        // chain; Arbitrum sessions are created lazily on first use, so the
+        // replacement has no ready client for them. Without a concrete fresh
+        // client we can't safely auto-retry (the dead client is still closed
+        // over), so fall back to a manual retry — the user's next attempt takes
+        // the lazy-creation path once React state has settled.
+        if (!replacement.sessionClient) {
+          toast({
+            title: 'Session Refreshed',
+            description:
+              'Your session is ready again. Please try the transaction once more.',
+            duration: 8000,
+          });
+          onError?.(error as Error);
+          return;
+        }
+
         // Retry once with the fresh session. Any failure here is surfaced
-        // normally (and the guard below blocks a second recovery attempt).
+        // normally (and the guard above blocks a second recovery attempt).
         await retry(replacement);
       } catch (retryError) {
         reportTransactionFailure(retryError, `${label} (retry)`, ctx);
@@ -568,6 +591,7 @@ export function useSapienceWriteContract({
       startReplacementSession,
       reportTransactionFailure,
       onError,
+      isStartingSession,
     ]
   );
 
