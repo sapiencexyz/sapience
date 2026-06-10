@@ -2,6 +2,17 @@ import { isAddress } from 'viem';
 import type { Address } from 'viem';
 import { mainnetClient, getPublicClientForChainId } from '~/lib/utils/util';
 
+/**
+ * Resolves true when a hostname must NOT be fetched (SSRF). This module is
+ * bundled for the browser and the edge runtime, neither of which can do DNS
+ * resolution, so the DNS-based guard is injected by Node-only callers
+ * (see `avatar.server.ts`). When no guard is provided we rely on the static
+ * hostname/IP-literal checks in `sanitizeAvatarUrl` alone.
+ */
+export type AvatarHostGuard = (hostname: string) => Promise<boolean>;
+
+const NO_DNS_GUARD: AvatarHostGuard = () => Promise.resolve(false);
+
 type ParsedCaip = {
   chainId: number;
   standard: 'erc721' | 'erc1155';
@@ -72,7 +83,7 @@ function isIpLiteral(hostname: string): boolean {
   );
 }
 
-function isPrivateResolvedAddress(address: string): boolean {
+export function isPrivateResolvedAddress(address: string): boolean {
   const host = address.toLowerCase();
   const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
   if (ipv4) {
@@ -122,28 +133,15 @@ export function sanitizeAvatarUrl(
   }
 }
 
-async function resolvesToBlockedAddress(hostname: string): Promise<boolean> {
-  // Browser/client-side callers only return sanitized URLs to the browser. The
-  // actual SSRF-sensitive path is `fetchJson`, which runs server-side for OG/NFT
-  // metadata resolution. DNS lookup is unavailable in browser bundles, so keep
-  // this best-effort and fail closed if Node DNS lookup itself errors.
-  if (typeof process === 'undefined' || !process.versions?.node) return false;
-
-  try {
-    const dns = await import(/* webpackIgnore: true */ 'node:dns/promises');
-    const records = await dns.lookup(hostname, { all: true, verbatim: true });
-    return records.some((record) => isPrivateResolvedAddress(record.address));
-  } catch {
-    return true;
-  }
-}
-
-async function safeFetchAvatarUrl(url: string): Promise<string | null> {
+async function safeFetchAvatarUrl(
+  url: string | null | undefined,
+  hostGuard: AvatarHostGuard = NO_DNS_GUARD
+): Promise<string | null> {
   const safe = sanitizeAvatarUrl(url);
   if (!safe) return null;
 
   const hostname = new URL(safe).hostname;
-  if (await resolvesToBlockedAddress(hostname)) return null;
+  if (await hostGuard(hostname)) return null;
 
   return safe;
 }
@@ -175,12 +173,16 @@ function parseEnsAvatarCaip(
   return { chainId, standard, contract, tokenId };
 }
 
-async function fetchJson<T = unknown>(url: string): Promise<T | null> {
+async function fetchJson<T = unknown>(
+  url: string,
+  hostGuard: AvatarHostGuard = NO_DNS_GUARD
+): Promise<T | null> {
   // SSRF guard: token metadata URLs come from attacker-controllable on-chain
   // tokenURI/uri values, so host-check every URL before fetching — not just the
   // final image URL. Blocks raw IP literals, cloud-metadata hostnames, DNS
-  // resolutions to raw IPs/private hosts, and non-http(s) schemes.
-  const safe = await safeFetchAvatarUrl(url);
+  // resolutions to raw IPs/private hosts (when a Node DNS guard is injected),
+  // and non-http(s) schemes.
+  const safe = await safeFetchAvatarUrl(url, hostGuard);
   if (!safe) return null;
   try {
     const res = await fetch(safe, {
@@ -197,7 +199,8 @@ async function fetchJson<T = unknown>(url: string): Promise<T | null> {
 
 async function resolveNftImageUrl(
   caip: ParsedCaip,
-  ownerAddress: Address
+  ownerAddress: Address,
+  hostGuard: AvatarHostGuard = NO_DNS_GUARD
 ): Promise<string | null> {
   const client =
     caip.chainId === 1
@@ -222,7 +225,7 @@ async function resolveNftImageUrl(
       args: [caip.tokenId],
     });
     const resolved = toHttpFromIpfs(tokenUri);
-    const metadata = await fetchJson<{ image?: string }>(resolved);
+    const metadata = await fetchJson<{ image?: string }>(resolved, hostGuard);
     const image = toHttpFromIpfs(String(metadata?.image || ''));
     return image || null;
   }
@@ -243,13 +246,14 @@ async function resolveNftImageUrl(
   });
   uri = replaceIdTemplate(uri, caip.tokenId);
   const resolved = toHttpFromIpfs(uri);
-  const metadata = await fetchJson<{ image?: string }>(resolved);
+  const metadata = await fetchJson<{ image?: string }>(resolved, hostGuard);
   const image = toHttpFromIpfs(String(metadata?.image || ''));
   return image || null;
 }
 
 export async function getEnsAvatarUrlForAddress(
-  address: string
+  address: string,
+  hostGuard: AvatarHostGuard = NO_DNS_GUARD
 ): Promise<string | null> {
   try {
     if (!address || !isAddress(address)) return null;
@@ -262,15 +266,18 @@ export async function getEnsAvatarUrlForAddress(
     });
     if (!avatarText) return null;
 
-    // If direct URL/IPFS CID
+    // If direct URL/IPFS CID. Run the final URL through the host guard too —
+    // not just sanitize — so callers can fetch the returned URL (e.g. the OG
+    // route's HEAD probe) without re-checking for DNS-rebinding SSRF.
     if (avatarText.startsWith('ipfs://') || avatarText.startsWith('http')) {
-      return sanitizeAvatarUrl(toHttpFromIpfs(avatarText));
+      return safeFetchAvatarUrl(toHttpFromIpfs(avatarText), hostGuard);
     }
 
     // If NFT CAIP string
     const parsed = parseEnsAvatarCaip(avatarText);
     if (parsed) {
-      return sanitizeAvatarUrl(await resolveNftImageUrl(parsed, addr));
+      const image = await resolveNftImageUrl(parsed, addr, hostGuard);
+      return safeFetchAvatarUrl(image, hostGuard);
     }
     return null;
   } catch {
