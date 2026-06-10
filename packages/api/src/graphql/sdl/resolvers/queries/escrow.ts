@@ -692,10 +692,12 @@ export const claims: NonNullable<QueryResolvers['claims']> = async (
 ) => {
   const cappedTake = Math.max(1, Math.min(take, 100));
   const holderLower = holder?.toLowerCase();
+  // The GraphQL `predictionId` arg/field is a misnomer kept for backward compat:
+  // it has always been a pickConfigId, now backed by the Claim.pickConfigId column.
   const predictionIdLower = predictionId?.toLowerCase();
   const where: Prisma.ClaimWhereInput = {};
   if (holderLower) where.holder = holderLower;
-  if (predictionIdLower) where.predictionId = predictionIdLower;
+  if (predictionIdLower) where.pickConfigId = predictionIdLower;
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (!holderLower && !predictionIdLower) return [];
   const rows = await prisma.claim.findMany({
@@ -708,7 +710,7 @@ export const claims: NonNullable<QueryResolvers['claims']> = async (
     id: r.id,
     chainId: r.chainId,
     marketAddress: r.marketAddress,
-    predictionId: r.predictionId,
+    predictionId: r.pickConfigId,
     holder: r.holder,
     positionToken: r.positionToken,
     tokensBurned: r.tokensBurned,
