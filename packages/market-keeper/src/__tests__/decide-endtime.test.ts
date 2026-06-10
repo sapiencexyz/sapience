@@ -30,6 +30,26 @@ describe('decideEndTime', () => {
   });
 
   describe('priority table', () => {
+    it('gameStartTime wins over category, LLM, regex, and PM endDate', () => {
+      const gameStartTime = '2099-04-01 00:00:00+00';
+      const expected = toUnixTimestamp('2099-04-01T03:29:00Z'); // NBA +209m
+      const c = makeCondition({
+        gameStartTime,
+        league: 'nba',
+        categoryEndTime: toUnixTimestamp('2099-04-01T03:59:00Z'),
+        llmEndTime: {
+          ts: toUnixTimestamp('2099-04-05T16:00:00Z'),
+          confidence: 'high',
+        },
+        endDate: '2099-04-01T20:00:00Z',
+        endTimeOverride: toUnixTimestamp('2099-04-02T23:59:00Z'),
+        isTemplated: true,
+      });
+      const { ts, source } = decideEndTime(c);
+      expect(ts).toBe(expected);
+      expect(source).toBe('game');
+    });
+
     it('categoryEndTime wins over LLM, regex, and PM endDate', () => {
       const catTs = toUnixTimestamp('2099-04-01T03:59:00Z');
       const c = makeCondition({

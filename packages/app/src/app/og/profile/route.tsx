@@ -21,7 +21,10 @@ import {
 import { fetchProfileData, resolveEnsInfo } from '../_profile-helpers';
 import { shortenAddress } from '~/lib/utils/util';
 
-export const runtime = 'edge';
+// Node runtime (like the sibling prediction/question OG routes): resolving an
+// ENS avatar fetches attacker-controlled NFT metadata, which needs the Node DNS
+// SSRF guard in lib/ens/avatar.server. The edge runtime cannot do DNS lookups.
+export const runtime = 'nodejs';
 
 function formatPnL(pnl: number): { text: string; color: string } {
   const abs = Math.abs(pnl);

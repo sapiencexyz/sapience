@@ -1,26 +1,11 @@
 /**
  * Regression tests for sanitizeAvatarUrl (bug 68297).
  *
- * The function is not exported, so we extract and test it indirectly
- * by re-implementing the same logic here. If the implementation changes,
- * these tests should be updated to match — the important thing is that
- * the *behavior* (blocking private IPs, allowing valid HTTPS) is covered.
- *
- * If sanitizeAvatarUrl is ever exported, switch to importing it directly.
+ * The important behavior is blocking attacker-controlled URLs that would make
+ * the server fetch private infrastructure while still allowing normal HTTPS
+ * avatar URLs.
  */
-
-// Re-implement sanitizeAvatarUrl exactly as in avatar.ts so we can unit-test it.
-// This keeps the test independent of module-level import side-effects (viem clients).
-function sanitizeAvatarUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    const u = new URL(url);
-    if (u.protocol === 'http:' || u.protocol === 'https:') return u.toString();
-    return null;
-  } catch {
-    return null;
-  }
-}
+import { sanitizeAvatarUrl } from './avatar';
 
 describe('sanitizeAvatarUrl', () => {
   // --- valid URLs that should pass ---
@@ -57,6 +42,25 @@ describe('sanitizeAvatarUrl', () => {
 
   it('rejects ftp: protocol', () => {
     expect(sanitizeAvatarUrl('ftp://example.com/file')).toBeNull();
+  });
+
+  it('rejects raw IPv4 literals, including WHATWG-normalized odd forms', () => {
+    expect(sanitizeAvatarUrl('http://127.0.0.1/avatar.png')).toBeNull();
+    expect(
+      sanitizeAvatarUrl('http://169.254.169.254/latest/meta-data/')
+    ).toBeNull();
+    expect(sanitizeAvatarUrl('http://2130706433/avatar.png')).toBeNull();
+  });
+
+  it('rejects raw IPv6 literals', () => {
+    expect(sanitizeAvatarUrl('http://[::1]/avatar.png')).toBeNull();
+    expect(sanitizeAvatarUrl('http://[fe80::1]/avatar.png')).toBeNull();
+    expect(sanitizeAvatarUrl('http://[fc00::1]/avatar.png')).toBeNull();
+  });
+
+  it('rejects cloud metadata hostnames', () => {
+    expect(sanitizeAvatarUrl('http://metadata.google.internal/')).toBeNull();
+    expect(sanitizeAvatarUrl('http://localhost/avatar.png')).toBeNull();
   });
 
   // --- null/empty handling ---

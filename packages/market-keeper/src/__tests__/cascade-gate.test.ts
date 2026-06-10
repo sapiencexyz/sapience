@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
-import { categoryEndTimeForMarket } from '../generate/grouping';
+import {
+  categoryEndTimeForMarket,
+  gameEndTimeForMarket,
+  leagueForMarket,
+} from '../generate/grouping';
 import type { PolymarketMarket } from '../types';
 
 /**
@@ -29,6 +33,22 @@ function makeMarket(
 }
 
 describe('categoryEndTimeForMarket (Sonar gate predicate)', () => {
+  it('resolves a sports gameStartTime market -> would skip Sonar before category', () => {
+    const m = makeMarket({
+      question: 'Lakers vs Celtics: Moneyline',
+      slug: 'nba-lal-bos-2099-04-01',
+      gameStartTime: '2099-04-01 00:00:00+00',
+      events: [
+        {
+          title: 'Lakers vs Celtics',
+          tags: [{ slug: 'nba', label: 'NBA' }],
+        },
+      ],
+    });
+    expect(leagueForMarket(m)).toBe('nba');
+    expect(gameEndTimeForMarket(m)).toBe(Date.UTC(2099, 3, 1, 3, 29, 0) / 1000);
+  });
+
   it('resolves a mention market -> would skip Sonar', () => {
     const m = makeMarket({
       question: 'Will Trump say "Coward" this week?',
@@ -70,8 +90,18 @@ describe('categoryEndTimeForMarket (Sonar gate predicate)', () => {
         conditionId: '0x2',
         description: 'Generic market, no window.',
       }),
+      makeMarket({
+        conditionId: '0x3',
+        question: 'Yankees vs Mets: Moneyline',
+        slug: 'mlb-yankees-mets-2099-04-01',
+        gameStartTime: '2099-04-01 00:00:00+00',
+        events: [{ title: 'Yankees vs Mets', tags: [{ slug: 'mlb' }] }],
+      }),
     ];
-    const toSonar = markets.filter((m) => categoryEndTimeForMarket(m) == null);
+    const toSonar = markets.filter(
+      (m) =>
+        gameEndTimeForMarket(m) == null && categoryEndTimeForMarket(m) == null
+    );
     expect(toSonar.map((m) => m.conditionId)).toEqual(['0x2']);
   });
 });

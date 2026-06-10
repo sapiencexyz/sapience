@@ -38,6 +38,7 @@ import {
 } from '../llm';
 import { fetchEventTags } from './tags';
 import { parseYesPrice } from '../utils/price';
+import { gameEndTime, SPORT_LEAGUES } from './extractors/sports/game';
 import {
   runPipeline,
   printPipelineStats,
@@ -137,6 +138,49 @@ export function categoryEndTimeForMarket(
   );
 }
 
+function normalizeLeagueCandidate(value: string | undefined | null): string {
+  return (value ?? '')
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-');
+}
+
+export function leagueForMarket(market: PolymarketMarket): string | undefined {
+  const rawCandidates = [
+    market.events?.[0]?.seriesSlug,
+    market.events?.[0]?.series?.[0]?.slug,
+    market.events?.[0]?.series?.[0]?.title,
+    ...(market.events?.[0]?.tags ?? []).flatMap((tag) => [tag.slug, tag.label]),
+    market.slug,
+    market.events?.[0]?.slug,
+    market.events?.[0]?.title,
+    market.question,
+  ];
+
+  const haystack = rawCandidates
+    .map(normalizeLeagueCandidate)
+    .filter(Boolean)
+    .join(' ');
+  if (!haystack) return undefined;
+
+  return SPORT_LEAGUES.find((league) => {
+    const normalizedLeague = normalizeLeagueCandidate(league);
+    return new RegExp(`(^|[^a-z0-9])${normalizedLeague}([^a-z0-9]|$)`).test(
+      haystack
+    );
+  });
+}
+
+export function gameEndTimeForMarket(market: PolymarketMarket): number | null {
+  return gameEndTime(market.gameStartTime, leagueForMarket(market));
+}
+
+function deterministicEndTimeForMarket(
+  market: PolymarketMarket
+): number | null {
+  return gameEndTimeForMarket(market) ?? categoryEndTimeForMarket(market);
+}
+
 export function transformToSapienceCondition(
   market: PolymarketMarket,
   groupTitle?: string,
@@ -159,13 +203,15 @@ export function transformToSapienceCondition(
   // Sonar returns UNKNOWN. Always compute it; the combiner decides whether to use it.
   const regexEndTime = extractEndTime(question, market.description ?? '');
 
-  // High-precision category specialist — top of decideEndTime's cascade, and
-  // the signal that gated this market out of the Sonar call upstream.
+  // High-precision category specialist — second rung of decideEndTime's
+  // cascade, after gameStartTime, and one signal that gates this market out of
+  // the Sonar call upstream.
   const categoryEndTime = extractCategoryEndTime(
     question,
     market.description ?? '',
     inferSapienceCategorySlug(market)
   );
+  const league = leagueForMarket(market);
 
   return {
     conditionHash: market.conditionId, // Use Polymarket's conditionId directly
@@ -186,6 +232,8 @@ export function transformToSapienceCondition(
     endTimeOverride: regexEndTime ?? undefined,
     categoryEndTime: categoryEndTime ?? undefined,
     llmEndTime,
+    gameStartTime: market.gameStartTime ?? undefined,
+    league,
     isTemplated: isTemplatedMarket(market),
     negRisk: negRiskMarketId !== undefined,
     negRiskMarketId,
@@ -265,19 +313,19 @@ export async function groupMarkets(
   );
   printPipelineStats(llmFilterStats, 'LLM Pre-Filter');
 
-  // Cascade gate: markets a deterministic category specialist
-  // (weather/crypto/sports/social/snapshot) can resolve skip the Sonar endTime
-  // call entirely — that's where the LLM cost is saved. Sonar still runs for
-  // every market the specialists decline. (category/shortName enrichment is
-  // unaffected and runs on all new markets.)
+  // Cascade gate: markets a deterministic rung (gameStartTime or category
+  // specialist: weather/crypto/sports/social/snapshot) can resolve skip the
+  // Sonar endTime call entirely — that's where the LLM cost is saved. Sonar
+  // still runs for every market the deterministic rungs decline.
+  // (category/shortName enrichment is unaffected and runs on all new markets.)
   const sonarEndTimeMarkets = newMarkets.filter(
-    (m) => categoryEndTimeForMarket(m) == null
+    (m) => deterministicEndTimeForMarket(m) == null
   );
   const gatedCount = newMarkets.length - sonarEndTimeMarkets.length;
   if (gatedCount > 0) {
     console.log(
       `[LLM:endTime] cascade gate: ${gatedCount}/${newMarkets.length} markets ` +
-        `resolved by category specialists — skipping Sonar for those`
+        `resolved by deterministic rungs — skipping Sonar for those`
     );
   }
 
