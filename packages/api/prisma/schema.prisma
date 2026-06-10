@@ -798,10 +798,11 @@ model CollateralTransfer {
   @@map("collateral_transfer")
 }
 
-/// Materialized top-N tag list for `Query.popularTags`. Refreshed by the
-/// keeper on the same cadence as condition_group aggregates; the
-/// resolver reads from this table instead of running the
-/// `unnest(tags)` aggregation against `condition` on every miss.
+/// Materialized top-N tag list for `Query.popularTags` (v1) and
+/// `Query.tags` (v2). No scheduled refresher exists: the resolvers
+/// refresh it inline when its newest `refreshedAt` is older than
+/// POPULAR_TAGS_MAX_AGE_MS, instead of running the `unnest(tags)`
+/// aggregation against `condition` on every miss.
 model PopularTag {
   tag         String   @id @db.VarChar
   rank        Int

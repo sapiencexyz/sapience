@@ -1115,8 +1115,9 @@ export type Query = {
    */
   questions: QuestionConnection;
   /**
-   * Tags attached to public conditions, backed by the keeper-refreshed
-   * `popular_tag` materialization. Default order is `CONDITION_COUNT DESC`
+   * Tags attached to public conditions, backed by the `popular_tag`
+   * materialization (refreshed lazily by reads when older than ~1h).
+   * Default order is `CONDITION_COUNT DESC`
    * with `first: 20` — the canonical "popular tags" feed. Sort by `NAME`
    * for an alphabetical browse.
    */
@@ -1517,8 +1518,9 @@ export type SimilarMarket = {
  * A tag attached to public conditions. Not a Node — the `name` itself is
  * the natural key, so refetch by globalId would be redundant.
  *
- * `conditionCount` is the denormalized usage count maintained by the
- * keeper's `popular_tag` refresh; treat it as near-real-time.
+ * `conditionCount` is the denormalized usage count from the `popular_tag`
+ * materialization, which reads refresh when it goes stale (~hourly);
+ * treat it as near-real-time.
  */
 export type Tag = {
   __typename?: 'Tag';
