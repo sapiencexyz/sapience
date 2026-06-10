@@ -8,9 +8,10 @@
 #   2. Install only the BACKEND dependency closure (api, relayer, market-keeper
 #      + @sapience/sdk), skipping the frontend packages (app, ui, docs) and
 #      their heavy deps (Next.js, etc.) that this image never runs.
-# Dev dependencies ARE kept: the services run TypeScript directly via `tsx`, and
-# the api boot sequence runs `prisma migrate deploy` + `graphql-codegen` — all of
-# which live in devDependencies, so a `--prod` prune would break startup.
+# Dev dependencies ARE kept: the services run TypeScript directly via `tsx`,
+# and the CI-run db-migrate task runs `prisma migrate deploy` from this same
+# image — both live in devDependencies, so a `--prod` prune would break them.
+# Prisma client + GraphQL codegen run at BUILD time (below), not at boot.
 
 # ── Builder ───────────────────────────────────────────────────────────
 FROM node:22-slim AS builder
@@ -70,8 +71,12 @@ COPY packages/market-keeper/ packages/market-keeper/
 # now safe to run because the SDK source has been copied above.
 RUN pnpm install --frozen-lockfile --offline $BACKEND_FILTER
 
-# Generate Prisma client
-RUN pnpm --filter @sapience/api run prisma:generate
+# Generate Prisma client + GraphQL resolver types at BUILD time. The start
+# commands no longer run `prisma:setup` at boot — migrations are applied by
+# the CI-run db-migrate task (release gate), and codegen output ships in the
+# image. Neither step needs a database connection.
+RUN pnpm --filter @sapience/api run prisma:generate \
+ && pnpm --filter @sapience/api run generate-resolvers
 
 # Compile market-keeper scripts for the cron runtime and fail the image build
 # if the start script's first target is missing.

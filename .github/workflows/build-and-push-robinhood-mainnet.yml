@@ -54,9 +54,71 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+  # Release gate: run `prisma migrate deploy` as a one-off Fargate task BEFORE
+  # rolling any service. If it fails this job goes red, `deploy` never runs,
+  # and the old task definitions keep serving untouched. The services no
+  # longer run migrations at boot.
+  migrate:
     runs-on: ubuntu-latest
     needs: build-and-push
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.CI_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Register db-migrate task definition with the new image
+        run: |
+          set -euo pipefail
+          aws ecs describe-task-definition \
+            --task-definition db-migrate-rh-main \
+            --query 'taskDefinition' > task-def.json
+          NEW_IMAGE="${{ steps.ecr.outputs.registry }}/api-service-rh-main:${{ needs.build-and-push.outputs.image_tag }}"
+          jq --arg img "$NEW_IMAGE" '
+            .containerDefinitions[0].image = $img
+            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+          ' task-def.json > new-task-def.json
+          aws ecs register-task-definition --cli-input-json file://new-task-def.json \
+            --query 'taskDefinition.[family,revision]' --output text
+
+      - name: Run migration task and wait for completion
+        run: |
+          set -euo pipefail
+          # Borrow api-service's live network config (private subnets + the
+          # baseline SG with DB access) instead of hardcoding subnet/SG ids.
+          NETWORK_CONFIG=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" --services api-service-rh-main \
+            --query 'services[0].networkConfiguration' --output json)
+          RUN_OUTPUT=$(aws ecs run-task \
+            --cluster "$ECS_CLUSTER" \
+            --task-definition db-migrate-rh-main \
+            --launch-type FARGATE \
+            --network-configuration "$NETWORK_CONFIG" \
+            --enable-ecs-managed-tags \
+            --tags key=Environment,value=v1-robinhood-mainnet key=Project,value=sapience key=Stack,value=sapience-core \
+            --output json)
+          TASK_ARN=$(echo "$RUN_OUTPUT" | jq -r '.tasks[0].taskArn // empty')
+          if [ -z "$TASK_ARN" ]; then
+            echo "run-task failed:" && echo "$RUN_OUTPUT" | jq '.failures'
+            exit 1
+          fi
+          echo "Migration task: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN"
+          DESCRIBE=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN" --output json)
+          EXIT_CODE=$(echo "$DESCRIBE" | jq -r '.tasks[0].containers[0].exitCode // "none"')
+          STOP_REASON=$(echo "$DESCRIBE" | jq -r '.tasks[0].stoppedReason // ""')
+          echo "Exit code: $EXIT_CODE ($STOP_REASON)"
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed — release blocked, services untouched. Logs: /ecs/db-migrate-rh-main"
+            exit 1
+          fi
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build-and-push, migrate]
     strategy:
       fail-fast: false
       matrix:
@@ -98,7 +160,9 @@ jobs:
 
   refresh-scheduled-tasks:
     runs-on: ubuntu-latest
-    needs: build-and-push
+    # Gated on migrate too: compute-stats queries the DB, so its new revision
+    # must not become latest if the schema migration failed.
+    needs: [build-and-push, migrate]
     strategy:
       fail-fast: false
       matrix:
