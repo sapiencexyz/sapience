@@ -28,7 +28,7 @@ export function showHelp(): void {
   console.log(`
 Usage: tsx generate-sapience-conditions.ts [options]
 
-Fetches markets ending within 7 days from Polymarket and submits them to the Sapience API.
+Fetches markets ending within 90 days from Polymarket and submits them to the Sapience API.
 
 Options:
   --dry-run      Show what would be submitted without actually submitting
@@ -81,7 +81,7 @@ export async function main() {
   }
 
   try {
-    // Fetch Polymarket markets ending within 7 days
+    // Fetch Polymarket markets ending within 90 days
     const markets = await fetchEndingSoonestMarkets();
 
     const sapienceData = await groupMarkets(markets, apiUrl);

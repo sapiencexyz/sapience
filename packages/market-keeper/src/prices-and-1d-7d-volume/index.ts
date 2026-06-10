@@ -6,7 +6,7 @@
  * and submits batch price + volume updates.
  *
  * This covers markets outside the generate/relist windows
- * (e.g., markets ending >21 days from now).
+ * (e.g., markets ending >90 days from now).
  */
 
 import 'dotenv/config';
