@@ -46,6 +46,7 @@ import {
   UNGROUPED_MARKET_FILTERS,
   createLlmPreFilter,
   checkExistingConditions,
+  matchesAlwaysIncludePatterns,
   type MarketGroup,
   type ExistingCondition,
 } from './pipeline';
@@ -181,6 +182,35 @@ function deterministicEndTimeForMarket(
   return gameEndTimeForMarket(market) ?? categoryEndTimeForMarket(market);
 }
 
+/**
+ * Decide which NEW markets still need the (expensive) Perplexity Sonar endTime
+ * call, given the category-enrichment verdict. A market is gated OUT when EITHER:
+ *
+ *   1. a deterministic rung already resolves its endTime (gameStartTime or a
+ *      category specialist) — the existing cascade gate, OR
+ *   2. the LLM labeled it `crypto` and it isn't an always-include market — those
+ *      are dropped by the crypto filter (NonCryptoConditionFilter) before
+ *      submission, so a Sonar call on them is pure waste. Because dropped markets
+ *      are never persisted, they re-enter the pipeline as "new" every run, so the
+ *      waste repeats forever until this gate skips them.
+ *
+ * This mirrors the post-LLM crypto filter's keep-rule (categorySlug !== 'crypto'
+ * OR always-include), so we only skip Sonar for markets we won't submit anyway.
+ * A market with no enrichment entry (unknown category) is conservatively kept.
+ */
+export function marketsNeedingSonar(
+  markets: PolymarketMarket[],
+  enrichments: Map<string, MarketEnrichmentOutput>
+): PolymarketMarket[] {
+  return markets.filter((m) => {
+    if (deterministicEndTimeForMarket(m) != null) return false;
+    const category = enrichments.get(m.conditionId)?.category;
+    const droppedByCryptoFilter =
+      category === 'crypto' && !matchesAlwaysIncludePatterns(m.question);
+    return !droppedByCryptoFilter;
+  });
+}
+
 export function transformToSapienceCondition(
   market: PolymarketMarket,
   groupTitle?: string,
@@ -313,35 +343,34 @@ export async function groupMarkets(
   );
   printPipelineStats(llmFilterStats, 'LLM Pre-Filter');
 
-  // Cascade gate: markets a deterministic rung (gameStartTime or category
-  // specialist: weather/crypto/sports/social/snapshot) can resolve skip the
-  // Sonar endTime call entirely — that's where the LLM cost is saved. Sonar
-  // still runs for every market the deterministic rungs decline.
-  // (category/shortName enrichment is unaffected and runs on all new markets.)
-  const sonarEndTimeMarkets = newMarkets.filter(
-    (m) => deterministicEndTimeForMarket(m) == null
-  );
+  // Category/shortName enrichment runs FIRST (cheap GPT call): its verdict feeds
+  // the Sonar gate below. Markets the LLM labels crypto are dropped by the crypto
+  // filter before submission, so we must know the category before deciding
+  // whether the expensive Sonar endTime call is worth making. This sequences what
+  // used to be a parallel Promise.all — a small latency cost on a cron job in
+  // exchange for not paying Sonar on markets we'll throw away.
+  const enrichments = await enrichMarketsWithLLM(newMarkets, {
+    enabled: LLM_ENRICHMENT_ENABLED,
+    apiKey: OPENROUTER_API_KEY,
+    model: LLM_MODEL,
+  });
+
+  // Sonar gate: skip markets a deterministic rung resolves (existing behavior)
+  // AND markets the crypto filter will drop (new). See marketsNeedingSonar.
+  const sonarEndTimeMarkets = marketsNeedingSonar(newMarkets, enrichments);
   const gatedCount = newMarkets.length - sonarEndTimeMarkets.length;
   if (gatedCount > 0) {
     console.log(
       `[LLM:endTime] cascade gate: ${gatedCount}/${newMarkets.length} markets ` +
-        `resolved by deterministic rungs — skipping Sonar for those`
+        `skip Sonar (deterministic rung or crypto-filtered)`
     );
   }
 
-  // Enrich NEW markets with LLM — category/shortName and endTime run in parallel
-  const [enrichments, endTimeMap] = await Promise.all([
-    enrichMarketsWithLLM(newMarkets, {
-      enabled: LLM_ENRICHMENT_ENABLED,
-      apiKey: OPENROUTER_API_KEY,
-      model: LLM_MODEL,
-    }),
-    enrichEndTimesWithLLM(sonarEndTimeMarkets, {
-      enabled: LLM_ENDTIME_SEARCH_ENABLED,
-      apiKey: OPENROUTER_API_KEY,
-      model: LLM_ENDTIME_MODEL,
-    }),
-  ]);
+  const endTimeMap = await enrichEndTimesWithLLM(sonarEndTimeMarkets, {
+    enabled: LLM_ENDTIME_SEARCH_ENABLED,
+    apiKey: OPENROUTER_API_KEY,
+    model: LLM_ENDTIME_MODEL,
+  });
 
   // Filter out existing markets from groups and ungrouped (no need to submit them)
   const newGroups = filteredGroups.filter(
