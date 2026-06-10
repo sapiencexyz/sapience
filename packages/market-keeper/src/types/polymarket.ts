@@ -17,6 +17,7 @@ export interface PolymarketMarket {
   category?: string;
   questionID?: string;
   sportsMarketType?: string;
+  gameStartTime?: string | null;
   events?: Array<{
     id?: string;
     title?: string;

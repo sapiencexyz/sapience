@@ -91,6 +91,7 @@ import {
 import { handleIdentify, handleAuctionReceived } from '../handlers/escrow';
 import { _resetBroadcastLedgerForTests } from '../broadcastLedger';
 import { verifyMessage } from 'viem';
+import { config } from '../config';
 
 // ============================================================================
 // Test helpers
@@ -688,6 +689,64 @@ describe('Escrow Handlers', () => {
       // Unverified should still pass through
       expect(addEscrowBid).toHaveBeenCalled();
       expect(bidsSubmitted.inc).toHaveBeenCalledWith({ status: 'success' });
+    });
+
+    it('caps the number of bids one connection can place on an auction', async () => {
+      vi.mocked(getEscrowAuction).mockReturnValue({
+        auction: baseAuctionPayload,
+        bids: [],
+        deadlineMs: Date.now() + 60000,
+      } as never);
+      // Unverified is the worst case: forged bids the relayer can't reject.
+      vi.mocked(validateBid).mockResolvedValue({
+        status: 'unverified',
+        code: 'SIGNATURE_UNVERIFIABLE',
+        reason: 'smart_contract_signer',
+      });
+      vi.mocked(addEscrowBid).mockReturnValue({
+        ...baseBid,
+        receivedAt: new Date().toISOString(),
+      } as never);
+      vi.mocked(getEscrowBids).mockReturnValue([]);
+
+      const client = mockClient();
+      const subs = mockSubs();
+      const cap = config.MAX_BIDS_PER_CONNECTION_PER_AUCTION;
+
+      // First `cap` bids from this connection are accepted...
+      for (let i = 0; i < cap; i++) {
+        await handleBidSubmit(
+          client,
+          { ...baseBid, counterpartySignature: `0xsig${i}` } as never,
+          subs
+        );
+      }
+      expect(addEscrowBid).toHaveBeenCalledTimes(cap);
+
+      // ...the next one from the same connection is rejected without storing.
+      vi.mocked(addEscrowBid).mockClear();
+      const overLimit = await handleBidSubmit(
+        client,
+        { ...baseBid, counterpartySignature: '0xsigOverLimit' } as never,
+        subs
+      );
+      expect(addEscrowBid).not.toHaveBeenCalled();
+      expect(overLimit).toBe(false); // capacity limit, not a validation failure
+      expect(client.send).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          type: 'bid.ack',
+          payload: expect.objectContaining({ error: 'bid_limit_reached' }),
+        })
+      );
+
+      // A different connection is unaffected by the first connection's count.
+      const otherClient = mockClient();
+      await handleBidSubmit(
+        otherClient,
+        { ...baseBid, counterpartySignature: '0xsigOther' } as never,
+        subs
+      );
+      expect(addEscrowBid).toHaveBeenCalledTimes(1);
     });
   });
 });

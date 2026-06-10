@@ -43,10 +43,22 @@ export default {
       return forwardToOrigin(request, env);
     }
 
+    // Defense-in-depth against cross-user cache poisoning: the cache key is the
+    // request URL + body hash only and does NOT include auth headers. Caching is
+    // *supposed* to be safe because per-user queries never set @cacheControl
+    // (so the origin omits s-maxage and we don't store them). But that invariant
+    // lives only in resolver annotations — a single mistake would let one user's
+    // authed response be served to everyone. So we never read from or write to
+    // the cache for any request that carries identity, regardless of s-maxage.
+    if (hasAuthContext(request)) {
+      return forwardToOrigin(request, env);
+    }
+
     const body = await request.text();
 
-    // Skip caching for mutations
-    if (isMutation(body)) {
+    // Skip caching for mutations and for anything that isn't a single GraphQL
+    // query object (e.g. batched array bodies, which isMutation can't inspect).
+    if (!isSingleCacheableQuery(body) || isMutation(body)) {
       return forwardToOrigin(
         new Request(request.url, {
           method: 'POST',
@@ -130,6 +142,39 @@ async function forwardToOrigin(
           : undefined,
     })
   );
+}
+
+/**
+ * True if the request carries any per-identity context. Such requests must
+ * bypass the shared edge cache entirely so one caller's response is never
+ * stored under a key another caller could hit.
+ */
+function hasAuthContext(request: Request): boolean {
+  return (
+    request.headers.has('Authorization') ||
+    request.headers.has('Cookie') ||
+    request.headers.has('x-admin-signature')
+  );
+}
+
+/**
+ * True only for a single GraphQL operation object (`{ query: "..." }`).
+ * Batched requests (a JSON array of operations) return false so they are
+ * never cached — isMutation only inspects a single `query` field and would
+ * otherwise let a batch containing a mutation slip through as cacheable.
+ */
+function isSingleCacheableQuery(body: string): boolean {
+  try {
+    const parsed = JSON.parse(body) as unknown;
+    return (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      !Array.isArray(parsed) &&
+      typeof (parsed as { query?: unknown }).query === 'string'
+    );
+  } catch {
+    return false;
+  }
 }
 
 function isMutation(body: string): boolean {

@@ -234,7 +234,7 @@ COPY "Picks" ("id", "createdAt", "chainId", "marketAddress", "totalPredictorColl
 
 -- Claim: 63 rows
 TRUNCATE TABLE "Claim" RESTART IDENTITY CASCADE;
-COPY "Claim" ("id", "createdAt", "chainId", "marketAddress", "predictionId", "holder", "positionToken", "tokensBurned", "collateralPaid", "redeemedAt", "txHash", "refCode", "logIndex") FROM STDIN WITH (FORMAT CSV, QUOTE '"', ESCAPE '"');
+COPY "Claim" ("id", "createdAt", "chainId", "marketAddress", "pickConfigId", "holder", "positionToken", "tokensBurned", "collateralPaid", "redeemedAt", "txHash", "refCode", "logIndex") FROM STDIN WITH (FORMAT CSV, QUOTE '"', ESCAPE '"');
 63,2026-04-22 07:06:52.228,13374202,0xd2c147f9294b13ff3cf1a0b3b52c54969adbb2ca,0x8300f336ae7e8b91f2074a8637580ffa18fafbc5cf86320720692c39191a7ccb,0xd2b8da7b659a8273d36bc6a28c3c2521c5f9113f,0x326a2bb63bd329e0981c40bee31d75c22daedda9,35979869443163800000,35979869443163800000,1776841586,0xf8343026fe60cadfc1190af3f40b3e76a6254126a7662e2929b0cc1a6a33a22f,,-63
 62,2026-04-20 03:55:56.147,13374202,0x9afaaada6dc3a5013ef6fbaab203a55102e329eb,0x8cd6aaedc82fe7f54455edc0dd8297f7adcda28c21dcfc650b014bfad34037e6,0x131e278cfc6ed4863aaf0eb9ce2d915aef775045,0x1782d54eb3e8a8e84825ad9d2fe27929375fe941,33639579209398757000,33639579209398757000,1776657351,0x21310ad75f093f2bb7a9ecad0e95aae20a9f20a2c67a553ecc31bbed650d9b0b,,-62
 61,2026-04-20 03:55:55.586,13374202,0x9afaaada6dc3a5013ef6fbaab203a55102e329eb,0xb4482a4d125f91755e79f67bcde4e23f9c18e22ce6314c9d446938edcff57a25,0x131e278cfc6ed4863aaf0eb9ce2d915aef775045,0x3e14a86ee37fffd838e83f67b264a34b036d8fb3,11137885913824557400,11137885913824557400,1776657351,0x21310ad75f093f2bb7a9ecad0e95aae20a9f20a2c67a553ecc31bbed650d9b0b,,-61

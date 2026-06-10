@@ -68,8 +68,10 @@ export async function adminAuth(
   res: Response,
   next: NextFunction
 ) {
-  // In local development, skip admin auth checks
-  if (!config.isProd) {
+  // In local development, skip admin auth checks. Note: this is gated on
+  // `isDev` (NODE_ENV === 'development') NOT `!isProd` — staging is a publicly
+  // reachable deployment and must enforce signature auth like production.
+  if (config.isDev) {
     return next();
   }
 
@@ -166,8 +168,10 @@ function createCorsOptions(request: Request): cors.CorsOptions {
       origin: string | undefined,
       callback: (error: Error | null, allow?: boolean) => void
     ) => {
-      // Allow all requests unless in production
-      if (!config.isProd) {
+      // Allow all origins only in local development. Staging enforces the
+      // same origin allowlist as production (see isStagingRequest below for
+      // the LAN-dev-origin carve-out).
+      if (config.isDev) {
         callback(null, true);
         return;
       }
