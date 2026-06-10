@@ -1358,6 +1358,14 @@ export type QuestionFilter = {
   endsAt?: InputMaybe<IntRangeFilter>;
   /** Range over the Polymarket-derived `estimatedPrice` 0–1 probability. */
   estimatedPrice?: InputMaybe<FloatFilter>;
+  /**
+   * Restrict to one side of the `QuestionItem` union, by *rendered* kind:
+   * `CONDITION` returns items that resolve to a standalone Condition
+   * (ungrouped conditions plus single-condition groups, which the feed
+   * unwraps); `CONDITION_GROUP` returns multi-condition ConditionGroups
+   * only. Both kinds when omitted.
+   */
+  questionType?: InputMaybe<QuestionItemKind>;
   /** Resolution-status filter; defaults to ALL when omitted. */
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   /**
@@ -1387,6 +1395,12 @@ export type QuestionFilter = {
  * type via inline fragments.
  */
 export type QuestionItem = Condition | ConditionGroup;
+
+/**
+ * Which side of the `QuestionItem` union a feed item resolves to. Values
+ * mirror the union's member type names.
+ */
+export type QuestionItemKind = 'CONDITION' | 'CONDITION_GROUP';
 
 export type QuestionOrder = {
   direction: OrderDirection;

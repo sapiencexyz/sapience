@@ -1594,6 +1594,23 @@ input QuestionFilter {
   the group's conditions. Inclusive on both bounds.
   """
   endsAt: IntRangeFilter
+  """
+  Restrict to one side of the `QuestionItem` union, by *rendered* kind:
+  `CONDITION` returns items that resolve to a standalone Condition
+  (ungrouped conditions plus single-condition groups, which the feed
+  unwraps); `CONDITION_GROUP` returns multi-condition ConditionGroups
+  only. Both kinds when omitted.
+  """
+  questionType: QuestionItemKind
+}
+
+"""
+Which side of the `QuestionItem` union a feed item resolves to. Values
+mirror the union's member type names.
+"""
+enum QuestionItemKind {
+  CONDITION
+  CONDITION_GROUP
 }
 
 """
