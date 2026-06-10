@@ -48,6 +48,13 @@ export default {
     `bash -c 'cd packages/protocol && forge fmt ${files.join(' ')}'`,
   ],
 
+  // Prisma migrations — new migrations must be wrapped in BEGIN;/COMMIT;
+  // (prisma migrate deploy does not wrap them itself). Function form: the
+  // script scans the migrations dir on its own, file args are not needed.
+  'packages/api/prisma/migrations/**/migration.sql': () => [
+    'bash packages/api/scripts/check-migrations-transactional.sh',
+  ],
+
   // Non-code files across all packages and root
   '**/*.{json,css,scss,md,mdx}': ['prettier --write'],
 };

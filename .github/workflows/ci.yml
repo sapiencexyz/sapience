@@ -24,6 +24,7 @@ jobs:
       ui: ${{ steps.filter.outputs.ui }}
       market-keeper: ${{ steps.filter.outputs.market-keeper }}
       docs: ${{ steps.filter.outputs.docs }}
+      migrations: ${{ steps.filter.outputs.migrations }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,6 +63,20 @@ jobs:
               - 'packages/sdk/types/escrow.ts'
               - 'packages/sdk/types/secondary.ts'
               - 'pnpm-lock.yaml'
+            migrations:
+              - 'packages/api/prisma/migrations/**'
+
+  # New Prisma migrations must be wrapped in BEGIN;/COMMIT; — prisma migrate
+  # deploy does not wrap them itself, and an unwrapped migration failing
+  # halfway leaves the schema partially applied. Same check runs pre-commit
+  # (lint-staged) and in the deploy pipelines' migrate gate.
+  check-migrations-transactional:
+    needs: changes
+    if: needs.changes.outputs.migrations == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash packages/api/scripts/check-migrations-transactional.sh
 
   test-api:
     needs: changes
