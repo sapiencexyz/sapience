@@ -283,6 +283,14 @@ export function setupMiddleware(app: Express) {
       max: config.RATE_LIMIT_MAX_REQUESTS,
       standardHeaders: true,
       legacyHeaders: false,
+      // Internal services (Railway bots) authenticate with a shared secret
+      // instead of an IP allowlist — Railway egress IPs are pooled and
+      // rotate, so IP-based exemptions would silently break. The Boolean()
+      // guard keeps the empty-string default from matching an empty header.
+      skip: (req) =>
+        Boolean(config.INTERNAL_RATE_LIMIT_BYPASS_TOKEN) &&
+        req.headers['x-internal-token'] ===
+          config.INTERNAL_RATE_LIMIT_BYPASS_TOKEN,
       handler: (req, res) => {
         const reqIdRaw = (req as Request & { id?: string | number }).id;
         const requestId =
