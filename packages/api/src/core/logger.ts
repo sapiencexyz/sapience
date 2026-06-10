@@ -56,6 +56,7 @@ const resolveIsDev = (): boolean => process.env.NODE_ENV === 'development';
 const REDACT_PATHS = [
   'req.headers.authorization',
   'req.headers["x-admin-signature"]',
+  'req.headers["x-internal-token"]',
   'res.headers["set-cookie"]',
 ];
 
