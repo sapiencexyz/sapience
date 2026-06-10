@@ -5,7 +5,7 @@
  * the server fetch private infrastructure while still allowing normal HTTPS
  * avatar URLs.
  */
-import { sanitizeAvatarUrl } from './avatar';
+import { sanitizeAvatarUrl, isPrivateResolvedAddress } from './avatar';
 
 describe('sanitizeAvatarUrl', () => {
   // --- valid URLs that should pass ---
@@ -83,6 +83,59 @@ describe('sanitizeAvatarUrl', () => {
 
   it('returns null for bare path', () => {
     expect(sanitizeAvatarUrl('/etc/passwd')).toBeNull();
+  });
+});
+
+describe('isPrivateResolvedAddress', () => {
+  it('flags IPv4 loopback, private, link-local, and CGNAT ranges', () => {
+    for (const ip of [
+      '0.0.0.0',
+      '10.1.2.3',
+      '127.0.0.1',
+      '100.64.0.1', // CGNAT
+      '100.127.255.255', // CGNAT upper bound
+      '169.254.169.254', // cloud metadata
+      '172.16.0.1',
+      '172.31.255.255',
+      '192.168.1.1',
+    ]) {
+      expect(isPrivateResolvedAddress(ip)).toBe(true);
+    }
+  });
+
+  it('allows ordinary public IPv4 addresses', () => {
+    for (const ip of ['93.184.216.34', '8.8.8.8', '100.63.0.1', '172.15.0.1']) {
+      expect(isPrivateResolvedAddress(ip)).toBe(false);
+    }
+  });
+
+  it('flags IPv6 loopback, unspecified, link-local, and ULA', () => {
+    for (const ip of ['::1', '::', 'fe80::1', 'fc00::1', 'fd12:3456::1']) {
+      expect(isPrivateResolvedAddress(ip)).toBe(true);
+    }
+  });
+
+  it('allows ordinary public IPv6 addresses', () => {
+    expect(isPrivateResolvedAddress('2001:db8::1')).toBe(false);
+    expect(isPrivateResolvedAddress('2606:4700:4700::1111')).toBe(false);
+  });
+
+  // Regression for the mapped-IPv6 gap: ::ffff:a.b.c.d must be unwrapped and
+  // run through the IPv4 rules, including the 172.16/12 and 100.64/10 ranges
+  // the old hard-coded ::ffff: prefix list missed.
+  it('unwraps IPv4-mapped IPv6 and applies the IPv4 rules symmetrically', () => {
+    for (const ip of [
+      '::ffff:10.0.0.1',
+      '::ffff:127.0.0.1',
+      '::ffff:169.254.169.254',
+      '::ffff:172.16.0.1', // previously slipped through
+      '::ffff:192.168.0.1',
+      '::ffff:100.64.0.1', // previously slipped through
+    ]) {
+      expect(isPrivateResolvedAddress(ip)).toBe(true);
+    }
+    // ...but a mapped *public* address is still allowed.
+    expect(isPrivateResolvedAddress('::ffff:93.184.216.34')).toBe(false);
   });
 });
 

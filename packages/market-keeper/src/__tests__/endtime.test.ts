@@ -672,6 +672,18 @@ describe('extractEndTime', () => {
       ).toBe(Math.floor(new Date('2027-01-15T23:59:00Z').getTime() / 1000));
     });
 
+    it('the pronoun "us" does NOT infer a US timezone → 23:59 UTC', () => {
+      // Regression: context inference must key off the country abbreviation
+      // "US", not the lowercase pronoun "us". A non-US market that merely says
+      // "join us" should fall back to UTC, not America/New_York.
+      expect(
+        extractEndTime(
+          'Will the team win the cup?',
+          'Join us — the final is scheduled to take place on January 15, 2027.'
+        )
+      ).toBe(Math.floor(new Date('2027-01-15T23:59:00Z').getTime() / 1000));
+    });
+
     it('explicit timezone abbreviation overrides context', () => {
       // Question carries US-themed words but description names PT explicitly;
       // PT should win — and DST-aware (PDT = UTC-7 in July).

@@ -231,7 +231,10 @@ export function inferContextZone(text: string): string | null {
     /\b(u\.s\.|usa|u\.s\.a|united states|american|president|presidential|senate|senator|congress|congressional|house of representatives|supreme court|federal reserve|white house|electoral|inauguration|governor|nfl|nba|mlb|nhl|ncaa|wnba)\b/.test(
       t
     ) ||
-    /\bus\b/.test(t)
+    // Bare "US" as the country abbreviation — matched case-sensitively against
+    // the ORIGINAL text so the lowercase pronoun "us" ("join us", "tell us")
+    // doesn't get mistaken for a United-States context.
+    /\bUS\b/.test(text)
   ) {
     return 'America/New_York';
   }

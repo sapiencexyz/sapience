@@ -84,7 +84,15 @@ function isIpLiteral(hostname: string): boolean {
 }
 
 export function isPrivateResolvedAddress(address: string): boolean {
-  const host = address.toLowerCase();
+  let host = address.toLowerCase();
+
+  // Unwrap an IPv4-mapped IPv6 address (`::ffff:a.b.c.d`) so the IPv4 rules
+  // below apply to it symmetrically. Otherwise a mapped private address whose
+  // range wasn't hard-coded here (e.g. `::ffff:172.16.0.1` or a `::ffff:100.64`
+  // CGNAT address) would slip past the guard.
+  const mapped = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(host);
+  if (mapped) host = mapped[1];
+
   const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
   if (ipv4) {
     const [, aRaw, bRaw] = ipv4;
@@ -106,11 +114,7 @@ export function isPrivateResolvedAddress(address: string): boolean {
     host === '::' ||
     host.startsWith('fe80:') ||
     host.startsWith('fc') ||
-    host.startsWith('fd') ||
-    host.startsWith('::ffff:127.') ||
-    host.startsWith('::ffff:10.') ||
-    host.startsWith('::ffff:169.254.') ||
-    host.startsWith('::ffff:192.168.')
+    host.startsWith('fd')
   );
 }
 
