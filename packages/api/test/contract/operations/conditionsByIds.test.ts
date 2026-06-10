@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CONDITIONS_BY_IDS_QUERY } from '@sapience/sdk/queries';
+import { CONDITIONS_BY_IDS_QUERY } from '../fixtures/v1-operations';
 import { executeOperation } from '../../helpers/testApollo';
 import { stabilize } from '../../helpers/stableSerializer';
 

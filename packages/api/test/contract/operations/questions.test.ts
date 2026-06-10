@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GET_QUESTIONS } from '@sapience/sdk/queries';
+import { GET_QUESTIONS } from '../fixtures/v1-operations';
 import { executeOperation } from '../../helpers/testApollo';
 import { stabilize } from '../../helpers/stableSerializer';
 
