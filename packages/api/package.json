@@ -42,6 +42,7 @@
     "format": "prettier --write src",
     "prisma:generate": "prisma generate",
     "prisma:deploy": "prisma migrate deploy",
+    "prisma:check-transactional": "bash scripts/check-migrations-transactional.sh",
     "prisma:setup": "prisma migrate deploy && prisma generate && pnpm run generate-resolvers",
     "prisma:migrate": "prisma migrate dev",
     "prisma:reset": "prisma migrate reset",
