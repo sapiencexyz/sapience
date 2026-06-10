@@ -274,8 +274,13 @@ export type Claim = Node & {
   holder: Scalars['Address']['output'];
   id: Scalars['ID']['output'];
   logIndex: Scalars['Int']['output'];
+  /**
+   * On-chain pickConfigId of the redeemed position. The underlying column
+   * was historically mislabeled `predictionId`; it has never stored a
+   * `Prediction.predictionId`.
+   */
+  pickConfigId: Scalars['Bytes32']['output'];
   positionToken: Scalars['Address']['output'];
-  predictionId: Scalars['Bytes32']['output'];
   redeemedAt: Scalars['UnixSeconds']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
   tokensBurned: Scalars['BigInt']['output'];
@@ -299,7 +304,8 @@ export type ClaimEdge = {
 export type ClaimFilter = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   holder?: InputMaybe<Scalars['Address']['input']>;
-  predictionId?: InputMaybe<Scalars['Bytes32']['input']>;
+  /** Match claims redeeming positions of this pickConfigId. */
+  pickConfigId?: InputMaybe<Scalars['Bytes32']['input']>;
 };
 
 export type ClaimOrder = {

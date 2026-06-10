@@ -1033,7 +1033,12 @@ type Claim implements Node {
   id: ID!
   chainId: Int!
   escrow: Address!
-  predictionId: Bytes32!
+  """
+  On-chain pickConfigId of the redeemed position. The underlying column
+  was historically mislabeled `predictionId`; it has never stored a
+  `Prediction.predictionId`.
+  """
+  pickConfigId: Bytes32!
   holder: Address!
   positionToken: Address!
   tokensBurned: BigInt!
@@ -1060,7 +1065,8 @@ type ClaimConnection {
 input ClaimFilter {
   chainId: Int
   holder: Address
-  predictionId: Bytes32
+  "Match claims redeeming positions of this pickConfigId."
+  pickConfigId: Bytes32
 }
 
 """
