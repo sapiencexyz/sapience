@@ -3388,7 +3388,7 @@
           },
           {
             "name": "predictionId",
-            "description": null,
+            "description": "Misnomer: this is the redeemed position's pickConfigId, NOT a Prediction.predictionId.\nBacked by the Claim.pickConfigId column; the GraphQL field name is kept only for\nbackward compatibility on this deprecated query.",
             "args": [],
             "type": {
               "kind": "NON_NULL",
@@ -15101,7 +15101,7 @@
           },
           {
             "name": "claims",
-            "description": "Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain",
+            "description": "Paginated list of prediction claim (redemption) records, filterable by holder, pickConfig, and chain.\nNOTE: the `predictionId` filter and the `Claim.predictionId` field are misnamed — both are actually\na pickConfigId (the redeemed position's pick configuration), never a Prediction.predictionId.",
             "args": [
               {
                 "name": "chainId",
@@ -15180,7 +15180,7 @@
               }
             },
             "isDeprecated": true,
-            "deprecationReason": "No longer supported"
+            "deprecationReason": "`predictionId` is a misnomer — it filters on pickConfigId, not Prediction.predictionId."
           },
           {
             "name": "closes",
