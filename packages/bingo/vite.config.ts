@@ -19,4 +19,11 @@ export default defineConfig({
     'process.env': '{}',
     global: 'globalThis',
   },
+  // In production the bingo-server serves the built app and the API from one
+  // origin; in dev, proxy /api to the locally running bingo-server.
+  server: {
+    proxy: {
+      '/api': 'http://localhost:3200',
+    },
+  },
 });

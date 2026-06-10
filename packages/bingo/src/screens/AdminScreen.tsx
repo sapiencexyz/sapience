@@ -1,659 +1,448 @@
-import { useEffect, useMemo, useState } from 'react';
-import { formatUnits, isAddress, parseUnits, type Address } from 'viem';
+import { useEffect, useState } from 'react';
+import { parseAbi, type Address } from 'viem';
+import { createSiweMessage } from 'viem/siwe';
 import {
   useAccount,
   useConnect,
-  useReadContracts,
+  useSignMessage,
   useWriteContract,
 } from 'wagmi';
+import { collateralToken as collateralAddresses } from '@sapience/sdk/contracts';
+import { fmtUnits, shortAddress } from '../lib/format/balance';
+import { CHAIN_ID } from '../lib/chain';
 import {
-  BINGO_CARD_ABI,
-  CHAIN_ID,
-  ERC20_ABI,
-  loadContractAddress,
-} from '../lib/bingoCard';
-import { fetchConditions, type BingoCondition } from '../api';
+  fetchAdminNonce,
+  fetchEntitlements,
+  fetchPool,
+  postAdminLogin,
+  postAdminPool,
+  type EntitlementsResponse,
+  type PoolResponse,
+} from '../lib/backendApi';
 import Nav from '../components/Nav';
 
-const DECIMALS = 18;
+const RECEIPT_ABI = parseAbi([
+  'function payBonus(uint256 tokenId, uint8 wins, uint256 amount)',
+  'function payReferral(uint256 tokenId, uint256 amount)',
+]);
 
-function shortAddress(a?: string | null): string {
-  if (!a) return '—';
-  return `${a.slice(0, 6)}…${a.slice(-4)}`;
+const ERC20_APPROVE_ABI = parseAbi([
+  'function approve(address spender, uint256 value) returns (bool)',
+]);
+
+const ADMIN_TOKEN_STORAGE_KEY = 'bingo-admin-token';
+
+function loadAdminToken(): string {
+  if (typeof window === 'undefined') return '';
+  return window.localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) ?? '';
 }
 
-function fmtUnits(v: bigint | undefined): string {
-  if (v == null) return '—';
-  return formatUnits(v, DECIMALS);
+function wei(v: string | null | undefined): bigint | undefined {
+  if (v == null) return undefined;
+  try {
+    return BigInt(v);
+  } catch {
+    return undefined;
+  }
 }
 
 export default function AdminScreen() {
   const { address: eoa, isConnected } = useAccount();
   const { connectors, connect, isPending: connectPending } = useConnect();
+  const { signMessageAsync } = useSignMessage();
 
-  const contractAddress: Address | null = useMemo(() => {
-    const a = loadContractAddress();
-    return a && isAddress(a) ? (a as Address) : null;
-  }, []);
+  const [pool, setPool] = useState<PoolResponse | null>(null);
+  const [poolError, setPoolError] = useState<string | null>(null);
 
-  const baseContract = contractAddress
-    ? { address: contractAddress, abi: BINGO_CARD_ABI, chainId: CHAIN_ID }
-    : null;
+  const [token, setToken] = useState<string>(loadAdminToken);
+  const [signingIn, setSigningIn] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [entitlements, setEntitlements] =
+    useState<EntitlementsResponse | null>(null);
 
-  // Multiplier reads (one read per slot).
-  const multReads = useReadContracts({
-    contracts: baseContract
-      ? Array.from({ length: 11 }, (_, i) => ({
-          ...baseContract,
-          functionName: 'multiplierBps' as const,
-          args: [BigInt(i)],
-        }))
-      : [],
-    query: { enabled: !!baseContract },
-  });
-
-  useEffect(() => {
-    if (!multReads.data) return;
-    const next = multReads.data.map((r) =>
-      r?.result != null ? String(r.result as number) : '',
-    );
-    setMultipliers((prev) =>
-      prev.every((v, i) => v === next[i]) ? prev : next,
-    );
-  }, [multReads.data]);
-
-  // ---------- reads ----------
-  const reads = useReadContracts({
-    contracts: baseContract
-      ? [
-          { ...baseContract, functionName: 'owner' },
-          { ...baseContract, functionName: 'collateralToken' },
-          { ...baseContract, functionName: 'poolVersion' },
-          { ...baseContract, functionName: 'poolSize' },
-          { ...baseContract, functionName: 'minCardPrice' },
-          { ...baseContract, functionName: 'minPerLineStake' },
-          { ...baseContract, functionName: 'referralBps' },
-          { ...baseContract, functionName: 'cardExpirySeconds' },
-          { ...baseContract, functionName: 'bonusPool' },
-          { ...baseContract, functionName: 'escrow' },
-          { ...baseContract, functionName: 'outstandingSponsorBalance' },
-          { ...baseContract, functionName: 'outstandingReferralEarnings' },
-          { ...baseContract, functionName: 'nextCardId' },
-        ]
-      : [],
-    query: { enabled: !!baseContract },
-  });
-
-  const owner = reads.data?.[0]?.result as Address | undefined;
-  const collateralToken = reads.data?.[1]?.result as Address | undefined;
-  const poolVersion = reads.data?.[2]?.result as number | undefined;
-  const poolSize = reads.data?.[3]?.result as bigint | undefined;
-  const minCardPrice = reads.data?.[4]?.result as bigint | undefined;
-  const minPerLineStake = reads.data?.[5]?.result as bigint | undefined;
-  const referralBps = reads.data?.[6]?.result as number | undefined;
-  const cardExpirySeconds = reads.data?.[7]?.result as bigint | undefined;
-  const bonusPool = reads.data?.[8]?.result as bigint | undefined;
-  const escrowAddress = reads.data?.[9]?.result as Address | undefined;
-  const outstandingSponsor = reads.data?.[10]?.result as bigint | undefined;
-  const outstandingReferral = reads.data?.[11]?.result as bigint | undefined;
-
-  const isOwner =
-    !!owner && !!eoa && owner.toLowerCase() === eoa.toLowerCase();
-
-  // ---------- writes ----------
-  const { writeContract, isPending: writePending, error: writeError } =
-    useWriteContract();
-
-  // form state
-  const [priceInput, setPriceInput] = useState('');
-  const [bpsInput, setBpsInput] = useState('');
-  const [expiryInput, setExpiryInput] = useState('');
-  const [depositInput, setDepositInput] = useState('');
-  const [withdrawInput, setWithdrawInput] = useState('');
-  const [withdrawTo, setWithdrawTo] = useState('');
-  const [escrowInput, setEscrowInput] = useState('');
-  const [codeInput, setCodeInput] = useState('');
-  const [multipliers, setMultipliers] = useState<string[]>(
-    Array(11).fill('') as string[],
-  );
-  const [searchInput, setSearchInput] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [searchResults, setSearchResults] = useState<BingoCondition[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<BingoCondition[]>([]);
-  const selectedIds = useMemo(() => new Set(selected.map((c) => c.id)), [
-    selected,
-  ]);
-
-  const submitPrice = () => {
-    if (!baseContract) return;
-    const v = parseUnits(priceInput || '0', DECIMALS);
-    writeContract({
-      ...baseContract,
-      functionName: 'setMinCardPrice',
-      args: [v],
-    });
-  };
-
-  const submitBps = () => {
-    if (!baseContract) return;
-    const n = Number(bpsInput);
-    if (!Number.isInteger(n) || n < 0 || n > 10_000) return;
-    writeContract({ ...baseContract, functionName: 'setReferralBps', args: [n] });
-  };
-
-  const submitExpiry = () => {
-    if (!baseContract) return;
-    const n = BigInt(expiryInput || '0');
-    writeContract({ ...baseContract, functionName: 'setCardExpiry', args: [n] });
-  };
-
-  const submitDeposit = () => {
-    if (!baseContract) return;
-    const v = parseUnits(depositInput || '0', DECIMALS);
-    writeContract({ ...baseContract, functionName: 'depositBonus', args: [v] });
-  };
-
-  const submitApprove = () => {
-    if (!baseContract || !collateralToken) return;
-    const v = parseUnits(depositInput || '0', DECIMALS);
-    writeContract({
-      address: collateralToken,
-      abi: ERC20_ABI,
-      chainId: CHAIN_ID,
-      functionName: 'approve',
-      args: [baseContract.address, v],
-    });
-  };
-
-  const submitMultipliers = () => {
-    if (!baseContract) return;
-    const parsed: number[] = [];
-    for (const v of multipliers) {
-      const n = Number(v || '0');
-      if (!Number.isInteger(n) || n < 0 || n > 4_294_967_295) return;
-      parsed.push(n);
+  // SIWE: prove control of the treasury wallet (the receipt contract owner)
+  // and receive a short-lived bearer token for the admin endpoints.
+  const signInWithWallet = async () => {
+    if (!eoa) return;
+    setLoadError(null);
+    setSigningIn(true);
+    try {
+      const { nonce } = await fetchAdminNonce();
+      const message = createSiweMessage({
+        domain: window.location.host,
+        address: eoa,
+        statement: 'Sign in to the COMBO.BINGO admin.',
+        uri: window.location.origin,
+        version: '1',
+        chainId: CHAIN_ID,
+        nonce,
+      });
+      const signature = await signMessageAsync({ message });
+      const session = await postAdminLogin(message, signature);
+      setToken(session.token);
+      window.localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, session.token);
+      setEntitlements(await fetchEntitlements(session.token));
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSigningIn(false);
     }
-    writeContract({
-      ...baseContract,
-      functionName: 'setMultipliers',
-      args: [parsed as unknown as readonly [number, number, number, number, number, number, number, number, number, number, number]],
-    });
   };
 
-  const submitEscrow = () => {
-    if (!baseContract) return;
-    if (!isAddress(escrowInput)) return;
-    writeContract({
-      ...baseContract,
-      functionName: 'setEscrow',
-      args: [escrowInput as Address],
-    });
-  };
-
-  const submitRegisterCode = () => {
-    if (!baseContract) return;
-    const code = codeInput.trim();
-    if (!code) return;
-    // Pad/encode the code as bytes32. Keep it simple: utf-8 right-padded.
-    const enc = new TextEncoder().encode(code);
-    if (enc.length > 32) return;
-    const bytes = new Uint8Array(32);
-    bytes.set(enc);
-    const hex = ('0x' +
-      Array.from(bytes)
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('')) as `0x${string}`;
-    writeContract({
-      ...baseContract,
-      functionName: 'registerCode',
-      args: [hex],
-    });
-  };
-
-  const submitWithdraw = () => {
-    if (!baseContract) return;
-    if (!isAddress(withdrawTo)) return;
-    const v = parseUnits(withdrawInput || '0', DECIMALS);
-    writeContract({
-      ...baseContract,
-      functionName: 'withdrawBonus',
-      args: [v, withdrawTo as Address],
-    });
-  };
-
-  // Debounce search input.
   useEffect(() => {
-    const id = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), 300);
-    return () => window.clearTimeout(id);
-  }, [searchInput]);
-
-  // Fetch conditions on debounced search change.
-  useEffect(() => {
-    let cancelled = false;
-    setSearching(true);
-    setSearchError(null);
-    fetchConditions({ search: debouncedSearch, take: 50 })
-      .then((rows) => {
-        if (cancelled) return;
-        setSearchResults(rows);
+    let stop = false;
+    fetchPool()
+      .then((p) => {
+        if (!stop) setPool(p);
       })
       .catch((e) => {
-        if (cancelled) return;
-        setSearchError(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setSearching(false);
+        if (!stop) setPoolError(e instanceof Error ? e.message : String(e));
       });
     return () => {
-      cancelled = true;
+      stop = true;
     };
-  }, [debouncedSearch]);
+  }, []);
 
-  const addCondition = (c: BingoCondition) => {
-    setSelected((prev) =>
-      prev.some((p) => p.id === c.id) ? prev : [...prev, c],
-    );
+  const loadEntitlements = async () => {
+    const t = token.trim();
+    if (!t) return;
+    window.localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, t);
+    setLoading(true);
+    setLoadError(null);
+    try {
+      setEntitlements(await fetchEntitlements(t));
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeCondition = (id: string) => {
-    setSelected((prev) => prev.filter((p) => p.id !== id));
+  // ---- treasury payouts (on-chain, signed by the connected wallet) ----
+
+  const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const [payError, setPayError] = useState<string | null>(null);
+  const collateral = collateralAddresses[CHAIN_ID]?.address as
+    | Address
+    | undefined;
+
+  const approveTreasury = async () => {
+    if (!pool?.receiptContract || !collateral) return;
+    setPayError(null);
+    try {
+      await writeContractAsync({
+        address: collateral,
+        abi: ERC20_APPROVE_ABI,
+        chainId: CHAIN_ID,
+        functionName: 'approve',
+        args: [pool.receiptContract, (1n << 255n) - 1n],
+      });
+    } catch (e) {
+      setPayError(e instanceof Error ? e.message : String(e));
+    }
   };
 
-  const submitPool = () => {
-    if (!baseContract || selected.length === 0) return;
-    const ids = selected.map((c) => c.id as `0x${string}`);
-    const resolvers = selected.map((c) => c.resolver);
-    writeContract({
-      ...baseContract,
-      functionName: 'setPool',
-      args: [ids, resolvers],
-    });
+  const payBonus = async (tokenId: string, wins: number, amountWei: string) => {
+    if (!pool?.receiptContract) return;
+    setPayError(null);
+    try {
+      await writeContractAsync({
+        address: pool.receiptContract,
+        abi: RECEIPT_ABI,
+        chainId: CHAIN_ID,
+        functionName: 'payBonus',
+        args: [BigInt(tokenId), wins, BigInt(amountWei)],
+      });
+    } catch (e) {
+      setPayError(e instanceof Error ? e.message : String(e));
+    }
   };
 
-  const injected = connectors.find((c) => c.id === 'injected');
+  const payReferral = async (tokenId: string, amountWei: string) => {
+    if (!pool?.receiptContract) return;
+    setPayError(null);
+    try {
+      await writeContractAsync({
+        address: pool.receiptContract,
+        abi: RECEIPT_ABI,
+        chainId: CHAIN_ID,
+        functionName: 'payReferral',
+        args: [BigInt(tokenId), BigInt(amountWei)],
+      });
+    } catch (e) {
+      setPayError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  // ---- pool creation ----
+
+  const [poolJson, setPoolJson] = useState('');
+  const [poolCreating, setPoolCreating] = useState(false);
+  const [poolCreateMsg, setPoolCreateMsg] = useState<string | null>(null);
+
+  const createPool = async () => {
+    const t = token.trim();
+    if (!t || !poolJson.trim()) return;
+    setPoolCreating(true);
+    setPoolCreateMsg(null);
+    try {
+      const parsed = JSON.parse(poolJson);
+      const created = await postAdminPool(t, parsed);
+      setPoolCreateMsg(
+        `Pool ${created.poolId} is live — commitment ${created.fairnessCommitment}`,
+      );
+      setPool(await fetchPool());
+    } catch (e) {
+      setPoolCreateMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPoolCreating(false);
+    }
+  };
 
   return (
     <main>
       <Nav />
       <header className="header">
         <div className="title-block">
-          <h1>BingoCard Admin</h1>
+          <h1>COMBO.BINGO Admin</h1>
         </div>
       </header>
 
-      {!contractAddress && (
-        <section className="screen admin-section">
-          <p className="muted small">
-            Set the BingoCard contract address in Settings (gear icon) to
-            load admin state. Reads/writes target chainId {CHAIN_ID}.
-          </p>
-        </section>
-      )}
-      {contractAddress && !isConnected && injected && (
-        <section className="screen admin-section">
-          <button
-            type="button"
-            className="primary block"
-            disabled={connectPending}
-            onClick={() => connect({ connector: injected })}
-          >
-            {connectPending ? 'Opening wallet…' : 'Connect wallet'}
-          </button>
-        </section>
-      )}
-      {contractAddress && isConnected && (
-        <p className="muted small">
-          Wallet: {shortAddress(eoa)} ·{' '}
-          {isOwner ? 'is owner ✓' : 'NOT owner — writes will revert'}
-        </p>
-      )}
+      <section className="screen admin-section">
+        <h2>Pool</h2>
+        {poolError && <p className="error small">{poolError}</p>}
+        {!pool && !poolError && <p className="muted small">Loading pool…</p>}
+        {pool && (
+          <div className="admin-kv">
+            <div>Pool id</div>
+            <div className="mono">{pool.poolId}</div>
+            <div>Cutoff</div>
+            <div className="mono">
+              {new Date(pool.cutoff * 1000).toLocaleString()}
+              {pool.open ? ' (open)' : ' (closed)'}
+            </div>
+            <div>Conditions</div>
+            <div className="mono">{pool.conditions.length}</div>
+            <div>Min card price</div>
+            <div className="mono">{fmtUnits(wei(pool.minCardPriceWei))}</div>
+            <div>Referral bps</div>
+            <div className="mono">{pool.referralBps}</div>
+            <div>Multipliers (bps)</div>
+            <div className="mono">{pool.multiplierBps.join(', ')}</div>
+            <div>Fairness commitment</div>
+            <div className="mono small">{pool.fairnessCommitment}</div>
+          </div>
+        )}
+      </section>
 
       <section className="screen admin-section">
-        <h2>State</h2>
-        <div className="admin-kv">
-            <div>Owner</div><div className="mono">{shortAddress(owner)}</div>
-            <div>Collateral token</div><div className="mono">{shortAddress(collateralToken)}</div>
-            <div>Pool version</div><div className="mono">{poolVersion ?? '—'}</div>
-            <div>Pool size</div><div className="mono">{poolSize?.toString() ?? '—'}</div>
-            <div>Min card price</div><div className="mono">{fmtUnits(minCardPrice)}</div>
-            <div>Min per-line stake</div><div className="mono">{fmtUnits(minPerLineStake)}</div>
-            <div>Referral bps</div><div className="mono">{referralBps ?? '—'}</div>
-            <div>Card expiry (s)</div><div className="mono">{cardExpirySeconds?.toString() ?? '—'}</div>
-            <div>Bonus pool</div><div className="mono">{fmtUnits(bonusPool)}</div>
-            <div>Escrow</div><div className="mono">{shortAddress(escrowAddress)}</div>
-            <div>Outstanding sponsor</div><div className="mono">{fmtUnits(outstandingSponsor)}</div>
-            <div>Outstanding referral</div><div className="mono">{fmtUnits(outstandingReferral)}</div>
+        <h2>Create pool</h2>
+        <p className="muted small">
+          Paste a pool config (poolId, cutoff, minCardPriceWei, referralBps,
+          multiplierBps[11], conditions[≥16]). It becomes the active pool
+          immediately with a fresh fairness commitment; old pools keep
+          resolving for existing cards. Requires admin sign-in below.
+        </p>
+        <textarea
+          className="admin-input"
+          rows={6}
+          placeholder='{"poolId": "world-cup-…", "cutoff": 1781…, …}'
+          value={poolJson}
+          onChange={(e) => setPoolJson(e.target.value)}
+        />
+        <div className="admin-row">
+          <button
+            type="button"
+            className="primary"
+            disabled={poolCreating || !token.trim() || !poolJson.trim()}
+            onClick={createPool}
+          >
+            {poolCreating ? 'Creating…' : 'Create pool'}
+          </button>
+        </div>
+        {poolCreateMsg && <p className="muted small">{poolCreateMsg}</p>}
+      </section>
+
+      <section className="screen admin-section">
+        <h2>Entitlements & payouts</h2>
+        <p className="muted small">
+          Sign in with the treasury wallet (the receipt contract owner) to
+          view what's owed and pay it on-chain through the receipt NFT.
+        </p>
+        <div className="admin-row">
+          {!isConnected && (
+            <button
+              type="button"
+              className="primary"
+              disabled={connectPending}
+              onClick={() => {
+                const injected = connectors.find((c) => c.id === 'injected');
+                if (injected) connect({ connector: injected });
+              }}
+            >
+              {connectPending ? 'Opening wallet…' : 'Connect wallet'}
+            </button>
+          )}
+          {isConnected && (
+            <button
+              type="button"
+              className="primary"
+              disabled={signingIn}
+              onClick={signInWithWallet}
+            >
+              {signingIn
+                ? 'Signing in…'
+                : `Sign in as ${shortAddress(eoa)}`}
+            </button>
+          )}
+          <input
+            className="admin-input"
+            type="password"
+            placeholder="…or static admin token"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+          />
+          <button
+            type="button"
+            className="ghost"
+            disabled={loading || !token.trim()}
+            onClick={loadEntitlements}
+          >
+            {loading ? 'Loading…' : 'Load'}
+          </button>
+        </div>
+        {loadError && <p className="error small">{loadError}</p>}
+        {payError && <p className="error small">{payError}</p>}
+        {pool?.receiptContract && entitlements && (
+          <div className="admin-row">
+            <button
+              type="button"
+              className="ghost"
+              disabled={writePending || !isConnected}
+              onClick={approveTreasury}
+            >
+              Approve treasury spend (one-time)
+            </button>
           </div>
-        </section>
+        )}
 
-        <section className="screen admin-section">
-          <h2>Actions</h2>
-          {writeError && <p className="error">{writeError.message}</p>}
-
-          <div className="admin-action">
-            <div className="wizard-step-title">Set minimum card price</div>
-            <p className="muted small">
-              In tokens (18 dec). Floor — players pick their own card price at
-              mint time and must satisfy this minimum.
-            </p>
-            <div className="admin-row">
-              <input
-                className="admin-input"
-                placeholder="5"
-                value={priceInput}
-                onChange={(e) => setPriceInput(e.target.value)}
-              />
-              <button
-                type="button"
-                className="primary"
-                disabled={writePending || !priceInput || !baseContract}
-                onClick={submitPrice}
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-action">
-            <div className="wizard-step-title">Set referral bps</div>
-            <p className="muted small">Integer 0–10000. e.g. 200 = 2%.</p>
-            <div className="admin-row">
-              <input
-                className="admin-input"
-                placeholder="200"
-                value={bpsInput}
-                onChange={(e) => setBpsInput(e.target.value)}
-              />
-              <button
-                type="button"
-                className="primary"
-                disabled={writePending || !bpsInput || !baseContract}
-                onClick={submitBps}
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-action">
-            <div className="wizard-step-title">Bonus multipliers</div>
-            <p className="muted small">
-              Bonus payout = cardPrice × multiplier[winningLines] ÷ 10000. Values
-              are bps, max 65535 (≈6.55×). Read at claim time — not stamped on
-              the card.
-            </p>
-            <div className="admin-multipliers">
-              {multipliers.map((v, i) => (
-                <label key={i} className="admin-multiplier-row">
-                  <span className="admin-multiplier-label">{i} wins</span>
-                  <input
-                    className="admin-input"
-                    placeholder="0"
-                    value={v}
-                    onChange={(e) =>
-                      setMultipliers((prev) => {
-                        const next = prev.slice();
-                        next[i] = e.target.value;
-                        return next;
-                      })
-                    }
-                  />
-                </label>
-              ))}
-            </div>
-            <div className="admin-row">
-              <button
-                type="button"
-                className="primary"
-                disabled={writePending || !baseContract}
-                onClick={submitMultipliers}
-              >
-                Save table
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-action">
-            <div className="wizard-step-title">Set escrow</div>
-            <p className="muted small">
-              Authorized PredictionMarketEscrow that may call fundMint.
-            </p>
-            <div className="admin-row">
-              <input
-                className="admin-input"
-                placeholder="0x…"
-                value={escrowInput}
-                onChange={(e) => setEscrowInput(e.target.value.trim())}
-              />
-              <button
-                type="button"
-                className="primary"
-                disabled={writePending || !isAddress(escrowInput) || !baseContract}
-                onClick={submitEscrow}
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-action">
-            <div className="wizard-step-title">Register referral code</div>
-            <p className="muted small">
-              Anyone can call this — admin can pre-register codes from this UI.
-              Encodes as utf-8 right-padded bytes32.
-            </p>
-            <div className="admin-row">
-              <input
-                className="admin-input"
-                placeholder="e.g. NOAH"
-                value={codeInput}
-                onChange={(e) => setCodeInput(e.target.value)}
-              />
-              <button
-                type="button"
-                className="primary"
-                disabled={writePending || !codeInput.trim() || !baseContract}
-                onClick={submitRegisterCode}
-              >
-                Register
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-action">
-            <div className="wizard-step-title">Set card expiry (seconds)</div>
-            <p className="muted small">
-              Time from mint until withdrawUnused is allowed.
-            </p>
-            <div className="admin-row">
-              <input
-                className="admin-input"
-                placeholder="2592000"
-                value={expiryInput}
-                onChange={(e) => setExpiryInput(e.target.value)}
-              />
-              <button
-                type="button"
-                className="primary"
-                disabled={writePending || !expiryInput || !baseContract}
-                onClick={submitExpiry}
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-action">
-            <div className="wizard-step-title">Set pool</div>
-            <p className="muted small">
-              Search live unresolved conditions and add them to the pool. The
-              selected set replaces the on-chain pool when submitted.
-            </p>
-            <div className="admin-row">
-              <input
-                className="admin-input"
-                placeholder="Search conditions (e.g. World Cup, Bitcoin)…"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-              />
-            </div>
-
-            <div className="pool-results">
-              {searchError && <p className="error">{searchError}</p>}
-              {!searchError && searchResults.length === 0 && !searching && (
-                <p className="muted small">No matches.</p>
-              )}
-              {searching && (
-                <p className="muted small">Searching…</p>
-              )}
-              {searchResults.map((c) => {
-                const added = selectedIds.has(c.id);
-                return (
-                  <div key={c.id} className="pool-row">
-                    <div className="pool-row-text">
-                      <div className="pool-row-q">
-                        {c.groupName && c.optionName
-                          ? `${c.groupName} — ${c.optionName}`
-                          : c.shortName?.trim() || c.question}
-                      </div>
-                      <div className="muted small">
-                        p ≈ {(c.estimatedPrice * 100).toFixed(0)}%
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className={added ? 'ghost' : 'primary'}
-                      onClick={() =>
-                        added ? removeCondition(c.id) : addCondition(c)
-                      }
-                    >
-                      {added ? 'Remove' : 'Add'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="pool-selected">
-              <div className="wizard-step-title">
-                Selected ({selected.length})
+        {entitlements && (
+          <>
+            <div className="admin-kv">
+              <div>Total bonus owed</div>
+              <div className="mono">
+                {fmtUnits(wei(entitlements.totalBonusOwedWei))}
               </div>
-              {selected.length === 0 && (
-                <p className="muted small">Nothing selected yet.</p>
-              )}
-              {selected.map((c) => (
-                <div key={c.id} className="pool-row">
-                  <div className="pool-row-text">
-                    <div className="pool-row-q">
-                      {c.groupName && c.optionName
-                        ? `${c.groupName} — ${c.optionName}`
-                        : c.shortName?.trim() || c.question}
-                    </div>
-                    <div className="muted small">
-                      p ≈ {(c.estimatedPrice * 100).toFixed(0)}%
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => removeCondition(c.id)}
-                  >
-                    Remove
-                  </button>
+              <div>Total referral owed</div>
+              <div className="mono">
+                {fmtUnits(wei(entitlements.totalReferralOwedWei))}
+              </div>
+              <div>Cards</div>
+              <div className="mono">{entitlements.rows.length}</div>
+            </div>
+
+            {entitlements.rows.length === 0 && (
+              <p className="muted small">No cards submitted yet.</p>
+            )}
+            {entitlements.rows.map((r) => (
+              <div key={`${r.player}:${r.poolId}`} className="admin-action">
+                <div className="wizard-step-title mono">
+                  {shortAddress(r.player)}
                 </div>
-              ))}
-            </div>
-
-            <div className="admin-row">
-              <button
-                type="button"
-                className="primary"
-                disabled={
-                  writePending ||
-                  selected.length < 16 ||
-                  !baseContract
-                }
-                onClick={submitPool}
-              >
-                Submit on-chain ({selected.length})
-              </button>
-              {selected.length < 16 && selected.length > 0 && (
-                <span className="muted small">
-                  Need at least 16 for the contract minimum.
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="admin-action">
-            <div className="wizard-step-title">Deposit bonus</div>
-            <p className="muted small">
-              Approve the contract on the collateral token, then deposit.
-            </p>
-            <div className="admin-row">
-              <input
-                className="admin-input"
-                placeholder="100"
-                value={depositInput}
-                onChange={(e) => setDepositInput(e.target.value)}
-              />
-              <button
-                type="button"
-                className="ghost"
-                disabled={
-                  writePending ||
-                  !depositInput ||
-                  !collateralToken ||
-                  !baseContract
-                }
-                onClick={submitApprove}
-              >
-                Approve
-              </button>
-              <button
-                type="button"
-                className="primary"
-                disabled={writePending || !depositInput || !baseContract}
-                onClick={submitDeposit}
-              >
-                Deposit
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-action">
-            <div className="wizard-step-title">Withdraw bonus</div>
-            <div className="admin-row">
-              <input
-                className="admin-input"
-                placeholder="amount (e.g. 50)"
-                value={withdrawInput}
-                onChange={(e) => setWithdrawInput(e.target.value)}
-              />
-              <input
-                className="admin-input"
-                placeholder="recipient 0x…"
-                value={withdrawTo}
-                onChange={(e) => setWithdrawTo(e.target.value.trim())}
-              />
-              <button
-                type="button"
-                className="primary"
-                disabled={
-                  writePending ||
-                  !withdrawInput ||
-                  !isAddress(withdrawTo) ||
-                  !baseContract
-                }
-                onClick={submitWithdraw}
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-        </section>
+                <div className="admin-kv">
+                  <div>Card price</div>
+                  <div className="mono">{fmtUnits(wei(r.cardPriceWei))}</div>
+                  <div>Lines funded</div>
+                  <div className="mono">{r.linesFunded} / 10</div>
+                  <div>Complete</div>
+                  <div className="mono">{r.complete ? 'yes' : 'no'}</div>
+                  <div>Wins</div>
+                  <div className="mono">{r.wins ?? '—'}</div>
+                  <div>Decided</div>
+                  <div className="mono">
+                    {r.decided == null
+                      ? '—'
+                      : r.decided
+                        ? 'yes'
+                        : 'no (owed can still grow)'}
+                  </div>
+                  <div>Bonus owed</div>
+                  <div className="mono">
+                    {fmtUnits(wei(r.bonusOwedWei))}
+                    {r.bonusPaidOnChain ? ' (paid ✓)' : ''}
+                  </div>
+                  <div>Referrer</div>
+                  <div className="mono">{shortAddress(r.ref)}</div>
+                  <div>Referral owed</div>
+                  <div className="mono">
+                    {fmtUnits(wei(r.referralOwedWei))}
+                    {r.referralPaidOnChain ? ' (paid ✓)' : ''}
+                  </div>
+                  <div>Payouts</div>
+                  <div className="mono small">
+                    {r.payouts.length === 0
+                      ? '—'
+                      : r.payouts
+                          .map(
+                            (p) =>
+                              `${p.kind} ${fmtUnits(wei(p.amountWei))} → ${shortAddress(p.to)}`,
+                          )
+                          .join('; ')}
+                  </div>
+                </div>
+                {r.receiptTokenId && (
+                  <div className="admin-row">
+                    {r.bonusOwedWei &&
+                      wei(r.bonusOwedWei)! > 0n &&
+                      !r.bonusPaidOnChain && (
+                        <button
+                          type="button"
+                          className="primary"
+                          // payBonus is one-shot on-chain: paying while lines
+                          // are still open locks in an undercount forever.
+                          disabled={writePending || !isConnected || !r.decided}
+                          title={
+                            r.decided
+                              ? undefined
+                              : 'Not all lines decided — amount can still grow'
+                          }
+                          onClick={() =>
+                            void payBonus(
+                              r.receiptTokenId!,
+                              r.wins ?? 0,
+                              r.bonusOwedWei!,
+                            )
+                          }
+                        >
+                          Pay bonus {fmtUnits(wei(r.bonusOwedWei))}
+                          {r.decided ? '' : ' (provisional)'}
+                        </button>
+                      )}
+                    {r.referralOwedWei &&
+                      wei(r.referralOwedWei)! > 0n &&
+                      !r.referralPaidOnChain && (
+                        <button
+                          type="button"
+                          className="ghost"
+                          disabled={writePending || !isConnected}
+                          onClick={() =>
+                            void payReferral(
+                              r.receiptTokenId!,
+                              r.referralOwedWei!,
+                            )
+                          }
+                        >
+                          Pay referral {fmtUnits(wei(r.referralOwedWei))}
+                        </button>
+                      )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+      </section>
     </main>
   );
 }

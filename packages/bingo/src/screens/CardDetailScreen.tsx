@@ -1,61 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
-import { isAddress, parseAbi, type Address, type Hex } from 'viem';
+import { isAddress, parseAbi, parseUnits, type Address } from 'viem';
 import {
   canonicalizePicks,
   computePickConfigId,
 } from '@sapience/sdk/auction/escrowEncoding';
 import { OutcomeSide, type Pick } from '@sapience/sdk/types/escrow';
 import { predictionMarketEscrow as escrowAddresses } from '@sapience/sdk/contracts';
+import { useAccount, useConnect, usePublicClient } from 'wagmi';
+import { CHAIN_ID } from '../lib/chain';
+import { fmtUnits, shortAddress } from '../lib/format/balance';
 import {
-  useAccount,
-  useConnect,
-  usePublicClient,
-  useReadContracts,
-} from 'wagmi';
-import {
-  BINGO_CARD_ABI,
-  CHAIN_ID,
-  fmtUnits,
-  loadContractAddress,
-  shortAddress,
-} from '../lib/bingoCard';
-import {
-  setCellSidesViaSession,
-  claimBonusViaSession,
-  withdrawUnusedViaSession,
-  redeemViaSession,
-} from '../lib/session/sessionKeyManager';
+  fetchCard,
+  fetchPool,
+  submitCard,
+  type CardResponse,
+  type PoolResponse,
+} from '../lib/backendApi';
+import { redeemViaSession } from '../lib/session/sessionKeyManager';
 import { useSession } from '../hooks/useSession';
-import { useSubmitCard } from '../hooks/useSubmitCard';
 import { buildLines } from '../parlay';
-import { fetchConditionsByIds, type BingoConditionDetail } from '../api';
 import Nav from '../components/Nav';
-
-interface CardSnapshot {
-  player: Address;
-  refCode: Hex;
-  poolVersion: number;
-  mintedAt: bigint;
-  expiresAt: bigint;
-  sponsorBalance: bigint;
-  cardPriceAtMint: bigint;
-  referralBpsAtMint: number;
-  referrerPaid: boolean;
-  sidesDeclared: boolean;
-  filledLineBitmap: number;
-  cellSides: number;
-  conditionIds: readonly Hex[];
-  resolvers: readonly Address[];
-}
-
-interface BonusPreview {
-  wins: number;
-  payout: bigint;
-}
-
-interface Props {
-  cardId: bigint;
-}
 
 const LINES = buildLines();
 
@@ -145,7 +109,13 @@ function lineStatusLabel(status: string): string {
   }
 }
 
-export default function CardDetailScreen({ cardId }: Props) {
+function loadRef(): Address | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const v = window.localStorage.getItem('bingo-ref');
+  return v && isAddress(v) ? (v as Address) : undefined;
+}
+
+export default function CardDetailScreen() {
   const { isConnected } = useAccount();
   const { connectors, connect, isPending: connectPending } = useConnect();
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
@@ -158,29 +128,22 @@ export default function CardDetailScreen({ cardId }: Props) {
     config,
     start,
   } = useSession();
-  const smartAccount = config?.smartAccountAddress;
+  // The card is per-player: the connected session's smart account is the player.
+  const player = config?.smartAccountAddress;
 
-  const contractAddress: Address | null = useMemo(() => {
-    const a = loadContractAddress();
-    return a && isAddress(a) ? (a as Address) : null;
-  }, []);
-  const baseContract = contractAddress
-    ? { address: contractAddress, abi: BINGO_CARD_ABI, chainId: CHAIN_ID }
-    : null;
-
-  const [card, setCard] = useState<CardSnapshot | null>(null);
-  const [preview, setPreview] = useState<BonusPreview | null>(null);
-  const [claimed, setClaimed] = useState(false);
+  const [pool, setPool] = useState<PoolResponse | null>(null);
+  const [card, setCard] = useState<CardResponse | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
-  const [conditionDetails, setConditionDetails] = useState<
-    Map<string, BingoConditionDetail>
-  >(new Map());
 
   const [pickedSides, setPickedSides] = useState(0);
   const [pickedMask, setPickedMask] = useState(0);
   const allCellsPicked = (pickedMask & 0xffff) === 0xffff;
 
-  // Bumped after each action to force an immediate card re-read.
+  // Card price input (only while unsubmitted). Defaults to the pool minimum.
+  const [priceInput, setPriceInput] = useState('');
+  const [priceTouched, setPriceTouched] = useState(false);
+
+  // Bumped after each action to force an immediate re-read.
   const [refreshKey, setRefreshKey] = useState(0);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -205,36 +168,35 @@ export default function CardDetailScreen({ cardId }: Props) {
   // Per-cell resolution vs the declared side, once the card is complete.
   const [cellStatus, setCellStatus] = useState<Record<number, CellStatus>>({});
 
-  const submitter = useSubmitCard();
-
-  // Multiplier table for the bonus prize curve widget (shown post-submit).
-  const multReads = useReadContracts({
-    contracts: baseContract
-      ? Array.from({ length: 11 }, (_, i) => ({
-          ...baseContract,
-          functionName: 'multiplierBps' as const,
-          args: [BigInt(i)],
-        }))
-      : [],
-    query: { enabled: !!baseContract },
-  });
-  const multipliers = multReads.data?.map(
-    (r) => (r?.result as number | undefined) ?? 0,
-  );
-
-  // Poll cardOf every 3s (and immediately on refreshKey) so reveal, side
-  // declaration, line funding, and claim all surface without a manual reload.
+  // Pool config (multipliers, min card price) — fetched once.
   useEffect(() => {
-    if (!publicClient || !contractAddress) return;
+    let stop = false;
+    fetchPool()
+      .then((p) => {
+        if (!stop) setPool(p);
+      })
+      .catch((e) => {
+        if (!stop) setStatusMsg(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      stop = true;
+    };
+  }, []);
+
+  // Default the price input to the pool minimum once known.
+  useEffect(() => {
+    if (!pool || priceTouched) return;
+    setPriceInput(fmtUnits(BigInt(pool.minCardPriceWei)));
+  }, [pool, priceTouched]);
+
+  // Poll the backend card every 3s (and immediately on refreshKey) so deal,
+  // submission progress, and line funding all surface without a reload.
+  useEffect(() => {
+    if (!player) return;
     let stop = false;
     const tick = async () => {
       try {
-        const c = (await publicClient.readContract({
-          address: contractAddress,
-          abi: BINGO_CARD_ABI,
-          functionName: 'cardOf',
-          args: [cardId],
-        })) as CardSnapshot;
+        const c = await fetchCard(player);
         if (stop) return;
         setCard(c);
         setStatusMsg(null);
@@ -249,72 +211,65 @@ export default function CardDetailScreen({ cardId }: Props) {
       stop = true;
       window.clearInterval(interval);
     };
-  }, [publicClient, contractAddress, cardId, refreshKey]);
+  }, [player, refreshKey]);
 
-  // Re-read once each line-funding run finishes.
-  useEffect(() => {
-    if (submitter.result) setRefreshKey((k) => k + 1);
-  }, [submitter.result]);
+  const submitted = card != null && card.yesMask != null;
+  const yesMask = card?.yesMask ?? 0;
+  const cardPriceWei =
+    card?.cardPriceWei != null ? BigInt(card.cardPriceWei) : null;
 
-  // Bonus preview + claimed flag.
-  useEffect(() => {
-    if (!publicClient || !contractAddress || !card) {
-      setPreview(null);
-      return;
+  // Validate the entered price: wei, ≥ pool minimum, divisible by 10 lines.
+  const enteredPriceWei: bigint | null = useMemo(() => {
+    const v = priceInput.trim();
+    if (!v) return null;
+    try {
+      const wei = parseUnits(v, 18);
+      if (wei <= 0n) return null;
+      if (wei % 10n !== 0n) return null;
+      if (pool && wei < BigInt(pool.minCardPriceWei)) return null;
+      return wei;
+    } catch {
+      return null;
     }
-    let stop = false;
-    void (async () => {
-      try {
-        const [previewRes, claimedRes] = await Promise.all([
-          publicClient.readContract({
-            address: contractAddress,
-            abi: BINGO_CARD_ABI,
-            functionName: 'previewBonus',
-            args: [cardId],
-          }),
-          publicClient.readContract({
-            address: contractAddress,
-            abi: BINGO_CARD_ABI,
-            functionName: 'bonusClaimed',
-            args: [cardId],
-          }),
-        ]);
-        if (stop) return;
-        const [wins, payout] = previewRes as [number, bigint];
-        setPreview({ wins, payout });
-        setClaimed(Boolean(claimedRes));
-      } catch {
-        setPreview(null);
-      }
-    })();
-    return () => {
-      stop = true;
-    };
-  }, [publicClient, contractAddress, card, cardId, refreshKey]);
+  }, [priceInput, pool]);
 
-  // Pull condition images + titles from sapience API.
-  useEffect(() => {
-    if (!card) return;
-    let stop = false;
-    void (async () => {
-      try {
-        const map = await fetchConditionsByIds(Array.from(card.conditionIds));
-        if (stop) return;
-        setConditionDetails(map);
-      } catch {
-        // best-effort
-      }
-    })();
-    return () => {
-      stop = true;
-    };
-  }, [card]);
+  const doneFlags = (card?.lines ?? []).map(
+    (l) => l.funded || l.status === 'done',
+  );
+  const lineCount = doneFlags.filter(Boolean).length;
+  const cardComplete = card != null && card.lines.length > 0 && lineCount === card.lines.length;
+  const anyFailed = (card?.lines ?? []).some(
+    (l) => !l.funded && l.status === 'failed',
+  );
+  const anyInflight = (card?.lines ?? []).some(
+    (l) =>
+      !l.funded &&
+      (l.status === 'pending' ||
+        l.status === 'quoting' ||
+        l.status === 'signing' ||
+        l.status === 'submitting'),
+  );
+  // Submitted but some lines have no status at all: the backend restarted
+  // mid-run and lost its in-memory progress. Treat like a failure so the
+  // retry button appears (the backend skips already-funded lines).
+  const anyStalled =
+    card?.yesMask != null &&
+    !cardComplete &&
+    !anyInflight &&
+    (card?.lines ?? []).some((l) => !l.funded && l.status == null);
 
-  const runAction = async (fn: () => Promise<unknown>) => {
+  // Submit the picks: backend mints all 10 lines as the player.
+  const submitPicks = async () => {
+    if (!player || enteredPriceWei == null) return;
     setActionError(null);
     setActionBusy(true);
     try {
-      await fn();
+      await submitCard({
+        player,
+        yesMask: pickedSides,
+        cardPriceWei: enteredPriceWei.toString(),
+        ref: loadRef(),
+      });
       setRefreshKey((k) => k + 1);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
@@ -323,26 +278,18 @@ export default function CardDetailScreen({ cardId }: Props) {
     }
   };
 
-  // One action: declare YES/NO sides on-chain, then immediately run the
-  // auction + sponsored mint for all 10 lines inline. The card itself sponsors
-  // each line's predictor collateral (predictorSponsor = BingoCard).
-  const declareAndFund = async () => {
-    if (!sessionClient || !card || !contractAddress) return;
+  // Retry: identical yesMask/price — the backend is idempotent per line.
+  const retryLines = async () => {
+    if (!player || card == null || card.yesMask == null || !card.cardPriceWei)
+      return;
     setActionError(null);
     setActionBusy(true);
     try {
-      // setCellSides awaits its receipt, so sides are on-chain before funding.
-      await setCellSidesViaSession(sessionClient, cardId, pickedSides);
-      setRefreshKey((k) => k + 1);
-      // Use the just-picked sides directly — the polled card may not have
-      // re-read cellSides yet.
-      await submitter.submit({
-        cardId,
-        conditionIds: card.conditionIds,
-        resolvers: card.resolvers,
-        cellSides: pickedSides,
-        cardPriceWei: card.cardPriceAtMint,
-        bingoCardAddress: contractAddress,
+      await submitCard({
+        player,
+        yesMask: card.yesMask,
+        cardPriceWei: card.cardPriceWei,
+        ref: loadRef(),
       });
       setRefreshKey((k) => k + 1);
     } catch (e) {
@@ -362,79 +309,66 @@ export default function CardDetailScreen({ cardId }: Props) {
     setPickedMask(0xffff);
   };
 
-  const submitClaimBonus = () => {
-    if (!sessionClient) return;
-    void runAction(() => claimBonusViaSession(sessionClient, cardId));
-  };
-
   // Redeem a single won line's predictor position for its payout.
   const claimLine = (line: (typeof LINES)[number]) => {
-    if (!sessionClient || !publicClient || !card || !smartAccount) return;
+    if (!sessionClient || !publicClient || !card || !player) return;
+    if (card.yesMask == null) return;
     const escrowAddr = escrowAddresses[CHAIN_ID]?.address as
       | Address
       | undefined;
     if (!escrowAddr) return;
-    void runAction(async () => {
-      const picks: Pick[] = line.cellIndices.map((ci) => ({
-        conditionResolver: card.resolvers[ci],
-        conditionId: card.conditionIds[ci],
-        predictedOutcome:
-          (card.cellSides & (1 << ci)) !== 0 ? OutcomeSide.YES : OutcomeSide.NO,
-      }));
-      const pcid = computePickConfigId(canonicalizePicks(picks));
-      const pair = (await publicClient.readContract({
-        address: escrowAddr,
-        abi: ESCROW_TOKENPAIR_ABI,
-        functionName: 'getTokenPair',
-        args: [pcid],
-      })) as { predictorToken: Address; counterpartyToken: Address };
-      const bal = (await publicClient.readContract({
-        address: pair.predictorToken,
-        abi: ERC20_BALANCE_ABI,
-        functionName: 'balanceOf',
-        args: [smartAccount],
-      })) as bigint;
-      if (bal === 0n) throw new Error('No position tokens to claim');
-      await redeemViaSession(sessionClient, pair.predictorToken, bal);
-    });
-  };
-
-  const submitWithdrawUnused = () => {
-    if (!sessionClient) return;
-    void runAction(() => withdrawUnusedViaSession(sessionClient, cardId));
-  };
-
-  const fundLines = () => {
-    if (!card || !contractAddress) return;
-    void submitter.submit({
-      cardId,
-      conditionIds: card.conditionIds,
-      resolvers: card.resolvers,
-      cellSides: card.cellSides,
-      cardPriceWei: card.cardPriceAtMint,
-      bingoCardAddress: contractAddress,
-    });
+    const mask = card.yesMask;
+    setActionError(null);
+    setActionBusy(true);
+    void (async () => {
+      try {
+        const picks: Pick[] = line.cellIndices.map((ci) => ({
+          conditionResolver: card.cells[ci].resolver,
+          conditionId: card.cells[ci].conditionId,
+          predictedOutcome:
+            (mask & (1 << ci)) !== 0 ? OutcomeSide.YES : OutcomeSide.NO,
+        }));
+        const pcid = computePickConfigId(canonicalizePicks(picks));
+        const pair = (await publicClient.readContract({
+          address: escrowAddr,
+          abi: ESCROW_TOKENPAIR_ABI,
+          functionName: 'getTokenPair',
+          args: [pcid],
+        })) as { predictorToken: Address; counterpartyToken: Address };
+        const bal = (await publicClient.readContract({
+          address: pair.predictorToken,
+          abi: ERC20_BALANCE_ABI,
+          functionName: 'balanceOf',
+          args: [player],
+        })) as bigint;
+        if (bal === 0n) throw new Error('No position tokens to claim');
+        await redeemViaSession(sessionClient, pair.predictorToken, bal);
+        setRefreshKey((k) => k + 1);
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setActionBusy(false);
+      }
+    })();
   };
 
   // Read the real pool (stake + counterparty) for each funded line so the
   // "to win" amount survives a reload — recompute the pickConfigId from the
-  // card's cells and ask the escrow.
+  // card's cells + declared sides and ask the escrow.
   useEffect(() => {
     const escrowAddr = escrowAddresses[CHAIN_ID]?.address as Address | undefined;
-    if (!publicClient || !card || !card.sidesDeclared || !escrowAddr) return;
+    if (!publicClient || !card || card.yesMask == null || !escrowAddr) return;
+    const mask = card.yesMask;
     let stop = false;
     void (async () => {
       const out: Record<string, LineOutcome> = {};
-      for (let i = 0; i < LINES.length; i++) {
-        if ((card.filledLineBitmap & (1 << i)) === 0) continue;
-        const l = LINES[i];
-        const picks: Pick[] = l.cellIndices.map((ci) => ({
-          conditionResolver: card.resolvers[ci],
-          conditionId: card.conditionIds[ci],
+      for (const apiLine of card.lines) {
+        if (!(apiLine.funded || apiLine.status === 'done')) continue;
+        const picks: Pick[] = apiLine.cellIndices.map((ci) => ({
+          conditionResolver: card.cells[ci].resolver,
+          conditionId: card.cells[ci].conditionId,
           predictedOutcome:
-            (card.cellSides & (1 << ci)) !== 0
-              ? OutcomeSide.YES
-              : OutcomeSide.NO,
+            (mask & (1 << ci)) !== 0 ? OutcomeSide.YES : OutcomeSide.NO,
         }));
         try {
           const pcid = computePickConfigId(canonicalizePicks(picks));
@@ -450,7 +384,7 @@ export default function CardDetailScreen({ cardId }: Props) {
             resolved: boolean;
             result: number;
           };
-          out[l.id] = {
+          out[apiLine.lineId] = {
             pool:
               cfg.totalPredictorCollateral + cfg.totalCounterpartyCollateral,
             resolved: cfg.resolved,
@@ -471,20 +405,22 @@ export default function CardDetailScreen({ cardId }: Props) {
   // Once all 10 lines are funded, read each cell's resolution and compare to
   // the declared side: correct (✓), wrong (✗), or not-yet-resolved (loading).
   useEffect(() => {
-    if (!publicClient || !card || !card.sidesDeclared) return;
-    if ((card.filledLineBitmap & 0x3ff) !== 0x3ff) return;
+    if (!publicClient || !card || card.yesMask == null) return;
+    const allDone = card.lines.every((l) => l.funded || l.status === 'done');
+    if (!allDone || card.lines.length === 0) return;
+    const mask = card.yesMask;
     let stop = false;
     void (async () => {
       const out: Record<number, CellStatus> = {};
-      for (let i = 0; i < 16; i++) {
-        const declaredYes = (card.cellSides & (1 << i)) !== 0;
+      for (let i = 0; i < card.cells.length; i++) {
+        const declaredYes = (mask & (1 << i)) !== 0;
         let st: CellStatus = 'pending';
         try {
           const r = (await publicClient.readContract({
-            address: card.resolvers[i],
+            address: card.cells[i].resolver,
             abi: RESOLVER_ABI,
             functionName: 'getResolution',
-            args: [card.conditionIds[i]],
+            args: [card.cells[i].conditionId],
           })) as readonly [boolean, { yesWeight: bigint; noWeight: bigint }];
           const ok = r[0];
           const yw = r[1].yesWeight;
@@ -509,28 +445,21 @@ export default function CardDetailScreen({ cardId }: Props) {
     };
   }, [publicClient, card, refreshKey]);
 
-  const injected = connectors.find((c) => c.id === 'injected');
-  const now = Math.floor(Date.now() / 1000);
-  const isExpired = card != null && Number(card.expiresAt) < now;
-  const lineCount = card
-    ? Array.from({ length: 10 }).filter(
-        (_, i) => (card.filledLineBitmap & (1 << i)) !== 0,
-      ).length
-    : 0;
-  const cardComplete = lineCount === 10;
-  const isPlayer =
-    smartAccount &&
-    card &&
-    smartAccount.toLowerCase() === card.player.toLowerCase();
+  // Wins so far = funded lines that resolved in the predictor's favor.
+  const wins = LINES.filter(
+    (l) => lineOutcomes[l.id]?.resolved && lineOutcomes[l.id]?.predictorWon,
+  ).length;
 
-  // A funded session is required for every player action.
+  const injected = connectors.find((c) => c.id === 'injected');
+
+  // A session is required: it identifies the player (smart account) and lets
+  // the backend mint lines on their behalf.
   const needsSession = isConnected && !isActive;
 
   const sessionPrompt = needsSession ? (
     <div className="admin-action">
       <p className="muted small">
-        Sign in to act on this card (mint card, declare sides, fund lines,
-        claim).
+        Sign in to see your card, pick sides, and submit.
       </p>
       <button
         type="button"
@@ -573,15 +502,7 @@ export default function CardDetailScreen({ cardId }: Props) {
         </header>
       )}
 
-      {!contractAddress && (
-        <section className="screen admin-section">
-          <p className="muted small">
-            Set the BingoCard contract address in Settings (gear icon).
-          </p>
-        </section>
-      )}
-
-      {contractAddress && !isConnected && injected && (
+      {!isConnected && injected && (
         <section className="screen admin-section">
           <button
             type="button"
@@ -594,24 +515,25 @@ export default function CardDetailScreen({ cardId }: Props) {
         </section>
       )}
 
-      {card && (
-        <section className="screen admin-section">
-          {sessionPrompt}
+      {needsSession && (
+        <section className="screen admin-section">{sessionPrompt}</section>
+      )}
 
-          {!card.sidesDeclared && isPlayer && (
+      {card && player && (
+        <section className="screen admin-section">
+          {!submitted && (
             <div className="admin-action">
               <div className="bingo-grid">
-                {card.conditionIds.map((id, i) => {
+                {card.cells.map((cell, i) => {
                   const isPicked = (pickedMask & (1 << i)) !== 0;
                   const yes = isPicked && (pickedSides & (1 << i)) !== 0;
                   const no = isPicked && (pickedSides & (1 << i)) === 0;
-                  const detail = conditionDetails.get(id.toLowerCase());
                   return (
                     <div key={i} className="bingo-cell">
-                      {detail?.similarMarketImage && (
+                      {cell.imageUrl && (
                         <img
                           className="cell-thumb"
-                          src={detail.similarMarketImage}
+                          src={cell.imageUrl}
                           alt=""
                           aria-hidden
                         />
@@ -620,7 +542,10 @@ export default function CardDetailScreen({ cardId }: Props) {
                         className="bingo-cell-title"
                         onMouseEnter={(e) =>
                           setTip({
-                            text: detail?.question ?? detail?.shortName ?? id,
+                            text:
+                              cell.question ??
+                              cell.shortName ??
+                              cell.conditionId,
                             x: e.clientX,
                             y: e.clientY,
                           })
@@ -632,7 +557,7 @@ export default function CardDetailScreen({ cardId }: Props) {
                         }
                         onMouseLeave={() => setTip(null)}
                       >
-                        {detail?.shortName ?? detail?.question ?? id}
+                        {cell.shortName ?? cell.question ?? cell.conditionId}
                       </div>
                       <div className="bingo-side-toggle">
                         <button
@@ -660,6 +585,34 @@ export default function CardDetailScreen({ cardId }: Props) {
                   );
                 })}
               </div>
+              <div className="field">
+                <label className="label" htmlFor="card-price">
+                  Card price (USDe)
+                </label>
+                <input
+                  id="card-price"
+                  className="admin-input"
+                  inputMode="decimal"
+                  placeholder={
+                    pool ? fmtUnits(BigInt(pool.minCardPriceWei)) : '10'
+                  }
+                  value={priceInput}
+                  onChange={(e) => {
+                    setPriceTouched(true);
+                    setPriceInput(e.target.value);
+                  }}
+                  disabled={actionBusy}
+                />
+                {priceInput.trim() && enteredPriceWei == null && (
+                  <p className="muted small">
+                    Must be a multiple of 10 wei
+                    {pool
+                      ? ` and at least ${fmtUnits(BigInt(pool.minCardPriceWei))}`
+                      : ''}
+                    .
+                  </p>
+                )}
+              </div>
               <div className="pick-actions">
                 <button
                   type="button"
@@ -673,9 +626,12 @@ export default function CardDetailScreen({ cardId }: Props) {
                   type="button"
                   className="primary block"
                   disabled={
-                    actionBusy || !sessionClient || !allCellsPicked || !isActive
+                    actionBusy ||
+                    !isActive ||
+                    !allCellsPicked ||
+                    enteredPriceWei == null
                   }
-                  onClick={declareAndFund}
+                  onClick={submitPicks}
                 >
                   {actionBusy
                     ? 'Submitting…'
@@ -687,11 +643,11 @@ export default function CardDetailScreen({ cardId }: Props) {
             </div>
           )}
 
-          {card.sidesDeclared && (
+          {submitted && (
             <>
-              {!cardComplete && isPlayer && (
+              {!cardComplete && (
                 <div className="wizard-step-title">
-                  {submitter.isSubmitting || actionBusy
+                  {anyInflight || actionBusy
                     ? `Submitting your 10 lines (${lineCount}/10)`
                     : `Submit your 10 lines (${lineCount}/10)`}
                 </div>
@@ -702,9 +658,8 @@ export default function CardDetailScreen({ cardId }: Props) {
                   diagonals in the corners. */}
               <div className="submit-panel">
               <div className="locked-grid">
-                {card.conditionIds.map((id, idx) => {
-                  const yes = (card.cellSides & (1 << idx)) !== 0;
-                  const detail = conditionDetails.get(id.toLowerCase());
+                {card.cells.map((cell, idx) => {
+                  const yes = (yesMask & (1 << idx)) !== 0;
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const highlighted =
@@ -721,10 +676,10 @@ export default function CardDetailScreen({ cardId }: Props) {
                       }`}
                       style={{ gridColumn: col + 2, gridRow: row + 1 }}
                     >
-                      {detail?.similarMarketImage && (
+                      {cell.imageUrl && (
                         <img
                           className="cell-thumb"
-                          src={detail.similarMarketImage}
+                          src={cell.imageUrl}
                           alt=""
                           aria-hidden
                         />
@@ -736,9 +691,9 @@ export default function CardDetailScreen({ cardId }: Props) {
                           }`}
                           onMouseEnter={(e) =>
                             (cellStatus[idx] ?? 'pending') === 'pending' &&
-                            detail?.endTime
+                            cell.endTime
                               ? setTip({
-                                  text: `Est. end ${fmtEndTime(detail.endTime)}`,
+                                  text: `Est. end ${fmtEndTime(cell.endTime)}`,
                                   x: e.clientX,
                                   y: e.clientY,
                                 })
@@ -760,7 +715,10 @@ export default function CardDetailScreen({ cardId }: Props) {
                         className="cell-text"
                         onMouseEnter={(e) =>
                           setTip({
-                            text: detail?.question ?? detail?.shortName ?? id,
+                            text:
+                              cell.question ??
+                              cell.shortName ??
+                              cell.conditionId,
                             x: e.clientX,
                             y: e.clientY,
                           })
@@ -772,23 +730,22 @@ export default function CardDetailScreen({ cardId }: Props) {
                         }
                         onMouseLeave={() => setTip(null)}
                       >
-                        {detail?.shortName ?? detail?.question ?? id}
+                        {cell.shortName ?? cell.question ?? cell.conditionId}
                       </div>
                       <div className="locked-pick">{yes ? 'YES' : 'NO'}</div>
                     </article>
                   );
                 })}
 
-                {LINES.map((l, i) => {
-                  const status = submitter.progress[l.id]?.status ?? 'pending';
-                  const filled = (card.filledLineBitmap & (1 << i)) !== 0;
-                  const done = filled || status === 'done';
-                  // On-chain `filled` wins over transient submitter status: a
-                  // retry re-attempts already-funded lines and they revert
-                  // (LineAlreadyFilled) — don't paint those red/in-flight.
-                  const submitFailed = !filled && status === 'failed';
+                {LINES.map((l) => {
+                  const apiLine = card.lines.find((x) => x.lineId === l.id);
+                  const status = apiLine?.status ?? 'pending';
+                  const funded = apiLine?.funded ?? false;
+                  // funded (on-chain) or done (just minted) = the line exists.
+                  const done = funded || status === 'done';
+                  const submitFailed = !funded && status === 'failed';
                   const inflight =
-                    !filled &&
+                    !funded &&
                     (status === 'quoting' ||
                       status === 'signing' ||
                       status === 'submitting');
@@ -815,7 +772,7 @@ export default function CardDetailScreen({ cardId }: Props) {
                     verb = 'PENDING';
                   }
 
-                  const claimable = verb === 'CLAIM' && !!isPlayer;
+                  const claimable = verb === 'CLAIM' && isActive;
                   return (
                     <div
                       key={l.id}
@@ -858,21 +815,22 @@ export default function CardDetailScreen({ cardId }: Props) {
               </div>
               </div>
 
-              {!cardComplete && isPlayer && (
+              {!cardComplete && (
                 <>
-                  {submitter.error && (
-                    <p className="error small">{submitter.error}</p>
+                  {anyFailed && (
+                    <p className="error small">
+                      {card.lines.find((l) => !l.funded && l.error)?.error ??
+                        'Some lines failed to fund.'}
+                    </p>
                   )}
-                  {!submitter.isSubmitting && !actionBusy && (
+                  {(anyFailed || anyStalled) && !anyInflight && !actionBusy && (
                     <button
                       type="button"
                       className="primary block"
                       disabled={!isActive}
-                      onClick={fundLines}
+                      onClick={retryLines}
                     >
-                      {lineCount > 0 || submitter.error
-                        ? 'Retry remaining lines'
-                        : 'Submit lines'}
+                      Retry remaining lines
                     </button>
                   )}
                 </>
@@ -880,15 +838,17 @@ export default function CardDetailScreen({ cardId }: Props) {
             </>
           )}
 
-          {cardComplete && multipliers && (
+          {cardComplete && pool && cardPriceWei != null && (
             <div className="bonus-curve">
               <div className="bonus-prize-title">Bonus Prize</div>
+              <p className="muted small">
+                Bonuses are paid out directly by COMBO.BINGO.
+              </p>
               <ol className="wizard bonus-wizard">
-                {multipliers.map((bps, i) => {
-                  const wins = preview?.wins ?? 0;
+                {pool.multiplierBps.map((bps, i) => {
                   const status =
                     i < wins ? 'done' : i === wins ? 'current' : 'pending';
-                  const payout = (card.cardPriceAtMint * BigInt(bps)) / 10_000n;
+                  const payout = (cardPriceWei * BigInt(bps)) / 10_000n;
                   return (
                     <li key={i} className={`wizard-step status-${status}`}>
                       <div className="wizard-step-marker" aria-hidden>
@@ -910,54 +870,34 @@ export default function CardDetailScreen({ cardId }: Props) {
                   );
                 })}
               </ol>
-            </div>
-          )}
-
-          {cardComplete && !claimed && isPlayer && (
-            <div>
-              <button
-                type="button"
-                className="primary block"
-                disabled={
-                  actionBusy || !isActive || !preview || preview.wins < 2
-                }
-                onClick={() => {
-                  if (
-                    preview &&
-                    preview.wins < 10 &&
-                    !window.confirm(
-                      `Claim is one-shot. You currently have ${preview.wins} winning lines. More may resolve later. Claim now?`,
-                    )
-                  ) {
-                    return;
-                  }
-                  submitClaimBonus();
-                }}
-              >
-                {actionBusy
-                  ? 'Claiming…'
-                  : preview && preview.wins >= 2
-                    ? `Claim Bonus (${preview.wins} bingos)`
-                    : 'Claim Bonus'}
-              </button>
-            </div>
-          )}
-
-          {isExpired && card.sponsorBalance > 0n && isPlayer && (
-            <div className="admin-row">
-              <button
-                type="button"
-                className="primary"
-                disabled={actionBusy || !isActive}
-                onClick={submitWithdrawUnused}
-              >
-                Withdraw unused ({fmtUnits(card.sponsorBalance)})
-              </button>
+              {wins > 0 && (
+                <p className="muted small">
+                  Current entitlement: $
+                  {fmtUnits(
+                    (cardPriceWei *
+                      BigInt(pool.multiplierBps[wins] ?? 0)) /
+                      10_000n,
+                  )}{' '}
+                  ({wins} {wins === 1 ? 'bingo' : 'bingos'}) — paid out
+                  directly by COMBO.BINGO.
+                </p>
+              )}
             </div>
           )}
 
           {actionError && <p className="error">{actionError}</p>}
           {statusMsg && <p className="muted small">{statusMsg}</p>}
+        </section>
+      )}
+
+      {!card && player && !statusMsg && (
+        <section className="screen admin-section">
+          <p className="muted small">Dealing your card…</p>
+        </section>
+      )}
+      {!card && statusMsg && (
+        <section className="screen admin-section">
+          <p className="error small">{statusMsg}</p>
         </section>
       )}
 
@@ -978,21 +918,25 @@ export default function CardDetailScreen({ cardId }: Props) {
               </button>
             </div>
             <div className="admin-kv">
-              <div>ID</div>
-              <div className="mono">#{cardId.toString()}</div>
+              <div>Pool</div>
+              <div className="mono">{card.poolId}</div>
               <div>Player</div>
               <div className="mono">{shortAddress(card.player)}</div>
-              <div>Ref code</div>
-              <div className="mono">{card.refCode}</div>
-              <div>Sponsor balance</div>
-              <div className="mono">{fmtUnits(card.sponsorBalance)}</div>
-              <div>Sides declared</div>
-              <div className="mono">{card.sidesDeclared ? 'yes' : 'no'}</div>
-              <div>Lines funded</div>
-              <div className="mono">{lineCount} / 10</div>
-              <div>Expires at</div>
+              <div>Card price</div>
+              <div className="mono">{fmtUnits(cardPriceWei ?? undefined)}</div>
+              <div>Submitted</div>
               <div className="mono">
-                {new Date(Number(card.expiresAt) * 1000).toLocaleString()}
+                {card.submittedAt
+                  ? new Date(card.submittedAt).toLocaleString()
+                  : 'no'}
+              </div>
+              <div>Lines funded</div>
+              <div className="mono">
+                {lineCount} / {card.lines.length}
+              </div>
+              <div>Pool cutoff</div>
+              <div className="mono">
+                {new Date(card.cutoff * 1000).toLocaleString()}
               </div>
             </div>
           </div>

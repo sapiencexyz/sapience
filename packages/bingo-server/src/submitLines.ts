@@ -1,6 +1,12 @@
+// Server-side port of the bingo frontend's submitCard.ts, with one structural
+// change: there is no mint sponsor. The player's smart account funds each
+// line's predictor collateral itself — the backend wraps/approves up front
+// via the session key, then runs the 10 RFQs and mints in parallel.
+
 import {
   createPublicClient,
-  encodeAbiParameters,
+  encodeFunctionData,
+  erc20Abi,
   http,
   stringToHex,
   type Address,
@@ -15,52 +21,44 @@ import {
 import { prepareAuctionRFQ } from '@sapience/sdk/auction/initiate';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
+import { etherealTestnetChain } from '@sapience/sdk/constants';
+import { env } from './config.js';
 import {
-  CHAIN_ID_ETHEREAL_TESTNET,
-  etherealTestnetChain,
-} from '@sapience/sdk/constants';
-import {
-  predictionMarketEscrow as escrowAddresses,
-  collateralToken as collateralAddresses,
-} from '@sapience/sdk/contracts';
-import type { Pick } from '@sapience/sdk/types/escrow';
-import { buildLines, type Line } from '~/parlay';
+  COLLATERAL_ADDRESS,
+  ESCROW_ADDRESS,
+  lineFunded,
+  linePicks,
+} from './chain.js';
+import { buildLines, type Line } from './lines.js';
+import { CHAIN_ID } from './session.js';
+import type { LineProgress, LineStatus, PoolCondition } from './types.js';
 
-const RELAYER_WS_URL = 'wss://relayer.staging.sapience.xyz/auction';
-const CHAIN_ID = CHAIN_ID_ETHEREAL_TESTNET;
 const BID_WAIT_MS = 25_000;
+const WS_CONNECT_TIMEOUT_MS = 15_000;
 
-export type LineStatus =
-  | 'pending'
-  | 'quoting'
-  | 'signing'
-  | 'submitting'
-  | 'done'
-  | 'failed';
+const WUSDE_DEPOSIT_ABI = [
+  {
+    type: 'function',
+    name: 'deposit',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+] as const;
 
-export interface LineProgress {
-  lineId: string;
-  status: LineStatus;
-  error?: string;
-  /** UserOperation hash, set once the mint is submitted. */
-  opHash?: string;
-}
-
-export interface SubmitCardParams {
+export interface SubmitLinesParams {
   sessionClient: KernelAccountClient;
   smartAccountAddress: Address;
-  /** On-chain card id; abi-encoded into predictorSponsorData per line. */
-  cardId: bigint;
-  /** The card's 16 cell conditionIds (bytes32) in cell order. */
-  conditionIds: readonly Hex[]; // length 16
-  /** Matching resolver per cell, same order as conditionIds. */
-  resolvers: readonly Address[]; // length 16
-  /** Declared sides as a bitmask: bit i set = YES on cell i, else NO. */
-  cellSides: number;
-  /** Per-line predictor collateral in wei (cardPriceAtMint / 10). */
+  /** The card's 16 dealt cells, in cell order. */
+  cells: readonly PoolCondition[];
+  /** Declared sides: bit i set = YES on cell i. */
+  yesMask: number;
+  /** Per-line predictor collateral in wei (cardPrice / 10). */
   stakePerLineWei: bigint;
-  /** BingoCard address — funds the predictor side as the mint sponsor. */
-  bingoCardAddress: Address;
+  /** Journaled funded line ids — lines that were minted at some point, even
+   *  if the player has since redeemed (burned) the position. Never re-mint
+   *  these. */
+  alreadyFundedLineIds?: ReadonlySet<string>;
   onProgress?: (
     lineId: string,
     status: LineStatus,
@@ -68,7 +66,7 @@ export interface SubmitCardParams {
   ) => void;
 }
 
-export interface SubmitCardResult {
+export interface SubmitLinesResult {
   perLine: LineProgress[];
   anySuccess: boolean;
 }
@@ -82,69 +80,125 @@ interface BidShape {
   counterpartySessionKeyData?: string;
 }
 
-function linePicks(
-  line: Line,
-  conditionIds: readonly Hex[],
-  resolvers: readonly Address[],
-  cellSides: number,
-): Pick[] {
-  return line.cellIndices.map((i) => ({
-    conditionResolver: resolvers[i],
-    conditionId: conditionIds[i],
-    predictedOutcome: (cellSides & (1 << i)) !== 0 ? 1 : 0,
-  }));
+interface FullBid {
+  auctionId: string;
+  counterparty: string;
+  counterpartyCollateral: string;
+  counterpartyNonce: number;
+  counterpartyDeadline: number;
+  counterpartySignature: string;
+  counterpartySessionKeyData?: string;
+  receivedAt: string;
 }
 
-export async function submitCard(
-  params: SubmitCardParams,
-): Promise<SubmitCardResult> {
-  const {
-    sessionClient,
-    smartAccountAddress,
-    cardId,
-    conditionIds,
-    resolvers,
-    cellSides,
-    stakePerLineWei,
-    bingoCardAddress,
-    onProgress,
-  } = params;
-
-  if (conditionIds.length !== 16 || resolvers.length !== 16) {
-    throw new Error('Need 16 conditions + 16 resolvers');
+/**
+ * One batched UserOp before the lines run: wrap the wUSDe shortfall for
+ * `totalWei` and ensure the escrow allowance covers it. Doing this once up
+ * front (instead of per line inside prepareMintCalls) avoids 10 parallel
+ * mints each racing to wrap/approve the same balance.
+ */
+async function prepareCollateral(
+  sessionClient: KernelAccountClient,
+  smartAccountAddress: Address,
+  totalWei: bigint,
+): Promise<void> {
+  if (!ESCROW_ADDRESS || !COLLATERAL_ADDRESS) {
+    throw new Error('Escrow/collateral not configured for Ethereal');
   }
+  const publicClient = createPublicClient({
+    chain: etherealTestnetChain,
+    transport: http(etherealTestnetChain.rpcUrls.default.http[0]),
+  });
+  const [nativeBalance, wusdeBalance, allowance] = await Promise.all([
+    publicClient.getBalance({ address: smartAccountAddress }),
+    publicClient.readContract({
+      address: COLLATERAL_ADDRESS,
+      abi: erc20Abi,
+      functionName: 'balanceOf',
+      args: [smartAccountAddress],
+    }),
+    publicClient.readContract({
+      address: COLLATERAL_ADDRESS,
+      abi: erc20Abi,
+      functionName: 'allowance',
+      args: [smartAccountAddress, ESCROW_ADDRESS],
+    }),
+  ]);
+
+  const calls: { to: Address; data: Hex; value: bigint }[] = [];
+  const shortfall = wusdeBalance < totalWei ? totalWei - wusdeBalance : 0n;
+  if (shortfall > 0n) {
+    if (nativeBalance < shortfall) {
+      throw new Error(
+        `Insufficient funds: smart account has ${wusdeBalance} wUSDe + ` +
+          `${nativeBalance} native, needs ${totalWei} total collateral`,
+      );
+    }
+    calls.push({
+      to: COLLATERAL_ADDRESS,
+      data: encodeFunctionData({
+        abi: WUSDE_DEPOSIT_ABI,
+        functionName: 'deposit',
+      }),
+      value: shortfall,
+    });
+  }
+  if (allowance < totalWei) {
+    calls.push({
+      to: COLLATERAL_ADDRESS,
+      data: encodeFunctionData({
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [ESCROW_ADDRESS, totalWei],
+      }),
+      value: 0n,
+    });
+  }
+  if (calls.length === 0) return;
 
   const account = sessionClient.account;
   if (!account) throw new Error('Session client has no account');
+  const opHash = await sessionClient.sendUserOperation({
+    callData: await account.encodeCalls(calls),
+  });
+  const receipt = await sessionClient.waitForUserOperationReceipt({
+    hash: opHash,
+  });
+  if (!receipt.success) {
+    throw new Error(
+      `Collateral prep reverted${receipt.reason ? `: ${receipt.reason}` : ''}`,
+    );
+  }
+}
 
-  const escrowAddress = escrowAddresses[CHAIN_ID]?.address as
-    | Address
-    | undefined;
-  const collateralAddress = collateralAddresses[CHAIN_ID]?.address as
-    | Address
-    | undefined;
-  if (!escrowAddress || !collateralAddress) {
+export async function submitLines(
+  params: SubmitLinesParams,
+): Promise<SubmitLinesResult> {
+  const {
+    sessionClient,
+    smartAccountAddress,
+    cells,
+    yesMask,
+    stakePerLineWei,
+    alreadyFundedLineIds,
+    onProgress,
+  } = params;
+
+  if (cells.length !== 16) throw new Error('Need 16 dealt cells');
+  const account = sessionClient.account;
+  if (!account) throw new Error('Session client has no account');
+  if (!ESCROW_ADDRESS || !COLLATERAL_ADDRESS) {
     throw new Error('Escrow/collateral not configured for Ethereal');
   }
+  const escrowAddress = ESCROW_ADDRESS;
+  const collateralAddress = COLLATERAL_ADDRESS;
 
-  // The BingoCard sponsors the predictor side: each line mint sets
-  // predictorSponsor = BingoCard and predictorSponsorData = abi.encode(cardId),
-  // so the escrow calls BingoCard.fundMint, which pulls the per-line stake from
-  // the card's sponsor balance. The smart account never transfers predictor
-  // collateral itself — so we pass artificially-high balance/allowance hints to
-  // skip any wrap/approve in prepareMintCalls.
-  const predictorSponsor = bingoCardAddress;
-  const predictorSponsorData = encodeAbiParameters(
-    [{ type: 'uint256' }],
-    [cardId],
-  );
-  const HINT_LARGE = (1n << 255n) - 1n;
-  const currentWusdeBalance = HINT_LARGE;
-  const currentAllowance = HINT_LARGE;
-
-  const lines = buildLines();
+  const allLines = buildLines();
   const progress: Record<string, LineProgress> = Object.fromEntries(
-    lines.map((l) => [l.id, { lineId: l.id, status: 'pending' as LineStatus }]),
+    allLines.map((l) => [
+      l.id,
+      { lineId: l.id, status: 'pending' as LineStatus },
+    ]),
   );
   const emit = (
     lineId: string,
@@ -155,48 +209,57 @@ export async function submitCard(
     onProgress?.(lineId, status, extra);
   };
 
-  // Public client for on-chain bid validation. The SDK expects its own
-  // PublicClient type from a different abitype transitive; we cast at the
-  // call site below since these are runtime-compatible.
+  // Idempotent retry: skip lines that already have a funded position. The
+  // journal is unioned with the live balance — a redeemed (burned) position
+  // still counts as funded, so a retry can never re-mint and double-charge it.
+  const fundedFlags = await Promise.all(
+    allLines.map(
+      async (l) =>
+        (alreadyFundedLineIds?.has(l.id) ?? false) ||
+        lineFunded(smartAccountAddress, linePicks(l, cells, yesMask)),
+    ),
+  );
+  const lines = allLines.filter((_, i) => {
+    if (fundedFlags[i]) emit(allLines[i].id, 'done');
+    return !fundedFlags[i];
+  });
+  if (lines.length === 0) {
+    return { perLine: Object.values(progress), anySuccess: true };
+  }
+
+  // Wrap + approve once for everything that's about to mint. After this,
+  // per-line prepareMintCalls sees "plenty of balance/allowance" hints so it
+  // doesn't add its own wrap/approve calls.
+  await prepareCollateral(
+    sessionClient,
+    smartAccountAddress,
+    stakePerLineWei * BigInt(lines.length),
+  );
+  const HINT_LARGE = (1n << 255n) - 1n;
+
   const publicClient = createPublicClient({
     chain: etherealTestnetChain,
     transport: http(etherealTestnetChain.rpcUrls.default.http[0]),
   });
 
   // ---------- shared WebSocket ----------
-  // Pairing strategy:
-  //   The relayer assigns its own auctionId and broadcasts `auction.started`
-  //   with our (predictor, predictorNonce), so we pair on those.
-  //   nonceWaiters[predictorNonce] → fires with the relayer's auctionId
-  //   bidStreamHandlers[realAuctionId] → handler that receives all incoming
-  //     bids for that auction; the line's runLine sets this up post-pairing
-  //     so it has the per-line context (picks etc.) needed by SDK's
-  //     validateBidOnChain. Same approach as app's useValidatedBids.
+  // Pairing strategy (same as the old frontend flow): the relayer assigns its
+  // own auctionId and broadcasts `auction.started` with our (predictor,
+  // predictorNonce), so we pair on those.
   const nonceWaiters = new Map<number, (realId: string) => void>();
   const bidStreamHandlers = new Map<string, (bids: FullBid[]) => void>();
   const expiryWaiters = new Map<string, (err: Error) => void>();
 
-  interface FullBid {
-    auctionId: string;
-    counterparty: string;
-    counterpartyCollateral: string;
-    counterpartyNonce: number;
-    counterpartyDeadline: number;
-    counterpartySignature: string;
-    counterpartySessionKeyData?: string;
-    receivedAt: string;
-  }
-
-  const ws = await createEscrowAuctionWs(RELAYER_WS_URL, {
+  const ws = await createEscrowAuctionWs(env.RELAYER_WS_URL, {
     onAuctionStarted: (details) => {
-      const ourPredictor = smartAccountAddress.toLowerCase();
-      const broadcastPredictor = String(details.predictor).toLowerCase();
-      if (broadcastPredictor !== ourPredictor) return;
+      if (
+        String(details.predictor).toLowerCase() !==
+        smartAccountAddress.toLowerCase()
+      ) {
+        return;
+      }
       const cb = nonceWaiters.get(details.predictorNonce);
       if (!cb) return;
-      console.log(
-        `[submitCard] auction.started nonce=${details.predictorNonce} id=${details.auctionId}`,
-      );
       nonceWaiters.delete(details.predictorNonce);
       cb(details.auctionId);
     },
@@ -206,17 +269,15 @@ export async function submitCard(
       handler(bids as unknown as FullBid[]);
     },
     onAuctionExpired: ({ auctionId, reason }) => {
-      console.log(`[submitCard] auction.expired id=${auctionId} reason=${reason}`);
       const rejectAuction = expiryWaiters.get(auctionId);
       if (rejectAuction) {
         expiryWaiters.delete(auctionId);
         rejectAuction(new Error(`Auction expired: ${reason}`));
       }
     },
-    onError: (e) => console.warn('[submitCard] WS error:', e),
+    onError: (e) => console.warn('[submitLines] WS error:', e),
   });
 
-  // Wait until WS is open
   await new Promise<void>((resolve, reject) => {
     if (ws.isConnected) return resolve();
     const startedAt = Date.now();
@@ -224,9 +285,9 @@ export async function submitCard(
       if (ws.isConnected) {
         clearInterval(id);
         resolve();
-      } else if (Date.now() - startedAt > 10_000) {
+      } else if (Date.now() - startedAt > WS_CONNECT_TIMEOUT_MS) {
         clearInterval(id);
-        reject(new Error('WebSocket did not connect within 10s'));
+        reject(new Error('Relayer WebSocket did not connect'));
       }
     }, 100);
   });
@@ -236,15 +297,12 @@ export async function submitCard(
     try {
       emit(line.id, 'quoting');
 
-      const picksForLine = linePicks(line, conditionIds, resolvers, cellSides);
-      // PredictionMarketEscrow uses Permit2-style bitmap nonces — unordered,
-      // any unused uint256 works. A random nonce per line is fine; we don't
-      // need to coordinate ordering across the 10 in-flight mints.
+      const picksForLine = linePicks(line, cells, yesMask);
+      // Permit2-style bitmap nonces — any unused uint256 works, no ordering
+      // needed across the parallel in-flight mints.
       const predictorNonce = Number(generateRandomNonce() & 0xffff_ffffn);
 
-      // 1. Build + sign auction intent. canonicalPicks is the keccak-sorted
-      //    order — the contract rejects mints whose picks aren't canonical
-      //    (PicksNotCanonical) so we use these everywhere downstream.
+      // 1. Build + sign auction intent (canonical pick order everywhere).
       const { payload, canonicalPicks } = await prepareAuctionRFQ({
         picks: picksForLine,
         predictorCollateral: stakePerLineWei,
@@ -258,13 +316,10 @@ export async function submitCard(
         options: {
           deadlineSeconds: 60,
           skipSelfValidation: true,
-          predictorSponsor,
-          predictorSponsorData,
         },
       });
 
-      // 2. Stage a nonce-keyed waiter — fires when the relayer broadcasts
-      //    `auction.started` with our predictor + predictorNonce.
+      // 2. Stage a nonce-keyed waiter for auction.started.
       const realIdPromise = new Promise<string>((resolveStart, rejectStart) => {
         const t = setTimeout(() => {
           nonceWaiters.delete(predictorNonce);
@@ -280,9 +335,6 @@ export async function submitCard(
 
       // 3. Send auction.start
       const sentId = crypto.randomUUID();
-      console.log(
-        `[submitCard] line=${line.id} sending auction.start sentId=${sentId} nonce=${predictorNonce}`,
-      );
       const socket = ws.socket;
       if (!socket) throw new Error('WebSocket missing');
       socket.send(
@@ -293,15 +345,10 @@ export async function submitCard(
         }),
       );
 
-      // 4. Resolve real auctionId
       const realAuctionId = await realIdPromise;
-      console.log(`[submitCard] line=${line.id} got realId=${realAuctionId}`);
 
-      // 5. Validate incoming bids via SDK's validateBidOnChain. Same
-      //    fail-closed semantics as the app's useValidatedBids: accept
-      //    `valid` or `unverified`, reject `invalid`. Skip duplicates by
-      //    counterpartySignature so a noisy relayer rebroadcast doesn't
-      //    re-validate the same bid every push.
+      // 4. Wait for the first bid that validates on-chain. Fail-closed:
+      //    accept `valid`/`unverified`, reject `invalid`.
       const seenSigs = new Set<string>();
       const bid = new Promise<BidShape>((resolveBid, rejectBid) => {
         let settled = false;
@@ -324,11 +371,6 @@ export async function submitCard(
             seenSigs.add(b.counterpartySignature);
             return true;
           });
-          if (fresh.length === 0) return;
-
-          console.log(
-            `[submitCard] line=${line.id} validating ${fresh.length} fresh bid(s)`,
-          );
           for (const b of fresh) {
             if (settled) return;
             try {
@@ -350,8 +392,6 @@ export async function submitCard(
                     conditionId: p.conditionId,
                     predictedOutcome: p.predictedOutcome,
                   })),
-                  predictorSponsor,
-                  predictorSponsorData,
                 },
                 {
                   chainId: CHAIN_ID,
@@ -361,9 +401,6 @@ export async function submitCard(
                   publicClient: publicClient as any,
                   failOpen: false,
                 },
-              );
-              console.log(
-                `[submitCard] line=${line.id} bid from ${b.counterparty.slice(0, 10)} → ${result.status}`,
               );
               if (result.status === 'valid' || result.status === 'unverified') {
                 if (settled) return;
@@ -379,7 +416,7 @@ export async function submitCard(
                 return;
               }
             } catch (e) {
-              console.warn(`[submitCard] line=${line.id} validate threw:`, e);
+              console.warn(`[submitLines] ${line.id} validate threw:`, e);
             }
           }
         });
@@ -392,15 +429,11 @@ export async function submitCard(
       });
       ws.subscribeAuction(realAuctionId);
 
-      // 6. Wait for first valid bid
       const resolved = await bid;
-      console.log(`[submitCard] line=${line.id} got bid from ${resolved.counterparty}`);
 
       emit(line.id, 'signing');
 
-      // 6. Sign predictor MintApproval — over the canonical picks. Must
-      //    include the sponsor + sponsorData since they're part of the
-      //    predictionHash the escrow verifies.
+      // 5. Sign predictor MintApproval over the canonical picks.
       const mintTypedData = buildPredictorMintTypedData({
         picks: canonicalPicks,
         predictorCollateral: stakePerLineWei,
@@ -409,8 +442,6 @@ export async function submitCard(
         counterparty: resolved.counterparty,
         predictorNonce: BigInt(predictorNonce),
         predictorDeadline: BigInt(payload.predictorDeadline),
-        predictorSponsor,
-        predictorSponsorData,
         verifyingContract: escrowAddress,
         chainId: CHAIN_ID,
       });
@@ -425,7 +456,9 @@ export async function submitCard(
 
       emit(line.id, 'submitting');
 
-      // 7. Build batched calls and send as UserOp via session client
+      // 6. Build batched calls and send as a UserOp via the session key.
+      //    Collateral was wrapped/approved up front, so hint large values to
+      //    keep prepareMintCalls from adding its own wrap/approve.
       const calls = prepareMintCalls({
         mintData: {
           picks: canonicalPicks.map((p) => ({
@@ -445,24 +478,17 @@ export async function submitCard(
           counterpartyClaimedNonce: resolved.counterpartyNonce,
           predictorSessionKeyData: payload.predictorSessionKeyData,
           counterpartySessionKeyData: resolved.counterpartySessionKeyData,
-          predictorSponsor,
-          predictorSponsorData,
-          // "bingo" tagged as the affiliate code, right-padded to bytes32
           refCode: stringToHex('bingo', { size: 32 }),
         },
         predictionMarketAddress: escrowAddress,
         collateralTokenAddress: collateralAddress,
         chainId: CHAIN_ID,
-        currentWusdeBalance,
-        currentAllowance,
+        currentWusdeBalance: HINT_LARGE,
+        currentAllowance: HINT_LARGE,
       });
 
-      // ERC-4337 2D nonces, properly. ZeroDev Kernel's account.getNonce({ key })
-      // mixes our user-supplied key with the validator/permission identifier
-      // and returns the *resolved* uint256 nonce from EntryPoint.getNonce().
-      // We pass that resolved nonce to sendUserOperation so the signer signs
-      // over it (signature stays valid) AND each line gets its own independent
-      // sequence at the EntryPoint (no AA25 collisions across parallel sends).
+      // ERC-4337 2D nonces: a distinct key per line gives each mint its own
+      // EntryPoint sequence — no AA25 collisions across the parallel sends.
       const lineKey = BigInt(lineIndex + 1);
       const nonce = await (
         account as unknown as {
@@ -475,9 +501,6 @@ export async function submitCard(
         nonce,
       });
 
-      // Wait for inclusion so we surface on-chain reverts (paymaster reject,
-      // session-policy mismatch, escrow signature reject) instead of marking
-      // the line "done" while the position never actually minted.
       const receipt = await sessionClient.waitForUserOperationReceipt({
         hash: opHash,
       });
@@ -494,12 +517,14 @@ export async function submitCard(
       emit(line.id, 'done', { opHash });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.warn(`[submitCard] line ${line.id} failed:`, e);
+      console.warn(`[submitLines] line ${line.id} failed:`, e);
       emit(line.id, 'failed', { error: msg });
     }
   };
 
-  await Promise.allSettled(lines.map((l, i) => runLine(l, i)));
+  await Promise.allSettled(
+    lines.map((l) => runLine(l, allLines.indexOf(l))),
+  );
 
   ws.close();
 

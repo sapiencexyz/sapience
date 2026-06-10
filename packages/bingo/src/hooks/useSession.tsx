@@ -21,6 +21,7 @@ import {
   type SessionCreationStep,
   type SerializedSession,
 } from '~/lib/session/sessionKeyManager';
+import { postSession } from '~/lib/backendApi';
 
 interface SessionState {
   isReady: boolean;
@@ -83,6 +84,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, isRestoring: true }));
     restoreSession(stored)
       .then((result) => {
+        // Re-register with the backend so it can play even if its journal
+        // was reset. Fire-and-forget: the session itself is fine locally.
+        postSession(result.serialized).catch((e) => {
+          console.warn('[Session] Backend session registration failed:', e);
+        });
         setState({
           isReady: true,
           isActive: true,
@@ -137,6 +143,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           (step) => setState((s) => ({ ...s, step })),
         );
         saveSession(result.serialized);
+        // Hand the session key to the backend — it mints lines as the player,
+        // so without this registration the card cannot be submitted.
+        let backendError: Error | null = null;
+        try {
+          await postSession(result.serialized);
+        } catch (e) {
+          backendError = e instanceof Error ? e : new Error(String(e));
+          console.warn(
+            '[Session] Backend session registration failed:',
+            backendError,
+          );
+        }
         setState({
           isReady: true,
           isActive: true,
@@ -145,7 +163,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           isStarting: false,
           isRestoring: false,
           step: null,
-          error: null,
+          error: backendError,
         });
       } catch (e) {
         setState((s) => ({

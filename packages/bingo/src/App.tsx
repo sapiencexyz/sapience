@@ -5,8 +5,8 @@ import CardDetailScreen from './screens/CardDetailScreen';
 import ReferScreen from './screens/ReferScreen';
 
 export default function App() {
-  // Pathname-driven routing. MintScreen pushes /card/:id then dispatches a
-  // popstate so we re-render. Pure router — every screen owns its own hooks.
+  // Pathname-driven routing. Screens push a path then dispatch a popstate so
+  // we re-render. Pure router — every screen owns its own hooks.
   const [pathname, setPathname] = useState<string>(() =>
     typeof window === 'undefined' ? '/' : window.location.pathname,
   );
@@ -17,8 +17,8 @@ export default function App() {
   }, []);
 
   if (pathname.startsWith('/admin')) return <AdminScreen />;
-  const cardMatch = pathname.match(/^\/card\/(\d+)\/?$/);
-  if (cardMatch) return <CardDetailScreen cardId={BigInt(cardMatch[1])} />;
+  // The card is per-player now — no card id in the URL.
+  if (pathname.startsWith('/card')) return <CardDetailScreen />;
   if (pathname.startsWith('/refer')) return <ReferScreen />;
   return <MintScreen />;
 }
