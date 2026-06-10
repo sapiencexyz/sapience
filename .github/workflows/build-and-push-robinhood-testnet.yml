@@ -60,6 +60,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-push
     steps:
+      - uses: actions/checkout@v4
+
+      # Prisma does not wrap migrations in transactions; unwrapped migrations
+      # can fail halfway and leave the schema partially applied. Block the
+      # release before even attempting the migration.
+      - name: Enforce transactional migrations
+        run: bash packages/api/scripts/check-migrations-transactional.sh
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.CI_ROLE_ARN }}
