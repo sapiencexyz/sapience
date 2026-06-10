@@ -115,10 +115,10 @@ const REFERRAL_CODES_QUERY = `
   }
 `;
 
-// Server caps `limit` at 500 per page. We auto-paginate so the admin UI
-// doesn't silently truncate at 500 codes; MAX_PAGES is a safety net against
-// a buggy server returning a non-progressing cursor.
-const PAGE_SIZE = 500;
+// The API rejects any `limit` above GRAPHQL_MAX_LIST_SIZE (100) with a 400.
+// We auto-paginate so the admin UI doesn't silently truncate; MAX_PAGES is a
+// safety net against a buggy server returning a non-progressing cursor.
+const PAGE_SIZE = 100;
 const MAX_PAGES = 50;
 
 type ReferralCodesPageResponse = {
@@ -128,15 +128,34 @@ type ReferralCodesPageResponse = {
   };
 };
 
+type ReferralCodeAnalyticsResponse = {
+  referralCodes: {
+    items: Array<{
+      id: number;
+      claimCount: number;
+      totalVolume: string;
+      totalPositions: number;
+      claimants: {
+        items: Array<{
+          address: string;
+          tradingVolume: string;
+          positionCount: number;
+        }>;
+        nextCursor: number | null;
+      };
+    }>;
+  };
+};
+
 const REFERRAL_CODE_ANALYTICS_QUERY = `
-  query AdminReferralCodeAnalytics($id: Int!, $claimantsLimit: Int!) {
+  query AdminReferralCodeAnalytics($id: Int!, $claimantsLimit: Int!, $claimantsCursor: Int) {
     referralCodes(id: $id, limit: 1) {
       items {
         id
         claimCount
         totalVolume
         totalPositions
-        claimants(limit: $claimantsLimit) {
+        claimants(limit: $claimantsLimit, cursor: $claimantsCursor) {
           items {
             address
             tradingVolume
@@ -181,24 +200,34 @@ export function useAdminReferralCodeAnalytics(
   return useQuery<AdminReferralAnalytics>({
     queryKey: ['admin', 'referralCodeAnalytics', id],
     queryFn: async () => {
-      const data = await graphqlRequest<{
-        referralCodes: {
-          items: Array<{
-            id: number;
-            claimCount: number;
-            totalVolume: string;
-            totalPositions: number;
-            claimants: {
-              items: Array<{
-                address: string;
-                tradingVolume: string;
-                positionCount: number;
-              }>;
-            };
-          }>;
-        };
-      }>(REFERRAL_CODE_ANALYTICS_QUERY, { id, claimantsLimit: 500 });
-      const code = data.referralCodes.items[0];
+      const claimants: AdminReferralAnalytics['claimants'] = [];
+      let code: {
+        id: number;
+        claimCount: number;
+        totalVolume: string;
+        totalPositions: number;
+      } | null = null;
+      let cursor: number | null = null;
+      for (let page = 0; page < MAX_PAGES; page += 1) {
+        const data: ReferralCodeAnalyticsResponse =
+          await graphqlRequest<ReferralCodeAnalyticsResponse>(
+            REFERRAL_CODE_ANALYTICS_QUERY,
+            { id, claimantsLimit: PAGE_SIZE, claimantsCursor: cursor }
+          );
+        const item = data.referralCodes.items[0];
+        if (!item) {
+          throw new Error('Referral code not found');
+        }
+        code ??= item;
+        claimants.push(...item.claimants.items);
+        cursor = item.claimants.nextCursor;
+        if (cursor == null) break;
+        if (page === MAX_PAGES - 1) {
+          console.warn(
+            `useAdminReferralCodeAnalytics: stopped at MAX_PAGES (${MAX_PAGES}); claimants may be truncated`
+          );
+        }
+      }
       if (!code) {
         throw new Error('Referral code not found');
       }
@@ -207,7 +236,7 @@ export function useAdminReferralCodeAnalytics(
         claimCount: code.claimCount,
         totalVolume: code.totalVolume,
         totalPositions: code.totalPositions,
-        claimants: code.claimants.items,
+        claimants,
       };
     },
     enabled: typeof id === 'number',
