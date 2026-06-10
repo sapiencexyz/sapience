@@ -295,3 +295,87 @@ describe('rate limiting with trust proxy', () => {
     expect(blockedRes.headers['ratelimit-remaining']).toBe('0');
   });
 });
+
+describe('internal rate-limit bypass token', () => {
+  it('skips rate limiting when x-internal-token matches the configured secret', async () => {
+    vi.doMock('../core/config', () => ({
+      config: {
+        isProd: false,
+        RATE_LIMIT_WINDOW_MS: 60000,
+        RATE_LIMIT_MAX_REQUESTS: 2,
+        INTERNAL_RATE_LIMIT_BYPASS_TOKEN: 'internal-secret',
+      },
+    }));
+
+    const { createApp } = await import('../core/app');
+    const app = createApp();
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+
+    // Well past the limit of 2 — every request should still succeed
+    for (let i = 0; i < 5; i++) {
+      const res = await request(app)
+        .get('/test')
+        .set('X-Forwarded-For', '1.2.3.4')
+        .set('x-internal-token', 'internal-secret');
+      expect(res.status).toBe(200);
+    }
+  });
+
+  it('still rate limits requests with a wrong or missing token', async () => {
+    vi.doMock('../core/config', () => ({
+      config: {
+        isProd: false,
+        RATE_LIMIT_WINDOW_MS: 60000,
+        RATE_LIMIT_MAX_REQUESTS: 2,
+        INTERNAL_RATE_LIMIT_BYPASS_TOKEN: 'internal-secret',
+      },
+    }));
+
+    const { createApp } = await import('../core/app');
+    const app = createApp();
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+
+    for (let i = 0; i < 2; i++) {
+      await request(app)
+        .get('/test')
+        .set('X-Forwarded-For', '1.2.3.4')
+        .set('x-internal-token', 'wrong-secret');
+    }
+
+    const blockedRes = await request(app)
+      .get('/test')
+      .set('X-Forwarded-For', '1.2.3.4')
+      .set('x-internal-token', 'wrong-secret');
+    expect(blockedRes.status).toBe(429);
+  });
+
+  it('cannot bypass when no token is configured, even with an empty header', async () => {
+    vi.doMock('../core/config', () => ({
+      config: {
+        isProd: false,
+        RATE_LIMIT_WINDOW_MS: 60000,
+        RATE_LIMIT_MAX_REQUESTS: 2,
+        INTERNAL_RATE_LIMIT_BYPASS_TOKEN: '',
+      },
+    }));
+
+    const { createApp } = await import('../core/app');
+    const app = createApp();
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+
+    // An empty header must not match the empty default — that would
+    // turn "feature off" into "bypass for everyone"
+    for (let i = 0; i < 2; i++) {
+      await request(app)
+        .get('/test')
+        .set('X-Forwarded-For', '1.2.3.4')
+        .set('x-internal-token', '');
+    }
+
+    const blockedRes = await request(app)
+      .get('/test')
+      .set('X-Forwarded-For', '1.2.3.4')
+      .set('x-internal-token', '');
+    expect(blockedRes.status).toBe(429);
+  });
+});
