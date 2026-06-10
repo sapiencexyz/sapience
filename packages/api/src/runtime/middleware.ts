@@ -68,8 +68,10 @@ export async function adminAuth(
   res: Response,
   next: NextFunction
 ) {
-  // In local development, skip admin auth checks
-  if (!config.isProd) {
+  // In local development, skip admin auth checks. Note: this is gated on
+  // `isDev` (NODE_ENV === 'development') NOT `!isProd` — staging is a publicly
+  // reachable deployment and must enforce signature auth like production.
+  if (config.isDev) {
     return next();
   }
 
@@ -166,8 +168,10 @@ function createCorsOptions(request: Request): cors.CorsOptions {
       origin: string | undefined,
       callback: (error: Error | null, allow?: boolean) => void
     ) => {
-      // Allow all requests unless in production
-      if (!config.isProd) {
+      // Allow all origins only in local development. Staging enforces the
+      // same origin allowlist as production (see isStagingRequest below for
+      // the LAN-dev-origin carve-out).
+      if (config.isDev) {
         callback(null, true);
         return;
       }
@@ -283,6 +287,14 @@ export function setupMiddleware(app: Express) {
       max: config.RATE_LIMIT_MAX_REQUESTS,
       standardHeaders: true,
       legacyHeaders: false,
+      // Internal services (Railway bots) authenticate with a shared secret
+      // instead of an IP allowlist — Railway egress IPs are pooled and
+      // rotate, so IP-based exemptions would silently break. The Boolean()
+      // guard keeps the empty-string default from matching an empty header.
+      skip: (req) =>
+        Boolean(config.INTERNAL_RATE_LIMIT_BYPASS_TOKEN) &&
+        req.headers['x-internal-token'] ===
+          config.INTERNAL_RATE_LIMIT_BYPASS_TOKEN,
       handler: (req, res) => {
         const reqIdRaw = (req as Request & { id?: string | number }).id;
         const requestId =

@@ -96,6 +96,14 @@
     "labeledAt": "2026-06-03T19:30:00.798Z"
   },
   {
+    "conditionId": "0x0517b2da5899daca9b9b0af4f5b58b20e81a45a3bcd2b23ea22a25114e06d135",
+    "humanEndTime": "2026-06-05T15:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:40:01.794Z"
+  },
+  {
     "conditionId": "0x05297f854d3b757d5e51a1a29c7f225a80b14b2a161d6b7f9a61677da7a80ced",
     "humanEndTime": "2026-10-26T00:00:00.000Z",
     "decision": "labeled",
@@ -617,11 +625,11 @@
   },
   {
     "conditionId": "0x1cb0c47cbe3271ad0f94fb063a1169bb41eaef7b7fa964278e4fa0b6d7d52b02",
-    "humanEndTime": "2026-06-01T20:00:00.000Z",
+    "humanEndTime": "2026-06-01T23:00:00.000Z",
     "decision": "labeled",
     "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:53:28.807Z"
+    "labeledAt": "2026-06-04T21:31:11.814Z"
   },
   {
     "conditionId": "0x1cf3622a379181e9776801cfd93fabd909b3871d82de486e039d5b778042d685",
@@ -760,6 +768,14 @@
     "labeledAt": "2026-06-03T17:47:05.647Z"
   },
   {
+    "conditionId": "0x22413e24bed0cfc907c324a1d48dcb882e6252f970e411691d80f253c2e324e0",
+    "humanEndTime": "2026-06-05T21:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:09:06.748Z"
+  },
+  {
     "conditionId": "0x227a962a93006f42237dd9856da11b6e00426abae84e03609358b20121461176",
     "humanEndTime": "2026-06-04T20:00:00.000Z",
     "decision": "labeled",
@@ -809,11 +825,11 @@
   },
   {
     "conditionId": "0x243d05e45d007af51fb4322ea212067d4cfd87bec3e7734e06ecaa50badc3f70",
-    "humanEndTime": "2026-06-28T21:30:00Z",
+    "humanEndTime": "2026-06-28T23:30:00.000Z",
     "decision": "labeled",
-    "source": "polymarket",
+    "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:53:42.675Z"
+    "labeledAt": "2026-06-04T21:31:22.157Z"
   },
   {
     "conditionId": "0x246236e594989b692d9b276526b7f2be4791a7478bb2291864e2b09b7d1a2e93",
@@ -841,11 +857,11 @@
   },
   {
     "conditionId": "0x24b1e1b208598e1064d4166ecbeb65d6e15f8970e558561f1ae41e69779a7fb4",
-    "humanEndTime": "2026-06-28T21:30:00Z",
+    "humanEndTime": "2026-06-28T22:30:00.000Z",
     "decision": "labeled",
-    "source": "polymarket",
+    "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:59:59.923Z"
+    "labeledAt": "2026-06-04T21:31:38.663Z"
   },
   {
     "conditionId": "0x24e67fb509df7efecc1840008153634d4852c0d2725d0a6c13f2e60beb2f2e2f",
@@ -1353,11 +1369,11 @@
   },
   {
     "conditionId": "0x3ac86c8643bb686cf88f716c34c85862c9e5e2f448012ae429b14d576a5abbca",
-    "humanEndTime": "2026-06-06T19:00:00Z",
+    "humanEndTime": "2026-06-06T21:00:00.000Z",
     "decision": "labeled",
-    "source": "polymarket",
+    "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:53:31.124Z"
+    "labeledAt": "2026-06-04T21:30:36.806Z"
   },
   {
     "conditionId": "0x3b0107a80edd066fe987784d7ab5963c177888433efbec10689951c17320606c",
@@ -1390,6 +1406,14 @@
     "source": "polymarket",
     "precise": true,
     "labeledAt": "2026-06-03T22:00:13.996Z"
+  },
+  {
+    "conditionId": "0x3bb17a58b98a7e053a0dda265f5bca731e8060fc55cb8f52a5654643f39dd484",
+    "humanEndTime": "2026-06-06T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:13:24.503Z"
   },
   {
     "conditionId": "0x3bc69cb672591e4fcd2ef856b64b219a906e15d4601b50066ac81a446574dfaf",
@@ -1945,11 +1969,11 @@
   },
   {
     "conditionId": "0x52fd414f2045ce0aee517ee1bc191d186c560aef8eda4742763af58ae61eea43",
-    "humanEndTime": "2026-06-28T21:30:00Z",
+    "humanEndTime": "2026-06-28T23:30:00.000Z",
     "decision": "labeled",
-    "source": "polymarket",
+    "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:55:33.563Z"
+    "labeledAt": "2026-06-04T21:31:30.310Z"
   },
   {
     "conditionId": "0x53214771041446bc2dac71f0c06dde947f5c438421c0dbb499aad85d891a4464",
@@ -1993,11 +2017,11 @@
   },
   {
     "conditionId": "0x56c9a67f3351963c5bb3ae439ec1234aa443e98b0410aa043c6511413604439e",
-    "humanEndTime": "2026-06-01T22:00:00.000Z",
+    "humanEndTime": "2026-06-01T19:00:00.000Z",
     "decision": "labeled",
     "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T17:00:25.743Z"
+    "labeledAt": "2026-06-04T21:29:48.703Z"
   },
   {
     "conditionId": "0x58f6e84de0da01adea07ae9666b69350a34f14d827ee0d255ead27b525049ee9",
@@ -2321,11 +2345,11 @@
   },
   {
     "conditionId": "0x65e24f713e9a30ff8a54f50bd160052a2bb2903360a2a5d151656bae11322ea9",
-    "humanEndTime": "2026-06-28T21:30:00Z",
+    "humanEndTime": "2026-06-28T22:30:00.000Z",
     "decision": "labeled",
-    "source": "polymarket",
+    "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T17:00:13.827Z"
+    "labeledAt": "2026-06-04T21:31:41.939Z"
   },
   {
     "conditionId": "0x663b88d3a8f2341bb8d878709dc78632bcaf7512e577bd15521e5d8ed933efbc",
@@ -2393,11 +2417,11 @@
   },
   {
     "conditionId": "0x688f1d837e8a8084153d158df5cb96d838a12ab07f50ab629c677a9e9783bfd9",
-    "humanEndTime": "2026-06-07T19:00:00Z",
+    "humanEndTime": "2026-06-07T21:00:00.000Z",
     "decision": "labeled",
-    "source": "polymarket",
+    "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:53:31.889Z"
+    "labeledAt": "2026-06-04T21:30:30.575Z"
   },
   {
     "conditionId": "0x6897736d782ce70f47126dfcec6669073f563d6e757e60bc61c0367370d6f73e",
@@ -2617,11 +2641,11 @@
   },
   {
     "conditionId": "0x73dbd0ccdcb91755b5301b7322132d8103b4cac360f21938524df529d83b42c4",
-    "humanEndTime": "2026-06-09T19:00:00Z",
+    "humanEndTime": "2026-06-09T21:00:00.000Z",
     "decision": "labeled",
-    "source": "polymarket",
+    "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T17:00:19.624Z"
+    "labeledAt": "2026-06-04T21:31:48.880Z"
   },
   {
     "conditionId": "0x7412d284c8f63791fec807f9b1f61c6fe61163621775a3dc8686cd2575272abe",
@@ -2817,11 +2841,11 @@
   },
   {
     "conditionId": "0x7f460d017afc998f7d000b7eac69375b231c12b3cdec4a6821f85c4e9450785f",
-    "humanEndTime": "2026-06-01T20:40:00.000Z",
+    "humanEndTime": "2026-06-01T23:40:00.000Z",
     "decision": "labeled",
     "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:53:30.391Z"
+    "labeledAt": "2026-06-04T21:30:57.847Z"
   },
   {
     "conditionId": "0x7f48c418fcf511feab5c6d483c19174a91b83b0bd3ddd48414e5945d160658d8",
@@ -2894,6 +2918,14 @@
     "source": "custom",
     "precise": false,
     "labeledAt": "2026-06-02T18:14:14.412Z"
+  },
+  {
+    "conditionId": "0x8295048096088c3e6e867f21103e8018dad69e8f3e36557e7a44d4cbd3cec8b5",
+    "humanEndTime": "2026-06-05T14:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:08:50.786Z"
   },
   {
     "conditionId": "0x82b672efc9b228672cc0f255018eff998b3c330cc65cf7f083314045eaa11153",
@@ -3120,6 +3152,14 @@
     "labeledAt": "2026-06-02T19:46:44.979Z"
   },
   {
+    "conditionId": "0x8b7abe67e1306baa7a5fc2f12928ded25b06f84d50aa321bd735249e346786d8",
+    "humanEndTime": "2026-06-05T21:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:11:32.275Z"
+  },
+  {
     "conditionId": "0x8c48f3acf4177b5ceb012a8a2dc7a9c219eeae4a032d6ddcbc3c2ffab907439a",
     "humanEndTime": "2026-09-20T22:00:00.000Z",
     "decision": "labeled",
@@ -3128,12 +3168,28 @@
     "labeledAt": "2026-06-03T17:48:03.257Z"
   },
   {
+    "conditionId": "0x8c96fbf0b32477f2046e52663e84d314d77eb0bb7441ab2d625179cec229abe8",
+    "humanEndTime": "2026-06-05T15:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:40:03.237Z"
+  },
+  {
     "conditionId": "0x8d62f20324e9e7f1a3c663ab6aac9a2f6e7adb96c6a69ac2cea7e08a71a7f2ef",
     "humanEndTime": "2026-11-04T04:59:00.000Z",
     "decision": "labeled",
     "source": "custom",
     "precise": false,
     "labeledAt": "2026-06-02T22:33:54.095Z"
+  },
+  {
+    "conditionId": "0x8d82a3542e8a62d469afe491c07188678b52e6c96f0cb02d186031cff25c04af",
+    "humanEndTime": "2026-06-05T21:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:12:41.898Z"
   },
   {
     "conditionId": "0x8dbf6b51f302fd401065706245c144e93fe209abce183199433d4484b3ed8aff",
@@ -3288,6 +3344,14 @@
     "labeledAt": "2026-06-03T22:01:56.253Z"
   },
   {
+    "conditionId": "0x94554f5a6a3a5076f8655977d4bc8fbbbefb27dea129707eaa6de56f4317d880",
+    "humanEndTime": "2026-06-05T15:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:13:44.544Z"
+  },
+  {
     "conditionId": "0x94a308c805ec2731f87f56345c55b3264ae0a00c6fad520e967ccbe6c11a410c",
     "humanEndTime": "2027-01-01T04:59:00.000Z",
     "decision": "labeled",
@@ -3433,11 +3497,11 @@
   },
   {
     "conditionId": "0x99c656abbbf173baacb2d65663d94542b07eeaf803267ee476ebb3902b824e19",
-    "humanEndTime": "2026-06-28T21:30:00Z",
+    "humanEndTime": "2026-06-28T23:30:00.000Z",
     "decision": "labeled",
-    "source": "polymarket",
+    "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:55:29.561Z"
+    "labeledAt": "2026-06-04T21:31:27.981Z"
   },
   {
     "conditionId": "0x9b14ba5cc37a35c0db2c9849e631d98195670be4a0f91233a81529f22a7a5949",
@@ -4257,11 +4321,11 @@
   },
   {
     "conditionId": "0xc62284a0489f97ed732699b23142a162e2f3fd4b219cf40e63bc28896bf24c39",
-    "humanEndTime": "2026-06-10T19:00:00Z",
+    "humanEndTime": "2026-06-10T21:00:00.000Z",
     "decision": "labeled",
-    "source": "polymarket",
+    "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T17:00:22.519Z"
+    "labeledAt": "2026-06-04T21:31:50.639Z"
   },
   {
     "conditionId": "0xc62b78f7a1b56a4e2cc713a0633fe4cd2a6a5dce6cd3b4eec0bd292a6cbdff71",
@@ -4824,6 +4888,14 @@
     "labeledAt": "2026-06-03T22:00:24.990Z"
   },
   {
+    "conditionId": "0xdccbeff1a57101e225551c31c5f1e580e52686419b34eaf3181a88e2baf27bb1",
+    "humanEndTime": "2026-06-05T21:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:12:10.125Z"
+  },
+  {
     "conditionId": "0xdcd13a3a3b7bb9922f497ec9ced8ef305e035d0fd77167e2c207b586f228701a",
     "humanEndTime": "2026-06-03T21:00:00Z",
     "decision": "labeled",
@@ -4953,11 +5025,11 @@
   },
   {
     "conditionId": "0xe29052d529702ca89fadfd604f7f6c9d30e3f8bb312e3516541095cdee11ddb1",
-    "humanEndTime": "2026-06-02T13:00:00.000Z",
+    "humanEndTime": "2026-06-02T16:00:00.000Z",
     "decision": "labeled",
     "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:53:29.684Z"
+    "labeledAt": "2026-06-04T21:31:06.370Z"
   },
   {
     "conditionId": "0xe29b33ef5bf351c8a22bfd79f8b58e62649d54ceee6f9735387cef79f52fecae",
@@ -4993,11 +5065,11 @@
   },
   {
     "conditionId": "0xe39f6a060949de8a6a8ecfa75f703e65bd3fef5c124e1874ba7768b830384e5f",
-    "humanEndTime": "2026-06-28T21:30:00Z",
+    "humanEndTime": "2026-06-28T23:30:00.000Z",
     "decision": "labeled",
-    "source": "polymarket",
+    "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:54:37.975Z"
+    "labeledAt": "2026-06-04T21:31:25.501Z"
   },
   {
     "conditionId": "0xe51d7f4af2519df053d47425da3f2d146f47efd3ac993108083b4225ddf11d2f",
@@ -5241,11 +5313,11 @@
   },
   {
     "conditionId": "0xf1704cc38ae9c0efc8c8aa33d410bb1f170ade032a3183a31140232edccd7bca",
-    "humanEndTime": "2026-06-02T00:00:00.000Z",
+    "humanEndTime": "2026-06-01T19:00:00.000Z",
     "decision": "labeled",
     "source": "custom",
     "precise": false,
-    "labeledAt": "2026-06-04T16:53:32.909Z"
+    "labeledAt": "2026-06-04T21:30:09.167Z"
   },
   {
     "conditionId": "0xf17a11ec68f161b929b5147f0dcd536e177e46efebcabe438d9063a412ab74f0",
@@ -5446,6 +5518,14 @@
     "source": "sibling",
     "precise": false,
     "labeledAt": "2026-06-02T21:47:41.602Z"
+  },
+  {
+    "conditionId": "0xfd4ca0dc0358c7133de53f09a507f4fe0f1cea6de58c32dd4fd36807434f7c77",
+    "humanEndTime": "2026-06-05T22:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:11:17.443Z"
   },
   {
     "conditionId": "0xfd6176f8c9a59105f80e060a77c4099881c5f2d9e0ceab88e55cf978462fab7f",

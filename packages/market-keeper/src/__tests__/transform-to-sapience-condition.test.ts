@@ -71,4 +71,21 @@ describe('transformToSapienceCondition', () => {
     expect(c.shortName).toBe('Something weird with no regex match');
     expect(c.optionName).toBe('Opt A');
   });
+
+  it('carries gameStartTime and inferred league for the production endTime cascade', () => {
+    const market = makeMarket({
+      question: 'Lakers vs Celtics: Moneyline',
+      slug: 'nba-lakers-celtics-2099-04-01',
+      gameStartTime: '2099-04-01 00:00:00+00',
+      events: [
+        {
+          title: 'Lakers vs Celtics',
+          tags: [{ slug: 'nba', label: 'NBA' }],
+        },
+      ],
+    });
+    const c = transformToSapienceCondition(market, 'group', enrichment);
+    expect(c.gameStartTime).toBe('2099-04-01 00:00:00+00');
+    expect(c.league).toBe('nba');
+  });
 });

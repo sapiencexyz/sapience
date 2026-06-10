@@ -53,6 +53,29 @@ describe('createLogger', () => {
     expect(parsed.foo).toBe(1);
     expect(parsed.msg).toBe('hello');
   });
+
+  it('redacts secret-bearing request headers', () => {
+    const writes = captureStdout();
+    const log = createLogger('redact-test');
+    log.info(
+      {
+        req: {
+          headers: {
+            authorization: 'Bearer super-secret',
+            'x-internal-token': 'internal-secret',
+            'x-request-id': 'abc-123',
+          },
+        },
+      },
+      'request'
+    );
+    const parsed = findLine(writes, '"module":"redact-test"');
+    const headers = (parsed.req as { headers: Record<string, string> }).headers;
+    expect(headers.authorization).toBe('[Redacted]');
+    expect(headers['x-internal-token']).toBe('[Redacted]');
+    expect(headers['x-request-id']).toBe('abc-123');
+    expect(JSON.stringify(parsed)).not.toContain('internal-secret');
+  });
 });
 
 describe('withTiming', () => {
