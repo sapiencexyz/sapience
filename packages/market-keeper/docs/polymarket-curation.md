@@ -107,6 +107,27 @@ Short names are generated from pattern rules first, with an LLM as a fallback fo
 
 For full details on the enrichment system, see [market-enrichment.md](./market-enrichment.md).
 
+## Step 8: Grouping & Negative-Risk Baskets
+
+Markets that come from the same Polymarket event are listed under one **condition group** on Sapience, keyed by event title.
+
+Polymarket also publishes **negative-risk baskets**: a set of mutually-exclusive binary markets (e.g. "NBA champion: Celtics?", "NBA champion: Knicks?", …) where exactly one resolves YES and the rest resolve NO. The basket is one logical question and its children must stay tied to the same basket id (`negRiskMarketId`).
+
+Only `condition_group.negRiskMarketId` is persisted in the DB; `ConditionGroup.negRisk` is a GraphQL-derived boolean (`true` iff `negRiskMarketId` is non-null). One column, no chance of the flag and the id drifting apart.
+
+The basket invariant is enforced by the API, with the keeper as a well-behaved client:
+
+- **First condition decides.** The first condition assigned to a group stamps its basket id onto the group (null or otherwise). Every subsequent admission has to match exactly — strict equality, including null. A basket condition trying to join a non-basket group is just as wrong as the reverse.
+- The keeper stamps a fresh group's `negRiskMarketId` only when every market in that group is flagged `negRisk: true` **and** shares the same basket id. If any market disagrees, the group is sent with no basket id and the API derives `negRisk: false`.
+- The admin REST routes (`/admin/conditions`, `/admin/conditionGroups`) reject any new condition admission whose payload `negRiskMarketId` doesn't equal the group's stored value. Continuing membership is grandfathered: a metadata-only edit on an already-linked condition doesn't have to restate the basket id.
+- Same-event-title markets coming from **different** baskets land under the shared title; whichever basket reaches the API first wins the group, and the others surface as 400s the operator can triage. The keeper logs these distinctly in `submitToAPI`:
+
+  ```
+  … Batch N unable to add to existing negRisk group: Cannot add non-matching negRisk conditions to negRisk group NBA champion. Expected negRiskMarketId basket-a; mismatched: 0xabc…
+  ```
+
+A group's basket id is a **one-way ratchet** on the keeper: it can flip `null → 'basket-x'` when fresh Polymarket markets agree on a basket id, but the keeper will never auto-clear it. Demoting silently would dissolve the basket invariant, so when fresh markets disagree on basketing the keeper logs `[Metadata] refused to demote group <id> ("<title>") from negRisk: …` and emits no update. Recovery for that case is a deliberate admin REST edit (`PUT /admin/conditionGroups/:id` with `negRiskMarketId: null`) if Polymarket truly retired the basket.
+
 ---
 
 Have ideas on how we should change the curation criteria? Come discuss it in our [Discord](https://discord.gg/sapience) or submit a pull request.

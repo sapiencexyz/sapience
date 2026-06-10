@@ -175,11 +175,19 @@ export async function queryAccountVolume(
 
 // ─── Account PnL ─────────────────────────────────────────────────────────────
 
+/**
+ * Minimal surface of the Prisma client used here. Accepting it as a parameter
+ * (defaulting to the shared singleton) lets tests run the real query against an
+ * isolated database without touching production wiring.
+ */
+type RawQueryClient = Pick<typeof prisma, '$queryRaw'>;
+
 export async function queryAccountPnl(
   address: string,
   interval: TimeInterval,
   from?: Date,
-  to?: Date
+  to?: Date,
+  db: RawQueryClient = prisma
 ): Promise<PnlDataPoint[]> {
   const { fromEpoch, toEpoch, pgTrunc, pgStep } = resolveDefaults(
     interval,
@@ -188,7 +196,7 @@ export async function queryAccountPnl(
   );
   const addr = address.toLowerCase();
 
-  const rows = await prisma.$queryRaw<PnlRow[]>`
+  const rows = await db.$queryRaw<PnlRow[]>`
     WITH buckets AS (
       SELECT
         EXTRACT(EPOCH FROM gs)::BIGINT AS bucket_epoch,
@@ -199,17 +207,56 @@ export async function queryAccountPnl(
         ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
       ) gs
     ),
+    -- Cost basis for claims: the holder's collateral staked per pick
+    -- configuration, per side, plus the tokens they were minted on that side.
+    -- Each mint issues totalCollateral (= predictor + counterparty stake) tokens
+    -- to BOTH sides — a 1:1 claim on collateral — so the holder's minted token
+    -- balance is SUM(predictor + counterparty collateral), not their own stake.
+    -- A pickConfig fans out to many Predictions, so aggregate here (scoped to
+    -- this address) before joining to claims (keyed on Claim.pickConfigId).
+    claim_stake AS (
+      SELECT "pickConfigId" AS pc, 'predictor' AS side,
+             SUM(CAST("predictorCollateral" AS DECIMAL)) AS stake,
+             SUM(CAST("predictorCollateral" AS DECIMAL)
+                 + CAST("counterpartyCollateral" AS DECIMAL)) AS minted
+      FROM "Prediction"
+      WHERE predictor = ${addr} AND "pickConfigId" IS NOT NULL
+      GROUP BY "pickConfigId"
+      UNION ALL
+      SELECT "pickConfigId" AS pc, 'counterparty' AS side,
+             SUM(CAST("counterpartyCollateral" AS DECIMAL)) AS stake,
+             SUM(CAST("predictorCollateral" AS DECIMAL)
+                 + CAST("counterpartyCollateral" AS DECIMAL)) AS minted
+      FROM "Prediction"
+      WHERE counterparty = ${addr} AND "pickConfigId" IS NOT NULL
+      GROUP BY "pickConfigId"
+    ),
     pnl_events AS (
-      -- Claims: account redeems settled prediction
+      -- Claims: account redeems a settled pickConfig position.
+      -- Side is identified by the redeemed positionToken matching the pick
+      -- configuration's predictor/counterparty token. Cost basis is the holder's
+      -- staked collateral on that side, allocated to each claim in proportion to
+      -- the tokens it redeemed OUT OF the holder's total minted tokens — so a
+      -- partial exit books only its share of basis and leaves the rest on the
+      -- still-held tokens (tokens sold on the secondary market are accounted for
+      -- there, not here). A full redemption books the entire stake.
       SELECT
         cl."redeemedAt" AS event_ts,
-        CAST(cl."collateralPaid" AS DECIMAL) - CAST(
-          CASE WHEN p.predictor = ${addr}
-               THEN p."predictorCollateral"
-               ELSE p."counterpartyCollateral" END AS DECIMAL
-        ) AS pnl
+        CAST(cl."collateralPaid" AS DECIMAL)
+          - COALESCE(
+              cs.stake
+                * CAST(cl."tokensBurned" AS DECIMAL)
+                / NULLIF(cs.minted, 0),
+              0
+            ) AS pnl
       FROM "Claim" cl
-      JOIN "Prediction" p ON cl."predictionId" = p."predictionId"
+      LEFT JOIN "Picks" pk ON cl."pickConfigId" = pk.id
+      LEFT JOIN claim_stake cs
+        ON cs.pc = cl."pickConfigId"
+       AND cs.side = CASE
+             WHEN cl."positionToken" = pk."predictorToken" THEN 'predictor'
+             WHEN cl."positionToken" = pk."counterpartyToken" THEN 'counterparty'
+           END
       WHERE cl.holder = ${addr}
         AND cl."redeemedAt" >= ${fromEpoch} AND cl."redeemedAt" <= ${toEpoch}
       UNION ALL
@@ -274,7 +321,8 @@ export async function queryAccountBalance(
   address: string,
   interval: TimeInterval,
   from?: Date,
-  to?: Date
+  to?: Date,
+  db: RawQueryClient = prisma
 ): Promise<BalanceDataPoint[]> {
   const { fromEpoch, toEpoch, pgTrunc, pgStep } = resolveDefaults(
     interval,
@@ -283,7 +331,7 @@ export async function queryAccountBalance(
   );
   const addr = address.toLowerCase();
 
-  const rows = await prisma.$queryRaw<BalanceRow[]>`
+  const rows = await db.$queryRaw<BalanceRow[]>`
     WITH buckets AS (
       SELECT
         EXTRACT(EPOCH FROM gs)::BIGINT AS bucket_epoch
@@ -320,15 +368,27 @@ export async function queryAccountBalance(
              WHEN p.counterparty = ${addr}
              THEN CAST(COALESCE(p."counterpartyClaimable", '0') AS DECIMAL)
              ELSE 0 END AS claimable,
-        p."predictionId"
+        p."pickConfigId" AS pick_config_id,
+        CASE WHEN p.predictor = ${addr} THEN 'predictor'
+             WHEN p.counterparty = ${addr} THEN 'counterparty'
+        END AS side
       FROM "Prediction" p
       WHERE (p.predictor = ${addr} OR p.counterparty = ${addr})
         AND p."settledAt" IS NOT NULL
     ),
+    -- A redeem burns the holder's whole position token for one (pickConfig,
+    -- side). Claim.pickConfigId gives the config; the side is identified by
+    -- matching the burned positionToken to the pick configuration's
+    -- predictor/counterparty token, the same way the accountPnl query does.
     account_claims AS (
-      SELECT "predictionId", "redeemedAt"
-      FROM "Claim"
-      WHERE holder = ${addr}
+      SELECT cl."pickConfigId" AS pick_config_id,
+             CASE WHEN cl."positionToken" = pk."predictorToken" THEN 'predictor'
+                  WHEN cl."positionToken" = pk."counterpartyToken" THEN 'counterparty'
+             END AS side,
+             cl."redeemedAt"
+      FROM "Claim" cl
+      LEFT JOIN "Picks" pk ON cl."pickConfigId" = pk.id
+      WHERE cl.holder = ${addr}
     )
     SELECT
       b.bucket_epoch AS timestamp,
@@ -343,8 +403,11 @@ export async function queryAccountBalance(
         FROM all_claimable ac
         WHERE ac.settled_ts <= b.bucket_epoch
           AND NOT EXISTS (
+            -- Stop counting this position's claimable once the holder has
+            -- redeemed that (pickConfig, side) at or before the bucket.
             SELECT 1 FROM account_claims c
-            WHERE c."predictionId" = ac."predictionId"
+            WHERE c.pick_config_id = ac.pick_config_id
+              AND c.side = ac.side
               AND c."redeemedAt" <= b.bucket_epoch
           )
       ), 0)::TEXT AS claimable_collateral

@@ -26,128 +26,136 @@ export type TradeActivity = {
 export type ActivityItem = PredictionActivity | TradeActivity;
 
 const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
-  query AccountActivity($filters: ActivityFilters, $take: Int, $skip: Int) {
-    activityPage(filters: $filters, take: $take, skip: $skip) {
-      items {
-        type
-        timestamp
-        prediction {
+  query AccountActivity(
+    $address: String
+    $take: Int
+    $skip: Int
+    $type: String
+    $pickConfigId: String
+    $conditionId: String
+  ) {
+    accountActivity(
+      address: $address
+      take: $take
+      skip: $skip
+      type: $type
+      pickConfigId: $pickConfigId
+      conditionId: $conditionId
+    ) {
+      type
+      timestamp
+      prediction {
+        id
+        predictionId
+        chainId
+        marketAddress
+        predictor
+        counterparty
+        predictorToken
+        counterpartyToken
+        predictorCollateral
+        counterpartyCollateral
+        collateralDeposited
+        collateralDepositedAt
+        settled
+        settledAt
+        settleTxHash
+        result
+        predictorClaimable
+        counterpartyClaimable
+        createTxHash
+        createdAt
+        refCode
+        isLegacy
+        pickConfig {
           id
-          predictionId
           chainId
           marketAddress
-          predictor
-          counterparty
+          totalPredictorCollateral
+          totalCounterpartyCollateral
+          claimedPredictorCollateral
+          claimedCounterpartyCollateral
+          resolved
+          result
+          resolvedAt
           predictorToken
           counterpartyToken
-          predictorCollateral
-          counterpartyCollateral
-          collateralDeposited
-          collateralDepositedAt
-          settled
-          settledAt
-          settleTxHash
-          result
-          predictorClaimable
-          counterpartyClaimable
-          createTxHash
-          createdAt
-          refCode
+          endsAt
           isLegacy
-          pickConfig {
-            id: pickConfigId
+          predictionId
+          picks {
+            id
             pickConfigId
-            chainId
-            marketAddress
-            totalPredictorCollateral
-            totalCounterpartyCollateral
-            claimedPredictorCollateral
-            claimedCounterpartyCollateral
-            resolved
-            result
-            resolvedAt
-            predictorToken
-            counterpartyToken
-            endsAt
-            isLegacy
-            predictionId
-            picks {
+            conditionResolver
+            conditionId
+            predictedOutcome
+            condition {
               id
-              pickConfigId
-              conditionResolver
-              conditionId
-              predictedOutcome
-              condition {
-                id: conditionId
-                conditionId
-                shortName
-                optionName
-                question
-                description
-                endTime
-                resolver
-                settled
-                resolvedToYes
-                nonDecisive
-                estimatedPrice
-                category {
-                  slug
-                }
+              shortName
+              optionName
+              question
+              description
+              endTime
+              resolver
+              settled
+              resolvedToYes
+              nonDecisive
+              estimatedPrice
+              category {
+                slug
               }
             }
           }
         }
-        trade {
+      }
+      trade {
+        id
+        tradeHash
+        chainId
+        token
+        collateral
+        seller
+        buyer
+        tokenAmount
+        price
+        txHash
+        blockNumber
+        executedAt
+        pickConfig {
           id
-          tradeHash
           chainId
-          token
-          collateral
-          seller
-          buyer
-          tokenAmount
-          price
-          txHash
-          blockNumber
-          executedAt
-          pickConfig {
-            id: pickConfigId
+          marketAddress
+          totalPredictorCollateral
+          totalCounterpartyCollateral
+          claimedPredictorCollateral
+          claimedCounterpartyCollateral
+          resolved
+          result
+          resolvedAt
+          predictorToken
+          counterpartyToken
+          endsAt
+          isLegacy
+          picks {
+            id
             pickConfigId
-            chainId
-            marketAddress
-            totalPredictorCollateral
-            totalCounterpartyCollateral
-            claimedPredictorCollateral
-            claimedCounterpartyCollateral
-            resolved
-            result
-            resolvedAt
-            predictorToken
-            counterpartyToken
-            endsAt
-            isLegacy
-            picks {
+            conditionResolver
+            conditionId
+            predictedOutcome
+            condition {
               id
-              pickConfigId
-              conditionResolver
-              conditionId
-              predictedOutcome
-              condition {
-                id: conditionId
-                conditionId
-                shortName
-                optionName
-                question
-                description
-                endTime
-                resolver
-                settled
-                resolvedToYes
-                nonDecisive
-                estimatedPrice
-                category {
-                  slug
-                }
+              shortName
+              optionName
+              question
+              description
+              endTime
+              resolver
+              settled
+              resolvedToYes
+              nonDecisive
+              estimatedPrice
+              category {
+                slug
               }
             }
           }
@@ -222,18 +230,16 @@ export function useAccountActivity({
       lastPage.length < pageSize ? undefined : allPages.length * pageSize,
     queryFn: async ({ pageParam = 0 }) => {
       const resp = await graphqlRequest<{
-        activityPage: { items: RawActivityItem[] };
+        accountActivity: RawActivityItem[];
       }>(ACCOUNT_ACTIVITY_QUERY, {
-        filters: {
-          address: account ?? null,
-          type: typeFilter ?? null,
-          pickConfigId: pickConfigId ?? null,
-          conditionId: conditionId ?? null,
-        },
+        address: account ?? null,
         take: pageSize,
         skip: pageParam,
+        type: typeFilter ?? null,
+        pickConfigId: pickConfigId ?? null,
+        conditionId: conditionId ?? null,
       });
-      return resp?.activityPage?.items ?? [];
+      return resp?.accountActivity ?? [];
     },
   });
 

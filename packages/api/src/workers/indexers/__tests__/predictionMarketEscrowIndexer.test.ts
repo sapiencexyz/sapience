@@ -507,12 +507,12 @@ describe('PredictionMarketEscrowIndexer', () => {
       expect(update.data.result).toBe('COUNTERPARTY_WINS');
     });
 
-    it('should settle with UNRESOLVED for result=3 (no longer emitted; contract collapses non-decisive to COUNTERPARTY_WINS)', async () => {
+    it('should settle with NON_DECISIVE for result=3', async () => {
       const indexer = setupSettledTest(3);
       await indexer.indexBlocks('test', [50]);
 
       const update = mockPrisma.prediction.updateMany.mock.calls[0][0];
-      expect(update.data.result).toBe('UNRESOLVED');
+      expect(update.data.result).toBe('NON_DECISIVE');
     });
 
     it('should settle with UNRESOLVED for unknown result values', async () => {
@@ -603,7 +603,7 @@ describe('PredictionMarketEscrowIndexer', () => {
       const create = upsertArg.create;
       expect(create.chainId).toBe(42161);
       expect(create.marketAddress).toBe(CONTRACT_ADDRESS.toLowerCase());
-      expect(create.predictionId).toBe(PICK_CONFIG_ID.toLowerCase());
+      expect(create.pickConfigId).toBe(PICK_CONFIG_ID.toLowerCase());
       expect(create.holder).toBe(PREDICTOR.toLowerCase());
       expect(create.positionToken).toBe(POSITION_TOKEN.toLowerCase());
       expect(create.tokensBurned).toBe('1000000000000000000');

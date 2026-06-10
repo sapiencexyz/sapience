@@ -1,5 +1,5 @@
-import type { VaultStat } from '~/hooks/graphql/useAnalytics';
-import { rangeToEpochs, type TimeRange } from '~/components/shared/timeRange';
+import type { ProtocolStat } from '~/hooks/graphql/useAnalytics';
+import { PERIOD_DAYS, type Period } from '~/components/shared/PeriodFilter';
 
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
 
@@ -14,14 +14,14 @@ export type VaultPnlChartPoint = {
 
 type BasePoint = Pick<VaultPnlChartPoint, 'timestamp' | 'pnl' | 'tvl'>;
 
-function mapVaultStatToPoint(point: VaultStat): BasePoint {
+function mapProtocolStatToPoint(point: ProtocolStat): BasePoint {
   return {
     timestamp: point.timestamp,
-    pnl: point.cumulativePnL ? parseFloat(point.cumulativePnL) / 1e18 : 0,
-    // TVL denominator for the per-vault chart is the vault's own balance —
-    // `escrowBalance` (now on `ProtocolStat`) is intentionally excluded
-    // since this chart reports a single vault's return, not protocol-wide.
-    tvl: parseFloat(point.balance) / 1e18,
+    pnl: point.vaultCumulativePnL
+      ? parseFloat(point.vaultCumulativePnL) / 1e18
+      : 0,
+    tvl:
+      (parseFloat(point.vaultBalance) + parseFloat(point.escrowBalance)) / 1e18,
   };
 }
 
@@ -30,25 +30,22 @@ function findFirstActivePointIndex(points: BasePoint[]): number {
 }
 
 export function buildVaultPnlChartData(
-  vaultStats: VaultStat[] | undefined,
-  range: TimeRange,
+  protocolStats: ProtocolStat[] | undefined,
+  period: Period,
   nowSec = Math.floor(Date.now() / 1000),
   anchorSec?: number
 ): VaultPnlChartPoint[] {
-  if (!vaultStats || vaultStats.length === 0) return [];
+  if (!protocolStats || protocolStats.length === 0) return [];
 
-  const { fromSec, toSec } = rangeToEpochs(range, new Date(nowSec * 1000));
-  const periodCutoff = fromSec ?? 0;
-  const upperBound = toSec ?? nowSec;
+  const periodDays = PERIOD_DAYS[period];
+  const periodCutoff =
+    periodDays === Infinity ? 0 : nowSec - periodDays * ONE_DAY_IN_SECONDS;
   const cutoffTimestamp =
     anchorSec !== undefined ? Math.max(periodCutoff, anchorSec) : periodCutoff;
 
-  const filteredPoints = vaultStats
-    .filter(
-      (stat) =>
-        stat.timestamp >= cutoffTimestamp && stat.timestamp <= upperBound
-    )
-    .map(mapVaultStatToPoint);
+  const filteredPoints = protocolStats
+    .filter((stat) => stat.timestamp >= cutoffTimestamp)
+    .map(mapProtocolStatToPoint);
 
   if (filteredPoints.length === 0) return [];
 

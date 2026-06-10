@@ -53,6 +53,40 @@ describe('CORS origin allowlist', () => {
     expect(isAllowedCorsOrigin('https://evil.example:5173')).toBe(false);
   });
 
+  it('allows combo-bingo.vercel.app in all environments', async () => {
+    const { isAllowedCorsOrigin } = await import('./middleware');
+
+    expect(isAllowedCorsOrigin('https://combo-bingo.vercel.app')).toBe(true);
+    expect(isAllowedCorsOrigin('http://combo-bingo.vercel.app')).toBe(true);
+    expect(isAllowedCorsOrigin('https://combo-bingo-evil.vercel.app')).toBe(
+      false
+    );
+  });
+
+  it('allows combo-bingo preflight on production API host', async () => {
+    vi.doMock('../core/config', () => ({
+      config: {
+        isProd: true,
+        NODE_ENV: 'production',
+        RATE_LIMIT_WINDOW_MS: 60000,
+        RATE_LIMIT_MAX_REQUESTS: 100,
+      },
+    }));
+
+    const { createApp } = await import('../core/app');
+    const app = createApp();
+    const origin = 'https://combo-bingo.vercel.app';
+
+    const prodRes = await request(app)
+      .options('/graphql')
+      .set('Host', 'api.sapience.xyz')
+      .set('Origin', origin)
+      .set('Access-Control-Request-Method', 'POST');
+
+    expect(prodRes.status).toBe(200);
+    expect(prodRes.headers['access-control-allow-origin']).toBe(origin);
+  });
+
   it('allows LAN dev preflight on staging API host only', async () => {
     vi.doMock('../core/config', () => ({
       config: {
@@ -83,6 +117,105 @@ describe('CORS origin allowlist', () => {
       .set('Access-Control-Request-Method', 'POST');
 
     expect(prodRes.headers['access-control-allow-origin']).toBeUndefined();
+  });
+});
+
+// ─── Admin auth ───────────────────────────────────────────────────────────────
+
+describe('adminAuth environment gating', () => {
+  it('bypasses auth only in development, not staging', async () => {
+    // Staging: isDev=false, isProd=false. Must NOT bypass.
+    vi.doMock('../core/config', () => ({
+      config: { isDev: false, isProd: false, NODE_ENV: 'staging' },
+    }));
+
+    const express = (await import('express')).default;
+    const { adminAuth } = await import('./middleware');
+    const app = express();
+    app.get('/admin/test', adminAuth, (_req, res) => res.json({ ok: true }));
+
+    const res = await request(app).get('/admin/test');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects production admin requests without a signature', async () => {
+    vi.doMock('../core/config', () => ({
+      config: { isDev: false, isProd: true, NODE_ENV: 'production' },
+    }));
+
+    const express = (await import('express')).default;
+    const { adminAuth } = await import('./middleware');
+    const app = express();
+    app.get('/admin/test', adminAuth, (_req, res) => res.json({ ok: true }));
+
+    const res = await request(app).get('/admin/test');
+    expect(res.status).toBe(401);
+  });
+
+  it('bypasses auth in development', async () => {
+    vi.doMock('../core/config', () => ({
+      config: { isDev: true, isProd: false, NODE_ENV: 'development' },
+    }));
+
+    const express = (await import('express')).default;
+    const { adminAuth } = await import('./middleware');
+    const app = express();
+    app.get('/admin/test', adminAuth, (_req, res) => res.json({ ok: true }));
+
+    const res = await request(app).get('/admin/test');
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('CORS staging origin enforcement', () => {
+  it('does not allow arbitrary origins on staging', async () => {
+    // Staging: isDev=false, isProd=false. Must enforce the origin allowlist
+    // instead of reflecting any origin.
+    vi.doMock('../core/config', () => ({
+      config: {
+        isDev: false,
+        isProd: false,
+        NODE_ENV: 'staging',
+        RATE_LIMIT_WINDOW_MS: 60000,
+        RATE_LIMIT_MAX_REQUESTS: 100,
+      },
+    }));
+
+    const { createApp } = await import('../core/app');
+    const app = createApp();
+
+    const res = await request(app)
+      .options('/graphql')
+      .set('Host', 'api.staging.sapience.xyz')
+      .set('Origin', 'https://evil.example')
+      .set('Access-Control-Request-Method', 'POST');
+
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('allows sapience.xyz origins on staging', async () => {
+    vi.doMock('../core/config', () => ({
+      config: {
+        isDev: false,
+        isProd: false,
+        NODE_ENV: 'staging',
+        RATE_LIMIT_WINDOW_MS: 60000,
+        RATE_LIMIT_MAX_REQUESTS: 100,
+      },
+    }));
+
+    const { createApp } = await import('../core/app');
+    const app = createApp();
+    const origin = 'https://app.staging.sapience.xyz';
+
+    const res = await request(app)
+      .options('/graphql')
+      .set('Host', 'api.staging.sapience.xyz')
+      .set('Origin', origin)
+      .set('Access-Control-Request-Method', 'POST');
+
+    expect(res.status).toBe(200);
+    expect(res.headers['access-control-allow-origin']).toBe(origin);
   });
 });
 

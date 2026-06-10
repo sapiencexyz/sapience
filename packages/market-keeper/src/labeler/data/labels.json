@@ -1,0 +1,5610 @@
+[
+  {
+    "conditionId": "0x00ad3bb5284b0b2314b1a2d42812fe292f606619c6278bd95c9d905816c240f6",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:26.857Z"
+  },
+  {
+    "conditionId": "0x00f89ad58499dfda366bf9182878c81d9ec6a73cdf4bf9a85b9d24474debf684",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:41:54.088Z"
+  },
+  {
+    "conditionId": "0x014fe0a1bf2120c95f52e8932800644568d8d26dab5b6170dbc9a173e6722956",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:02.893Z"
+  },
+  {
+    "conditionId": "0x0189df05ed7bf84d799213b01a79571e305c03b2ac5359cfbb3a323448ba20fa",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:22.587Z"
+  },
+  {
+    "conditionId": "0x01dffa7abae7e5d9b7fb44b06d537c5ac932e2ca422ab4b53366672f5e2dc7d6",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:24:07.463Z"
+  },
+  {
+    "conditionId": "0x024b68f77bfc019341ee3db8f57c103334e4b9430bba4746d8c94aafd8b36fee",
+    "humanEndTime": "2027-01-01T05:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:38:25.044Z"
+  },
+  {
+    "conditionId": "0x02deb9538f5c123373adaa4ee6217b01745f1662bc902e46ac92f3fe6f8741e8",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:43:22.314Z"
+  },
+  {
+    "conditionId": "0x02fbff3443e74fc39ab228c0ad7740ac6e289d1419029d227a4ec5e288c75335",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:29:27.148Z"
+  },
+  {
+    "conditionId": "0x034db17cf7879f34ca7ff90814d7bdbf4bb1b0081de899de1dedeb5bee08d414",
+    "humanEndTime": "2026-06-24T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T19:26:24.811Z"
+  },
+  {
+    "conditionId": "0x03865bd6273b82fe88954a2cf647be4dcc4ebcf03f0e5ef704386318fe409fea",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:17:14.640Z"
+  },
+  {
+    "conditionId": "0x049346426f7d7613dbd0575faa357f9ccee53aba18993c0f6bb1699ac19d09ca",
+    "humanEndTime": "2026-06-02T20:05:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:23.538Z"
+  },
+  {
+    "conditionId": "0x04b8ab38ac02d168169427e3234d3decd66820a44a13d10d301d50e9f7da8d9e",
+    "humanEndTime": "2026-07-01T17:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:30:00.798Z"
+  },
+  {
+    "conditionId": "0x0517b2da5899daca9b9b0af4f5b58b20e81a45a3bcd2b23ea22a25114e06d135",
+    "humanEndTime": "2026-06-05T15:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:40:01.794Z"
+  },
+  {
+    "conditionId": "0x05297f854d3b757d5e51a1a29c7f225a80b14b2a161d6b7f9a61677da7a80ced",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:58:33.739Z"
+  },
+  {
+    "conditionId": "0x054725b2a7971376f7924a7021221b12acc50fe78d97817824fe411704d5b5a2",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:17:10.865Z"
+  },
+  {
+    "conditionId": "0x05d4246d5278fd06e9d2bd37d9f43f8a5f1be5278d72a7bab075622ba37169b0",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:43:40.987Z"
+  },
+  {
+    "conditionId": "0x0622b01925e56a091f248c42fb194d3b86d58165f6647d6bcb7afc6fb4638531",
+    "humanEndTime": "2026-06-22T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:42:46.142Z"
+  },
+  {
+    "conditionId": "0x06a27c2810eaca94b53e7a17f15ad47761399ba445a6b02039b2679da203262d",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:55:39.150Z"
+  },
+  {
+    "conditionId": "0x06ea9c02b4c6a2f7f07f78e21411bd367636564edb27c72cd038b556aada1a64",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:47:38.148Z"
+  },
+  {
+    "conditionId": "0x071d4bb35a0f3190310335cd0255a0e524d26cd7e042fb7fa781c93144507113",
+    "humanEndTime": "2026-06-02T20:25:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:26.180Z"
+  },
+  {
+    "conditionId": "0x0839b7a8947228afd38a0a3cb5096499a29d7c00ac28d8794d3265613614b28d",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:01.598Z"
+  },
+  {
+    "conditionId": "0x098e2be3df8ab529940c567819f8ef007cf007820e9d627642a5bbfaa42af372",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:25.423Z"
+  },
+  {
+    "conditionId": "0x09ad4955c170d46c6d80b5f554435b19e229ff7dbe55370892b64782336cc3b9",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:38:18.976Z"
+  },
+  {
+    "conditionId": "0x0a10ea4f5d42ac33a29d73b8562f4414f5ea2219afd9da74ba950f7aefe7c630",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:44:36.840Z"
+  },
+  {
+    "conditionId": "0x0ac23db1e56971022bc7e822b907a2466c618b34104ea72bc9fa95e41c86a9c6",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:30.053Z"
+  },
+  {
+    "conditionId": "0x0ae43ea8d8bccdc0687a83910a3cf9a6eb05c1ae74b81c236f490b38e1496b0b",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:26:44.424Z"
+  },
+  {
+    "conditionId": "0x0b069b08f4be4bfea879f3ba9ebe484f4f56d6bb61de6d98c5e3b55387329d6e",
+    "humanEndTime": "2026-06-02T20:25:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:07.644Z"
+  },
+  {
+    "conditionId": "0x0b298ab2b2cad3308d486c804985c1ede7ea949bde363f44784a3b2a460be788",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:47:43.557Z"
+  },
+  {
+    "conditionId": "0x0b4cc3b739e1dfe5d73274740e7308b6fb389c5af040c3a174923d928d134bee",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T17:11:26.766Z"
+  },
+  {
+    "conditionId": "0x0b4fdc620f5aeafbfa8603a7fe9f3dd2dbae70e73aa157c8c94275676043ce06",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:42:47.873Z"
+  },
+  {
+    "conditionId": "0x0bd8a57fe56926b10c34052d3d8581db3354b257b150e43301f4bb94913c2d85",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:30:16.930Z"
+  },
+  {
+    "conditionId": "0x0be9532083cb6297bb5c0b94b29a513e0f94bf56c35513b0d4d8170f9e5b211a",
+    "humanEndTime": "2026-07-05T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:25:34.571Z"
+  },
+  {
+    "conditionId": "0x0c38dd9305e3205557885183f0730270779e7e426b0ec3e7743f23963b6d6e4a",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:48:54.792Z"
+  },
+  {
+    "conditionId": "0x0c4cd2055d6ea89354ffddc55d6dbcef9355748112ea952fc925f3db6a5c457f",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:31.783Z"
+  },
+  {
+    "conditionId": "0x0c64ac7e4f31217c6829e0573a17609a84b3fbaca1a0f651a0184c09b0c9b7d3",
+    "humanEndTime": "2026-06-02T20:10:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:11.259Z"
+  },
+  {
+    "conditionId": "0x0ccaeeb15c2a00661f59afc087e0cb8e3ee338e3280dce3d1c17c0084cfbe526",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:10:49.879Z"
+  },
+  {
+    "conditionId": "0x0cf00d49957647c02430da3088bd78cf87d79bda947b61bd3d6b91f18751ed7b",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:15.396Z"
+  },
+  {
+    "conditionId": "0x0cf91d3955d89ec43b8ac1e918b159fa1a62531f29b26093273c4048337a84d7",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:54:42.162Z"
+  },
+  {
+    "conditionId": "0x0d1ad6b1ade37c9ce2a481cc90d0d6281c30b369e20a026373b9372a11c6d7ea",
+    "humanEndTime": "2026-05-29T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:48:07.549Z"
+  },
+  {
+    "conditionId": "0x0e0839e06a1e7b83dc6c27aaa14501e6a6d44f89c2d160792941e69e20e24ef5",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:17:34.627Z"
+  },
+  {
+    "conditionId": "0x0f49db97f71c68b1e42a6d16e3de93d85dbf7d4148e3f018eb79e88554be9f75",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:01.889Z"
+  },
+  {
+    "conditionId": "0x0f8ef3cc906ba7ba94a44724738df44bdd5f73e59e40c9c8b4ff8569e349643c",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:14:45.848Z"
+  },
+  {
+    "conditionId": "0x0fb006e0c06caa4db12f7e30ec8c2483d658f83eb57b2ee8eb478e39beca3dfd",
+    "humanEndTime": "2026-06-22T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:40:25.510Z"
+  },
+  {
+    "conditionId": "0x0fcb8bf4e07e15027f07b2d3c125d49c2974d729b7fa8fb728266a88febca8f1",
+    "humanEndTime": "2026-06-05T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:25:14.635Z"
+  },
+  {
+    "conditionId": "0x100d03776db8372b524f739f08759907e32c48ccda47f64020f7c47ff3b4989b",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:16.319Z"
+  },
+  {
+    "conditionId": "0x101d084cd035070abde58d8a3113b78e11ba68028b0d9e7e38ea7d780797aecc",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:33:03.065Z"
+  },
+  {
+    "conditionId": "0x1037b6a03a67859413defca67c062eb9d930a21ba0e7d04e8c9ebf286c10b97e",
+    "humanEndTime": "2026-06-01T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:48:57.483Z"
+  },
+  {
+    "conditionId": "0x106ccc4508432a065a67394837d4c2c529a8d77ed69fa3ba90b81eedf5236598",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:34.332Z"
+  },
+  {
+    "conditionId": "0x108677b8622766ef788ca23e55977e885fbe8c179a08c634bc247b898e7c1f5d",
+    "humanEndTime": "2026-06-24T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:31:01.762Z"
+  },
+  {
+    "conditionId": "0x11175b1cf8c28f4593dd95991fd1b6b2a7269706bf7762b8a3cdd475386d400e",
+    "humanEndTime": "2026-06-09T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:33:00.209Z"
+  },
+  {
+    "conditionId": "0x115401967f653200b41852811453cb5aac5052f339af0a63920fb84e6485f316",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:36:54.316Z"
+  },
+  {
+    "conditionId": "0x1198bf982483cc6f0a3d3de63d7703117ed19c5b5a9474541a2a3b6b0b5e51f3",
+    "humanEndTime": "2026-12-31T17:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-02T22:01:30.016Z"
+  },
+  {
+    "conditionId": "0x11fb30d16fd335d358cfc6acefc079962bd0c09fcd63941a054d069536d6f061",
+    "humanEndTime": "2026-06-03T21:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:11:52.332Z"
+  },
+  {
+    "conditionId": "0x124b91d56d15c5e82af5bcf45d21419c2567f66428c85d662810b3c04a2cdf04",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:09:49.581Z"
+  },
+  {
+    "conditionId": "0x12b6a68903cd82ff1b611eacbc09995f6998b6827a77fa89e15e58e96dad3074",
+    "humanEndTime": "2026-06-03T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:34:16.225Z"
+  },
+  {
+    "conditionId": "0x130fd6cdec6746e74a49f32414b583671d76e6faa99ef1093681975325b8471c",
+    "humanEndTime": "2026-06-02T20:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:18.129Z"
+  },
+  {
+    "conditionId": "0x1363972ea578b21b2332ae9d51b96c4cde32a8f4babc8a45a4dac5d5a56407a8",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:17:33.809Z"
+  },
+  {
+    "conditionId": "0x13fdd4bd0d84295d0dce1a74f0aeb13c98d8cf742746fd70b22225a9a8b55bdc",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:25:43.752Z"
+  },
+  {
+    "conditionId": "0x147ba8aedcff52ec32de7c459304b404ef95c7655d7568ffbd79d2551a9a6fd9",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:12.255Z"
+  },
+  {
+    "conditionId": "0x1501b48d2a15b318d56f6d69d445309420a77f99daa2d536370ee093bb1daff0",
+    "humanEndTime": "2026-06-02T19:50:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:14.694Z"
+  },
+  {
+    "conditionId": "0x15261f0244b22e2ae20679615a7b4c386d308b31c1b7361e5e48f8f135905ada",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:44.737Z"
+  },
+  {
+    "conditionId": "0x158fdaad572880f8de3d3f00e4d3c2fbbae77108d88c29deb800141928c1e040",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:00:10.873Z"
+  },
+  {
+    "conditionId": "0x1595b4818eeb1ea1e0bec5de6f057218e557feee9b405a0e930d290384fa1d16",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:22.648Z"
+  },
+  {
+    "conditionId": "0x15cf895714fe3b5ffb90ba489ca622b6fb9e07af4daf1f4f487b8c5990427d95",
+    "humanEndTime": "2026-07-01T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T21:35:15.648Z"
+  },
+  {
+    "conditionId": "0x166ec32f6375660283f18f0115b815c1ade97d5aaec8d6761cc4fb31df25a639",
+    "humanEndTime": "2026-06-02T19:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:25.733Z"
+  },
+  {
+    "conditionId": "0x167634797b118c6cda87c0bfe3a70d93c55df91d8841a2fb14351ea29dbc3c28",
+    "humanEndTime": "2026-06-02T20:35:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:37.097Z"
+  },
+  {
+    "conditionId": "0x1779552bade1ad85d35b2e5128136ea04602f26e2b67b7e1b6f9ec46ea8811d3",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:17:55.432Z"
+  },
+  {
+    "conditionId": "0x17902b9490c6a73152772316b4705935c5c6801ba269f2afc81686532e34fb9a",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:36.241Z"
+  },
+  {
+    "conditionId": "0x189d269a97daefe0c8f173fb0f702c6fe4d3319f3c6d1ef81ca3e22e36a897c1",
+    "humanEndTime": "2026-06-03T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:34.725Z"
+  },
+  {
+    "conditionId": "0x18b1c135d0a40c5894da9412e77311827d9caf16cf4cd6591b247a34730af919",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:32.213Z"
+  },
+  {
+    "conditionId": "0x1945a8b23e313ed7423b6b6fd556f9ab5578900376b565a61dc480a5f4f35d21",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:16:42.103Z"
+  },
+  {
+    "conditionId": "0x1970bcce75e3674660917ae4685b433a9b1e0152d810a8d7c346dfd5e00694c2",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:30.048Z"
+  },
+  {
+    "conditionId": "0x19d2018cfecd0deefb8bfcc8356b60c705a77956b8e984b0131567606661c541",
+    "humanEndTime": "2026-06-02T19:50:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:07.734Z"
+  },
+  {
+    "conditionId": "0x1a01bf78f56a507fcb666d564d8c8b91b0750679163ed6e96746102c9b7d285d",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:58:34.816Z"
+  },
+  {
+    "conditionId": "0x1a1346d763389455dac46a51e20c4cc25aecef5323f1701a440cc11d4c3f129e",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:19:13.236Z"
+  },
+  {
+    "conditionId": "0x1a463dd2ff0d6fd605adb0987d44a8ccccae07d3f9ace96bcf4b93a4db0256ae",
+    "humanEndTime": "2026-06-02T19:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:16.733Z"
+  },
+  {
+    "conditionId": "0x1adf074e048fa613f4ddbc0766088748a48d120a3a713b0183e219032a411ae3",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-02T22:02:18.939Z"
+  },
+  {
+    "conditionId": "0x1bb95f67ff6d971d43a112464e65b2a5e94e6ae61c72a111ad53340ba7d8cab3",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:48:20.869Z"
+  },
+  {
+    "conditionId": "0x1cb0c47cbe3271ad0f94fb063a1169bb41eaef7b7fa964278e4fa0b6d7d52b02",
+    "humanEndTime": "2026-06-01T23:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:31:11.814Z"
+  },
+  {
+    "conditionId": "0x1cf3622a379181e9776801cfd93fabd909b3871d82de486e039d5b778042d685",
+    "humanEndTime": "2026-08-12T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:18:11.353Z"
+  },
+  {
+    "conditionId": "0x1d519b87999e3d4e90e1e8f57b5eee73a0ba488ff3fdb70867f294733aba84a9",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:02:14.138Z"
+  },
+  {
+    "conditionId": "0x1d83ebf8b79aea16afd8048c3058f0cab3e3cd865cdd56aa2c9145b05470ec58",
+    "humanEndTime": null,
+    "decision": "no-time",
+    "source": null,
+    "precise": true,
+    "labeledAt": "2026-06-03T20:47:31.734Z"
+  },
+  {
+    "conditionId": "0x1d916047bbca1be9808076a0590c17ff113fb92986a4b4bc7f0f962642158827",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:58:28.305Z"
+  },
+  {
+    "conditionId": "0x1dd5f687b0f7aaa76ac2d2f2ea328ed825902e835a44cb4fa22f6c89848c26fb",
+    "humanEndTime": "2027-02-15T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:11:45.002Z"
+  },
+  {
+    "conditionId": "0x1dd7704a6d05cca078564bc0bac541261425bc9252acc5634639f5161daf45f9",
+    "humanEndTime": "2026-12-31T17:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-02T20:12:47.853Z"
+  },
+  {
+    "conditionId": "0x1f113d9c62d46e40f5d1808f64c5d5892a583d22ff5d90c7a23737e221ff84ce",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:45:12.393Z"
+  },
+  {
+    "conditionId": "0x1f54815e329f140ad297920d2a225abe45200233076932297829510dab54631b",
+    "humanEndTime": "2026-06-02T20:35:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:05.008Z"
+  },
+  {
+    "conditionId": "0x1fb0d9ef60ef62807317cbb693d8d9ee8aab072907f9d2227a38a63e3f1bccf0",
+    "humanEndTime": "2026-06-04T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:49:14.771Z"
+  },
+  {
+    "conditionId": "0x2053d8515f1b8cbeea4ccdb56e60e89c2617e43a8660d95166b8e71d27865277",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:42:04.952Z"
+  },
+  {
+    "conditionId": "0x20744564a4257e9a0bb6b6b0495227496cab5a2dea598f4006fc8ae6e0f3f844",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:32:54.172Z"
+  },
+  {
+    "conditionId": "0x20af55ab35186377b81219db6cb8615240cba42cea41731091be9484a5f5b122",
+    "humanEndTime": "2026-08-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:45:30.914Z"
+  },
+  {
+    "conditionId": "0x20d0bc282552ac5ec6f61cd7101cb42a5948cae07e7651bdf40ede1a8b2c5eac",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:41:58.591Z"
+  },
+  {
+    "conditionId": "0x214093035e429b91df322bd20c55d9f611f741f67472a63f7623a9afc0cffa57",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:28.641Z"
+  },
+  {
+    "conditionId": "0x21ad31a46bfaa51650766eff6dc69c866959e32d965ffb116020e37694b6317d",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:33.591Z"
+  },
+  {
+    "conditionId": "0x21ffbe6e524e8a2bf4e625481b774d4af93098c3f0a7c0e4a8311be4a34764ab",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:38.214Z"
+  },
+  {
+    "conditionId": "0x22014d44b787385b7baddb2b9d56cdcf5904fd7783b83c28403962dd71e51a51",
+    "humanEndTime": "2026-05-23T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:47:05.647Z"
+  },
+  {
+    "conditionId": "0x22413e24bed0cfc907c324a1d48dcb882e6252f970e411691d80f253c2e324e0",
+    "humanEndTime": "2026-06-05T21:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:09:06.748Z"
+  },
+  {
+    "conditionId": "0x227a962a93006f42237dd9856da11b6e00426abae84e03609358b20121461176",
+    "humanEndTime": "2026-06-04T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:33:19.847Z"
+  },
+  {
+    "conditionId": "0x233ce0c3969a5cd5079287f16fcd283be7c1db82263e08697f85dbe1b4d2113c",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:08.564Z"
+  },
+  {
+    "conditionId": "0x23481b811978194fa175143ed7cd8d0000878ca59c408fd552e33535f7aa771e",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:51:22.682Z"
+  },
+  {
+    "conditionId": "0x2368d2604c9c2b95bc98c51bd50c66e5351caebf05b9fe79d3398c387fe29a89",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:50:12.317Z"
+  },
+  {
+    "conditionId": "0x23b2e2c97c1bb6b1b78cb919f24018379dd46b06dff54dc1708e8d0271af8544",
+    "humanEndTime": "2026-06-09T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:32:57.329Z"
+  },
+  {
+    "conditionId": "0x24258776d0a926b4550b0f213267b95ba0a7741fc972d0b3c2b5f6bf8ced2c50",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:36.618Z"
+  },
+  {
+    "conditionId": "0x243d05e45d007af51fb4322ea212067d4cfd87bec3e7734e06ecaa50badc3f70",
+    "humanEndTime": "2026-06-28T23:30:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:31:22.157Z"
+  },
+  {
+    "conditionId": "0x246236e594989b692d9b276526b7f2be4791a7478bb2291864e2b09b7d1a2e93",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:06.353Z"
+  },
+  {
+    "conditionId": "0x246fb55d522f12309f4491ca421b57e7e1f01980084a87f6f41e79d7aa276f92",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:14:09.314Z"
+  },
+  {
+    "conditionId": "0x24aafc27f358bd333ce807035d488cb58ebd5c17f7a9814594111372948b65a1",
+    "humanEndTime": "2026-06-02T19:50:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:06.002Z"
+  },
+  {
+    "conditionId": "0x24b1e1b208598e1064d4166ecbeb65d6e15f8970e558561f1ae41e69779a7fb4",
+    "humanEndTime": "2026-06-28T22:30:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:31:38.663Z"
+  },
+  {
+    "conditionId": "0x24e67fb509df7efecc1840008153634d4852c0d2725d0a6c13f2e60beb2f2e2f",
+    "humanEndTime": "2026-06-08T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:34:35.607Z"
+  },
+  {
+    "conditionId": "0x2598cc2dd07517c734f4d5ddc7ec43639cd6d64f3ff9d5957711821db1382293",
+    "humanEndTime": "2026-06-05T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:03:19.533Z"
+  },
+  {
+    "conditionId": "0x25c6b7b80c916f92c5606ab0bb13f166e1c0afe15cb6dc9b63a32f382c821d62",
+    "humanEndTime": "2026-06-02T19:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:27.765Z"
+  },
+  {
+    "conditionId": "0x25fb28382075f418a944a781a9f8840e2f541152eea0d9798d1cabfa1466adbb",
+    "humanEndTime": "2026-12-31T17:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:43:20.388Z"
+  },
+  {
+    "conditionId": "0x269132a41ebd5c7f48fb25d1f58850e0d00c546a0eafbe9976fd0a7516469dd0",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:59.043Z"
+  },
+  {
+    "conditionId": "0x26ed26fd53ec238c80afee64b55e098e4c8f7e0b64f332ff6713fd3b504ab350",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:28:52.831Z"
+  },
+  {
+    "conditionId": "0x2745c38ff0617cb345c1d2df19b4f74ea777508e07411e88eeb6ab3affcda2a2",
+    "humanEndTime": "2027-01-01T05:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:50:14.113Z"
+  },
+  {
+    "conditionId": "0x2859bb44f6c8feac18494db286c2a8b55d9e7394a8366bc8c58cfde353e41c90",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:22:22.436Z"
+  },
+  {
+    "conditionId": "0x2878ce4a142bf39dea3679eb5961486efe3dfd7f627b102a6c4512f1694ff723",
+    "humanEndTime": "2026-06-06T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:47:16.282Z"
+  },
+  {
+    "conditionId": "0x289568d555ec620ed6fa33c936c5f42649d3a2e30748a1daf7079f42453fbea4",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:55:59.915Z"
+  },
+  {
+    "conditionId": "0x291bb42479d685a230c408417f19a0d244379ddc41679b30d96680c0a1a5398f",
+    "humanEndTime": "2026-06-02T20:20:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:21.913Z"
+  },
+  {
+    "conditionId": "0x29283b56d3eec6d1d89fff51793d9d2e01579d2379b1d3e9ebda175d3561e809",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:14:35.197Z"
+  },
+  {
+    "conditionId": "0x2abc2ca23b04c1d8e170b33f1de93937eec740bf5b3e9309e250f3562f1a166b",
+    "humanEndTime": "2027-02-15T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:11:50.435Z"
+  },
+  {
+    "conditionId": "0x2ad7e489ae9f326a3748b8903b4ab8a7edce834f700cd4f3b0c8d6c407b97323",
+    "humanEndTime": "2026-06-04T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:46:17.684Z"
+  },
+  {
+    "conditionId": "0x2bde6486e7067f48ee21344d8b5c1af458732536eb4d080932c88c3a7c2d2126",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:30:34.480Z"
+  },
+  {
+    "conditionId": "0x2bf80d93be42dac6c1b03298b5ec329a4b9f87b689c7892d544d1029f3a0caf0",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:29:51.464Z"
+  },
+  {
+    "conditionId": "0x2c03c41e5032364cb7166e842bdd22913f28aa2c837d8432704aa89c338875c8",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:43:57.422Z"
+  },
+  {
+    "conditionId": "0x2cae3b1ab06ab777a3ca5cff69b332592ffc8c2da8b047bfd3167465221f0211",
+    "humanEndTime": "2026-06-01T21:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:57:36.203Z"
+  },
+  {
+    "conditionId": "0x2cd24d17f5680dc6e7b7d67c712a223ae85550745597e81bd2d2b8d073443951",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:46:58.319Z"
+  },
+  {
+    "conditionId": "0x2cefe6009ea518f77b8a82714e54c0af1d0f25e99b37d4861f4a5d3ebbf142d3",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:45:20.066Z"
+  },
+  {
+    "conditionId": "0x2d3c4fc5cde6dfb43448402b912e41bd4453e3f030448ed026bff8f1a0bc072e",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:40:13.084Z"
+  },
+  {
+    "conditionId": "0x2e0af7ed7f4cdc55fb8256ebba31bd06993ac7e490439301a65491daa5ec8d97",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:29.887Z"
+  },
+  {
+    "conditionId": "0x2eb3068aa558a20cd8c3afd22a6545cea2efecf7ff6b53ee10da941c34d56409",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:09.979Z"
+  },
+  {
+    "conditionId": "0x2fa7fc0460e9459d52c5864e8b5d64b4b984e2e39001e4b83c2c3e50949befe7",
+    "humanEndTime": "2026-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:36:45.778Z"
+  },
+  {
+    "conditionId": "0x2fb42ff013c7e80f0d022a9cd2d3796e3d310212a44809e73b731a0fa8031029",
+    "humanEndTime": "2026-06-02T20:20:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:18.161Z"
+  },
+  {
+    "conditionId": "0x2fe2f420a7de9c259d37f7f1606a0c81ad16b6d45afe4e1125db3941a3903a7a",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T17:12:28.536Z"
+  },
+  {
+    "conditionId": "0x3047f22e4a9bc5a3b02fcbfe250a24d6da287d231d1e56d3d314e11454bc0b2b",
+    "humanEndTime": "2026-06-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:09:34.266Z"
+  },
+  {
+    "conditionId": "0x30515b3eab0739dd962bc96989fb6c313a763a215b252c6092d36a7a5ba370b5",
+    "humanEndTime": "2026-06-02T20:25:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:08.391Z"
+  },
+  {
+    "conditionId": "0x30cfb887558b20373a984da60c372fe5a90c0296aa6d8bb413a8aa7543846da2",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T17:38:00.889Z"
+  },
+  {
+    "conditionId": "0x30d55d8124ee1e12dabe89201badc45669b81dff69e4ce44d961f32878ec178a",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:32.753Z"
+  },
+  {
+    "conditionId": "0x3265b10daeb30dbcc3214bd02e488551d0a5d3028392f4152e4750b943fbfc91",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:12:13.884Z"
+  },
+  {
+    "conditionId": "0x32903694997a5c09afee30904970f9fab2a5fb4ec45f572f194341185574f1a4",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:58:30.255Z"
+  },
+  {
+    "conditionId": "0x32b09f6390252b37d674501527e709016d55581b2c1e544bd4b8167f5f732f4c",
+    "humanEndTime": "2026-08-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:05:13.915Z"
+  },
+  {
+    "conditionId": "0x32cfa52198e85e070d1b17d1b53c5c3a6aaae7736cdc33fa6aa04d353f0c2811",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:33.675Z"
+  },
+  {
+    "conditionId": "0x33671d4d5a293a7fe0a742baee0ce6e86f7fc45a015a54ce153946456801e5a4",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:11.283Z"
+  },
+  {
+    "conditionId": "0x3367d22cd2a673014f1960742afdf8601040a8ad856dc0a98bd1a44ee99504e2",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:02:46.608Z"
+  },
+  {
+    "conditionId": "0x336ee35845099e7d11fa2edbe417ef7791507130689f0f71a35ecc7480807404",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:30:13.770Z"
+  },
+  {
+    "conditionId": "0x33a87d02fa01e958929385c74b8627d32cc4474e9ebd312d268865c5207147fa",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:32.453Z"
+  },
+  {
+    "conditionId": "0x3432f269564a3c477c867f17ec22270bbe705c6c373ec7d3c51a929d082f60e6",
+    "humanEndTime": "2026-07-01T04:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:27:30.631Z"
+  },
+  {
+    "conditionId": "0x348cd9adf4f6855f58bd9c6dbf9ff251c4142ef77233a5dc95c65b4b61cd2187",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:59:43.818Z"
+  },
+  {
+    "conditionId": "0x34ed4ad7a7825f168e1084f53e8f60a161579d783b2740e50aa52f710925a136",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:55:59.198Z"
+  },
+  {
+    "conditionId": "0x35061b4553d1e34e02fa6b1157188d8392e7a6464e3dba8ad94d420764f7642a",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:38.364Z"
+  },
+  {
+    "conditionId": "0x3535fb2f4aef6619dde8b367cb5e5d209526bb496d5d9778428c58a0252435e3",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:16:29.206Z"
+  },
+  {
+    "conditionId": "0x358a4c706ce29a1847d26244857c6272e5359a17aad079f5672c8fb40d50d66c",
+    "humanEndTime": "2026-06-22T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:46:46.917Z"
+  },
+  {
+    "conditionId": "0x358d20f62e1b9f3fef26a8daa662f15cb08ed4b17f4b7d14518dfb3f1942a9f5",
+    "humanEndTime": "2026-07-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:11:14.581Z"
+  },
+  {
+    "conditionId": "0x3616e2f2cd616de0614c3c7a0fe1e791c93de320fef017a496b723fcbceefce8",
+    "humanEndTime": "2026-06-30T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:42:30.165Z"
+  },
+  {
+    "conditionId": "0x366f89649caea042c96ee741b185461ec7faa408a2664ec44469a0061924b537",
+    "humanEndTime": "2026-06-08T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:54:59.044Z"
+  },
+  {
+    "conditionId": "0x36b97e8e982e7ffc316526077c0fb30aa97e9ddb32961596e114576a17719df2",
+    "humanEndTime": "2026-06-30T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:19:18.277Z"
+  },
+  {
+    "conditionId": "0x36db77c539bcc8c7bf0686c1b99f30c5a5eed1f53d3b3a27a071550c81f83701",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:42:03.151Z"
+  },
+  {
+    "conditionId": "0x36f665053a7ca5c102f2db15cfc49b1b9f38fa820a5f2bb4bde87bf9fbd9a2ab",
+    "humanEndTime": "2026-05-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:17:07.288Z"
+  },
+  {
+    "conditionId": "0x3733a1b647e7364095736ab0966465d896a84cf3b6bc1695ca1f26c3239b3868",
+    "humanEndTime": "2026-06-01T04:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T17:30:51.929Z"
+  },
+  {
+    "conditionId": "0x37402c8c83fc8b43193b19275e760e66c75dea14406977d47a73241c526b6cf2",
+    "humanEndTime": "2027-01-16T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T17:23:16.289Z"
+  },
+  {
+    "conditionId": "0x375409bc5eeeff961e82b479caeccc20f33d15738e5bce1186d628aa3d9dfb1f",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:45.846Z"
+  },
+  {
+    "conditionId": "0x377e7fe65cf198a7fc4fdae3f2136b74729279267858daaf96718b23bc2a5607",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:40:24.025Z"
+  },
+  {
+    "conditionId": "0x37a6de1b21803e5f3fb1965116218215d79963af4f7e51659696366267a63a03",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:28.278Z"
+  },
+  {
+    "conditionId": "0x37b4c3e697d867455e6219e69b8c22ae62bfeb91c138d9dd10520405e843c03b",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:48:33.226Z"
+  },
+  {
+    "conditionId": "0x37ec4c6b57a18b16eed1241f6155ee7ff45bc1697d7848f15ac33d406e38ed00",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:56:43.291Z"
+  },
+  {
+    "conditionId": "0x38bb9355fd91f6d7053465caefbbf691bd4a81ec1b08edcca656fc9dde259b14",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:56:34.415Z"
+  },
+  {
+    "conditionId": "0x38f72045b5791317e79361e4c06cbf928b957acb64770d3fe5b544c4616c1fa4",
+    "humanEndTime": "2026-06-05T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:33:31.795Z"
+  },
+  {
+    "conditionId": "0x39124d0e4d2f44284b88c43e4fb801559721a17b3ed6d1452b6a09580f7b339b",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:13.676Z"
+  },
+  {
+    "conditionId": "0x3a26ca6425e2d98f14935670bc22cdb0744defc6f6d83c65f8c413a921c5c70c",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:57.635Z"
+  },
+  {
+    "conditionId": "0x3a7fe8fa58bde67a753d46b5b8210a53b9fbc7a6c424b41a9b00015588c3e2a3",
+    "humanEndTime": "2027-04-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:35:15.846Z"
+  },
+  {
+    "conditionId": "0x3a8209fbd45fef3be23fb3480eb1c961c85f7bdd07d4a3391f5949252156c594",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:47:42.237Z"
+  },
+  {
+    "conditionId": "0x3ac86c8643bb686cf88f716c34c85862c9e5e2f448012ae429b14d576a5abbca",
+    "humanEndTime": "2026-06-06T21:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:30:36.806Z"
+  },
+  {
+    "conditionId": "0x3b0107a80edd066fe987784d7ab5963c177888433efbec10689951c17320606c",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:18:39.368Z"
+  },
+  {
+    "conditionId": "0x3b0ca134ef68b94e1fa22b8adac30f046337175909e3c15b0977687c572c47e1",
+    "humanEndTime": "2026-06-02T20:05:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:28.870Z"
+  },
+  {
+    "conditionId": "0x3b5b3b8ae477d3fd43035bb5aaa443ebe456b63a7cd47b7ebbd120f0ca968f13",
+    "humanEndTime": "2026-06-02T20:20:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:20.425Z"
+  },
+  {
+    "conditionId": "0x3b7231183c9555658e0330fa5b20f5c0047f1b837c383d3eb0bd088bb047e4fa",
+    "humanEndTime": "2026-06-02T20:10:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:13.996Z"
+  },
+  {
+    "conditionId": "0x3bb17a58b98a7e053a0dda265f5bca731e8060fc55cb8f52a5654643f39dd484",
+    "humanEndTime": "2026-06-06T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:13:24.503Z"
+  },
+  {
+    "conditionId": "0x3bc69cb672591e4fcd2ef856b64b219a906e15d4601b50066ac81a446574dfaf",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:14:58.949Z"
+  },
+  {
+    "conditionId": "0x3bf7968f7648cea24f84e8f646b2f076a90aa6149bf909a933bf6ce936ae2112",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:28:48.122Z"
+  },
+  {
+    "conditionId": "0x3cd6e52603d80ddbbdac9b1a4d43f9b7faa6aae4fae4d0fdfad3bd58454da7d3",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:21:13.355Z"
+  },
+  {
+    "conditionId": "0x3d20f26deb9b9cc7e24e5e06c10234a722d93bac095ce1105c59b44b503078d7",
+    "humanEndTime": "2026-12-10T23:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:46:44.999Z"
+  },
+  {
+    "conditionId": "0x3d2fc07e08c46d8f642f56e5f8c08763df53a3f9d96073a117ce564368cace5f",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:47:25.269Z"
+  },
+  {
+    "conditionId": "0x3d55e047c2e3afe13619f4644dd2a08ee974392fa42c0dcce29725ac0ed8e307",
+    "humanEndTime": "2026-05-23T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T18:37:52.368Z"
+  },
+  {
+    "conditionId": "0x3d9534e655c68bd1811bdb721704d7434c6ce214a69043e9e2c4a13c25db33f5",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T18:35:25.247Z"
+  },
+  {
+    "conditionId": "0x3dc47a72ac6bb265e9cefebd2a2eeed00966394cb2d07245b5c94138b60e82a3",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:48:51.371Z"
+  },
+  {
+    "conditionId": "0x3de0f3d7d7efb40cde68e814d40a0b232832083653c8e78260eb999baa967de0",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:26:58.457Z"
+  },
+  {
+    "conditionId": "0x3e218c99a1335641b3a5ee6c887521d19b0c28fddd6b99c254a07968e35c0b1b",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:13.083Z"
+  },
+  {
+    "conditionId": "0x3f18efda7aee0c870ab4af890edc362068bd59ac2ee2f51942b66637bf158502",
+    "humanEndTime": "2026-07-01T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:32:51.499Z"
+  },
+  {
+    "conditionId": "0x3f1fd22bc28ac5cdcf1dcdc0fa05f54fae9f4cbc46f4079b069ec55bdcca67a6",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:03.663Z"
+  },
+  {
+    "conditionId": "0x3f211200ec161f50f611bc5c6d127e539c0566f583779aad4f6dec8ce7f731e5",
+    "humanEndTime": "2026-06-02T19:55:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:00.145Z"
+  },
+  {
+    "conditionId": "0x3f6e27b37c7a8879658336c3c7a51d55eebf564e0583530a35ac531a1d76fb2b",
+    "humanEndTime": "2026-06-01T03:59:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:53:39.894Z"
+  },
+  {
+    "conditionId": "0x3fb8a8de2ac275882d72b2c4f22d41776fcf033f9e413a77a84dd395c0d5257c",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:55:43.094Z"
+  },
+  {
+    "conditionId": "0x3ff3d49ab287815f7677ab20f0324381de22517bd07a80eb524dce53ff433130",
+    "humanEndTime": "2026-06-03T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:06:47.213Z"
+  },
+  {
+    "conditionId": "0x406e0d8cfae33d844448acefab4862f89f82849a7bc6dde73b97aaa702e96be4",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:29:04.355Z"
+  },
+  {
+    "conditionId": "0x409a76afaeec98d92330446955ad1f9e11b41d624267bc87bc11fbc27db63d88",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:09.398Z"
+  },
+  {
+    "conditionId": "0x414378275cb214b747245942be889ee1e077c56d1c00eb4d726629c95f22b5a5",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:27.753Z"
+  },
+  {
+    "conditionId": "0x4197bf7e572f1dd731669d33d05532c6d3b8cba71fb83dc69d789110e39c41b4",
+    "humanEndTime": "2026-12-31T17:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:48:08.121Z"
+  },
+  {
+    "conditionId": "0x41c6341dd79903aca4bb0c29f5a7976946c3774d2fd72f38cbb7de7092144520",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:56.717Z"
+  },
+  {
+    "conditionId": "0x42631e1a8c8e6389422b58b8e15b1b551892b9833651aa3bab25afab124354b5",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:30.718Z"
+  },
+  {
+    "conditionId": "0x4273517fc8141d57ad1528ede46efdceebdb6a4da746d5de5bad216564209a1e",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:32.910Z"
+  },
+  {
+    "conditionId": "0x43272c02b8407ed3f8d5b04fb4cb132d7a59c5df6ecc423afcf66f1c778d1887",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T20:13:47.792Z"
+  },
+  {
+    "conditionId": "0x450810ae738a0ff820d3248f2b24937f63fb8c8cf422ed2a915125adb4d9d3c8",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T17:39:45.173Z"
+  },
+  {
+    "conditionId": "0x4567b275e6b667a6217f5cb4f06a797d3a1eaf1d0281fb5bc8c75e2046ae7e57",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:40:22.646Z"
+  },
+  {
+    "conditionId": "0x456e9fb73990e78646634299e8aef060e5dccb55519b286198f782815762ba02",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:31.045Z"
+  },
+  {
+    "conditionId": "0x460418ad9f25bef4d5f1852a521e8ad6a94c8f40dd2f233831c1697364907351",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:27:59.125Z"
+  },
+  {
+    "conditionId": "0x461671667e5cd607c0b4d9732121407bf29bbd948a41c6450e018322662334f0",
+    "humanEndTime": "2026-06-09T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:28:27.097Z"
+  },
+  {
+    "conditionId": "0x46666ceb4c63814f38a8c83784ae10e1c2e1ef52e2db648372bd86dea521cf64",
+    "humanEndTime": "2026-06-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:40:12.618Z"
+  },
+  {
+    "conditionId": "0x467cf9f5be224e3e0404f31cc040f6e13b2fa43dbdf12ae3a81ae2ec246dca26",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:29:43.081Z"
+  },
+  {
+    "conditionId": "0x46dbd48d6bde5b81edb480e0f676a2cdda6c6b592c4d86a9367c7ad5a9870195",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:16:09.721Z"
+  },
+  {
+    "conditionId": "0x46f89c3a67231979fc6b4707ae1370068c8e3d4e2cba84c4451a117505675b48",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:10.002Z"
+  },
+  {
+    "conditionId": "0x472f62b87999b6aee0d198b2a13b87be4982f2aa24f42e11d375c24c0fd7d432",
+    "humanEndTime": "2026-06-02T20:05:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:14.625Z"
+  },
+  {
+    "conditionId": "0x473b60ac8dff259fa4bf78193a0dbe8921d60896ef2e9e8b760747caa6ef722c",
+    "humanEndTime": "2026-06-02T19:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:26.798Z"
+  },
+  {
+    "conditionId": "0x48645026627b81906da777e6c40d5114a3f9b1b09fe6f9f477b2e705d70bdebe",
+    "humanEndTime": "2026-07-02T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:17:59.478Z"
+  },
+  {
+    "conditionId": "0x48b0b0bca515f68fccf95af4793dbd0edbfec1f8ec6e8df2c0f69ba74f8c4722",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:47:36.164Z"
+  },
+  {
+    "conditionId": "0x4914bfdd892a48c341b5e0f41ec10475a815f2277273110b16f95e21084bfe75",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:36:49.303Z"
+  },
+  {
+    "conditionId": "0x495e6b49e7397bb4e6f8ce69e246ccb33b744678bd9bf88cbecbd3a113b05423",
+    "humanEndTime": "2026-06-30T15:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T22:34:34.838Z"
+  },
+  {
+    "conditionId": "0x4968580712a1a10e030867a512bd0c759680cc6d343819431d70b4771b4343f6",
+    "humanEndTime": "2026-06-01T22:30:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:40:44.675Z"
+  },
+  {
+    "conditionId": "0x4a506f0e1e9bd4f6769299825048eaebe388dfd0c44e39abd6df9350e54858f3",
+    "humanEndTime": "2026-06-02T20:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:31.522Z"
+  },
+  {
+    "conditionId": "0x4a9d58d4da874e26708f5bdb014eb07a06aeebb927068d169d43831595386557",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:34.195Z"
+  },
+  {
+    "conditionId": "0x4ba35ccd015e3899f323b7b0bcb38ecab3a3c0fafc397666e690ba301fbeff30",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:18:47.464Z"
+  },
+  {
+    "conditionId": "0x4c325469d9b516ef4e6b8f73a81a12607dec075e3c2fd454f91765aaeafc4760",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:41:52.431Z"
+  },
+  {
+    "conditionId": "0x4cfe7e17c25b1fef5dc6ff31cccd8f6a72e827cb375e24933883d149dc92b8ca",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:33:19.717Z"
+  },
+  {
+    "conditionId": "0x4d1f3c89aa5796c1d2f0206f5af240d69873063fb5e9c000bc563d257e541dff",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:27:23.618Z"
+  },
+  {
+    "conditionId": "0x4d4bceee5f59f75230c6438f69fc913a6da7afa4098ce0734655045c02a730fc",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:28.988Z"
+  },
+  {
+    "conditionId": "0x4d7eeb6b14f64cc6b847a5fea348e78f54a7ebbbf3a8e0df2141c916cc4ee3d3",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:42:46.981Z"
+  },
+  {
+    "conditionId": "0x4e4a7df876b0c04f0b8b29b9073eddfbaf5c787192da825ae7ca1031bc8cfd15",
+    "humanEndTime": "2026-06-17T22:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:51:09.703Z"
+  },
+  {
+    "conditionId": "0x4e4f77e7dbf4cab666e9a1943674d7ae66348e862df03ea6f44b11eb95731928",
+    "humanEndTime": "2026-11-04T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:18:55.317Z"
+  },
+  {
+    "conditionId": "0x4e54e85e016546e8aa1458a0bc46a8662657d50b6bbc59f332ef0342c7e6a570",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:22.464Z"
+  },
+  {
+    "conditionId": "0x4ec6fcb43fe1a32163c7da09d54a99ab9bf6abdc6fd49939d7ad67d696a3248b",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:22:26.522Z"
+  },
+  {
+    "conditionId": "0x4f02b9cf70e514964fcb9aa2f7873d2b0d1aa0986da096cce7e6687e78da00f3",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:34.844Z"
+  },
+  {
+    "conditionId": "0x4f3421fb2daf5cca7430ed8d8132463963081572d75434393a1808fdb8829fe8",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:32.256Z"
+  },
+  {
+    "conditionId": "0x4fe305a2ae995a52ff278895344895fe587b4fec3d5f04347b4dbf5e99bce99c",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:55:57.864Z"
+  },
+  {
+    "conditionId": "0x50278993a365504f92b39264b3e0e8db276c6da105fbb5acf79998c02395917e",
+    "humanEndTime": "2026-06-02T20:10:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:09.339Z"
+  },
+  {
+    "conditionId": "0x502a94e5c525766d5ee7f16c6568131ba1b2cbadb69c703af05a6ef00336ed64",
+    "humanEndTime": "2026-09-20T22:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:29:02.766Z"
+  },
+  {
+    "conditionId": "0x50469763f6385a5cd455f299b3079e9d4f48317760588289d837d553248bc65c",
+    "humanEndTime": "2026-06-03T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:18.964Z"
+  },
+  {
+    "conditionId": "0x506f80bcf76bc75e6b31a250e2d754f347c4c231665326931d58bdb339ba1913",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:30:29.900Z"
+  },
+  {
+    "conditionId": "0x50f793b6d08c7625c029e35f3260c6db3d06280e421632c63d76030c69e75cef",
+    "humanEndTime": "2026-06-08T03:59:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:35:32.767Z"
+  },
+  {
+    "conditionId": "0x511469de9dbd4d5bb80335af238e270c7a63982aa263ba1101060bc1a1c4e2ea",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:23.259Z"
+  },
+  {
+    "conditionId": "0x518a5b030b205706b8ffe6bbad9bd3de59548348e5c0471827f5de21e513333c",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:19:44.023Z"
+  },
+  {
+    "conditionId": "0x51a7c8afb7a0e09b8b47643171d90f400de23a176c4ea06f6552d6e53213839c",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:37:44.976Z"
+  },
+  {
+    "conditionId": "0x51aa2f4f1f861608ac592d93da974e86a232caa0cf08e1a1a7d4a3420110729b",
+    "humanEndTime": "2026-07-01T17:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:33:13.779Z"
+  },
+  {
+    "conditionId": "0x51e8c8df709aa78f64d2d9324d9d2556270f81e3966ade308099e5338bb4e4c9",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:35.477Z"
+  },
+  {
+    "conditionId": "0x51f624dbbf14f9edb575fef1be6f7a303751de70783fa144fce27b957452c803",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:47:49.815Z"
+  },
+  {
+    "conditionId": "0x523f29f4370b912f8434eba7726b7dd2e463f252cd14c2b97a2c7f256f0921a6",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:42:48.565Z"
+  },
+  {
+    "conditionId": "0x52e235d5340fc67a964d9e64fce8c9352e6656d0cb7bf95abbef855e5ebfccce",
+    "humanEndTime": "2026-06-02T20:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:16.523Z"
+  },
+  {
+    "conditionId": "0x52f99da6fc941efeee52dceab79617fb071ce9d34579012765ea035eb9a08c9d",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:57:55.776Z"
+  },
+  {
+    "conditionId": "0x52fd414f2045ce0aee517ee1bc191d186c560aef8eda4742763af58ae61eea43",
+    "humanEndTime": "2026-06-28T23:30:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:31:30.310Z"
+  },
+  {
+    "conditionId": "0x53214771041446bc2dac71f0c06dde947f5c438421c0dbb499aad85d891a4464",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:29:15.636Z"
+  },
+  {
+    "conditionId": "0x53998a76c0cc5350379513082a4c43a5e3f55dd29515406ecfdfd6259a1c9b9f",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:13:57.077Z"
+  },
+  {
+    "conditionId": "0x54a6e3e4adc3a50ec36051568fad48a6b43946dd25eaf78cdd22fe96b8a0d45b",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:18.864Z"
+  },
+  {
+    "conditionId": "0x55f11baada140e3c7c317b16d1b6907ba393ae45be7448559cacb06d61c4fb65",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:44:05.476Z"
+  },
+  {
+    "conditionId": "0x564b0e1598a283dd2fd379d725eb5c7249a48984b9f6cda9f3e358502dbe3209",
+    "humanEndTime": "2026-06-02T20:20:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:19.541Z"
+  },
+  {
+    "conditionId": "0x56c9a67f3351963c5bb3ae439ec1234aa443e98b0410aa043c6511413604439e",
+    "humanEndTime": "2026-06-01T19:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:29:48.703Z"
+  },
+  {
+    "conditionId": "0x58f6e84de0da01adea07ae9666b69350a34f14d827ee0d255ead27b525049ee9",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:40.091Z"
+  },
+  {
+    "conditionId": "0x5969cbb46aca5319b19e19a3c6f63de098950b675bf268f30f4d035508da1957",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:57:54.950Z"
+  },
+  {
+    "conditionId": "0x596b82d8371efcfcc2fd5312d5dde04f5e9aa1f0c61fd3f93be2a8be09e0da5f",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:42:03.525Z"
+  },
+  {
+    "conditionId": "0x59a37ea3830d532957b04d3c437a329e14a5dc840096d48c7ee4b55ba3d9cca8",
+    "humanEndTime": "2026-06-01T03:59:59.999Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-02T20:12:44.326Z"
+  },
+  {
+    "conditionId": "0x59cc4eda1b9441c1d5ae0624bb59811e3a1156194c1824695fa37a1fdad7b7d6",
+    "humanEndTime": "2026-06-02T20:35:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:06.978Z"
+  },
+  {
+    "conditionId": "0x5a0b202a2969db4c8a03d3f5cadcebb57bf5e07c1283fa0891b8969b8960ae17",
+    "humanEndTime": "2026-06-02T20:35:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:43.737Z"
+  },
+  {
+    "conditionId": "0x5a4224b180c97fbac8989ff3c4e20ef9f22762be6101fa0af6cf203ec090c42e",
+    "humanEndTime": "2026-08-28T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:18:50.391Z"
+  },
+  {
+    "conditionId": "0x5a59d269c2b5108cd2f64c624e46ee2c8b5cfd88b882582565f927918315b6aa",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:29.572Z"
+  },
+  {
+    "conditionId": "0x5a965e943de13a4bdef4fb568d94341a751f02a2f652fa4fb8377d8b02f84606",
+    "humanEndTime": "2026-11-04T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:35:37.001Z"
+  },
+  {
+    "conditionId": "0x5b3184934ecb30a994cab66d4240d0633ba0ed6d76e6ca590e237fd01201ae3d",
+    "humanEndTime": "2026-06-02T20:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:26.048Z"
+  },
+  {
+    "conditionId": "0x5be5f89095321789050c9ff89d4fc3a2d5edc95e94a1f6f324bad72ff2c1fa41",
+    "humanEndTime": "2026-06-02T19:55:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:01.772Z"
+  },
+  {
+    "conditionId": "0x5c412cfb3ac2f29787243de941b816d6b575d74fb8169bce3e3f96a41af3b3d0",
+    "humanEndTime": "2026-06-03T21:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:13.303Z"
+  },
+  {
+    "conditionId": "0x5ca616aaa0e1e5df6c38439f8bee4b96bacfe32f8f39cb2f1604c0196548662f",
+    "humanEndTime": "2026-10-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:07:24.436Z"
+  },
+  {
+    "conditionId": "0x5ccfe1b69a582d2985db08a8481a0d74c314b1fce9b4711ae2efb2c6467fe6aa",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:30:30.822Z"
+  },
+  {
+    "conditionId": "0x5d37825716832a4a54f89450932e89510f26cf4be59aeec3149d2c49e5fdf44d",
+    "humanEndTime": "2026-05-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T22:00:43.982Z"
+  },
+  {
+    "conditionId": "0x5d9c5f96527dbdd01ba5de77286b10432575337acdee158b56a19250c6c9041d",
+    "humanEndTime": "2026-06-02T20:10:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:13.321Z"
+  },
+  {
+    "conditionId": "0x5db999fad322cea2914535aae5517060c3f80ad6d8c0231cde2124a434d16846",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:25:07.184Z"
+  },
+  {
+    "conditionId": "0x5e033fb779edbb8f20f92b33ee3601327ce10ba6c3bf3003ba7d5cb7e6a1fea0",
+    "humanEndTime": "2026-06-09T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:36:28.298Z"
+  },
+  {
+    "conditionId": "0x5e34c880f9fd6e1fa1104fdebe7e44e1b8224ca834b3d0957b5c2fa740bf6f08",
+    "humanEndTime": "2026-06-03T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:20.778Z"
+  },
+  {
+    "conditionId": "0x5e614739363bbfc399469102c600e4e8260032d41e59e0bc12ebc0e71231642d",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:48:53.097Z"
+  },
+  {
+    "conditionId": "0x5f1b1caf70eb994bfff2986727a05a3ac9f7ec8b0da4017f7732596d023e5a07",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:26.319Z"
+  },
+  {
+    "conditionId": "0x5f3b3456b2d6ef0d6f15d7492162725057be78d738d2465456e2835f1d89046c",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:35.530Z"
+  },
+  {
+    "conditionId": "0x5f879a52e5349db7f66d386ca75f1a9bb608fdd6a738a1582681613730b23281",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:45:17.571Z"
+  },
+  {
+    "conditionId": "0x60084cd46b5b91797ad397f4c1ffb5d3fcec7c134b705d2796c0f571eedad3b7",
+    "humanEndTime": "2026-06-22T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:59:51.071Z"
+  },
+  {
+    "conditionId": "0x6028c69016e36a3d7aa93e3e82a5cf8cb0a859df4c38b9f136eea6ee12a8a34e",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:17:40.738Z"
+  },
+  {
+    "conditionId": "0x60cd19640463e33566898338f9e1b61d9638f14c0eb79745ca99c09e6a58e44e",
+    "humanEndTime": "2026-06-02T20:35:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:41.844Z"
+  },
+  {
+    "conditionId": "0x6114a8a3f9ac214f48a7e20d169f1c7a5c84082cb6f7058ed9fe1137b11fd0e7",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:40:08.465Z"
+  },
+  {
+    "conditionId": "0x61600d487069f99e775307a0655c1a79f26e4fc6d8d1ba66790c64d78d0beba2",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:44:05.212Z"
+  },
+  {
+    "conditionId": "0x61a1278884fa70d68d4bcaaf72fad55bbdb063cac28c6947472ca91635fab10f",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:27.424Z"
+  },
+  {
+    "conditionId": "0x61d9486c0f7e14ed98f3b177b6adcb3cd45646c92e8bbfbf209789b86472d4b6",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:40:31.160Z"
+  },
+  {
+    "conditionId": "0x6262a76b26dba92b7de48e49bc9c5dce0b1e3cbd4927ba02a2292e53ab32677b",
+    "humanEndTime": "2027-03-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T18:33:25.433Z"
+  },
+  {
+    "conditionId": "0x637a2423461f5b531fef314e1e14982b80819de217e32f4f96653caa8af2c47a",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:16:30.353Z"
+  },
+  {
+    "conditionId": "0x63d8f3a34c90bd5342dda8acf62b6a898dfa52f86475efaf180b66493ef6af80",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:44:38.457Z"
+  },
+  {
+    "conditionId": "0x63da95665236ce59229b9a9fb829fa50173b1443c97570535b078815ab3c92e1",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:30:33.403Z"
+  },
+  {
+    "conditionId": "0x63ec5cf76df1508a2101eebd9ae9f816534af494a0d754a276efd559284596a5",
+    "humanEndTime": "2026-06-10T03:59:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:02:49.805Z"
+  },
+  {
+    "conditionId": "0x64396449b471b10b006285fa49dd9a5df535694de7b4c703fdeb0d88d5c4cd33",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:17:00.296Z"
+  },
+  {
+    "conditionId": "0x644dd9e9dd31ed7bb8ea3780c8eff79a42a190756e2592bcb4a93aa484b4fb9b",
+    "humanEndTime": "2026-06-30T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:19:19.370Z"
+  },
+  {
+    "conditionId": "0x64d31a2af85518c6718a5757a35b840f08eca20c1e22c0eb1e96ec01cc55b8b6",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:31.873Z"
+  },
+  {
+    "conditionId": "0x65307f30dce84ac35e41813035d3c04933da830dc4efbbb2fcdc4b282700ef3b",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:03.707Z"
+  },
+  {
+    "conditionId": "0x655b4bfdfa55a95c24d6e9bf7e7cd62f1b57da9a1f4c7f40f090b8ba847dffa2",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:28.071Z"
+  },
+  {
+    "conditionId": "0x65e24f713e9a30ff8a54f50bd160052a2bb2903360a2a5d151656bae11322ea9",
+    "humanEndTime": "2026-06-28T22:30:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:31:41.939Z"
+  },
+  {
+    "conditionId": "0x663b88d3a8f2341bb8d878709dc78632bcaf7512e577bd15521e5d8ed933efbc",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T17:45:39.711Z"
+  },
+  {
+    "conditionId": "0x66b906b8205f48a26beb8e553bbb1e7954e87e4f6e1d539823441221d1806e8f",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:26:50.039Z"
+  },
+  {
+    "conditionId": "0x66d3ac2b73b3fabcd7afc2d01e4037595a6052a282d0a28acbc8c96b5adf2e18",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:29:19.889Z"
+  },
+  {
+    "conditionId": "0x67443cb1ffb2bf180f7df5b6ca7adff63f7e8e933c7e41405ba118f3e9f8befb",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:20.669Z"
+  },
+  {
+    "conditionId": "0x675bba4df50fd123f7fbfbafa67e9b75f4092d85ce0f9148ce78fc945964c856",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:28.697Z"
+  },
+  {
+    "conditionId": "0x6786eb0f18f38f4132b3501f142728ba2ed15b72ddc4f65ddde548c509d7f6ff",
+    "humanEndTime": "2026-06-30T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-02T22:34:00.339Z"
+  },
+  {
+    "conditionId": "0x679c4816188b76f6490dc545cf3aa42269b1f3b044eb787141657d8249b82bd6",
+    "humanEndTime": "2026-06-24T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T19:27:07.468Z"
+  },
+  {
+    "conditionId": "0x686238d981b158464762fe05778435c0ef440d01a160fc23334f789ac3408699",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:50:11.652Z"
+  },
+  {
+    "conditionId": "0x688f1d837e8a8084153d158df5cb96d838a12ab07f50ab629c677a9e9783bfd9",
+    "humanEndTime": "2026-06-07T21:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:30:30.575Z"
+  },
+  {
+    "conditionId": "0x6897736d782ce70f47126dfcec6669073f563d6e757e60bc61c0367370d6f73e",
+    "humanEndTime": "2026-06-30T23:55:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:41:15.094Z"
+  },
+  {
+    "conditionId": "0x68bd8fdc9a245c791f616f78c924df4f938016c04b1b9846cf8a50b866062d39",
+    "humanEndTime": "2026-06-03T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:26.307Z"
+  },
+  {
+    "conditionId": "0x68e3c4e0dd8f82d010060032006fd157401b0bd8e04bd2953ae293e31eb99bf6",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:19.908Z"
+  },
+  {
+    "conditionId": "0x696576c9b20d20a71e0acd6f84d215f129fa361ed544b0df14f1ae540d84059f",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:48:05.275Z"
+  },
+  {
+    "conditionId": "0x6972edb1b3f8cd8192651a665fc424dff846efe1c4a2376f628d4b20c704144c",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:40.404Z"
+  },
+  {
+    "conditionId": "0x6ad63235931f80951a48f2338956dea7bb70c97f99a7bd03f5f501d6e4673842",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:27:00.762Z"
+  },
+  {
+    "conditionId": "0x6b34c4bf15f3c23d01d8f1c95c24e97f817c4cc063bbf2a974925b59bedd42a4",
+    "humanEndTime": "2026-06-02T19:55:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:02.414Z"
+  },
+  {
+    "conditionId": "0x6bd24002a1edfd3ab6ec72297f00239280815d1f36470f123eaddd4633cbd0a7",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:58.344Z"
+  },
+  {
+    "conditionId": "0x6bd56627aa21311850825edb27e53434a0e17a4f782be0086bc07f71eee00d0d",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:57:52.746Z"
+  },
+  {
+    "conditionId": "0x6cb3ec9e0fb1c258898f648f8b33422f59ba3e8a71aee551449d7cb147bb8ead",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:17:53.629Z"
+  },
+  {
+    "conditionId": "0x6ccd6176f2eafc06ca9811f0dfb19f602d30fe4405979c097dc91c428e573a3a",
+    "humanEndTime": "2027-01-10T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-04T17:11:46.851Z"
+  },
+  {
+    "conditionId": "0x6ccebbc57547f8b777aa4ef70a452bb5034055d183131a9b6db47fd8d0777921",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:47:44.421Z"
+  },
+  {
+    "conditionId": "0x6cf36a23784a13ca06bee2177373483c082bb784577a96f7da05961adf760035",
+    "humanEndTime": "2026-06-03T21:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:16:47.101Z"
+  },
+  {
+    "conditionId": "0x6d3c16f17bd0f2d25b3ac3182160e3a9b0f113de93a24a7ef370e4d4b26ef117",
+    "humanEndTime": "2026-06-02T20:20:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:21.189Z"
+  },
+  {
+    "conditionId": "0x6e2513e599fcd025b9af1c1591e1ab4f4c8a9599a5b59a6a149dce4668629d74",
+    "humanEndTime": "2026-06-20T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:13:30.191Z"
+  },
+  {
+    "conditionId": "0x6e37f50db9df05e7e3d481c296f597a2e1f4c75a7aff0fa10d1a43082db54ee3",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:08.212Z"
+  },
+  {
+    "conditionId": "0x6eec2b6b1c8d62aaacda46471e8caf7320f4ea9235f5ee87cba970a32a4e6985",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:45:11.463Z"
+  },
+  {
+    "conditionId": "0x6f3c4a19afe0621f5bfd39a18625ec392dcd695c34a708f02a52c96ed3436773",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:48:20.022Z"
+  },
+  {
+    "conditionId": "0x6f8f6213493598ad65271b758d16c5df84c263f20fd30e0cbf81b01ef884ff8d",
+    "humanEndTime": "2026-07-08T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:15:41.361Z"
+  },
+  {
+    "conditionId": "0x6fa13f31cceaf10ed3190df6e2aca0a93ab0d6fb46fd279003f17d4cdccee164",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:40:41.716Z"
+  },
+  {
+    "conditionId": "0x6fd0ddd911aad2efbb96f139466fa58a982daf266cd82bfb05d2376137c00297",
+    "humanEndTime": "2026-07-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:19:18.394Z"
+  },
+  {
+    "conditionId": "0x6fefc0438c7598b23531457c8c60541990d0786bd4bd9dfc3eabc8d95c291092",
+    "humanEndTime": "2027-01-01T05:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:40:15.662Z"
+  },
+  {
+    "conditionId": "0x70f1a7d2cd490b640676d5e31470bcbe16fef40087de1af8b6f6e44e299b5784",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:56:40.942Z"
+  },
+  {
+    "conditionId": "0x713641f745d71f6ec61f906237ffca3c8583f251e49384429a63ceb0ccdb2d37",
+    "humanEndTime": "2026-06-20T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:35:57.578Z"
+  },
+  {
+    "conditionId": "0x7190eccbd0677d5d0ae8cdf598b37e945a346915c666dda11468dc9970657a56",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:26.028Z"
+  },
+  {
+    "conditionId": "0x7279005cdc5f4533b0cf53ce94a6c4fd43039c721ba39a3ad02dddacabd47d93",
+    "humanEndTime": "2026-11-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:45:09.732Z"
+  },
+  {
+    "conditionId": "0x733a3bb1f78a42bdf60092866ceb931664fb1dae1d66d3a6d2cf7b72cec96400",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:55:40.772Z"
+  },
+  {
+    "conditionId": "0x73dbd0ccdcb91755b5301b7322132d8103b4cac360f21938524df529d83b42c4",
+    "humanEndTime": "2026-06-09T21:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:31:48.880Z"
+  },
+  {
+    "conditionId": "0x7412d284c8f63791fec807f9b1f61c6fe61163621775a3dc8686cd2575272abe",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:14.511Z"
+  },
+  {
+    "conditionId": "0x7447ea5f6df70af16949fc98b3787401ccc4bf8cba2afd6fb800ef3d23963ff9",
+    "humanEndTime": "2026-06-02T20:20:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:24.360Z"
+  },
+  {
+    "conditionId": "0x74776972c20e8b50ecb5db0a47871ae078d85066b633efe9b064bef16dce441a",
+    "humanEndTime": "2026-06-02T20:05:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:35.688Z"
+  },
+  {
+    "conditionId": "0x747dc809fb79e1b05be09c42d6179459a58de2ef3e40f02484a4e1260f741f75",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:30:12.247Z"
+  },
+  {
+    "conditionId": "0x74dba1ce1ae9dd535414e85f2d9ab5ea32c0fb1acc9b7130b67e6d91217e24e1",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:05:16.705Z"
+  },
+  {
+    "conditionId": "0x752fa61c93f16c4b15e85b0bd438d9c684176b0ea7b319a84c8aca34616e8a8c",
+    "humanEndTime": "2027-01-01T05:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:17:32.671Z"
+  },
+  {
+    "conditionId": "0x753bc4e0b235e310254d8a6e8c9292f6e687d563fab7ebd3ecd0d2dec44c40e0",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:28:58.255Z"
+  },
+  {
+    "conditionId": "0x757c144993b3cb831e04c42bfcff8c18864c7da4f4688a5939d2f62e031cbc87",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-02T22:29:37.868Z"
+  },
+  {
+    "conditionId": "0x76d1b7c7b17adfb3d0b4baa79dc10dc21a30e80a347daf351ba07d8fdcaa928e",
+    "humanEndTime": "2026-06-30T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:43:09.883Z"
+  },
+  {
+    "conditionId": "0x773508bcd6650bae2c1a5c641d909e693ac6907b2b9533383e426d00497d5533",
+    "humanEndTime": "2026-07-01T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T21:35:20.897Z"
+  },
+  {
+    "conditionId": "0x77ae9985f54b39a22bb5c586c57be59a4d94215d1ce55589be8c473969344555",
+    "humanEndTime": "2026-06-09T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:32:23.456Z"
+  },
+  {
+    "conditionId": "0x7876851632c295043c66536150a304cb785abdf712ba8489d298c6e6926be106",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:41.593Z"
+  },
+  {
+    "conditionId": "0x787afdd4215ac4b22ec38bf579154f3dd599dda6f39eb34fdf2f6faf0f16d9e2",
+    "humanEndTime": "2026-08-05T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:16:29.378Z"
+  },
+  {
+    "conditionId": "0x78f5630bafa15147941daa2fd2926b43febe6af1544cd9d8527b226914f3ca11",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:48:04.524Z"
+  },
+  {
+    "conditionId": "0x7976b8dbacf9077eb1453a62bcefd6ab2df199acd28aad276ff0d920d6992892",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:34.759Z"
+  },
+  {
+    "conditionId": "0x79af372a2fbae1a5f2f6cff6c8a4cfd90d1ab1278262b8a941f41ff509880e72",
+    "humanEndTime": "2026-06-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T17:23:17.747Z"
+  },
+  {
+    "conditionId": "0x7a6491e3c906af3657b9b5cf2b371b454f1ddb91b4f4ca3344caaabf424a8056",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:41:55.546Z"
+  },
+  {
+    "conditionId": "0x7abed80b88301210ee83b7b14ec41bc9a5161e1af07254fbb26c6e2bf7182766",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:30.374Z"
+  },
+  {
+    "conditionId": "0x7ad403c3508f8e3912940fd1a913f227591145ca0614074208e0b962d5fcc422",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:48:56.184Z"
+  },
+  {
+    "conditionId": "0x7ae064ed7f3c9f4d201ce007b05b3a23f8e824170981c4d301f07301d554f451",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:40:45.572Z"
+  },
+  {
+    "conditionId": "0x7b52405ad0e0d31bfe970940b67d77f24ecedeab8a2361c11148c02a006e325c",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:33.038Z"
+  },
+  {
+    "conditionId": "0x7d742932ad81f8cb417b181743e1d8556757e3ac0bed31756fba0457990b31f1",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:06.749Z"
+  },
+  {
+    "conditionId": "0x7e4701c8aa45133b4512d89756ffaed7e8027f3b220a0aa12069533feb10e16e",
+    "humanEndTime": "2026-06-08T11:01:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:10:20.789Z"
+  },
+  {
+    "conditionId": "0x7e4f313313fa635388ae553b868a8e45e9d6ff00204a9ecce436aebfb1d357fd",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:15.652Z"
+  },
+  {
+    "conditionId": "0x7f460d017afc998f7d000b7eac69375b231c12b3cdec4a6821f85c4e9450785f",
+    "humanEndTime": "2026-06-01T23:40:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:30:57.847Z"
+  },
+  {
+    "conditionId": "0x7f48c418fcf511feab5c6d483c19174a91b83b0bd3ddd48414e5945d160658d8",
+    "humanEndTime": "2026-06-04T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:34:49.228Z"
+  },
+  {
+    "conditionId": "0x7f695758278e6d4d9e63df862afa88d664d3402a3d26e4d32ae05121cdbddba6",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:16:35.894Z"
+  },
+  {
+    "conditionId": "0x8063a2c9fa21c4a1470b33fee132d6d61fb5b7dcd667dcac3bb82ae15ad70c0d",
+    "humanEndTime": "2026-12-31T17:00:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:32:17.482Z"
+  },
+  {
+    "conditionId": "0x80971af8befc488bbdd6dcc075d388793851a0ea1c46f7ffd353b190691c7199",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:55:02.008Z"
+  },
+  {
+    "conditionId": "0x80ebf0a88a44bf737d4047b3accd7108285c69b84257e5c684bdc4c715c81139",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:47:59.820Z"
+  },
+  {
+    "conditionId": "0x819ae990aac5ebdf8f3093ec059946d98832f67edd13901df333d39f96b3db8a",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:29:48.544Z"
+  },
+  {
+    "conditionId": "0x81a537b379a35e4e17c286d3b37394e94bd74c1779bbe9a13670eb991b201a3a",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:02:11.942Z"
+  },
+  {
+    "conditionId": "0x82141371409da1f4b21c5da853ee821c1acbb5c542a52ababc920df9546ec932",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:30:12.666Z"
+  },
+  {
+    "conditionId": "0x822e61527476cabf98927e3aad385c5ecdae7086f945535f2c1fd9ae8dbfa46e",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:14:14.412Z"
+  },
+  {
+    "conditionId": "0x8295048096088c3e6e867f21103e8018dad69e8f3e36557e7a44d4cbd3cec8b5",
+    "humanEndTime": "2026-06-05T14:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:08:50.786Z"
+  },
+  {
+    "conditionId": "0x82b672efc9b228672cc0f255018eff998b3c330cc65cf7f083314045eaa11153",
+    "humanEndTime": "2026-06-02T20:05:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:21.759Z"
+  },
+  {
+    "conditionId": "0x831493dce463d9adcad78c492f2cbec6ecdac31f4e8c5a894fdac68c130549d4",
+    "humanEndTime": "2026-12-31T17:00:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:21:55.931Z"
+  },
+  {
+    "conditionId": "0x836b850fc838195374862551a36f1c8691d96ff01e58b0a071f0fc1a0e357fb1",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T17:46:26.835Z"
+  },
+  {
+    "conditionId": "0x843e81feb6c8a9cb0c69a10ed7be8c3376ab62296ef25043aecc3ac8fc28f562",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:56.945Z"
+  },
+  {
+    "conditionId": "0x849a3e762977a9ad6b8e5f449ac7c8abb2756409a1b55759e00262e072bd81a7",
+    "humanEndTime": "2026-06-22T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:25:22.599Z"
+  },
+  {
+    "conditionId": "0x84edef36bded182da6a395ac6c785dba8f3e09b6c5ad041385b2042536cbef25",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:25:22.579Z"
+  },
+  {
+    "conditionId": "0x854f260486da33258df3df962bce13aae99b6b50632b4122965bcb623e152915",
+    "humanEndTime": "2026-06-03T21:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:15.755Z"
+  },
+  {
+    "conditionId": "0x857398c4502bc725fef7efb3cd503a30d3e18e486ab8173fdf505a76cf83b168",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:48:46.316Z"
+  },
+  {
+    "conditionId": "0x85b8d62519e08881fc52c851515ff32258ac1baf13eb39d9cd152fbc6a5c24ad",
+    "humanEndTime": "2026-06-02T20:25:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:14.496Z"
+  },
+  {
+    "conditionId": "0x85bff5aa2de024d78dbce2aa8aa33f0802635383479747fbfb0aa62e863eea29",
+    "humanEndTime": "2026-06-03T21:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:54.364Z"
+  },
+  {
+    "conditionId": "0x8644f95a4ddf30f4428f7250e2a9ea3a9d3b2b52942e2116c61bc8c5bca2555a",
+    "humanEndTime": "2026-06-17T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:15:28.065Z"
+  },
+  {
+    "conditionId": "0x865303ccb9a48341d1bae33b3b4379ca86d5abbff3ce1e132716631cc0af3cce",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T20:01:38.577Z"
+  },
+  {
+    "conditionId": "0x86a2f168603fae962d925c91b23fba47c0c7436a240056785de25e998bc30811",
+    "humanEndTime": "2026-12-31T17:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:43:23.626Z"
+  },
+  {
+    "conditionId": "0x86ec5cc39c05a2722ca59421a5b11588ab389edfa224cf086d1f2e29b4065aa2",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:24.988Z"
+  },
+  {
+    "conditionId": "0x872f86634b7690a5fee7e1972d694a40f2461d51dfe15aac152f837b2f6748f1",
+    "humanEndTime": "2026-06-22T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:16:50.012Z"
+  },
+  {
+    "conditionId": "0x881a3ffa618b6ae0ab95a5637e310afb1afc2d99c921bfe3235b15eccfce0344",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:05.908Z"
+  },
+  {
+    "conditionId": "0x88d573d2ba5e43e1320cf0eb733452feb4cb4a1d4780dcb05ac6ee6830c2e4c3",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:42:20.027Z"
+  },
+  {
+    "conditionId": "0x88d67705780a3d922317ecb0c78a947a306174d0510df2ae89394d5abfb28206",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:25:33.570Z"
+  },
+  {
+    "conditionId": "0x890fc3ba40458db0b67560691aa1597344c2a0560d18e80f586a4b35f510b4ce",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:42:15.760Z"
+  },
+  {
+    "conditionId": "0x89389a6b1439856a8d366234c795d72865c927a1aa3cf9d4cc04a3a400defde1",
+    "humanEndTime": "2026-06-18T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:42:40.942Z"
+  },
+  {
+    "conditionId": "0x895e01dbf3e6a33cd9a44ca0f8cdb5df1bd2b0b6ebed5300d28f8da7145145e4",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:34.529Z"
+  },
+  {
+    "conditionId": "0x897227c17469bd18eaf9bc54e31e8d742e57ee4a3186b52306fdbad12e62ca76",
+    "humanEndTime": "2026-06-30T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:43:43.192Z"
+  },
+  {
+    "conditionId": "0x89b8a8ddb38104daa867c51107fee6d5a0f2aaf2ddd5fa8843dc841edb2f0d91",
+    "humanEndTime": "2026-06-02T19:50:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:11.194Z"
+  },
+  {
+    "conditionId": "0x8a30aa5cf51e1d166854a1cf26157b5ac76b5721d8d9f3f6f7be958e6fb132a1",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:28:15.232Z"
+  },
+  {
+    "conditionId": "0x8a65ae7937d085ede015cef3281273976bc9d8d519b02d81c8ef809aedb07b26",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:25.593Z"
+  },
+  {
+    "conditionId": "0x8aaaca6ea5c037d3cdfe85272ab9029b7165694dcae8af0de5071f01a1a944f0",
+    "humanEndTime": "2026-09-21T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:50:10.733Z"
+  },
+  {
+    "conditionId": "0x8b203037c7c0e21b500314f8398d2a8ea294b7ce1f4f9185f426425a3505bc45",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:11:53.633Z"
+  },
+  {
+    "conditionId": "0x8b369e10358094a99ffe7f85a81a8e8ca68c611eee0fe63a2efa790ad045bcd6",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:46:44.979Z"
+  },
+  {
+    "conditionId": "0x8b7abe67e1306baa7a5fc2f12928ded25b06f84d50aa321bd735249e346786d8",
+    "humanEndTime": "2026-06-05T21:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:11:32.275Z"
+  },
+  {
+    "conditionId": "0x8c48f3acf4177b5ceb012a8a2dc7a9c219eeae4a032d6ddcbc3c2ffab907439a",
+    "humanEndTime": "2026-09-20T22:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:48:03.257Z"
+  },
+  {
+    "conditionId": "0x8c96fbf0b32477f2046e52663e84d314d77eb0bb7441ab2d625179cec229abe8",
+    "humanEndTime": "2026-06-05T15:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:40:03.237Z"
+  },
+  {
+    "conditionId": "0x8d62f20324e9e7f1a3c663ab6aac9a2f6e7adb96c6a69ac2cea7e08a71a7f2ef",
+    "humanEndTime": "2026-11-04T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:33:54.095Z"
+  },
+  {
+    "conditionId": "0x8d82a3542e8a62d469afe491c07188678b52e6c96f0cb02d186031cff25c04af",
+    "humanEndTime": "2026-06-05T21:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:12:41.898Z"
+  },
+  {
+    "conditionId": "0x8dbf6b51f302fd401065706245c144e93fe209abce183199433d4484b3ed8aff",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:02:15.583Z"
+  },
+  {
+    "conditionId": "0x8ecd1d15e521b7d1020ad5596cc981c8764e9dcfbc3648f582e1a5138aee7185",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:14:24.255Z"
+  },
+  {
+    "conditionId": "0x8fbcb151e2c988df5a43abb02298014b7daf34c008f3eed9188dd16a2a19bec1",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:56.298Z"
+  },
+  {
+    "conditionId": "0x8fc141205ebce5adf437bfdf4d0c5ff58ff24293b79c9431991346c208bb48ed",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:29:06.911Z"
+  },
+  {
+    "conditionId": "0x90342f96682e838fd76ca0a83ed9f7bb8bae97c7912075862288a715c6fb3232",
+    "humanEndTime": "2026-06-09T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:36:22.593Z"
+  },
+  {
+    "conditionId": "0x903e2f59e72c8d782d2c92cb93a0b2b90a10794c4c5b5a71695c5fe5776723cc",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:27.769Z"
+  },
+  {
+    "conditionId": "0x909659c9436228e2be56d5582ba6188166f2f8bf3c596335512c8f2e380d01ec",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:02:28.596Z"
+  },
+  {
+    "conditionId": "0x910a05fb750d627179bc6cdd845fe858f1ef444ad8def0e40d4336c66dc4fdd8",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:22:20.961Z"
+  },
+  {
+    "conditionId": "0x91467d5c49b5e06a68d101c3ea2e227ffd76215060d93381aca203ee26cf2d06",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:10:52.538Z"
+  },
+  {
+    "conditionId": "0x9188ea717e5239143863359214202750c93c32ca3a7a78c584b93478326b844b",
+    "humanEndTime": "2026-06-08T17:45:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T20:16:45.228Z"
+  },
+  {
+    "conditionId": "0x92527d75831fd332928f57940e9b5d579c0c8752e63826a23195e152f34cdcdc",
+    "humanEndTime": "2026-06-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T17:23:18.974Z"
+  },
+  {
+    "conditionId": "0x92b59438f6dd47f42751d21f37f416ddb81f8266ea7278b82d94a940b742bfa5",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:06:10.878Z"
+  },
+  {
+    "conditionId": "0x92bbf16232980814da9a115206db8336feda24e91bda100a6ed126624effc1d9",
+    "humanEndTime": "2026-07-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:31:44.016Z"
+  },
+  {
+    "conditionId": "0x92d11e33047bc9dfd019fe7da8d74f6381d4278960b6da2fbc59ec8e2d4bdef5",
+    "humanEndTime": "2026-06-02T19:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:20.252Z"
+  },
+  {
+    "conditionId": "0x9345d5142a67f5541264c96515496affee02580f1c572680759eac9fd2a1588a",
+    "humanEndTime": "2026-11-04T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:16:20.819Z"
+  },
+  {
+    "conditionId": "0x9352c559e9648ab4cab236087b64ca85c5b7123a4c7d9d7d4efde4a39c18056f",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T17:39:30.482Z"
+  },
+  {
+    "conditionId": "0x938425e449d1157e03fd9865a0d8befa07975c1248ce44a1e6b756c50f877049",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:39.469Z"
+  },
+  {
+    "conditionId": "0x939eeb2dea216749bd409bedde483c3f2bfb0e24d4f2d34461c0b21c6e91f010",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:30:26.104Z"
+  },
+  {
+    "conditionId": "0x940e4e043eb86f54bec11acee90c2fd3efed2d25f3007669bb59470f82a7d2e1",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:56.253Z"
+  },
+  {
+    "conditionId": "0x94554f5a6a3a5076f8655977d4bc8fbbbefb27dea129707eaa6de56f4317d880",
+    "humanEndTime": "2026-06-05T15:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:13:44.544Z"
+  },
+  {
+    "conditionId": "0x94a308c805ec2731f87f56345c55b3264ae0a00c6fad520e967ccbe6c11a410c",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:42:19.002Z"
+  },
+  {
+    "conditionId": "0x94ef969abe1ef38217b2b941e95b061ace3e16a39abab431b8e5089ef8c66a17",
+    "humanEndTime": "2026-06-02T20:35:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:39.442Z"
+  },
+  {
+    "conditionId": "0x95364f72cdaddf5d415fb95063e3fa52b7d070307226204681ca21e7f17a5255",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:00:16.517Z"
+  },
+  {
+    "conditionId": "0x95cfdb3ffb01b029a7f2b766c2ebf0ba677fc8a75f65300643c68516041724d5",
+    "humanEndTime": "2026-07-17T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:14:38.288Z"
+  },
+  {
+    "conditionId": "0x9615a8eb81188866425da0a99935166742706d4c383c34d0af918ce10d8112e1",
+    "humanEndTime": "2026-11-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:48:16.625Z"
+  },
+  {
+    "conditionId": "0x961a444f5f474a747755e415cfea4ff27939d877602108a115d7eed0400b376b",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:07.562Z"
+  },
+  {
+    "conditionId": "0x962e5b226a77266ab429029ee04665e8fcfeb10b91af593786ceab871d2e945f",
+    "humanEndTime": "2026-10-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T22:31:05.531Z"
+  },
+  {
+    "conditionId": "0x965ebc5d79eb1ec02cad67245a44b9e45b33359018f013fb6cf81d5bbf7bcc8d",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:54:55.855Z"
+  },
+  {
+    "conditionId": "0x96cd1bfdc9f904198fd559b1a62c0e5c23412672d1c174ebb8d025273577a3fd",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:48:32.447Z"
+  },
+  {
+    "conditionId": "0x96d33f6a6ba1a8f0f70042cd8b5e62954e0ce0fa2ca16a46c9a1b34b8f4fe08d",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:57:46.187Z"
+  },
+  {
+    "conditionId": "0x9711610e89f4e7c93b2e3dadc3ddc266566cbb19a6d02836a3d273e6ddd021e4",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:22.478Z"
+  },
+  {
+    "conditionId": "0x974cf3ab6e4f54b2cabed23b9524526d932d9973d322f8be2f4f1a4e1b382358",
+    "humanEndTime": "2026-06-01T21:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:57:38.695Z"
+  },
+  {
+    "conditionId": "0x9769f78cbc95a5ed11895e6064bac471d8fd8f930b260cf581b68d3f58630d27",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:58:09.472Z"
+  },
+  {
+    "conditionId": "0x9779c09fd4dd0a1c82dd82618269c2aa5669d91305293b396d1e0b8a166b566e",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:38:25.277Z"
+  },
+  {
+    "conditionId": "0x97b92c6c26b31dc3be183b76b1c39167806611396793eda0edf084d29b76fa46",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:43:27.584Z"
+  },
+  {
+    "conditionId": "0x984f9d7d49f2b3337d15775fcc2dd466d3a90d8dd1974e5ec1be4f7b584e5d9b",
+    "humanEndTime": "2026-06-03T21:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:51.351Z"
+  },
+  {
+    "conditionId": "0x98933c78b5e277b62d91a6c174b412218de000b54c4c67ec8673bf561cec6e81",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:56:56.985Z"
+  },
+  {
+    "conditionId": "0x9903e1a6d90a15c1eb83271ad3afefa7cbd798cf7493881676eee2bbaa516dd6",
+    "humanEndTime": "2026-07-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:15:58.882Z"
+  },
+  {
+    "conditionId": "0x99c656abbbf173baacb2d65663d94542b07eeaf803267ee476ebb3902b824e19",
+    "humanEndTime": "2026-06-28T23:30:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:31:27.981Z"
+  },
+  {
+    "conditionId": "0x9b14ba5cc37a35c0db2c9849e631d98195670be4a0f91233a81529f22a7a5949",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:41:22.817Z"
+  },
+  {
+    "conditionId": "0x9b6fef249040fd17e9c107955b37ac2c3e923509b6b0ff01cc463a331ddeb894",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:06.376Z"
+  },
+  {
+    "conditionId": "0x9bc36567d41994a270a82a649b8736b2300fc629f61c1b33370eb5d63f2b4a6a",
+    "humanEndTime": "2026-06-03T21:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:52.790Z"
+  },
+  {
+    "conditionId": "0x9be56371f6a29d12769b2f196847ee825b9585ebb8bfa042136be031b081eba1",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:33.875Z"
+  },
+  {
+    "conditionId": "0x9ca9ea6bcad843f3e94c213ad978b4f21d712d90f9a28372d9248ec99bb7193a",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:42:19.173Z"
+  },
+  {
+    "conditionId": "0x9cc2c1304f7d407266a472e959eca7087f6c028ad2840b413421028f431e450f",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:35.807Z"
+  },
+  {
+    "conditionId": "0x9cd77217b2ab264fe4f6d302f662c0a91f349fe5798f1f98d70bb2311712791b",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:32.566Z"
+  },
+  {
+    "conditionId": "0x9d4f94f82de9d13ff1d3318639ab9000ee2533949e525343156f374fb00bd9b1",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:50.757Z"
+  },
+  {
+    "conditionId": "0x9db7047919d5245e67093111dc43444cea7c9aef9b2b00a22752792677af750a",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T17:10:51.354Z"
+  },
+  {
+    "conditionId": "0x9e0e621f21099a443d0deebbb624c8cf2e40ff0ebb51d67576e4fe7070974f3d",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:56:24.830Z"
+  },
+  {
+    "conditionId": "0x9e5f9d8c384f8fe368b195fa9a780be58643dff7360588a4e577012df8af00a7",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:55:07.778Z"
+  },
+  {
+    "conditionId": "0x9eb7ac1524fdacb46ceb8758454f0004c7b117eae76e6295852643644bb862c1",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:00:17.161Z"
+  },
+  {
+    "conditionId": "0x9f66a23ca0d5d66fd89b1b37868ef39885b0f36b6e2c8003bdd8239fd58300b6",
+    "humanEndTime": "2027-03-31T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T18:30:29.040Z"
+  },
+  {
+    "conditionId": "0xa0b56d7e621c7cbcfa47fe1a9c24f3409e189180fd6bda55b7a8113129839afc",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:44:34.117Z"
+  },
+  {
+    "conditionId": "0xa0f4c4924ea1a8b410b4ce821c2a9955fad21a1b19bdcfde90816732278b3dd5",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:38:07.119Z"
+  },
+  {
+    "conditionId": "0xa1286fb846d97d86b08f14588cdbc8a2e93231e863cdab664d06d6b74b4bc47d",
+    "humanEndTime": "2026-06-02T20:35:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:04.306Z"
+  },
+  {
+    "conditionId": "0xa2739ba4bc05fe9791b3a3e437104254625ed5a8e9b43f96aef4255e1757e618",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:16:24.206Z"
+  },
+  {
+    "conditionId": "0xa2b7d292821eafb97059947b9d834512deda11b7866e0f7b299bcb035071d626",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:07:18.265Z"
+  },
+  {
+    "conditionId": "0xa2b987223da8f088dae41386672af8780be753f585c6c6842307b568f1573e4f",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:45:37.748Z"
+  },
+  {
+    "conditionId": "0xa31e61f22cf97acf90a49111ed890b7115749a0b65067e63b798371e6c595a24",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:02:21.808Z"
+  },
+  {
+    "conditionId": "0xa38235d90312a09de4502f3b7a5c446cc0c2fea03bf9e630f6502d8a90f574a3",
+    "humanEndTime": "2026-06-07T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:39:37.650Z"
+  },
+  {
+    "conditionId": "0xa460c6bcf298f0c8412df5807a1dbb733f83a2bae69a57854f405a6148151258",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:56:42.217Z"
+  },
+  {
+    "conditionId": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:42:53.978Z"
+  },
+  {
+    "conditionId": "0xa4ddc18895cc7b14810283ef8f113939abffd3969c6a0e37f1897110c67e6f73",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:48:48.596Z"
+  },
+  {
+    "conditionId": "0xa5897eeea89440590e588ad66627836cf19d545f3c9273f825ca44cb8fe9016b",
+    "humanEndTime": "2026-06-08T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-04T16:53:32.349Z"
+  },
+  {
+    "conditionId": "0xa58ea89198886448a34ce80e65cbd1ddbaeb619aa4ca5d419468d8569c24729b",
+    "humanEndTime": "2026-06-03T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:17.370Z"
+  },
+  {
+    "conditionId": "0xa59bb6bb91e5c1e4d533864520fbd3bb75d6d0ebb813b4cd8a8b88479bfa8966",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:47:05.067Z"
+  },
+  {
+    "conditionId": "0xa68cd3b1f9fa774651b49a0679fe8d68e8dbf7d1b30d8bf4e9525704d0e72718",
+    "humanEndTime": "2026-06-17T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:12:22.162Z"
+  },
+  {
+    "conditionId": "0xa69da18590fc0e0e6bc112f7a8d9352bb9e98a498a81f18d64a39b5be707411a",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:57.321Z"
+  },
+  {
+    "conditionId": "0xa6c3848b7861841cc9d93a5c2c1d26b3f44e0298a49889968a627214a2b177ae",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:01:32.833Z"
+  },
+  {
+    "conditionId": "0xa6c8d7d0d25f27f1b6ecadd74be78256bf7c248d9d7c6fb9bc42d2059cfdca4f",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:36:51.117Z"
+  },
+  {
+    "conditionId": "0xa70fc3695a65833b91b45df6db6015096f3e1471b70352ca411b4209010e7633",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:44:33.109Z"
+  },
+  {
+    "conditionId": "0xa776ef6b16f785ca718dfaf177743793acda4ee06c721253b868831f5089590c",
+    "humanEndTime": "2026-10-01T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-03T18:33:56.774Z"
+  },
+  {
+    "conditionId": "0xa7962b12241616d83dcb8c70fc33aa0f48b1ec46a3ad6a23db21d3885dedc4cb",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:15:02.132Z"
+  },
+  {
+    "conditionId": "0xa7cb4135c6d9c36da0e343874dd5b455de739c6d1b9f9f5583dd9320aacf5db2",
+    "humanEndTime": "2026-06-17T22:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:47:58.526Z"
+  },
+  {
+    "conditionId": "0xa7e989b3359e148f12fbfce79854aa23e14291c2d216d4b551b5fb424f37cbe6",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:42:54.983Z"
+  },
+  {
+    "conditionId": "0xa7f232327cca11c61b4d8bb5194c4034f45e1301e68e2e4fb06c71e47d65876e",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:18:21.749Z"
+  },
+  {
+    "conditionId": "0xa885bfe10688056a9d0f4e9a1523bfa18f66fda065f0400d714ba54776083713",
+    "humanEndTime": "2027-01-01T05:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:40:20.196Z"
+  },
+  {
+    "conditionId": "0xa9549c44687993a9a154347c6907092341459b927efaa3f2b49009ca2c4e40a1",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:43:25.012Z"
+  },
+  {
+    "conditionId": "0xa979769d9561c559fce5d7bcba4b25b58a5b943153125d084043977eb25fd352",
+    "humanEndTime": "2026-06-30T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:33:57.363Z"
+  },
+  {
+    "conditionId": "0xaa5aa8844cdcb27f9224d55472a4017788d54e36080250c7b6c63d537fb3d6de",
+    "humanEndTime": "2026-06-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:14:25.097Z"
+  },
+  {
+    "conditionId": "0xaa5cdb6830cbfa2ca711b7cf93bd42cf4f8e062d44ea188c0b8ec1fb2924c083",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:05:35.712Z"
+  },
+  {
+    "conditionId": "0xaaf19ec1786a081cd7570d58ca226d25e9c3c2c58866a3a49aacca461c1aa048",
+    "humanEndTime": "2026-06-02T20:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:29.733Z"
+  },
+  {
+    "conditionId": "0xab005605a78d95a56d35e7ed34e41a96cb0a9e1893140d17f561aae03e293ca6",
+    "humanEndTime": "2026-06-05T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:53:59.116Z"
+  },
+  {
+    "conditionId": "0xaba4bb720c6c1b2e48087f5af4a57fd1e9f05814a936e9f6b1c37f10436a34fc",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:47:42.879Z"
+  },
+  {
+    "conditionId": "0xabda03c61ae087a6db21ab657550c876eaa6bce143851e331f99e6ebfd5e5517",
+    "humanEndTime": "2026-06-02T19:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:21.845Z"
+  },
+  {
+    "conditionId": "0xac69bbc516cc8e1318b272293c6e64f8bb513e7a1a8526e09d4eb3d66661ad5c",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:52:16.213Z"
+  },
+  {
+    "conditionId": "0xad93f520e17093b1873d7955a641a8481c417d9d050c05ab21679be0f2b569f1",
+    "humanEndTime": "2026-06-02T20:10:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:11.853Z"
+  },
+  {
+    "conditionId": "0xae6d3d20bc8f742922dc40880cd8a8671c10385a9912fa7cd670fba0643dfe96",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:51:21.142Z"
+  },
+  {
+    "conditionId": "0xae70ab9bf1c3726fe430a2ba8b517697ae24e0f0ab554b876a5b521153068882",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:11:08.252Z"
+  },
+  {
+    "conditionId": "0xaec9e91c3ff05b07301bd7f1f6b75180fef0e347cd347c69c3e78179d408da4f",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:30:03.658Z"
+  },
+  {
+    "conditionId": "0xaf15f055f10713cbd3c7c30cece5c20c4ff00a76e51da59d635bb5160654bd34",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:47:00.019Z"
+  },
+  {
+    "conditionId": "0xaf54fcb83c41d9c3f147e9eb175715e30222fb282c6f14c3a7454245148bdc0f",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:50:42.758Z"
+  },
+  {
+    "conditionId": "0xaf8af26fd0522422ae133c8c6c19c6e85d9122f2a640f1911c4efac179f91a72",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:42:03.801Z"
+  },
+  {
+    "conditionId": "0xafd3f96b7b6084509e625270538ff0699003fafc042263c1216e7f084cef753a",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:45:21.163Z"
+  },
+  {
+    "conditionId": "0xb01e70a56199a6d5467f47a2b94e75e7c7218c128c8d0b8beb6dafed2f0d15c2",
+    "humanEndTime": "2026-06-17T22:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:02:21.015Z"
+  },
+  {
+    "conditionId": "0xb03337abccd7cc075861b60b1b444ce3bb74e519a785c38d9049c879a3d5d60a",
+    "humanEndTime": "2026-06-02T20:25:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:12.852Z"
+  },
+  {
+    "conditionId": "0xb0b3e5a80a369b2654e3873b7960c689b6f219fa00d5d1cb953aa4b4392f38b2",
+    "humanEndTime": "2026-06-02T19:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:17.830Z"
+  },
+  {
+    "conditionId": "0xb1eb52ce150f6d26683685640e0db20af5168d58ff8c973fc3cca0c2330f41e3",
+    "humanEndTime": "2026-06-10T03:59:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:04:03.118Z"
+  },
+  {
+    "conditionId": "0xb30b662ab83156be616966e9270e0e764c97370efa9d1a683d686ba1fa694c6f",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:45.844Z"
+  },
+  {
+    "conditionId": "0xb314f5dbf75919a34d4997e8b22e6793505e3377a690eaa11a75a2547e926bee",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:43:36.051Z"
+  },
+  {
+    "conditionId": "0xb3298af85e00aafad937c119444a5f2800a55343b7482eb75581f6e454432501",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:56:30.070Z"
+  },
+  {
+    "conditionId": "0xb5c0abeecb5502e6e8d83155c27819174d8317af3c425c3afc5a8c45257a3793",
+    "humanEndTime": "2026-07-29T22:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:01:24.759Z"
+  },
+  {
+    "conditionId": "0xb5e0f64f2175188f9184edb3cd676d280ed77b5c0a23d62219f81c6085af8d2a",
+    "humanEndTime": "2026-06-02T19:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:24.859Z"
+  },
+  {
+    "conditionId": "0xb5f28d394edad28ae1d13e61d143855f4bf83d7fb6121b9a6159bfb7bcb23199",
+    "humanEndTime": "2026-06-02T19:50:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:10.251Z"
+  },
+  {
+    "conditionId": "0xb60c044bba6f7958768691345df1e102448a5b7ef16e4a08879bb10483fb4567",
+    "humanEndTime": "2026-07-21T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:39:59.337Z"
+  },
+  {
+    "conditionId": "0xb611b3a7173f69e412b55561ed265d849e36693c248ff620d0e981c5b3f2e325",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:31:05.962Z"
+  },
+  {
+    "conditionId": "0xb6b3d7a2037b3faa7e1306d741840d453432902d73cc9a146a035e40271eae73",
+    "humanEndTime": "2026-06-20T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:21:28.289Z"
+  },
+  {
+    "conditionId": "0xb6c38cdde402f706760fb1bbf373ea64f910c2dd87ede89519215d533e714262",
+    "humanEndTime": "2026-06-02T20:05:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:32.968Z"
+  },
+  {
+    "conditionId": "0xb740ce80109379eff6b906889bcc5e8e801c221a11a52dbad6e7f965a825bc78",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T16:57:12.373Z"
+  },
+  {
+    "conditionId": "0xb796aa213c72a50adc3eab3e107f05d2500e084f5245529048d25083b5ee58f6",
+    "humanEndTime": "2026-06-22T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:16:42.452Z"
+  },
+  {
+    "conditionId": "0xb833de789676c04bc972be25e454fd3b7162e73fbfecc2c31d9ab7753c3594c3",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:02.755Z"
+  },
+  {
+    "conditionId": "0xb8e6d129a06d0ccb21d7b32eb529ea455eddba3cf29bfa097112202cbdf5bf21",
+    "humanEndTime": "2026-08-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:47:15.827Z"
+  },
+  {
+    "conditionId": "0xb91be12388b3d4079c3ed9b5783cb42d8c33051d37746a49300227e0f45fc089",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:43:32.468Z"
+  },
+  {
+    "conditionId": "0xb92c7fe17997a9c9e93c1b90218243d4da62e72cbde0f9cb4cf9dddb741eb727",
+    "humanEndTime": "2026-06-03T21:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:09.490Z"
+  },
+  {
+    "conditionId": "0xba8bc8ba882e82df3cbdf95b4720c45ae380027ec9f618e25113458258d98662",
+    "humanEndTime": "2026-07-05T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:23:08.312Z"
+  },
+  {
+    "conditionId": "0xbac8d3ca6cc7297022850562d9d66669d5e0a112767337f8a5955417f1984b54",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:29:46.904Z"
+  },
+  {
+    "conditionId": "0xbaf7780f9059e34b84301fd411f8dc573b4d56adfe6e0cda33daf304b1438da4",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:30:28.926Z"
+  },
+  {
+    "conditionId": "0xbb4d51e6364066d92eb6f9b8413dd7193de70966736044463b205834805a1f3b",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:37:17.499Z"
+  },
+  {
+    "conditionId": "0xbb57ccf5853a85487bc3d83d04d669310d28c6c810758953b9d9b91d1aee89d2",
+    "humanEndTime": "2026-08-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:44:17.185Z"
+  },
+  {
+    "conditionId": "0xbbbece074c2d4010e39e39c85ed67b1131180fcea616073c893fb6beaf51d783",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:40:23.932Z"
+  },
+  {
+    "conditionId": "0xbbee2a1565cdd53ac3fceee4bdcfee23e9ec63f8222295bd7d08a457a3caa222",
+    "humanEndTime": "2026-12-19T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:22:17.365Z"
+  },
+  {
+    "conditionId": "0xbc2bd489999a67140c9e89633453eb9c2cba202b010cd1c6efdc6ea1da03e9ae",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:11:06.509Z"
+  },
+  {
+    "conditionId": "0xbc92665717aa4c8558905bc583eb949c38a16710c71ba2c28bba0d14fd80fca1",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:33.204Z"
+  },
+  {
+    "conditionId": "0xbca3d70ec52a5a441ccc365a3b1b48b9cd0f08dfff4bc5871e2cd92d0d92caa1",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:01:35.733Z"
+  },
+  {
+    "conditionId": "0xbce6698c9a61376c0709a2a724a9cf0dd0236d8dea882533073b6bb062efbee0",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:42:17.337Z"
+  },
+  {
+    "conditionId": "0xbd0708d4e96c24a2ca56ce6ce265d248cb011691dd881df50041aea77e8f2125",
+    "humanEndTime": "2026-06-02T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T19:46:35.520Z"
+  },
+  {
+    "conditionId": "0xbed6c7ad3e63e973a56d21d53921ed55431fbf73903bb70182895f88aee3a7f1",
+    "humanEndTime": "2026-06-02T19:55:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:04.313Z"
+  },
+  {
+    "conditionId": "0xbee2cd40473495f713c69b9dfbce9fc2837fa4011568222c83c83bb773e35053",
+    "humanEndTime": "2026-06-30T15:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:36:30.668Z"
+  },
+  {
+    "conditionId": "0xbf22db7966aaa08ec91e0506a68d2967d580e68053d707818e4b2e17cdb32e13",
+    "humanEndTime": "2026-06-02T19:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:24.198Z"
+  },
+  {
+    "conditionId": "0xc031351cea755544a76be09c2e884554c04eeea7fc172fb9de2caac4b92fc854",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:45:13.388Z"
+  },
+  {
+    "conditionId": "0xc1b63f80e200839db566cc7f107d4555073524c2248c8231c01521b33b9e04ea",
+    "humanEndTime": "2026-06-02T20:25:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:13.740Z"
+  },
+  {
+    "conditionId": "0xc1d195585e88b912e243224a0e04829bb1c47e9f18073a3dcafc1dacd42a8346",
+    "humanEndTime": "2026-08-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:17:52.880Z"
+  },
+  {
+    "conditionId": "0xc4435df23facee8c4cd86090310c7835c2a0425646b2588b0a02e67fa42f444e",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:21.403Z"
+  },
+  {
+    "conditionId": "0xc44edcfdedb422bae8ff1803e2178d1ee025fc41efd81400ccbede709e018841",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:15:06.886Z"
+  },
+  {
+    "conditionId": "0xc49d509893503ec205331fa844a18f91db8c74d22190c46b09e4dabd3a3c56df",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:36:38.130Z"
+  },
+  {
+    "conditionId": "0xc4c339e2aec6079bf7f84c72462f6536b460844bc451a94fc05a93c9c0fcb0fb",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:27.344Z"
+  },
+  {
+    "conditionId": "0xc4c3dbcc37a957a817599b0bf9fb5bd6b62b19210b0f527fec57cb75c7ed150a",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:56:39.130Z"
+  },
+  {
+    "conditionId": "0xc510176cf39d73295354fc797d84b510d050b45d29d6c9735ee18cdbc4fd6463",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:31.061Z"
+  },
+  {
+    "conditionId": "0xc586d15be76278848a26c761c2fcf70f8cebca71815cfab83e656ff5c6ec13a9",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:57:55.711Z"
+  },
+  {
+    "conditionId": "0xc587bda904f031a973ad3cb57128ca011bfab0f45e6cb3734ed2227c4d4be419",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:40:00.792Z"
+  },
+  {
+    "conditionId": "0xc61dc56727193f8a87b919a24063f70f2a7254df26aa07d94abbbf4cf91c94b4",
+    "humanEndTime": "2026-06-02T19:55:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:00.845Z"
+  },
+  {
+    "conditionId": "0xc62284a0489f97ed732699b23142a162e2f3fd4b219cf40e63bc28896bf24c39",
+    "humanEndTime": "2026-06-10T21:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:31:50.639Z"
+  },
+  {
+    "conditionId": "0xc62b78f7a1b56a4e2cc713a0633fe4cd2a6a5dce6cd3b4eec0bd292a6cbdff71",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:41:48.411Z"
+  },
+  {
+    "conditionId": "0xc664c2dae3eee2cf053177ac291faebc4d8478ae37cf8b8e2a78b133d05cc0fd",
+    "humanEndTime": "2026-07-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:11:23.335Z"
+  },
+  {
+    "conditionId": "0xc701ba3867384ff3fce38d644e96fc3705217f530c4eeeab2fc738affc9e0f49",
+    "humanEndTime": "2026-07-01T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:49:31.189Z"
+  },
+  {
+    "conditionId": "0xc720fcfa9e29346a976902f87e0f0f3bdc31d43af501b4fdef4f1780a30dd359",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:41:55.710Z"
+  },
+  {
+    "conditionId": "0xc764a57799fe43fa0f3e98fb9da8b2f2392ff9f3013a93c25fb97552fd6cc90e",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:04.551Z"
+  },
+  {
+    "conditionId": "0xc8f1cf5d4f26e0fd9c8fe89f2a7b3263b902cf14fde7bfccef525753bb492e47",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:57.288Z"
+  },
+  {
+    "conditionId": "0xc925a612dd4a2c0f6101374717ef598b8603d3d12ea32a9ed8e5851b0d74b13a",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:29:27.209Z"
+  },
+  {
+    "conditionId": "0xc93f711af34fa149cce6c78a7a7c2517be9c924a30b7a518d1c435af524462de",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:50:11.952Z"
+  },
+  {
+    "conditionId": "0xc98bbd47829f1ce2577a077122c6c2ad92f81c8a0121ff76d35228db8fe06fd9",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:19:50.662Z"
+  },
+  {
+    "conditionId": "0xca1d1139b0c3a29983407f499476ae642482788e841a277eb86faeeb9fa4a85c",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:33:04.551Z"
+  },
+  {
+    "conditionId": "0xca68152902c3581ab42feb04921b8b1cd3c4e80d06f255ae077259fca0bba15c",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:33.880Z"
+  },
+  {
+    "conditionId": "0xcb239105ed21a2420ba4d85090b9bc32755c56601ffdc528afd17fd6282fe930",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:16:54.385Z"
+  },
+  {
+    "conditionId": "0xcbb2a6e72f57686c414dcb69c3ca7b13235abb9d558ba1370a081b6aa8cd353b",
+    "humanEndTime": "2026-06-01T22:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:24.576Z"
+  },
+  {
+    "conditionId": "0xcbfdfa5a61ae7a1a1bf6cd56c0797b07ea816e1adecf47e01878cfcb3be7db9e",
+    "humanEndTime": "2026-06-03T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:28:31.856Z"
+  },
+  {
+    "conditionId": "0xcc3d2e75a539870c1af9b1e8d56cd069d5497f41fb18635ee182ba50a4b53b7e",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T17:12:03.341Z"
+  },
+  {
+    "conditionId": "0xcc54c993fbfecd5027cbc96337f72fb2ee11a91e5f4ef8dd8692b34876a18511",
+    "humanEndTime": "2026-06-30T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:47:42.856Z"
+  },
+  {
+    "conditionId": "0xcd050c1af02067e33e03861ff6f67c1c85def8bf4bd196256e6d2b178509533b",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:17:12.599Z"
+  },
+  {
+    "conditionId": "0xcd2640464754b9a894ffec98ac11554fdd507ea89ca01237eabb3a6de4a606e6",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:17:15.894Z"
+  },
+  {
+    "conditionId": "0xcd836ec4d94b8a4ddc5713d80fe9db245d2fb4796eaf12337974da1b4e96100d",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:24.351Z"
+  },
+  {
+    "conditionId": "0xcdb1f0400949238a63d3e88243d2ada08cd9c2a71985ced9f0cfd5e66354cf90",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:55:09.035Z"
+  },
+  {
+    "conditionId": "0xce0e0ca6deb54e268ae8bd7582c699dbba6fd5d7fc954f9fd6eaac81187551e2",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:05.756Z"
+  },
+  {
+    "conditionId": "0xce7caa04e28b3c13dc78c51da484ffcda9d364b7338cf7ba0e4a32aaa1b08abf",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:38.926Z"
+  },
+  {
+    "conditionId": "0xce9a5fa30fe74e323b4a8f15afbb0b7a41a537aa880779ddf7dee22223b2f34a",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:48:13.868Z"
+  },
+  {
+    "conditionId": "0xceacca8ab8bb686db15b4df78c5e91af59ba49496fe47bd7046d4243b079b247",
+    "humanEndTime": "2026-06-02T19:55:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:03.368Z"
+  },
+  {
+    "conditionId": "0xcf082b1893fd62ea2fb6b55db37d0237127a0f261486dc01437446ecb703f57e",
+    "humanEndTime": "2026-06-06T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:32:31.110Z"
+  },
+  {
+    "conditionId": "0xcf72b0f49af9446288a897ac1d73afa72549d98de7860bb17dacc3c4379a2c58",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:42:57.621Z"
+  },
+  {
+    "conditionId": "0xd0536d9612e041312235baceac52bde48821e8aad4607533513b3782904b7d49",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:22:28.354Z"
+  },
+  {
+    "conditionId": "0xd05592963dfb4c06a53b5533d777b6de1e6f9d42301e58adcf9e20b6a606f061",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:00.681Z"
+  },
+  {
+    "conditionId": "0xd093d806232c89b8c6bf5186e48b4f58b14387a0be3bdcb61d631f8b64a0f7e5",
+    "humanEndTime": "2026-06-02T20:10:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:10.740Z"
+  },
+  {
+    "conditionId": "0xd09f3a54cb80ff5b1a995a2260c43d57fe9f6001106c2f9c2ee468e8444a96fd",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:26.768Z"
+  },
+  {
+    "conditionId": "0xd0bd0ab6c037f3476315c24b79639c796ec46fa22ce295509f2d760957b7c38c",
+    "humanEndTime": "2026-06-02T19:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:19.165Z"
+  },
+  {
+    "conditionId": "0xd0c4c60c8e68ee15974df3aa7d217225e98020fab9fcdb32d10f8e3d285e1619",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:35.180Z"
+  },
+  {
+    "conditionId": "0xd0dbdc94b28c5cffeef64ed6b13e5f0f2324fb177e5ffaa634b48c88fe18d5e7",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:38:21.450Z"
+  },
+  {
+    "conditionId": "0xd0ead8c14141353d1b29da8c4e247d8ae1aea80ab7e1e0c40212dde2a950c9fb",
+    "humanEndTime": "2026-06-02T20:20:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:17.251Z"
+  },
+  {
+    "conditionId": "0xd10bc768ede58b53ed400594240b0a0603134a32dab89ec823a18759cbc180ca",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:29.691Z"
+  },
+  {
+    "conditionId": "0xd14ff59490c7185bc48f24f15edb458eb8afe0c2a32ff2ae460da5b25a713cf9",
+    "humanEndTime": "2026-06-02T19:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:23.454Z"
+  },
+  {
+    "conditionId": "0xd1747284d6048b2a3dcfbee489db405f36de18f9590197dd0e5c9f0c246bf050",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:22.671Z"
+  },
+  {
+    "conditionId": "0xd175952df3f4312096d408a699c922af54d31b17b8d22afb35e8f09016053de9",
+    "humanEndTime": "2026-06-17T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:13:09.273Z"
+  },
+  {
+    "conditionId": "0xd19a8d016656a688967c7a2b23875fdaca201472a592239d36eb2e034662812d",
+    "humanEndTime": "2026-07-01T17:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T18:38:32.483Z"
+  },
+  {
+    "conditionId": "0xd33bc0272fdbbf42410c7fda3bfdf79bbff9927096d42fc316f8dffa6e7672f1",
+    "humanEndTime": "2026-06-08T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:18:15.264Z"
+  },
+  {
+    "conditionId": "0xd39905267d79b715f078279ef41f311b791c6e2c7361fea38011492b632212ef",
+    "humanEndTime": "2026-06-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:37:04.737Z"
+  },
+  {
+    "conditionId": "0xd3f51a208ce9d30e13a62c02a35a82c7401c1e817b22e91e24240192878a10d8",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:12.922Z"
+  },
+  {
+    "conditionId": "0xd4e77ba6f29fc093509d24f508631abd445ecf506bbdc9c4c80e60256a318527",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T21:43:54.454Z"
+  },
+  {
+    "conditionId": "0xd4eaa49a31de8a5e6af3fa4fc69af87aeb3fe6835988b36103e82a313605ad15",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:57:59.610Z"
+  },
+  {
+    "conditionId": "0xd5659eea81cada0bac656f5a9099861786cbae6755e2e1ac2c9e9441908b551f",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:28.353Z"
+  },
+  {
+    "conditionId": "0xd595eb9b81885ff018738300c79047e3ec89e87294424f57a29a7fa9162bf116",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:25:17.859Z"
+  },
+  {
+    "conditionId": "0xd5d9fc47718bd553592d126b1fa5e87183d27f3936975b0c04cc0f2dec1f1bb4",
+    "humanEndTime": "2026-11-04T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:00:32.556Z"
+  },
+  {
+    "conditionId": "0xd5eee50432903c45931da3e9eb94171579cd9513d1895a303ce736c94526fa17",
+    "humanEndTime": "2026-06-30T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T18:39:00.267Z"
+  },
+  {
+    "conditionId": "0xd5efc9d4c6bc32d7a0b2c34f894186aa94ca9a10715d55c65529f138c8404dbc",
+    "humanEndTime": null,
+    "decision": "no-time",
+    "source": null,
+    "precise": true,
+    "labeledAt": "2026-06-03T19:30:40.755Z"
+  },
+  {
+    "conditionId": "0xd6039e96d92eee66259876a49ecd0a4ec9141044f96cd6a5e952e6a384cfab70",
+    "humanEndTime": "2026-06-03T21:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:13:42.562Z"
+  },
+  {
+    "conditionId": "0xd63dc3392c3c852a9f1af43e6accff7c61dd18355b7cf5baa9ebe0a9e5397763",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:50:47.705Z"
+  },
+  {
+    "conditionId": "0xd65891729ce093cc12236856837eba1a0872fc7998fd4294c21346f7db68079c",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:48:12.669Z"
+  },
+  {
+    "conditionId": "0xd6591e966aebf061547ef34cdf3494ed318969887c8b7fb53f10ed5d5461a547",
+    "humanEndTime": "2026-06-22T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:40:44.725Z"
+  },
+  {
+    "conditionId": "0xd68261ffde02a8c04a74ce6a23ab994ae6a738db10e99641b798425ef68e8e1d",
+    "humanEndTime": "2026-06-04T03:59:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:08:26.005Z"
+  },
+  {
+    "conditionId": "0xd7540d64e03b1894ececcbb54c02b88d9c5c0e854ba66ec4e1ece20477994ac5",
+    "humanEndTime": "2026-05-26T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:29:01.936Z"
+  },
+  {
+    "conditionId": "0xd7a0d72b19ca48b06b0029684677f581e32f133c367d7a19c2f1e4ad07066af7",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:33.255Z"
+  },
+  {
+    "conditionId": "0xd867775866ad63c288045c03386efb86238e46d7a30a8666d0a7c3715ab24563",
+    "humanEndTime": "2026-06-02T20:25:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:59:09.423Z"
+  },
+  {
+    "conditionId": "0xd86a816093fcd0a0e1ca440bc5ce199bd3c5a8d6139e044b076958164f8c5423",
+    "humanEndTime": "2026-06-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:58:46.172Z"
+  },
+  {
+    "conditionId": "0xd875a7397c450d59deff30a9c696422d14db52db14087c8540380567880e2e36",
+    "humanEndTime": "2026-06-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:44:49.609Z"
+  },
+  {
+    "conditionId": "0xd94b47bdeba16ae948bfb147bda059f3543d6fca73291644dfff5268bba7a797",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:03:00.767Z"
+  },
+  {
+    "conditionId": "0xd97291a4d555ba0e73770a793681694e48e07a8a1f38dabbec5b78b0abb78887",
+    "humanEndTime": "2026-06-02T20:10:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:12.377Z"
+  },
+  {
+    "conditionId": "0xd997dc2a212a7d6673375a3b016db1fb214247142f8cde0cbf07f8e6d789877c",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:31.437Z"
+  },
+  {
+    "conditionId": "0xd9cf14096668aac44c6c8e58a967c050f5e7e29547fc0d02dc049ad0d88404ec",
+    "humanEndTime": "2026-07-16T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:07:08.512Z"
+  },
+  {
+    "conditionId": "0xd9fb1184af0064e5e34b129f5b79afa5a17b7e32f2953ab05efed82315fee6d4",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T18:26:42.870Z"
+  },
+  {
+    "conditionId": "0xdb4b2f370c3d0e996fbb32213c87aa5402936e3d4882432b6738e2f5661b79a6",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:55:53.446Z"
+  },
+  {
+    "conditionId": "0xdb57f9b9232a158cb5837b0d33ff54d61cdb8cce1ab4c9cd2a2bf57b284d5d22",
+    "humanEndTime": "2026-07-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:16:33.217Z"
+  },
+  {
+    "conditionId": "0xdb60d60e8258a7f4b1991e0a71a73f5ff320f90db4ff2b9c4bcb3366e1901f40",
+    "humanEndTime": "2026-06-09T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:36:16.287Z"
+  },
+  {
+    "conditionId": "0xdbdcef91ef41925b56447f9c8ebde0814f72b518cb793eb3c4b57b35529fd983",
+    "humanEndTime": "2026-06-02T19:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:20.967Z"
+  },
+  {
+    "conditionId": "0xdc1f4454acb0ea3d8c6df00ef2a5dc4fd542fbb6131bd0db04015d29025a729c",
+    "humanEndTime": "2026-05-31T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T17:10:25.296Z"
+  },
+  {
+    "conditionId": "0xdc64ef42b425b1412b1ab1826ee14615e77c835eae56b188411231e6cfd3448a",
+    "humanEndTime": "2026-06-03T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:24.990Z"
+  },
+  {
+    "conditionId": "0xdccbeff1a57101e225551c31c5f1e580e52686419b34eaf3181a88e2baf27bb1",
+    "humanEndTime": "2026-06-05T21:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:12:10.125Z"
+  },
+  {
+    "conditionId": "0xdcd13a3a3b7bb9922f497ec9ced8ef305e035d0fd77167e2c207b586f228701a",
+    "humanEndTime": "2026-06-03T21:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:53.726Z"
+  },
+  {
+    "conditionId": "0xdce84960dce38aa4a5800a5eba7c9ac34d2ce49ba9d44c42572c472d468af264",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:18.337Z"
+  },
+  {
+    "conditionId": "0xdd07c7fb1d1893d4e8234a8788d917ae73529b6830e1a7f60ac91b75ba365a41",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:25:58.418Z"
+  },
+  {
+    "conditionId": "0xdd3d104667774208eae2239f576122ecdd1c04ba81cc14d26d22a36b33887977",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:12:46.267Z"
+  },
+  {
+    "conditionId": "0xdde06286a7b9464d344f410ab0b3d2ebc6469904e72c27fd982f65fdbf78768d",
+    "humanEndTime": "2026-06-17T22:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:42:58.331Z"
+  },
+  {
+    "conditionId": "0xde04b189b3f19eaccda02529a3ea67abfc46bff5c0c8fc42d8a2d0ed7b8f0d41",
+    "humanEndTime": "2026-06-17T22:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:47:07.283Z"
+  },
+  {
+    "conditionId": "0xde3d62becec90cd596e01294346786f5a9406a026e105c054d0f7e62cffdcf8f",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:41:54.869Z"
+  },
+  {
+    "conditionId": "0xdf8e2dc5860027decbe6164555c3c1c9645c3bd33e16b9dc57ca87125047d4a8",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:58:39.553Z"
+  },
+  {
+    "conditionId": "0xdffae5071ebf60751b759f7a373eb22619d139183800076218eb5a285f05563d",
+    "humanEndTime": "2026-06-02T20:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:28.898Z"
+  },
+  {
+    "conditionId": "0xe016b9a228c7066d55bd5705a8778c3706add3979e150276c29a717bcf26c49d",
+    "humanEndTime": "2026-06-09T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:39:57.979Z"
+  },
+  {
+    "conditionId": "0xe0173375b7eaccb836f7b92d28a9a2d1cc69e54e5a65fae89a5d7e49aadd332e",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:39.059Z"
+  },
+  {
+    "conditionId": "0xe06a7e94cf2fa8dc2085b7610fe16e9be1cde6654f34d365c13da1149b276c61",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T17:32:13.833Z"
+  },
+  {
+    "conditionId": "0xe0711866c51f7d0c43284f43e3ae34125e462e909e16bf685718df7610e6a1e7",
+    "humanEndTime": "2026-12-07T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:17:35.993Z"
+  },
+  {
+    "conditionId": "0xe112ee7c6d7a312502e3fd84b516dc994a75545d75da708afa4f9d50a160a560",
+    "humanEndTime": "2026-07-15T23:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T20:20:00.940Z"
+  },
+  {
+    "conditionId": "0xe13dbf203961425a8a5090eb0d94b03c08cda7424d7423699fd87794335eb765",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:55:56.878Z"
+  },
+  {
+    "conditionId": "0xe1d5733322fd2215f136412f419d9ff805d097f78c68de3261515ff736895f2b",
+    "humanEndTime": "2026-10-26T00:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:44:36.540Z"
+  },
+  {
+    "conditionId": "0xe29052d529702ca89fadfd604f7f6c9d30e3f8bb312e3516541095cdee11ddb1",
+    "humanEndTime": "2026-06-02T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:31:06.370Z"
+  },
+  {
+    "conditionId": "0xe29b33ef5bf351c8a22bfd79f8b58e62649d54ceee6f9735387cef79f52fecae",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:42:45.289Z"
+  },
+  {
+    "conditionId": "0xe2bdf6c18c8ab5ad5d3be5f95dd749e88d1dee7ac7c4dbf5101013a5c055e3df",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:56:36.263Z"
+  },
+  {
+    "conditionId": "0xe31a6c763685129123cb6a0f729bfce04b768c5a22cb09c5610406df1a302465",
+    "humanEndTime": "2026-05-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:30:25.100Z"
+  },
+  {
+    "conditionId": "0xe39adea057926dc197fe30a441f57a340b2a232d5a687010f78bba9b6e02620f",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:42:17.642Z"
+  },
+  {
+    "conditionId": "0xe39f6a060949de8a6a8ecfa75f703e65bd3fef5c124e1874ba7768b830384e5f",
+    "humanEndTime": "2026-06-28T23:30:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:31:25.501Z"
+  },
+  {
+    "conditionId": "0xe51d7f4af2519df053d47425da3f2d146f47efd3ac993108083b4225ddf11d2f",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:29:09.011Z"
+  },
+  {
+    "conditionId": "0xe5bd80313b8859e3f5761568ac9498866ea9d4419e4d1b6a877a9a9bd2754cb4",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:15.836Z"
+  },
+  {
+    "conditionId": "0xe5f2eab56136b73501dab8d50177642473ff11dfcf3a3e088a83b004dba06b9e",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:28:51.047Z"
+  },
+  {
+    "conditionId": "0xe660bc726e2e1171e8af9a1362845f9e85c16550f8918f75959a5229af280c3e",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:55:36.994Z"
+  },
+  {
+    "conditionId": "0xe6a08a127ed4693c47005011d316e312690717aa57f7467b0724bf813c4649aa",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T17:04:41.909Z"
+  },
+  {
+    "conditionId": "0xe6bcc2f1dd025ce5e1833190f7c60a71171c94f805df55b9ab0ded695ec93565",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:48:59.783Z"
+  },
+  {
+    "conditionId": "0xe6d5e5da83874cd82c9b651a8a5d4fc541a800a295fb62e85124b4f5a04a4b7d",
+    "humanEndTime": "2028-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:09:09.714Z"
+  },
+  {
+    "conditionId": "0xe79989993e2fea7269d1766e80570c5e5a5f4d0f2852575a6715d85879c74f91",
+    "humanEndTime": "2026-06-05T16:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:03:08.868Z"
+  },
+  {
+    "conditionId": "0xe825cca503fe83bc4ef4b97db242f42c1006b4eeb834ebc76c6eee4fb525f0d7",
+    "humanEndTime": "2026-12-19T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:36:47.371Z"
+  },
+  {
+    "conditionId": "0xe848444f9a8f3d811216b4d765a458f085f7802f6224dc51836c742e2f4478a6",
+    "humanEndTime": "2026-06-09T16:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:36:19.613Z"
+  },
+  {
+    "conditionId": "0xe87d9acb6aaaeded9963f80c8a6de04bb111b4bcd50c268d2afa9c8cf85d1986",
+    "humanEndTime": "2026-06-02T20:05:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:15.227Z"
+  },
+  {
+    "conditionId": "0xe883f2fda25a605a184bb5fe583afce6cc21ea0b348b6a3728ec3067553c548d",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:42:26.011Z"
+  },
+  {
+    "conditionId": "0xe9801c96bd2b204fa3f5970893bfed329d6609ad1e1955083c1cb772a06adac3",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T22:29:49.373Z"
+  },
+  {
+    "conditionId": "0xe98938875eadeffcc491c02ae0e0f11d45352c8f70c1bcdec397ffc7dfdec8a9",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:14:52.381Z"
+  },
+  {
+    "conditionId": "0xe99cc59f32b10d23acf196d1a0e8264ea30fca198428acadd3464b06ff60e771",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:45.244Z"
+  },
+  {
+    "conditionId": "0xea649be6ea3447f3c145a173883c68a89faf4edda1f85109b76baa93b3ee7a87",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:57:01.336Z"
+  },
+  {
+    "conditionId": "0xeb09f7f73615f24435ab1bc0e80686178c5608707d6a3cf21999642ed64e9c19",
+    "humanEndTime": "2026-06-10T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:33:12.263Z"
+  },
+  {
+    "conditionId": "0xeb206fc5b7c36f2ac071bce52ee18156d6da4e9e977aeafec00739e4da4c8817",
+    "humanEndTime": "2026-06-01T22:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:22.453Z"
+  },
+  {
+    "conditionId": "0xebda82a55298fc92585f1a96289b6946778fb24c946cdb57b28fb3606f0186d7",
+    "humanEndTime": "2026-06-02T19:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:22.738Z"
+  },
+  {
+    "conditionId": "0xec83d1304f538850a1d685b1c2987c4150fc86fa505db9a5c1d920043f50fe68",
+    "humanEndTime": "2026-06-03T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:45:31.907Z"
+  },
+  {
+    "conditionId": "0xed2fd4a187a9a04a192ef71ab50c474a64cb4b87fda1c3f3e66ac7ea247b9c8c",
+    "humanEndTime": "2026-06-02T19:50:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:08.498Z"
+  },
+  {
+    "conditionId": "0xeda0e0633f131b761cbe6c6e5e16ae347c48d9448a08c5826bfc2c794b63758e",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:33:10.594Z"
+  },
+  {
+    "conditionId": "0xeea41cbb99d2a48c645bed520235f4c9af425243a616756c64711a9e55074181",
+    "humanEndTime": "2026-06-02T20:40:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:27.868Z"
+  },
+  {
+    "conditionId": "0xeeb1b35c595b19f9512c55f85fdf93f3625c3cec1a9b6bac6262921fbd87912e",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T19:58:55.174Z"
+  },
+  {
+    "conditionId": "0xeec7e44b4e943e1bfb13324e6345015fe8196d4137a2e4005eeee63b0bc2a185",
+    "humanEndTime": "2026-06-02T20:30:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:53.012Z"
+  },
+  {
+    "conditionId": "0xeecf983d339e2d26821dd5abb228a1551e9ae24966928dbb6e713cf989e4a1b8",
+    "humanEndTime": "2026-06-01T15:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:24:48.813Z"
+  },
+  {
+    "conditionId": "0xef9efe2c1d1484f89e11e800bd26831a0ad1c7bc8bd71e3a7190c942765b50ad",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:28:41.288Z"
+  },
+  {
+    "conditionId": "0xefe6300fd8a053cca53df8f1bd536c5f571a136392c0516e7b16e39f1addecb0",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:02:23.671Z"
+  },
+  {
+    "conditionId": "0xf05b4b55336a4c1c7b44c726911d2b559732cff7bad339084de86ae364dc85f6",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "regex",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:35:41.696Z"
+  },
+  {
+    "conditionId": "0xf0ac1312ad67a393a28225083f5e00518f9a9fe34ff1d560c69561ab06558182",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:31.945Z"
+  },
+  {
+    "conditionId": "0xf1704cc38ae9c0efc8c8aa33d410bb1f170ade032a3183a31140232edccd7bca",
+    "humanEndTime": "2026-06-01T19:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-04T21:30:09.167Z"
+  },
+  {
+    "conditionId": "0xf17a11ec68f161b929b5147f0dcd536e177e46efebcabe438d9063a412ab74f0",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T18:36:26.242Z"
+  },
+  {
+    "conditionId": "0xf1ad558fd513087c07fb78635879ff96cccebc163fb5e39d69bc96b021013852",
+    "humanEndTime": "2026-06-08T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:37:06.893Z"
+  },
+  {
+    "conditionId": "0xf1ed2e6df582b055e94b3ff00b9dce996af9f04c5cc67e9a6fbfef487169c0e7",
+    "humanEndTime": "2026-06-30T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-02T22:02:12.543Z"
+  },
+  {
+    "conditionId": "0xf21dfd7b985a2e3e78f56f14146013b35cdbd24dbc3f72831d425d7e131ac26b",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:36:52.316Z"
+  },
+  {
+    "conditionId": "0xf232b565995e4b3a3e7fa6cef775eeff1cecd20ad7c013cb9fc8dadabfe279a9",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:02:44.670Z"
+  },
+  {
+    "conditionId": "0xf2b1a83332b89ad5863c1ab256f3310de31fc0ede92c799c31abb0bac8b22cfd",
+    "humanEndTime": "2026-10-26T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T22:07:11.536Z"
+  },
+  {
+    "conditionId": "0xf2cb33c6634ee4676b642e728715c68441fb8d8c90f730ba0b5c3cd1f436a4be",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:35.880Z"
+  },
+  {
+    "conditionId": "0xf2cea45ec282af4f302d2ab85ede73678cd692ebf8c3ab6d52bfa5e19f44c553",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:29.354Z"
+  },
+  {
+    "conditionId": "0xf2e51acfbb6d0414dc2ace81b7dc2af7c165e443dcb91f6caa7aab6d6ab4f06d",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T17:38:09.957Z"
+  },
+  {
+    "conditionId": "0xf4535c0912da31121cb4f9de5d55c647fbff5387cf1de214e1cbeb9eb7279317",
+    "humanEndTime": "2026-06-02T20:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:58:13.724Z"
+  },
+  {
+    "conditionId": "0xf5acdc8d50f9b6e98d5b9162a33919048ea2ccd08da175eb3c38f817e8a4bea9",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T20:32:03.385Z"
+  },
+  {
+    "conditionId": "0xf5b16ea6b29687b2c72e68079e7c3f0eeb7c2eb4b77d08470f7b3bee1bdf597e",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:19.932Z"
+  },
+  {
+    "conditionId": "0xf65c7620b43500470c3cc152195cd9ade84c260878a60929385d129bfe0d2e14",
+    "humanEndTime": "2026-06-02T19:50:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:05.291Z"
+  },
+  {
+    "conditionId": "0xf67a8febcce781089ed0d7ae2b055e841aedea72eeaae070a83e4565072b3dc4",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T19:45:08.791Z"
+  },
+  {
+    "conditionId": "0xf887472a2ac013ef61840034321aa5b46de87ac093ee77ecafca477fdbaadd45",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:40:43.627Z"
+  },
+  {
+    "conditionId": "0xf8dbde8b6e038775a673947e59da2de15a2127272b50b9877400fdbf7cfc3026",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:26.581Z"
+  },
+  {
+    "conditionId": "0xf950740bc71136155d6525cc0528a582c81f88812bff227803190c32ca25f54d",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:11.138Z"
+  },
+  {
+    "conditionId": "0xf9c12aa09c5317d1cf8d26d0dc100a69ecf70e5132e81ef078d5336f63923b5e",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T20:28:34.471Z"
+  },
+  {
+    "conditionId": "0xfa8e3221166a77b7ecf7cf9ac8d96836ec8ccfecb9868146115471e0f3764713",
+    "humanEndTime": "2026-06-03T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:33.881Z"
+  },
+  {
+    "conditionId": "0xfacf7578441650ec19a86bf2d9c264744bb9180f80ad603c65204aa203bd1755",
+    "humanEndTime": "2026-07-01T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-03T20:08:54.892Z"
+  },
+  {
+    "conditionId": "0xfbb80ea5f8fc02ee7df8bd4f58790e1d04b874078a49a7b7028a74a2075100c9",
+    "humanEndTime": "2028-08-15T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:51:27.114Z"
+  },
+  {
+    "conditionId": "0xfbe85201ab2b4acff01cd5a3639039fc813d3448c64db081f70926bd9b9e74e9",
+    "humanEndTime": "2026-06-22T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:36:20.300Z"
+  },
+  {
+    "conditionId": "0xfc4aaa8b0d6d91b861e00a11020f8cb25c8457ea12baa793ce8afc14bd9d73c9",
+    "humanEndTime": "2026-06-02T19:55:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:01:59.363Z"
+  },
+  {
+    "conditionId": "0xfd1864c35c1ae22c3f5b68904a178e7c950c4f3cf2d6510c540a49a5af082765",
+    "humanEndTime": "2026-06-13T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-03T21:34:19.638Z"
+  },
+  {
+    "conditionId": "0xfd431e070263b5f24e43a8fc44532bf41aa008d99cab2330d979913b1c580bd2",
+    "humanEndTime": "2027-05-02T20:00:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T21:47:41.602Z"
+  },
+  {
+    "conditionId": "0xfd4ca0dc0358c7133de53f09a507f4fe0f1cea6de58c32dd4fd36807434f7c77",
+    "humanEndTime": "2026-06-05T22:00:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": true,
+    "labeledAt": "2026-06-04T22:11:17.443Z"
+  },
+  {
+    "conditionId": "0xfd6176f8c9a59105f80e060a77c4099881c5f2d9e0ceab88e55cf978462fab7f",
+    "humanEndTime": "2028-11-08T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T19:05:15.669Z"
+  },
+  {
+    "conditionId": "0xfdc1ab89425d9c713e078d9b71384f59c7044a9a95878496512117cef902df0d",
+    "humanEndTime": "2026-06-02T20:15:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:00:05.711Z"
+  },
+  {
+    "conditionId": "0xfe230d510eaf545198c0d62bb17871e5fe8989f1b19aa54c0c062b858360987c",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-02T20:56:23.317Z"
+  },
+  {
+    "conditionId": "0xfee07be730188c94cd3644ed6f107fa3ea2dfab9989ce8d39aeeae064766abe3",
+    "humanEndTime": "2028-08-11T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "custom",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:32:38.993Z"
+  },
+  {
+    "conditionId": "0xff0cfa9506cfa95759e4c7591654195bd26e3011f9882b51439135e04f2b69f1",
+    "humanEndTime": "2026-07-20T00:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": false,
+    "labeledAt": "2026-06-02T18:31:23.724Z"
+  },
+  {
+    "conditionId": "0xff1e331d9d2c296df3ec1f97b854b0f1e4b3835e1b08f8a959ea5a9aaac2aa32",
+    "humanEndTime": "2026-06-02T19:45:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:29.253Z"
+  },
+  {
+    "conditionId": "0xff251c29787adfa58f2aef1b3e5ce44a054c830e6281ae38fb22f6a19ee3d903",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:12.083Z"
+  },
+  {
+    "conditionId": "0xff26d2bfdfa949ab4d9f91e460ea721fe5a61dad3621ea5c69dfb04b64957be8",
+    "humanEndTime": "2026-06-04T03:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": false,
+    "labeledAt": "2026-06-03T17:16:27.897Z"
+  },
+  {
+    "conditionId": "0xffa0accb74987c0dc33a70eb3780c1da160206bcfb3ef5d16c1667bc5c459c78",
+    "humanEndTime": "2027-01-01T04:59:00.000Z",
+    "decision": "labeled",
+    "source": "sibling",
+    "precise": true,
+    "labeledAt": "2026-06-03T17:42:44.869Z"
+  },
+  {
+    "conditionId": "0xffddf13a0fb5fa2a90b254a6327e5d4a4e65223b6a6c2cc5b19e6eedde74fcb1",
+    "humanEndTime": "2026-06-02T20:00:00Z",
+    "decision": "labeled",
+    "source": "polymarket",
+    "precise": true,
+    "labeledAt": "2026-06-03T22:02:06.931Z"
+  }
+]

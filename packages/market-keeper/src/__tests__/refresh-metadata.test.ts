@@ -74,38 +74,25 @@ function makeMarket(
 }
 
 describe('fetchAllExistingConditions', () => {
-  // Build a conditionsConnection response page with the given nodes and
-  // an optional next-page cursor. `endCursor` is null on the final page.
-  const connectionPage = (
-    nodes: unknown[],
-    endCursor: string | null
-  ): unknown => ({
-    data: {
-      conditionsConnection: {
-        nodes,
-        pageInfo: { hasNextPage: endCursor !== null, endCursor },
-      },
-    },
-  });
-
-  it('sends a ConditionFilter that filters to public + unsettled + non-empty similarMarkets', async () => {
-    fetchQueue.push(() => jsonResponse(connectionPage([], null)));
+  it('sends a where clause that filters to public + unsettled + non-empty similarMarkets', async () => {
+    fetchQueue.push(() => jsonResponse({ data: { conditions: [] } }));
 
     await fetchAllExistingConditions('https://api.example.com');
 
     expect(fetchCalls).toHaveLength(1);
     const body = JSON.parse(fetchCalls[0].init!.body as string);
-    expect(body.variables.filter).toEqual({
-      visibility: 'PUBLIC',
-      settled: false,
-      hasSimilarMarkets: true,
+    expect(body.variables.where).toEqual({
+      public: { equals: true },
+      settled: { equals: false },
+      similarMarkets: { isEmpty: false },
     });
-    expect(body.variables.first).toBe(100);
-    expect(body.variables.after).toBeNull();
+    expect(body.variables.orderBy).toEqual([{ id: 'asc' }]);
     expect(fetchCalls[0].url.endsWith('/graphql')).toBe(true);
   });
 
-  it('paginates via pageInfo.endCursor until hasNextPage=false', async () => {
+  it('paginates with deterministic orderBy until a page returns < pageSize', async () => {
+    // Two full pages of 100 then an empty short page — same shape
+    // refresh-volume's fetchActiveConditionIds uses.
     const page1 = Array.from({ length: 100 }, (_, i) => ({
       id: `0x${(i + 1).toString().padStart(3, '0')}`,
       endTime: 1700000000,
@@ -124,30 +111,30 @@ describe('fetchAllExistingConditions', () => {
       },
     ];
 
-    fetchQueue.push(() => jsonResponse(connectionPage(page1, 'cursor-1')));
-    fetchQueue.push(() => jsonResponse(connectionPage(page2, 'cursor-2')));
-    fetchQueue.push(() => jsonResponse(connectionPage(page3, null)));
+    fetchQueue.push(() => jsonResponse({ data: { conditions: page1 } }));
+    fetchQueue.push(() => jsonResponse({ data: { conditions: page2 } }));
+    fetchQueue.push(() => jsonResponse({ data: { conditions: page3 } }));
 
     const result = await fetchAllExistingConditions('https://api.example.com');
 
     expect(result.size).toBe(201);
     expect(fetchCalls).toHaveLength(3);
-    expect(JSON.parse(fetchCalls[0].init!.body as string).variables.after).toBe(
-      null
+    expect(JSON.parse(fetchCalls[0].init!.body as string).variables.skip).toBe(
+      0
     );
-    expect(JSON.parse(fetchCalls[1].init!.body as string).variables.after).toBe(
-      'cursor-1'
+    expect(JSON.parse(fetchCalls[1].init!.body as string).variables.skip).toBe(
+      100
     );
-    expect(JSON.parse(fetchCalls[2].init!.body as string).variables.after).toBe(
-      'cursor-2'
+    expect(JSON.parse(fetchCalls[2].init!.body as string).variables.skip).toBe(
+      200
     );
   });
 
   it('maps GraphQL fields onto the ExistingCondition shape', async () => {
     fetchQueue.push(() =>
-      jsonResponse(
-        connectionPage(
-          [
+      jsonResponse({
+        data: {
+          conditions: [
             {
               id: '0xabc',
               endTime: 1700000000,
@@ -163,12 +150,12 @@ describe('fetchAllExistingConditions', () => {
                 id: 7,
                 name: 'Group Name',
                 similarMarkets: ['https://polymarket.com/event/foo#bar'],
+                negRisk: true,
               },
             },
           ],
-          null
-        )
-      )
+        },
+      })
     );
 
     const result = await fetchAllExistingConditions('https://api.example.com');
@@ -187,6 +174,7 @@ describe('fetchAllExistingConditions', () => {
       groupName: 'Group Name',
       conditionGroupId: 7,
       conditionGroupSimilarMarkets: ['https://polymarket.com/event/foo#bar'],
+      conditionGroupNegRisk: true,
     });
   });
 
@@ -238,11 +226,8 @@ describe('fetchMarketsByConditionIds', () => {
 
   it('batches input into Gamma calls of at most 50 IDs (each batch = 2 requests)', async () => {
     const ids = Array.from({ length: 75 }, (_, i) => `0x${i + 1}`);
-    // 2 batches × 2 sides = 4 requests
-    fetchQueue.push(() => jsonResponse([])); // batch 1, closed=false
-    fetchQueue.push(() => jsonResponse([])); // batch 1, closed=true
-    fetchQueue.push(() => jsonResponse([])); // batch 2, closed=false
-    fetchQueue.push(() => jsonResponse([])); // batch 2, closed=true
+    // 2 batches × 2 sides = 4 requests.
+    for (let i = 0; i < 4; i++) fetchQueue.push(() => jsonResponse([]));
 
     await fetchMarketsByConditionIds(ids);
 
@@ -250,9 +235,7 @@ describe('fetchMarketsByConditionIds', () => {
     const idCounts = fetchCalls.map(
       (c) => (c.url.match(/condition_ids=/g) || []).length
     );
-    // First two requests are batch 1 (50 IDs each), second two are batch 2 (25 IDs each)
-    expect(idCounts.slice(0, 2).every((n) => n === 50)).toBe(true);
-    expect(idCounts.slice(2, 4).every((n) => n === 25)).toBe(true);
+    expect(idCounts).toEqual([50, 50, 25, 25]);
   });
 
   it('keys the returned Map by conditionId and merges open + closed markets', async () => {
@@ -277,8 +260,8 @@ describe('fetchMarketsByConditionIds', () => {
   });
 
   it('continues batching even if one side of one batch errors', async () => {
-    // Single batch (60 IDs, but limited to 1 batch worth = 50). Open side
-    // errors; closed side succeeds and contributes one market.
+    // Single batch at the current Gamma batch size. Open side errors;
+    // closed side succeeds and contributes one market.
     const ids = Array.from({ length: 50 }, (_, i) => `0x${i + 1}`);
     fetchQueue.push(
       () => new Response('oops', { status: 502, statusText: 'Bad Gateway' })

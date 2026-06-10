@@ -65,38 +65,34 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
   const PAGE_SIZE = 100;
   const allIds: string[] = [];
   const seen = new Set<string>();
-  let after: string | null = null;
-
-  // Cursor-paginated walk via `conditionsConnection`. Sort is
-  // CREATED_AT ASC for determinism across runs.
-  const query = `
-    query ActiveConditions($filter: ConditionFilter!, $first: Int!, $after: String) {
-      conditionsConnection(filter: $filter, first: $first, after: $after, orderBy: { field: CREATED_AT, direction: ASC }) {
-        nodes {
-          id: conditionId
-        }
-        pageInfo {
-          hasNextPage
-          endCursor
-        }
-      }
-    }
-  `;
+  let skip = 0;
 
   while (true) {
+    // orderBy id ensures deterministic pagination — without it, conditions
+    // sharing the same timestamp can shift between pages, causing missed or
+    // duplicate results (see commit 31c216402).
+    const query = `
+      query ActiveConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!, $orderBy: [ConditionOrderByWithRelationInput!]) {
+        conditions(where: $where, take: $take, skip: $skip, orderBy: $orderBy) {
+          id
+        }
+      }
+    `;
+
     const response = await fetchWithRetry(graphqlUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query,
         variables: {
-          filter: {
-            settled: false,
-            visibility: 'PUBLIC',
-            hasSimilarMarkets: true,
+          where: {
+            settled: { equals: false },
+            public: { equals: true },
+            similarMarkets: { isEmpty: false },
           },
-          first: PAGE_SIZE,
-          after,
+          take: PAGE_SIZE,
+          skip,
+          orderBy: [{ id: 'asc' }],
         },
       }),
     });
@@ -108,19 +104,9 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
     }
 
     const result = (await response.json()) as {
-      data?: {
-        conditionsConnection?: {
-          nodes?: Array<{ id: string }>;
-          pageInfo?: {
-            hasNextPage?: boolean | null;
-            endCursor?: string | null;
-          } | null;
-        };
-      };
+      data?: { conditions?: Array<{ id: string }> };
     };
-    const conditions = result.data?.conditionsConnection?.nodes ?? [];
-    const pageInfo = result.data?.conditionsConnection?.pageInfo;
-    const hasMore = pageInfo?.hasNextPage ?? false;
+    const conditions = result.data?.conditions ?? [];
 
     for (const c of conditions) {
       if (!seen.has(c.id)) {
@@ -129,9 +115,8 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
       }
     }
 
-    if (!hasMore) break;
-    after = pageInfo?.endCursor ?? null;
-    if (!after) break;
+    if (conditions.length < PAGE_SIZE) break;
+    skip += PAGE_SIZE;
   }
 
   return allIds;

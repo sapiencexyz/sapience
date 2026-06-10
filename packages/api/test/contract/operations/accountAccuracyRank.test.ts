@@ -6,17 +6,15 @@ import { stabilize } from '../../helpers/stableSerializer';
 describe('AccountAccuracyRank query', () => {
   it('matches the recorded contract for a known address', async () => {
     const probe = await executeOperation<{
-      accuracyLeaderboardPage: { items: Array<{ address: string }> };
+      accuracyLeaderboard: Array<{ address: string }>;
     }>(/* GraphQL */ `
       query ProbeAccAddress {
-        accuracyLeaderboardPage(take: 1) {
-          items {
-            address
-          }
+        accuracyLeaderboard(limit: 1) {
+          address
         }
       }
     `);
-    const address = probe.data?.accuracyLeaderboardPage?.items?.[0]?.address;
+    const address = probe.data?.accuracyLeaderboard?.[0]?.address;
 
     const result = await executeOperation(GET_ACCOUNT_ACCURACY_RANK, {
       address: address ?? '0x0000000000000000000000000000000000000000',

@@ -8,8 +8,6 @@ describe('PickConfigurations query', () => {
     const result = await executeOperation(GET_PICK_CONFIGURATIONS, {
       take: 10,
       skip: 0,
-      chainId: null,
-      resolved: null,
     });
     expect(result.errors).toBeUndefined();
     await expect(

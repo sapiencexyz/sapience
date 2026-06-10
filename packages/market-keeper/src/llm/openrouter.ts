@@ -78,12 +78,17 @@ function logLLMResponse(
   response: string,
   opts: LLMLogOptions
 ): void {
-  // NOTE: NODE_ENV=production gate intentionally removed for now so the
-  // backfill (and the daily generate) write full prompt + raw response +
-  // citations + per-market parsed status to `llm-markets.log`. Re-add the
-  // gate once we're done iterating on the Sonar prompt — this file grows
-  // ~10KB per Sonar call, fine for a one-shot backfill but unwanted noise
-  // for a long-running daemon.
+  // Gate the verbose prompt+response log behind non-production. The file
+  // grows ~10KB per Sonar call — fine for a one-shot backfill / dev
+  // iteration on the prompt, but unwanted disk growth and unnecessary
+  // data retention on a long-running daemon. Set
+  // LLM_LOG_FULL_RESPONSES=1 to force-enable in prod when iterating.
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.LLM_LOG_FULL_RESPONSES !== '1'
+  ) {
+    return;
+  }
 
   const timestamp = new Date().toISOString();
 

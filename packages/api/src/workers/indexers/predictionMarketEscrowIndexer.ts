@@ -135,24 +135,10 @@ interface PositionsBurnedEvent {
   refCode: `0x${string}`;
 }
 
-/**
- * Map the on-chain `SettlementResult` uint8 to the Prisma enum.
- *
- * Current protocol contracts emit only three values for predictions:
- * 0 = UNRESOLVED, 1 = PREDICTOR_WINS, 2 = COUNTERPARTY_WINS. Non-decisive
- * outcomes (ties, voids) are collapsed to COUNTERPARTY_WINS at the
- * resolution layer — see `PredictionMarketEscrow._evaluatePick` and the
- * rationale comment at PredictionMarketEscrow.sol:L1262-L1267
- * ("SettlementResult has no DRAW variant ... counterparties bear no
- * prediction risk on void/tie outcomes").
- *
- * The Prisma `SettlementResult` enum still lists `NON_DECISIVE` for
- * historical rows written by an earlier protocol version; the schema-
- * level removal is out of scope here (needs a backfill migration).
- */
+// Map settlement result number to enum value
 function mapSettlementResult(
   result: number
-): 'UNRESOLVED' | 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' {
+): 'UNRESOLVED' | 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' | 'NON_DECISIVE' {
   switch (result) {
     case 0:
       return 'UNRESOLVED';
@@ -160,11 +146,9 @@ function mapSettlementResult(
       return 'PREDICTOR_WINS';
     case 2:
       return 'COUNTERPARTY_WINS';
+    case 3:
+      return 'NON_DECISIVE';
     default:
-      logger.warn(
-        { settlementResult: result },
-        'Unexpected settlement result value. Current contracts emit only 0/1/2 for predictions (non-decisive collapses to COUNTERPARTY_WINS at the resolution layer). Recording as UNRESOLVED.'
-      );
       return 'UNRESOLVED';
   }
 }
@@ -1077,10 +1061,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     );
 
     const timestamp = Number(block.timestamp);
-    // NOTE: The on-chain event field is pickConfigId, but the DB column is named predictionId.
-    // This is a known misnomer — Claim.predictionId actually stores a pickConfigId.
-    // P&L code uses tokensBurned as cost basis to avoid depending on this field for joins.
-    const predictionIdLower = event.pickConfigId.toLowerCase();
+    const pickConfigIdLower = event.pickConfigId.toLowerCase();
     const positionTokenLower = event.positionToken.toLowerCase();
     const txHash = log.transactionHash || '';
     const logIdx = log.logIndex ?? 0;
@@ -1101,7 +1082,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         create: {
           chainId: this.chainId,
           marketAddress: this.contractAddress.toLowerCase(),
-          predictionId: predictionIdLower,
+          pickConfigId: pickConfigIdLower,
           holder: event.holder.toLowerCase(),
           positionToken: positionTokenLower,
           tokensBurned: event.tokensBurned.toString(),
@@ -1126,7 +1107,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     await this.checkFullyRedeemed(positionTokenLower);
 
     logger.info(
-      `[PredictionMarketEscrowIndexer:${this.chainId}] Created/replayed claim record for prediction ${predictionIdLower}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Created/replayed claim record for pickConfig ${pickConfigIdLower}`
     );
   }
 

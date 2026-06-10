@@ -28,11 +28,11 @@ const IS_STAGING = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
 
 const USER_REFERRAL_STATUS_QUERY = `
   query UserReferralStatus($wallet: String!) {
-    account(address: $wallet) {
+    user(where: { address: $wallet }) {
       address
       refCodeHash
       referredBy {
-        address
+        id
       }
       referredByCode {
         id
@@ -256,28 +256,26 @@ export default function ConnectDialog({
           if (!IS_STAGING) {
             try {
               const data = await graphqlRequest<{
-                account: {
+                user: {
                   address: string;
                   refCodeHash?: string | null;
-                  referredBy?: { address: string } | null;
+                  referredBy?: { id: number } | null;
                   referredByCode?: { id: number } | null;
                 } | null;
               }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
 
-              const account = data?.account;
+              const user = data?.user;
               hasReferral = !!(
-                account &&
-                (account.refCodeHash ||
-                  account.referredBy ||
-                  account.referredByCode)
+                user &&
+                (user.refCodeHash || user.referredBy || user.referredByCode)
               );
 
               console.debug('[ConnectDialog] Referral check:', {
                 currentAddress,
                 hasReferral,
-                refCodeHash: account?.refCodeHash,
-                referredBy: account?.referredBy,
-                referredByCode: account?.referredByCode,
+                refCodeHash: user?.refCodeHash,
+                referredBy: user?.referredBy,
+                referredByCode: user?.referredByCode,
               });
             } catch (error) {
               console.error(

@@ -58,6 +58,21 @@ export interface PositionAlertData {
   predictionId?: string;
 }
 
+export interface SecondaryTradeAlertData {
+  seller: string;
+  buyer: string;
+  token: string;
+  tokenAmount: string;
+  price: string;
+  /** Token decimals for collateral/token formatting (default 18) */
+  collateralDecimals?: number;
+  tokenDecimals?: number;
+  blockTimestamp: number;
+  transactionHash: string;
+  chainId: number;
+  tradeHash?: string;
+}
+
 export function truncateAddress(addr: string): string {
   if (addr.length <= 10) return addr;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -97,6 +112,32 @@ export function getChainName(chainId: number): string {
   }
 }
 
+function getExplorerBaseUrl(chainId: number): string {
+  return chainId === CHAIN_ID_ETHEREAL
+    ? 'https://explorer.ethereal.trade'
+    : chainId === CHAIN_ID_ETHEREAL_TESTNET
+      ? 'https://explorer.etherealtest.net'
+      : chainId === 42161
+        ? 'https://arbiscan.io'
+        : chainId === 8453
+          ? 'https://basescan.org'
+          : chainId === 11155111
+            ? 'https://sepolia.etherscan.io'
+            : 'https://etherscan.io';
+}
+
+function buildTransactionField(chainId: number, transactionHash: string) {
+  if (!transactionHash) return [];
+
+  return [
+    {
+      name: '🔗 Transaction',
+      value: `[View tx](${getExplorerBaseUrl(chainId)}/tx/${transactionHash})`,
+      inline: true,
+    },
+  ];
+}
+
 /**
  * Build the Discord embed payload for a position alert.
  * Exported for testing — sendPositionAlert calls this internally.
@@ -109,21 +150,8 @@ export function buildPositionEmbed(data: PositionAlertData): object {
     .map((p) => `• ${p.question} → **${p.outcomeYes ? 'YES' : 'NO'}**`)
     .join('\n');
 
-  const explorerBaseUrl =
-    data.chainId === CHAIN_ID_ETHEREAL
-      ? 'https://explorer.ethereal.trade'
-      : data.chainId === CHAIN_ID_ETHEREAL_TESTNET
-        ? 'https://explorer.etherealtest.net'
-        : data.chainId === 42161
-          ? 'https://arbiscan.io'
-          : data.chainId === 8453
-            ? 'https://basescan.org'
-            : data.chainId === 11155111
-              ? 'https://sepolia.etherscan.io'
-              : 'https://etherscan.io';
-
   const txLink = data.transactionHash
-    ? `[View tx](${explorerBaseUrl}/tx/${data.transactionHash})`
+    ? `[View tx](${getExplorerBaseUrl(data.chainId)}/tx/${data.transactionHash})`
     : '';
 
   return {
@@ -173,7 +201,47 @@ export function buildPositionEmbed(data: PositionAlertData): object {
   };
 }
 
-export function sendPositionAlert(data: PositionAlertData): void {
+export function buildSecondaryTradeEmbed(
+  data: SecondaryTradeAlertData
+): object {
+  const collateralDecimals = data.collateralDecimals ?? 18;
+  const tokenDecimals = data.tokenDecimals ?? 18;
+  const symbol = COLLATERAL_SYMBOLS[data.chainId] ?? 'N/A';
+
+  return {
+    title: '🤝 Secondary Sale',
+    color: 0x2563eb,
+    fields: [
+      {
+        name: '👤 Seller',
+        value: `\`${truncateAddress(data.seller)}\``,
+        inline: true,
+      },
+      {
+        name: '🤝 Buyer',
+        value: `\`${truncateAddress(data.buyer)}\``,
+        inline: true,
+      },
+      {
+        name: '🎟️ Position Tokens',
+        value: `${formatCollateral(data.tokenAmount, tokenDecimals)} tokens`,
+        inline: true,
+      },
+      {
+        name: '💰 Sale Price',
+        value: `${formatCollateral(data.price, collateralDecimals)} ${symbol}`,
+        inline: true,
+      },
+      ...buildTransactionField(data.chainId, data.transactionHash),
+    ],
+    timestamp: new Date(data.blockTimestamp * 1000).toISOString(),
+  };
+}
+
+function sendDiscordAlert(
+  data: { blockTimestamp: number },
+  buildEmbed: () => object
+): void {
   // Skip stale blocks (reindex safety)
   const nowSec = Math.floor(Date.now() / 1000);
   if (nowSec - data.blockTimestamp > STALE_BLOCK_THRESHOLD_S) {
@@ -186,7 +254,7 @@ export function sendPositionAlert(data: PositionAlertData): void {
   // Skip if no webhooks configured
   if (DISCORD_WEBHOOK_URLS.length === 0) return;
 
-  const embed = buildPositionEmbed(data);
+  const embed = buildEmbed();
   const payload = JSON.stringify({ embeds: [embed] });
 
   // Fire-and-forget: send to all webhook URLs
@@ -216,4 +284,12 @@ export function sendPositionAlert(data: PositionAlertData): void {
         );
       });
   }
+}
+
+export function sendPositionAlert(data: PositionAlertData): void {
+  sendDiscordAlert(data, () => buildPositionEmbed(data));
+}
+
+export function sendSecondaryTradeAlert(data: SecondaryTradeAlertData): void {
+  sendDiscordAlert(data, () => buildSecondaryTradeEmbed(data));
 }

@@ -3,12 +3,12 @@
 import * as React from 'react';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
+import type { LegacyPosition as Position } from '@sapience/sdk/queries';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import { useAccountStatsRank } from '~/hooks/graphql/useAccountStatsRank';
-import { useAccountAccuracyRank } from '~/hooks/graphql/useAccountAccuracyRank';
+import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
+import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
-import { useProfileVolume } from '~/hooks/useProfileVolume';
 
 function useProfileBalance(
   address?: string,
@@ -40,33 +40,76 @@ function useProfileBalance(
   return memo;
 }
 
+import { useProfileVolume } from '~/hooks/useProfileVolume';
+
+function useFirstActivity(positions: Position[] | undefined) {
+  return React.useMemo(() => {
+    let earliest: Date | undefined;
+    try {
+      for (const position of positions || []) {
+        const sec = Number(position.mintedAt);
+        if (!Number.isFinite(sec)) continue;
+        const d = new Date(sec * 1000);
+        if (!earliest || d < earliest) earliest = d;
+      }
+    } catch {
+      // ignore
+    }
+
+    if (!earliest)
+      return {
+        date: undefined,
+        display: 'Never',
+        tooltip: undefined,
+        isNever: true,
+      };
+
+    const monthYear = new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: 'short',
+    }).format(earliest);
+    const full = new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short',
+    }).format(earliest);
+    return {
+      date: earliest,
+      display: monthYear,
+      tooltip: full,
+      isNever: false,
+    };
+  }, [positions]);
+}
+
 type ProfileQuickMetricsProps = {
   address: string;
   forecastsCount: number;
+  positions: Position[];
   className?: string;
 };
 
 export default function ProfileQuickMetrics({
   address,
   forecastsCount,
+  positions,
   className,
 }: ProfileQuickMetricsProps) {
   const chainId = DEFAULT_CHAIN_ID;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const balance = useProfileBalance(address, chainId, collateralSymbol);
   const volume = useProfileVolume(address);
-  // All-time NET_PNL stats + rank for this address — single per-address resolver,
-  // so the PnL cell renders for anyone with realized activity, not just the
-  // leaderboard's top 100. Rank cell is gated separately on rank availability.
-  const { data: profitStats, isLoading: profitLoading } =
-    useAccountStatsRank(address);
+  const first = useFirstActivity(positions);
+  // Fetch profit and accuracy data
+  const { data: profit, isLoading: profitLoading } = useUserProfitRank(address);
   const { data: accuracy, isLoading: accuracyLoading } =
-    useAccountAccuracyRank(address);
+    useForecasterRank(address);
 
-  // `netPnL` is wei (18 decimals) from the wire; convert for display.
-  const pnlNumber = profitStats ? Number(profitStats.netPnL) / 1e18 : 0;
-  const profitRank = profitStats?.rank ?? null;
-  const hasProfitActivity = profitStats != null && pnlNumber !== 0;
+  const pnlNumber = Number(profit?.totalPnL || 0);
 
   const accValue = accuracyLoading
     ? '—'
@@ -74,10 +117,8 @@ export default function ProfileQuickMetrics({
       ? Math.round(accuracy?.accuracyScore || 0).toLocaleString('en-US')
       : '—';
 
-  // Show PnL for anyone with non-zero realized PnL even if outside the ranked
-  // set; show rank cell only when the address is actually ranked.
-  const showPnl = !profitLoading && hasProfitActivity;
-  const showProfitRank = !profitLoading && profitRank != null;
+  // Show P&L and Accuracy if they have rankings
+  const showPnl = !profitLoading && profit?.rank;
   const showAccuracy = !accuracyLoading && accuracy?.rank;
 
   type Metric = { label: string; value: React.ReactNode; sublabel?: string };
@@ -86,17 +127,17 @@ export default function ProfileQuickMetrics({
   const volumeMetrics: Metric[] = [];
   if (volume.value > 0) {
     if (showPnl) {
-      volumeMetrics.push({
-        label: 'Profit/Loss',
-        value: <NumberDisplay value={pnlNumber} />,
-        sublabel: collateralSymbol,
-      });
-    }
-    if (showProfitRank) {
-      volumeMetrics.push({
-        label: 'Profit Rank',
-        value: `#${profitRank}`,
-      });
+      volumeMetrics.push(
+        {
+          label: 'Profit/Loss',
+          value: profitLoading ? '—' : <NumberDisplay value={pnlNumber} />,
+          sublabel: collateralSymbol,
+        },
+        {
+          label: 'Profit Rank',
+          value: profitLoading ? '—' : `#${profit?.rank}`,
+        }
+      );
     }
     volumeMetrics.push({
       label: 'Volume',
@@ -134,6 +175,12 @@ export default function ProfileQuickMetrics({
       sublabel: collateralSymbol,
     },
   ];
+  if (!first.isNever) {
+    balanceMetrics.push({
+      label: 'Started',
+      value: first.display,
+    });
+  }
 
   const boxes = [volumeMetrics, forecastMetrics, balanceMetrics].filter(
     (b) => b.length > 0

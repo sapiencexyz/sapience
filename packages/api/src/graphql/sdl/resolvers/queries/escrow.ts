@@ -7,7 +7,7 @@
  *   prediction           — single lookup by predictionId
  *   pickConfigurations   — paginated picks config list
  *   pickConfiguration    — single lookup by id
- *   positions            — paginated token-balance list with many filters (deprecated; see `queries/deprecated/escrow.ts`)
+ *   positions            — paginated token-balance list with many filters
  *   closes               — paginated burn records
  *   claims               — paginated redemption records
  *
@@ -15,54 +15,25 @@
  * `Close`, and `Claim` are all custom object types (NOT direct Prisma
  * models); every resolver below hand-maps the Prisma row to the SDL
  * shape. `mapPickConfig` lives in the shared `pickConfigHelpers.ts`.
- *
- * `runPositions` is the most involved resolver — it builds a Prisma
- * where, runs an optional collateral-range pre-query, fetches a page of
- * Positions, then synthesizes a per-position event stream (mints +
- * trades, walked with running WAC) into one or more output rows. It is
- * decomposed into focused helpers so each step is inspectable in
- * isolation:
- *
- *   normalizePositionsArgs   → clamp + lowercase
- *   buildPositionsWhere      → conditionId pre-resolve + filter merge
- *   applyCollateralRange     → raw-SQL UNION of in-range pickConfigIds
- *   synthesizePositionsPage  → cache split + trade fetch + WAC walk
- *   sortSynthesizedRows      → final interleaved sort
  */
 
 import type {
   QueryResolvers,
-  QueryPickConfigurationsArgs,
-  QueryPickConfigurationsConnectionArgs,
   QueryPositionsArgs,
-  QueryPositionsConnectionArgs,
-  QueryPositionsPageArgs,
-  QueryPredictionsArgs,
-  QueryPredictionsConnectionArgs,
   Prediction,
   ResolversParentTypes,
-  SettlementResult,
 } from '../../__generated__/resolvers';
-import {
-  OrderDirection,
-  PickConfigurationOrderField,
-  PositionOrderField,
-  PositionSortField,
-  SortOrder,
-} from '../../__generated__/resolvers';
+import type { ApolloContext } from '../../../startApolloServer';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
 import { mapPickConfig } from '../pickConfigHelpers';
-import { TtlCache } from '../../../../lib/ttlCache';
-import { logDeprecatedHit } from '../../../../lib/deprecationTelemetry';
-import { clampSkip, clampTake, offsetFromCursor } from './pagination';
-import { decodeCursor, encodeCursor } from '../../../relay/cursor';
+import { preloadPickConditions } from '../preloadPickConditions';
 
-export type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
+type PredictionWithPickConfig = Prisma.PredictionGetPayload<{
   include: { pickConfiguration: { include: { picks: true } } };
 }>;
 
-export const mapPrediction = (
+const mapPrediction = (
   r: PredictionWithPickConfig
 ): ResolversParentTypes['Prediction'] => ({
   id: r.id,
@@ -90,82 +61,55 @@ export const mapPrediction = (
   pickConfig: r.pickConfiguration ? mapPickConfig(r.pickConfiguration) : null,
 });
 
-export type PredictionsEnvelope = {
-  items: ResolversParentTypes['Prediction'][];
-  hasMore: boolean;
-  /**
-   * Eagerly populated only on early-return paths where the count is
-   * already known (empty pickConfigIds → 0). On the normal path, this
-   * is null and `_countWhere` carries the filter for the lazy
-   * predictionsConnection.totalCount field resolver.
-   */
-  totalCount: number | null;
-  /**
-   * Lazy count input — used by the predictionsConnection.totalCount field
-   * resolver to issue `prisma.prediction.count({ where })` only when
-   * the client actually selects totalCount. Avoids paying for a count
-   * query on every page request.
-   */
-  _countWhere?: Prisma.PredictionWhereInput;
+export const predictionCount: NonNullable<
+  QueryResolvers['predictionCount']
+> = async (_parent, { address, chainId }) => {
+  const addr = address.toLowerCase();
+  const where: Prisma.PredictionWhereInput = {
+    OR: [{ predictor: addr }, { counterparty: addr }],
+  };
+  if (chainId !== undefined && chainId !== null) where.chainId = chainId;
+  return prisma.prediction.count({ where });
 };
 
-/**
- * Extended args for `runPredictions` — superset of the deprecated bare
- * `predictions(...)` args. The richer filter fields (`result`,
- * `result` and the operator-shaped `endsAt`) live only on
- * `predictionsConnection` / `PredictionFilter`.
- */
-export type RunPredictionsArgs = QueryPredictionsArgs & {
-  predictionId?: string | null;
-  pickConfigId?: string | null;
-  conditionGroupId?: string | number | null;
-  conditionIds?: string[] | null;
-  result?: SettlementResult | null;
-  endsAt?: Prisma.IntFilter | null;
-  endsAtMin?: number | null;
-  endsAtMax?: number | null;
+export const positionCount: NonNullable<
+  QueryResolvers['positionCount']
+> = async (_parent, { holder, settled, chainId }) => {
+  // Mirror the visibility rule applied in `positions`: drop zero-balance
+  // unresolved rows (off-platform transfers/burns) so the count matches the
+  // set of underlying positions surfaced to clients.
+  const where: Prisma.PositionWhereInput = {
+    holder: holder.toLowerCase(),
+    NOT: { balance: '0', pickConfiguration: { resolved: false } },
+  };
+  if (settled !== undefined && settled !== null) {
+    where.pickConfiguration = { resolved: settled };
+  }
+  if (chainId !== undefined && chainId !== null) where.chainId = chainId;
+  return prisma.position.count({ where });
 };
 
-const buildPredictionWhere = async ({
-  predictionId,
-  address,
-  conditionId,
-  pickConfigId,
-  conditionGroupId,
-  conditionIds,
-  chainId,
-  settled,
-  isLegacy,
-  result,
-  endsAt,
-  endsAtMin,
-  endsAtMax,
-}: Pick<
-  RunPredictionsArgs,
-  | 'predictionId'
-  | 'address'
-  | 'conditionId'
-  | 'pickConfigId'
-  | 'conditionGroupId'
-  | 'conditionIds'
-  | 'chainId'
-  | 'settled'
-  | 'isLegacy'
-  | 'result'
-  | 'endsAt'
-  | 'endsAtMin'
-  | 'endsAtMax'
->): Promise<{ where: Prisma.PredictionWhereInput; empty: boolean }> => {
+export const predictions: NonNullable<QueryResolvers['predictions']> = async (
+  _parent,
+  {
+    take,
+    skip,
+    address,
+    conditionId,
+    chainId,
+    settled,
+    isLegacy,
+    orderBy,
+    orderDirection,
+  },
+  ctx
+) => {
+  const cappedTake = Math.max(1, Math.min(take, 100));
   const addr = address?.toLowerCase();
+
   const where: Prisma.PredictionWhereInput = {};
   const filters: Prisma.PredictionWhereInput[] = [];
-  if (predictionId) {
-    filters.push({ predictionId: predictionId.toLowerCase() });
-  }
   if (addr) filters.push({ OR: [{ predictor: addr }, { counterparty: addr }] });
-  if (pickConfigId) {
-    filters.push({ pickConfigId: pickConfigId.toLowerCase() });
-  }
   if (conditionId) {
     const matchingPicks = await prisma.pick.findMany({
       where: {
@@ -175,289 +119,55 @@ const buildPredictionWhere = async ({
       distinct: ['pickConfigId'],
     });
     const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
-    if (pickConfigIds.length === 0) return { where, empty: true };
-    filters.push({ pickConfigId: { in: pickConfigIds } });
-  }
-  if (conditionIds?.length) {
-    const ids = conditionIds.map((id) => id.toLowerCase());
-    const matchingPicks = await prisma.pick.findMany({
-      where: { conditionId: { in: ids } },
-      select: { pickConfigId: true },
-      distinct: ['pickConfigId'],
-    });
-    const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
-    if (pickConfigIds.length === 0) return { where, empty: true };
-    filters.push({ pickConfigId: { in: pickConfigIds } });
-  }
-  if (conditionGroupId != null) {
-    const conditions = await prisma.condition.findMany({
-      where: { conditionGroupId: Number(conditionGroupId) },
-      select: { id: true },
-    });
-    const conditionIds = conditions.map((condition) =>
-      condition.id.toLowerCase()
-    );
-    if (conditionIds.length === 0) return { where, empty: true };
-    const matchingPicks = await prisma.pick.findMany({
-      where: { conditionId: { in: conditionIds } },
-      select: { pickConfigId: true },
-      distinct: ['pickConfigId'],
-    });
-    const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
-    if (pickConfigIds.length === 0) return { where, empty: true };
+    if (pickConfigIds.length === 0) return [];
     filters.push({ pickConfigId: { in: pickConfigIds } });
   }
   if (chainId !== undefined && chainId !== null) filters.push({ chainId });
   if (settled !== undefined && settled !== null) filters.push({ settled });
   if (isLegacy !== undefined && isLegacy !== null) filters.push({ isLegacy });
-  if (result) {
-    filters.push({
-      pickConfiguration: {
-        result: result as unknown as Prisma.EnumSettlementResultFilter,
-      },
-    });
-  }
-  if (endsAt) {
-    filters.push({ pickConfiguration: { endsAt } });
-  } else if (endsAtMin != null || endsAtMax != null) {
-    const range: Prisma.IntFilter = {};
-    if (endsAtMin != null) range.gte = endsAtMin;
-    if (endsAtMax != null) range.lte = endsAtMax;
-    filters.push({ pickConfiguration: { endsAt: range } });
-  }
   if (filters.length > 0) where.AND = filters;
-  return { where, empty: false };
-};
 
-export const runPredictions = async ({
-  take,
-  skip,
-  predictionId,
-  address,
-  conditionId,
-  pickConfigId,
-  conditionGroupId,
-  conditionIds,
-  chainId,
-  settled,
-  isLegacy,
-  result,
-  endsAtMin,
-  endsAtMax,
-  orderBy,
-  orderDirection,
-}: RunPredictionsArgs): Promise<PredictionsEnvelope> => {
-  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
-  const skipVal = clampSkip(skip);
-  const { where, empty } = await buildPredictionWhere({
-    predictionId,
-    address,
-    conditionId,
-    pickConfigId,
-    conditionGroupId,
-    conditionIds,
-    chainId,
-    settled,
-    isLegacy,
-    result,
-    endsAt: null,
-    endsAtMin,
-    endsAtMax,
-  });
-  if (empty) return { items: [], hasMore: false, totalCount: 0 };
-
-  // SortOrder enum carries `asc`/`desc` plus uppercase ASC/DESC aliases
-  // for older clients; PredictionSortField carries SCREAMING_SNAKE plus
-  // camelCase aliases for the same reason.
-  const direction =
-    orderDirection === 'asc' || orderDirection === 'ASC' ? 'asc' : 'desc';
+  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
   let orderByClause: Prisma.PredictionOrderByWithRelationInput = {
     createdAt: 'desc',
   };
-  if (orderBy === 'CREATED_AT' || orderBy === 'createdAt') {
+  if (orderBy === 'CREATED_AT') {
     orderByClause = { createdAt: direction };
-  } else if (orderBy === 'SETTLED_AT' || orderBy === 'settledAt') {
+  } else if (orderBy === 'SETTLED_AT') {
     orderByClause = { settledAt: direction };
   }
 
-  const rawRows = await prisma.prediction.findMany({
+  const rows = await prisma.prediction.findMany({
     where,
     orderBy: orderByClause,
-    take: cappedTake + 1,
-    skip: skipVal,
+    take: cappedTake,
+    skip,
     include: { pickConfiguration: { include: { picks: true } } },
   });
-  const hasMore = rawRows.length > cappedTake;
-  const rows = rawRows.slice(0, cappedTake);
-  return {
-    items: rows.map(mapPrediction),
-    hasMore,
-    totalCount: null,
-    _countWhere: where,
-  };
-};
-
-const buildPredictionCursorPredicate = (
-  k: string,
-  cursorId: string,
-  direction: 'asc' | 'desc'
-): Prisma.PredictionWhereInput => {
-  const op = direction === 'desc' ? 'lt' : 'gt';
-  const keyValue = new Date(k);
-  return {
-    OR: [
-      { createdAt: { [op]: keyValue } } as Prisma.PredictionWhereInput,
-      {
-        AND: [
-          { createdAt: { equals: keyValue } } as Prisma.PredictionWhereInput,
-          { predictionId: { [op]: cursorId } } as Prisma.PredictionWhereInput,
-        ],
-      },
-    ],
-  };
-};
-
-const readPredictionOrderKey = (row: PredictionWithPickConfig): string =>
-  row.createdAt.toISOString();
-
-export const predictionsConnection: NonNullable<
-  QueryResolvers['predictionsConnection']
-> = async (
-  _parent,
-  { first, after, filter, orderBy }: QueryPredictionsConnectionArgs
-) => {
-  const cappedFirst = clampTake(first ?? 50, { defaultTake: 50, maxTake: 100 });
-  const direction = orderBy?.direction ?? OrderDirection.Desc;
-  const prismaDir = direction === OrderDirection.Asc ? 'asc' : 'desc';
-
-  const { where: filterWhere, empty } = await buildPredictionWhere({
-    predictionId:
-      (filter as { predictionId?: string | null } | null | undefined)
-        ?.predictionId ?? null,
-    address: filter?.address ?? null,
-    conditionId: filter?.conditionId ?? null,
-    pickConfigId:
-      (filter as { pickConfigId?: string | null } | null | undefined)
-        ?.pickConfigId ?? null,
-    conditionGroupId:
-      (
-        filter as
-          | { conditionGroupId?: string | number | null }
-          | null
-          | undefined
-      )?.conditionGroupId ?? null,
-    conditionIds:
-      (filter as { conditionIds?: string[] | null } | null | undefined)
-        ?.conditionIds ?? null,
-    chainId: filter?.chainId ?? null,
-    settled: filter?.settled ?? null,
-    isLegacy: filter?.isLegacy ?? null,
-    result: filter?.result ?? null,
-    endsAt: (filter?.endsAt ?? null) as Prisma.IntFilter | null,
-    endsAtMin: null,
-    endsAtMax: null,
-  });
-  if (empty) {
-    return {
-      edges: [],
-      nodes: [],
-      totalCount: 0,
-      pageInfo: {
-        hasNextPage: false,
-        hasPreviousPage: false,
-        startCursor: null,
-        endCursor: null,
-      },
-    };
-  }
-
-  const cursorPayload = after ? decodeCursor(after) : null;
-  const cursorWhere = cursorPayload
-    ? buildPredictionCursorPredicate(
-        cursorPayload.k,
-        cursorPayload.id,
-        prismaDir
-      )
-    : null;
-  const where: Prisma.PredictionWhereInput = cursorWhere
-    ? { AND: [filterWhere, cursorWhere] }
-    : filterWhere;
-
-  const [rawRows, totalCount] = await Promise.all([
-    prisma.prediction.findMany({
-      where,
-      orderBy: [{ createdAt: prismaDir }, { predictionId: prismaDir }],
-      take: cappedFirst + 1,
-      include: { pickConfiguration: { include: { picks: true } } },
-    }),
-    prisma.prediction.count({ where: filterWhere }),
-  ]);
-
-  const hasNextPage = rawRows.length > cappedFirst;
-  const pageRows = hasNextPage ? rawRows.slice(0, cappedFirst) : rawRows;
-  const nodes = pageRows.map(mapPrediction);
-  const edges = nodes.map((node, index) => ({
-    node,
-    cursor: encodeCursor({
-      k: readPredictionOrderKey(pageRows[index]),
-      id: pageRows[index].predictionId,
-    }),
-  }));
-
-  return {
-    edges,
-    nodes,
-    totalCount,
-    pageInfo: {
-      hasNextPage,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+  await preloadPickConditions(
+    ctx,
+    rows.map((r) => r.pickConfiguration)
+  );
+  return rows.map(mapPrediction);
 };
 
 export const prediction: NonNullable<QueryResolvers['prediction']> = async (
   _parent,
-  { predictionId, id }
+  { id },
+  ctx
 ) => {
-  const key = predictionId ?? id;
-  if (!key) {
-    throw new Error('prediction: pass `predictionId` (or the deprecated `id`)');
-  }
   const r = await prisma.prediction.findUnique({
-    where: { predictionId: key.toLowerCase() },
+    where: { predictionId: id.toLowerCase() },
     include: { pickConfiguration: { include: { picks: true } } },
   });
+  if (r) await preloadPickConditions(ctx, [r.pickConfiguration]);
   return r ? mapPrediction(r) : null;
 };
 
-export type RunPickConfigurationsArgs = Omit<
-  QueryPickConfigurationsArgs,
-  'result'
-> & {
-  result?: SettlementResult | Prisma.EnumSettlementResultFilter | null;
-  orderBy?: 'CREATED_AT' | 'ENDS_AT' | 'RESOLVED_AT' | null;
-  orderDirection?: 'asc' | 'desc' | null;
-};
-
-export const runPickConfigurations = async ({
-  take,
-  skip,
-  chainId,
-  resolved,
-  result,
-  tokens,
-  orderBy,
-  orderDirection,
-}: RunPickConfigurationsArgs): Promise<{
-  items: ReturnType<typeof mapPickConfig>[];
-  hasMore: boolean;
-  totalCount: number | null;
-  _countWhere?: Prisma.PicksWhereInput;
-}> => {
-  const cappedTake = clampTake(take, { defaultTake: 50, maxTake: 100 });
-  const skipVal = clampSkip(skip);
+export const pickConfigurations: NonNullable<
+  QueryResolvers['pickConfigurations']
+> = async (_parent, { take, skip, chainId, resolved, result, tokens }, ctx) => {
+  const cappedTake = Math.max(1, Math.min(take, 100));
   const where: Prisma.PicksWhereInput = {};
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (resolved !== undefined && resolved !== null) where.resolved = resolved;
@@ -474,130 +184,30 @@ export const runPickConfigurations = async ({
       { counterpartyToken: { in: lowered } },
     ];
   }
-  const direction = orderDirection === 'asc' ? 'asc' : 'desc';
-  const orderByClause: Prisma.PicksOrderByWithRelationInput =
-    orderBy === 'ENDS_AT'
-      ? { endsAt: direction }
-      : orderBy === 'RESOLVED_AT'
-        ? { resolvedAt: direction }
-        : { createdAt: direction };
-  const rawRows = await prisma.picks.findMany({
+  const rows = await prisma.picks.findMany({
     where,
-    orderBy: orderByClause,
-    take: cappedTake + 1,
-    skip: skipVal,
+    orderBy: { createdAt: 'desc' },
+    take: cappedTake,
+    skip,
     include: { picks: true },
   });
-  const hasMore = rawRows.length > cappedTake;
-  const rows = rawRows.slice(0, cappedTake);
-  return {
-    items: rows.map((r) => mapPickConfig(r)),
-    hasMore,
-    totalCount: null,
-    _countWhere: where,
-  };
-};
-
-/**
- * Map the new singular `filter: PickConfigurationFilter` connection shape to
- * the shared pick-configuration execution args.
- */
-const enumFilterToPrisma = <T extends string>(
-  filter:
-    | {
-        equals?: T | null;
-        in?: T[] | null;
-        not?: T | null;
-        notIn?: T[] | null;
-      }
-    | null
-    | undefined,
-  label: string
-): T | { equals?: T; in?: T[]; not?: T; notIn?: T[] } | null => {
-  if (!filter) return null;
-  const out: { equals?: T; in?: T[]; not?: T; notIn?: T[] } = {};
-  if (filter.equals != null) out.equals = filter.equals;
-  if (filter.in?.length) out.in = filter.in;
-  if (filter.not != null) out.not = filter.not;
-  if (filter.notIn?.length) out.notIn = filter.notIn;
-  if (Object.keys(out).length === 0) return null;
-  if (out.equals != null && (out.in || out.notIn || out.not != null)) {
-    throw new Error(`${label}: equals cannot be combined with in/not/notIn`);
-  }
-  return Object.keys(out).length === 1 && out.equals != null ? out.equals : out;
-};
-
-const mergePickConfigurationFilters = (
-  args: QueryPickConfigurationsConnectionArgs
-): RunPickConfigurationsArgs => {
-  const f = args.filter ?? null;
-  return {
-    take: args.first ?? 50,
-    skip: offsetFromCursor(args.after),
-    chainId: f?.chainId ?? null,
-    resolved: f?.resolved ?? null,
-    result: enumFilterToPrisma<SettlementResult>(
-      f?.result,
-      'PickConfigurationFilter.result'
-    ),
-    tokens: f?.tokens ?? null,
-    orderBy:
-      args.orderBy?.field === PickConfigurationOrderField.EndsAt
-        ? 'ENDS_AT'
-        : args.orderBy?.field === PickConfigurationOrderField.ResolvedAt
-          ? 'RESOLVED_AT'
-          : 'CREATED_AT',
-    orderDirection:
-      args.orderBy?.direction === OrderDirection.Asc ? 'asc' : 'desc',
-  };
-};
-
-export const pickConfigurationsConnection: NonNullable<
-  QueryResolvers['pickConfigurationsConnection']
-> = async (_parent, args) => {
-  const result = await runPickConfigurations(
-    mergePickConfigurationFilters(args)
-  );
-  const startOffset = offsetFromCursor(args.after);
-  const edges = result.items.map((node, index) => ({
-    node,
-    cursor: encodeCursor({
-      k: String(startOffset + index),
-      id: String(node.id),
-    }),
-  }));
-  const totalCount = await prisma.picks.count({
-    where: result._countWhere ?? {},
-  });
-  return {
-    edges,
-    nodes: result.items,
-    totalCount,
-    pageInfo: {
-      hasNextPage: result.hasMore,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+  await preloadPickConditions(ctx, rows);
+  return rows.map((r) => mapPickConfig(r));
 };
 
 export const pickConfiguration: NonNullable<
   QueryResolvers['pickConfiguration']
 > = async (_parent, { id }, ctx) => {
-  logDeprecatedHit('pickConfiguration');
-  const r = ctx?.loaders
-    ? await ctx.loaders.pickConfigById.load(id)
-    : await prisma.picks.findUnique({
-        where: { id: id.toLowerCase() },
-        include: { picks: true },
-      });
+  const r = await prisma.picks.findUnique({
+    where: { id: id.toLowerCase() },
+    include: { picks: true },
+  });
+  if (r) await preloadPickConditions(ctx, [r]);
   return r ? mapPickConfig(r) : null;
 };
 
 type PositionShape = ResolversParentTypes['Position'] & {
   id: string;
-  positionId: string;
   chainId: number;
   tokenAddress: string;
   pickConfigId: string;
@@ -612,156 +222,57 @@ type PositionShape = ResolversParentTypes['Position'] & {
   pickConfig: ReturnType<typeof mapPickConfig> | null;
 };
 
-/**
- * Per-position synthesis cache. The synthesized event-stream rows for
- * a Position depend on its trade history + the pickConfiguration's
- * predictions; both are append-only and overlap heavily across page
- * requests. Keying on `Position.updatedAt.getTime()` invalidates
- * automatically when the indexer touches the row (mint, burn, balance
- * change). The 30s TTL bounds staleness for the indirect path where a
- * fresh secondaryTrade lands without bumping Position.updatedAt — the
- * trade itself surfaces on accountActivityPage immediately; only the
- * derived cost-basis view here lags briefly.
- *
- * maxSize bounds memory: each entry is 1-2 small objects per held
- * position. 10_000 covers ~all active holders across both chains.
- */
-const positionSynthesisCache = new TtlCache<string, PositionShape[]>({
-  ttlMs: 30_000,
-  maxSize: 10_000,
-});
-
-const positionSynthesisCacheKey = (r: {
-  chainId: number;
-  tokenAddress: string;
-  holder: string;
-  updatedAt: Date;
-}) => `${r.chainId}:${r.tokenAddress}:${r.holder}:${r.updatedAt.getTime()}`;
-
-/** Test-only: clear synthesis cache between test cases. */
-export const __clearPositionSynthesisCache = () =>
-  positionSynthesisCache.clear();
-
-export type PositionsEnvelope = {
-  items: PositionShape[];
-  hasMore: boolean;
-  totalCount: number | null;
-  _countWhere?: Prisma.PositionWhereInput;
-};
-
-type NormalizedPositionsArgs = {
-  cappedTake: number;
-  skipVal: number;
-  holderLower?: string;
-  pickConfigIdLower?: string;
-  conditionId: string | null;
-  chainId: number | null | undefined;
-  settled: boolean | null | undefined;
-  result: QueryPositionsArgs['result'];
-  endsAtMin: number | null | undefined;
-  endsAtMax: number | null | undefined;
-  holderWon: boolean | null | undefined;
-  collateralMin: string | null | undefined;
-  collateralMax: string | null | undefined;
-  orderField: 'createdAt' | 'updatedAt';
-  orderDirection: 'asc' | 'desc';
-};
-
-const normalizePositionsArgs = (
-  args: QueryPositionsArgs
-): NormalizedPositionsArgs => ({
-  cappedTake: clampTake(args.take, { defaultTake: 50, maxTake: 100 }),
-  // Positions uses a 10_000 ceiling rather than the shared
-  // `MAX_SKIP = 1_000` default in `./pagination.ts`. Staging was
-  // unbounded, so this is purely a defensive safety net: nobody
-  // realistically pages past row ~5_000 of their own positions, but
-  // an accidental `skip: 5_000_000` would otherwise force Postgres to
-  // scan and discard millions of rows. The broader `*Page` refactor
-  // will land the uniform 1_000 policy across all paginated queries;
-  // we keep positions at 10_000 here so this slice stays close to the
-  // previous open-ended behavior.
-  skipVal: clampSkip(args.skip, { maxSkip: 10_000 }),
-  holderLower: args.holder?.toLowerCase(),
-  pickConfigIdLower: args.pickConfigId?.toLowerCase(),
-  conditionId: args.conditionId ?? null,
-  chainId: args.chainId,
-  settled: args.settled,
-  result: args.result,
-  endsAtMin: args.endsAtMin,
-  endsAtMax: args.endsAtMax,
-  holderWon: args.holderWon,
-  collateralMin: args.collateralMin,
-  collateralMax: args.collateralMax,
-  // PositionSortField SDL enum values are CREATED_AT / UPDATED_AT; map
-  // to the Prisma column name for orderBy. Accept camelCase aliases kept
-  // on the enum for older clients (`createdAt`, `updatedAt`).
-  orderField:
-    args.orderBy === 'CREATED_AT' || args.orderBy === 'createdAt'
-      ? 'createdAt'
-      : 'updatedAt',
-  // SortOrder SDL enum values are `asc` / `desc`; accept uppercase
-  // ASC / DESC aliases kept on the enum for older clients.
-  orderDirection:
-    args.orderDirection === 'asc' || args.orderDirection === 'ASC'
-      ? 'asc'
-      : 'desc',
-});
-
-/**
- * Resolve `conditionId` to the matching pickConfigIds via the join
- * table. Returns null when no pickConfigs match — caller must early-
- * return an empty page (a `pickConfigId IN ()` would match no rows
- * but pay for a useless query).
- */
-const resolveConditionPickConfigIds = async (
-  conditionId: string
-): Promise<string[] | null> => {
-  const matchingPicks = await prisma.pick.findMany({
-    where: {
-      conditionId: { equals: conditionId.toLowerCase(), mode: 'insensitive' },
-    },
-    select: { pickConfigId: true },
-    distinct: ['pickConfigId'],
-  });
-  if (matchingPicks.length === 0) return null;
-  return matchingPicks.map((p) => p.pickConfigId);
-};
-
-/**
- * Build the Prisma where for `positions`. Returns `null` when the
- * filter set is empty (no holder / conditionId / pickConfigId) — the
- * resolver requires at least one to avoid unbounded scans.
- *
- * `conditionPickConfigIds` is the optional pre-resolved set from
- * resolveConditionPickConfigIds; when present it scopes pickConfigId
- * to just those ids.
- */
-const buildPositionsWhere = (
-  args: NormalizedPositionsArgs,
-  conditionPickConfigIds: string[] | null
-): Prisma.PositionWhereInput | null => {
-  const {
-    holderLower,
-    pickConfigIdLower,
+const runPositions = async (
+  {
+    holder,
     conditionId,
+    take,
+    skip,
     chainId,
+    pickConfigId,
     settled,
     result,
     endsAtMin,
     endsAtMax,
     holderWon,
-  } = args;
-
-  if (!holderLower && !conditionId && !pickConfigIdLower) return null;
+    collateralMin,
+    collateralMax,
+    orderBy,
+    orderDirection,
+  }: QueryPositionsArgs,
+  ctx: ApolloContext | undefined
+): Promise<{
+  items: PositionShape[];
+  hasMore: boolean;
+}> => {
+  const cappedTake = Math.max(1, Math.min(take ?? 50, 100));
+  const skipVal = skip ?? 0;
+  const holderLower = holder?.toLowerCase();
+  const pickConfigIdLower = pickConfigId?.toLowerCase();
 
   const where: Prisma.PositionWhereInput = {};
 
   if (holderLower) where.holder = holderLower;
-  if (conditionPickConfigIds)
-    where.pickConfigId = { in: conditionPickConfigIds };
+
+  if (conditionId) {
+    const matchingPicks = await prisma.pick.findMany({
+      where: {
+        conditionId: { equals: conditionId.toLowerCase(), mode: 'insensitive' },
+      },
+      select: { pickConfigId: true },
+      distinct: ['pickConfigId'],
+    });
+    const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+    if (pickConfigIds.length === 0) return { items: [], hasMore: false };
+    where.pickConfigId = { in: pickConfigIds };
+  }
+
+  // Require at least one filter — prevents accidentally-unbounded queries.
+  if (!holderLower && !conditionId && !pickConfigIdLower)
+    return { items: [], hasMore: false };
+
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (pickConfigIdLower && !conditionId) where.pickConfigId = pickConfigIdLower;
-
   if (settled !== undefined && settled !== null) {
     where.pickConfiguration = {
       ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
@@ -815,270 +326,127 @@ const buildPositionsWhere = (
     ];
   }
 
-  return where;
-};
-
-/**
- * Pre-query pickConfigIds where the holder's collateral is in
- * [collateralMin, collateralMax] via a raw UNION grouped by side
- * (predictor vs counterparty). Returns the intersected pickConfigId
- * filter to merge into the where, or `null` to signal "no matching
- * configs — return empty page".
- */
-const applyCollateralRangeFilter = async (
-  where: Prisma.PositionWhereInput,
-  holderLower: string,
-  collateralMin: string | null | undefined,
-  collateralMax: string | null | undefined
-): Promise<Prisma.PositionWhereInput | null> => {
-  if (!collateralMin && !collateralMax) return where;
-  const minVal = collateralMin ? BigInt(collateralMin) : 0n;
-  const maxVal = collateralMax ? BigInt(collateralMax) : null;
-  interface PickConfigRow {
-    pickConfigId: string;
-    is_predictor: boolean;
-  }
-  const matchingConfigs = await prisma.$queryRaw<PickConfigRow[]>`
-    SELECT "pickConfigId", true AS is_predictor
-    FROM "Prediction"
-    WHERE predictor = ${holderLower} AND "pickConfigId" IS NOT NULL
-    GROUP BY "pickConfigId"
-    HAVING SUM(CAST("predictorCollateral" AS DECIMAL)) >= ${minVal.toString()}::DECIMAL
-      ${maxVal !== null ? Prisma.sql`AND SUM(CAST("predictorCollateral" AS DECIMAL)) <= ${maxVal.toString()}::DECIMAL` : Prisma.empty}
-    UNION
-    SELECT "pickConfigId", false AS is_predictor
-    FROM "Prediction"
-    WHERE counterparty = ${holderLower} AND "pickConfigId" IS NOT NULL
-    GROUP BY "pickConfigId"
-    HAVING SUM(CAST("counterpartyCollateral" AS DECIMAL)) >= ${minVal.toString()}::DECIMAL
-      ${maxVal !== null ? Prisma.sql`AND SUM(CAST("counterpartyCollateral" AS DECIMAL)) <= ${maxVal.toString()}::DECIMAL` : Prisma.empty}
-  `;
-  if (matchingConfigs.length === 0) return null;
-  const validPickConfigIds = matchingConfigs.map((r) => r.pickConfigId);
-  if (
-    where.pickConfigId &&
-    typeof where.pickConfigId === 'object' &&
-    'in' in where.pickConfigId
-  ) {
-    const existing = where.pickConfigId.in as string[];
-    where.pickConfigId = {
-      in: existing.filter((id) => validPickConfigIds.includes(id)),
-    };
-  } else if (where.pickConfigId && typeof where.pickConfigId === 'string') {
-    if (!validPickConfigIds.includes(where.pickConfigId)) return null;
-  } else {
-    where.pickConfigId = { in: validPickConfigIds };
-  }
-  return where;
-};
-
-type PositionRow = Prisma.PositionGetPayload<{
-  include: {
-    pickConfiguration: {
-      include: { picks: true; predictions: true };
-    };
-  };
-}>;
-type TradeRow = {
-  chainId: number;
-  token: string;
-  seller: string;
-  buyer: string;
-  price: string;
-  tokenAmount: string;
-  executedAt: number;
-  tradeHash: string;
-};
-
-const positionKey = (chainId: number, token: string, holder: string) =>
-  `${chainId}:${token}:${holder}`;
-
-/**
- * Walk a single Position's mint + trade history with running WAC,
- * emitting one synthetic Closed row per sell (when unresolved) and an
- * Open row carrying remaining cost basis. Claims are intentionally
- * excluded — the contract reverts redeem() unless the pickConfig is
- * resolved, so any Claim is post-settlement and the existing
- * settlement-PnL flow on a resolved Position already covers it.
- */
-const synthesizePositionRow = (
-  r: PositionRow,
-  trades: readonly TradeRow[]
-): PositionShape[] => {
-  const pc = r.pickConfiguration;
-  let totalPayout = 0n;
-  let predictionId: string | null = null;
-
-  type Acquire = { ts: number; cost: bigint; shares: bigint };
-  type Disposal = {
-    tradeHash: string;
-    ts: number;
-    proceeds: bigint;
-    shares: bigint;
-  };
-  const acquires: Acquire[] = [];
-  const disposals: Disposal[] = [];
-
-  if (pc) {
-    for (const pred of pc.predictions) {
-      const predCollateral = BigInt(pred.predictorCollateral);
-      const cpCollateral = BigInt(pred.counterpartyCollateral);
-      const predictionTotal = predCollateral + cpCollateral;
-      const isHolderSide =
-        (r.isPredictorToken && pred.predictor === r.holder) ||
-        (!r.isPredictorToken && pred.counterparty === r.holder);
-      if (!isHolderSide) continue;
-      predictionId ??= pred.predictionId;
-      totalPayout += predictionTotal;
-      // Mint amount on both sides equals total collateral pool (see
-      // PredictionMarketEscrow.sol). Cost is just the holder's share.
-      const cost = r.isPredictorToken ? predCollateral : cpCollateral;
-      acquires.push({
-        ts: pred.createdAt.getTime() / 1000,
-        cost,
-        shares: predictionTotal,
-      });
+  // Collateral range: pre-query pickConfigIds where holder's collateral is
+  // in range via a raw UNION grouped by side (predictor vs counterparty).
+  if (holderLower && (collateralMin || collateralMax)) {
+    const minVal = collateralMin ? BigInt(collateralMin) : 0n;
+    const maxVal = collateralMax ? BigInt(collateralMax) : null;
+    interface PickConfigRow {
+      pickConfigId: string;
+      is_predictor: boolean;
     }
-  }
-
-  for (const t of trades) {
-    const price = BigInt(t.price);
-    const shares = BigInt(t.tokenAmount);
-    if (t.buyer === r.holder) {
-      acquires.push({ ts: t.executedAt, cost: price, shares });
-    }
-    if (t.seller === r.holder) {
-      disposals.push({
-        tradeHash: t.tradeHash,
-        ts: t.executedAt,
-        proceeds: price,
-        shares,
-      });
-    }
-  }
-
-  const acquiresSorted = [...acquires].sort((a, b) => a.ts - b.ts);
-  const disposalsSorted = [...disposals].sort((a, b) => a.ts - b.ts);
-
-  // Walk acquires + disposals in chronological order, maintaining running
-  // WAC. Each disposal records the cost basis allocated to its shares
-  // using the WAC at that moment.
-  let costPool = 0n;
-  let sharesPool = 0n;
-  let acqIdx = 0;
-  type DisposalWithCostBasis = Disposal & { costBasis: bigint };
-  const disposalRows: DisposalWithCostBasis[] = [];
-  for (const d of disposalsSorted) {
-    while (
-      acqIdx < acquiresSorted.length &&
-      acquiresSorted[acqIdx].ts <= d.ts
+    const matchingConfigs = await prisma.$queryRaw<PickConfigRow[]>`
+      SELECT "pickConfigId", true AS is_predictor
+      FROM "Prediction"
+      WHERE predictor = ${holderLower} AND "pickConfigId" IS NOT NULL
+      GROUP BY "pickConfigId"
+      HAVING SUM(CAST("predictorCollateral" AS DECIMAL)) >= ${minVal.toString()}::DECIMAL
+        ${maxVal !== null ? Prisma.sql`AND SUM(CAST("predictorCollateral" AS DECIMAL)) <= ${maxVal.toString()}::DECIMAL` : Prisma.empty}
+      UNION
+      SELECT "pickConfigId", false AS is_predictor
+      FROM "Prediction"
+      WHERE counterparty = ${holderLower} AND "pickConfigId" IS NOT NULL
+      GROUP BY "pickConfigId"
+      HAVING SUM(CAST("counterpartyCollateral" AS DECIMAL)) >= ${minVal.toString()}::DECIMAL
+        ${maxVal !== null ? Prisma.sql`AND SUM(CAST("counterpartyCollateral" AS DECIMAL)) <= ${maxVal.toString()}::DECIMAL` : Prisma.empty}
+    `;
+    if (matchingConfigs.length === 0) return { items: [], hasMore: false };
+    const validPickConfigIds = matchingConfigs.map((r) => r.pickConfigId);
+    if (
+      where.pickConfigId &&
+      typeof where.pickConfigId === 'object' &&
+      'in' in where.pickConfigId
     ) {
-      costPool += acquiresSorted[acqIdx].cost;
-      sharesPool += acquiresSorted[acqIdx].shares;
-      acqIdx += 1;
-    }
-    const allocated = sharesPool > 0n ? (costPool * d.shares) / sharesPool : 0n;
-    disposalRows.push({ ...d, costBasis: allocated });
-    costPool -= allocated;
-    sharesPool -= d.shares;
-    if (sharesPool < 0n) sharesPool = 0n;
-    if (costPool < 0n) costPool = 0n;
-  }
-  while (acqIdx < acquiresSorted.length) {
-    costPool += acquiresSorted[acqIdx].cost;
-    sharesPool += acquiresSorted[acqIdx].shares;
-    acqIdx += 1;
-  }
-
-  const totalUserCollateral = acquires.reduce((s, a) => s + a.cost, 0n);
-  const totalPayoutStr = totalPayout > 0n ? totalPayout.toString() : null;
-  const mappedPickConfig = pc ? mapPickConfig(pc, { predictionId }) : null;
-  const balanceBn = BigInt(r.balance);
-  const isResolved = pc?.resolved ?? false;
-
-  const out: PositionShape[] = [];
-
-  // Emit one synthetic row per sell (only meaningful for unresolved
-  // pickConfigs — once settled, the existing PnL flow takes over).
-  if (!isResolved) {
-    for (const d of disposalRows) {
-      out.push({
-        id: `${r.id}-sell-${d.tradeHash}`,
-        positionId: `${r.id}-sell-${d.tradeHash}`,
-        chainId: r.chainId,
-        tokenAddress: r.tokenAddress,
-        pickConfigId: r.pickConfigId,
-        isPredictorToken: r.isPredictorToken,
-        holder: r.holder,
-        balance: '0',
-        userCollateral: d.costBasis.toString(),
-        totalPayout: totalPayoutStr,
-        realizedPnL: (d.proceeds - d.costBasis).toString(),
-        createdAt: r.createdAt,
-        updatedAt: new Date(d.ts * 1000),
-        pickConfig: mappedPickConfig,
-      });
+      const existing = where.pickConfigId.in as string[];
+      where.pickConfigId = {
+        in: existing.filter((id) => validPickConfigIds.includes(id)),
+      };
+    } else if (where.pickConfigId && typeof where.pickConfigId === 'string') {
+      if (!validPickConfigIds.includes(where.pickConfigId))
+        return { items: [], hasMore: false };
+    } else {
+      where.pickConfigId = { in: validPickConfigIds };
     }
   }
 
-  // Open / parent row: keep when there's still balance, or when the
-  // position is settled (existing settlement-PnL flow handles it). A
-  // zero-balance unresolved row with no sells means the holder transferred
-  // or burned the tokens off-platform — drop it, matching prior behavior.
-  if (balanceBn > 0n || isResolved) {
-    const remainingCost =
-      !isResolved && disposalRows.length > 0 ? costPool : totalUserCollateral;
-    out.push({
-      id: String(r.id),
-      positionId: String(r.id),
-      chainId: r.chainId,
-      tokenAddress: r.tokenAddress,
-      pickConfigId: r.pickConfigId,
-      isPredictorToken: r.isPredictorToken,
-      holder: r.holder,
-      balance: r.balance,
-      userCollateral: remainingCost > 0n ? remainingCost.toString() : null,
-      totalPayout: totalPayoutStr,
-      realizedPnL: null,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-      pickConfig: mappedPickConfig,
-    });
-  }
+  // PositionSortField SDL enum values are CREATED_AT / UPDATED_AT; map
+  // to the Prisma column name for orderBy.
+  const posOrderDirection = orderDirection === 'asc' ? 'asc' : 'desc';
+  const posOrderField = orderBy === 'CREATED_AT' ? 'createdAt' : 'updatedAt';
+  const orderByClause: Prisma.PositionOrderByWithRelationInput = {
+    [posOrderField]: posOrderDirection,
+  };
 
-  return out;
-};
+  // The PickConfiguration → Prediction relation is many-to-many in spirit:
+  // any user who has predicted on this market shows up here. We only need
+  // the rows where the holder is a counterparty to compute their cost
+  // basis, so push the filter into the include and avoid pulling every
+  // other user's prediction back over the wire. When `holder` isn't
+  // pinned (conditionId / pickConfigId path), keep the full set.
+  const predictionsInclude: Prisma.Picks$predictionsArgs | true = holderLower
+    ? {
+        where: {
+          OR: [{ predictor: holderLower }, { counterparty: holderLower }],
+        },
+      }
+    : true;
 
-/**
- * Synthesize a page of Position rows: split into cache hits/misses,
- * fetch trades only for the misses, then run the WAC walk per row.
- * Hits skip both the trades fetch and the synthesis loop entirely.
- */
-const synthesizePositionsPage = async (
-  rows: PositionRow[]
-): Promise<PositionShape[]> => {
-  const cachedByRow = new Map<PositionRow, PositionShape[]>();
-  const missedRows: PositionRow[] = [];
-  for (const r of rows) {
-    const cached = positionSynthesisCache.get(positionSynthesisCacheKey(r));
-    if (cached) cachedByRow.set(r, cached);
-    else missedRows.push(r);
-  }
+  // Fetch take+1 to detect a `hasMore`-style next page without a count
+  // query. Synthesized event-stream rows from raw positions can be
+  // empty (zero-balance unresolved with no sells), so client-side
+  // `lastPage.length === 0` is unreliable as a stop signal — we need
+  // server-truth pagination.
+  const rawRows = await prisma.position.findMany({
+    where,
+    orderBy: orderByClause,
+    take: cappedTake + 1,
+    skip: skipVal,
+    include: {
+      pickConfiguration: {
+        include: { picks: true, predictions: predictionsInclude },
+      },
+    },
+  });
+  const hasMore = rawRows.length > cappedTake;
+  const rows = rawRows.slice(0, cappedTake);
 
-  const missChainIds = Array.from(new Set(missedRows.map((r) => r.chainId)));
-  const missTokens = Array.from(new Set(missedRows.map((r) => r.tokenAddress)));
-  const missHolders = Array.from(new Set(missedRows.map((r) => r.holder)));
-  const trades: TradeRow[] =
-    missedRows.length === 0
-      ? []
-      : await prisma.secondaryTrade.findMany({
+  // For each Position row we build a chronological event stream of primary
+  // mints (Predictions) and secondary trades (buys + sells matching
+  // token+holder), then walk it with running WAC. Each sell produces a
+  // synthetic Closed row; if balance > 0 at the end, we also emit an Open
+  // row carrying the remaining cost basis. Claims are intentionally excluded
+  // — the contract reverts redeem() unless the pickConfig is resolved, so
+  // any Claim is post-settlement and the existing settlement-PnL flow on a
+  // resolved Position already covers it.
+  const chainIds = Array.from(new Set(rows.map((r) => r.chainId)));
+  const tokenAddresses = Array.from(new Set(rows.map((r) => r.tokenAddress)));
+  const holders = Array.from(new Set(rows.map((r) => r.holder)));
+
+  type TradeRow = {
+    chainId: number;
+    token: string;
+    seller: string;
+    buyer: string;
+    price: string;
+    tokenAmount: string;
+    executedAt: number;
+    tradeHash: string;
+  };
+
+  // preloadPickConditions and the trades fetch are independent — both only
+  // need `rows`. Run them in parallel to overlap their network round trips.
+  const [, trades] = await Promise.all([
+    preloadPickConditions(
+      ctx,
+      rows.map((r) => r.pickConfiguration)
+    ),
+    rows.length === 0
+      ? Promise.resolve([] as TradeRow[])
+      : prisma.secondaryTrade.findMany({
           where: {
-            chainId: { in: missChainIds },
-            token: { in: missTokens },
-            OR: [
-              { seller: { in: missHolders } },
-              { buyer: { in: missHolders } },
-            ],
+            chainId: { in: chainIds },
+            token: { in: tokenAddresses },
+            OR: [{ seller: { in: holders } }, { buyer: { in: holders } }],
           },
           select: {
             chainId: true,
@@ -1090,9 +458,12 @@ const synthesizePositionsPage = async (
             executedAt: true,
             tradeHash: true,
           },
-        });
+        }),
+  ]);
 
-  const tradesByPos = new Map<string, TradeRow[]>();
+  const positionKey = (chainId: number, token: string, holder: string) =>
+    `${chainId}:${token}:${holder}`;
+  const tradesByPos = new Map<string, typeof trades>();
   for (const t of trades) {
     for (const role of [t.seller, t.buyer] as const) {
       const k = positionKey(t.chainId, t.token, role);
@@ -1102,282 +473,180 @@ const synthesizePositionsPage = async (
     }
   }
 
-  const out: PositionShape[] = [];
+  const synthesized: PositionShape[] = [];
   for (const r of rows) {
-    const cached = cachedByRow.get(r);
-    if (cached) {
-      out.push(...cached);
-      continue;
+    const pc = r.pickConfiguration;
+    let totalPayout = 0n;
+    let predictionId: string | null = null;
+
+    // Primary-mint events from Predictions tied to this position
+    type Acquire = { ts: number; cost: bigint; shares: bigint };
+    type Disposal = {
+      tradeHash: string;
+      ts: number;
+      proceeds: bigint;
+      shares: bigint;
+    };
+    const acquires: Acquire[] = [];
+    const disposals: Disposal[] = [];
+
+    if (pc) {
+      for (const pred of pc.predictions) {
+        const predCollateral = BigInt(pred.predictorCollateral);
+        const cpCollateral = BigInt(pred.counterpartyCollateral);
+        const predictionTotal = predCollateral + cpCollateral;
+        const isHolderSide =
+          (r.isPredictorToken && pred.predictor === r.holder) ||
+          (!r.isPredictorToken && pred.counterparty === r.holder);
+        if (!isHolderSide) continue;
+        predictionId ??= pred.predictionId;
+        totalPayout += predictionTotal;
+        // Mint amount on both sides equals total collateral pool (see
+        // PredictionMarketEscrow.sol). Cost is just the holder's share.
+        const cost = r.isPredictorToken ? predCollateral : cpCollateral;
+        acquires.push({
+          ts: pred.createdAt.getTime() / 1000,
+          cost,
+          shares: predictionTotal,
+        });
+      }
     }
+
     const k = positionKey(r.chainId, r.tokenAddress, r.holder);
-    const synthesized = synthesizePositionRow(r, tradesByPos.get(k) ?? []);
-    positionSynthesisCache.set(positionSynthesisCacheKey(r), synthesized);
-    out.push(...synthesized);
+    for (const t of tradesByPos.get(k) ?? []) {
+      const price = BigInt(t.price);
+      const shares = BigInt(t.tokenAmount);
+      if (t.buyer === r.holder) {
+        acquires.push({ ts: t.executedAt, cost: price, shares });
+      }
+      if (t.seller === r.holder) {
+        disposals.push({
+          tradeHash: t.tradeHash,
+          ts: t.executedAt,
+          proceeds: price,
+          shares,
+        });
+      }
+    }
+
+    const acquiresSorted = [...acquires].sort((a, b) => a.ts - b.ts);
+    const disposalsSorted = [...disposals].sort((a, b) => a.ts - b.ts);
+
+    // Walk acquires + disposals in chronological order, maintaining running
+    // WAC. Each disposal records the cost basis allocated to its shares
+    // using the WAC at that moment.
+    let costPool = 0n;
+    let sharesPool = 0n;
+    let acqIdx = 0;
+    type DisposalRow = {
+      tradeHash: string;
+      ts: number;
+      proceeds: bigint;
+      shares: bigint;
+      costBasis: bigint;
+    };
+    const disposalRows: DisposalRow[] = [];
+    for (const d of disposalsSorted) {
+      while (
+        acqIdx < acquiresSorted.length &&
+        acquiresSorted[acqIdx].ts <= d.ts
+      ) {
+        costPool += acquiresSorted[acqIdx].cost;
+        sharesPool += acquiresSorted[acqIdx].shares;
+        acqIdx += 1;
+      }
+      const allocated =
+        sharesPool > 0n ? (costPool * d.shares) / sharesPool : 0n;
+      disposalRows.push({ ...d, costBasis: allocated });
+      costPool -= allocated;
+      sharesPool -= d.shares;
+      if (sharesPool < 0n) sharesPool = 0n;
+      if (costPool < 0n) costPool = 0n;
+    }
+    while (acqIdx < acquiresSorted.length) {
+      costPool += acquiresSorted[acqIdx].cost;
+      sharesPool += acquiresSorted[acqIdx].shares;
+      acqIdx += 1;
+    }
+
+    const totalUserCollateral = acquires.reduce((s, a) => s + a.cost, 0n);
+    const totalPayoutStr = totalPayout > 0n ? totalPayout.toString() : null;
+    const mappedPickConfig = pc ? mapPickConfig(pc, { predictionId }) : null;
+    const balanceBn = BigInt(r.balance);
+    const isResolved = pc?.resolved ?? false;
+
+    // Emit one synthetic row per sell (only meaningful for unresolved
+    // pickConfigs — once settled, the existing PnL flow takes over).
+    if (!isResolved) {
+      for (const d of disposalRows) {
+        synthesized.push({
+          id: `${r.id}-sell-${d.tradeHash}`,
+          chainId: r.chainId,
+          tokenAddress: r.tokenAddress,
+          pickConfigId: r.pickConfigId,
+          isPredictorToken: r.isPredictorToken,
+          holder: r.holder,
+          balance: '0',
+          userCollateral: d.costBasis.toString(),
+          totalPayout: totalPayoutStr,
+          realizedPnL: (d.proceeds - d.costBasis).toString(),
+          createdAt: r.createdAt,
+          updatedAt: new Date(d.ts * 1000),
+          pickConfig: mappedPickConfig,
+        });
+      }
+    }
+
+    // Open / parent row: keep when there's still balance, or when the
+    // position is settled (existing settlement-PnL flow handles it). A
+    // zero-balance unresolved row with no sells means the holder transferred
+    // or burned the tokens off-platform — drop it, matching prior behavior.
+    if (balanceBn > 0n || isResolved) {
+      const remainingCost =
+        !isResolved && disposalRows.length > 0 ? costPool : totalUserCollateral;
+      synthesized.push({
+        id: String(r.id),
+        chainId: r.chainId,
+        tokenAddress: r.tokenAddress,
+        pickConfigId: r.pickConfigId,
+        isPredictorToken: r.isPredictorToken,
+        holder: r.holder,
+        balance: r.balance,
+        userCollateral: remainingCost > 0n ? remainingCost.toString() : null,
+        totalPayout: totalPayoutStr,
+        realizedPnL: null,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        pickConfig: mappedPickConfig,
+      });
+    }
   }
-  return out;
-};
 
-const basePositionRowId = (positionNodeId: string): number | null => {
-  const [rawRowId] = positionNodeId.split('-sell-');
-  const numericId = Number(rawRowId);
-  return Number.isInteger(numericId) ? numericId : null;
-};
-
-export const resolvePositionNode = async (
-  positionNodeId: string
-): Promise<PositionShape | null> => {
-  const rowId = basePositionRowId(positionNodeId);
-  if (rowId == null) return null;
-  const row = await prisma.position.findUnique({
-    where: { id: rowId },
-    include: {
-      pickConfiguration: {
-        include: { picks: true, predictions: true },
-      },
-    },
+  // Re-sort by the requested field. Synthetic sell rows carry the trade's
+  // executedAt as their updatedAt, so without this they'd appear grouped
+  // under their parent Position rather than interleaved by recency.
+  const sortKey: keyof Pick<PositionShape, 'createdAt' | 'updatedAt'> =
+    posOrderField === 'createdAt' ? 'createdAt' : 'updatedAt';
+  synthesized.sort((a, b) => {
+    const diff = b[sortKey].getTime() - a[sortKey].getTime();
+    return posOrderDirection === 'asc' ? -diff : diff;
   });
-  if (!row) return null;
-  const rows = await synthesizePositionsPage([row]);
-  return rows.find((r) => r.id === positionNodeId) ?? null;
+  return { items: synthesized, hasMore };
 };
 
-/**
- * Re-sort by the requested field. Synthetic sell rows carry the trade's
- * executedAt as their updatedAt, so without this they'd appear grouped
- * under their parent Position rather than interleaved by recency.
- */
-const sortSynthesizedRows = (
-  rows: PositionShape[],
-  field: 'createdAt' | 'updatedAt',
-  direction: 'asc' | 'desc'
-): PositionShape[] => {
-  const out = [...rows];
-  out.sort((a, b) => {
-    const diff = b[field].getTime() - a[field].getTime();
-    return direction === 'asc' ? -diff : diff;
-  });
-  return out;
-};
-
-const EMPTY_POSITIONS: PositionsEnvelope = {
-  items: [],
-  hasMore: false,
-  totalCount: 0,
-};
-
-export const runPositions = async (
-  args: QueryPositionsArgs
-): Promise<PositionsEnvelope> => {
-  const norm = normalizePositionsArgs(args);
-
-  let conditionPickConfigIds: string[] | null = null;
-  if (norm.conditionId) {
-    conditionPickConfigIds = await resolveConditionPickConfigIds(
-      norm.conditionId
-    );
-    if (conditionPickConfigIds === null) return EMPTY_POSITIONS;
-  }
-
-  let where = buildPositionsWhere(norm, conditionPickConfigIds);
-  if (where === null) return EMPTY_POSITIONS;
-
-  if (norm.holderLower && (norm.collateralMin || norm.collateralMax)) {
-    const next = await applyCollateralRangeFilter(
-      where,
-      norm.holderLower,
-      norm.collateralMin,
-      norm.collateralMax
-    );
-    if (next === null) return EMPTY_POSITIONS;
-    where = next;
-  }
-
-  // The PickConfiguration → Prediction relation is many-to-many in spirit:
-  // any user who has predicted on this market shows up here. We only need
-  // the rows where the holder is a counterparty to compute their cost
-  // basis, so push the filter into the include and avoid pulling every
-  // other user's prediction back over the wire. When `holder` isn't
-  // pinned (conditionId / pickConfigId path), keep the full set.
-  const predictionsInclude: Prisma.Picks$predictionsArgs | true =
-    norm.holderLower
-      ? {
-          where: {
-            OR: [
-              { predictor: norm.holderLower },
-              { counterparty: norm.holderLower },
-            ],
-          },
-        }
-      : true;
-
-  // Fetch take+1 to detect a `hasMore`-style next page without a count
-  // query. Synthesized event-stream rows from raw positions can be
-  // empty (zero-balance unresolved with no sells), so client-side
-  // `lastPage.length === 0` is unreliable as a stop signal — we need
-  // server-truth pagination.
-  //
-  // `totalCount` is left null; connection callers use `pageInfo.hasNextPage`
-  // and the deprecated `positions` wrapper discards counts entirely.
-  const rawRows = await prisma.position.findMany({
-    where,
-    orderBy: { [norm.orderField]: norm.orderDirection },
-    take: norm.cappedTake + 1,
-    skip: norm.skipVal,
-    include: {
-      pickConfiguration: {
-        include: { picks: true, predictions: predictionsInclude },
-      },
-    },
-  });
-  const hasMore = rawRows.length > norm.cappedTake;
-  const rows = rawRows.slice(0, norm.cappedTake);
-
-  const synthesized = await synthesizePositionsPage(rows);
-  const sorted = sortSynthesizedRows(
-    synthesized,
-    norm.orderField,
-    norm.orderDirection
-  );
-  return { items: sorted, hasMore, totalCount: null, _countWhere: where };
-};
-
-/**
- * Merge deprecated `positionsPage(filters: PositionFilters)` with the flat arg shape.
- * `filters` wins on conflicts.
- */
-const mergePositionPageFilters = (
-  args: QueryPositionsPageArgs
-): QueryPositionsArgs => {
-  const f = args.filters ?? null;
-  return {
-    ...args,
-    holder: f?.holder ?? args.holder ?? null,
-    chainId: f?.chainId ?? args.chainId ?? null,
-    conditionId: f?.conditionId ?? args.conditionId ?? null,
-    pickConfigId: f?.pickConfigId ?? args.pickConfigId ?? null,
-    result: f?.result ?? args.result ?? null,
-    settled: f?.settled ?? args.settled ?? null,
-    holderWon: f?.holderWon ?? args.holderWon ?? null,
-    collateralMin: f?.collateralMin ?? args.collateralMin ?? null,
-    collateralMax: f?.collateralMax ?? args.collateralMax ?? null,
-    endsAtMin: f?.endsAtMin ?? args.endsAtMin ?? null,
-    endsAtMax: f?.endsAtMax ?? args.endsAtMax ?? null,
-  };
+export const positions: NonNullable<QueryResolvers['positions']> = async (
+  _parent,
+  args,
+  ctx
+) => {
+  const { items } = await runPositions(args, ctx);
+  return items;
 };
 
 export const positionsPage: NonNullable<
   QueryResolvers['positionsPage']
-> = async (_parent, args) => runPositions(mergePositionPageFilters(args));
-
-/**
- * Convert operator-pattern numeric filters (`gte`/`lt`/etc.) to the legacy
- * min/max execution args used by `runPositions`. The underlying values are
- * integer-like (wei strings and epoch seconds), so exclusive bounds are mapped
- * by one unit to preserve semantics through the existing inclusive SQL path.
- */
-const rangeFilterToBounds = (
-  filter:
-    | {
-        equals?: string | number | bigint | null;
-        gt?: string | number | bigint | null;
-        gte?: string | number | bigint | null;
-        lt?: string | number | bigint | null;
-        lte?: string | number | bigint | null;
-        in?: unknown[] | null;
-        notIn?: unknown[] | null;
-        not?: unknown;
-      }
-    | null
-    | undefined,
-  label: string
-): { min: string | null; max: string | null } => {
-  if (!filter) return { min: null, max: null };
-  if (filter.in?.length || filter.notIn?.length || filter.not != null) {
-    throw new Error(`${label}: only equals/gt/gte/lt/lte are supported`);
-  }
-  if (filter.equals != null) {
-    const v = BigInt(filter.equals);
-    return { min: v.toString(), max: v.toString() };
-  }
-  const min =
-    filter.gte != null
-      ? BigInt(filter.gte)
-      : filter.gt != null
-        ? BigInt(filter.gt) + 1n
-        : null;
-  const max =
-    filter.lte != null
-      ? BigInt(filter.lte)
-      : filter.lt != null
-        ? BigInt(filter.lt) - 1n
-        : null;
-  return { min: min?.toString() ?? null, max: max?.toString() ?? null };
-};
-
-/**
- * Map the singular `filter: PositionFilter` connection shape to the shared
- * legacy `runPositions` execution args.
- */
-const mergePositionConnectionFilter = (
-  args: QueryPositionsConnectionArgs
-): QueryPositionsArgs => {
-  const f = args.filter ?? null;
-  const collateral = rangeFilterToBounds(
-    f?.collateral,
-    'PositionFilter.collateral'
-  );
-  const endsAt = rangeFilterToBounds(f?.endsAt, 'PositionFilter.endsAt');
-  return {
-    take: args.first ?? 50,
-    skip: offsetFromCursor(args.after),
-    orderBy:
-      args.orderBy?.field === PositionOrderField.CreatedAt
-        ? PositionSortField.CreatedAt
-        : PositionSortField.UpdatedAt,
-    orderDirection:
-      args.orderBy?.direction === OrderDirection.Asc
-        ? SortOrder.Asc
-        : SortOrder.Desc,
-    holder: f?.holder ?? null,
-    chainId: f?.chainId ?? null,
-    conditionId: f?.conditionId ?? null,
-    pickConfigId: f?.pickConfigId ?? null,
-    result: f?.result ?? null,
-    settled: f?.settled ?? null,
-    holderWon: f?.holderWon ?? null,
-    collateralMin: collateral.min,
-    collateralMax: collateral.max,
-    endsAtMin: endsAt.min == null ? null : Number(endsAt.min),
-    endsAtMax: endsAt.max == null ? null : Number(endsAt.max),
-  };
-};
-
-export const positionsConnection: NonNullable<
-  QueryResolvers['positionsConnection']
-> = async (_parent, args) => {
-  const result = await runPositions(mergePositionConnectionFilter(args));
-  const startOffset = offsetFromCursor(args.after);
-  const edges = result.items.map((node, index) => ({
-    node,
-    cursor: encodeCursor({
-      k: String(startOffset + index),
-      id: String(node.id),
-    }),
-  }));
-  const totalCount = await prisma.position.count({
-    where: result._countWhere ?? {},
-  });
-  return {
-    edges,
-    nodes: result.items,
-    totalCount,
-    pageInfo: {
-      hasNextPage: result.hasMore,
-      hasPreviousPage: false,
-      startCursor: edges[0]?.cursor ?? null,
-      endCursor: edges[edges.length - 1]?.cursor ?? null,
-    },
-  };
+> = async (_parent, args, ctx) => {
+  return runPositions(args, ctx);
 };
 
 export const closes: NonNullable<QueryResolvers['closes']> = async (
@@ -1423,10 +692,12 @@ export const claims: NonNullable<QueryResolvers['claims']> = async (
 ) => {
   const cappedTake = Math.max(1, Math.min(take, 100));
   const holderLower = holder?.toLowerCase();
+  // The GraphQL `predictionId` arg/field is a misnomer kept for backward compat:
+  // it has always been a pickConfigId, now backed by the Claim.pickConfigId column.
   const predictionIdLower = predictionId?.toLowerCase();
   const where: Prisma.ClaimWhereInput = {};
   if (holderLower) where.holder = holderLower;
-  if (predictionIdLower) where.predictionId = predictionIdLower;
+  if (predictionIdLower) where.pickConfigId = predictionIdLower;
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (!holderLower && !predictionIdLower) return [];
   const rows = await prisma.claim.findMany({
@@ -1439,7 +710,7 @@ export const claims: NonNullable<QueryResolvers['claims']> = async (
     id: r.id,
     chainId: r.chainId,
     marketAddress: r.marketAddress,
-    predictionId: r.predictionId,
+    predictionId: r.pickConfigId,
     holder: r.holder,
     positionToken: r.positionToken,
     tokensBurned: r.tokensBurned,

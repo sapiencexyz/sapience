@@ -320,12 +320,7 @@ export async function enrichMarketsWithLLM(
     const results = new Map<string, MarketEnrichmentOutput>();
     let deterministicCount = 0;
     for (const market of markets) {
-      const shortName = resolveShortName(market);
-      if (shortName) {
-        deterministicCount++;
-      } else {
-        console.log(`[LLM] No pattern for short name: "${market.question}"`);
-      }
+      if (resolveShortName(market)) deterministicCount++;
       results.set(market.conditionId, getFallbackEnrichment(market));
     }
     console.log(
@@ -397,16 +392,21 @@ export async function enrichEndTimesWithLLM(
     return llmMap;
   }
 
-  // Group markets by event title — conditions sharing an event get 1 Sonar call
+  // Group markets by event ID (stable & unique) so conditions sharing an event
+  // get 1 Sonar call. Event TITLE is not unique — distinct games reuse a matchup
+  // title (e.g. four separate "Cavaliers vs. Knicks" games), which title-grouping
+  // would wrongly merge into one call and one search. Fall back to slug, then
+  // title, when id is absent.
   const eventGroups = new Map<string, PolymarketMarket[]>();
   const ungrouped: PolymarketMarket[] = [];
 
   for (const market of markets) {
-    const eventTitle = market.events?.[0]?.title;
-    if (eventTitle) {
-      const group = eventGroups.get(eventTitle) || [];
+    const ev = market.events?.[0];
+    const groupKey = ev?.id ?? ev?.slug ?? ev?.title;
+    if (groupKey) {
+      const group = eventGroups.get(groupKey) || [];
       group.push(market);
-      eventGroups.set(eventTitle, group);
+      eventGroups.set(groupKey, group);
     } else {
       ungrouped.push(market);
     }
@@ -441,7 +441,7 @@ export async function enrichEndTimesWithLLM(
   };
 
   // 1 call per event group — all conditions in the group share the event context
-  for (const [eventTitle, groupMarkets] of eventGroups) {
+  for (const [groupKey, groupMarkets] of eventGroups) {
     try {
       const inputs = groupMarkets.map(marketToEndTimeInput);
       const outputs = await callOpenRouterForEndTime(inputs, {
@@ -452,7 +452,7 @@ export async function enrichEndTimesWithLLM(
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error(
-        `[LLM:endTime] Failed for event "${eventTitle}" (${groupMarkets.length} markets): ${errorMsg}`
+        `[LLM:endTime] Failed for event "${groupKey}" (${groupMarkets.length} markets): ${errorMsg}`
       );
       errorCount++;
     }

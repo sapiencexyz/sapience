@@ -49,40 +49,26 @@ const PAGES = [
 
 /** Lightweight query — only fetches the fields the command palette needs */
 const SEARCH_QUESTIONS = /* GraphQL */ `
-  query CommandMenuSearch($take: Int!, $filters: QuestionFilter) {
-    questionsConnection(
-      first: $take
-      filter: $filters
-      orderBy: { field: RESOLVES_AT, direction: ASC }
+  query CommandMenuSearch($take: Int!, $chainId: Int, $search: String) {
+    questions(
+      take: $take
+      skip: 0
+      chainId: $chainId
+      sortField: endTime
+      sortDirection: asc
+      search: $search
     ) {
-      nodes {
-        questionType
-        group {
+      questionType
+      group {
+        id
+        name
+        category {
           id
           name
-          category {
-            id
-            name
-            slug
-          }
-          conditions {
-            id: conditionId
-            conditionId
-            question
-            shortName
-            endTime
-            openInterest
-            resolver
-            category {
-              id
-              name
-              slug
-            }
-          }
+          slug
         }
-        condition {
-          id: conditionId
-          conditionId
+        conditions {
+          id
           question
           shortName
           endTime
@@ -93,6 +79,19 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
             name
             slug
           }
+        }
+      }
+      condition {
+        id
+        question
+        shortName
+        endTime
+        openInterest
+        resolver
+        category {
+          id
+          name
+          slug
         }
       }
     }
@@ -122,19 +121,17 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
     queryKey: ['commandMenuSearch', search],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        questionsConnection: { nodes: QuestionResult[] };
+        questions: QuestionResult[];
       }>(SEARCH_QUESTIONS, {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort
         // client-side to prefer future markets over expired ones
         take: MAX_RESULTS * 3,
-        filters: {
-          chainId: DEFAULT_CHAIN_ID,
-          search: search?.trim() || null,
-        },
+        chainId: DEFAULT_CHAIN_ID,
+        search: search?.trim() || null,
       });
 
       const nowSec = Math.floor(Date.now() / 1000);
-      return (data.questionsConnection?.nodes ?? [])
+      return (data.questions ?? [])
         .flatMap((q) => {
           if (q.questionType === 'condition' && q.condition) {
             return [q.condition];

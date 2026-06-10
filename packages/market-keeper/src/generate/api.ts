@@ -18,6 +18,7 @@ import {
   API_CONDITION_FILTERS,
   // matchesAlwaysIncludePatterns,
 } from './pipeline';
+import { gameEndTime } from './extractors/sports/game';
 
 /**
  * Delay between API submissions to avoid rate limiting
@@ -33,49 +34,69 @@ export function toUnixTimestamp(isoDate: string): number {
 }
 
 /**
+ * One day in seconds — the pad added to Polymarket's endDate at the cascade
+ * floor. PM stores endDate as a loose "trading closes ~here" value that
+ * usually sits before true resolution; +1d is the benchmark-tuned correction
+ * for the long tail nothing else resolves.
+ */
+const PM_FALLBACK_PAD_SECONDS = 86_400;
+
+/**
  * Pick the endTime for a condition payload, with logging for prod observability.
  *
- * Priority:
- *   1. LLM (Sonar) — wins whenever it returned a timestamp, any confidence.
- *      Confidence is logged but does NOT gate the decision. This is the
- *      hallucination-guard knob: if logs show LLM is hallucinating, the
- *      easy first knob is to re-introduce a `confidence === 'high'` gate.
- *   2. Polymarket endDate — universal fallback for PM-sourced markets.
- *      Only reachable when LLM returned UNKNOWN, errored, or was disabled.
- *   3. Regex extraction (endTimeOverride) — only for templated markets
- *      (sports/series/group) where the format is deterministic by
- *      construction. For non-templated markets, regex is too brittle to
- *      trust (the ETH/USDT $1,800 bug was a regex Tier 4e false positive).
- *   4. Throw — non-templated, non-PM market with no LLM result. Better
- *      to fail loud than to publish a confidently-wrong endTime.
+ * Deterministic-first cascade (each rung fits-or-declines; first hit wins):
+ *   1. Game start time (gameStartTime + league duration) — the same sports
+ *      rung used by the scoring cascade. Exact, free, and outranks everything.
+ *   2. Category specialist (categoryEndTime) — high-precision regex for the
+ *      templated families (weather/crypto/sports/social/snapshot). Read
+ *      directly from the description, so it outranks the LLM. Markets it
+ *      resolves also skip Sonar entirely (gated upstream in grouping).
+ *   3. LLM (Sonar) — the smart generalist for everything the specialists
+ *      decline. Any confidence wins; confidence is logged, not gated (the
+ *      hallucination-guard knob is re-introducing a `confidence === 'high'`
+ *      check here).
+ *   4. Regex extraction (endTimeOverride) — the BROAD general regex, trusted
+ *      only for templated markets (sports/series/group) where the format is
+ *      deterministic. Sits BELOW the LLM so a confident-wrong regex date
+ *      can't out-rank Sonar (the ETH/USDT $1,800 bug was a Tier 4e false
+ *      positive). Non-templated general-regex is never trusted.
+ *   5. Polymarket endDate + 1 day — universal floor for PM-sourced markets.
+ *   6. Throw — non-templated, non-PM market with no source. Fail loud rather
+ *      than publish a confidently-wrong endTime.
  *
- * No buffer is added. The previous `+ END_TIME_BUFFER_SECONDS` was
- * meant to cover UMA dispute liveness, but settlement scripts don't
- * gate on `endTime + UMA` — the buffer was just over-conservative padding
- * baked into the public-facing value.
+ * No UMA buffer is added; settlement scripts don't gate on `endTime + UMA`.
  */
 export function decideEndTime(c: SapienceCondition): {
   ts: number;
   source:
+    | 'game'
+    | 'category'
     | 'llm-high'
     | 'llm-low'
     | 'llm-unknown'
-    | 'pm-fallback'
-    | 'regex-templated';
+    | 'regex-templated'
+    | 'pm-fallback';
 } {
+  const game = gameEndTime(c.gameStartTime, c.league);
+  if (game != null) {
+    return { ts: game, source: 'game' };
+  }
+  if (c.categoryEndTime != null) {
+    return { ts: c.categoryEndTime, source: 'category' };
+  }
   const llm = c.llmEndTime;
   if (llm?.ts) {
     return { ts: llm.ts, source: `llm-${llm.confidence}` as const };
   }
-  const pm = c.endDate ? toUnixTimestamp(c.endDate) : null;
-  if (pm) {
-    return { ts: pm, source: 'pm-fallback' };
-  }
-  // Reachable only for non-Polymarket markets (Pyth, manual) that lack
-  // endDate. PM markets always have endDate, so they exit at pm-fallback.
+  // General regex, templated-only — below the LLM, above the PM floor.
   if (c.isTemplated && c.endTimeOverride) {
     return { ts: c.endTimeOverride, source: 'regex-templated' };
   }
+  const pm = c.endDate ? toUnixTimestamp(c.endDate) : null;
+  if (pm != null && Number.isFinite(pm)) {
+    return { ts: pm + PM_FALLBACK_PAD_SECONDS, source: 'pm-fallback' };
+  }
+  // Reachable only for non-Polymarket markets (Pyth, manual) that lack endDate.
   throw new Error(`[decideEndTime] no endTime source for ${c.conditionHash}`);
 }
 
@@ -91,6 +112,8 @@ function logEndTimeDecision(
   const llmTs = c.llmEndTime?.ts ?? null;
   const pmTs = c.endDate ? toUnixTimestamp(c.endDate) : null;
   const drift = llmTs !== null && pmTs !== null ? llmTs - pmTs : null;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const isPast = decision.ts <= nowSeconds;
   const payload = {
     event: 'endtime_decided',
     conditionHash: c.conditionHash,
@@ -98,13 +121,31 @@ function logEndTimeDecision(
     source: decision.source,
     llmTs,
     pmTs,
+    categoryTs: c.categoryEndTime ?? null,
+    gameTs: gameEndTime(c.gameStartTime, c.league),
+    gameStartTime: c.gameStartTime ?? null,
+    league: c.league ?? null,
     regexTs: c.endTimeOverride ?? null,
     llmConfidence: c.llmEndTime?.confidence ?? null,
     isTemplated: c.isTemplated ?? false,
     driftSeconds: drift,
     finalTs: decision.ts,
+    isPast,
+    secondsPast: isPast ? nowSeconds - decision.ts : null,
   };
-  console.log(JSON.stringify(payload));
+  // Past-dated submissions are legal (backfills rely on it) but rare
+  // enough that operators should see them in log scans. Anything else
+  // stays on console.log so the daily generate doesn't shout.
+  if (isPast) {
+    console.warn(
+      `[endtime_decided] PAST endTime submitted for ${c.conditionHash}: ` +
+        `finalTs=${decision.ts} (${nowSeconds - decision.ts}s ago), ` +
+        `source=${decision.source}`
+    );
+    console.warn(JSON.stringify(payload));
+  } else {
+    console.log(JSON.stringify(payload));
+  }
 }
 
 /**
@@ -128,6 +169,8 @@ export async function submitConditionGroup(
         name: group.title, // API uses 'name' field
         categorySlug: group.categorySlug,
         similarMarkets: group.similarMarkets,
+        negRiskMarketId: group.negRiskMarketId,
+        externalEventId: group.externalEventId,
       }),
     });
 
@@ -185,11 +228,14 @@ export async function submitCondition(
         tags: condition.tags,
         chainId: condition.chainId,
         groupName: condition.groupTitle,
+        externalEventId: condition.externalEventId,
         resolver: RESOLVER_ADDRESS,
         public: true,
         estimatedPrice: condition.estimatedPrice,
         similarMarketVolume: condition.similarMarketVolume,
         similarMarketImage: condition.similarMarketImage,
+        negRisk: condition.negRisk,
+        negRiskMarketId: condition.negRiskMarketId,
       }),
     });
 
@@ -682,10 +728,13 @@ export async function submitToAPI(
       tags: condition.tags,
       chainId: condition.chainId,
       groupName: condition.groupTitle,
+      externalEventId: condition.externalEventId,
       resolver: RESOLVER_ADDRESS,
       estimatedPrice: condition.estimatedPrice,
       similarMarketVolume: condition.similarMarketVolume,
       similarMarketImage: condition.similarMarketImage,
+      negRisk: condition.negRisk,
+      negRiskMarketId: condition.negRiskMarketId,
     };
   });
 
@@ -735,9 +784,31 @@ export async function submitToAPI(
           const errorData = await response
             .json()
             .catch(() => ({ message: 'Unknown error' }));
-          console.error(
-            `${label} Batch ${batchNum} failed: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
-          );
+          const message =
+            (errorData as { message?: string }).message || response.statusText;
+          // Surface basket-id mismatches separately: the API rejects them with
+          // a 400 carrying the "non-matching negRisk conditions" phrase, and
+          // these are the cases operators want to triage. Keep this fail-closed:
+          // if one condition in the batch fails admission, do not retry a partial
+          // subset because that can split a negRisk basket across sync runs.
+          if (
+            response.status === 400 &&
+            /non-matching negRisk/i.test(message)
+          ) {
+            console.error(
+              `${label} Batch ${batchNum} unable to add to existing negRisk ` +
+                `group: ${message}. Conditions: ${batch
+                  .map(
+                    (c) =>
+                      `${c.conditionHash} (group=${c.groupName ?? 'none'}, negRiskMarketId=${c.negRiskMarketId ?? 'none'})`
+                  )
+                  .join('; ')}`
+            );
+          } else {
+            console.error(
+              `${label} Batch ${batchNum} failed: HTTP ${response.status}: ${message}`
+            );
+          }
           totalFailed += batch.length;
         }
       } catch (error) {

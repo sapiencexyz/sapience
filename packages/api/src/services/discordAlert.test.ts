@@ -4,9 +4,11 @@ import {
   formatCollateral,
   getChainName,
   buildPositionEmbed,
+  buildSecondaryTradeEmbed,
   sendPositionAlert,
   STALE_BLOCK_THRESHOLD_S,
   type PositionAlertData,
+  type SecondaryTradeAlertData,
 } from './discordAlert';
 
 // --- Helpers ---
@@ -34,6 +36,26 @@ function makeAlertData(
     chainId: 42161,
     predictionId:
       '0xdeadbeef1234567890abcdef1234567890abcdef1234567890abcdef12345678',
+    ...overrides,
+  };
+}
+
+function makeSecondaryTradeAlertData(
+  overrides: Partial<SecondaryTradeAlertData> = {}
+): SecondaryTradeAlertData {
+  const nowSec = Math.floor(Date.now() / 1000);
+  return {
+    seller: '0xaabbccddee1122334455aabbccddee1122334455',
+    buyer: '0x1234567890abcdef1234567890abcdef12345678',
+    token: '0x3333333333333333333333333333333333333333',
+    tokenAmount: '100000000000000000000',
+    price: '47302695983166986167',
+    blockTimestamp: nowSec - 10,
+    transactionHash:
+      '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+    chainId: 5064014,
+    tradeHash:
+      '0xbeefbeef1234567890abcdef1234567890abcdef1234567890abcdef12345678',
     ...overrides,
   };
 }
@@ -222,6 +244,46 @@ describe('buildPositionEmbed', () => {
     expect(fields).toHaveLength(5);
     expect(fields[4].name).toBe('📄 Position');
     // No transaction field present
+    expect(fields.find((f) => f.name === '🔗 Transaction')).toBeUndefined();
+  });
+});
+
+describe('buildSecondaryTradeEmbed', () => {
+  it('builds a valid Discord embed object for secondary sales', () => {
+    const embed = buildSecondaryTradeEmbed(
+      makeSecondaryTradeAlertData()
+    ) as Record<string, unknown>;
+
+    expect(embed.title).toBe('🤝 Secondary Sale');
+    expect(embed.color).toBe(0x2563eb);
+    expect(embed.timestamp).toBeDefined();
+
+    const fields = embed.fields as Array<{
+      name: string;
+      value: string;
+      inline: boolean;
+    }>;
+
+    expect(fields).toHaveLength(5);
+    expect(fields[0].name).toBe('👤 Seller');
+    expect(fields[0].value).toContain('0xaabb…4455');
+    expect(fields[1].name).toBe('🤝 Buyer');
+    expect(fields[1].value).toContain('0x1234…5678');
+    expect(fields[2].name).toBe('🎟️ Position Tokens');
+    expect(fields[2].value).toContain('100');
+    expect(fields[3].name).toBe('💰 Sale Price');
+    expect(fields[3].value).toContain('47.3 USDe');
+    expect(fields[4].name).toBe('🔗 Transaction');
+    expect(fields[4].value).toContain('explorer.ethereal.trade');
+  });
+
+  it('handles missing transaction hash gracefully', () => {
+    const embed = buildSecondaryTradeEmbed(
+      makeSecondaryTradeAlertData({ transactionHash: '' })
+    ) as Record<string, unknown>;
+    const fields = embed.fields as Array<{ name: string }>;
+
+    expect(fields).toHaveLength(4);
     expect(fields.find((f) => f.name === '🔗 Transaction')).toBeUndefined();
   });
 });

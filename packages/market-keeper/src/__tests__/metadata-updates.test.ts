@@ -105,6 +105,7 @@ function existingFromMarket(
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
     groupName: eventTitle,
+    conditionGroupNegRisk: false,
     ...overrides,
   };
 }
@@ -212,6 +213,120 @@ describe('computeMetadataUpdates', () => {
     expect(metadataUpdates[0].old).toEqual({
       groupName: 'Ethereum Price Targets',
     });
+  });
+
+  it('detects externalEventId change when the stored group is keyed by a different event', () => {
+    // Reviewer-flagged scenario for #1813: the keeper was computing
+    // externalEventId for fresh metadata but not emitting it in the diff,
+    // so batch-metadata payloads fell back to groupName — and with the
+    // dropped UNIQUE(name) constraint, the API's name-fallback could
+    // attach the condition to the wrong (newest-id-wins) group. Asserting
+    // here that the diff actually carries the field when it differs.
+    const market = makeMarket({
+      conditionId: '0xevtid',
+      events: [{ id: 'evt-week-13', title: 'Top US Netflix Movie This Week' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xevtid',
+        existingFromMarket(market, {
+          externalEventId: 'evt-week-12',
+          groupName: 'Top US Netflix Movie This Week',
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(1);
+    expect(metadataUpdates[0].fields.externalEventId).toBe('evt-week-13');
+    expect(metadataUpdates[0].old.externalEventId).toBe('evt-week-12');
+  });
+
+  it('does not emit externalEventId when fresh matches the stored value', () => {
+    // Regression guard against emitting a noisy update on every refresh.
+    const market = makeMarket({
+      conditionId: '0xevtsame',
+      events: [{ id: 'evt-stable', title: 'Some Event' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xevtsame',
+        existingFromMarket(market, {
+          externalEventId: 'evt-stable',
+          groupName: 'Some Event',
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(0);
+  });
+
+  it('forces externalEventId into the payload alongside a groupName change, even when the event id is unchanged', () => {
+    // Second half of the #1813 reviewer-flagged bug. Polymarket renames
+    // an event title but keeps the same event id. Without this fix, the
+    // diff would emit `{ groupName }` only, the admin route would fall
+    // back to name lookup, and — because UNIQUE(name) was dropped — could
+    // attach the condition to an unrelated newest-id-wins group sharing
+    // the new title. Including externalEventId forces the route through
+    // the canonical event-keyed lookup, which returns the right group.
+    const market = makeMarket({
+      conditionId: '0xrename',
+      events: [{ id: 'evt-stable', title: 'Top US Netflix Movie Week 13' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xrename',
+        existingFromMarket(market, {
+          externalEventId: 'evt-stable', // already correct
+          groupName: 'Top US Netflix Movie Week 12', // stale title
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(1);
+    expect(metadataUpdates[0].fields.groupName).toBe(
+      'Top US Netflix Movie Week 13'
+    );
+    expect(metadataUpdates[0].fields.externalEventId).toBe('evt-stable');
+    expect(metadataUpdates[0].old.externalEventId).toBe('evt-stable');
+  });
+
+  it('does not force externalEventId when groupName is not in the diff', () => {
+    // Regression guard: don't include externalEventId unnecessarily when
+    // the only changes are to non-group fields. Keeps refresh traffic
+    // narrow and avoids drifting from "only emit what changed" semantics
+    // except in the specific groupName-rename case above.
+    const market = makeMarket({
+      conditionId: '0xother',
+      description: 'updated description',
+      events: [{ id: 'evt-stable', title: 'Some Event' }],
+    });
+
+    const existing = new Map([
+      [
+        '0xother',
+        existingFromMarket(market, {
+          externalEventId: 'evt-stable',
+          groupName: 'Some Event',
+          description: 'old description',
+        }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing);
+
+    expect(metadataUpdates).toHaveLength(1);
+    expect(metadataUpdates[0].fields.description).toBe('updated description');
+    expect(metadataUpdates[0].fields.externalEventId).toBeUndefined();
+    expect(metadataUpdates[0].fields.groupName).toBeUndefined();
   });
 
   it('detects similarMarkets URL change when event slug changes', () => {
@@ -497,6 +612,139 @@ describe('computeMetadataUpdates', () => {
 });
 
 describe('computeGroupMetadataUpdates', () => {
+  it('stamps ConditionGroup.negRiskMarketId when fresh markets share a basket', () => {
+    const market = makeMarket({
+      conditionId: '0xbasket',
+      events: [
+        {
+          title: 'NBA champion',
+          slug: 'nba-champion',
+          negRisk: true,
+          negRiskMarketId: 'basket-a',
+        },
+      ],
+    });
+
+    const existing = new Map([
+      [
+        '0xbasket',
+        existingFromMarket(market, {
+          conditionGroupId: 7,
+          conditionGroupNegRisk: false,
+        }),
+      ],
+    ]);
+
+    const { groupMetadataUpdates } = runDiff([market], existing);
+
+    expect(groupMetadataUpdates).toHaveLength(1);
+    expect(groupMetadataUpdates[0].groupId).toBe(7);
+    expect(groupMetadataUpdates[0].fields.negRiskMarketId).toBe('basket-a');
+    expect(groupMetadataUpdates[0].old.negRiskMarketId).toBeNull();
+  });
+
+  it('does not promote a Sapience group to negRisk when its siblings disagree on basket id', () => {
+    // refresh-metadata feeds one-market synthetic groups in. Without
+    // aggregating by the Sapience conditionGroupId first, the FIRST
+    // synthetic group's basket would stamp the whole group — even
+    // when another sibling has a different (or no) basket. Reject
+    // mixed sets the same way generate's grouping does.
+    const childA = makeMarket({
+      conditionId: '0xchildA',
+      slug: 'foo-a',
+      events: [
+        {
+          title: 'Mixed group',
+          slug: 'mixed-group',
+          negRisk: true,
+          negRiskMarketId: 'basket-x',
+        },
+      ],
+    });
+    const childB = makeMarket({
+      conditionId: '0xchildB',
+      slug: 'foo-b',
+      events: [
+        {
+          title: 'Mixed group',
+          slug: 'mixed-group',
+          negRisk: true,
+          negRiskMarketId: 'basket-y',
+        },
+      ],
+    });
+
+    const existing = new Map([
+      [
+        '0xchildA',
+        existingFromMarket(childA, {
+          conditionGroupId: 11,
+          conditionGroupNegRisk: false,
+          conditionGroupSimilarMarkets: [
+            'https://polymarket.com/event/mixed-group#foo-a',
+          ],
+        }),
+      ],
+      [
+        '0xchildB',
+        existingFromMarket(childB, {
+          conditionGroupId: 11,
+          conditionGroupNegRisk: false,
+          conditionGroupSimilarMarkets: [
+            'https://polymarket.com/event/mixed-group#foo-a',
+          ],
+        }),
+      ],
+    ]);
+
+    const { groupMetadataUpdates } = runDiff([childA, childB], existing);
+
+    // No negRiskMarketId set, because the siblings disagree. No
+    // similarMarkets update either (the stored URL is already current).
+    expect(groupMetadataUpdates).toHaveLength(0);
+  });
+
+  it('refuses to demote ConditionGroup.negRisk from true to false; logs an error instead', () => {
+    const errors: string[] = [];
+    const errSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation((...args: unknown[]) => {
+        errors.push(args.map(String).join(' '));
+      });
+    try {
+      const market = makeMarket({
+        conditionId: '0xnobasket',
+        slug: 'nba-champion-celtics',
+        events: [{ title: 'NBA champion', slug: 'nba-champion' }],
+      });
+
+      const existing = new Map([
+        [
+          '0xnobasket',
+          existingFromMarket(market, {
+            conditionGroupId: 9,
+            conditionGroupNegRisk: true,
+            // Pre-set the group URL so the diff has nothing else to emit.
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com/event/nba-champion#nba-champion-celtics',
+            ],
+          }),
+        ],
+      ]);
+
+      const { groupMetadataUpdates } = runDiff([market], existing);
+
+      expect(groupMetadataUpdates).toHaveLength(0);
+      expect(
+        errors.some((msg) =>
+          /refused to demote group 9.*from negRisk/i.test(msg)
+        )
+      ).toBe(true);
+    } finally {
+      errSpy.mockRestore();
+    }
+  });
+
   it('detects stored group URL using the broken polymarket.com#slug format', () => {
     const market = makeMarket({
       conditionId: '0xfmt',
@@ -715,6 +963,92 @@ describe('groupMarkets new-condition routing', () => {
     );
     expect(new Set(conditionCategories).size).toBe(1);
     expect(conditionCategories[0]).toBe(categories[0]);
+  });
+
+  it('marks event siblings as a negRisk group only when they share one negRiskMarketId', async () => {
+    const events = [
+      {
+        id: 'event-1',
+        title: 'NBA champion',
+        slug: 'nba-champion',
+        negRisk: true,
+        negRiskMarketId: 'basket-123',
+      },
+    ];
+    const markets = [
+      makeMarket({ conditionId: '0xa', question: 'Will Celtics win?', events }),
+      makeMarket({ conditionId: '0xb', question: 'Will Knicks win?', events }),
+    ];
+
+    mockCheckExisting.mockResolvedValue(new Map());
+
+    const result = await groupMarkets(markets, API_URL);
+    const groups = result.groups.filter((g) => g.title === 'NBA champion');
+
+    expect(groups).toHaveLength(2);
+    expect(groups.every((g) => g.negRiskMarketId === 'basket-123')).toBe(true);
+    expect(
+      groups
+        .flatMap((g) => g.conditions)
+        .every((c) => c.negRisk === true && c.negRiskMarketId === 'basket-123')
+    ).toBe(true);
+  });
+
+  it('sends same-title markets from different baskets under one title; API decides what survives', async () => {
+    // The keeper no longer suffix-segments title collisions. Both
+    // single-market groups share the raw event title and carry their own
+    // basket ids; the API's strict basket invariant rejects whichever
+    // arrives second when the basket ids disagree, surfaced as a 400 in
+    // the batch-create response so operators see the conflict.
+    const markets = [
+      makeMarket({
+        conditionId: '0xa',
+        question: 'Will Celtics win?',
+        events: [
+          {
+            id: 'event-1',
+            title: 'NBA champion',
+            slug: 'nba-champion',
+            negRisk: true,
+            negRiskMarketId: 'basket-a',
+          },
+        ],
+      }),
+      makeMarket({
+        conditionId: '0xb',
+        question: 'Will Knicks win?',
+        events: [
+          {
+            id: 'event-1',
+            title: 'NBA champion',
+            slug: 'nba-champion',
+            negRisk: true,
+            negRiskMarketId: 'basket-b',
+          },
+        ],
+      }),
+    ];
+
+    mockCheckExisting.mockResolvedValue(new Map());
+
+    const result = await groupMarkets(markets, API_URL);
+    const groups = result.groups.filter((g) => g.title === 'NBA champion');
+
+    expect(groups).toHaveLength(2);
+    expect(groups.every((g) => g.title === 'NBA champion')).toBe(true);
+    expect(groups.map((g) => g.negRiskMarketId).sort()).toEqual([
+      'basket-a',
+      'basket-b',
+    ]);
+    expect(
+      groups
+        .flatMap((g) => g.conditions)
+        .map((c) => c.negRiskMarketId)
+        .sort()
+    ).toEqual(['basket-a', 'basket-b']);
+    expect(
+      groups.flatMap((g) => g.conditions).every((c) => c.negRisk === true)
+    ).toBe(true);
   });
 
   it('leaves a single-condition group alone (no siblings to vote against)', async () => {

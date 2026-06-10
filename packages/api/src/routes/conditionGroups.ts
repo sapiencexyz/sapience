@@ -13,6 +13,12 @@ function toJsonSafe<T>(obj: T): T {
   ) as T;
 }
 
+function normalizeNegRiskMarketId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 const router = Router();
 
 // GET /admin/conditionGroups - list all groups with their conditions
@@ -37,11 +43,22 @@ router.get('/', async (_req: Request, res: Response) => {
 // POST /admin/conditionGroups - create a group
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { name, categoryId, categorySlug, similarMarkets } = req.body as {
+    const {
+      name,
+      categoryId,
+      categorySlug,
+      similarMarkets,
+      negRiskMarketId,
+      externalEventId,
+      source,
+    } = req.body as {
       name?: string;
       categoryId?: number;
       categorySlug?: string;
       similarMarkets?: string[];
+      negRiskMarketId?: string | null;
+      externalEventId?: string | null;
+      source?: string;
     };
 
     if (!name || !name.trim()) {
@@ -53,6 +70,12 @@ router.post('/', async (req: Request, res: Response) => {
         .status(400)
         .json({ message: 'Either categoryId or categorySlug is required' });
     }
+
+    const normalizedNegRiskMarketId = normalizeNegRiskMarketId(negRiskMarketId);
+    const normalizedEventId =
+      typeof externalEventId === 'string' && externalEventId.trim().length > 0
+        ? externalEventId.trim()
+        : null;
 
     let resolvedCategoryId: number;
     if (typeof categoryId === 'number') {
@@ -75,6 +98,11 @@ router.post('/', async (req: Request, res: Response) => {
           name: name.trim(),
           categoryId: resolvedCategoryId,
           ...(Array.isArray(similarMarkets) ? { similarMarkets } : {}),
+          negRiskMarketId: normalizedNegRiskMarketId,
+          ...(normalizedEventId ? { externalEventId: normalizedEventId } : {}),
+          ...(typeof source === 'string' && source.trim().length > 0
+            ? { source: source.trim() }
+            : {}),
         },
         include: { category: true, condition: true },
       });
@@ -85,8 +113,12 @@ router.post('/', async (req: Request, res: Response) => {
         message.includes('Unique constraint failed') ||
         message.includes('Unique constraint')
       ) {
+        // Collision now comes from the partial UNIQUE (source,
+        // externalEventId) index; UNIQUE(name) was dropped. Same surface
+        // to the caller either way — 409.
         return res.status(409).json({
-          message: 'A condition group with this name already exists',
+          message:
+            'A condition group with this (source, externalEventId) already exists',
         });
       }
       log.error({ err: e }, 'Error creating condition group:');
@@ -98,7 +130,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /admin/conditionGroups/:id - update group (name, categoryId)
+// PUT /admin/conditionGroups/:id - update group (name, categoryId, basket id)
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -108,11 +140,20 @@ router.put('/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid id format' });
     }
 
-    const { name, categoryId, categorySlug, similarMarkets } = req.body as {
+    const {
+      name,
+      categoryId,
+      categorySlug,
+      similarMarkets,
+      negRiskMarketId,
+      externalEventId,
+    } = req.body as {
       name?: string;
       categoryId?: number | null;
       categorySlug?: string | null;
       similarMarkets?: string[];
+      negRiskMarketId?: string | null;
+      externalEventId?: string | null;
     };
 
     const existing = await prisma.conditionGroup.findUnique({
@@ -140,6 +181,27 @@ router.put('/:id', async (req: Request, res: Response) => {
       resolvedCategoryId = category.id;
     }
 
+    // negRiskMarketId and externalEventId are touched only when the key
+    // is present in the body. `null` (or empty string) explicitly clears
+    // the field; a non-empty string sets it. Absence leaves the existing
+    // value alone.
+    const negRiskMarketIdTouched = Object.prototype.hasOwnProperty.call(
+      req.body ?? {},
+      'negRiskMarketId'
+    );
+    const nextNegRiskMarketId = negRiskMarketIdTouched
+      ? normalizeNegRiskMarketId(negRiskMarketId)
+      : undefined;
+    const externalEventIdTouched = Object.prototype.hasOwnProperty.call(
+      req.body ?? {},
+      'externalEventId'
+    );
+    const nextExternalEventId = externalEventIdTouched
+      ? typeof externalEventId === 'string' && externalEventId.trim().length > 0
+        ? externalEventId.trim()
+        : null
+      : undefined;
+
     try {
       const group = await prisma.conditionGroup.update({
         where: { id: groupId },
@@ -151,6 +213,12 @@ router.put('/:id', async (req: Request, res: Response) => {
             ? { categoryId: resolvedCategoryId }
             : {}),
           ...(Array.isArray(similarMarkets) ? { similarMarkets } : {}),
+          ...(negRiskMarketIdTouched
+            ? { negRiskMarketId: nextNegRiskMarketId }
+            : {}),
+          ...(externalEventIdTouched
+            ? { externalEventId: nextExternalEventId }
+            : {}),
         },
         include: {
           category: true,
@@ -166,8 +234,11 @@ router.put('/:id', async (req: Request, res: Response) => {
         message.includes('Unique constraint failed') ||
         message.includes('Unique constraint')
       ) {
+        // Collision now comes from the partial UNIQUE(source, externalEventId)
+        // index; UNIQUE(name) was dropped.
         return res.status(409).json({
-          message: 'A condition group with this name already exists',
+          message:
+            'A condition group with this (source, externalEventId) already exists',
         });
       }
       log.error({ err: e }, 'Error updating condition group:');
@@ -204,16 +275,46 @@ router.put('/:id/conditions', async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Condition group not found' });
     }
 
-    // Validate all condition IDs exist
+    // Validate all condition IDs exist and load their current basket
+    // affiliation. A condition's effective basket is the negRiskMarketId
+    // of its current group (or null when unattached). Reuse this on the
+    // basket check below so we don't round-trip twice.
     const validConditions = await prisma.condition.findMany({
       where: { id: { in: conditionIds } },
-      select: { id: true },
+      select: {
+        id: true,
+        conditionGroup: { select: { negRiskMarketId: true } },
+      },
     });
     const validIds = new Set(validConditions.map((c) => c.id));
     const invalidIds = conditionIds.filter((cid) => !validIds.has(cid));
     if (invalidIds.length > 0) {
       return res.status(400).json({
         message: `Invalid condition IDs: ${invalidIds.join(', ')}`,
+      });
+    }
+
+    // Basket invariant: attaching a condition to a group is only legal
+    // when the condition's current basket matches the target group's
+    // basket exactly (null included). Without this, an unrelated market
+    // can drift into a mutually-exclusive negRisk basket and corrupt
+    // settlement. Conditions already in the target group trivially
+    // agree (the current group IS the target group).
+    const targetBasket = existing.negRiskMarketId;
+    const mismatched = validConditions.filter((c) => {
+      const currentBasket = c.conditionGroup?.negRiskMarketId ?? null;
+      return currentBasket !== targetBasket;
+    });
+    if (mismatched.length > 0) {
+      return res.status(400).json({
+        message:
+          `Cannot attach conditions to group ${groupId} ` +
+          `(expected negRiskMarketId ${targetBasket ?? 'null'}): ` +
+          mismatched
+            .map(
+              (c) => `${c.id}=${c.conditionGroup?.negRiskMarketId ?? 'null'}`
+            )
+            .join(', '),
       });
     }
 
