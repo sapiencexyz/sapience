@@ -30,15 +30,6 @@ const queryClient = new QueryClient({
       queryKeyHashFn: hashFn,
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
-      // Don't retry 4xx — 429 in particular just amplifies upstream
-      // throttling, and the rest (400/403/404) aren't recoverable.
-      retry: (failureCount, error) => {
-        const status = (
-          error as { response?: { status?: number } } | null | undefined
-        )?.response?.status;
-        if (status != null && status >= 400 && status < 500) return false;
-        return failureCount < 3;
-      },
     },
   },
 });

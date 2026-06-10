@@ -94,7 +94,7 @@ export default function PositionDialog({
         <div className="min-w-0 space-y-4">
           <PositionSummary
             kind="position"
-            positionId={position.positionId}
+            positionId={position.id}
             pickCount={rawPicks.length}
             createdAt={createdAt}
             endsAtMs={endsAtMs}
@@ -111,7 +111,7 @@ export default function PositionDialog({
 
           <PicksContent
             picks={picks}
-            positionId={position.positionId}
+            positionId={String(position.id)}
             hideHeader
             positionStatus={getPositionStatus()}
           />

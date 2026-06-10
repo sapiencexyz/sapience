@@ -23,47 +23,42 @@ const CONDITIONS_PAGE_SIZE = 30;
 
 // Fetch unsettled conditions with no engagement (OI=0 and no attestations) — cleanup candidates
 const UNRESOLVED_NO_ENGAGEMENT_QUERY = `
-query UnresolvedNoEngagement($first: Int!, $after: String) {
-  conditionsConnection(
-    filter: {
-      settled: false
-      visibility: PUBLIC
-      engagement: NONE
+query UnresolvedNoEngagement($take: Int!, $skip: Int!) {
+  conditions(
+    where: {
+      AND: [
+        { settled: { equals: false } }
+        { public: { equals: true } }
+        { openInterest: { equals: "0" } }
+        { attestations: { none: {} } }
+      ]
     }
-    orderBy: { field: RESOLVES_AT, direction: ASC }
-    first: $first
-    after: $after
+    orderBy: [{ endTime: asc }, { id: asc }]
+    take: $take
+    skip: $skip
   ) {
-    nodes {
-      id: conditionId
-      openInterest
-      question
-    }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
+    id
+    openInterest
+    question
+    endTime
   }
 }
 `;
 
-// Re-check query: fetch IDs that gained engagement during safeguard wait.
-// `conditionsConnection` exposes an `engagement: ANY` filter that internally
-// performs the OR(openInterest != 0, attestations.some) check; restricting
-// to the provided id set keeps the response small.
+// Re-check query: fetch IDs that gained engagement during safeguard wait
+// Uses filters instead of _count to avoid query complexity explosion
 const CONDITIONS_WITH_ENGAGEMENT_QUERY = `
-query ConditionsWithEngagement($ids: [ID!]!) {
-  conditionsConnection(
-    filter: {
-      ids: $ids
-      engagement: ANY
-      visibility: ALL
+query ConditionsWithEngagement($ids: [String!]!) {
+  conditions(
+    where: {
+      id: { in: $ids }
+      OR: [
+        { openInterest: { not: { equals: "0" } } }
+        { attestations: { some: {} } }
+      ]
     }
-    first: 100
   ) {
-    nodes {
-      id: conditionId
-    }
+    id
   }
 }
 `;
@@ -89,21 +84,17 @@ function mapCondition(raw: RawCondition): CleanupCondition {
   };
 }
 
-async function fetchConditionsConnection(
+async function fetchConditionsPage(
   apiUrl: string,
-  first: number,
-  after: string | null
-): Promise<{
-  items: CleanupCondition[];
-  hasMore: boolean;
-  endCursor: string | null;
-}> {
+  take: number,
+  skip: number
+): Promise<CleanupCondition[]> {
   const response = await fetchWithRetry(`${apiUrl}/graphql`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
       query: UNRESOLVED_NO_ENGAGEMENT_QUERY,
-      variables: { first, after },
+      variables: { take, skip },
     }),
   });
 
@@ -115,13 +106,7 @@ async function fetchConditionsConnection(
   }
 
   const result = (await response.json()) as GraphQLResponse<{
-    conditionsConnection: {
-      nodes: RawCondition[];
-      pageInfo?: {
-        hasNextPage?: boolean | null;
-        endCursor?: string | null;
-      } | null;
-    };
+    conditions: RawCondition[];
   }>;
   if (result.errors?.length) {
     throw new Error(
@@ -129,35 +114,32 @@ async function fetchConditionsConnection(
     );
   }
 
-  const page = result.data?.conditionsConnection;
-  return {
-    items: (page?.nodes ?? []).map(mapCondition),
-    hasMore: Boolean(page?.pageInfo?.hasNextPage),
-    endCursor: page?.pageInfo?.endCursor ?? null,
-  };
+  return (result.data?.conditions ?? []).map(mapCondition);
 }
 
 export async function fetchNoEngagementConditions(
   apiUrl: string
 ): Promise<CleanupCondition[]> {
   const all: CleanupCondition[] = [];
-  let after: string | null = null;
+  let skip = 0;
 
   console.log(`Fetching unresolved no-engagement conditions from ${apiUrl}...`);
 
   while (true) {
-    const { items, hasMore, endCursor } = await fetchConditionsConnection(
+    const page = await fetchConditionsPage(
       apiUrl,
-      CONDITIONS_PAGE_SIZE,
-      after
+      CONDITIONS_PAGE_SIZE + 1,
+      skip
     );
-    all.push(...items);
+    const hasMore = page.length > CONDITIONS_PAGE_SIZE;
+    const pageItems = hasMore ? page.slice(0, CONDITIONS_PAGE_SIZE) : page;
+    all.push(...pageItems);
 
-    if (items.length > 0) {
+    if (pageItems.length > 0) {
       console.log(`  Fetched ${all.length} conditions so far...`);
     }
-    if (!hasMore || !endCursor) break;
-    after = endCursor;
+    if (!hasMore) break;
+    skip += CONDITIONS_PAGE_SIZE;
   }
 
   console.log(`Found ${all.length} unresolved no-engagement conditions`);
@@ -196,7 +178,7 @@ export async function fetchConditionsWithEngagement(
     }
 
     const result = (await response.json()) as GraphQLResponse<{
-      conditionsConnection: { nodes: { id: string }[] };
+      conditions: { id: string }[];
     }>;
     if (result.errors?.length) {
       throw new Error(
@@ -204,9 +186,7 @@ export async function fetchConditionsWithEngagement(
       );
     }
 
-    allEngaged.push(
-      ...(result.data?.conditionsConnection?.nodes ?? []).map((c) => c.id)
-    );
+    allEngaged.push(...(result.data?.conditions ?? []).map((c) => c.id));
   }
 
   return allEngaged;

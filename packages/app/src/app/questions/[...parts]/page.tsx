@@ -28,32 +28,34 @@ async function fetchQuestionTitle(
 ): Promise<string | null> {
   try {
     const query = `
-      query ConditionForMeta($filters: ConditionFilter!) {
-        conditionsConnection(filter: $filters, first: 1) {
-          nodes {
-            shortName
-            question
-          }
+      query ConditionForMeta($where: ConditionWhereInput!) {
+        conditions(where: $where, take: 1) {
+          shortName
+          question
         }
       }
     `;
 
-    const filters: Record<string, unknown> = { ids: [conditionId] };
+    const whereClause: { AND: Array<Record<string, unknown>> } = {
+      AND: [{ id: { in: [conditionId] } }],
+    };
     if (resolverAddress) {
-      filters.resolverAddress = resolverAddress;
+      whereClause.AND.push({
+        resolver: { equals: resolverAddress, mode: 'insensitive' },
+      });
     }
 
     const response = await fetch(getGraphQLEndpoint(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables: { filters } }),
+      body: JSON.stringify({ query, variables: { where: whereClause } }),
       next: { revalidate: 60 },
     });
 
     if (!response.ok) return null;
 
     const result = await response.json();
-    const condition = result?.data?.conditionsConnection?.nodes?.[0];
+    const condition = result?.data?.conditions?.[0];
     return condition?.question || null;
   } catch {
     return null;

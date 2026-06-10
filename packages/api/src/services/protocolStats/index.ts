@@ -36,7 +36,6 @@ export { buildVaultAggregator } from './vaultAggregator';
 export {
   computeAndStoreProtocolStats,
   getLatestProtocolStats,
-  getPriorSnapshot,
   getProtocolStatsTimeSeries,
   resolveSnapshotIntervalSeconds,
 } from './snapshots';

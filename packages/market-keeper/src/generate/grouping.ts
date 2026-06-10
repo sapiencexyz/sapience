@@ -12,6 +12,7 @@ import type {
   SapienceCategorySlug,
   MetadataUpdate,
   SyncableFields,
+  GroupSyncableFields,
   GroupMetadataUpdate,
   LlmEndTimeResult,
 } from '../types';
@@ -27,6 +28,7 @@ import {
 import { inferSapienceCategorySlug } from './category';
 import { transformMatchQuestion, getPolymarketUrl } from './transform';
 import { extractEndTime } from './endtime';
+import { extractCategoryEndTime } from './extractors';
 import { isTemplatedMarket } from './templated';
 import {
   enrichMarketsWithLLM,
@@ -36,6 +38,7 @@ import {
 } from '../llm';
 import { fetchEventTags } from './tags';
 import { parseYesPrice } from '../utils/price';
+import { gameEndTime, SPORT_LEAGUES } from './extractors/sports/game';
 import {
   runPipeline,
   printPipelineStats,
@@ -43,6 +46,7 @@ import {
   UNGROUPED_MARKET_FILTERS,
   createLlmPreFilter,
   checkExistingConditions,
+  matchesAlwaysIncludePatterns,
   type MarketGroup,
   type ExistingCondition,
 } from './pipeline';
@@ -76,12 +80,145 @@ export function computeGroupCategory(
   return majorityCategory;
 }
 
+function getNegRiskMarketId(market: PolymarketMarket): string | undefined {
+  const raw =
+    market.negRiskMarketId ??
+    market.negRiskMarketID ??
+    market.neg_risk_market_id ??
+    market.events?.[0]?.negRiskMarketId ??
+    market.events?.[0]?.negRiskMarketID ??
+    market.events?.[0]?.neg_risk_market_id;
+  if (raw === undefined || raw === null) return undefined;
+  const id = String(raw).trim();
+  return id.length > 0 ? id : undefined;
+}
+
+function isNegRiskMarket(market: PolymarketMarket): boolean {
+  // Treat any neg-risk basket id as a strong signal too: Polymarket has shipped
+  // the flag and the id under slightly different field names over time, and we
+  // do not want a casing mismatch to silently downgrade a basket to non-negRisk.
+  return (
+    market.negRisk === true ||
+    market.events?.[0]?.negRisk === true ||
+    getNegRiskMarketId(market) !== undefined
+  );
+}
+
+/**
+ * Resolve the shared Polymarket negative-risk basket id for a set of
+ * sibling markets. We only stamp a basket id when every market agrees:
+ * mixed groups stay basket-less so the API derives `negRisk: false`.
+ */
+function sharedNegRiskMarketId(
+  markets: PolymarketMarket[]
+): string | undefined {
+  if (markets.length === 0) return undefined;
+  const ids = markets.map(getNegRiskMarketId);
+  const firstId = ids[0];
+  const sameBasket = !!firstId && ids.every((id) => id === firstId);
+  const allNegRisk = markets.every(isNegRiskMarket);
+  return allNegRisk && sameBasket ? firstId : undefined;
+}
+
+/**
+ * Deterministic category-specialist endTime for a market (unix seconds) or
+ * null. Reads the resolution time straight out of the title/description for the
+ * templated families (weather/crypto/sports/social/snapshot). When non-null it
+ * becomes the condition's endTime (top of decideEndTime's cascade) AND lets the
+ * market skip the Sonar endTime call. Tag routing uses the non-LLM inferred
+ * category since this runs before LLM enrichment.
+ */
+export function categoryEndTimeForMarket(
+  market: PolymarketMarket
+): number | null {
+  const question = transformMatchQuestion(market);
+  return extractCategoryEndTime(
+    question,
+    market.description ?? '',
+    inferSapienceCategorySlug(market)
+  );
+}
+
+function normalizeLeagueCandidate(value: string | undefined | null): string {
+  return (value ?? '')
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-');
+}
+
+export function leagueForMarket(market: PolymarketMarket): string | undefined {
+  const rawCandidates = [
+    market.events?.[0]?.seriesSlug,
+    market.events?.[0]?.series?.[0]?.slug,
+    market.events?.[0]?.series?.[0]?.title,
+    ...(market.events?.[0]?.tags ?? []).flatMap((tag) => [tag.slug, tag.label]),
+    market.slug,
+    market.events?.[0]?.slug,
+    market.events?.[0]?.title,
+    market.question,
+  ];
+
+  const haystack = rawCandidates
+    .map(normalizeLeagueCandidate)
+    .filter(Boolean)
+    .join(' ');
+  if (!haystack) return undefined;
+
+  return SPORT_LEAGUES.find((league) => {
+    const normalizedLeague = normalizeLeagueCandidate(league);
+    return new RegExp(`(^|[^a-z0-9])${normalizedLeague}([^a-z0-9]|$)`).test(
+      haystack
+    );
+  });
+}
+
+export function gameEndTimeForMarket(market: PolymarketMarket): number | null {
+  return gameEndTime(market.gameStartTime, leagueForMarket(market));
+}
+
+function deterministicEndTimeForMarket(
+  market: PolymarketMarket
+): number | null {
+  return gameEndTimeForMarket(market) ?? categoryEndTimeForMarket(market);
+}
+
+/**
+ * Decide which NEW markets still need the (expensive) Perplexity Sonar endTime
+ * call, given the category-enrichment verdict. A market is gated OUT when EITHER:
+ *
+ *   1. a deterministic rung already resolves its endTime (gameStartTime or a
+ *      category specialist) — the existing cascade gate, OR
+ *   2. the LLM labeled it `crypto` and it isn't an always-include market — those
+ *      are dropped by the crypto filter (NonCryptoConditionFilter) before
+ *      submission, so a Sonar call on them is pure waste. Because dropped markets
+ *      are never persisted, they re-enter the pipeline as "new" every run, so the
+ *      waste repeats forever until this gate skips them.
+ *
+ * This mirrors the post-LLM crypto filter's keep-rule (categorySlug !== 'crypto'
+ * OR always-include), so we only skip Sonar for markets we won't submit anyway.
+ * A market with no enrichment entry (unknown category) is conservatively kept.
+ */
+export function marketsNeedingSonar(
+  markets: PolymarketMarket[],
+  enrichments: Map<string, MarketEnrichmentOutput>
+): PolymarketMarket[] {
+  return markets.filter((m) => {
+    if (deterministicEndTimeForMarket(m) != null) return false;
+    const category = enrichments.get(m.conditionId)?.category;
+    const droppedByCryptoFilter =
+      category === 'crypto' && !matchesAlwaysIncludePatterns(m.question);
+    return !droppedByCryptoFilter;
+  });
+}
+
 export function transformToSapienceCondition(
   market: PolymarketMarket,
   groupTitle?: string,
   enrichment?: MarketEnrichmentOutput,
   tags: string[] = [],
-  llmEndTime?: LlmEndTimeResult
+  llmEndTime?: LlmEndTimeResult,
+  negRiskMarketId?: string,
+  externalEventId?: string
 ): SapienceCondition {
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
@@ -96,6 +233,16 @@ export function transformToSapienceCondition(
   // Sonar returns UNKNOWN. Always compute it; the combiner decides whether to use it.
   const regexEndTime = extractEndTime(question, market.description ?? '');
 
+  // High-precision category specialist — second rung of decideEndTime's
+  // cascade, after gameStartTime, and one signal that gates this market out of
+  // the Sonar call upstream.
+  const categoryEndTime = extractCategoryEndTime(
+    question,
+    market.description ?? '',
+    inferSapienceCategorySlug(market)
+  );
+  const league = leagueForMarket(market);
+
   return {
     conditionHash: market.conditionId, // Use Polymarket's conditionId directly
     question,
@@ -108,12 +255,18 @@ export function transformToSapienceCondition(
     categorySlug: enrichment?.category || inferSapienceCategorySlug(market), // Use LLM category or fallback
     chainId: CHAIN_ID,
     groupTitle,
+    externalEventId,
     estimatedPrice: parseYesPrice(market.outcomePrices),
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
     endTimeOverride: regexEndTime ?? undefined,
+    categoryEndTime: categoryEndTime ?? undefined,
     llmEndTime,
+    gameStartTime: market.gameStartTime ?? undefined,
+    league,
     isTemplated: isTemplatedMarket(market),
+    negRisk: negRiskMarketId !== undefined,
+    negRiskMarketId,
   };
 }
 
@@ -134,6 +287,7 @@ export async function groupMarkets(
         title: event.title,
         markets: [market],
         eventSlug: event.slug,
+        eventId: event.id,
       });
     } else {
       // Rare: Polymarket markets without an associated event.
@@ -189,19 +343,34 @@ export async function groupMarkets(
   );
   printPipelineStats(llmFilterStats, 'LLM Pre-Filter');
 
-  // Enrich NEW markets with LLM — category/shortName and endTime run in parallel
-  const [enrichments, endTimeMap] = await Promise.all([
-    enrichMarketsWithLLM(newMarkets, {
-      enabled: LLM_ENRICHMENT_ENABLED,
-      apiKey: OPENROUTER_API_KEY,
-      model: LLM_MODEL,
-    }),
-    enrichEndTimesWithLLM(newMarkets, {
-      enabled: LLM_ENDTIME_SEARCH_ENABLED,
-      apiKey: OPENROUTER_API_KEY,
-      model: LLM_ENDTIME_MODEL,
-    }),
-  ]);
+  // Category/shortName enrichment runs FIRST (cheap GPT call): its verdict feeds
+  // the Sonar gate below. Markets the LLM labels crypto are dropped by the crypto
+  // filter before submission, so we must know the category before deciding
+  // whether the expensive Sonar endTime call is worth making. This sequences what
+  // used to be a parallel Promise.all — a small latency cost on a cron job in
+  // exchange for not paying Sonar on markets we'll throw away.
+  const enrichments = await enrichMarketsWithLLM(newMarkets, {
+    enabled: LLM_ENRICHMENT_ENABLED,
+    apiKey: OPENROUTER_API_KEY,
+    model: LLM_MODEL,
+  });
+
+  // Sonar gate: skip markets a deterministic rung resolves (existing behavior)
+  // AND markets the crypto filter will drop (new). See marketsNeedingSonar.
+  const sonarEndTimeMarkets = marketsNeedingSonar(newMarkets, enrichments);
+  const gatedCount = newMarkets.length - sonarEndTimeMarkets.length;
+  if (gatedCount > 0) {
+    console.log(
+      `[LLM:endTime] cascade gate: ${gatedCount}/${newMarkets.length} markets ` +
+        `skip Sonar (deterministic rung or crypto-filtered)`
+    );
+  }
+
+  const endTimeMap = await enrichEndTimesWithLLM(sonarEndTimeMarkets, {
+    enabled: LLM_ENDTIME_SEARCH_ENABLED,
+    apiKey: OPENROUTER_API_KEY,
+    model: LLM_ENDTIME_MODEL,
+  });
 
   // Filter out existing markets from groups and ungrouped (no need to submit them)
   const newGroups = filteredGroups.filter(
@@ -219,12 +388,25 @@ export async function groupMarkets(
     const enrichment = enrichments.get(market.conditionId);
     const eventSlug = market.events?.[0]?.slug;
     const marketTags = eventSlug ? (eventTagMap.get(eventSlug) ?? []) : [];
+    // Use the raw event title — no basket-id suffixing. If two same-title
+    // markets come from different baskets, the API's strict basket
+    // invariant rejects whichever one arrives second, surfaced as an
+    // operator-visible 400 from batch-create. Auto-segmenting masked the
+    // underlying data problem; let it surface.
+    const conditionGroupTitle = group.title;
+    const groupNegRiskMarketId = sharedNegRiskMarketId(group.markets);
+    // Use the (pre-injected) eventId on MarketGroup when present, falling
+    // back to the market's events[0].id. Both should agree.
+    const groupExternalEventId =
+      group.eventId ?? market.events?.[0]?.id ?? undefined;
     const condition = transformToSapienceCondition(
       market,
-      group.title,
+      conditionGroupTitle,
       enrichment,
       marketTags,
-      endTimeMap.get(market.conditionId)
+      endTimeMap.get(market.conditionId),
+      groupNegRiskMarketId,
+      groupExternalEventId
     );
 
     // Use event description if available, otherwise use market's description
@@ -236,11 +418,13 @@ export async function groupMarkets(
 
     const groupUrl = getPolymarketUrl(market);
     conditionGroups.push({
-      title: group.title,
+      title: conditionGroupTitle,
       description: groupDescription,
       categorySlug: condition.categorySlug,
       similarMarkets: groupUrl ? [groupUrl] : [],
       tags: marketTags,
+      negRiskMarketId: groupNegRiskMarketId,
+      externalEventId: groupExternalEventId,
       conditions: [condition],
     });
   }
@@ -254,7 +438,9 @@ export async function groupMarkets(
       undefined,
       enrichments.get(m.conditionId),
       mTags,
-      endTimeMap.get(m.conditionId)
+      endTimeMap.get(m.conditionId),
+      sharedNegRiskMarketId([m]),
+      m.events?.[0]?.id ?? undefined
     );
   });
 
@@ -322,6 +508,7 @@ export function freshMetadataFor(
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
     groupName: groupTitle,
+    externalEventId: market.events?.[0]?.id ?? undefined,
   };
 }
 
@@ -391,6 +578,16 @@ export function computeMetadataUpdates(
 
     // Iterate every syncable key. Undefined/null on the fresh side means
     // "we don't own this value right now" → skip, never blank out DB state.
+    // Per-condition negRisk fields are not GraphQL-exposed, so the keeper
+    // does not drift-detect them here — only the ConditionGroup.negRisk
+    // bucket flag is tracked, in computeGroupMetadataUpdates below.
+    //
+    // externalEventId is included so the admin route can re-resolve the
+    // group via the canonical (source, externalEventId) lookup. Without it,
+    // batch-metadata payloads would carry only groupName, which is no
+    // longer unique after migration 20260529001202 dropped UNIQUE(name) —
+    // and the route's name-fallback could attach the condition to the
+    // wrong group when multiple groups share a display title.
     const keys: (keyof SyncableFields)[] = [
       'question',
       'optionName',
@@ -400,6 +597,7 @@ export function computeMetadataUpdates(
       'similarMarketVolume',
       'similarMarketImage',
       'groupName',
+      'externalEventId',
     ];
     for (const key of keys) {
       const newVal = fresh[key];
@@ -411,6 +609,28 @@ export function computeMetadataUpdates(
         (fields as Record<string, unknown>)[key] = newVal;
         (old as Record<string, unknown>)[key] = oldVal;
       }
+    }
+
+    // When the diff emits groupName but not externalEventId, force the
+    // event id into the payload anyway. Reason: the admin route's
+    // group-resolution precedence is (source, externalEventId) → name
+    // fallback. If we send only groupName for a group-rename
+    // (e.g. Polymarket changes the event title but keeps the same id),
+    // the route hits the name fallback — and with UNIQUE(name) dropped
+    // by migration 20260529001202, that can attach the condition to a
+    // different newest-id-wins row sharing the title. Carrying
+    // externalEventId — even unchanged — keeps the lookup on the
+    // canonical event-keyed path.
+    if (
+      Object.prototype.hasOwnProperty.call(fields, 'groupName') &&
+      !Object.prototype.hasOwnProperty.call(fields, 'externalEventId') &&
+      typeof fresh.externalEventId === 'string' &&
+      fresh.externalEventId.length > 0
+    ) {
+      (fields as Record<string, unknown>).externalEventId =
+        fresh.externalEventId;
+      (old as Record<string, unknown>).externalEventId =
+        existing.externalEventId;
     }
 
     // Only rewrite shortName when deterministic regex produces a non-null
@@ -445,10 +665,14 @@ export function computeMetadataUpdates(
 /**
  * Compare stored ConditionGroup.similarMarkets against what we'd generate
  * fresh from Polymarket and emit an update for any group whose URL has
- * drifted (event slug rename, earlier broken format, etc.). Each filtered
- * group is processed once; we key by the existing conditionGroupId looked
- * up via the group's first market, so we can't double-emit even if future
- * changes allow multi-market groups.
+ * drifted (event slug rename, earlier broken format, etc.).
+ *
+ * Fresh markets are first aggregated by the existing Sapience
+ * `conditionGroupId` they map to, so `sharedNegRiskMarketId` evaluates the
+ * **full sibling set** instead of one market in isolation. Without this,
+ * refresh-metadata's one-market-per-synthetic-group input would let any
+ * single sibling unilaterally stamp the whole group's basket id, even
+ * when other siblings disagree.
  */
 export function computeGroupMetadataUpdates(
   groups: Array<{
@@ -458,32 +682,95 @@ export function computeGroupMetadataUpdates(
   }>,
   existingIds: Map<string, ExistingCondition>
 ): GroupMetadataUpdate[] {
-  const updates: GroupMetadataUpdate[] = [];
-  const seenGroupIds = new Set<number>();
-
+  // Aggregate fresh markets by the Sapience conditionGroupId they belong
+  // to. A single synthetic input group has at most one market, so we
+  // collapse across synthetic groups here.
+  type AggregatedGroup = {
+    sapienceGroupId: number;
+    sapienceGroupNegRisk: boolean;
+    sapienceGroupSimilarMarkets: string[] | undefined;
+    title: string;
+    markets: PolymarketMarket[];
+  };
+  const aggregated = new Map<number, AggregatedGroup>();
   for (const group of groups) {
-    const market = group.markets[0];
-    if (!market) continue;
+    for (const market of group.markets) {
+      const existing = existingIds.get(market.conditionId);
+      if (!existing?.conditionGroupId) continue;
+      const bucket = aggregated.get(existing.conditionGroupId);
+      if (bucket) {
+        bucket.markets.push(market);
+      } else {
+        aggregated.set(existing.conditionGroupId, {
+          sapienceGroupId: existing.conditionGroupId,
+          sapienceGroupNegRisk: existing.conditionGroupNegRisk ?? false,
+          sapienceGroupSimilarMarkets: existing.conditionGroupSimilarMarkets,
+          title: group.title,
+          markets: [market],
+        });
+      }
+    }
+  }
 
-    const existing = existingIds.get(market.conditionId);
-    if (!existing?.conditionGroupId) continue;
-    if (seenGroupIds.has(existing.conditionGroupId)) continue;
-    seenGroupIds.add(existing.conditionGroupId);
+  const updates: GroupMetadataUpdate[] = [];
+  for (const bucket of aggregated.values()) {
+    // Use the first market only to derive the URL — every Polymarket
+    // sibling under the same event resolves to the same canonical
+    // event URL, so picking one is fine and matches the prior behaviour.
+    const firstMarket = bucket.markets[0];
+    if (!firstMarket) continue;
 
     // If we can't build a correct fresh URL (market lacks an event slug),
     // skip rather than clear the existing value — matches the backfill's
     // "never overwrite with worse data" stance.
-    const freshUrl = getPolymarketUrl(market);
+    const freshUrl = getPolymarketUrl(firstMarket);
     if (!freshUrl) continue;
 
     const freshSimilarMarkets = [freshUrl];
-    const oldSimilarMarkets = existing.conditionGroupSimilarMarkets;
+    const oldSimilarMarkets = bucket.sapienceGroupSimilarMarkets;
+    // Now evaluated across the *full* sibling set, not a single market.
+    const freshNegRiskMarketId = sharedNegRiskMarketId(bucket.markets);
+
+    const fields: GroupSyncableFields = {};
+    const old: GroupSyncableFields = {};
 
     if (!fieldsEqual(oldSimilarMarkets, freshSimilarMarkets)) {
+      fields.similarMarkets = freshSimilarMarkets;
+      old.similarMarkets = oldSimilarMarkets;
+    }
+
+    // negRisk on an existing group is a one-way ratchet: we only ever flip
+    // false → true. A demotion back to non-negRisk would silently dissolve a
+    // basket's invariant — if fresh markets disagree on basketing, that's a
+    // data problem to surface to operators, not auto-correct. The boolean
+    // itself lives in GraphQL as a derived field; the keeper writes
+    // `negRiskMarketId` directly via PUT /admin/conditionGroups/:id and the
+    // API computes the boolean from it being non-null.
+    if (
+      bucket.sapienceGroupNegRisk === false &&
+      freshNegRiskMarketId !== undefined
+    ) {
+      fields.negRiskMarketId = freshNegRiskMarketId;
+      old.negRiskMarketId = null;
+    } else if (
+      bucket.sapienceGroupNegRisk === true &&
+      freshNegRiskMarketId === undefined
+    ) {
+      console.error(
+        `[Metadata] refused to demote group ${bucket.sapienceGroupId} ` +
+          `("${bucket.title}") from negRisk: fresh Polymarket markets disagree on ` +
+          `basket id (or are missing it). Conditions: ` +
+          bucket.markets
+            .map((m) => `${m.conditionId}=${getNegRiskMarketId(m) ?? 'none'}`)
+            .join(', ')
+      );
+    }
+
+    if (Object.keys(fields).length > 0) {
       updates.push({
-        groupId: existing.conditionGroupId,
-        fields: { similarMarkets: freshSimilarMarkets },
-        old: { similarMarkets: oldSimilarMarkets },
+        groupId: bucket.sapienceGroupId,
+        fields,
+        old,
       });
     }
   }

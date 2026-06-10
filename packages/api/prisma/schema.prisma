@@ -83,11 +83,11 @@ model Attestation {
   resolver        String?  @db.VarChar
   conditionId      String?  @db.VarChar
   condition        Condition? @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  forecast        String   @db.VarChar
+  prediction      String   @db.VarChar
   comment         String?  @db.Text
 
   // Relation to scores
-  attestationScore AttestationScore?
+  attestation_score AttestationScore?
 
   @@unique([uid], map: "UQ_attestation_uid")
   @@index([attester], map: "IDX_attestation_attester")
@@ -224,9 +224,6 @@ model Condition {
   // - IDX_condition_oi_numeric: ("openInterest"::numeric) DESC WHERE public = true
   // - IDX_condition_public_endtime: "endTime" DESC WHERE public = true
   // - IDX_condition_prediction_count: "predictionCount" DESC WHERE public = true
-  // - IDX_condition_public_createdat: "createdAt" DESC WHERE public = true
-  // - IDX_condition_public_volume24h: "volume24h" DESC WHERE public = true
-  // - IDX_condition_public_volume7d: "volume7d" DESC WHERE public = true
   // Trigger: trg_prediction_count maintains predictionCount on prediction INSERT/DELETE
   @@map("condition")
 }
@@ -234,10 +231,32 @@ model Condition {
 model ConditionGroup {
   id             Int         @id @default(autoincrement())
   createdAt      DateTime    @default(now()) @db.Timestamp(6)
-  name           String      @unique @db.VarChar
+  /// Display name. NOT unique — the same human-readable title can recur
+  /// across multiple Polymarket events (e.g. weekly "Top US Netflix
+  /// Movie This Week"). Identity for platform-sourced groups is the
+  /// partial unique index on (source, externalEventId) below.
+  name           String      @db.VarChar
   categoryId     Int?
   category       Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   similarMarkets String[]    @default([])
+  /// Polymarket negative-risk basket identifier when every child condition
+  /// shares one. Null for non-basket groups. The GraphQL `negRisk: Boolean!`
+  /// field is derived from this being non-null; the boolean itself is not
+  /// stored as a column.
+  negRiskMarketId String?    @db.VarChar
+  /// Origin of the group's identity. Future-proofs for multi-platform support
+  /// without threading `(source, externalEventId)` through every resolver
+  /// today — application code still treats this column as implicitly
+  /// `'polymarket'`. Add new sources only when a non-Polymarket integration
+  /// actually lands.
+  source         String      @default("polymarket") @db.VarChar
+  /// Stable platform-level identifier for the group. For
+  /// `source = 'polymarket'` this is the Polymarket event id
+  /// (`events[0].id` on the Gamma /markets response). Null for legacy /
+  /// Sapience-native / curated groups that don't originate from a platform
+  /// event. Uniqueness is enforced together with `source` by a partial
+  /// unique index — see migration.
+  externalEventId String?    @db.VarChar
   condition      Condition[]
 
   // Denormalized aggregates maintained by trigger on condition table
@@ -261,12 +280,17 @@ model ConditionGroup {
   totalSimilarMarketVolumeFiltered7d  Decimal @default(0) @db.Decimal @map("totalVolumeFiltered7d")
 
   @@index([categoryId])
+  @@index([name], map: "IDX_condition_group_name")
   // Raw SQL indexes (not representable in Prisma, managed via migration):
   // - IDX_cg_total_oi: "totalOpenInterest" DESC WHERE "publicConditionCount" > 0
   // - IDX_cg_max_end_time: "maxEndTime" DESC WHERE "publicConditionCount" > 0
   // - IDX_cg_total_prediction_count: "totalPredictionCount" DESC WHERE "publicConditionCount" > 0
   // - IDX_cg_max_created_at_epoch: "maxCreatedAtEpoch" DESC WHERE "publicConditionCount" > 0
   // - IDX_cg_total_volume_*: volume DESC WHERE "publicConditionCount" > 0
+  // - uq_condition_group_source_event: partial UNIQUE("source","externalEventId")
+  //   WHERE "externalEventId" IS NOT NULL — the canonical identity for
+  //   platform-sourced groups. Cannot be represented as a Prisma @@unique
+  //   because Prisma 6 doesn't support partial unique indexes natively.
   // Trigger: trg_condition_group_aggregates maintains aggregates on condition INSERT/UPDATE/DELETE
   @@map("condition_group")
 }
@@ -654,7 +678,9 @@ model Claim {
 
   chainId         Int
   marketAddress   String   @db.VarChar
-  predictionId    String   @db.VarChar
+  /// On-chain pickConfigId of the redeemed position. Historically mislabeled
+  /// `predictionId`; it has never stored a Prediction.predictionId.
+  pickConfigId    String   @db.VarChar
   holder          String   @db.VarChar
   positionToken   String   @db.VarChar
   tokensBurned    String   @db.VarChar
@@ -673,7 +699,7 @@ model Claim {
   @@unique([chainId, txHash, logIndex], map: "UQ_claim_chain_tx_log")
   @@index([chainId, marketAddress], map: "IDX_claim_chain_market")
   @@index([holder], map: "IDX_claim_holder")
-  @@index([predictionId], map: "IDX_claim_prediction")
+  @@index([pickConfigId], map: "IDX_claim_pick_config")
   @@index([redeemedAt], map: "IDX_claim_redeemed_at")
 }
 

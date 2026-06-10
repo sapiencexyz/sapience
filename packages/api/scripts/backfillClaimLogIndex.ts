@@ -158,7 +158,7 @@ async function reconcileEscrow(
         data: {
           chainId,
           marketAddress: escrowAddress.toLowerCase(),
-          predictionId: pickConfigId,
+          pickConfigId,
           holder,
           positionToken,
           tokensBurned,

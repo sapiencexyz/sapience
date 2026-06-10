@@ -7,8 +7,8 @@ describe('Conditions query', () => {
   it('matches the recorded contract', async () => {
     const result = await executeOperation(GET_CONDITIONS, {
       take: 10,
-      after: null,
-      filter: {},
+      skip: 0,
+      where: {},
     });
     expect(result.errors).toBeUndefined();
     await expect(

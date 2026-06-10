@@ -70,7 +70,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
     const [, team1, team2, period, total] = ouMatch;
     const periodText = period ? `${period} ` : '';
     const transformed = `Will ${team1} vs ${team2} ${periodText}total be over ${total}?`;
-    console.log(`[Transform O/U] "${market.question}" -> "${transformed}"`);
     return transformed;
   }
 
@@ -87,9 +86,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
     else if (statLower === 'assists') verb = 'record';
     else if (statLower === 'rebounds') verb = 'grab';
     const transformed = `Will ${player} ${verb} over ${value} ${statLower}?`;
-    console.log(
-      `[Transform Player Prop] "${market.question}" -> "${transformed}"`
-    );
     return transformed;
   }
 
@@ -101,9 +97,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   if (totalRoundsMatch) {
     const [, total] = totalRoundsMatch;
     const transformed = `Will total rounds be over ${total}?`;
-    console.log(
-      `[Transform Total Rounds] "${market.question}" -> "${transformed}"`
-    );
     return transformed;
   }
 
@@ -115,9 +108,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   if (gamesTotalMatch) {
     const [, total] = gamesTotalMatch;
     const transformed = `Will total games be over ${total}?`;
-    console.log(
-      `[Transform Games Total] "${market.question}" -> "${transformed}"`
-    );
     return transformed;
   }
 
@@ -130,9 +120,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
     const [, team, count] = mapsWinMatch;
     const mapWord = count === '1' ? 'map' : 'maps';
     const transformed = `Will ${team} win at least ${count} ${mapWord}?`;
-    console.log(
-      `[Transform Maps Win] "${market.question}" -> "${transformed}"`
-    );
     return transformed;
   }
 
@@ -144,7 +131,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   if (bttsMatch) {
     const [, team1, team2] = bttsMatch;
     const transformed = `Will both ${team1} and ${team2} score?`;
-    console.log(`[Transform BTTS] "${market.question}" -> "${transformed}"`);
     return transformed;
   }
 
@@ -157,7 +143,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   if (upDownMatch) {
     const [, asset, dateTime] = upDownMatch;
     const transformed = `Will ${asset} go up on ${dateTime}?`;
-    console.log(`[Transform Up/Down] "${market.question}" -> "${transformed}"`);
     return transformed;
   }
 
@@ -181,7 +166,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
     const [, prefix, spread] = spreadMatch;
     const context = prefix ? ` (${prefix})` : '';
     const transformed = `${outcomes[0]} covers ${spread} spread vs ${outcomes[1]}?${context}`;
-    console.log(`[Transform Spread] "${market.question}" -> "${transformed}"`);
     return transformed;
   }
 
@@ -204,9 +188,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
     const context =
       contextParts.length > 0 ? ` (${contextParts.join(', ')})` : '';
     const transformed = `${outcomes[0]} covers ${handicap} handicap vs ${outcomes[1]}?${context}`;
-    console.log(
-      `[Transform Handicap] "${market.question}" -> "${transformed}"`
-    );
     return transformed;
   }
 
@@ -219,9 +200,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   if (seriesHandicapMatch) {
     const [, team, handicapType, handicap] = seriesHandicapMatch;
     const transformed = `Will ${team} cover the ${handicap} ${handicapType.toLowerCase()} handicap vs ${outcomes[1]}?`;
-    console.log(
-      `[Transform Series Handicap] "${market.question}" -> "${transformed}"`
-    );
     return transformed;
   }
 
@@ -230,7 +208,6 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   if (mostMatch) {
     const [, metric] = mostMatch;
     const transformed = `${outcomes[0]} gets most ${metric}?`;
-    console.log(`[Transform Most] "${market.question}" -> "${transformed}"`);
     return transformed;
   }
 
@@ -257,9 +234,7 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   const context =
     contextParts.length > 0 ? ` (${contextParts.join(', ')})` : '';
 
-  // Log transformation for debugging
   const transformed = `${outcomes[0]} beats ${outcomes[1]}?${context}`;
-  console.log(`[Transform] "${market.question}" -> "${transformed}"`);
 
   // Rephrase: first outcome (Yes) beats second outcome (No)
   return transformed;

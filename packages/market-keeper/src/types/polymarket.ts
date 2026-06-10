@@ -17,6 +17,7 @@ export interface PolymarketMarket {
   category?: string;
   questionID?: string;
   sportsMarketType?: string;
+  gameStartTime?: string | null;
   events?: Array<{
     id?: string;
     title?: string;
@@ -32,6 +33,10 @@ export interface PolymarketMarket {
       label?: string;
       slug?: string;
     }>;
+    negRisk?: boolean;
+    negRiskMarketId?: string | number;
+    negRiskMarketID?: string | number;
+    neg_risk_market_id?: string | number;
   }>;
   outcomePrices?: string | number[];
   // True on every child of a Polymarket "negative risk" basket — a set of
@@ -39,6 +44,9 @@ export interface PolymarketMarket {
   // rest resolve NO. The basket is one logical question, so admission
   // decisions must apply to every sibling together, not per child.
   negRisk?: boolean;
+  negRiskMarketId?: string | number;
+  negRiskMarketID?: string | number;
+  neg_risk_market_id?: string | number;
   active: boolean;
   closed: boolean;
   archived?: boolean;

@@ -23,6 +23,13 @@ export interface ClientConnection {
   variant: string;
   instanceId?: string;
   chainId?: number;
+  /**
+   * Per-auction bid counts for this connection. Used to cap how many bids a
+   * single connection can place on one auction so it can't monopolize the
+   * auction's bid slots with unverifiable bids. Lazily initialized by the bid
+   * handlers; keyed by auctionId. Transport-agnostic and never serialized.
+   */
+  bidCounts?: Map<string, number>;
   /** @returns `true` if the underlying transport accepted the message synchronously. */
   send(msg: unknown): boolean;
   close(code?: number, reason?: string): void;

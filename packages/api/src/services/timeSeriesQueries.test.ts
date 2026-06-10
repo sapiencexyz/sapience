@@ -17,6 +17,7 @@ import {
   resolveDefaults,
   queryAccountPredictionCount,
   queryAccountVolume,
+  queryAccountPnl,
   queryProtocolVolume,
 } from './timeSeriesQueries';
 
@@ -233,5 +234,95 @@ describe('queryAccountPredictionCount', () => {
 
     const row = result[0];
     expect(row.won + row.lost + row.pending + row.nonDecisive).toBe(row.total);
+  });
+});
+
+// ─── queryAccountPnl ─────────────────────────────────────────────────────────
+
+describe('queryAccountPnl', () => {
+  const from = new Date('2024-01-01T00:00:00Z');
+  const to = new Date('2024-01-10T00:00:00Z');
+
+  beforeEach(() => {
+    mockQueryRaw.mockReset();
+  });
+
+  it('lowercases the address', async () => {
+    mockQueryRaw.mockResolvedValue([]);
+
+    await queryAccountPnl(
+      '0xAbCdEf1234567890AbCdEf1234567890AbCdEf12',
+      TimeInterval.DAY,
+      from,
+      to
+    );
+
+    const allValues = mockQueryRaw.mock.calls[0].slice(1);
+    expect(
+      allValues.some(
+        (v: unknown) => v === '0xabcdef1234567890abcdef1234567890abcdef12'
+      )
+    ).toBe(true);
+  });
+
+  // Regression: the Claim.pickConfigId column (formerly mislabeled predictionId)
+  // holds a pickConfigId, so joining it to Prediction.predictionId matched zero
+  // rows and the Claims branch always contributed 0 PnL. Cost basis must resolve
+  // through the pick configuration.
+  it('attributes claim PnL via pickConfigId, not the empty predictionId join', async () => {
+    mockQueryRaw.mockResolvedValue([]);
+
+    await queryAccountPnl('0xabc', TimeInterval.DAY, from, to);
+
+    const queryText = mockQueryRaw.mock.calls[0][0].join(' ');
+    expect(queryText).not.toMatch(/cl\."predictionId"\s*=\s*p\."predictionId"/);
+    expect(queryText).toContain('pickConfigId');
+    expect(queryText).toContain('"Picks"');
+  });
+
+  // Side (predictor vs counterparty) is identified by the redeemed positionToken
+  // matching the pick configuration's predictor/counterparty token.
+  it('determines claim side from the pick configuration tokens', async () => {
+    mockQueryRaw.mockResolvedValue([]);
+
+    await queryAccountPnl('0xabc', TimeInterval.DAY, from, to);
+
+    const queryText = mockQueryRaw.mock.calls[0][0].join(' ');
+    expect(queryText).toContain('"predictorToken"');
+    expect(queryText).toContain('"counterpartyToken"');
+  });
+
+  // A holder may redeem the same (pickConfig, side) across several unequal
+  // claims. Cost basis must be allocated in proportion to the tokens each claim
+  // redeemed (not split evenly), out of the holder's TOTAL MINTED tokens for
+  // that side, so a partial exit books only its share and a full exit books the
+  // whole stake. The denominator is guarded with NULLIF against divide-by-zero.
+  it('allocates claim cost basis proportionally to minted tokens, not evenly', async () => {
+    mockQueryRaw.mockResolvedValue([]);
+
+    await queryAccountPnl('0xabc', TimeInterval.DAY, from, to);
+
+    const queryText = mockQueryRaw.mock.calls[0][0].join(' ');
+    // denominator is the minted-token total, not the redeemed (burned) total
+    expect(queryText).toContain('minted');
+    expect(queryText).toContain('tokensBurned');
+    expect(queryText).toMatch(/NULLIF/i);
+    // must not fall back to the naive even split or the total-burned denominator
+    expect(queryText).not.toContain('claim_count');
+    expect(queryText).not.toContain('total_burned');
+  });
+
+  it('maps rows to the PnlDataPoint shape', async () => {
+    mockQueryRaw.mockResolvedValue([
+      { timestamp: 1704067200n, pnl: '100', cumulative_pnl: '100' },
+      { timestamp: 1704153600n, pnl: '-50', cumulative_pnl: '50' },
+    ]);
+
+    const result = await queryAccountPnl('0xabc', TimeInterval.DAY, from, to);
+
+    expect(result).toEqual([
+      { timestamp: 1704067200, pnl: '100', cumulativePnl: '100' },
+      { timestamp: 1704153600, pnl: '-50', cumulativePnl: '50' },
+    ]);
   });
 });

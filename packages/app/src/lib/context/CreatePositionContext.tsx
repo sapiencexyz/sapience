@@ -172,12 +172,10 @@ export const CreatePositionProvider = ({
     if (conditionIds.length === 0) return;
 
     const QUERY = /* GraphQL */ `
-      query ConditionsByIds($filters: ConditionFilter!) {
-        conditionsConnection(filter: $filters, first: 100) {
-          nodes {
-            id: conditionId
-            settled
-          }
+      query ConditionsByIds($where: ConditionWhereInput!) {
+        conditions(where: $where, take: 100) {
+          id
+          settled
         }
       }
     `;

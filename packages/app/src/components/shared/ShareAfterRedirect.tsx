@@ -6,7 +6,7 @@ import type { Address } from 'viem';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
   useForecasts,
-  type FormattedForecast,
+  type FormattedAttestation,
 } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants';
 
@@ -25,7 +25,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
   const lowerAddress = String(address).toLowerCase();
 
   const { data: forecasts } = useForecasts({
-    forecasterAddress: lowerAddress,
+    attesterAddress: lowerAddress,
     schemaId: SCHEMA_UID,
   });
 
@@ -72,7 +72,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
   }, []);
 
   const toOgUrl = useCallback(
-    (entity: FormattedForecast): string | null => {
+    (entity: FormattedAttestation): string | null => {
       const qp = new URLSearchParams();
       qp.set('addr', lowerAddress);
       try {
@@ -131,10 +131,10 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
       const ts = Number(intent.clientTimestamp || 0);
       const minTs = ts - windowMs;
 
-      const list: FormattedForecast[] = forecasts || [];
+      const list: FormattedAttestation[] = forecasts || [];
       const resolved =
         list.find(
-          (f: FormattedForecast) => Number(f.rawTime) * 1000 >= minTs
+          (f: FormattedAttestation) => Number(f.rawTime) * 1000 >= minTs
         ) || null;
 
       if (resolved) {
