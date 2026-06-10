@@ -4,6 +4,13 @@
  * One-off script to add specific Polymarket events by slug.
  * Bypasses the 21-day end date window used by the generate pipeline.
  *
+ * Shares the generate cron's processing exactly: it resolves each slug to its
+ * market conditionIds, re-fetches those markets via the canonical /markets
+ * endpoint (so they carry the same seriesSlug/series/gameStartTime embed the
+ * endTime cascade needs), applies the same active/open + binary filters, then
+ * runs groupMarkets → submitToAPI. The only intentional difference is that the
+ * 21-day end-date window is not applied.
+ *
  * Usage:
  *   tsx scripts/add-events.ts <event-slug-1> [event-slug-2] ...
  *   tsx scripts/add-events.ts --dry-run <event-slug-1> [event-slug-2] ...
@@ -18,61 +25,11 @@
  */
 
 import 'dotenv/config';
-import type { PolymarketMarket } from '../src/types';
 import { DEFAULT_SAPIENCE_API_URL } from '../src/constants';
-import { fetchWithRetry, validatePrivateKey } from '../src/utils';
-import { groupMarkets } from '../src/generate/grouping';
+import { validatePrivateKey, confirmProductionAccess } from '../src/utils';
+import { fetchMarketsForEventSlugs } from '../src/generate/from-event-slugs';
+import { groupMarkets, exportJSON } from '../src/generate/grouping';
 import { printDryRun, submitToAPI } from '../src/generate/api';
-
-async function fetchEventBySlug(slug: string): Promise<PolymarketMarket[]> {
-  const url = `https://gamma-api.polymarket.com/events?slug=${encodeURIComponent(slug)}`;
-  const response = await fetchWithRetry(url, {
-    headers: { Accept: 'application/json' },
-  });
-
-  if (!response.ok) {
-    console.error(`[Polymarket] Failed to fetch event "${slug}": HTTP ${response.status}`);
-    return [];
-  }
-
-  const events: Array<{
-    id?: string;
-    title?: string;
-    slug?: string;
-    description?: string;
-    markets?: PolymarketMarket[];
-  }> = await response.json();
-
-  if (events.length === 0) {
-    console.warn(`[Polymarket] No event found for slug "${slug}"`);
-    return [];
-  }
-
-  const markets: PolymarketMarket[] = [];
-  for (const event of events) {
-    const parentEvent = {
-      id: event.id,
-      title: event.title,
-      slug: event.slug,
-      description: event.description,
-    };
-
-    for (const market of event.markets ?? []) {
-      market.events = [parentEvent];
-      // API requires non-empty description; fall back to event description or question
-      if (!market.description) {
-        market.description = event.description || market.question;
-      }
-      markets.push(market);
-    }
-
-    console.log(
-      `[Polymarket] Event "${event.title}" (${slug}): ${event.markets?.length ?? 0} markets`
-    );
-  }
-
-  return markets;
-}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -80,8 +37,12 @@ async function main() {
   const slugs = args.filter((a) => !a.startsWith('--'));
 
   if (slugs.length === 0) {
-    console.error('Usage: tsx scripts/add-events.ts [--dry-run] <event-slug-1> [event-slug-2] ...');
-    console.error('Example: tsx scripts/add-events.ts maine-senate-election-winner');
+    console.error(
+      'Usage: tsx scripts/add-events.ts [--dry-run] <event-slug-1> [event-slug-2] ...'
+    );
+    console.error(
+      'Example: tsx scripts/add-events.ts maine-senate-election-winner'
+    );
     process.exit(1);
   }
 
@@ -96,13 +57,15 @@ async function main() {
     }
   }
 
-  // Fetch all markets from the given event slugs
-  const allMarkets: PolymarketMarket[] = [];
-  for (const slug of slugs) {
-    const markets = await fetchEventBySlug(slug);
-    allMarkets.push(...markets);
+  // Confirm production access early (before any work), matching generate.
+  if (!dryRun && privateKey) {
+    await confirmProductionAccess(apiUrl);
   }
 
+  // Fetch canonical markets for the requested slugs — same object shape and
+  // active/open + binary filtering as the generate cron, minus the 21-day
+  // window.
+  const allMarkets = await fetchMarketsForEventSlugs(slugs);
   if (allMarkets.length === 0) {
     console.error('No markets found for the given event slugs.');
     process.exit(1);
@@ -110,9 +73,14 @@ async function main() {
 
   console.log(`\nTotal markets fetched: ${allMarkets.length}`);
 
-  // Transform through the same pipeline as generate
+  // Transform through the same pipeline as generate.
   const sapienceData = await groupMarkets(allMarkets, apiUrl);
-  console.log(`Transformed into ${sapienceData.metadata.totalConditions} conditions`);
+  console.log(
+    `Transformed into ${sapienceData.metadata.totalConditions} conditions`
+  );
+
+  // Write the inspection artifact (generate writes this on every run).
+  exportJSON(sapienceData);
 
   if (dryRun) {
     printDryRun(sapienceData);
@@ -120,7 +88,9 @@ async function main() {
   }
 
   if (!privateKey) {
-    console.error('ADMIN_PRIVATE_KEY is required for submission (use --dry-run to preview)');
+    console.error(
+      'ADMIN_PRIVATE_KEY is required for submission (use --dry-run to preview)'
+    );
     process.exit(1);
   }
 
