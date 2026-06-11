@@ -1,9 +1,9 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { fetchCategories, GET_CATEGORIES } from '../categories';
 
-const mockGraphqlRequest = vi.fn();
+const mockGraphqlRequestV2 = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
-  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
+  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
 }));
 
 beforeEach(() => {
@@ -11,46 +11,71 @@ beforeEach(() => {
 });
 
 describe('fetchCategories', () => {
-  test('uses the staging-supported categories field', async () => {
-    expect(GET_CATEGORIES).toContain('categories {');
-    expect(GET_CATEGORIES).not.toContain('categoriesConnection');
-    expect(GET_CATEGORIES).not.toContain('categoriesPage');
+  test('queries the v2 categories connection ordered by name', () => {
+    expect(GET_CATEGORIES).toContain(
+      'categories(first: 100, orderBy: { field: NAME, direction: ASC })'
+    );
+    expect(GET_CATEGORIES).toContain('nodes');
+    expect(GET_CATEGORIES).toContain('name');
+    expect(GET_CATEGORIES).toContain('slug');
+    expect(GET_CATEGORIES).not.toContain('id');
   });
 
-  test('returns categories from valid response', async () => {
-    const categories = [
-      { id: 1, name: 'Crypto', slug: 'crypto' },
-      { id: 2, name: 'Politics', slug: 'politics' },
-    ];
-    mockGraphqlRequest.mockResolvedValue({ categories });
+  test('unwraps connection nodes into id-less categories', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      categories: {
+        nodes: [
+          { name: 'Crypto', slug: 'crypto' },
+          { name: 'Politics', slug: 'politics' },
+        ],
+      },
+    });
 
     const result = await fetchCategories();
-    expect(result).toEqual(categories);
+    expect(result).toEqual([
+      { name: 'Crypto', slug: 'crypto' },
+      { name: 'Politics', slug: 'politics' },
+    ]);
+    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_CATEGORIES);
+  });
+
+  test('drops extra node fields so consumers cannot key on row ids', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      categories: {
+        nodes: [{ id: 7, name: 'Crypto', slug: 'crypto', createdAt: 'x' }],
+      },
+    });
+
+    const result = await fetchCategories();
+    expect(result).toEqual([{ name: 'Crypto', slug: 'crypto' }]);
+    expect(Object.keys(result[0])).toEqual(['name', 'slug']);
   });
 
   test('throws on null response', async () => {
-    mockGraphqlRequest.mockResolvedValue(null);
+    mockGraphqlRequestV2.mockResolvedValue(null);
     await expect(fetchCategories()).rejects.toThrow(
       'Failed to fetch categories: Invalid response structure'
     );
   });
 
-  test('throws when categories is not an array', async () => {
-    mockGraphqlRequest.mockResolvedValue({ categories: 'not-an-array' });
+  test('throws when categories connection is missing', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({});
     await expect(fetchCategories()).rejects.toThrow(
       'Failed to fetch categories: Invalid response structure'
     );
   });
 
-  test('throws when categories field is missing', async () => {
-    mockGraphqlRequest.mockResolvedValue({});
+  test('throws when nodes is not an array', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      categories: { nodes: 'not-an-array' },
+    });
     await expect(fetchCategories()).rejects.toThrow(
       'Failed to fetch categories: Invalid response structure'
     );
   });
 
-  test('returns empty array when response has empty categories', async () => {
-    mockGraphqlRequest.mockResolvedValue({ categories: [] });
+  test('returns empty array when connection has no nodes', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({ categories: { nodes: [] } });
     const result = await fetchCategories();
     expect(result).toEqual([]);
   });

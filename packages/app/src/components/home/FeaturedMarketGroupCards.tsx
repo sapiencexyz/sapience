@@ -25,7 +25,6 @@ interface FeaturedCondition {
   description?: string | null;
   resolver?: string | null;
   color: string;
-  categoryId: string;
   categorySlug: string;
   estimatedPrice?: number | null;
 }
@@ -76,7 +75,6 @@ export default function FeaturedMarketGroupCards() {
         description: c.description,
         resolver: c.resolver,
         color,
-        categoryId: String(c.category?.id ?? ''),
         categorySlug: slug,
         estimatedPrice: c.estimatedPrice,
       };
@@ -85,7 +83,7 @@ export default function FeaturedMarketGroupCards() {
     // 3) One per category when possible
     const byCategory = mapped.reduce<Record<string, FeaturedCondition[]>>(
       (acc, cond) => {
-        const key = cond.categoryId || 'unknown';
+        const key = cond.categorySlug || 'unknown';
         if (!acc[key]) acc[key] = [];
         acc[key].push(cond);
         return acc;
