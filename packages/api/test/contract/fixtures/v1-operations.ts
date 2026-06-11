@@ -5,10 +5,9 @@
  * documents during the consumer migration (PR #1823). The v1 contract
  * tests (and the v1 side of every parity pair) must keep exercising the
  * EXACT v1 wire contract, so the op text is snapshotted here instead of
- * imported from the SDK. Do not edit by hand; if a v1 op legitimately
- * changes (it should not — v1 is frozen), regenerate via the command in
- * the README. Generated from @sapience/sdk/queries at the commit that
- * introduced this file.
+ * imported from the SDK. Do not edit by hand; regenerate with
+ * `node test/contract/fixtures/regenerate-v1-operations.mjs` (see that
+ * file for when this is appropriate — it should essentially never be).
  */
 
 export const GET_CONDITIONS = /* GraphQL */ `

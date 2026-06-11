@@ -8,13 +8,14 @@ import { both, byKey } from './util';
  * Documented differences encoded in the projections below:
  * - DROPPED numeric `Category.id`: a Prisma row id, not exposed in v2 by
  *   design (PLAN.md identity model). Identity is the `slug`.
- * - v1 has no declared ordering; v2 defaults to NAME ASC. Rows compare as a
- *   set sorted by slug.
+ * - v1 has no declared ordering; v2 orders NAME ASC (passed explicitly,
+ *   matching its documented default). Rows compare as a set sorted by slug
+ *   — no cross-endpoint order assertion is possible when v1 promises none.
  */
 
 const V2_CATEGORIES = /* GraphQL */ `
   query CategoriesParity {
-    categories(first: 100) {
+    categories(first: 100, orderBy: { field: NAME, direction: ASC }) {
       nodes {
         name
         slug

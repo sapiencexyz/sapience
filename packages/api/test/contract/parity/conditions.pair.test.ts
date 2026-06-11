@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { GET_CONDITIONS } from '../fixtures/v1-operations';
-import { both, byKey, expectMonotonic, isoToEpoch } from './util';
+import { both, byKey, expectMonotonic, isoToEpochMs } from './util';
 
 /**
  * Parity: v1 `conditions` (GET_CONDITIONS) vs v2 `conditions` connection.
@@ -69,7 +69,7 @@ const V2_CONDITIONS = /* GraphQL */ `
 
 interface Canonical {
   conditionId: string;
-  createdAtEpoch: number;
+  createdAtMs: number;
   question: string;
   shortName: string | null;
   optionName: string | null;
@@ -91,15 +91,67 @@ interface Canonical {
   categorySlug: string | null;
 }
 
-type V1Row = Record<string, any>;
-type V2Row = Record<string, any>;
+/** The fields each side's response actually carries (per its query doc). */
+interface V1Row {
+  id: string;
+  createdAt: string;
+  question: string;
+  shortName: string | null;
+  optionName: string | null;
+  endTime: number;
+  public: boolean;
+  description: string;
+  similarMarkets: string[];
+  chainId: number;
+  resolver: string | null;
+  settled: boolean;
+  resolvedToYes: boolean;
+  nonDecisive: boolean;
+  openInterest: string | number;
+  estimatedPrice: number | null;
+  similarMarketVolume: number;
+  similarMarketImage: string | null;
+  conditionGroup: { name: string } | null;
+  category: { name: string; slug: string } | null;
+}
 
+interface V2Row {
+  conditionId: string;
+  createdAt: string;
+  question: string;
+  shortName: string | null;
+  optionName: string | null;
+  endTime: number;
+  isPublic: boolean;
+  description: string;
+  chainId: number;
+  resolver: string;
+  settled: boolean;
+  resolvedToYes: boolean;
+  nonDecisive: boolean;
+  openInterest: string | number;
+  estimatedPrice: number | null;
+  similarMarketVolume: number;
+  similarMarket: { image: string | null; markets: string[] } | null;
+  conditionGroup: { name: string } | null;
+  category: { name: string; slug: string } | null;
+}
+
+// Coercions below are documented per the README policy:
+// - .toLowerCase() on hashes/addresses: the v2 SDL guarantees lowercase
+//   0x-hex (Condition.conditionId doc) while v1 casing is resolver-
+//   dependent; casing is not part of the consumer contract (every consumer
+//   compares case-insensitively or lowercases first).
+// - BigInt(openInterest).toString(): the VALUE is the contract; the wire
+//   representation (string vs number) differs between v1 BigInt scalar
+//   serialization and v2's.
+// - Number(endTime): v1 Int vs v2 UnixSeconds — same unit, numeric compare.
 const projectV1 = (rows: V1Row[]): Canonical[] =>
   byKey(
     rows.map(
       (c): Canonical => ({
         conditionId: c.id.toLowerCase(),
-        createdAtEpoch: isoToEpoch(c.createdAt),
+        createdAtMs: isoToEpochMs(c.createdAt),
         question: c.question,
         shortName: c.shortName ?? null,
         optionName: c.optionName ?? null,
@@ -129,7 +181,7 @@ const projectV2 = (rows: V2Row[]): Canonical[] =>
     rows.map(
       (c): Canonical => ({
         conditionId: c.conditionId.toLowerCase(),
-        createdAtEpoch: isoToEpoch(c.createdAt),
+        createdAtMs: isoToEpochMs(c.createdAt),
         question: c.question,
         shortName: c.shortName ?? null,
         optionName: c.optionName ?? null,
@@ -176,11 +228,11 @@ describe('parity: conditions list', () => {
 
     // Each side honors its own ordering contract (raw, pre-sort order).
     expectMonotonic(
-      d1.conditions.map((c) => isoToEpoch(c.createdAt)),
+      d1.conditions.map((c) => isoToEpochMs(c.createdAt)),
       'desc'
     );
     expectMonotonic(
-      d2.conditions.nodes.map((c) => isoToEpoch(c.createdAt)),
+      d2.conditions.nodes.map((c) => isoToEpochMs(c.createdAt)),
       'desc'
     );
   });

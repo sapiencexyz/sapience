@@ -35,8 +35,12 @@ export const both = async <D1 = unknown, D2 = unknown>(
 export const byKey = <T>(arr: T[], key: (t: T) => string): T[] =>
   [...arr].sort((a, b) => key(a).localeCompare(key(b)));
 
-export const isoToEpoch = (iso: string): number =>
-  Math.floor(Date.parse(iso) / 1000);
+/**
+ * Format-agnostic (Z vs +00:00) but LOSSLESS: epoch milliseconds, no
+ * truncation — flooring to seconds would mask a sub-second serializer
+ * precision regression between the two endpoints.
+ */
+export const isoToEpochMs = (iso: string): number => Date.parse(iso);
 
 /**
  * Assert a numeric sequence honors its declared sort direction (ties

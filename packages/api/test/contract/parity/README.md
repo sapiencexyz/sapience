@@ -15,11 +15,14 @@ Run: `pnpm --filter @sapience/api run test:parity`
 1. Take the v1 doc from `test/contract/fixtures/v1-operations.ts` (frozen
    copies — never import op text from `@sapience/sdk/queries`; the SDK's
    constants flip to v2 during the migration). App-inline ops are pasted
-   with a `// source: packages/app/src/...` comment.
+   with a `// source: packages/app/src/...` comment. The frozen file is
+   regenerated (essentially never — v1 is frozen) via
+   `node test/contract/fixtures/regenerate-v1-operations.mjs`.
 2. Write the v2 doc by hand against `packages/api/schema.v2.graphql`, with
-   an **explicit `orderBy`** (v2 defaults differ from v1) and **explicit
-   visibility filters on BOTH sides** (v2 `conditions` silently defaults to
-   `public: true`; v1 `where: {}` does not).
+   an **explicit `orderBy`** (v2 defaults differ from v1; if a pair is
+   deliberately exercising a documented v2 default, say so in the header)
+   and **explicit visibility filters on BOTH sides** (v2 `conditions`
+   silently defaults to `public: true`; v1 `where: {}` does not).
 3. Define a `Canonical` interface from the fields the migrating consumer
    actually selects. Write `projectV1` / `projectV2` as plain functions,
    sorted by domain key (CTF hash, address, slug, tradeHash, uid). **A

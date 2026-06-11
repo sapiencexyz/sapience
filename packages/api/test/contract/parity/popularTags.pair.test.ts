@@ -18,7 +18,7 @@ import { both, expectMonotonic } from './util';
 
 const V2_TAGS = /* GraphQL */ `
   query PopularTagsParity {
-    tags(first: 20) {
+    tags(first: 20, orderBy: { field: CONDITION_COUNT, direction: DESC }) {
       nodes {
         name
         conditionCount
