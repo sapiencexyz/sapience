@@ -11,6 +11,54 @@ export const requestContext = new AsyncLocalStorage<{
   requestId: string;
 }>();
 
+/**
+ * Async-scoped opt-out of the request-path query timeout.
+ *
+ * One-time boot/seed queries (fixtures) run before steady-state traffic,
+ * and a transient cold-DB slowdown there must NOT abort the operation:
+ * the request-path timeout exists to shed load, which is meaningless for
+ * seeding. Wrapping a seeding call in `runWithoutQueryTimeout` makes every
+ * Prisma query inside it bypass the timeout in `withQueryTimeout` below.
+ *
+ * This is the root-cause fix for the incident where a boot-time
+ * `Category.findFirst` crossed the 8s timeout, aborted startup before the
+ * HTTP port bound, and 502'd every request until a manual redeploy.
+ */
+const queryTimeoutBypass = new AsyncLocalStorage<true>();
+
+export const runWithoutQueryTimeout = <T>(fn: () => Promise<T>): Promise<T> =>
+  queryTimeoutBypass.run(true, fn);
+
+/**
+ * Race an async operation against a timeout, rejecting with a labelled
+ * error if it overruns. Operations run inside `runWithoutQueryTimeout`
+ * bypass the timeout entirely.
+ *
+ * NOTE: the timeout only stops *waiting* — the underlying query keeps
+ * running on its connection until Postgres finishes it.
+ */
+export const withQueryTimeout = async <T>(
+  run: () => Promise<T>,
+  opts: { label: string; timeoutMs: number }
+): Promise<T> => {
+  if (queryTimeoutBypass.getStore()) return run();
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        new Error(`Query timeout: ${opts.label} exceeded ${opts.timeoutMs}ms`)
+      );
+    }, opts.timeoutMs);
+  });
+
+  try {
+    return await Promise.race([run(), timeoutPromise]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 let _instance: PrismaClient | undefined;
 let _extendedInstance: PrismaClient | undefined;
 
@@ -47,38 +95,25 @@ function getInstance(): PrismaClient {
         const store = requestContext.getStore();
         if (store) store.count++;
 
-        const timeout = config.PRISMA_QUERY_TIMEOUT_MS;
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timer = setTimeout(() => {
-            reject(
-              new Error(
-                `Query timeout: ${model ?? 'raw'}.${operation} exceeded ${timeout}ms`
-              )
-            );
-          }, timeout);
-        });
-
         const start = performance.now();
-        try {
-          const result = await Promise.race([query(args), timeoutPromise]);
-          const durationMs = performance.now() - start;
-          // Per-query logs at debug level — one Prisma operation per
-          // resolver field gets noisy fast in production. Filter with
-          // LOG_LEVEL=debug while investigating.
-          log.debug(
-            {
-              model: model ?? 'raw',
-              operation,
-              durationMs: Number(durationMs.toFixed(1)),
-              requestId: store?.requestId || undefined,
-            },
-            'prisma.query'
-          );
-          return result;
-        } finally {
-          if (timer) clearTimeout(timer);
-        }
+        const result = await withQueryTimeout(() => query(args), {
+          label: `${model ?? 'raw'}.${operation}`,
+          timeoutMs: config.PRISMA_QUERY_TIMEOUT_MS,
+        });
+        const durationMs = performance.now() - start;
+        // Per-query logs at debug level — one Prisma operation per
+        // resolver field gets noisy fast in production. Filter with
+        // LOG_LEVEL=debug while investigating.
+        log.debug(
+          {
+            model: model ?? 'raw',
+            operation,
+            durationMs: Number(durationMs.toFixed(1)),
+            requestId: store?.requestId || undefined,
+          },
+          'prisma.query'
+        );
+        return result;
       },
     },
   }) as unknown as PrismaClient;

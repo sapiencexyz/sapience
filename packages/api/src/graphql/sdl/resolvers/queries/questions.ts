@@ -141,6 +141,7 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
     maxSimilarMarketVolume,
     tag,
     similarMarketVolumeWindow,
+    questionType,
   }
 ) => {
   const sanitizedSortField = sortField ?? 'endTime';
@@ -271,9 +272,33 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
     ? Prisma.sql`COALESCE(MAX(c."endTime"), 0)`
     : Prisma.sql`cg."maxEndTime"`;
 
+  // `questionType` filters by *rendered* item type: single-condition
+  // groups unwrap into standalone condition items at hydration, so
+  // `condition` admits ungrouped conditions plus groups with exactly
+  // one matching condition; `group` admits only groups with 2+.
+  const groupCountHaving =
+    questionType === 'condition'
+      ? Prisma.sql`HAVING COUNT(c.id) = 1`
+      : questionType === 'group'
+        ? Prisma.sql`HAVING COUNT(c.id) >= 2`
+        : Prisma.sql`HAVING COUNT(c.id) > 0`;
+
   const groupByClause = requiresConditionJoin
-    ? Prisma.sql`GROUP BY cg.id HAVING COUNT(c.id) > 0`
+    ? Prisma.sql`GROUP BY cg.id ${groupCountHaving}`
     : Prisma.empty;
+
+  // Without the condition join, the denormalized public count stands in
+  // for COUNT(c.id) — consistent with the hydration-time unwrap, whose
+  // `conditionWhere` is just `public: true` when no filters are active.
+  const groupPublicCountFilter = requiresConditionJoin
+    ? Prisma.empty
+    : questionType === 'condition'
+      ? Prisma.sql`AND cg."publicConditionCount" = 1`
+      : questionType === 'group'
+        ? Prisma.sql`AND cg."publicConditionCount" >= 2`
+        : Prisma.empty;
+
+  const includeUngroupedConditions = questionType !== 'group';
 
   const condSortValue =
     sanitizedSortField === 'openInterest'
@@ -301,6 +326,7 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
       FROM condition_group cg
       ${groupConditionJoin}
       WHERE cg."publicConditionCount" > 0
+        ${groupPublicCountFilter}
         ${
           boundedSearch
             ? Prisma.sql`AND (
@@ -335,6 +361,9 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
         }
       ${groupByClause}
 
+      ${
+        includeUngroupedConditions
+          ? Prisma.sql`
       UNION ALL
 
       -- Part B: Ungrouped conditions
@@ -363,7 +392,9 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
           boundedTag
             ? Prisma.sql`AND ${boundedTag} = ANY(c.tags)`
             : Prisma.empty
-        }
+        }`
+          : Prisma.empty
+      }
     )
     SELECT item_type, group_id, condition_id, prediction_count
     FROM combined
@@ -501,6 +532,18 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
         predictionCount: Number(item.prediction_count),
       });
     }
+  }
+
+  // The SQL count restriction and the hydration unwrap can disagree
+  // when aggregates drift (trigger lag), so enforce the requested
+  // rendered type after unwrapping too.
+  if (questionType != null) {
+    // Items are pushed as plain objects above; the ResolverTypeWrapper
+    // union just obscures that from the type checker.
+    return result.filter(
+      (q) =>
+        (q as { questionType: QuestionItemType }).questionType === questionType
+    );
   }
 
   return result;

@@ -8,6 +8,8 @@
     "build": "tsc",
     "generate": "tsx scripts/generate.ts",
     "generate:dry-run": "LLM_ENABLED=false tsx scripts/generate.ts --dry-run",
+    "add-events": "tsx scripts/add-events.ts",
+    "add-events:dry-run": "LLM_ENABLED=false tsx scripts/add-events.ts --dry-run",
     "settle-polymarket": "tsx scripts/settle-polymarket.ts",
     "settle-polymarket:dry-run": "tsx scripts/settle-polymarket.ts --dry-run",
     "settle-polymarket:execute": "tsx scripts/settle-polymarket.ts --execute",
