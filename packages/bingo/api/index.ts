@@ -3,7 +3,7 @@
 // platform serves the static frontend build; this function is the backend.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { handleRequest } from '../src/handler.js';
+import { handleRequest } from '../server/handler.js';
 
 export default async function handler(
   req: IncomingMessage,

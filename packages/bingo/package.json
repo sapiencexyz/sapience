@@ -6,7 +6,13 @@
   "scripts": {
     "dev": "vite --port 3100",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --port 3100"
+    "preview": "vite preview --port 3100",
+    "server": "tsx server/server.ts",
+    "server:dev": "tsx watch server/server.ts",
+    "start": "tsx server/server.ts",
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
+    "test": "vitest run server",
+    "test:watch": "vitest server"
   },
   "dependencies": {
     "@sapience/sdk": "workspace:*",
@@ -14,16 +20,25 @@
     "@zerodev/ecdsa-validator": "5.4.9",
     "@zerodev/permissions": "5.6.3",
     "@zerodev/sdk": "5.5.7",
+    "dotenv": "16.4.5",
+    "envalid": "8.1.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "viem": "2.47.2",
     "wagmi": "2.19.5"
   },
   "devDependencies": {
+    "@types/node": "20.17.10",
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.8",
     "@vitejs/plugin-react": "4.3.4",
+    "tsx": "4.19.2",
     "typescript": "5.7.3",
-    "vite": "6.0.7"
+    "vite": "6.0.7",
+    "vitest": "2.1.9"
+  },
+  "engines": {
+    "node": ">=22.12",
+    "pnpm": ">=10.16.0 <11"
   }
 }

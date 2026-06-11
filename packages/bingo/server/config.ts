@@ -38,7 +38,7 @@ export const env = cleanEnv(process.env, {
   /** Built Vite frontend to serve at / (SPA fallback; node entry only — on
    *  Vercel the platform serves the static build). The dir not existing is
    *  fine in dev — run the Vite dev server instead, it proxies /api. */
-  STATIC_DIR: str({ default: '../bingo/dist' }),
+  STATIC_DIR: str({ default: 'dist' }),
   ZERODEV_PROJECT_ID: str({
     default: '88765cdf-f8a9-4b80-92e5-60ef51c94751',
   }),

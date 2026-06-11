@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "cd ../.. && pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/bingo run build && rm -rf packages/bingo-server/public && cp -R packages/bingo/dist packages/bingo-server/public",
-  "outputDirectory": "public",
+  "buildCommand": "cd ../.. && pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/bingo run build",
+  "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
       "maxDuration": 300,
