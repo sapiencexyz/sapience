@@ -1,1338 +1,1658 @@
-{
-  "poolId": "world-cup-2026-week1-v2",
-  "cutoff": 1781204400,
-  "minCardPriceWei": "1000000000000000000",
-  "referralBps": 200,
-  "multiplierBps": [
-    0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
-  ],
-  "conditions": [
-    {
-      "conditionId": "0x4cd77d456c83e7d8c569a8fb8f6396c3f40154f657e6d970733e2b1b6a7110ff",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Mexico win on 2026-06-11?",
-      "question": "Will Mexico win on 2026-06-11?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781204400
-    },
-    {
-      "conditionId": "0x0a4b9beb6128863db2b107f185521597a426356f1d9a23c7001401edfd32014b",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Mexico vs. South Africa end in a draw?",
-      "question": "Will Mexico vs. South Africa end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781204400
-    },
-    {
-      "conditionId": "0xee8a7ab7009136c2fb8827b5f66057e7c7ab590e4a01be923120e12d2d190e43",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Exact Score: Mexico 1 - 0 South Africa?",
-      "question": "Exact Score: Mexico 1 - 0 South Africa?",
-      "endTime": 1781204400
-    },
-    {
-      "conditionId": "0x23c7521ea17f65dd609638e664bf57446c235802171fb1f7bef4df1fa3ca9605",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Exact Score: Mexico 2 - 0 South Africa?",
-      "question": "Exact Score: Mexico 2 - 0 South Africa?",
-      "endTime": 1781204400
-    },
-    {
-      "conditionId": "0xe410a35cc26e37b6a9c457582121a71f10afdf82723a86d6c945b8bd7542eaf4",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Mexico leading at halftime?",
-      "question": "Mexico leading at halftime?",
-      "endTime": 1781204400
-    },
-    {
-      "conditionId": "0xba5ba4a850edb5e6d422426930870e7e18ab2a9cdfc1949b47925e7f44e90238",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Mexico vs. South Africa: Draw at halftime?",
-      "question": "Mexico vs. South Africa: Draw at halftime?",
-      "endTime": 1781204400
-    },
-    {
-      "conditionId": "0xe80341a1a7cc66cdc1b89d7f14c5751282b60873ecaeba97ed0c13a2a82ed35e",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "MXC/STH O2.5",
-      "question": "Will Mexico vs South Africa total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781204400
-    },
-    {
-      "conditionId": "0xe5a3bc999b28f4e233a862abc6473dd4622e8c583c98e78e1611c533a631057a",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "MXC -1.5",
-      "question": "Mexico covers -1.5 spread vs South Africa?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781204400
-    },
-    {
-      "conditionId": "0x91df7add890fb82d6998d88324369f7a8d6499f920abed82f5e1f29da26f8539",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Mexico vs. South Africa: Mexico O/U 1.5",
-      "question": "Mexico vs. South Africa: Mexico O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781215140
-    },
-    {
-      "conditionId": "0xe7ccb93dfeac244a646aefee0e7d988bddd92a6c0b74d1be3049c6d6e675435e",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Mexico to score first vs. South Africa?",
-      "question": "Mexico to score first vs. South Africa?",
-      "endTime": 1781215140
-    },
-    {
-      "conditionId": "0x59424a0e7ea4b7d245b36900dbd28282835e17a9c0823c04a174db5fa144497c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "South Africa to score first vs. Mexico?",
-      "question": "South Africa to score first vs. Mexico?",
-      "endTime": 1781215140
-    },
-    {
-      "conditionId": "0xe890148bbb5a08a6c1225a412ff55a322f6480a2087db64c12f460c4130731d3",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Armando Gonz\u00e1lez: 1+ goals",
-      "question": "Armando Gonz\u00e1lez: 1+ goals",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/worldcup-goal-props/mex-armando-gonzalez.png",
-      "endTime": 1781215140
-    },
-    {
-      "conditionId": "0xcb7fd89b3e3b3de6f3b1c4a69b3c65579dba36fe9cc9b20d59f15bd50695ef81",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Mexico vs. South Africa: O/U 8.5 Total Corners",
-      "question": "Mexico vs. South Africa: O/U 8.5 Total Corners",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781215140
-    },
-    {
-      "conditionId": "0x7061e7ce4d7744677b6c3a7d1db0f82eb90c342104167386619d75777a6083c1",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Korea Republic win on 2026-06-11?",
-      "question": "Will Korea Republic win on 2026-06-11?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781229600
-    },
-    {
-      "conditionId": "0x293ed83ff451fbfd454eb09985f6707c5c33a30cf79ba98bf45ccf2fa553438f",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Czechia win on 2026-06-11?",
-      "question": "Will Czechia win on 2026-06-11?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781229600
-    },
-    {
-      "conditionId": "0xb3e5963c18d0fbe9285a35e65aa260b304a3cded6aaddab9507122caa33caf44",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Korea Republic vs. Czechia end in a draw?",
-      "question": "Will Korea Republic vs. Czechia end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781229600
-    },
-    {
-      "conditionId": "0x2e85c2cc3d61ce85635cd4b4fdeb7bf13d7c651ed3ff9616645ec63b6553a062",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Exact Score: Korea Republic 1 - 1 Czechia?",
-      "question": "Exact Score: Korea Republic 1 - 1 Czechia?",
-      "endTime": 1781229600
-    },
-    {
-      "conditionId": "0x185ab201d00298a8bc3683029f4f5d9272f2a83934d033845c57108c7fe1a211",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Korea Republic vs. Czechia: Draw at halftime?",
-      "question": "Korea Republic vs. Czechia: Draw at halftime?",
-      "endTime": 1781229600
-    },
-    {
-      "conditionId": "0x8c0a9eba4b5644db2c8f53847c1e430e0d97f77df5b903f98e7c1f7c4fa54388",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Korea Republic leading at halftime?",
-      "question": "Korea Republic leading at halftime?",
-      "endTime": 1781229600
-    },
-    {
-      "conditionId": "0x6e406dab803d5c97485e7cfe2a12c013cc68d211df50db61cda37194d1d324b7",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Czechia leading at halftime?",
-      "question": "Czechia leading at halftime?",
-      "endTime": 1781229600
-    },
-    {
-      "conditionId": "0x40a5e70362843194ea28bf9175eb6f3ea8ce56ced69c5c08cb1616541e0b2704",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BTTS KRR/CZC",
-      "question": "Will both Korea Republic and Czechia score?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781229600
-    },
-    {
-      "conditionId": "0xbf7837964c7532a045d9a0cd2b8188df4297aa16b2c1c2dabb6099612cd0b11a",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "KRR/CZC O2.5",
-      "question": "Will Korea Republic vs Czechia total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781229600
-    },
-    {
-      "conditionId": "0xd1d8f38df323573f6d2b1bc7c8c55fd5d972c85ad74352509a526ab3cb5ba8e7",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Korea Republic vs. Czechia: Korea Republic 1st Half O/U 0.5",
-      "question": "Korea Republic vs. Czechia: Korea Republic 1st Half O/U 0.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781240340
-    },
-    {
-      "conditionId": "0x802adc7238db42d431521f625b2a367954d04ebf8836109257dd4a3b961c6108",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Canada win on 2026-06-12?",
-      "question": "Will Canada win on 2026-06-12?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781290800
-    },
-    {
-      "conditionId": "0xeda55c7409e9f0f436377ea300db42db6c576277846df770abd1391828dde639",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Canada vs. Bosnia and Herzegovina end in a draw?",
-      "question": "Will Canada vs. Bosnia and Herzegovina end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781290800
-    },
-    {
-      "conditionId": "0x3bb3f35e86949207b257f1f3288a8ceaf071638cbd10a3c9a8273b4f542d4ee0",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Bosnia and Herzegovina win on 2026-06-12?",
-      "question": "Will Bosnia and Herzegovina win on 2026-06-12?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781290800
-    },
-    {
-      "conditionId": "0x7100ab95b70e1c300a74453214a5e605112c7cc7f5404961b740b4871609622e",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "CND/BSN O2.5",
-      "question": "Will Canada vs Bosnia and Herzegovina total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781290800
-    },
-    {
-      "conditionId": "0x170cb8abf977b6a9d62c511015ab92d6dfbc9bf231f62e00b5a4466ba7f08154",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "CND/BSN O1.5",
-      "question": "Will Canada vs Bosnia and Herzegovina total be over 1.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781290800
-    },
-    {
-      "conditionId": "0x01d669708e9acf40de71c31fba2e9dac3d9d320d6aae6a4eb1b7e013777700ab",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Canada vs. Bosnia-Herzegovina: 1st Half O/U 1.5",
-      "question": "Canada vs. Bosnia-Herzegovina: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781301600
-    },
-    {
-      "conditionId": "0x26c10c27cde58e2d6214d65ab562d8142d34723b3b6ec3f40836d24f6d22dfc9",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will United States win on 2026-06-12?",
-      "question": "Will United States win on 2026-06-12?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781312400
-    },
-    {
-      "conditionId": "0x3774cdf17e49143a4f6e10812df8b06113731493842fccc52dea045a1744ae61",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will United States vs. Paraguay end in a draw?",
-      "question": "Will United States vs. Paraguay end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781312400
-    },
-    {
-      "conditionId": "0x86f102a31cf4b12dbcf31ae8c62c526c0b538d5b7eb1af5947d0b0378522f926",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Paraguay win on 2026-06-12?",
-      "question": "Will Paraguay win on 2026-06-12?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781312400
-    },
-    {
-      "conditionId": "0xfdb7c4c168e2946b9ec2ea6af346b571b794670c7fb771dfa8c3bae1eca45fbf",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "UNI/PRG O2.5",
-      "question": "Will United States vs Paraguay total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781312400
-    },
-    {
-      "conditionId": "0x78eebb2d22f052a5407587008ad4cadeb7c6a066ab0d46658bd7577824d4a0b2",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "United States vs. Paraguay: 1st Half O/U 0.5",
-      "question": "United States vs. Paraguay: 1st Half O/U 0.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781312400
-    },
-    {
-      "conditionId": "0xc33a4381c2feb49d30fa68a732d396aeaf8a6c78f51ffd11ab8fcfc926faa1a0",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "United States to score first vs. Paraguay?",
-      "question": "United States to score first vs. Paraguay?",
-      "endTime": 1781323140
-    },
-    {
-      "conditionId": "0x8dc70c544d868286fc32c1187c3e7c748ce993f18aa1a9e2d4f0c97fbf8362de",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Paraguay to score first vs. United States?",
-      "question": "Paraguay to score first vs. United States?",
-      "endTime": 1781323140
-    },
-    {
-      "conditionId": "0x45458c53ee6c6d2a5aab966703d5da6506e39b1650314a71ff2227efee9d7e35",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BTTS UNI/PRG",
-      "question": "Will both United States and Paraguay score?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781323140
-    },
-    {
-      "conditionId": "0x6b864f35765706986a861d22fcc207872062186ddcb5fbc20275e991b20ff6ab",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Switzerland win on 2026-06-13?",
-      "question": "Will Switzerland win on 2026-06-13?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781377200
-    },
-    {
-      "conditionId": "0x22bc30327ba8ca5a6c7a15808b63c2a8c5e00ebfd7536b74d2689992f4ba8a67",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "QTR/SWT O2.5",
-      "question": "Will Qatar vs Switzerland total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781377200
-    },
-    {
-      "conditionId": "0x5238b69e57442973c13be38c5a71937cc33e1ce89a65e16e1158f233a9a767e5",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "SWT -1.5",
-      "question": "Switzerland covers -1.5 spread vs Qatar?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781377200
-    },
-    {
-      "conditionId": "0xa6cd5f10e1dc33b720959daef61a2791241ba17bfdf2e4ff7b3ee708a278599a",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Qatar vs. Switzerland: Switzerland O/U 2.5",
-      "question": "Qatar vs. Switzerland: Switzerland O/U 2.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781387940
-    },
-    {
-      "conditionId": "0xa75053ffa630e41fdc08a0885fe0614716ecb13061ac460914bfe498038d5364",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Brazil win on 2026-06-13?",
-      "question": "Will Brazil win on 2026-06-13?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781388000
-    },
-    {
-      "conditionId": "0xb20f96ba6ccf4555d4e3adcc97a561512ef27af67183b52d32283066d4a81853",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Brazil vs. Morocco end in a draw?",
-      "question": "Will Brazil vs. Morocco end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781388000
-    },
-    {
-      "conditionId": "0xa4781f5d97b6fe28ca7a69353b89e3401a9483a4c7bfc2f493c6cca138bd9c82",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Morocco win on 2026-06-13?",
-      "question": "Will Morocco win on 2026-06-13?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781388000
-    },
-    {
-      "conditionId": "0x0a8418fdab57de8ce4e0c6042810fc635fb7d5718a86d10104fcd0d8cc5f6be9",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BRZ/MRC O2.5",
-      "question": "Will Brazil vs Morocco total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781388000
-    },
-    {
-      "conditionId": "0x69bce49a3b10b980da957b642a0c2a3715565f38099df95e8a9229329d749ca2",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Brazil vs. Morocco: Brazil O/U 1.5",
-      "question": "Brazil vs. Morocco: Brazil O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781398740
-    },
-    {
-      "conditionId": "0x1f2bb0bfc3c7b3c9ab678ce9e89cf68bd6daa83385c4834f669cb00c540276f2",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Scotland win on 2026-06-13?",
-      "question": "Will Scotland win on 2026-06-13?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781398800
-    },
-    {
-      "conditionId": "0x2b759e69e6b2f509efebfe969cd26ddf30b84242506ddb5ac1e9a8b36cac22a2",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Haiti vs. Scotland end in a draw?",
-      "question": "Will Haiti vs. Scotland end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781398800
-    },
-    {
-      "conditionId": "0x05a303645ac39405969df3786b6e33c74ec3be9e1779adba11e619a10d1feab0",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Haiti win on 2026-06-13?",
-      "question": "Will Haiti win on 2026-06-13?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781398800
-    },
-    {
-      "conditionId": "0xbaeaf4578a00cefa6c752e577479ad1afac01bcc6cd95c16dfb0230572731fe7",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BTTS BRZ/MRC",
-      "question": "Will both Brazil and Morocco score?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781398800
-    },
-    {
-      "conditionId": "0xe282b7d92941a5c4124688a51da89efffa7f3fcc78ae29a327813b48fa92da66",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "HAI/SCT O2.5",
-      "question": "Will Haiti vs Scotland total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781398800
-    },
-    {
-      "conditionId": "0x2187369e90b576430f2f0107c393d1708031f41813e2bc00d0081eef99662f6c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BTTS HAI/SCT",
-      "question": "Will both Haiti and Scotland score?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781409540
-    },
-    {
-      "conditionId": "0xfaa763ddab70fa907eeb522c7fc4f8a30de722f831a40b6d5fd62b9e0462221c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Haiti vs. Scotland: Scotland O/U 1.5",
-      "question": "Haiti vs. Scotland: Scotland O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781409540
-    },
-    {
-      "conditionId": "0x48880e3355f031da13b5ed1142d209396bdec61acf6c0945234ff6e5edab9ebf",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will T\u00fcrkiye win on 2026-06-14?",
-      "question": "Will T\u00fcrkiye win on 2026-06-14?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781409600
-    },
-    {
-      "conditionId": "0x12c17c04d2e404bd85a8c65c04cd7e8799a6295c7f74414feec5e867fa40cc5a",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Australia vs. T\u00fcrkiye end in a draw?",
-      "question": "Will Australia vs. T\u00fcrkiye end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781409600
-    },
-    {
-      "conditionId": "0xaaee502e7f2378521ba15c183e2762cecab013dd42f7600f7b35e99e0882f08c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Australia win on 2026-06-14?",
-      "question": "Will Australia win on 2026-06-14?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781409600
-    },
-    {
-      "conditionId": "0x29736a7cfd5f57c79f02057bf0259b0d1fafbea156bc29acd13b9da633b7979d",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Exact Score: Any Other Score?",
-      "question": "Exact Score: Any Other Score?",
-      "endTime": 1781409600
-    },
-    {
-      "conditionId": "0x85a8fd15a5277a7e210fd45f53584b0831f081fd4727771af47fec7e4528ce83",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "AUS/TRK O2.5",
-      "question": "Will Australia vs T\u00fcrkiye total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781409600
-    },
-    {
-      "conditionId": "0x96cd1bc66d5b25c59fc8163bacb7f6eff00501a5589891fde75827a1e0ea2b3b",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Australia vs. T\u00fcrkiye: 1st Half O/U 0.5",
-      "question": "Australia vs. T\u00fcrkiye: 1st Half O/U 0.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781409600
-    },
-    {
-      "conditionId": "0x8364d93d587700053776084b87ab9fb334f49ffbf6c85b3b34e1c03f1cbde89e",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Australia vs. T\u00fcrkiye: T\u00fcrkiye O/U 1.5",
-      "question": "Australia vs. T\u00fcrkiye: T\u00fcrkiye O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781420340
-    },
-    {
-      "conditionId": "0xd8296bfc3a6dff2f96f1865c102ae899ed74ee0267ea24d76abef666daf9170c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Germany leading at halftime?",
-      "question": "Germany leading at halftime?",
-      "endTime": 1781456400
-    },
-    {
-      "conditionId": "0x0921c61d04ca3f79c5ec022da1bf5f39a59ab36506004d74a02f2894cc376e32",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Germany vs. Cura\u00e7ao: Draw at halftime?",
-      "question": "Germany vs. Cura\u00e7ao: Draw at halftime?",
-      "endTime": 1781456400
-    },
-    {
-      "conditionId": "0x3fbc68160eebf3b359b077b0e5ea8c7052031e84ec159c5002666302f67b508c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "GRM -3.5",
-      "question": "Germany covers -3.5 spread vs Cura\u00e7ao?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781456400
-    },
-    {
-      "conditionId": "0x685d9c11a3cddb6c0a49fb5a742c8a75b91e20de1b8bb4912444879de97baf46",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "GRM/CUR O4.5",
-      "question": "Will Germany vs Cura\u00e7ao total be over 4.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781456400
-    },
-    {
-      "conditionId": "0x90e31bfe6fed6275c3048c09ab90c73c039688e89a302294a9e1ed63ac8af2af",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Germany vs. Cura\u00e7ao: 1st Half O/U 1.5",
-      "question": "Germany vs. Cura\u00e7ao: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781456400
-    },
-    {
-      "conditionId": "0x2153377bdb8920a0d3227e9a2a68ddb9a001025918b695fe55f66677836e62c6",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Netherlands win on 2026-06-14?",
-      "question": "Will Netherlands win on 2026-06-14?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781467200
-    },
-    {
-      "conditionId": "0x6bb8b2483eccb8fcae84cd42fd7d8e5e394689e0a06f95b189a77b4819cf0173",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Netherlands vs. Japan end in a draw?",
-      "question": "Will Netherlands vs. Japan end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781467200
-    },
-    {
-      "conditionId": "0x51fc7cfdaee135d6d0bed053e5fcd3652954414d9b9f4eef5dce2e9ea717f161",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Japan win on 2026-06-14?",
-      "question": "Will Japan win on 2026-06-14?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781467200
-    },
-    {
-      "conditionId": "0x0885c736c2c90063f229ffa03104c2a659c49e853ab3c321680b779eede7343c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Exact Score: Any Other Score?",
-      "question": "Exact Score: Any Other Score?",
-      "endTime": 1781467200
-    },
-    {
-      "conditionId": "0xe9fbe292e5dae90c6a712aeeff8ec3ab8b0d95192b12dbe3eda168a1874e14b3",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "NTH/JPN O2.5",
-      "question": "Will Netherlands vs Japan total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781477940
-    },
-    {
-      "conditionId": "0x227abab2faf450dc64d2a481519da6a68c6fe42f4ccb547885dafa3bf7b2de09",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BTTS NTH/JPN",
-      "question": "Will both Netherlands and Japan score?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781477940
-    },
-    {
-      "conditionId": "0xb610e79ef70894ba11645f175b12e802aa2f9c4d7f0d9e4d4cbe7dcb3e214581",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Netherlands vs. Japan: Netherlands O/U 1.5",
-      "question": "Netherlands vs. Japan: Netherlands O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781477940
-    },
-    {
-      "conditionId": "0x3150ba668d15e1c248c71bcff71c67f1adf87063db7047f27f15ebbc9a1a6a0d",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Ecuador win on 2026-06-14?",
-      "question": "Will Ecuador win on 2026-06-14?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781478000
-    },
-    {
-      "conditionId": "0xa6c938b3402538af5faa626dc882bd7995db132df1c4ea669db7841df3557678",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will C\u00f4te d'Ivoire vs. Ecuador end in a draw?",
-      "question": "Will C\u00f4te d'Ivoire vs. Ecuador end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781478000
-    },
-    {
-      "conditionId": "0x8f92746709a4fc82f4d454e162046ac3590e3a5a7564540806a6c5f8a87e6738",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will C\u00f4te d'Ivoire win on 2026-06-14?",
-      "question": "Will C\u00f4te d'Ivoire win on 2026-06-14?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781478000
-    },
-    {
-      "conditionId": "0x11664d353e416f56ac57f40c21839527be7bd4730ee259955fee13d45226e2d3",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "CTD/ECU O2.5",
-      "question": "Will C\u00f4te d'Ivoire vs Ecuador total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781478000
-    },
-    {
-      "conditionId": "0xf946f993eb6dddb93e04c413b8da82c89306d8ed367cebdb13dc26933c483fab",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "CTD/ECU O1.5",
-      "question": "Will C\u00f4te d'Ivoire vs Ecuador total be over 1.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781488740
-    },
-    {
-      "conditionId": "0xc6f7e4a015ec643eb49c749da19553a2257add76278a252805a12dfa85103269",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Sweden win on 2026-06-14?",
-      "question": "Will Sweden win on 2026-06-14?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781488800
-    },
-    {
-      "conditionId": "0x11e4780f48d73417a4863618e288e78c8848e2ef4f744dca4cabdff154af5e3c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Sweden vs. Tunisia end in a draw?",
-      "question": "Will Sweden vs. Tunisia end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781488800
-    },
-    {
-      "conditionId": "0xb5e6e5829c986107aebc5b4b18429b007a813f2b5ca860993020f27ef9f0e080",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Tunisia win on 2026-06-14?",
-      "question": "Will Tunisia win on 2026-06-14?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781488800
-    },
-    {
-      "conditionId": "0xea1ff53447ee83d737ff6ad02cb04cf7a2e771aae70e3a15b54c8ec5a4820884",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "C\u00f4te d'Ivoire vs. Ecuador: 1st Half O/U 0.5",
-      "question": "C\u00f4te d'Ivoire vs. Ecuador: 1st Half O/U 0.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781488800
-    },
-    {
-      "conditionId": "0x05386c50bb29520c311e9c639762f2e01b70dc7d7cbdc0bb9740f95cca834244",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "SWD/TNS O2.5",
-      "question": "Will Sweden vs Tunisia total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781499540
-    },
-    {
-      "conditionId": "0xc4782a4e3729ffb78897bd10385119385aa6b7c66393d20c509d5473c58f38a5",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Sweden vs. Tunisia: 1st Half O/U 0.5",
-      "question": "Sweden vs. Tunisia: 1st Half O/U 0.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781499540
-    },
-    {
-      "conditionId": "0x337f91d8ffff892a88dd7c08b09c79c11677f820dd7e5792fb9a4b29b1b87931",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Sweden vs. Tunisia: 1st Half O/U 1.5",
-      "question": "Sweden vs. Tunisia: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781499540
-    },
-    {
-      "conditionId": "0xe76d397afa47ea028b914eec69543c69f9bbec8c313bd3a1dba022bd050b4c22",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "SPN -2.5",
-      "question": "Spain covers -2.5 spread vs Cabo Verde?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781539200
-    },
-    {
-      "conditionId": "0x1ce1f3aa890d89772a81279225f4a534961d6f762c0ce85ea00349996df55278",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "SPN/CBV O3.5",
-      "question": "Will Spain vs Cabo Verde total be over 3.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781539200
-    },
-    {
-      "conditionId": "0x2e6d1ff6f974c65a4584646d73ea5bea113762c7cb1c12270507ec80e774821b",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BTTS SPN/CBV",
-      "question": "Will both Spain and Cabo Verde score?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781539200
-    },
-    {
-      "conditionId": "0x3ceb5b631318be5000758200590efe2b308a581d6787c3e7bc050bfd8f627627",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Belgium win on 2026-06-15?",
-      "question": "Will Belgium win on 2026-06-15?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781550000
-    },
-    {
-      "conditionId": "0x36f93dcdb75e18f9dd7f4bd4f976dd901562e6f779a86c8ac847f154e37e69d2",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Belgium vs. Egypt end in a draw?",
-      "question": "Will Belgium vs. Egypt end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781550000
-    },
-    {
-      "conditionId": "0x3f9bec31cf8e8550470626fbd15382e20a18e46af27358cad575a5ef5bf660de",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Egypt win on 2026-06-15?",
-      "question": "Will Egypt win on 2026-06-15?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781550000
-    },
-    {
-      "conditionId": "0x0d9ceec323925d837bd3c05da1e66586fe2b3d36f0e4335a749f929a5b2346e8",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BLG/EGY O2.5",
-      "question": "Will Belgium vs Egypt total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781550000
-    },
-    {
-      "conditionId": "0x59622385e39f80c95db2567273b4dbf894f335092177f3c770b0465c314ee6d1",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BLG -1.5",
-      "question": "Belgium covers -1.5 spread vs Egypt?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781550000
-    },
-    {
-      "conditionId": "0x39186e62015fc4cdcb7c0386b7302f98e1c2268004e6dd7a7d8a4c5edb4cb304",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Belgium vs. Egypt: 1st Half O/U 1.5",
-      "question": "Belgium vs. Egypt: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781560740
-    },
-    {
-      "conditionId": "0xbc54d73527785bdc7b443cfdf3b0d59558c5ac2bbffca23425ecfbd161b07317",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Uruguay win on 2026-06-15?",
-      "question": "Will Uruguay win on 2026-06-15?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781560800
-    },
-    {
-      "conditionId": "0x344327632a0ab1c28b40003f14bfe75cb7d5bd65c58b4e34199cfc17a77104fe",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Saudi Arabia vs. Uruguay end in a draw?",
-      "question": "Will Saudi Arabia vs. Uruguay end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781560800
-    },
-    {
-      "conditionId": "0x747f264fcaca0caf62c4610078edc77b44f44c1d6dc417fbb24d312343a5057c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BTTS SDR/URU",
-      "question": "Will both Saudi Arabia and Uruguay score?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781560800
-    },
-    {
-      "conditionId": "0xa16a7269a25f746cd0aa5d85910de766d940d4dea9bf0cdb6423158b24149be1",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "URU -1.5",
-      "question": "Uruguay covers -1.5 spread vs Saudi Arabia?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781560800
-    },
-    {
-      "conditionId": "0x03b35b1e7a428f8f139020a1b3430b3032e3a6d1c8233202fef0ed4a61b2a72f",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Saudi Arabia vs. Uruguay: 1st Half O/U 1.5",
-      "question": "Saudi Arabia vs. Uruguay: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781571540
-    },
-    {
-      "conditionId": "0xe70fd51f42e61fc309d8e57019a7b76c8dc7bd19b473351d56ff1e125ae0d9d4",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will IR Iran win on 2026-06-15?",
-      "question": "Will IR Iran win on 2026-06-15?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781571600
-    },
-    {
-      "conditionId": "0xcd05a73f2ddf6c07340b4f1c6c853c4754b2f4428045fec1b295c192e399e563",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will IR Iran vs. New Zealand end in a draw?",
-      "question": "Will IR Iran vs. New Zealand end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781571600
-    },
-    {
-      "conditionId": "0x4d32282db59ec449edbc191b4b487b7f8218c07d6f94b0c01e2e7ddf6964c26d",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will New Zealand win on 2026-06-15?",
-      "question": "Will New Zealand win on 2026-06-15?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781571600
-    },
-    {
-      "conditionId": "0x4b674e4b8ca83d4bfa4845c1be7ba487a7fa4828336119a8a2110f26a7d47c3d",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "IRI/NWZ O2.5",
-      "question": "Will IR Iran vs New Zealand total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781571600
-    },
-    {
-      "conditionId": "0xed5a232c9d99b006eae6b9f1caf0742c17f9cf4d28d3c77587ea4231b8ef7883",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "IR Iran vs. New Zealand: Both Teams to Score in First Half",
-      "question": "IR Iran vs. New Zealand: Both Teams to Score in First Half",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781582340
-    },
-    {
-      "conditionId": "0x08ddc6c683b04679fdfd2f2033ee3d20dd22e6c7a49d944c183b4e024c3d444e",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "IR Iran vs. New Zealand: 1st Half O/U 1.5",
-      "question": "IR Iran vs. New Zealand: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781582340
-    },
-    {
-      "conditionId": "0xe3c1605106ae1c141a148e33a0b25f7538aa1e2d1daa7bc87c56b81610688988",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Exact Score: Any Other Score?",
-      "question": "Exact Score: Any Other Score?",
-      "endTime": 1781582340
-    },
-    {
-      "conditionId": "0x04b6d6630d49e6513355ff045c96439c929335cb0d18da7792dea6c2fc717ead",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will France win on 2026-06-16?",
-      "question": "Will France win on 2026-06-16?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781636400
-    },
-    {
-      "conditionId": "0xbd175757f12ecc85b7aae7f1f35c8637e350227dd2967abd6e1373e245c51f49",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will France vs. Senegal end in a draw?",
-      "question": "Will France vs. Senegal end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781636400
-    },
-    {
-      "conditionId": "0x3045a441e5ea4e49468d0fac36d47c32ceae2e572bd7960111187b6630a83b46",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "FRN -1.5",
-      "question": "France covers -1.5 spread vs Senegal?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781636400
-    },
-    {
-      "conditionId": "0x9ad38d22c9912987ca4d644c8b7d239f24afba5c93d16300a8cad778bc6f6858",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "FRN/SNG O2.5",
-      "question": "Will France vs Senegal total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781647140
-    },
-    {
-      "conditionId": "0xcee0d9074a1f8766b4f66d806608a4097d027c94f85de367410fbbb166a29424",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Norway win on 2026-06-16?",
-      "question": "Will Norway win on 2026-06-16?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781647200
-    },
-    {
-      "conditionId": "0x821b530445694142d4b28874d58ffe841cad17a1106b7c0cff715bd7a165d7df",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "NRW -1.5",
-      "question": "Norway covers -1.5 spread vs Iraq?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781647200
-    },
-    {
-      "conditionId": "0x7164003effdfef62c5ac5b660c40630ecde0890e3c328ef8510f037831c59c0c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "NRW -2.5",
-      "question": "Norway covers -2.5 spread vs Iraq?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781647200
-    },
-    {
-      "conditionId": "0x2c6fff9c552558c74b976093b920b55a0cebbc51b1a06e04e1b02f8c48677900",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "BTTS FRN/SNG",
-      "question": "Will both France and Senegal score?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781647200
-    },
-    {
-      "conditionId": "0x2a7a6ab8f4984f1ae82eacd7fb408832a50e63162ac6b98fff1fe094b8e9d3b5",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Argentina win on 2026-06-16?",
-      "question": "Will Argentina win on 2026-06-16?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781658000
-    },
-    {
-      "conditionId": "0x353bfdea6f2cae034f1cef73064086e6c904d60d58f96c69644789b510ba862f",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Argentina vs. Algeria end in a draw?",
-      "question": "Will Argentina vs. Algeria end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781658000
-    },
-    {
-      "conditionId": "0xc0f88d884322bad4aadedfa49a1022636cc6ad248e412bfd8e406b65d4da3de7",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "ARG/ALG O2.5",
-      "question": "Will Argentina vs Algeria total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781668740
-    },
-    {
-      "conditionId": "0x1eb724a708f3720c2b7ef63d7ffc7483ecc14deed6df2e7e9dc1dfa724a98bd6",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "ARG -1.5",
-      "question": "Argentina covers -1.5 spread vs Algeria?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781668740
-    },
-    {
-      "conditionId": "0x7c945fce2c1016e09641dea6a51a7f921a05a1d5a968948613d806f705a6d3d4",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Argentina vs. Algeria: 1st Half O/U 1.5",
-      "question": "Argentina vs. Algeria: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781668740
-    },
-    {
-      "conditionId": "0x15869f0d05e99ad5789f647685b2eedbbe4201f8910a2bdb70e5716bd3674e8f",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Austria win on 2026-06-17?",
-      "question": "Will Austria win on 2026-06-17?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781668800
-    },
-    {
-      "conditionId": "0x2d17b7b5c8701296c4348f016076a948f25cb83e23c8b863bfa1e22ed493ae53",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Austria vs. Jordan end in a draw?",
-      "question": "Will Austria vs. Jordan end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781668800
-    },
-    {
-      "conditionId": "0x84fbb724c0465bf76f6302fa7189a8dd67264d39c59fba5fd341968de1178f9c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "AUS -1.5",
-      "question": "Austria covers -1.5 spread vs Jordan?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781668800
-    },
-    {
-      "conditionId": "0xd6126c2b59d6cae3799052ae87cf77247e8aa598b7f911d81cff9bcb62dd4925",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Austria vs. Jordan: 1st Half O/U 1.5",
-      "question": "Austria vs. Jordan: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781679540
-    },
-    {
-      "conditionId": "0x4cca4d1e6722c00e372bd219c15a94d29d09dc34c2599cc5efa9eef82ff67838",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "AUS/JRD O2.5",
-      "question": "Will Austria vs Jordan total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781679600
-    },
-    {
-      "conditionId": "0xcaaa1338d38b5c614196c9a926dd84babc3984442f2ec9b937a16284a199ec3a",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Portugal win on 2026-06-17?",
-      "question": "Will Portugal win on 2026-06-17?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781715600
-    },
-    {
-      "conditionId": "0xff1afdef47475128b85467bd1a3a4a3182da0c27409d81c2dc6c7d55b5467dad",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Portugal vs. DR Congo end in a draw?",
-      "question": "Will Portugal vs. DR Congo end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781715600
-    },
-    {
-      "conditionId": "0x7d531b7f4710a8f00562455db5d409e269564a1415b5da352ba3f3daf33ee98e",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "PRT -1.5",
-      "question": "Portugal covers -1.5 spread vs DR Congo?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781715600
-    },
-    {
-      "conditionId": "0xa71f817655a1e3388855598499fbe5dbb1f7904a376b7a792869b19279365dc1",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "PRT/DRC O2.5",
-      "question": "Will Portugal vs DR Congo total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781715600
-    },
-    {
-      "conditionId": "0xde0efbf9052d1467ac826c421b4b056e6bec4a251980ec7c15fd6244cecc72db",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Portugal vs. DR Congo: 1st Half O/U 1.5",
-      "question": "Portugal vs. DR Congo: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781726340
-    },
-    {
-      "conditionId": "0xb361c29b5481164886627cb175ed76792df30902e66ec329c0a3853f807fe8e9",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will England win on 2026-06-17?",
-      "question": "Will England win on 2026-06-17?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781726400
-    },
-    {
-      "conditionId": "0x7c200c3facd45c4307c4d52d47a7d0d86fe219ff25eba92ff88a674d974c4ec3",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will England vs. Croatia end in a draw?",
-      "question": "Will England vs. Croatia end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781726400
-    },
-    {
-      "conditionId": "0x90b9d20ece132c342654f98e0826e972134b10f58d4789c2662bdc00eee44b13",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Croatia win on 2026-06-17?",
-      "question": "Will Croatia win on 2026-06-17?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781726400
-    },
-    {
-      "conditionId": "0x1c0b3b89f91914877baa6642fadd047deee44a76c129643779e134bb2c61e5f7",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "ENG/CRT O2.5",
-      "question": "Will England vs Croatia total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781726400
-    },
-    {
-      "conditionId": "0xf4dc0839f09117926dcd9582596a1f50f79f0ac154f929b8873bd7f4f3665b19",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "England vs. Croatia: 1st Half O/U 1.5",
-      "question": "England vs. Croatia: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781737140
-    },
-    {
-      "conditionId": "0x0fcd3ec1997002b2c76408a22d50cb3b29f220ec719ec8baf246b987764f0f7d",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "ENG/CRT O1.5",
-      "question": "Will England vs Croatia total be over 1.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781737140
-    },
-    {
-      "conditionId": "0x0256ef63427ed0d9eefa1422eee948165a2a215b0741a339025fb08b2cf6e15d",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Ghana win on 2026-06-17?",
-      "question": "Will Ghana win on 2026-06-17?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781737200
-    },
-    {
-      "conditionId": "0xc17c0b2fbaaf76f218153cc4d4c6c0dca65c9138317e2cbd1903c63ab70dc1ef",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Ghana vs. Panama end in a draw?",
-      "question": "Will Ghana vs. Panama end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781737200
-    },
-    {
-      "conditionId": "0xeb0de200851ebb80eb722c8b02e2226fe76e91e86a7cfe7e38042632e42d5ae9",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Panama win on 2026-06-17?",
-      "question": "Will Panama win on 2026-06-17?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781737200
-    },
-    {
-      "conditionId": "0x10b86541c2718fecfb2f49d65fd9109de8d05ac3ca7177edf304e317d235e1f6",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "GHN/PNM O2.5",
-      "question": "Will Ghana vs Panama total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781737200
-    },
-    {
-      "conditionId": "0xf19a53afb615e3d80cddbca6e41e57833b1f723cc14c04bf6ff88568159702a4",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "GHN/PNM O1.5",
-      "question": "Will Ghana vs Panama total be over 1.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781747940
-    },
-    {
-      "conditionId": "0x5c1183a8ec42348d8bf207149b504e5686fd4baa97dbcc92f28bdb309325ce4f",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Ghana vs. Panama: 1st Half O/U 1.5",
-      "question": "Ghana vs. Panama: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781747940
-    },
-    {
-      "conditionId": "0x2f00e48e914ba6606867a6347e90c48cc1fd4da66cc196a191786637f40848e9",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Colombia win on 2026-06-17?",
-      "question": "Will Colombia win on 2026-06-17?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781748000
-    },
-    {
-      "conditionId": "0x3e0e84f19abf090dae4490caf1d7f74d5cbaa5d49fa0d64bee52a42b0f71c7e4",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Uzbekistan vs. Colombia end in a draw?",
-      "question": "Will Uzbekistan vs. Colombia end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781748000
-    },
-    {
-      "conditionId": "0xf2c0dc640a49a539bab7678e01131ee1f9562e37822eeb8c187c1d36031f7f6f",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Uzbekistan vs. Colombia: 1st Half O/U 1.5",
-      "question": "Uzbekistan vs. Colombia: 1st Half O/U 1.5",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781758740
-    },
-    {
-      "conditionId": "0x825bc4151fd9c139c4f0400c1a6f5d60cf67b2d04f12d69fd9fb5de67b13e4bc",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Czechia win on 2026-06-18?",
-      "question": "Will Czechia win on 2026-06-18?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781798400
-    },
-    {
-      "conditionId": "0x0fac1fde9bf271efa6a8bcd382db88003f661f051ee7644c85ff96a6a4b2e57a",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Czechia vs. South Africa end in a draw?",
-      "question": "Will Czechia vs. South Africa end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781798400
-    },
-    {
-      "conditionId": "0x845d6997f4b60fbcf81e8cac4510bb18988efe56e0318d77e476124c9ce80ce8",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will South Africa win on 2026-06-18?",
-      "question": "Will South Africa win on 2026-06-18?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781798400
-    },
-    {
-      "conditionId": "0x739ae7457696da4132d04787b96848f38a0d71c0f48347ee69ac55f7e75dad9f",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "CZC/STH O2.5",
-      "question": "Will Czechia vs South Africa total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781798400
-    },
-    {
-      "conditionId": "0x9af69672ed9980d291f11e2a794ccde49d96296539d805932bf057120548613a",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "CZC/STH O1.5",
-      "question": "Will Czechia vs South Africa total be over 1.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781809140
-    },
-    {
-      "conditionId": "0x870bb248c96c52dcf35390a66542471c5bba2896942d6bc97ade41a418646ba8",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Switzerland win on 2026-06-18?",
-      "question": "Will Switzerland win on 2026-06-18?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781809200
-    },
-    {
-      "conditionId": "0x04f0f21d77609ef19ef1c36749a8f522e471802384f484b80de4f789b1a90bb4",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Switzerland vs. Bosnia and Herzegovina end in a draw?",
-      "question": "Will Switzerland vs. Bosnia and Herzegovina end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781809200
-    },
-    {
-      "conditionId": "0x271f673391000932a03311e9a6ce6152eb4e1a60bda85a9ce7c14e87dadcdfd4",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Bosnia and Herzegovina win on 2026-06-18?",
-      "question": "Will Bosnia and Herzegovina win on 2026-06-18?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781809200
-    },
-    {
-      "conditionId": "0xc43eed5e30cf6f0220341e6564bf8b4f09ea60eaa9709bf4b96c07544672ab9e",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "SWT/BSN O2.5",
-      "question": "Will Switzerland vs Bosnia and Herzegovina total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781809200
-    },
-    {
-      "conditionId": "0xde8e3ed627ae6c72fbf1e042554112049f98e54203b5c6a3a1510f170a7a7d9c",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "SWT/BSN O1.5",
-      "question": "Will Switzerland vs Bosnia and Herzegovina total be over 1.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781819940
-    },
-    {
-      "conditionId": "0xc90f95af1a5d4e392fe9cc484f1b1a0983687865e7b85910ae89300c2076e4a1",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Canada win on 2026-06-18?",
-      "question": "Will Canada win on 2026-06-18?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781820000
-    },
-    {
-      "conditionId": "0x4691465cd4ac73b2fc650d87ba8a4b9cb41dac7d7c74b746b9fefe93803acf9b",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Canada vs. Qatar end in a draw?",
-      "question": "Will Canada vs. Qatar end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781820000
-    },
-    {
-      "conditionId": "0x0eef909ecbb97c9e75ef685f8bc2a3f7e23a704d52a9085c1c124d6fa1dec7a6",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "CND/QTR O2.5",
-      "question": "Will Canada vs Qatar total be over 2.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781820000
-    },
-    {
-      "conditionId": "0x029e72f379232ca9a6cff192e77ef1a8d7b6582d41d4932f772a97f867c89336",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "CND/QTR O1.5",
-      "question": "Will Canada vs Qatar total be over 1.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781830740
-    },
-    {
-      "conditionId": "0x6f05c7bc5ad978f8f9916f05d30a7f752e02b81508c56d82ed7c9245bca163b0",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Mexico win on 2026-06-18?",
-      "question": "Will Mexico win on 2026-06-18?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781830800
-    },
-    {
-      "conditionId": "0x95e8c492f878a1c6b04e47caceee107037a26e4a8b040041b28a3be8eb0f6942",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Mexico vs. Korea Republic end in a draw?",
-      "question": "Will Mexico vs. Korea Republic end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781830800
-    },
-    {
-      "conditionId": "0xa6ae199ce172475dd0e29d7584810a15a1d4608398d2f42d7ca39bfac45ed52b",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Korea Republic win on 2026-06-18?",
-      "question": "Will Korea Republic win on 2026-06-18?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781830800
-    },
-    {
-      "conditionId": "0xceeae51ec212b347500255f0426c79798d5d6eb2e9368210f37761e0ffcae1f2",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "MXC/KRR O1.5",
-      "question": "Will Mexico vs Korea Republic total be over 1.5?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781841540
-    },
-    {
-      "conditionId": "0x7ebb07134794576c154f06fbaa1cc61a5292d58e280ce98207977771c0326c27",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will United States win on 2026-06-19?",
-      "question": "Will United States win on 2026-06-19?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781895600
-    },
-    {
-      "conditionId": "0xffa05800960fb8b1532c0f3f99f51b4996c9b447b0b195635e644e071e4b63e7",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will United States vs. Australia end in a draw?",
-      "question": "Will United States vs. Australia end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781895600
-    },
-    {
-      "conditionId": "0xb1fca83dd9b3046c8db3ae0de2c8d56ee5d17d3aad54b7bbfa5c65000f6df350",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Australia win on 2026-06-19?",
-      "question": "Will Australia win on 2026-06-19?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781895600
-    },
-    {
-      "conditionId": "0xbc28e92d1fa999e842caf926cff56a580fb477f26d8c44c99aa29beb78062241",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Morocco win on 2026-06-19?",
-      "question": "Will Morocco win on 2026-06-19?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781906400
-    },
-    {
-      "conditionId": "0x577cffeb67b4b292a9f8e29b967e5de1c409333fabb752cf5057768c5e900422",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Scotland vs. Morocco end in a draw?",
-      "question": "Will Scotland vs. Morocco end in a draw?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781906400
-    },
-    {
-      "conditionId": "0x5fac5a47f11802e8a7b82d76e05461bd4551fe199041fb45c5e6228c56532d4a",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "Will Scotland win on 2026-06-19?",
-      "question": "Will Scotland win on 2026-06-19?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781906400
-    },
-    {
-      "conditionId": "0x3b43eb7188434ad124e98aff60a70445712ff547737a972c2131ccb2cf358a05",
-      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-      "shortName": "MRC -1.5",
-      "question": "Morocco covers -1.5 spread vs Scotland?",
-      "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-      "endTime": 1781906400
-    }
-  ]
-}
+[
+  {
+    "poolId": "world-cup-2026-week1-v2",
+    "cutoff": 1781204400,
+    "minCardPriceWei": "1000000000000000000",
+    "referralBps": 200,
+    "multiplierBps": [
+      0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+    ],
+    "conditions": [
+      {
+        "conditionId": "0x4cd77d456c83e7d8c569a8fb8f6396c3f40154f657e6d970733e2b1b6a7110ff",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Mexico win on 2026-06-11?",
+        "question": "Will Mexico win on 2026-06-11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781204400
+      },
+      {
+        "conditionId": "0x0a4b9beb6128863db2b107f185521597a426356f1d9a23c7001401edfd32014b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Mexico vs. South Africa end in a draw?",
+        "question": "Will Mexico vs. South Africa end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781204400
+      },
+      {
+        "conditionId": "0xee8a7ab7009136c2fb8827b5f66057e7c7ab590e4a01be923120e12d2d190e43",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Mexico 1 - 0 South Africa?",
+        "question": "Exact Score: Mexico 1 - 0 South Africa?",
+        "endTime": 1781204400
+      },
+      {
+        "conditionId": "0x23c7521ea17f65dd609638e664bf57446c235802171fb1f7bef4df1fa3ca9605",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Mexico 2 - 0 South Africa?",
+        "question": "Exact Score: Mexico 2 - 0 South Africa?",
+        "endTime": 1781204400
+      },
+      {
+        "conditionId": "0xe410a35cc26e37b6a9c457582121a71f10afdf82723a86d6c945b8bd7542eaf4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Mexico leading at halftime?",
+        "question": "Mexico leading at halftime?",
+        "endTime": 1781204400
+      },
+      {
+        "conditionId": "0xba5ba4a850edb5e6d422426930870e7e18ab2a9cdfc1949b47925e7f44e90238",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Mexico vs. South Africa: Draw at halftime?",
+        "question": "Mexico vs. South Africa: Draw at halftime?",
+        "endTime": 1781204400
+      },
+      {
+        "conditionId": "0xe80341a1a7cc66cdc1b89d7f14c5751282b60873ecaeba97ed0c13a2a82ed35e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "MXC/STH O2.5",
+        "question": "Will Mexico vs South Africa total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781204400
+      },
+      {
+        "conditionId": "0xe5a3bc999b28f4e233a862abc6473dd4622e8c583c98e78e1611c533a631057a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "MXC -1.5",
+        "question": "Mexico covers -1.5 spread vs South Africa?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781204400
+      },
+      {
+        "conditionId": "0x91df7add890fb82d6998d88324369f7a8d6499f920abed82f5e1f29da26f8539",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Mexico vs. South Africa: Mexico O/U 1.5",
+        "question": "Mexico vs. South Africa: Mexico O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781215140
+      },
+      {
+        "conditionId": "0xe7ccb93dfeac244a646aefee0e7d988bddd92a6c0b74d1be3049c6d6e675435e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Mexico to score first vs. South Africa?",
+        "question": "Mexico to score first vs. South Africa?",
+        "endTime": 1781215140
+      },
+      {
+        "conditionId": "0x59424a0e7ea4b7d245b36900dbd28282835e17a9c0823c04a174db5fa144497c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "South Africa to score first vs. Mexico?",
+        "question": "South Africa to score first vs. Mexico?",
+        "endTime": 1781215140
+      },
+      {
+        "conditionId": "0xe890148bbb5a08a6c1225a412ff55a322f6480a2087db64c12f460c4130731d3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Armando Gonz\u00e1lez: 1+ goals",
+        "question": "Armando Gonz\u00e1lez: 1+ goals",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/worldcup-goal-props/mex-armando-gonzalez.png",
+        "endTime": 1781215140
+      },
+      {
+        "conditionId": "0xcb7fd89b3e3b3de6f3b1c4a69b3c65579dba36fe9cc9b20d59f15bd50695ef81",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Mexico vs. South Africa: O/U 8.5 Total Corners",
+        "question": "Mexico vs. South Africa: O/U 8.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781215140
+      },
+      {
+        "conditionId": "0x7061e7ce4d7744677b6c3a7d1db0f82eb90c342104167386619d75777a6083c1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Korea Republic win on 2026-06-11?",
+        "question": "Will Korea Republic win on 2026-06-11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x293ed83ff451fbfd454eb09985f6707c5c33a30cf79ba98bf45ccf2fa553438f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Czechia win on 2026-06-11?",
+        "question": "Will Czechia win on 2026-06-11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0xb3e5963c18d0fbe9285a35e65aa260b304a3cded6aaddab9507122caa33caf44",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Korea Republic vs. Czechia end in a draw?",
+        "question": "Will Korea Republic vs. Czechia end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x2e85c2cc3d61ce85635cd4b4fdeb7bf13d7c651ed3ff9616645ec63b6553a062",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Korea Republic 1 - 1 Czechia?",
+        "question": "Exact Score: Korea Republic 1 - 1 Czechia?",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x185ab201d00298a8bc3683029f4f5d9272f2a83934d033845c57108c7fe1a211",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic vs. Czechia: Draw at halftime?",
+        "question": "Korea Republic vs. Czechia: Draw at halftime?",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x8c0a9eba4b5644db2c8f53847c1e430e0d97f77df5b903f98e7c1f7c4fa54388",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic leading at halftime?",
+        "question": "Korea Republic leading at halftime?",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x6e406dab803d5c97485e7cfe2a12c013cc68d211df50db61cda37194d1d324b7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Czechia leading at halftime?",
+        "question": "Czechia leading at halftime?",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x40a5e70362843194ea28bf9175eb6f3ea8ce56ced69c5c08cb1616541e0b2704",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS KRR/CZC",
+        "question": "Will both Korea Republic and Czechia score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0xbf7837964c7532a045d9a0cd2b8188df4297aa16b2c1c2dabb6099612cd0b11a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "KRR/CZC O2.5",
+        "question": "Will Korea Republic vs Czechia total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0xd1d8f38df323573f6d2b1bc7c8c55fd5d972c85ad74352509a526ab3cb5ba8e7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic vs. Czechia: Korea Republic 1st Half O/U 0.5",
+        "question": "Korea Republic vs. Czechia: Korea Republic 1st Half O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781240340
+      },
+      {
+        "conditionId": "0x802adc7238db42d431521f625b2a367954d04ebf8836109257dd4a3b961c6108",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Canada win on 2026-06-12?",
+        "question": "Will Canada win on 2026-06-12?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0xeda55c7409e9f0f436377ea300db42db6c576277846df770abd1391828dde639",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Canada vs. Bosnia and Herzegovina end in a draw?",
+        "question": "Will Canada vs. Bosnia and Herzegovina end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0x3bb3f35e86949207b257f1f3288a8ceaf071638cbd10a3c9a8273b4f542d4ee0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Bosnia and Herzegovina win on 2026-06-12?",
+        "question": "Will Bosnia and Herzegovina win on 2026-06-12?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0x7100ab95b70e1c300a74453214a5e605112c7cc7f5404961b740b4871609622e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND/BSN O2.5",
+        "question": "Will Canada vs Bosnia and Herzegovina total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0x170cb8abf977b6a9d62c511015ab92d6dfbc9bf231f62e00b5a4466ba7f08154",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND/BSN O1.5",
+        "question": "Will Canada vs Bosnia and Herzegovina total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0x01d669708e9acf40de71c31fba2e9dac3d9d320d6aae6a4eb1b7e013777700ab",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Canada vs. Bosnia-Herzegovina: 1st Half O/U 1.5",
+        "question": "Canada vs. Bosnia-Herzegovina: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781301600
+      },
+      {
+        "conditionId": "0x26c10c27cde58e2d6214d65ab562d8142d34723b3b6ec3f40836d24f6d22dfc9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will United States win on 2026-06-12?",
+        "question": "Will United States win on 2026-06-12?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0x3774cdf17e49143a4f6e10812df8b06113731493842fccc52dea045a1744ae61",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will United States vs. Paraguay end in a draw?",
+        "question": "Will United States vs. Paraguay end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0x86f102a31cf4b12dbcf31ae8c62c526c0b538d5b7eb1af5947d0b0378522f926",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Paraguay win on 2026-06-12?",
+        "question": "Will Paraguay win on 2026-06-12?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0xfdb7c4c168e2946b9ec2ea6af346b571b794670c7fb771dfa8c3bae1eca45fbf",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "UNI/PRG O2.5",
+        "question": "Will United States vs Paraguay total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0x78eebb2d22f052a5407587008ad4cadeb7c6a066ab0d46658bd7577824d4a0b2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States vs. Paraguay: 1st Half O/U 0.5",
+        "question": "United States vs. Paraguay: 1st Half O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0xc33a4381c2feb49d30fa68a732d396aeaf8a6c78f51ffd11ab8fcfc926faa1a0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States to score first vs. Paraguay?",
+        "question": "United States to score first vs. Paraguay?",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0x8dc70c544d868286fc32c1187c3e7c748ce993f18aa1a9e2d4f0c97fbf8362de",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Paraguay to score first vs. United States?",
+        "question": "Paraguay to score first vs. United States?",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0x45458c53ee6c6d2a5aab966703d5da6506e39b1650314a71ff2227efee9d7e35",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS UNI/PRG",
+        "question": "Will both United States and Paraguay score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0x6b864f35765706986a861d22fcc207872062186ddcb5fbc20275e991b20ff6ab",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Switzerland win on 2026-06-13?",
+        "question": "Will Switzerland win on 2026-06-13?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781377200
+      },
+      {
+        "conditionId": "0x22bc30327ba8ca5a6c7a15808b63c2a8c5e00ebfd7536b74d2689992f4ba8a67",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "QTR/SWT O2.5",
+        "question": "Will Qatar vs Switzerland total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781377200
+      },
+      {
+        "conditionId": "0x5238b69e57442973c13be38c5a71937cc33e1ce89a65e16e1158f233a9a767e5",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SWT -1.5",
+        "question": "Switzerland covers -1.5 spread vs Qatar?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781377200
+      },
+      {
+        "conditionId": "0xa6cd5f10e1dc33b720959daef61a2791241ba17bfdf2e4ff7b3ee708a278599a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Qatar vs. Switzerland: Switzerland O/U 2.5",
+        "question": "Qatar vs. Switzerland: Switzerland O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781387940
+      },
+      {
+        "conditionId": "0xa75053ffa630e41fdc08a0885fe0614716ecb13061ac460914bfe498038d5364",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Brazil win on 2026-06-13?",
+        "question": "Will Brazil win on 2026-06-13?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781388000
+      },
+      {
+        "conditionId": "0xb20f96ba6ccf4555d4e3adcc97a561512ef27af67183b52d32283066d4a81853",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Brazil vs. Morocco end in a draw?",
+        "question": "Will Brazil vs. Morocco end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781388000
+      },
+      {
+        "conditionId": "0xa4781f5d97b6fe28ca7a69353b89e3401a9483a4c7bfc2f493c6cca138bd9c82",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Morocco win on 2026-06-13?",
+        "question": "Will Morocco win on 2026-06-13?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781388000
+      },
+      {
+        "conditionId": "0x0a8418fdab57de8ce4e0c6042810fc635fb7d5718a86d10104fcd0d8cc5f6be9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BRZ/MRC O2.5",
+        "question": "Will Brazil vs Morocco total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781388000
+      },
+      {
+        "conditionId": "0x69bce49a3b10b980da957b642a0c2a3715565f38099df95e8a9229329d749ca2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Brazil vs. Morocco: Brazil O/U 1.5",
+        "question": "Brazil vs. Morocco: Brazil O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781398740
+      },
+      {
+        "conditionId": "0x1f2bb0bfc3c7b3c9ab678ce9e89cf68bd6daa83385c4834f669cb00c540276f2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Scotland win on 2026-06-13?",
+        "question": "Will Scotland win on 2026-06-13?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781398800
+      },
+      {
+        "conditionId": "0x2b759e69e6b2f509efebfe969cd26ddf30b84242506ddb5ac1e9a8b36cac22a2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Haiti vs. Scotland end in a draw?",
+        "question": "Will Haiti vs. Scotland end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781398800
+      },
+      {
+        "conditionId": "0x05a303645ac39405969df3786b6e33c74ec3be9e1779adba11e619a10d1feab0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Haiti win on 2026-06-13?",
+        "question": "Will Haiti win on 2026-06-13?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781398800
+      },
+      {
+        "conditionId": "0xbaeaf4578a00cefa6c752e577479ad1afac01bcc6cd95c16dfb0230572731fe7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS BRZ/MRC",
+        "question": "Will both Brazil and Morocco score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781398800
+      },
+      {
+        "conditionId": "0xe282b7d92941a5c4124688a51da89efffa7f3fcc78ae29a327813b48fa92da66",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "HAI/SCT O2.5",
+        "question": "Will Haiti vs Scotland total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781398800
+      },
+      {
+        "conditionId": "0x2187369e90b576430f2f0107c393d1708031f41813e2bc00d0081eef99662f6c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS HAI/SCT",
+        "question": "Will both Haiti and Scotland score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781409540
+      },
+      {
+        "conditionId": "0xfaa763ddab70fa907eeb522c7fc4f8a30de722f831a40b6d5fd62b9e0462221c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Haiti vs. Scotland: Scotland O/U 1.5",
+        "question": "Haiti vs. Scotland: Scotland O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781409540
+      },
+      {
+        "conditionId": "0x48880e3355f031da13b5ed1142d209396bdec61acf6c0945234ff6e5edab9ebf",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will T\u00fcrkiye win on 2026-06-14?",
+        "question": "Will T\u00fcrkiye win on 2026-06-14?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781409600
+      },
+      {
+        "conditionId": "0x12c17c04d2e404bd85a8c65c04cd7e8799a6295c7f74414feec5e867fa40cc5a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Australia vs. T\u00fcrkiye end in a draw?",
+        "question": "Will Australia vs. T\u00fcrkiye end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781409600
+      },
+      {
+        "conditionId": "0xaaee502e7f2378521ba15c183e2762cecab013dd42f7600f7b35e99e0882f08c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Australia win on 2026-06-14?",
+        "question": "Will Australia win on 2026-06-14?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781409600
+      },
+      {
+        "conditionId": "0x29736a7cfd5f57c79f02057bf0259b0d1fafbea156bc29acd13b9da633b7979d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Any Other Score?",
+        "question": "Exact Score: Any Other Score?",
+        "endTime": 1781409600
+      },
+      {
+        "conditionId": "0x85a8fd15a5277a7e210fd45f53584b0831f081fd4727771af47fec7e4528ce83",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "AUS/TRK O2.5",
+        "question": "Will Australia vs T\u00fcrkiye total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781409600
+      },
+      {
+        "conditionId": "0x96cd1bc66d5b25c59fc8163bacb7f6eff00501a5589891fde75827a1e0ea2b3b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Australia vs. T\u00fcrkiye: 1st Half O/U 0.5",
+        "question": "Australia vs. T\u00fcrkiye: 1st Half O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781409600
+      },
+      {
+        "conditionId": "0x8364d93d587700053776084b87ab9fb334f49ffbf6c85b3b34e1c03f1cbde89e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Australia vs. T\u00fcrkiye: T\u00fcrkiye O/U 1.5",
+        "question": "Australia vs. T\u00fcrkiye: T\u00fcrkiye O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781420340
+      },
+      {
+        "conditionId": "0xd8296bfc3a6dff2f96f1865c102ae899ed74ee0267ea24d76abef666daf9170c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Germany leading at halftime?",
+        "question": "Germany leading at halftime?",
+        "endTime": 1781456400
+      },
+      {
+        "conditionId": "0x0921c61d04ca3f79c5ec022da1bf5f39a59ab36506004d74a02f2894cc376e32",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Germany vs. Cura\u00e7ao: Draw at halftime?",
+        "question": "Germany vs. Cura\u00e7ao: Draw at halftime?",
+        "endTime": 1781456400
+      },
+      {
+        "conditionId": "0x3fbc68160eebf3b359b077b0e5ea8c7052031e84ec159c5002666302f67b508c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GRM -3.5",
+        "question": "Germany covers -3.5 spread vs Cura\u00e7ao?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781456400
+      },
+      {
+        "conditionId": "0x685d9c11a3cddb6c0a49fb5a742c8a75b91e20de1b8bb4912444879de97baf46",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GRM/CUR O4.5",
+        "question": "Will Germany vs Cura\u00e7ao total be over 4.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781456400
+      },
+      {
+        "conditionId": "0x90e31bfe6fed6275c3048c09ab90c73c039688e89a302294a9e1ed63ac8af2af",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Germany vs. Cura\u00e7ao: 1st Half O/U 1.5",
+        "question": "Germany vs. Cura\u00e7ao: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781456400
+      },
+      {
+        "conditionId": "0x2153377bdb8920a0d3227e9a2a68ddb9a001025918b695fe55f66677836e62c6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Netherlands win on 2026-06-14?",
+        "question": "Will Netherlands win on 2026-06-14?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781467200
+      },
+      {
+        "conditionId": "0x6bb8b2483eccb8fcae84cd42fd7d8e5e394689e0a06f95b189a77b4819cf0173",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Netherlands vs. Japan end in a draw?",
+        "question": "Will Netherlands vs. Japan end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781467200
+      },
+      {
+        "conditionId": "0x51fc7cfdaee135d6d0bed053e5fcd3652954414d9b9f4eef5dce2e9ea717f161",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Japan win on 2026-06-14?",
+        "question": "Will Japan win on 2026-06-14?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781467200
+      },
+      {
+        "conditionId": "0x0885c736c2c90063f229ffa03104c2a659c49e853ab3c321680b779eede7343c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Any Other Score?",
+        "question": "Exact Score: Any Other Score?",
+        "endTime": 1781467200
+      },
+      {
+        "conditionId": "0xe9fbe292e5dae90c6a712aeeff8ec3ab8b0d95192b12dbe3eda168a1874e14b3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "NTH/JPN O2.5",
+        "question": "Will Netherlands vs Japan total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781477940
+      },
+      {
+        "conditionId": "0x227abab2faf450dc64d2a481519da6a68c6fe42f4ccb547885dafa3bf7b2de09",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS NTH/JPN",
+        "question": "Will both Netherlands and Japan score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781477940
+      },
+      {
+        "conditionId": "0xb610e79ef70894ba11645f175b12e802aa2f9c4d7f0d9e4d4cbe7dcb3e214581",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Netherlands vs. Japan: Netherlands O/U 1.5",
+        "question": "Netherlands vs. Japan: Netherlands O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781477940
+      },
+      {
+        "conditionId": "0x3150ba668d15e1c248c71bcff71c67f1adf87063db7047f27f15ebbc9a1a6a0d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Ecuador win on 2026-06-14?",
+        "question": "Will Ecuador win on 2026-06-14?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781478000
+      },
+      {
+        "conditionId": "0xa6c938b3402538af5faa626dc882bd7995db132df1c4ea669db7841df3557678",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will C\u00f4te d'Ivoire vs. Ecuador end in a draw?",
+        "question": "Will C\u00f4te d'Ivoire vs. Ecuador end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781478000
+      },
+      {
+        "conditionId": "0x8f92746709a4fc82f4d454e162046ac3590e3a5a7564540806a6c5f8a87e6738",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will C\u00f4te d'Ivoire win on 2026-06-14?",
+        "question": "Will C\u00f4te d'Ivoire win on 2026-06-14?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781478000
+      },
+      {
+        "conditionId": "0x11664d353e416f56ac57f40c21839527be7bd4730ee259955fee13d45226e2d3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CTD/ECU O2.5",
+        "question": "Will C\u00f4te d'Ivoire vs Ecuador total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781478000
+      },
+      {
+        "conditionId": "0xf946f993eb6dddb93e04c413b8da82c89306d8ed367cebdb13dc26933c483fab",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CTD/ECU O1.5",
+        "question": "Will C\u00f4te d'Ivoire vs Ecuador total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781488740
+      },
+      {
+        "conditionId": "0xc6f7e4a015ec643eb49c749da19553a2257add76278a252805a12dfa85103269",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Sweden win on 2026-06-14?",
+        "question": "Will Sweden win on 2026-06-14?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781488800
+      },
+      {
+        "conditionId": "0x11e4780f48d73417a4863618e288e78c8848e2ef4f744dca4cabdff154af5e3c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Sweden vs. Tunisia end in a draw?",
+        "question": "Will Sweden vs. Tunisia end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781488800
+      },
+      {
+        "conditionId": "0xb5e6e5829c986107aebc5b4b18429b007a813f2b5ca860993020f27ef9f0e080",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Tunisia win on 2026-06-14?",
+        "question": "Will Tunisia win on 2026-06-14?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781488800
+      },
+      {
+        "conditionId": "0xea1ff53447ee83d737ff6ad02cb04cf7a2e771aae70e3a15b54c8ec5a4820884",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "C\u00f4te d'Ivoire vs. Ecuador: 1st Half O/U 0.5",
+        "question": "C\u00f4te d'Ivoire vs. Ecuador: 1st Half O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781488800
+      },
+      {
+        "conditionId": "0x05386c50bb29520c311e9c639762f2e01b70dc7d7cbdc0bb9740f95cca834244",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SWD/TNS O2.5",
+        "question": "Will Sweden vs Tunisia total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781499540
+      },
+      {
+        "conditionId": "0xc4782a4e3729ffb78897bd10385119385aa6b7c66393d20c509d5473c58f38a5",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Sweden vs. Tunisia: 1st Half O/U 0.5",
+        "question": "Sweden vs. Tunisia: 1st Half O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781499540
+      },
+      {
+        "conditionId": "0x337f91d8ffff892a88dd7c08b09c79c11677f820dd7e5792fb9a4b29b1b87931",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Sweden vs. Tunisia: 1st Half O/U 1.5",
+        "question": "Sweden vs. Tunisia: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781499540
+      },
+      {
+        "conditionId": "0xe76d397afa47ea028b914eec69543c69f9bbec8c313bd3a1dba022bd050b4c22",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SPN -2.5",
+        "question": "Spain covers -2.5 spread vs Cabo Verde?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781539200
+      },
+      {
+        "conditionId": "0x1ce1f3aa890d89772a81279225f4a534961d6f762c0ce85ea00349996df55278",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SPN/CBV O3.5",
+        "question": "Will Spain vs Cabo Verde total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781539200
+      },
+      {
+        "conditionId": "0x2e6d1ff6f974c65a4584646d73ea5bea113762c7cb1c12270507ec80e774821b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS SPN/CBV",
+        "question": "Will both Spain and Cabo Verde score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781539200
+      },
+      {
+        "conditionId": "0x3ceb5b631318be5000758200590efe2b308a581d6787c3e7bc050bfd8f627627",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Belgium win on 2026-06-15?",
+        "question": "Will Belgium win on 2026-06-15?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781550000
+      },
+      {
+        "conditionId": "0x36f93dcdb75e18f9dd7f4bd4f976dd901562e6f779a86c8ac847f154e37e69d2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Belgium vs. Egypt end in a draw?",
+        "question": "Will Belgium vs. Egypt end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781550000
+      },
+      {
+        "conditionId": "0x3f9bec31cf8e8550470626fbd15382e20a18e46af27358cad575a5ef5bf660de",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Egypt win on 2026-06-15?",
+        "question": "Will Egypt win on 2026-06-15?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781550000
+      },
+      {
+        "conditionId": "0x0d9ceec323925d837bd3c05da1e66586fe2b3d36f0e4335a749f929a5b2346e8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BLG/EGY O2.5",
+        "question": "Will Belgium vs Egypt total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781550000
+      },
+      {
+        "conditionId": "0x59622385e39f80c95db2567273b4dbf894f335092177f3c770b0465c314ee6d1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BLG -1.5",
+        "question": "Belgium covers -1.5 spread vs Egypt?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781550000
+      },
+      {
+        "conditionId": "0x39186e62015fc4cdcb7c0386b7302f98e1c2268004e6dd7a7d8a4c5edb4cb304",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Belgium vs. Egypt: 1st Half O/U 1.5",
+        "question": "Belgium vs. Egypt: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781560740
+      },
+      {
+        "conditionId": "0xbc54d73527785bdc7b443cfdf3b0d59558c5ac2bbffca23425ecfbd161b07317",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Uruguay win on 2026-06-15?",
+        "question": "Will Uruguay win on 2026-06-15?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781560800
+      },
+      {
+        "conditionId": "0x344327632a0ab1c28b40003f14bfe75cb7d5bd65c58b4e34199cfc17a77104fe",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Saudi Arabia vs. Uruguay end in a draw?",
+        "question": "Will Saudi Arabia vs. Uruguay end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781560800
+      },
+      {
+        "conditionId": "0x747f264fcaca0caf62c4610078edc77b44f44c1d6dc417fbb24d312343a5057c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS SDR/URU",
+        "question": "Will both Saudi Arabia and Uruguay score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781560800
+      },
+      {
+        "conditionId": "0xa16a7269a25f746cd0aa5d85910de766d940d4dea9bf0cdb6423158b24149be1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "URU -1.5",
+        "question": "Uruguay covers -1.5 spread vs Saudi Arabia?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781560800
+      },
+      {
+        "conditionId": "0x03b35b1e7a428f8f139020a1b3430b3032e3a6d1c8233202fef0ed4a61b2a72f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Saudi Arabia vs. Uruguay: 1st Half O/U 1.5",
+        "question": "Saudi Arabia vs. Uruguay: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781571540
+      },
+      {
+        "conditionId": "0xe70fd51f42e61fc309d8e57019a7b76c8dc7bd19b473351d56ff1e125ae0d9d4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will IR Iran win on 2026-06-15?",
+        "question": "Will IR Iran win on 2026-06-15?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781571600
+      },
+      {
+        "conditionId": "0xcd05a73f2ddf6c07340b4f1c6c853c4754b2f4428045fec1b295c192e399e563",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will IR Iran vs. New Zealand end in a draw?",
+        "question": "Will IR Iran vs. New Zealand end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781571600
+      },
+      {
+        "conditionId": "0x4d32282db59ec449edbc191b4b487b7f8218c07d6f94b0c01e2e7ddf6964c26d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will New Zealand win on 2026-06-15?",
+        "question": "Will New Zealand win on 2026-06-15?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781571600
+      },
+      {
+        "conditionId": "0x4b674e4b8ca83d4bfa4845c1be7ba487a7fa4828336119a8a2110f26a7d47c3d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRI/NWZ O2.5",
+        "question": "Will IR Iran vs New Zealand total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781571600
+      },
+      {
+        "conditionId": "0xed5a232c9d99b006eae6b9f1caf0742c17f9cf4d28d3c77587ea4231b8ef7883",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IR Iran vs. New Zealand: Both Teams to Score in First Half",
+        "question": "IR Iran vs. New Zealand: Both Teams to Score in First Half",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781582340
+      },
+      {
+        "conditionId": "0x08ddc6c683b04679fdfd2f2033ee3d20dd22e6c7a49d944c183b4e024c3d444e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IR Iran vs. New Zealand: 1st Half O/U 1.5",
+        "question": "IR Iran vs. New Zealand: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781582340
+      },
+      {
+        "conditionId": "0xe3c1605106ae1c141a148e33a0b25f7538aa1e2d1daa7bc87c56b81610688988",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Any Other Score?",
+        "question": "Exact Score: Any Other Score?",
+        "endTime": 1781582340
+      },
+      {
+        "conditionId": "0x04b6d6630d49e6513355ff045c96439c929335cb0d18da7792dea6c2fc717ead",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will France win on 2026-06-16?",
+        "question": "Will France win on 2026-06-16?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781636400
+      },
+      {
+        "conditionId": "0xbd175757f12ecc85b7aae7f1f35c8637e350227dd2967abd6e1373e245c51f49",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will France vs. Senegal end in a draw?",
+        "question": "Will France vs. Senegal end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781636400
+      },
+      {
+        "conditionId": "0x3045a441e5ea4e49468d0fac36d47c32ceae2e572bd7960111187b6630a83b46",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "FRN -1.5",
+        "question": "France covers -1.5 spread vs Senegal?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781636400
+      },
+      {
+        "conditionId": "0x9ad38d22c9912987ca4d644c8b7d239f24afba5c93d16300a8cad778bc6f6858",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "FRN/SNG O2.5",
+        "question": "Will France vs Senegal total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0xcee0d9074a1f8766b4f66d806608a4097d027c94f85de367410fbbb166a29424",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Norway win on 2026-06-16?",
+        "question": "Will Norway win on 2026-06-16?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781647200
+      },
+      {
+        "conditionId": "0x821b530445694142d4b28874d58ffe841cad17a1106b7c0cff715bd7a165d7df",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "NRW -1.5",
+        "question": "Norway covers -1.5 spread vs Iraq?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781647200
+      },
+      {
+        "conditionId": "0x7164003effdfef62c5ac5b660c40630ecde0890e3c328ef8510f037831c59c0c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "NRW -2.5",
+        "question": "Norway covers -2.5 spread vs Iraq?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781647200
+      },
+      {
+        "conditionId": "0x2c6fff9c552558c74b976093b920b55a0cebbc51b1a06e04e1b02f8c48677900",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS FRN/SNG",
+        "question": "Will both France and Senegal score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781647200
+      },
+      {
+        "conditionId": "0x2a7a6ab8f4984f1ae82eacd7fb408832a50e63162ac6b98fff1fe094b8e9d3b5",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Argentina win on 2026-06-16?",
+        "question": "Will Argentina win on 2026-06-16?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781658000
+      },
+      {
+        "conditionId": "0x353bfdea6f2cae034f1cef73064086e6c904d60d58f96c69644789b510ba862f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Argentina vs. Algeria end in a draw?",
+        "question": "Will Argentina vs. Algeria end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781658000
+      },
+      {
+        "conditionId": "0xc0f88d884322bad4aadedfa49a1022636cc6ad248e412bfd8e406b65d4da3de7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ARG/ALG O2.5",
+        "question": "Will Argentina vs Algeria total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x1eb724a708f3720c2b7ef63d7ffc7483ecc14deed6df2e7e9dc1dfa724a98bd6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ARG -1.5",
+        "question": "Argentina covers -1.5 spread vs Algeria?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x7c945fce2c1016e09641dea6a51a7f921a05a1d5a968948613d806f705a6d3d4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: 1st Half O/U 1.5",
+        "question": "Argentina vs. Algeria: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x15869f0d05e99ad5789f647685b2eedbbe4201f8910a2bdb70e5716bd3674e8f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Austria win on 2026-06-17?",
+        "question": "Will Austria win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781668800
+      },
+      {
+        "conditionId": "0x2d17b7b5c8701296c4348f016076a948f25cb83e23c8b863bfa1e22ed493ae53",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Austria vs. Jordan end in a draw?",
+        "question": "Will Austria vs. Jordan end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781668800
+      },
+      {
+        "conditionId": "0x84fbb724c0465bf76f6302fa7189a8dd67264d39c59fba5fd341968de1178f9c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "AUS -1.5",
+        "question": "Austria covers -1.5 spread vs Jordan?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781668800
+      },
+      {
+        "conditionId": "0xd6126c2b59d6cae3799052ae87cf77247e8aa598b7f911d81cff9bcb62dd4925",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Austria vs. Jordan: 1st Half O/U 1.5",
+        "question": "Austria vs. Jordan: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0x4cca4d1e6722c00e372bd219c15a94d29d09dc34c2599cc5efa9eef82ff67838",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "AUS/JRD O2.5",
+        "question": "Will Austria vs Jordan total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781679600
+      },
+      {
+        "conditionId": "0xcaaa1338d38b5c614196c9a926dd84babc3984442f2ec9b937a16284a199ec3a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Portugal win on 2026-06-17?",
+        "question": "Will Portugal win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781715600
+      },
+      {
+        "conditionId": "0xff1afdef47475128b85467bd1a3a4a3182da0c27409d81c2dc6c7d55b5467dad",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Portugal vs. DR Congo end in a draw?",
+        "question": "Will Portugal vs. DR Congo end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781715600
+      },
+      {
+        "conditionId": "0x7d531b7f4710a8f00562455db5d409e269564a1415b5da352ba3f3daf33ee98e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "PRT -1.5",
+        "question": "Portugal covers -1.5 spread vs DR Congo?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781715600
+      },
+      {
+        "conditionId": "0xa71f817655a1e3388855598499fbe5dbb1f7904a376b7a792869b19279365dc1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "PRT/DRC O2.5",
+        "question": "Will Portugal vs DR Congo total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781715600
+      },
+      {
+        "conditionId": "0xde0efbf9052d1467ac826c421b4b056e6bec4a251980ec7c15fd6244cecc72db",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Portugal vs. DR Congo: 1st Half O/U 1.5",
+        "question": "Portugal vs. DR Congo: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0xb361c29b5481164886627cb175ed76792df30902e66ec329c0a3853f807fe8e9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will England win on 2026-06-17?",
+        "question": "Will England win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781726400
+      },
+      {
+        "conditionId": "0x7c200c3facd45c4307c4d52d47a7d0d86fe219ff25eba92ff88a674d974c4ec3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will England vs. Croatia end in a draw?",
+        "question": "Will England vs. Croatia end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781726400
+      },
+      {
+        "conditionId": "0x90b9d20ece132c342654f98e0826e972134b10f58d4789c2662bdc00eee44b13",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Croatia win on 2026-06-17?",
+        "question": "Will Croatia win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781726400
+      },
+      {
+        "conditionId": "0x1c0b3b89f91914877baa6642fadd047deee44a76c129643779e134bb2c61e5f7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ENG/CRT O2.5",
+        "question": "Will England vs Croatia total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781726400
+      },
+      {
+        "conditionId": "0xf4dc0839f09117926dcd9582596a1f50f79f0ac154f929b8873bd7f4f3665b19",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "England vs. Croatia: 1st Half O/U 1.5",
+        "question": "England vs. Croatia: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0x0fcd3ec1997002b2c76408a22d50cb3b29f220ec719ec8baf246b987764f0f7d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ENG/CRT O1.5",
+        "question": "Will England vs Croatia total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0x0256ef63427ed0d9eefa1422eee948165a2a215b0741a339025fb08b2cf6e15d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Ghana win on 2026-06-17?",
+        "question": "Will Ghana win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781737200
+      },
+      {
+        "conditionId": "0xc17c0b2fbaaf76f218153cc4d4c6c0dca65c9138317e2cbd1903c63ab70dc1ef",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Ghana vs. Panama end in a draw?",
+        "question": "Will Ghana vs. Panama end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781737200
+      },
+      {
+        "conditionId": "0xeb0de200851ebb80eb722c8b02e2226fe76e91e86a7cfe7e38042632e42d5ae9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Panama win on 2026-06-17?",
+        "question": "Will Panama win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781737200
+      },
+      {
+        "conditionId": "0x10b86541c2718fecfb2f49d65fd9109de8d05ac3ca7177edf304e317d235e1f6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GHN/PNM O2.5",
+        "question": "Will Ghana vs Panama total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781737200
+      },
+      {
+        "conditionId": "0xf19a53afb615e3d80cddbca6e41e57833b1f723cc14c04bf6ff88568159702a4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GHN/PNM O1.5",
+        "question": "Will Ghana vs Panama total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781747940
+      },
+      {
+        "conditionId": "0x5c1183a8ec42348d8bf207149b504e5686fd4baa97dbcc92f28bdb309325ce4f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Ghana vs. Panama: 1st Half O/U 1.5",
+        "question": "Ghana vs. Panama: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781747940
+      },
+      {
+        "conditionId": "0x2f00e48e914ba6606867a6347e90c48cc1fd4da66cc196a191786637f40848e9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Colombia win on 2026-06-17?",
+        "question": "Will Colombia win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781748000
+      },
+      {
+        "conditionId": "0x3e0e84f19abf090dae4490caf1d7f74d5cbaa5d49fa0d64bee52a42b0f71c7e4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Uzbekistan vs. Colombia end in a draw?",
+        "question": "Will Uzbekistan vs. Colombia end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781748000
+      },
+      {
+        "conditionId": "0xf2c0dc640a49a539bab7678e01131ee1f9562e37822eeb8c187c1d36031f7f6f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Uzbekistan vs. Colombia: 1st Half O/U 1.5",
+        "question": "Uzbekistan vs. Colombia: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0x825bc4151fd9c139c4f0400c1a6f5d60cf67b2d04f12d69fd9fb5de67b13e4bc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Czechia win on 2026-06-18?",
+        "question": "Will Czechia win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781798400
+      },
+      {
+        "conditionId": "0x0fac1fde9bf271efa6a8bcd382db88003f661f051ee7644c85ff96a6a4b2e57a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Czechia vs. South Africa end in a draw?",
+        "question": "Will Czechia vs. South Africa end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781798400
+      },
+      {
+        "conditionId": "0x845d6997f4b60fbcf81e8cac4510bb18988efe56e0318d77e476124c9ce80ce8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will South Africa win on 2026-06-18?",
+        "question": "Will South Africa win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781798400
+      },
+      {
+        "conditionId": "0x739ae7457696da4132d04787b96848f38a0d71c0f48347ee69ac55f7e75dad9f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CZC/STH O2.5",
+        "question": "Will Czechia vs South Africa total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781798400
+      },
+      {
+        "conditionId": "0x9af69672ed9980d291f11e2a794ccde49d96296539d805932bf057120548613a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CZC/STH O1.5",
+        "question": "Will Czechia vs South Africa total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781809140
+      },
+      {
+        "conditionId": "0x870bb248c96c52dcf35390a66542471c5bba2896942d6bc97ade41a418646ba8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Switzerland win on 2026-06-18?",
+        "question": "Will Switzerland win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781809200
+      },
+      {
+        "conditionId": "0x04f0f21d77609ef19ef1c36749a8f522e471802384f484b80de4f789b1a90bb4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Switzerland vs. Bosnia and Herzegovina end in a draw?",
+        "question": "Will Switzerland vs. Bosnia and Herzegovina end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781809200
+      },
+      {
+        "conditionId": "0x271f673391000932a03311e9a6ce6152eb4e1a60bda85a9ce7c14e87dadcdfd4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Bosnia and Herzegovina win on 2026-06-18?",
+        "question": "Will Bosnia and Herzegovina win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781809200
+      },
+      {
+        "conditionId": "0xc43eed5e30cf6f0220341e6564bf8b4f09ea60eaa9709bf4b96c07544672ab9e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SWT/BSN O2.5",
+        "question": "Will Switzerland vs Bosnia and Herzegovina total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781809200
+      },
+      {
+        "conditionId": "0xde8e3ed627ae6c72fbf1e042554112049f98e54203b5c6a3a1510f170a7a7d9c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SWT/BSN O1.5",
+        "question": "Will Switzerland vs Bosnia and Herzegovina total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781819940
+      },
+      {
+        "conditionId": "0xc90f95af1a5d4e392fe9cc484f1b1a0983687865e7b85910ae89300c2076e4a1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Canada win on 2026-06-18?",
+        "question": "Will Canada win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781820000
+      },
+      {
+        "conditionId": "0x4691465cd4ac73b2fc650d87ba8a4b9cb41dac7d7c74b746b9fefe93803acf9b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Canada vs. Qatar end in a draw?",
+        "question": "Will Canada vs. Qatar end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781820000
+      },
+      {
+        "conditionId": "0x0eef909ecbb97c9e75ef685f8bc2a3f7e23a704d52a9085c1c124d6fa1dec7a6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND/QTR O2.5",
+        "question": "Will Canada vs Qatar total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781820000
+      },
+      {
+        "conditionId": "0x029e72f379232ca9a6cff192e77ef1a8d7b6582d41d4932f772a97f867c89336",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND/QTR O1.5",
+        "question": "Will Canada vs Qatar total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0x6f05c7bc5ad978f8f9916f05d30a7f752e02b81508c56d82ed7c9245bca163b0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Mexico win on 2026-06-18?",
+        "question": "Will Mexico win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781830800
+      },
+      {
+        "conditionId": "0x95e8c492f878a1c6b04e47caceee107037a26e4a8b040041b28a3be8eb0f6942",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Mexico vs. Korea Republic end in a draw?",
+        "question": "Will Mexico vs. Korea Republic end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781830800
+      },
+      {
+        "conditionId": "0xa6ae199ce172475dd0e29d7584810a15a1d4608398d2f42d7ca39bfac45ed52b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Korea Republic win on 2026-06-18?",
+        "question": "Will Korea Republic win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781830800
+      },
+      {
+        "conditionId": "0xceeae51ec212b347500255f0426c79798d5d6eb2e9368210f37761e0ffcae1f2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "MXC/KRR O1.5",
+        "question": "Will Mexico vs Korea Republic total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x7ebb07134794576c154f06fbaa1cc61a5292d58e280ce98207977771c0326c27",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will United States win on 2026-06-19?",
+        "question": "Will United States win on 2026-06-19?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781895600
+      },
+      {
+        "conditionId": "0xffa05800960fb8b1532c0f3f99f51b4996c9b447b0b195635e644e071e4b63e7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will United States vs. Australia end in a draw?",
+        "question": "Will United States vs. Australia end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781895600
+      },
+      {
+        "conditionId": "0xb1fca83dd9b3046c8db3ae0de2c8d56ee5d17d3aad54b7bbfa5c65000f6df350",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Australia win on 2026-06-19?",
+        "question": "Will Australia win on 2026-06-19?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781895600
+      },
+      {
+        "conditionId": "0xbc28e92d1fa999e842caf926cff56a580fb477f26d8c44c99aa29beb78062241",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Morocco win on 2026-06-19?",
+        "question": "Will Morocco win on 2026-06-19?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781906400
+      },
+      {
+        "conditionId": "0x577cffeb67b4b292a9f8e29b967e5de1c409333fabb752cf5057768c5e900422",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Scotland vs. Morocco end in a draw?",
+        "question": "Will Scotland vs. Morocco end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781906400
+      },
+      {
+        "conditionId": "0x5fac5a47f11802e8a7b82d76e05461bd4551fe199041fb45c5e6228c56532d4a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Scotland win on 2026-06-19?",
+        "question": "Will Scotland win on 2026-06-19?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781906400
+      },
+      {
+        "conditionId": "0x3b43eb7188434ad124e98aff60a70445712ff547737a972c2131ccb2cf358a05",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "MRC -1.5",
+        "question": "Morocco covers -1.5 spread vs Scotland?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781906400
+      }
+    ]
+  },
+  {
+    "poolId": "world-cup-2026-jun12",
+    "cutoff": 1781229600,
+    "minCardPriceWei": "1000000000000000000",
+    "referralBps": 200,
+    "multiplierBps": [
+      0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+    ],
+    "conditions": [
+      {
+        "conditionId": "0x7061e7ce4d7744677b6c3a7d1db0f82eb90c342104167386619d75777a6083c1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Korea Republic win on 2026-06-11?",
+        "question": "Will Korea Republic win on 2026-06-11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x293ed83ff451fbfd454eb09985f6707c5c33a30cf79ba98bf45ccf2fa553438f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Czechia win on 2026-06-11?",
+        "question": "Will Czechia win on 2026-06-11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0xb3e5963c18d0fbe9285a35e65aa260b304a3cded6aaddab9507122caa33caf44",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Korea Republic vs. Czechia end in a draw?",
+        "question": "Will Korea Republic vs. Czechia end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x2e85c2cc3d61ce85635cd4b4fdeb7bf13d7c651ed3ff9616645ec63b6553a062",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Korea Republic 1 - 1 Czechia?",
+        "question": "Exact Score: Korea Republic 1 - 1 Czechia?",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x185ab201d00298a8bc3683029f4f5d9272f2a83934d033845c57108c7fe1a211",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic vs. Czechia: Draw at halftime?",
+        "question": "Korea Republic vs. Czechia: Draw at halftime?",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x8c0a9eba4b5644db2c8f53847c1e430e0d97f77df5b903f98e7c1f7c4fa54388",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic leading at halftime?",
+        "question": "Korea Republic leading at halftime?",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x6e406dab803d5c97485e7cfe2a12c013cc68d211df50db61cda37194d1d324b7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Czechia leading at halftime?",
+        "question": "Czechia leading at halftime?",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x40a5e70362843194ea28bf9175eb6f3ea8ce56ced69c5c08cb1616541e0b2704",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS KRR/CZC",
+        "question": "Will both Korea Republic and Czechia score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0xbf7837964c7532a045d9a0cd2b8188df4297aa16b2c1c2dabb6099612cd0b11a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "KRR/CZC O2.5",
+        "question": "Will Korea Republic vs Czechia total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781229600
+      },
+      {
+        "conditionId": "0x5d00d47c897ac60486de8b6d92eeb4adcc8d25db614b5667767e0c994953581e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic vs. Czechia: 2nd Half O/U 1.5",
+        "question": "Korea Republic vs. Czechia: 2nd Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781240340
+      },
+      {
+        "conditionId": "0xd1d8f38df323573f6d2b1bc7c8c55fd5d972c85ad74352509a526ab3cb5ba8e7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic vs. Czechia: Korea Republic 1st Half O/U 0.5",
+        "question": "Korea Republic vs. Czechia: Korea Republic 1st Half O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781240340
+      },
+      {
+        "conditionId": "0xa2f36b5626747a8c332ecc281b51b49eb588b08e9204d348789c57a7536dc0c9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic vs. Czechia: 2nd Half O/U 2.5",
+        "question": "Korea Republic vs. Czechia: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781240340
+      },
+      {
+        "conditionId": "0x93fac6876c5bd22dbf2e936bb47c424512b1540dcd0d179945ec4a456044c603",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic vs. Czechia: O/U 8.5 Total Corners",
+        "question": "Korea Republic vs. Czechia: O/U 8.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781240340
+      },
+      {
+        "conditionId": "0x62a5e2b1df97c4eee5f8e9ce1d47759eb0fab0e7aa13bee6300345a24ccdaf8d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic vs. Czechia: O/U 9.5 Total Corners",
+        "question": "Korea Republic vs. Czechia: O/U 9.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781240340
+      },
+      {
+        "conditionId": "0x17b30e5a39293e2a99d4ad26e592b20f888f8b1b43808c330ec17581f6367d97",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Korea Republic vs. Czechia: O/U 10.5 Total Corners",
+        "question": "Korea Republic vs. Czechia: O/U 10.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781240340
+      },
+      {
+        "conditionId": "0x802adc7238db42d431521f625b2a367954d04ebf8836109257dd4a3b961c6108",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Canada win on 2026-06-12?",
+        "question": "Will Canada win on 2026-06-12?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0xeda55c7409e9f0f436377ea300db42db6c576277846df770abd1391828dde639",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Canada vs. Bosnia and Herzegovina end in a draw?",
+        "question": "Will Canada vs. Bosnia and Herzegovina end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0x3bb3f35e86949207b257f1f3288a8ceaf071638cbd10a3c9a8273b4f542d4ee0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Bosnia and Herzegovina win on 2026-06-12?",
+        "question": "Will Bosnia and Herzegovina win on 2026-06-12?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0x7100ab95b70e1c300a74453214a5e605112c7cc7f5404961b740b4871609622e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND/BSN O2.5",
+        "question": "Will Canada vs Bosnia and Herzegovina total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0x170cb8abf977b6a9d62c511015ab92d6dfbc9bf231f62e00b5a4466ba7f08154",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND/BSN O1.5",
+        "question": "Will Canada vs Bosnia and Herzegovina total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0xd1dbff853a52976ffe591b32f3384fa4df116d8452e7335db76d14bed048d1f0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Canada vs. Bosnia-Herzegovina: Draw at halftime?",
+        "question": "Canada vs. Bosnia-Herzegovina: Draw at halftime?",
+        "endTime": 1781301540
+      },
+      {
+        "conditionId": "0x6484e0b5221d9417cc1c3b4bea0e6d49312548eb8ecd5efbd6daa1431e6dbbd6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Canada leading at halftime?",
+        "question": "Canada leading at halftime?",
+        "endTime": 1781301540
+      },
+      {
+        "conditionId": "0xb505940271bdffcc12f3930f071d6c399762a13a20e366d242a988f94a50d985",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Bosnia-Herzegovina leading at halftime?",
+        "question": "Bosnia-Herzegovina leading at halftime?",
+        "endTime": 1781301540
+      },
+      {
+        "conditionId": "0x9ea65694936c3b762d6efb25b1935b35775e5af9bb6f831d3ac9c1aec7ba3d03",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Canada vs. Bosnia-Herzegovina: Canada O/U 1.5",
+        "question": "Canada vs. Bosnia-Herzegovina: Canada O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781301540
+      },
+      {
+        "conditionId": "0xd99c60888ea71d9cd9ad5e69f2eae30a2c7439b228827211d880f79c05c376c3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND -1.5",
+        "question": "Canada covers -1.5 spread vs Bosnia and Herzegovina?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781301540
+      },
+      {
+        "conditionId": "0x01d669708e9acf40de71c31fba2e9dac3d9d320d6aae6a4eb1b7e013777700ab",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Canada vs. Bosnia-Herzegovina: 1st Half O/U 1.5",
+        "question": "Canada vs. Bosnia-Herzegovina: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781301600
+      },
+      {
+        "conditionId": "0x26c10c27cde58e2d6214d65ab562d8142d34723b3b6ec3f40836d24f6d22dfc9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will United States win on 2026-06-12?",
+        "question": "Will United States win on 2026-06-12?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0x3774cdf17e49143a4f6e10812df8b06113731493842fccc52dea045a1744ae61",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will United States vs. Paraguay end in a draw?",
+        "question": "Will United States vs. Paraguay end in a draw?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0x86f102a31cf4b12dbcf31ae8c62c526c0b538d5b7eb1af5947d0b0378522f926",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Paraguay win on 2026-06-12?",
+        "question": "Will Paraguay win on 2026-06-12?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0x46f0440bd4269028c7bc90c4b9653a0a0baad7a7d77cd4d403b61c5ac5ee12f7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Any Other Score?",
+        "question": "Exact Score: Any Other Score?",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0xfdb7c4c168e2946b9ec2ea6af346b571b794670c7fb771dfa8c3bae1eca45fbf",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "UNI/PRG O2.5",
+        "question": "Will United States vs Paraguay total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0x78eebb2d22f052a5407587008ad4cadeb7c6a066ab0d46658bd7577824d4a0b2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States vs. Paraguay: 1st Half O/U 0.5",
+        "question": "United States vs. Paraguay: 1st Half O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0xd7aa1612a607a08f8bba3bed8f260dcff44e5436938efd97fb76a8a284bd5762",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States vs. Paraguay: 1st Half O/U 1.5",
+        "question": "United States vs. Paraguay: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0xc33a4381c2feb49d30fa68a732d396aeaf8a6c78f51ffd11ab8fcfc926faa1a0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States to score first vs. Paraguay?",
+        "question": "United States to score first vs. Paraguay?",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0x8dc70c544d868286fc32c1187c3e7c748ce993f18aa1a9e2d4f0c97fbf8362de",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Paraguay to score first vs. United States?",
+        "question": "Paraguay to score first vs. United States?",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0x69afbfe96211d5899f368d996b2836e9eb720c47c4c01816052cd8d8493fdb60",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States vs. Paraguay: Draw at halftime?",
+        "question": "United States vs. Paraguay: Draw at halftime?",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0xd5ed23b3518b0350662e50ef374f3ea880447ba184fc669c4164a2c956b01275",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States leading at halftime?",
+        "question": "United States leading at halftime?",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0x2569c3fa5c7b7aeea4d5e2beb28e02a7794bd9963efa9aa2020c269125171de3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Paraguay leading at halftime?",
+        "question": "Paraguay leading at halftime?",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0x45458c53ee6c6d2a5aab966703d5da6506e39b1650314a71ff2227efee9d7e35",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS UNI/PRG",
+        "question": "Will both United States and Paraguay score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0x00a9c166e12fe5f1db306980f242ef6b4f9b5c51f5d453dcc85452e989bf8a7c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "UNI/PRG O1.5",
+        "question": "Will United States vs Paraguay total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781323140
+      }
+    ]
+  }
+]
