@@ -90,6 +90,25 @@ describe('PickConfiguration (v2)', () => {
     ).toBe(true);
   });
 
+  it('isLegacy passes the Prisma column through unchanged', () => {
+    expect(
+      callResolver<boolean>(PickConfiguration.isLegacy)(
+        { isLegacy: true },
+        {},
+        {},
+        null
+      )
+    ).toBe(true);
+    expect(
+      callResolver<boolean>(PickConfiguration.isLegacy)(
+        { isLegacy: false },
+        {},
+        {},
+        null
+      )
+    ).toBe(false);
+  });
+
   it('Pick maps Prisma `conditionResolver` to v2 `resolver`', () => {
     expect(
       callResolver<string>(Pick.resolver)(

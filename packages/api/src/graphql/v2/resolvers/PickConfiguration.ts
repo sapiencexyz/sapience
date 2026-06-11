@@ -37,6 +37,10 @@ export const PickConfiguration: PickConfigurationResolvers = {
   // `result` is non-null, i.e. any terminal outcome including NON_DECISIVE.
   // UNRESOLVED is the only state that maps to a null result.
   resolved: (parent) => parent.result !== 'UNRESOLVED',
+  // Straight passthrough of the Prisma column (legacy-contract flag).
+  // Kept explicit so the legacy-market badge contract (G10) is visible
+  // here rather than relying on the default resolver.
+  isLegacy: (parent) => parent.isLegacy,
   predictorToken: (parent) =>
     parent.predictorToken ? parent.predictorToken.toLowerCase() : null,
   counterpartyToken: (parent) =>

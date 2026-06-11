@@ -324,7 +324,7 @@ describe('Condition (v2)', () => {
     expect(boundValues).toContain('0xabcdef0000000000000000000000000000000000');
   });
 
-  it('conditions(filter: { search }) ORs across question and description', async () => {
+  it('conditions(filter: { search }) ORs across question, shortName, and description', async () => {
     await callResolver(conditions)(
       null,
       { first: 50, filter: { search: 'btc' } },
@@ -336,6 +336,7 @@ describe('Condition (v2)', () => {
         where: expect.objectContaining({
           OR: [
             { question: { contains: 'btc', mode: 'insensitive' } },
+            { shortName: { contains: 'btc', mode: 'insensitive' } },
             { description: { contains: 'btc', mode: 'insensitive' } },
           ],
         }),

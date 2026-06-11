@@ -16,6 +16,8 @@ import { Category } from './Category';
 import { category, categories } from './queries/category';
 import { Trade } from './Trade';
 import { trade, trades } from './queries/trade';
+import { Forecast } from './Forecast';
+import { forecast, forecasts } from './queries/forecast';
 import { Condition } from './Condition';
 import { condition, conditions } from './queries/condition';
 import { ConditionGroup } from './ConditionGroup';
@@ -50,6 +52,7 @@ export const resolvers = {
   Vault,
   Category,
   Trade,
+  Forecast,
   Condition,
   ConditionGroup,
   PickConfiguration,
@@ -74,6 +77,8 @@ export const resolvers = {
     categories,
     trade,
     trades,
+    forecast,
+    forecasts,
     condition,
     conditions,
     conditionGroup,

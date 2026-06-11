@@ -97,6 +97,25 @@ describe('Prediction (v2)', () => {
     ).toBe(true);
   });
 
+  it('isLegacy passes the Prisma column through unchanged', () => {
+    expect(
+      callResolver<boolean>(Prediction.isLegacy)(
+        { isLegacy: true },
+        {},
+        {},
+        null
+      )
+    ).toBe(true);
+    expect(
+      callResolver<boolean>(Prediction.isLegacy)(
+        { isLegacy: false },
+        {},
+        {},
+        null
+      )
+    ).toBe(false);
+  });
+
   it('predictions(filter: { participant }) ORs across predictor/counterparty', async () => {
     await callResolver(predictions)(
       null,

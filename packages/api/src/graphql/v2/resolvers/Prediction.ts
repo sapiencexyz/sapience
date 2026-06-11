@@ -43,6 +43,11 @@ export const Prediction: PredictionResolvers = {
   // UNRESOLVED is the only state that maps to a null result.
   settled: (parent) => parent.result !== 'UNRESOLVED',
 
+  // Straight passthrough of the Prisma column (legacy-contract flag).
+  // Kept explicit so the legacy-market badge contract (G10) is visible
+  // here rather than relying on the default resolver.
+  isLegacy: (parent) => parent.isLegacy,
+
   // The Prisma row holds `pickConfiguration` (eager join). v2 surface
   // calls it `pickConfig` for brevity — same value, renamed at the
   // resolver boundary.

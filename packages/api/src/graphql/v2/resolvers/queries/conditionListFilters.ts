@@ -98,10 +98,27 @@ export const buildConditionListFilters = (
     where.chainId = args.filter.chainId;
     sqlParts.push(Prisma.sql`c."chainId" = ${args.filter.chainId}`);
   }
-  if (args.filter?.categorySlug) {
+  if (args.filter?.categorySlugs?.length) {
+    // Multi-category: OR within the set, AND with every other filter.
+    // Supersedes the single `categorySlug` when both are provided.
+    const slugs = args.filter.categorySlugs;
+    needsCategoryJoin = true;
+    where.category = { is: { slug: { in: slugs } } };
+    sqlParts.push(Prisma.sql`cat.slug IN (${Prisma.join(slugs)})`);
+  } else if (args.filter?.categorySlug) {
     needsCategoryJoin = true;
     where.category = { is: { slug: args.filter.categorySlug } };
     sqlParts.push(Prisma.sql`cat.slug = ${args.filter.categorySlug}`);
+  }
+
+  if (args.filter?.ungrouped != null) {
+    if (args.filter.ungrouped) {
+      where.conditionGroupId = null;
+      sqlParts.push(Prisma.sql`c."conditionGroupId" IS NULL`);
+    } else {
+      where.conditionGroupId = { not: null };
+      sqlParts.push(Prisma.sql`c."conditionGroupId" IS NOT NULL`);
+    }
   }
 
   if (args.filter?.public != null) {
@@ -124,10 +141,11 @@ export const buildConditionListFilters = (
     const pattern = `%${q}%`;
     where.OR = [
       { question: { contains: q, mode: 'insensitive' } },
+      { shortName: { contains: q, mode: 'insensitive' } },
       { description: { contains: q, mode: 'insensitive' } },
     ];
     sqlParts.push(
-      Prisma.sql`(c.question ILIKE ${pattern} OR c.description ILIKE ${pattern})`
+      Prisma.sql`(c.question ILIKE ${pattern} OR c."shortName" ILIKE ${pattern} OR c.description ILIKE ${pattern})`
     );
   }
 
