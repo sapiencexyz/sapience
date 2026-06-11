@@ -130,6 +130,32 @@ describe('ConditionGroup (v2)', () => {
     expect(conn.totalCount).toBe(2);
   });
 
+  it('ConditionGroup.conditions: honors a feed-hydrated condition array (no refetch)', async () => {
+    // The questions feed attaches the FEED-FILTERED conditions to each
+    // group row (hydrateItems); the resolver must serve that narrowed set
+    // instead of refetching the whole group — v1 parity for filtered
+    // group cards. The visibility rule still applies on top.
+    const conn = await callResolver<{
+      nodes: { id: string }[];
+      totalCount: number;
+    }>(ConditionGroup.conditions)(
+      {
+        id: 1,
+        name: 'g',
+        condition: [
+          { id: '0xmatch1', public: true },
+          { id: '0xpriv', public: false },
+        ],
+      },
+      { first: 50 },
+      {},
+      null
+    );
+    expect(conn.nodes.map((c) => c.id)).toEqual(['0xmatch1']);
+    expect(conn.totalCount).toBe(1);
+    expect(mockPrisma.condition.findMany).not.toHaveBeenCalled();
+  });
+
   it('conditionGroups(orderBy OPEN_INTEREST): a non-numeric after cursor emits numeric cursors', async () => {
     mockPrisma.conditionGroup.findMany.mockResolvedValueOnce([
       { id: 10, name: 'a', createdAt: new Date(), totalOpenInterest: 5n },

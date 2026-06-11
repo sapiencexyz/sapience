@@ -975,6 +975,10 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
     similarMarketVolumeWindow: args.similarMarketVolumeWindow ?? null,
     sortField: args.sortField ?? null,
     sortDirection: args.sortDirection ?? null,
+    // Must be forwarded explicitly like every other arg — omitting it
+    // silently no-ops the filter (RunQuestionsInput.questionType is
+    // optional), as the 2026-06-11 staging regression proved.
+    questionType: args.questionType ?? null,
   });
   return items;
 };
