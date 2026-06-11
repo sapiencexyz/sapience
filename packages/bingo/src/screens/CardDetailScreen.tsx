@@ -618,7 +618,9 @@ export default function CardDetailScreen() {
         <section className="screen admin-section">{sessionPrompt}</section>
       )}
 
-      {player && cardsSummary && (cardsSummary.cardCount > 0 || card) && (
+      {/* Card selector — only once the player has at least one submitted
+          card; a first-time player just sees their fresh card below. */}
+      {player && cardsSummary && cardsSummary.cardCount > 0 && (
         <section className="screen admin-section">
           <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
             {cardsSummary.cards.map((c) => (

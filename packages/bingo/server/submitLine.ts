@@ -197,6 +197,7 @@ export async function submitLine(
   } = params;
 
   if (cells.length !== 16) throw new Error('Need 16 dealt cells');
+  const tag = `[line ${poolId}#${cardIndex}/${lineIndex} ${smartAccountAddress.slice(0, 8)}]`;
   const allLines = buildLines();
   const line = allLines[lineIndex];
   if (!line) throw new Error(`lineIndex must be 0..${allLines.length - 1}`);
@@ -251,7 +252,7 @@ export async function submitLine(
     onAuctionExpired: ({ reason }) => {
       onExpired?.(new Error(`Auction expired: ${reason}`));
     },
-    onError: (e) => console.warn('[submitLine] WS error:', e),
+    onError: (e) => console.warn(`${tag} WS error:`, e),
   });
 
   try {
@@ -313,10 +314,13 @@ export async function submitLine(
     );
 
     const realAuctionId = await realIdPromise;
+    console.log(`${tag} auction started id=${realAuctionId} nonce=${predictorNonce}`);
 
     // 3. Wait for the first bid that validates on-chain. Fail-closed:
     //    accept `valid`/`unverified`, reject `invalid`.
     const seenSigs = new Set<string>();
+    let bidsSeen = 0;
+    let bidsRejected = 0;
     const bid = new Promise<BidShape>((resolveBid, rejectBid) => {
       let settled = false;
       const cleanup = () => {
@@ -328,7 +332,17 @@ export async function submitLine(
       const timer = setTimeout(() => {
         if (settled) return;
         cleanup();
-        rejectBid(new Error('No valid bid received within timeout'));
+        console.warn(
+          `${tag} bid wait timed out after ${BID_WAIT_MS}ms: ` +
+            `${bidsSeen} bid(s) seen, ${bidsRejected} failed validation`,
+        );
+        rejectBid(
+          new Error(
+            bidsSeen === 0
+              ? 'No bids received within timeout (no counterparty quoted this line)'
+              : `${bidsSeen} bid(s) received but none validated on-chain`,
+          ),
+        );
       }, BID_WAIT_MS);
 
       onBids = async (incoming) => {
@@ -338,6 +352,13 @@ export async function submitLine(
           seenSigs.add(b.counterpartySignature);
           return true;
         });
+        bidsSeen += fresh.length;
+        if (fresh.length > 0) {
+          console.log(
+            `${tag} ${fresh.length} fresh bid(s) from ` +
+              fresh.map((b) => `${b.counterparty.slice(0, 8)}@${b.counterpartyCollateral}`).join(', '),
+          );
+        }
         for (const b of fresh) {
           if (settled) return;
           try {
@@ -369,6 +390,15 @@ export async function submitLine(
                 failOpen: false,
               },
             );
+            console.log(
+              `${tag} bid from ${b.counterparty.slice(0, 8)} validation=${result.status}` +
+                (result.status === 'invalid' && 'reason' in result
+                  ? ` reason=${String((result as { reason?: unknown }).reason)}`
+                  : ''),
+            );
+            if (result.status !== 'valid' && result.status !== 'unverified') {
+              bidsRejected += 1;
+            }
             if (result.status === 'valid' || result.status === 'unverified') {
               if (settled) return;
               cleanup();
@@ -383,7 +413,8 @@ export async function submitLine(
               return;
             }
           } catch (e) {
-            console.warn(`[submitLine] ${line.id} validate threw:`, e);
+            bidsRejected += 1;
+            console.warn(`${tag} validate threw:`, e);
           }
         }
       };
@@ -480,6 +511,9 @@ export async function submitLine(
       throw new Error(`Mint reverted on-chain${detail}`);
     }
 
+    console.log(
+      `${tag} funded tx=${receipt.receipt?.transactionHash ?? opHash}`,
+    );
     return {
       lineId: line.id,
       txHash: receipt.receipt?.transactionHash ?? null,
