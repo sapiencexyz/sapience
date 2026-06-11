@@ -5,12 +5,11 @@ import type { PoolConfig } from './types.js';
 
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
 
-/** Loads the pool config file: a single pool object or an array of pools
- *  (the last entry is the active pool; earlier entries stay resolvable so
- *  historical cards keep their layouts). Pools are deployment config —
- *  rotating pools is a config change, not server state. */
-export function loadPools(path: string): PoolConfig[] {
-  const raw = JSON.parse(readFileSync(path, 'utf8')) as unknown;
+/** Validates pool config content: a single pool object or an array of
+ *  pools (the last entry is the active pool; earlier entries stay
+ *  resolvable so historical cards keep their layouts). Pools are deployment
+ *  config — rotating pools is a config change, not server state. */
+export function parsePools(raw: unknown): PoolConfig[] {
   const list = Array.isArray(raw) ? raw : [raw];
   if (list.length === 0) throw new Error('pool file: no pools');
   const pools = list.map(validatePool);
@@ -19,6 +18,12 @@ export function loadPools(path: string): PoolConfig[] {
     throw new Error('pool file: duplicate poolId');
   }
   return pools;
+}
+
+/** parsePools over a file on disk — for node deployments that want to
+ *  point POOL_PATH somewhere other than the bundled pool.json. */
+export function loadPools(path: string): PoolConfig[] {
+  return parsePools(JSON.parse(readFileSync(path, 'utf8')) as unknown);
 }
 
 /** Validates a pool object. Throws on anything that would make cards

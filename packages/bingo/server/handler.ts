@@ -18,14 +18,19 @@ import {
 import { allEntitlements } from './entitlements.js';
 import { fundedLineFlags } from './chain.js';
 import { buildLines, LINES_PER_CARD } from './lines.js';
-import { loadPools, poolIsOpen } from './pool.js';
+import { loadPools, parsePools, poolIsOpen } from './pool.js';
 import { chainSubmission, mintReceipt } from './receipt.js';
 import { restoreSessionClient } from './session.js';
 import { submitLine } from './submitLine.js';
 import type { PoolConfig, SerializedSession } from './types.js';
+import bundledPools from '../pool.json' with { type: 'json' };
 
 // Pools are deployment config, loaded once per process. Last entry = active.
-const pools = loadPools(env.POOL_PATH);
+// The committed pool.json is bundled into the build (works on serverless,
+// no filesystem needed); POOL_PATH overrides it with a file on disk.
+const pools = env.POOL_PATH
+  ? loadPools(env.POOL_PATH)
+  : parsePools(bundledPools);
 const poolById = new Map(pools.map((p) => [p.poolId, p]));
 export const activePool = (): PoolConfig => pools[pools.length - 1];
 

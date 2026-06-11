@@ -28,10 +28,10 @@ export const env = cleanEnv(process.env, {
   /** Wallet allowed to SIWE-login as admin. Empty = resolve on-chain as the
    *  receipt contract's owner() (the treasury that pays bonuses). */
   ADMIN_ADDRESS: str({ default: '' }),
-  /** Pool config file: one pool object or an array of pools (last = active).
-   *  Pools are deployment config — rotating pools is a config change, the
-   *  chain holds everything per-card. */
-  POOL_PATH: str({ default: 'pool.json' }),
+  /** Optional pool config file override: one pool object or an array of
+   *  pools (last = active). Empty (default) = use the pool.json committed
+   *  next to the code, which is bundled into serverless builds. */
+  POOL_PATH: str({ default: '' }),
   RELAYER_WS_URL: str({
     default: 'wss://relayer.staging.sapience.xyz/auction',
   }),
