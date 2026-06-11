@@ -46,11 +46,76 @@ const computeOutcome = (row: PrismaConditionRow): ConditionOutcome | null => {
   return row.resolvedToYes ? ConditionOutcome.Yes : ConditionOutcome.No;
 };
 
+/**
+ * Shape of the nested `SimilarMarket` value, used both by the
+ * `similarMarket` resolver and the flat `similarMarketVolume*` mirrors so
+ * the two stay in lock-step (the flat fields are exactly the nested
+ * `volume*`, or `0` when there's no signal).
+ */
+type SimilarMarketValue = {
+  image: string | null;
+  markets: string[];
+  volume: number;
+  volume1h: number;
+  volume4h: number;
+  volume24h: number;
+  volume7d: number;
+  volumeFiltered1h: number;
+  volumeFiltered4h: number;
+  volumeFiltered24h: number;
+  volumeFiltered7d: number;
+};
+
+const buildSimilarMarket = (
+  parent: PrismaConditionRow
+): SimilarMarketValue | null => {
+  // Only build the nested object if at least one signal is present —
+  // a Condition with no Polymarket linkage returns null rather than a
+  // payload of zeros.
+  if (
+    parent.similarMarketImage == null &&
+    (!parent.similarMarkets || parent.similarMarkets.length === 0) &&
+    !parent.similarMarketVolume
+  ) {
+    return null;
+  }
+  return {
+    image: parent.similarMarketImage ?? null,
+    markets: parent.similarMarkets ?? [],
+    volume: Number(parent.similarMarketVolume ?? 0),
+    volume1h: Number(parent.similarMarketVolume1h ?? 0),
+    volume4h: Number(parent.similarMarketVolume4h ?? 0),
+    volume24h: Number(parent.similarMarketVolume24h ?? 0),
+    volume7d: Number(parent.similarMarketVolume7d ?? 0),
+    volumeFiltered1h: Number(parent.similarMarketVolumeFiltered1h ?? 0),
+    volumeFiltered4h: Number(parent.similarMarketVolumeFiltered4h ?? 0),
+    volumeFiltered24h: Number(parent.similarMarketVolumeFiltered24h ?? 0),
+    volumeFiltered7d: Number(parent.similarMarketVolumeFiltered7d ?? 0),
+  };
+};
+
+// Flat `similarMarketVolume*` mirror — reads the matching nested
+// `similarMarket.volume*`, or `0` when there's no similar-market signal
+// (v1-compat: v1 exposed these as flat string-indexed columns).
+const flatVolume =
+  (key: keyof Omit<SimilarMarketValue, 'image' | 'markets'>) =>
+  (parent: PrismaConditionRow): number =>
+    buildSimilarMarket(parent)?.[key] ?? 0;
+
 export const Condition: ConditionResolvers = {
   id: (parent) => toGlobalIdV2('Condition', parent.id),
   conditionId: (parent) => parent.id,
   resolver: (parent) => parent.resolver.toLowerCase(),
   outcome: (parent) => computeOutcome(parent),
+
+  // v1-compat convenience booleans, derived from the single `outcome` enum
+  // so consumers don't have to re-derive resolution state from it. Kept in
+  // sync with `outcome` by deriving from the same `computeOutcome` source.
+  settled: (parent) => computeOutcome(parent) != null,
+  resolvedToYes: (parent) => computeOutcome(parent) === ConditionOutcome.Yes,
+  nonDecisive: (parent) =>
+    computeOutcome(parent) === ConditionOutcome.NonDecisive,
+
   isPublic: (parent) => parent.public,
 
   category: async (parent, _args, ctx) => {
@@ -69,29 +134,19 @@ export const Condition: ConditionResolvers = {
     });
   },
 
-  similarMarket: (parent) => {
-    // Only build the nested object if at least one signal is present —
-    // a Condition with no Polymarket linkage returns null rather than a
-    // payload of zeros.
-    if (
-      parent.similarMarketImage == null &&
-      (!parent.similarMarkets || parent.similarMarkets.length === 0) &&
-      !parent.similarMarketVolume
-    ) {
-      return null;
-    }
-    return {
-      image: parent.similarMarketImage ?? null,
-      markets: parent.similarMarkets ?? [],
-      volume: Number(parent.similarMarketVolume ?? 0),
-      volume1h: Number(parent.similarMarketVolume1h ?? 0),
-      volume4h: Number(parent.similarMarketVolume4h ?? 0),
-      volume24h: Number(parent.similarMarketVolume24h ?? 0),
-      volume7d: Number(parent.similarMarketVolume7d ?? 0),
-      volumeFiltered1h: Number(parent.similarMarketVolumeFiltered1h ?? 0),
-      volumeFiltered4h: Number(parent.similarMarketVolumeFiltered4h ?? 0),
-      volumeFiltered24h: Number(parent.similarMarketVolumeFiltered24h ?? 0),
-      volumeFiltered7d: Number(parent.similarMarketVolumeFiltered7d ?? 0),
-    };
-  },
+  similarMarket: (parent) => buildSimilarMarket(parent),
+
+  // Flat `similarMarketVolume*` mirrors of the nested `similarMarket.volume*`
+  // (v1-compat string-index columns). Each derives from the same
+  // `buildSimilarMarket` source so it stays in lock-step with the nested
+  // value, and reads `0` when no similar-market signal is present.
+  similarMarketVolume: flatVolume('volume'),
+  similarMarketVolume1h: flatVolume('volume1h'),
+  similarMarketVolume4h: flatVolume('volume4h'),
+  similarMarketVolume24h: flatVolume('volume24h'),
+  similarMarketVolume7d: flatVolume('volume7d'),
+  similarMarketVolumeFiltered1h: flatVolume('volumeFiltered1h'),
+  similarMarketVolumeFiltered4h: flatVolume('volumeFiltered4h'),
+  similarMarketVolumeFiltered24h: flatVolume('volumeFiltered24h'),
+  similarMarketVolumeFiltered7d: flatVolume('volumeFiltered7d'),
 };

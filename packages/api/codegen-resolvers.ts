@@ -88,6 +88,8 @@ const v2Output = {
         Position: '../../../../generated/prisma#Position as PrismaPositionRow',
         Trade:
           '../../../../generated/prisma#SecondaryTrade as PrismaSecondaryTradeRow',
+        Forecast:
+          '../../../../generated/prisma#Attestation as PrismaAttestationRow',
         PickConfiguration: '../../../../generated/prisma#Picks as PrismaPicksRow',
         Pick: '../../../../generated/prisma#Pick as PrismaPickRow',
         Claim: '../../../../generated/prisma#Claim as PrismaClaimRow',

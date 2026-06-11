@@ -4,9 +4,9 @@
  * the plural connection returns persisted rows.
  */
 
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { synthesizeAccount } from '../accountSynthesis';
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
@@ -55,6 +55,55 @@ export const account: NonNullable<QueryResolvers['account']> = (
   { address, chainId },
   ctx
 ) => loadAccount(address, chainId, ctx);
+
+interface VolumeRow {
+  total: string;
+}
+
+/**
+ * Lifetime trading volume in wei for an address, backing
+ * `Account.stats.totalVolume` (G6). The SQL is v1's `accountTotalVolume`
+ * (sdl/resolvers/queries/volume.ts) ported verbatim: volume is summed
+ * across legacy `position` rows and the newer `Prediction` table, and
+ * either side of a position (predictor or counterparty) contributes its
+ * collateral when the address matches. Works for any address — no User
+ * row required.
+ */
+export const getAccountTotalVolume = async (
+  address: string
+): Promise<bigint> => {
+  const addr = address.toLowerCase();
+  // Addresses are stored lowercase by indexers, so no LOWER() needed.
+  const [result] = await prisma.$queryRaw<VolumeRow[]>`
+    SELECT COALESCE(SUM(vol), 0)::TEXT as total
+    FROM (
+      SELECT
+        CASE WHEN predictor = ${addr}
+             THEN CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
+             ELSE 0 END
+        +
+        CASE WHEN counterparty = ${addr}
+             THEN CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
+             ELSE 0 END
+        AS vol
+      FROM position
+      WHERE predictor = ${addr} OR counterparty = ${addr}
+      UNION ALL
+      SELECT
+        CASE WHEN predictor = ${addr}
+             THEN CAST("predictorCollateral" AS DECIMAL)
+             ELSE 0 END
+        +
+        CASE WHEN counterparty = ${addr}
+             THEN CAST("counterpartyCollateral" AS DECIMAL)
+             ELSE 0 END
+        AS vol
+      FROM "Prediction"
+      WHERE predictor = ${addr} OR counterparty = ${addr}
+    ) combined
+  `;
+  return BigInt(result?.total ?? '0');
+};
 
 export const accounts: NonNullable<QueryResolvers['accounts']> = async (
   _parent,

@@ -41,6 +41,23 @@ const ACTIVE_GROUP_SUBQUERY = `
   LIMIT 50
 `.trim();
 
+// The condition capture's predicate/order/limit, shared with the
+// CAPTURED_CONDITION_SUBQUERY below so child tables (attestation) scope to
+// exactly the condition rows that land in the fixture.
+const CONDITION_WHERE = `"conditionGroupId" IS NULL OR "conditionGroupId" IN (${ACTIVE_GROUP_SUBQUERY})`;
+const CONDITION_LIMIT = 1000;
+
+// Mirrors the `condition` table spec (same WHERE / ORDER BY / LIMIT). The
+// fixture loads with FK triggers disabled (session_replication_role =
+// 'replica'), so a child row pointing at a non-captured condition would load
+// silently with a dangling FK; this subquery keeps those rows out.
+const CAPTURED_CONDITION_SUBQUERY = `
+  SELECT id FROM condition
+  WHERE ${CONDITION_WHERE}
+  ORDER BY "createdAt" DESC
+  LIMIT ${CONDITION_LIMIT}
+`.trim();
+
 // Order matters: each TRUNCATE uses CASCADE, which wipes any table with an FK
 // pointing at the target — regardless of ON DELETE action. So parents (FK
 // targets) must come before their children, otherwise a later parent's
@@ -87,13 +104,21 @@ const TABLES: TableSpec[] = [
   // Depends on condition_group, category.
   {
     name: 'condition',
-    limit: 1000,
+    limit: CONDITION_LIMIT,
     orderBy: '"createdAt" DESC',
-    where: `"conditionGroupId" IS NULL OR "conditionGroupId" IN (${ACTIVE_GROUP_SUBQUERY})`,
+    where: CONDITION_WHERE,
   },
 
   // Depend on Picks, condition, position, limit_order.
-  { name: 'attestation', limit: 200, orderBy: 'id DESC' },
+  {
+    name: 'attestation',
+    limit: 200,
+    orderBy: 'id DESC',
+    // Keep NULL conditionId rows (a legal domain state — the column is
+    // nullable) but drop rows whose conditionId points outside the captured
+    // condition set, which would otherwise load as dangling FKs.
+    where: `"conditionId" IS NULL OR "conditionId" IN (${CAPTURED_CONDITION_SUBQUERY})`,
+  },
   { name: 'Pick', limit: 1000, orderBy: '"createdAt" DESC' },
   { name: 'Position', limit: 500, orderBy: 'id DESC' },
   { name: 'Prediction', limit: 500, orderBy: '"onChainCreatedAt" DESC' },

@@ -10,12 +10,13 @@
  *    `/admin/referrals/*`); v2 GraphQL does not expose it.
  */
 
-import prisma from '../../../core/db';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import prisma from '../../../core/db';
 import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
-import { synthesizeAccount } from './accountSynthesis';
 import type { AccountResolvers } from '../__generated__/resolvers';
+import { synthesizeAccount } from './accountSynthesis';
 import { accountRank } from './queries/leaderboard';
+import { getAccountTotalVolume } from './queries/account';
 import {
   collateralBalanceField,
   collateralBalanceHistoryField,
@@ -80,10 +81,22 @@ export const Account: AccountResolvers = {
   collateralBalance: collateralBalanceField,
   collateralBalanceHistory: collateralBalanceHistoryField,
 
-  // DEFERRED — not built yet: `stats` / `statsHistory` (AccountStat), the
-  // account's return-on-deployed PnL series (same numerator a vault plots
-  // on-total). No per-account time-series source exists yet — accountStats.ts
-  // is a windowed leaderboard aggregate, not a bucketed series — so this needs
-  // a new per-account snapshot writer/table. No consumer today. See the
-  // matching note on the `Account` type in schema.graphql.
+  /**
+   * Aggregate statistics. `totalVolume` is the v1 `accountTotalVolume`
+   * port (G6): one indexed aggregate over `position` + `Prediction`,
+   * present for every address — including synthesized accounts with no
+   * User row, which carry only `{ address }`.
+   */
+  stats: async (parent) => ({
+    totalVolume: await getAccountTotalVolume(addressOf(parent)),
+  }),
+
+  // DEFERRED — the rest of the account stats surface beyond
+  // `stats.totalVolume` (which ships, G6): PnL/accuracy fields on
+  // AccountStat and a `statsHistory` bucketed series — the account's
+  // return-on-deployed PnL (same numerator a vault plots on-total). No
+  // per-account time-series source exists yet — accountStats.ts is a
+  // windowed leaderboard aggregate, not a bucketed series — so statsHistory
+  // needs a new per-account snapshot writer/table. No consumer today. See
+  // the matching note on the `Account` type in schema.graphql.
 };

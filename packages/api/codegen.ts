@@ -13,6 +13,9 @@ import type { CodegenConfig } from '@graphql-codegen/cli';
  */
 const config: CodegenConfig = {
   generates: {
+    // v1 client types — kept RAW: this file is in .prettierignore, so its
+    // committed form is unformatted codegen output. No Prettier hook here, or
+    // a regen would reformat it against its ignore intent.
     '../sdk/types/graphql.ts': {
       schema: './schema.graphql',
       plugins: ['typescript', 'typescript-operations'],
@@ -24,6 +27,10 @@ const config: CodegenConfig = {
         skipTypename: false,
       },
     },
+    // v2 client types — committed Prettier-formatted (NOT in .prettierignore),
+    // so format ONLY this output on emit. graphql-codegen appends the written
+    // file path to the command, so this runs `prettier --write graphql.v2.ts`;
+    // without it every regen produces whitespace-only diffs.
     '../sdk/types/graphql.v2.ts': {
       schema: './schema.v2.graphql',
       plugins: ['typescript', 'typescript-operations'],
@@ -33,6 +40,9 @@ const config: CodegenConfig = {
         enumsAsTypes: true,
         exportFragmentSpreadSubTypes: true,
         skipTypename: false,
+      },
+      hooks: {
+        afterOneFileWrite: ['prettier --write'],
       },
     },
   },

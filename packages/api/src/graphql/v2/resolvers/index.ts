@@ -16,6 +16,8 @@ import { Category } from './Category';
 import { category, categories } from './queries/category';
 import { Trade } from './Trade';
 import { trade, trades } from './queries/trade';
+import { Forecast } from './Forecast';
+import { forecast, forecasts } from './queries/forecast';
 import { Condition } from './Condition';
 import { condition, conditions } from './queries/condition';
 import { ConditionGroup } from './ConditionGroup';
@@ -39,6 +41,7 @@ import {
 import { ActivityItem } from './Activity';
 import { activity } from './queries/activity';
 import { leaderboard } from './queries/leaderboard';
+import { Ranking } from './Ranking';
 import { Protocol, protocol } from './Protocol';
 import { QuestionItem, questions } from './queries/questions';
 import { tags } from './queries/tags';
@@ -49,6 +52,7 @@ export const resolvers = {
   Vault,
   Category,
   Trade,
+  Forecast,
   Condition,
   ConditionGroup,
   PickConfiguration,
@@ -60,6 +64,7 @@ export const resolvers = {
   CollateralTransfer,
   ActivityItem,
   QuestionItem,
+  Ranking,
   Protocol,
   Query: {
     node,
@@ -72,6 +77,8 @@ export const resolvers = {
     categories,
     trade,
     trades,
+    forecast,
+    forecasts,
     condition,
     conditions,
     conditionGroup,
