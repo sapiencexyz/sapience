@@ -42,6 +42,7 @@ const RECEIPT_ABI = [
     inputs: [
       { type: 'address', name: 'player' },
       { type: 'string', name: 'poolId' },
+      { type: 'uint32', name: 'cardIndex' },
       { type: 'bytes32', name: 'seed' },
       { type: 'uint16', name: 'yesMask' },
       { type: 'uint256', name: 'cardPrice' },
@@ -51,11 +52,22 @@ const RECEIPT_ABI = [
   },
   {
     type: 'function',
-    name: 'tokenOfPlayerPool',
+    name: 'cardCount',
     stateMutability: 'view',
     inputs: [
       { type: 'bytes32', name: 'poolHash' },
       { type: 'address', name: 'player' },
+    ],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'tokenOfPlayerPoolIndex',
+    stateMutability: 'view',
+    inputs: [
+      { type: 'bytes32', name: 'poolHash' },
+      { type: 'address', name: 'player' },
+      { type: 'uint32', name: 'cardIndex' },
     ],
     outputs: [{ type: 'uint256' }],
   },
@@ -70,6 +82,7 @@ const RECEIPT_ABI = [
       { type: 'address', name: 'referrer' },
       { type: 'uint64', name: 'submittedAt' },
       { type: 'uint16', name: 'yesMask' },
+      { type: 'uint32', name: 'cardIndex' },
       { type: 'uint256', name: 'cardPrice' },
       { type: 'bool', name: 'bonusPaid' },
       { type: 'bool', name: 'referralPaid' },
@@ -78,7 +91,7 @@ const RECEIPT_ABI = [
 ] as const;
 
 const CARD_MINTED_EVENT = parseAbiItem(
-  'event CardReceiptMinted(uint256 indexed tokenId, address indexed player, bytes32 indexed poolHash, string poolId, bytes32 seed, uint16 yesMask, uint256 cardPrice, address referrer)',
+  'event CardReceiptMinted(uint256 indexed tokenId, address indexed player, bytes32 indexed poolHash, string poolId, uint32 cardIndex, bytes32 seed, uint16 yesMask, uint256 cardPrice, address referrer)',
 );
 
 /** A submission, as recorded on the chain. */
@@ -86,6 +99,8 @@ export interface ChainSubmission {
   tokenId: bigint;
   player: Address;
   poolId: string;
+  /** Which of the player's cards in this pool (0-based, sequential). */
+  cardIndex: number;
   seed: Hex;
   yesMask: number;
   cardPriceWei: string;
@@ -95,6 +110,18 @@ export interface ChainSubmission {
   bonusPaid: boolean;
   referralPaid: boolean;
 }
+
+type CardMetaTuple = readonly [
+  Hex, // poolHash
+  Hex, // seed
+  Address, // referrer
+  bigint, // submittedAt
+  number, // yesMask
+  number, // cardIndex
+  bigint, // cardPrice
+  boolean, // bonusPaid
+  boolean, // referralPaid
+];
 
 let minterClientPromise: Promise<KernelAccountClient> | null = null;
 
@@ -147,33 +174,50 @@ export function poolHash(poolId: string): Hex {
   return keccak256(stringToBytes(poolId));
 }
 
-/** The already-minted receipt id for (pool, player), or null. */
+/** How many cards the player holds in the pool (= the next mintable
+ *  cardIndex; indexes are strictly sequential). */
+export async function cardCount(
+  poolId: string,
+  player: Address,
+): Promise<number> {
+  const n = (await getPublicClient().readContract({
+    address: RECEIPT_ADDRESS,
+    abi: RECEIPT_ABI,
+    functionName: 'cardCount',
+    args: [poolHash(poolId), player],
+  })) as bigint;
+  return Number(n);
+}
+
+/** The already-minted receipt id for (pool, player, cardIndex), or null. */
 export async function receiptTokenId(
   poolId: string,
   player: Address,
+  cardIndex: number,
 ): Promise<bigint | null> {
   const id = (await getPublicClient().readContract({
     address: RECEIPT_ADDRESS,
     abi: RECEIPT_ABI,
-    functionName: 'tokenOfPlayerPool',
-    args: [poolHash(poolId), player],
+    functionName: 'tokenOfPlayerPoolIndex',
+    args: [poolHash(poolId), player, cardIndex],
   })) as bigint;
   return id === 0n ? null : id;
 }
 
-/** The chain's record of a (pool, player) submission, or null if none. */
+/** The chain's record of one (pool, player, cardIndex) submission. */
 export async function chainSubmission(
   poolId: string,
   player: Address,
+  cardIndex: number,
 ): Promise<ChainSubmission | null> {
-  const tokenId = await receiptTokenId(poolId, player);
+  const tokenId = await receiptTokenId(poolId, player, cardIndex);
   if (tokenId == null) return null;
   const meta = (await getPublicClient().readContract({
     address: RECEIPT_ADDRESS,
     abi: RECEIPT_ABI,
     functionName: 'cardMeta',
     args: [tokenId],
-  })) as readonly [Hex, Hex, Address, bigint, number, bigint, boolean, boolean];
+  })) as CardMetaTuple;
   return {
     tokenId,
     player,
@@ -182,9 +226,10 @@ export async function chainSubmission(
     ref: meta[2] === zeroAddress ? null : meta[2],
     submittedAt: Number(meta[3]),
     yesMask: meta[4],
-    cardPriceWei: meta[5].toString(),
-    bonusPaid: meta[6],
-    referralPaid: meta[7],
+    cardIndex: meta[5],
+    cardPriceWei: meta[6].toString(),
+    bonusPaid: meta[7],
+    referralPaid: meta[8],
   };
 }
 
@@ -200,87 +245,102 @@ export async function allChainSubmissions(): Promise<ChainSubmission[]> {
   });
   return Promise.all(
     logs.map(async (log) => {
-      const { tokenId, player, poolId, seed, yesMask, cardPrice, referrer } =
-        log.args;
+      const {
+        tokenId,
+        player,
+        poolId,
+        cardIndex,
+        seed,
+        yesMask,
+        cardPrice,
+        referrer,
+      } = log.args;
       const meta = (await publicClient.readContract({
         address: RECEIPT_ADDRESS,
         abi: RECEIPT_ABI,
         functionName: 'cardMeta',
         args: [tokenId!],
-      })) as readonly [
-        Hex,
-        Hex,
-        Address,
-        bigint,
-        number,
-        bigint,
-        boolean,
-        boolean,
-      ];
+      })) as CardMetaTuple;
       return {
         tokenId: tokenId!,
         player: player!,
         poolId: poolId!,
+        cardIndex: cardIndex!,
         seed: seed!,
         yesMask: yesMask!,
         cardPriceWei: cardPrice!.toString(),
         ref: referrer && referrer !== zeroAddress ? referrer : null,
         submittedAt: Number(meta[3]),
-        bonusPaid: meta[6],
-        referralPaid: meta[7],
+        bonusPaid: meta[7],
+        referralPaid: meta[8],
       };
     }),
   );
 }
 
-/** Mints the receipt — THE act that records a submission. Idempotent: an
- *  existing receipt is returned as-is. Throws on failure (no record, no
- *  card). */
+/** Mints the receipt for one (pool, player, cardIndex) — THE act that
+ *  records a submission. Idempotent: an existing receipt at that index is
+ *  returned as-is, and a lost race re-reads the index once (the contract's
+ *  strict-sequential CardIndexMismatch is the backstop). Throws on failure
+ *  (no record, no card). */
 export async function mintReceipt(params: {
   player: Address;
   poolId: string;
+  cardIndex: number;
   seed: Hex;
   yesMask: number;
   cardPriceWei: string;
   ref: Address | null;
 }): Promise<ChainSubmission> {
-  const existing = await chainSubmission(params.poolId, params.player);
+  const read = () =>
+    chainSubmission(params.poolId, params.player, params.cardIndex);
+  const existing = await read();
   if (existing) return existing;
 
   const client = await getMinterClient();
   const account = client.account;
   if (!account) throw new Error('Minter client has no account');
-  const opHash = await client.sendUserOperation({
-    callData: await account.encodeCalls([
-      {
-        to: RECEIPT_ADDRESS,
-        value: 0n,
-        data: encodeFunctionData({
-          abi: RECEIPT_ABI,
-          functionName: 'mint',
-          args: [
-            params.player,
-            params.poolId,
-            params.seed,
-            params.yesMask,
-            BigInt(params.cardPriceWei),
-            params.ref ?? zeroAddress,
-          ],
-        }),
-      },
-    ]),
-  });
-  const receipt = await client.waitForUserOperationReceipt({ hash: opHash });
-  if (!receipt.success) {
-    throw new Error(
-      `Receipt mint reverted${receipt.reason ? `: ${receipt.reason}` : ''}`,
+  try {
+    const opHash = await client.sendUserOperation({
+      callData: await account.encodeCalls([
+        {
+          to: RECEIPT_ADDRESS,
+          value: 0n,
+          data: encodeFunctionData({
+            abi: RECEIPT_ABI,
+            functionName: 'mint',
+            args: [
+              params.player,
+              params.poolId,
+              params.cardIndex,
+              params.seed,
+              params.yesMask,
+              BigInt(params.cardPriceWei),
+              params.ref ?? zeroAddress,
+            ],
+          }),
+        },
+      ]),
+    });
+    const receipt = await client.waitForUserOperationReceipt({ hash: opHash });
+    if (!receipt.success) {
+      throw new Error(
+        `Receipt mint reverted${receipt.reason ? `: ${receipt.reason}` : ''}`,
+      );
+    }
+    console.log(
+      `[receipt] minted for ${params.player} pool=${params.poolId} ` +
+        `card=${params.cardIndex} ` +
+        `tx=${receipt.receipt?.transactionHash ?? opHash}`,
     );
+  } catch (e) {
+    // Race lost to a concurrent submit of the same index: the receipt now
+    // exists, which is all this call was for.
+    const racedTo = await read();
+    if (racedTo) return racedTo;
+    throw e;
   }
-  console.log(
-    `[receipt] minted for ${params.player} pool=${params.poolId} ` +
-      `tx=${receipt.receipt?.transactionHash ?? opHash}`,
-  );
-  const minted = await chainSubmission(params.poolId, params.player);
+  const minted = await read();
   if (!minted) throw new Error('Receipt mint not visible after inclusion');
   return minted;
 }

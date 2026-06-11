@@ -14,9 +14,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  *         escrow positions as the player via a scoped session key. This
  *         contract is the public record of that game:
  *
- *         - The backend (minter) mints one receipt NFT per (pool, player)
- *           when a card is submitted, stamping the fairness seed, declared
- *           sides, card price, and referrer.
+ *         - The backend (minter) mints one receipt NFT per
+ *           (pool, player, cardIndex) when a card is submitted — indexes
+ *           strictly sequential per wallet — stamping the fairness seed,
+ *           declared sides, card price, and referrer.
  *         - Bonus payouts go to the NFT's current owner — the claim is
  *           transferable. Referral payouts go to the stamped referrer.
  *         - `payBonus` / `payReferral` move USDe from the treasury
@@ -37,14 +38,18 @@ contract BingoCardReceipt is ERC721, Ownable {
         ///      mint event.
         bytes32 poolHash;
         /// @dev The fairness seed the card layout derives from:
-        ///      keccak256(serverSecret ‖ utf8(poolId) ‖ player). Verifiable
-        ///      once the pool's server secret is revealed after cutoff.
+        ///      keccak256(poolSecret ‖ utf8(poolId) ‖ player ‖
+        ///      uint32(cardIndex)). Verifiable once the pool's secret is
+        ///      revealed after cutoff.
         bytes32 seed;
         /// @dev Referrer payout address; zero = no referral.
         address referrer;
         uint64 submittedAt;
         /// @dev Declared sides: bit i = YES on cell i.
         uint16 yesMask;
+        /// @dev Which of the player's cards in this pool this is (0-based,
+        ///      strictly sequential).
+        uint32 cardIndex;
         /// @dev Card price (10 line stakes) in payout-token wei.
         uint256 cardPrice;
         bool bonusPaid;
@@ -61,9 +66,13 @@ contract BingoCardReceipt is ERC721, Ownable {
     uint256 public nextId;
     mapping(uint256 => CardMeta) public cardMeta;
 
-    /// @notice One receipt per (pool, player) — mirrors the backend's
-    ///         one-card-per-wallet-per-pool rule.
-    mapping(bytes32 => mapping(address => uint256)) public tokenOfPlayerPool;
+    /// @notice How many cards a player holds in a pool. Card indexes are
+    ///         strictly sequential, so this is also the next mintable index.
+    mapping(bytes32 => mapping(address => uint256)) public cardCount;
+
+    /// @notice Receipt token id per (pool, player, cardIndex); 0 = unminted.
+    mapping(bytes32 => mapping(address => mapping(uint32 => uint256))) public
+        tokenOfPlayerPoolIndex;
 
     string public baseURI;
 
@@ -76,6 +85,7 @@ contract BingoCardReceipt is ERC721, Ownable {
         address indexed player,
         bytes32 indexed poolHash,
         string poolId,
+        uint32 cardIndex,
         bytes32 seed,
         uint16 yesMask,
         uint256 cardPrice,
@@ -91,7 +101,9 @@ contract BingoCardReceipt is ERC721, Ownable {
     // ============ Errors ============
 
     error NotMinter();
-    error AlreadyMinted();
+    /// @dev Card indexes are strictly sequential per (pool, player); a
+    ///      replayed index means "already minted", a skipped one is invalid.
+    error CardIndexMismatch(uint32 expected);
     error AlreadyPaid();
     error NoReferrer();
 
@@ -123,11 +135,14 @@ contract BingoCardReceipt is ERC721, Ownable {
     // ============ Mint (backend) ============
 
     /// @notice Mints the receipt for a submitted card to the player.
-    ///         Backend-only; called once per (pool, player) at submission
-    ///         time, when sides and price are locked.
+    ///         Backend-only; called once per (pool, player, cardIndex) at
+    ///         submission time, when sides and price are locked. Indexes are
+    ///         strictly sequential — a retry of an already-minted index
+    ///         reverts, which is the backend's idempotency backstop.
     function mint(
         address player,
         string calldata poolId,
+        uint32 cardIndex,
         bytes32 seed,
         uint16 yesMask,
         uint256 cardPrice,
@@ -137,16 +152,21 @@ contract BingoCardReceipt is ERC721, Ownable {
             revert NotMinter();
         }
         bytes32 poolHash = keccak256(bytes(poolId));
-        if (tokenOfPlayerPool[poolHash][player] != 0) revert AlreadyMinted();
+        uint256 expected = cardCount[poolHash][player];
+        if (cardIndex != expected) {
+            revert CardIndexMismatch(uint32(expected));
+        }
 
         tokenId = ++nextId;
-        tokenOfPlayerPool[poolHash][player] = tokenId;
+        cardCount[poolHash][player] = uint256(cardIndex) + 1;
+        tokenOfPlayerPoolIndex[poolHash][player][cardIndex] = tokenId;
         cardMeta[tokenId] = CardMeta({
             poolHash: poolHash,
             seed: seed,
             referrer: referrer,
             submittedAt: uint64(block.timestamp),
             yesMask: yesMask,
+            cardIndex: cardIndex,
             cardPrice: cardPrice,
             bonusPaid: false,
             referralPaid: false
@@ -157,6 +177,7 @@ contract BingoCardReceipt is ERC721, Ownable {
             player,
             poolHash,
             poolId,
+            cardIndex,
             seed,
             yesMask,
             cardPrice,

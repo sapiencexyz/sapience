@@ -11,15 +11,21 @@ import { isValidAdminSession, issueNonce, siweLogin } from './adminAuth.js';
 import { env } from './config.js';
 import {
   cardSeed,
+  cardTag,
   drawCells,
   fairnessCommitment,
   poolSecret,
 } from './draw.js';
 import { allEntitlements } from './entitlements.js';
-import { fundedLineFlags } from './chain.js';
+import {
+  fundedLineFlags,
+  fundedPredictions,
+  lineIsFunded,
+  linePicks,
+} from './chain.js';
 import { buildLines, LINES_PER_CARD } from './lines.js';
 import { loadPools, parsePools, poolIsOpen } from './pool.js';
-import { chainSubmission, mintReceipt } from './receipt.js';
+import { cardCount, chainSubmission, mintReceipt } from './receipt.js';
 import { restoreSessionClient } from './session.js';
 import { prepareCollateral, submitLine } from './submitLine.js';
 import type { PoolConfig, SerializedSession } from './types.js';
@@ -164,7 +170,8 @@ export async function handleApi(
     json(res, 200, {
       scheme:
         'poolSecret = keccak256(master ‖ utf8(poolId)); ' +
-        'seed = keccak256(poolSecret ‖ utf8(poolId) ‖ player); ' +
+        'seed = keccak256(poolSecret ‖ utf8(poolId) ‖ player ‖ ' +
+        'uint32(cardIndex)); ' +
         'layout = partial Fisher-Yates over pool conditions, ' +
         'rehashing keccak256(seed ‖ pad32(i)) per step',
       pools: pools.map((pool) => ({
@@ -185,13 +192,37 @@ export async function handleApi(
       return true;
     }
     const pool = resolvePool(url.searchParams.get('poolId'));
-    const cells = drawCells(
-      pool.conditions,
-      cardSeed(secretFor(pool.poolId), pool.poolId, player),
-    );
-    const submission = await chainSubmission(pool.poolId, player);
+    const rawIndex = url.searchParams.get('cardIndex');
+    const cardIndex = rawIndex == null ? 0 : Number(rawIndex);
+    if (!Number.isInteger(cardIndex) || cardIndex < 0) {
+      json(res, 400, { error: 'cardIndex must be a non-negative integer' });
+      return true;
+    }
+    const count = await cardCount(pool.poolId, player);
+    // Indexes are sequential: existing cards plus a preview of the next one.
+    if (cardIndex > count) {
+      json(res, 404, {
+        error: `cardIndex ${cardIndex} not dealt yet (next is ${count})`,
+      });
+      return true;
+    }
+    const submission =
+      cardIndex < count
+        ? await chainSubmission(pool.poolId, player, cardIndex)
+        : null;
+    // Submitted cards use the chain-stamped seed; the next card derives.
+    const seed =
+      submission?.seed ??
+      cardSeed(secretFor(pool.poolId), pool.poolId, player, cardIndex);
+    const cells = drawCells(pool.conditions, seed);
     const funded = submission
-      ? await fundedLineFlags(player, cells, submission.yesMask)
+      ? await fundedLineFlags(
+          player,
+          cells,
+          submission.yesMask,
+          cardTag(pool.poolId, player, cardIndex),
+          BigInt(submission.cardPriceWei) / BigInt(LINES_PER_CARD),
+        )
       : undefined;
     const lines = buildLines().map((l, i) => ({
       lineId: l.id,
@@ -203,6 +234,8 @@ export async function handleApi(
       cutoff: pool.cutoff,
       open: poolIsOpen(pool),
       player,
+      cardIndex,
+      cardCount: count,
       cells,
       yesMask: submission?.yesMask ?? null,
       cardPriceWei: submission?.cardPriceWei ?? null,
@@ -213,21 +246,72 @@ export async function handleApi(
     return true;
   }
 
+  // Summary of all the player's cards in a pool — drives the card selector
+  // and the "new card" button.
+  if (route === 'GET /api/cards') {
+    const player = url.searchParams.get('player');
+    if (!player || !isAddress(player)) {
+      json(res, 400, { error: 'player query param required' });
+      return true;
+    }
+    const pool = resolvePool(url.searchParams.get('poolId'));
+    const count = await cardCount(pool.poolId, player);
+    const funded = count > 0 ? await fundedPredictions(player) : [];
+    const cards = await Promise.all(
+      Array.from({ length: count }, async (_, i) => {
+        const sub = await chainSubmission(pool.poolId, player, i);
+        if (!sub) return null;
+        const cells = drawCells(pool.conditions, sub.seed);
+        const tag = cardTag(pool.poolId, player, i);
+        const stake = BigInt(sub.cardPriceWei) / BigInt(LINES_PER_CARD);
+        const linesFunded = buildLines().filter((l) =>
+          lineIsFunded(funded, linePicks(l, cells, sub.yesMask), tag, stake),
+        ).length;
+        return {
+          cardIndex: i,
+          receiptTokenId: sub.tokenId.toString(),
+          yesMask: sub.yesMask,
+          cardPriceWei: sub.cardPriceWei,
+          submittedAt: sub.submittedAt * 1000,
+          linesFunded,
+        };
+      }),
+    );
+    json(res, 200, {
+      poolId: pool.poolId,
+      open: poolIsOpen(pool),
+      cardCount: count,
+      cards: cards.filter(Boolean),
+    });
+    return true;
+  }
+
   // Records the submission by minting the receipt NFT — the on-chain lock
   // of (sides, price, referrer). Lines are funded afterwards, one
   // POST /api/card/line each, driven by the client.
   if (route === 'POST /api/card/submit') {
     const body = await readJson<{
       player?: string;
+      cardIndex?: number;
       yesMask?: number;
       cardPriceWei?: string;
       ref?: string;
       session?: SerializedSession;
     }>(req);
-    const { player, yesMask, cardPriceWei, ref } = body;
+    const { player, cardIndex, yesMask, cardPriceWei, ref } = body;
     const pool = activePool();
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player required' });
+      return true;
+    }
+    // Explicit so a stale tab can't stamp its sides onto a different
+    // layout than the one it displayed.
+    if (
+      typeof cardIndex !== 'number' ||
+      !Number.isInteger(cardIndex) ||
+      cardIndex < 0
+    ) {
+      json(res, 400, { error: 'cardIndex required (0-based integer)' });
       return true;
     }
     if (
@@ -267,10 +351,21 @@ export async function handleApi(
     // player the backend could never fund lines for.
     const sessionClient = await sessionFor(player, body.session);
 
-    const seed = cardSeed(secretFor(pool.poolId), pool.poolId, player);
+    // Indexes are strictly sequential: a retry of an existing index is
+    // idempotent, the next index is a new card, anything beyond is stale.
+    const count = await cardCount(pool.poolId, player);
+    if (cardIndex > count) {
+      json(res, 409, {
+        error: `cardIndex ${cardIndex} is not next (expected ${count})`,
+      });
+      return true;
+    }
+
+    const seed = cardSeed(secretFor(pool.poolId), pool.poolId, player, cardIndex);
     const submission = await mintReceipt({
       player,
       poolId: pool.poolId,
+      cardIndex,
       seed,
       yesMask,
       cardPriceWei: price.toString(),
@@ -291,6 +386,7 @@ export async function handleApi(
     await prepareCollateral(sessionClient, player, price);
     json(res, 200, {
       poolId: pool.poolId,
+      cardIndex,
       receiptTokenId: submission.tokenId.toString(),
     });
     return true;
@@ -302,12 +398,21 @@ export async function handleApi(
     const body = await readJson<{
       player?: string;
       poolId?: string;
+      cardIndex?: number;
       lineIndex?: number;
       session?: SerializedSession;
     }>(req);
-    const { player, lineIndex } = body;
+    const { player, cardIndex, lineIndex } = body;
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player required' });
+      return true;
+    }
+    if (
+      typeof cardIndex !== 'number' ||
+      !Number.isInteger(cardIndex) ||
+      cardIndex < 0
+    ) {
+      json(res, 400, { error: 'cardIndex required (0-based integer)' });
       return true;
     }
     if (
@@ -324,18 +429,24 @@ export async function handleApi(
       json(res, 409, { error: 'Pool is closed (cutoff passed)' });
       return true;
     }
-    const submission = await chainSubmission(pool.poolId, player);
+    const submission = await chainSubmission(pool.poolId, player, cardIndex);
     if (!submission) {
       json(res, 409, { error: 'No submission — POST /api/card/submit first' });
       return true;
     }
-    const cells = drawCells(
-      pool.conditions,
-      cardSeed(secretFor(pool.poolId), pool.poolId, player),
-    );
+    // The receipt stamps the card's seed — chain record, not a re-derive.
+    const cells = drawCells(pool.conditions, submission.seed);
+    const stakePerLineWei =
+      BigInt(submission.cardPriceWei) / BigInt(LINES_PER_CARD);
     // Monotonic funded check (escrow events): never double-mint a line,
     // even after the player redeemed (burned) the position.
-    const funded = await fundedLineFlags(player, cells, submission.yesMask);
+    const funded = await fundedLineFlags(
+      player,
+      cells,
+      submission.yesMask,
+      cardTag(pool.poolId, player, cardIndex),
+      stakePerLineWei,
+    );
     if (funded[lineIndex]) {
       json(res, 200, { lineIndex, funded: true, alreadyFunded: true });
       return true;
@@ -347,9 +458,10 @@ export async function handleApi(
         smartAccountAddress: player,
         cells,
         yesMask: submission.yesMask,
-        stakePerLineWei:
-          BigInt(submission.cardPriceWei) / BigInt(LINES_PER_CARD),
+        stakePerLineWei,
         lineIndex,
+        cardIndex,
+        poolId: pool.poolId,
       });
       json(res, 200, {
         lineIndex,

@@ -45,6 +45,8 @@ export interface SerializedSession {
 export interface EntitlementRow {
   player: Address;
   poolId: string;
+  /** Which of the player's cards in this pool (0-based). */
+  cardIndex: number;
   cardPriceWei: string;
   linesFunded: number;
   complete: boolean;

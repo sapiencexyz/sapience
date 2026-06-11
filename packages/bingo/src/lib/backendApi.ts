@@ -74,6 +74,10 @@ export interface CardResponse {
   cutoff: number;
   open: boolean;
   player: Address;
+  /** Which of the player's cards this is (0-based, sequential). */
+  cardIndex: number;
+  /** How many cards the player has submitted in this pool. */
+  cardCount: number;
   /** The 16 dealt cells, in grid reading order. */
   cells: BackendCell[];
   /** Bit i = YES on cell i; null until submitted (from the receipt NFT). */
@@ -89,6 +93,7 @@ export interface CardResponse {
 export interface EntitlementRow {
   player: Address;
   poolId: string;
+  cardIndex: number;
   cardPriceWei: string;
   linesFunded: number;
   complete: boolean;
@@ -116,8 +121,26 @@ export interface EntitlementsResponse {
 
 export interface SubmitCardResponse {
   poolId: string;
+  cardIndex: number;
   /** The receipt NFT minted (or already existing) for this card. */
   receiptTokenId: string;
+}
+
+export interface CardSummary {
+  cardIndex: number;
+  receiptTokenId: string;
+  yesMask: number;
+  cardPriceWei: string;
+  /** Milliseconds. */
+  submittedAt: number;
+  linesFunded: number;
+}
+
+export interface CardsResponse {
+  poolId: string;
+  open: boolean;
+  cardCount: number;
+  cards: CardSummary[];
 }
 
 export interface SubmitLineResponse {
@@ -175,9 +198,19 @@ export function fetchPool(): Promise<PoolResponse> {
   return request<PoolResponse>('/api/pool');
 }
 
-export function fetchCard(player: Address): Promise<CardResponse> {
+export function fetchCard(
+  player: Address,
+  cardIndex = 0,
+): Promise<CardResponse> {
   return request<CardResponse>(
-    `/api/card?player=${encodeURIComponent(player)}`,
+    `/api/card?player=${encodeURIComponent(player)}&cardIndex=${cardIndex}`,
+  );
+}
+
+/** All the player's cards in the active pool (drives the card selector). */
+export function fetchCards(player: Address): Promise<CardsResponse> {
+  return request<CardsResponse>(
+    `/api/cards?player=${encodeURIComponent(player)}`,
   );
 }
 
@@ -185,6 +218,7 @@ export function fetchCard(player: Address): Promise<CardResponse> {
  *  sides/price/referrer on-chain. Fund lines afterwards with submitLine. */
 export function submitCard(params: {
   player: Address;
+  cardIndex: number;
   yesMask: number;
   cardPriceWei: string;
   ref?: Address | null;
@@ -197,6 +231,7 @@ export function submitCard(params: {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         player: params.player,
+        cardIndex: params.cardIndex,
         yesMask: params.yesMask,
         cardPriceWei: params.cardPriceWei,
         session: params.session,
@@ -211,6 +246,7 @@ export function submitCard(params: {
  *  already-funded line returns immediately. */
 export function submitLine(params: {
   player: Address;
+  cardIndex: number;
   lineIndex: number;
   session: SerializedSession;
 }): Promise<SubmitLineResponse> {

@@ -37,12 +37,14 @@ The operator holds one master `SERVER_SECRET`. Per pool:
 ```
 poolSecret = keccak256(master ‖ poolId)        // derived, never stored
 commitment = keccak256(poolSecret)             // published while pool is open
-seed       = keccak256(poolSecret ‖ poolId ‖ playerAddress)
+seed       = keccak256(poolSecret ‖ poolId ‖ playerAddress ‖ uint32(cardIndex))
 layout     = fisherYatesShuffle(poolConditions, seed)[0..16]
 ```
 
-- One player address → one card per pool, by construction (and enforced
-  on-chain: the receipt contract mints at most one NFT per (pool, player)).
+- Cards are per (pool, player, cardIndex) — a wallet can hold many cards,
+  each with its own committed layout. Indexes are strictly sequential and
+  enforced on-chain (the receipt contract reverts on a skipped or replayed
+  index), so layouts can't be cherry-picked out of order.
 - The backend cannot target a player with a bad card without breaking the
   commitment: after the pool cutoff the derived secret is revealed
   (`GET /api/fairness`), and anyone can recompute every card dealt. The seed
@@ -79,9 +81,12 @@ layout     = fisherYatesShuffle(poolConditions, seed)[0..16]
   mint at submit time; retries with different sides/price are refused
   against the chain record.
 - **Cutoff**: submit and line requests are refused once `now >= cutoff`.
-- **Idempotency**: a line whose pickConfigId already appears in the player's
-  escrow `PredictionCreated` events is never re-minted — the event record is
-  monotonic, so this survives the player redeeming (burning) the position.
+- **Idempotency**: a line is funded iff an escrow `PredictionCreated` event
+  matches its pickConfigId, the card's per-card refCode tag
+  (`'bngo' ‖ keccak('bingo' ‖ poolHash ‖ player ‖ index)[0:28]`), and the
+  card's exact per-line stake. The event record is monotonic (survives
+  redeems) and the tag attributes a mint to one card even when two of a
+  player's cards draw an identical line.
 - **The client drives the lines.** If the tab closes mid-card, the UI offers
   "Fund remaining lines" on return; nothing is lost or duplicated.
 

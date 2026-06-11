@@ -23,12 +23,44 @@ export function fairnessCommitment(secret: Hex): Hex {
   return keccak256(secret);
 }
 
-/** One seed per (pool, player) — one card per wallet per pool by
- *  construction, and the player can't grind layouts without the secret. */
-export function cardSeed(secret: Hex, poolId: string, player: Address): Hex {
+/** One seed per (pool, player, cardIndex). Fixed-width fields (20-byte
+ *  address, 4-byte index) keep the preimage unambiguous; the player can't
+ *  grind a layout's contents without the secret. */
+export function cardSeed(
+  secret: Hex,
+  poolId: string,
+  player: Address,
+  cardIndex: number,
+): Hex {
   return keccak256(
-    concatHex([secret, stringToHex(poolId), player.toLowerCase() as Hex]),
+    concatHex([
+      secret,
+      stringToHex(poolId),
+      player.toLowerCase() as Hex,
+      toHex(cardIndex, { size: 4 }),
+    ]),
   );
+}
+
+/** Per-card escrow refCode: attributes a line mint to one specific card
+ *  (two cards can draw an identical line — same pickConfigId — so escrow
+ *  events alone can't tell them apart). 4-byte ascii 'bngo' prefix keeps
+ *  bingo traffic recognizable in event scans; the 28-byte hash tail is
+ *  plenty of collision resistance. */
+export function cardTag(
+  poolId: string,
+  player: Address,
+  cardIndex: number,
+): Hex {
+  const h = keccak256(
+    concatHex([
+      stringToHex('bingo'),
+      keccak256(stringToHex(poolId)),
+      player.toLowerCase() as Hex,
+      toHex(cardIndex, { size: 4 }),
+    ]),
+  );
+  return `0x626e676f${h.slice(2, 2 + 56)}` as Hex; // 'bngo' ‖ hash[0:28]
 }
 
 /** Deterministic partial Fisher-Yates: the first `count` slots of `pool`

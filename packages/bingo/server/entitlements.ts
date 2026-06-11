@@ -2,18 +2,24 @@
 // the receipt NFT (what was submitted), escrow PredictionCreated events
 // (which lines were funded — monotonic, survives redeems), and resolver
 // reads (line outcomes). No server records involved.
+//
+// Funded-line attribution: a line counts only if its escrow event matches
+// the card's refCode tag AND its exact per-line stake. The tag is set by
+// this backend at mint time but is ultimately player-forgeable (the player
+// owns the smart account), so entitlements remain an admin-reviewed
+// worklist — payouts are discretionary treasury transfers, not automatic.
 
-import type { Hex } from 'viem';
-import { cardSeed, drawCells, poolSecret } from './draw.js';
+import type { Address, Hex } from 'viem';
+import { cardTag, drawCells } from './draw.js';
 import {
   cellResolution,
-  fundedPickConfigIds,
-  linePickConfigId,
+  fundedPredictions,
+  lineIsFunded,
   linePicks,
   type CellOutcome,
+  type FundedPrediction,
 } from './chain.js';
-import { env } from './config.js';
-import { buildLines, CELL_COUNT, LINES_PER_CARD } from './lines.js';
+import { buildLines, LINES_PER_CARD } from './lines.js';
 import { allChainSubmissions, type ChainSubmission } from './receipt.js';
 import type { EntitlementRow, PoolConfig } from './types.js';
 
@@ -25,37 +31,70 @@ interface LineState {
   outcome: 'won' | 'lost' | 'open';
 }
 
+/** Shared per-call caches: one funded-events fetch per player (reused by
+ *  all their cards) and one resolver read per distinct condition. */
+export interface EntitlementCaches {
+  funded: Map<string, Promise<FundedPrediction[]>>;
+  resolutions: Map<string, Promise<CellOutcome>>;
+}
+
+export const newCaches = (): EntitlementCaches => ({
+  funded: new Map(),
+  resolutions: new Map(),
+});
+
+function fundedFor(
+  caches: EntitlementCaches,
+  player: Address,
+): Promise<FundedPrediction[]> {
+  const key = player.toLowerCase();
+  let p = caches.funded.get(key);
+  if (!p) {
+    p = fundedPredictions(player);
+    caches.funded.set(key, p);
+  }
+  return p;
+}
+
+function resolutionFor(
+  caches: EntitlementCaches,
+  resolver: Address,
+  conditionId: Hex,
+): Promise<CellOutcome> {
+  const key = `${resolver.toLowerCase()}:${conditionId.toLowerCase()}`;
+  let p = caches.resolutions.get(key);
+  if (!p) {
+    p = cellResolution(resolver, conditionId);
+    caches.resolutions.set(key, p);
+  }
+  return p;
+}
+
 async function lineStates(
   pool: PoolConfig,
   submission: ChainSubmission,
+  caches: EntitlementCaches,
 ): Promise<LineState[]> {
-  const secret = poolSecret(env.SERVER_SECRET as Hex, pool.poolId);
-  const cells = drawCells(
-    pool.conditions,
-    cardSeed(secret, pool.poolId, submission.player),
-  );
+  // The receipt stamps the seed — use the chain's record, not a re-derive.
+  const cells = drawCells(pool.conditions, submission.seed);
   const lines = buildLines();
-  const funded = await fundedPickConfigIds(submission.player);
+  const tag = cardTag(pool.poolId, submission.player, submission.cardIndex);
+  const stakePerLineWei =
+    BigInt(submission.cardPriceWei) / BigInt(LINES_PER_CARD);
+  const funded = await fundedFor(caches, submission.player);
 
-  // One resolver read per distinct cell, shared across the lines that use it.
-  const resolutions = new Map<number, CellOutcome>();
-  await Promise.all(
-    Array.from({ length: CELL_COUNT }, (_, i) => i).map(async (i) => {
-      resolutions.set(
-        i,
-        await cellResolution(cells[i].resolver, cells[i].conditionId),
-      );
-    }),
+  const resolutions = await Promise.all(
+    cells.map((c) => resolutionFor(caches, c.resolver, c.conditionId)),
   );
 
   return lines.map((line) => {
     const picks = linePicks(line, cells, submission.yesMask);
-    const isFunded = funded.has(linePickConfigId(picks).toLowerCase());
+    const isFunded = lineIsFunded(funded, picks, tag, stakePerLineWei);
     let lost = false;
     let allAgree = true;
     for (const idx of line.cellIndices) {
       const declaredYes = (submission.yesMask & (1 << idx)) !== 0;
-      const res = resolutions.get(idx) ?? 'pending';
+      const res = resolutions[idx] ?? 'pending';
       if (res === 'pending') {
         allAgree = false;
       } else if (res === 'tie' || (res === 'yes') !== declaredYes) {
@@ -75,8 +114,9 @@ async function lineStates(
 export async function entitlementFor(
   pool: PoolConfig,
   submission: ChainSubmission,
+  caches: EntitlementCaches = newCaches(),
 ): Promise<EntitlementRow> {
-  const states = await lineStates(pool, submission);
+  const states = await lineStates(pool, submission, caches);
   const fundedStates = states.filter((s) => s.funded);
   const linesFunded = fundedStates.length;
   const complete = linesFunded === LINES_PER_CARD;
@@ -105,6 +145,7 @@ export async function entitlementFor(
   return {
     player: submission.player,
     poolId: submission.poolId,
+    cardIndex: submission.cardIndex,
     cardPriceWei: submission.cardPriceWei,
     linesFunded,
     complete,
@@ -128,12 +169,14 @@ export async function allEntitlements(
   pools: readonly PoolConfig[],
 ): Promise<EntitlementRow[]> {
   const byId = new Map(pools.map((p) => [p.poolId, p]));
+  const caches = newCaches();
   const rows: EntitlementRow[] = [];
-  // Sequential on purpose: each row already fans out ~17 RPC reads.
+  // Sequential on purpose: the caches collapse most RPC fan-out, but each
+  // new player/condition still costs reads.
   for (const s of await allChainSubmissions()) {
     const pool = byId.get(s.poolId);
     if (!pool) continue; // pool no longer in config — not resolvable
-    rows.push(await entitlementFor(pool, s));
+    rows.push(await entitlementFor(pool, s, caches));
   }
   return rows;
 }

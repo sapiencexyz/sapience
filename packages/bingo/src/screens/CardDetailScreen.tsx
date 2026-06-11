@@ -11,10 +11,12 @@ import { CHAIN_ID } from '../lib/chain';
 import { fmtUnits, shortAddress } from '../lib/format/balance';
 import {
   fetchCard,
+  fetchCards,
   fetchPool,
   submitCard,
   submitLine,
   type CardResponse,
+  type CardsResponse,
   type PoolResponse,
 } from '../lib/backendApi';
 import {
@@ -117,6 +119,15 @@ function loadRef(): Address | undefined {
   return v && isAddress(v) ? (v as Address) : undefined;
 }
 
+/** The ?card=N query param, or null when absent/invalid. */
+function cardIndexFromUrl(): number | null {
+  if (typeof window === 'undefined') return null;
+  const v = new URLSearchParams(window.location.search).get('card');
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
 export default function CardDetailScreen() {
   const { isConnected } = useAccount();
   const { connectors, connect, isPending: connectPending } = useConnect();
@@ -136,6 +147,13 @@ export default function CardDetailScreen() {
   const [pool, setPool] = useState<PoolResponse | null>(null);
   const [card, setCard] = useState<CardResponse | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+
+  // Which of the player's cards is shown. ?card=N wins; otherwise the last
+  // submitted card (or a fresh card 0). null = not resolved yet.
+  const [cardIndex, setCardIndex] = useState<number | null>(
+    cardIndexFromUrl(),
+  );
+  const [cardsSummary, setCardsSummary] = useState<CardsResponse | null>(null);
 
   const [pickedSides, setPickedSides] = useState(0);
   const [pickedMask, setPickedMask] = useState(0);
@@ -191,14 +209,51 @@ export default function CardDetailScreen() {
     setPriceInput(fmtUnits(BigInt(pool.minCardPriceWei)));
   }, [pool, priceTouched]);
 
-  // Poll the backend card every 3s (and immediately on refreshKey) so deal,
-  // submission progress, and line funding all surface without a reload.
+  // Resolve which card to show + keep the card list fresh: ?card=N wins,
+  // otherwise default to the player's latest submitted card.
   useEffect(() => {
     if (!player) return;
     let stop = false;
     const tick = async () => {
       try {
-        const c = await fetchCard(player);
+        const s = await fetchCards(player);
+        if (stop) return;
+        setCardsSummary(s);
+        setCardIndex((cur) =>
+          cur ?? cardIndexFromUrl() ?? Math.max(0, s.cardCount - 1),
+        );
+      } catch {
+        // Card list is auxiliary; the card poll surfaces real errors.
+        if (!stop) setCardIndex((cur) => cur ?? cardIndexFromUrl() ?? 0);
+      }
+    };
+    void tick();
+    const interval = window.setInterval(tick, 5_000);
+    return () => {
+      stop = true;
+      window.clearInterval(interval);
+    };
+  }, [player, refreshKey]);
+
+  // Reset per-card state when switching cards — lineIds repeat across cards.
+  useEffect(() => {
+    setLineRuns({});
+    setLineOutcomes({});
+    setCellStatus({});
+    setPickedSides(0);
+    setPickedMask(0);
+    setPriceTouched(false);
+    setCard(null);
+  }, [cardIndex]);
+
+  // Poll the backend card every 3s (and immediately on refreshKey) so deal,
+  // submission progress, and line funding all surface without a reload.
+  useEffect(() => {
+    if (!player || cardIndex == null) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const c = await fetchCard(player, cardIndex);
         if (stop) return;
         setCard(c);
         setStatusMsg(null);
@@ -213,7 +268,7 @@ export default function CardDetailScreen() {
       stop = true;
       window.clearInterval(interval);
     };
-  }, [player, refreshKey]);
+  }, [player, cardIndex, refreshKey]);
 
   const submitted = card != null && card.yesMask != null;
   const yesMask = card?.yesMask ?? 0;
@@ -256,7 +311,7 @@ export default function CardDetailScreen() {
   // parallel. Idempotent — the backend skips already-funded lines.
   const fundLines = async (indices: number[]) => {
     const session = loadSession();
-    if (!player || !session || !card) return;
+    if (!player || !session || !card || cardIndex == null) return;
     const lineIds = card.lines.map((l) => l.lineId);
     setActionError(null);
     setLineRuns((p) => {
@@ -267,7 +322,7 @@ export default function CardDetailScreen() {
     await Promise.allSettled(
       indices.map(async (i) => {
         try {
-          await submitLine({ player, lineIndex: i, session });
+          await submitLine({ player, cardIndex, lineIndex: i, session });
           setLineRuns((p) => ({ ...p, [lineIds[i]]: { status: 'done' } }));
         } catch (e) {
           setLineRuns((p) => ({
@@ -287,12 +342,14 @@ export default function CardDetailScreen() {
   // price on-chain), then this client drives the 10 line mints.
   const submitPicks = async () => {
     const session = loadSession();
-    if (!player || enteredPriceWei == null || !session) return;
+    if (!player || enteredPriceWei == null || !session || cardIndex == null)
+      return;
     setActionError(null);
     setActionBusy(true);
     try {
       await submitCard({
         player,
+        cardIndex,
         yesMask: pickedSides,
         cardPriceWei: enteredPriceWei.toString(),
         ref: loadRef(),
@@ -305,6 +362,15 @@ export default function CardDetailScreen() {
     } finally {
       setActionBusy(false);
     }
+  };
+
+  // Switch the visible card (and reflect it in the URL for reloads/sharing).
+  const selectCard = (i: number) => {
+    if (i === cardIndex) return;
+    const u = new URL(window.location.href);
+    u.searchParams.set('card', String(i));
+    window.history.replaceState(null, '', u.toString());
+    setCardIndex(i);
   };
 
   // Retry/resume: fund whichever lines aren't on-chain yet.
@@ -534,6 +600,34 @@ export default function CardDetailScreen() {
 
       {needsSession && (
         <section className="screen admin-section">{sessionPrompt}</section>
+      )}
+
+      {player && cardsSummary && (cardsSummary.cardCount > 0 || card) && (
+        <section className="screen admin-section">
+          <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
+            {cardsSummary.cards.map((c) => (
+              <button
+                key={c.cardIndex}
+                type="button"
+                className={c.cardIndex === cardIndex ? 'primary' : 'ghost'}
+                onClick={() => selectCard(c.cardIndex)}
+              >
+                Card #{c.cardIndex + 1} · {c.linesFunded}/10
+              </button>
+            ))}
+            {cardsSummary.open && (
+              <button
+                type="button"
+                className={
+                  cardIndex === cardsSummary.cardCount ? 'primary' : 'ghost'
+                }
+                onClick={() => selectCard(cardsSummary.cardCount)}
+              >
+                + New card
+              </button>
+            )}
+          </div>
+        </section>
       )}
 
       {card && player && (
@@ -939,6 +1033,10 @@ export default function CardDetailScreen() {
             <div className="admin-kv">
               <div>Pool</div>
               <div className="mono">{card.poolId}</div>
+              <div>Card</div>
+              <div className="mono">
+                #{card.cardIndex + 1} of {Math.max(card.cardCount, card.cardIndex + 1)}
+              </div>
               <div>Player</div>
               <div className="mono">{shortAddress(card.player)}</div>
               <div>Card price</div>

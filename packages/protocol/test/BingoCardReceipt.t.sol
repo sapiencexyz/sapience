@@ -26,6 +26,7 @@ contract BingoCardReceiptTest is Test {
         address indexed player,
         bytes32 indexed poolHash,
         string poolId,
+        uint32 cardIndex,
         bytes32 seed,
         uint16 yesMask,
         uint256 cardPrice,
@@ -51,8 +52,18 @@ contract BingoCardReceiptTest is Test {
     }
 
     function _mint(address to, address ref) internal returns (uint256) {
+        return _mintIndexed(to, 0, ref);
+    }
+
+    function _mintIndexed(address to, uint32 cardIndex, address ref)
+        internal
+        returns (uint256)
+    {
         vm.prank(minter);
-        return receipt.mint(to, POOL_ID, SEED, YES_MASK, CARD_PRICE, ref);
+        return
+            receipt.mint(
+                to, POOL_ID, cardIndex, SEED, YES_MASK, CARD_PRICE, ref
+            );
     }
 
     // ---- mint ----
@@ -66,6 +77,7 @@ contract BingoCardReceiptTest is Test {
             address ref,
             uint64 submittedAt,
             uint16 yesMask,
+            uint32 cardIndex,
             uint256 cardPrice,
             bool bonusPaid,
             bool referralPaid
@@ -75,12 +87,17 @@ contract BingoCardReceiptTest is Test {
         assertEq(ref, referrer);
         assertEq(uint256(submittedAt), block.timestamp);
         assertEq(uint256(yesMask), uint256(YES_MASK));
+        assertEq(uint256(cardIndex), 0);
         assertEq(cardPrice, CARD_PRICE);
         assertFalse(bonusPaid);
         assertFalse(referralPaid);
         assertEq(
-            receipt.tokenOfPlayerPool(keccak256(bytes(POOL_ID)), player), id
+            receipt.tokenOfPlayerPoolIndex(
+                keccak256(bytes(POOL_ID)), player, 0
+            ),
+            id
         );
+        assertEq(receipt.cardCount(keccak256(bytes(POOL_ID)), player), 1);
     }
 
     function test_mint_emitsEvent() public {
@@ -90,6 +107,7 @@ contract BingoCardReceiptTest is Test {
             player,
             keccak256(bytes(POOL_ID)),
             POOL_ID,
+            0,
             SEED,
             YES_MASK,
             CARD_PRICE,
@@ -101,30 +119,65 @@ contract BingoCardReceiptTest is Test {
     function test_mint_revertsForNonMinter() public {
         vm.prank(player);
         vm.expectRevert(BingoCardReceipt.NotMinter.selector);
-        receipt.mint(player, POOL_ID, SEED, YES_MASK, CARD_PRICE, referrer);
+        receipt.mint(player, POOL_ID, 0, SEED, YES_MASK, CARD_PRICE, referrer);
     }
 
     function test_mint_ownerCanMintToo() public {
         vm.prank(owner);
-        uint256 id =
-            receipt.mint(player, POOL_ID, SEED, YES_MASK, CARD_PRICE, referrer);
+        uint256 id = receipt.mint(
+            player, POOL_ID, 0, SEED, YES_MASK, CARD_PRICE, referrer
+        );
         assertEq(receipt.ownerOf(id), player);
     }
 
-    function test_mint_oncePerPlayerPerPool() public {
+    function test_mint_retrySameIndexReverts() public {
+        // Idempotency backstop: index 0 was minted, replaying it reverts
+        // with the next expected index.
         _mint(player, referrer);
         vm.prank(minter);
-        vm.expectRevert(BingoCardReceipt.AlreadyMinted.selector);
-        receipt.mint(player, POOL_ID, SEED, YES_MASK, CARD_PRICE, referrer);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                BingoCardReceipt.CardIndexMismatch.selector, uint32(1)
+            )
+        );
+        receipt.mint(player, POOL_ID, 0, SEED, YES_MASK, CARD_PRICE, referrer);
     }
 
-    function test_mint_samePlayerDifferentPoolOk() public {
-        _mint(player, referrer);
+    function test_mint_sequentialIndexes() public {
+        bytes32 poolHash = keccak256(bytes(POOL_ID));
+        uint256 first = _mintIndexed(player, 0, referrer);
+        uint256 second = _mintIndexed(player, 1, address(0));
+        assertEq(receipt.cardCount(poolHash, player), 2);
+        assertEq(receipt.tokenOfPlayerPoolIndex(poolHash, player, 0), first);
+        assertEq(receipt.tokenOfPlayerPoolIndex(poolHash, player, 1), second);
+        (,,,,, uint32 idx0,,,) = receipt.cardMeta(first);
+        (,,,,, uint32 idx1,,,) = receipt.cardMeta(second);
+        assertEq(uint256(idx0), 0);
+        assertEq(uint256(idx1), 1);
+        assertEq(receipt.ownerOf(first), player);
+        assertEq(receipt.ownerOf(second), player);
+    }
+
+    function test_mint_skipIndexReverts() public {
+        vm.prank(minter);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                BingoCardReceipt.CardIndexMismatch.selector, uint32(0)
+            )
+        );
+        receipt.mint(player, POOL_ID, 1, SEED, YES_MASK, CARD_PRICE, referrer);
+    }
+
+    function test_mint_indexesIndependentPerPool() public {
+        _mintIndexed(player, 0, referrer);
+        // A different pool starts back at index 0 for the same player.
         vm.prank(minter);
         uint256 id = receipt.mint(
-            player, "another-pool", SEED, YES_MASK, CARD_PRICE, referrer
+            player, "another-pool", 0, SEED, YES_MASK, CARD_PRICE, referrer
         );
         assertEq(id, 2);
+        assertEq(receipt.cardCount(keccak256(bytes("another-pool")), player), 1);
+        assertEq(receipt.cardCount(keccak256(bytes(POOL_ID)), player), 1);
     }
 
     // ---- payBonus ----
@@ -149,6 +202,17 @@ contract BingoCardReceiptTest is Test {
         receipt.payBonus(id, 2, 10e18);
         assertEq(usde.balanceOf(buyer), 10e18);
         assertEq(usde.balanceOf(player), 0);
+    }
+
+    function test_payBonus_perCardIndependent() public {
+        // Paying card 0's bonus must not touch card 1's one-shot flag.
+        uint256 first = _mintIndexed(player, 0, referrer);
+        uint256 second = _mintIndexed(player, 1, referrer);
+        vm.startPrank(owner);
+        receipt.payBonus(first, 2, 10e18);
+        receipt.payBonus(second, 3, 15e18);
+        vm.stopPrank();
+        assertEq(usde.balanceOf(player), 25e18);
     }
 
     function test_payBonus_oneShot() public {

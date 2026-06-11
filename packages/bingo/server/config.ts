@@ -48,6 +48,6 @@ export const env = cleanEnv(process.env, {
   /** Hot wallet authorized as the receipt contract's minter. */
   MINTER_PRIVATE_KEY: hex32(),
   /** Lower bound for on-chain log scans (receipt + escrow events). Defaults
-   *  to the BingoCardReceipt deploy block on Ethereal testnet. */
-  LOG_FROM_BLOCK: num({ default: 4828048 }),
+   *  to the BingoCardReceipt (multi-card) deploy block on Ethereal testnet. */
+  LOG_FROM_BLOCK: num({ default: 4828264 }),
 });

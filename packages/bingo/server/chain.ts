@@ -23,14 +23,6 @@ export const COLLATERAL_ADDRESS = collateralAddresses[CHAIN_ID]?.address as
   | Address
   | undefined;
 
-const ESCROW_TOKENPAIR_ABI = parseAbi([
-  'function getTokenPair(bytes32 pickConfigId) view returns ((address predictorToken, address counterpartyToken))',
-]);
-
-const ERC20_BALANCE_ABI = parseAbi([
-  'function balanceOf(address) view returns (uint256)',
-]);
-
 const RESOLVER_ABI = parseAbi([
   'function getResolution(bytes conditionId) view returns (bool isResolved, (uint256 yesWeight, uint256 noWeight) outcome)',
 ]);
@@ -52,53 +44,23 @@ export function linePickConfigId(picks: Pick[]): Hex {
   return computePickConfigId(canonicalizePicks(picks)) as Hex;
 }
 
-/** A line counts as funded once the player holds predictor position tokens
- *  for its pick configuration. Live-balance view — flips back to false if
- *  the player redeems (burns) the position; use `fundedPickConfigIds` for
- *  the monotonic record. */
-export async function lineFunded(
-  player: Address,
-  picks: Pick[],
-): Promise<boolean> {
-  if (!ESCROW_ADDRESS) throw new Error('Escrow not configured');
-  const publicClient = getPublicClient();
-  try {
-    const pair = (await publicClient.readContract({
-      address: ESCROW_ADDRESS,
-      abi: ESCROW_TOKENPAIR_ABI,
-      functionName: 'getTokenPair',
-      args: [linePickConfigId(picks)],
-    })) as { predictorToken: Address; counterpartyToken: Address };
-    if (
-      !pair.predictorToken ||
-      pair.predictorToken === '0x0000000000000000000000000000000000000000'
-    ) {
-      return false;
-    }
-    const bal = (await publicClient.readContract({
-      address: pair.predictorToken,
-      abi: ERC20_BALANCE_ABI,
-      functionName: 'balanceOf',
-      args: [player],
-    })) as bigint;
-    return bal > 0n;
-  } catch {
-    // No token pair deployed yet → nothing minted for this config.
-    return false;
-  }
-}
-
 const PREDICTION_CREATED_EVENT = parseAbiItem(
   'event PredictionCreated(bytes32 indexed predictionId, address indexed predictor, address indexed counterparty, address predictorToken, address counterpartyToken, uint256 predictorCollateral, uint256 counterpartyCollateral, bytes32 refCode, bytes32 pickConfigId)',
 );
 
-/** Every pickConfigId the player has EVER minted as predictor, from escrow
+export interface FundedPrediction {
+  pickConfigId: string;
+  refCode: string;
+  predictorCollateral: bigint;
+}
+
+/** Every prediction the player has EVER minted as predictor, from escrow
  *  events. Events can't be un-emitted, so this is the monotonic "line was
- *  funded" record — it survives the player redeeming (burning) the position.
- *  One getLogs call replaces what the journal used to track. */
-export async function fundedPickConfigIds(
+ *  funded" record — it survives the player redeeming (burning) the
+ *  position. One getLogs call replaces what a journal would track. */
+export async function fundedPredictions(
   player: Address,
-): Promise<Set<string>> {
+): Promise<FundedPrediction[]> {
   if (!ESCROW_ADDRESS) throw new Error('Escrow not configured');
   const logs = await getPublicClient().getLogs({
     address: ESCROW_ADDRESS,
@@ -107,23 +69,51 @@ export async function fundedPickConfigIds(
     fromBlock: BigInt(env.LOG_FROM_BLOCK),
     toBlock: 'latest',
   });
-  const set = new Set<string>();
+  const out: FundedPrediction[] = [];
   for (const log of logs) {
-    const id = log.args.pickConfigId;
-    if (id) set.add(id.toLowerCase());
+    const { pickConfigId, refCode, predictorCollateral } = log.args;
+    if (!pickConfigId || !refCode || predictorCollateral == null) continue;
+    out.push({
+      pickConfigId: pickConfigId.toLowerCase(),
+      refCode: refCode.toLowerCase(),
+      predictorCollateral,
+    });
   }
-  return set;
+  return out;
 }
 
-/** Per-line funded flags for a card, in line order. */
+/** True iff this exact line of this exact card was funded: pickConfigId +
+ *  the card's refCode tag + the card's per-line stake must all match. The
+ *  tag attributes the mint to one card (two cards can draw an identical
+ *  line); the stake check stops a dust mint of a matching pickConfigId from
+ *  counting as a funded line. */
+export function lineIsFunded(
+  funded: readonly FundedPrediction[],
+  picks: Pick[],
+  tag: Hex,
+  stakePerLineWei: bigint,
+): boolean {
+  const pcid = linePickConfigId(picks).toLowerCase();
+  const want = tag.toLowerCase();
+  return funded.some(
+    (f) =>
+      f.pickConfigId === pcid &&
+      f.refCode === want &&
+      f.predictorCollateral === stakePerLineWei,
+  );
+}
+
+/** Per-line funded flags for one card, in line order. */
 export async function fundedLineFlags(
   player: Address,
   cells: readonly PoolCondition[],
   yesMask: number,
+  tag: Hex,
+  stakePerLineWei: bigint,
 ): Promise<boolean[]> {
-  const funded = await fundedPickConfigIds(player);
+  const funded = await fundedPredictions(player);
   return buildLines().map((line) =>
-    funded.has(linePickConfigId(linePicks(line, cells, yesMask)).toLowerCase()),
+    lineIsFunded(funded, linePicks(line, cells, yesMask), tag, stakePerLineWei),
   );
 }
 

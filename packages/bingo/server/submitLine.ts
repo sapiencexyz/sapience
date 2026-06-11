@@ -9,7 +9,6 @@ import {
   encodeFunctionData,
   erc20Abi,
   http,
-  stringToHex,
   type Address,
   type Hex,
 } from 'viem';
@@ -24,6 +23,7 @@ import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
 import { etherealTestnetChain } from '@sapience/sdk/constants';
 import { env } from './config.js';
+import { cardTag } from './draw.js';
 import {
   COLLATERAL_ADDRESS,
   ESCROW_ADDRESS,
@@ -58,6 +58,10 @@ export interface SubmitLineParams {
   stakePerLineWei: bigint;
   /** Which of the 10 lines to fund (0..9). */
   lineIndex: number;
+  /** Which of the player's cards in this pool (0-based). */
+  cardIndex: number;
+  /** Pool the card belongs to (for the per-card refCode tag). */
+  poolId: string;
 }
 
 interface BidShape {
@@ -188,6 +192,8 @@ export async function submitLine(
     yesMask,
     stakePerLineWei,
     lineIndex,
+    cardIndex,
+    poolId,
   } = params;
 
   if (cells.length !== 16) throw new Error('Need 16 dealt cells');
@@ -202,13 +208,14 @@ export async function submitLine(
   const escrowAddress = ESCROW_ADDRESS;
   const collateralAddress = COLLATERAL_ADDRESS;
 
-  // Fallback prep on a per-line nonce key (collision-safe under concurrent
-  // line requests); usually a no-op because submit prepped the whole card.
+  // Fallback prep on a per-(card, line) nonce key (collision-safe under
+  // concurrent line requests, including across two cards funding at once);
+  // usually a no-op because submit prepped the whole card.
   await prepareCollateral(
     sessionClient,
     smartAccountAddress,
     stakePerLineWei,
-    BigInt(101 + lineIndex),
+    BigInt((cardIndex + 1) * 1000 + 101 + lineIndex),
   );
   const HINT_LARGE = (1n << 255n) - 1n;
 
@@ -434,7 +441,9 @@ export async function submitLine(
         counterpartyClaimedNonce: resolved.counterpartyNonce,
         predictorSessionKeyData: payload.predictorSessionKeyData,
         counterpartySessionKeyData: resolved.counterpartySessionKeyData,
-        refCode: stringToHex('bingo', { size: 32 }),
+        // Attributes this mint to one specific card — see chain.ts
+        // lineIsFunded. Replaces the old constant 'bingo' tag.
+        refCode: cardTag(poolId, smartAccountAddress, cardIndex),
       },
       predictionMarketAddress: escrowAddress,
       collateralTokenAddress: collateralAddress,
@@ -443,10 +452,10 @@ export async function submitLine(
       currentAllowance: HINT_LARGE,
     });
 
-    // ERC-4337 2D nonces: a distinct key per line gives each mint its own
-    // EntryPoint sequence — no AA25 collisions when the client funds several
-    // lines concurrently.
-    const lineKey = BigInt(lineIndex + 1);
+    // ERC-4337 2D nonces: a distinct key per (card, line) gives each mint
+    // its own EntryPoint sequence — no AA25 collisions when the client funds
+    // several lines (or several cards) concurrently.
+    const lineKey = BigInt((cardIndex + 1) * 1000 + lineIndex + 1);
     const nonce = await (
       account as unknown as {
         getNonce: (args: { key: bigint }) => Promise<bigint>;
