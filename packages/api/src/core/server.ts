@@ -13,7 +13,8 @@ import { startInflightDump } from '../runtime/inflightDump';
 import Sentry from './instrument';
 import { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from '../fixtures';
-import prisma from './db';
+import { seedFixturesWithRetry } from './seedFixtures';
+import prisma, { runWithoutQueryTimeout } from './db';
 import { config } from './config';
 import { createLogger } from './logger';
 import { createConcurrencyLimiter } from '../runtime/concurrencyLimiter';
@@ -33,13 +34,25 @@ initSentry();
 const startServer = async () => {
   await initializeDataSource();
 
+  // Seed fixtures from fixtures.json before serving. Boot queries bypass the
+  // request-path 8s timeout (runWithoutQueryTimeout) so a slow cold-boot query
+  // isn't killed. Two outcomes, by design:
+  //   - definitive failure (every retry errors out) -> seedFixturesWithRetry
+  //     throws -> the outer catch process.exit(1)s -> the platform restarts.
+  //     A deploy that genuinely can't seed should fail loudly, not serve.
+  //   - slow/hung seed (exceeds FIXTURE_SEED_TIMEOUT_MS) -> non-fatal: bind
+  //     the port and serve (logged to Sentry). Crashing on slowness would
+  //     just re-create the boot-timeout -> permanent-502 incident as a
+  //     crash-loop.
   if (config.isDev && process.env.DATABASE_URL?.includes('railway')) {
     log.info(
       'Skipping fixtures initialization (dev mode + production database)'
     );
   } else {
-    // Initialize fixtures from fixtures.json
-    await initializeFixtures();
+    await seedFixturesWithRetry(
+      () => runWithoutQueryTimeout(() => initializeFixtures()),
+      { overallTimeoutMs: config.FIXTURE_SEED_TIMEOUT_MS }
+    );
   }
 
   const apolloServer = await initializeApolloServer();
@@ -302,5 +315,10 @@ const startServer = async () => {
 try {
   await startServer();
 } catch (err) {
+  // Exit so the platform restarts the container. Without this the process
+  // lingers (the pg pool keeps the event loop alive) with no HTTP listener
+  // bound, returning 502 for every request indefinitely — a failed boot
+  // must crash-and-restart, not become a portless zombie.
   log.fatal({ err }, 'Unable to start server');
+  process.exit(1);
 }

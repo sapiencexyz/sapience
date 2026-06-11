@@ -51,6 +51,10 @@ const validators = {
     default: 8000,
     desc: 'Maximum time for a Prisma query to complete',
   }),
+  FIXTURE_SEED_TIMEOUT_MS: num({
+    default: 25000,
+    desc: 'Hard ceiling on how long boot-time fixture seeding may delay binding the HTTP port. Exceeding it is non-fatal — the port binds and seeding continues in the background.',
+  }),
   DATABASE_URL: str({
     desc: 'Postgres connection string',
   }),

@@ -16697,7 +16697,7 @@
           },
           {
             "name": "questions",
-            "description": "Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field",
+            "description": "Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field. `questionType` filters by rendered item type: `condition` returns items that resolve to a standalone condition (ungrouped conditions plus single-condition groups, which are unwrapped), `group` returns multi-condition groups only.",
             "args": [
               {
                 "name": "categorySlugs",
@@ -16773,6 +16773,16 @@
                 "type": {
                   "kind": "SCALAR",
                   "name": "Float",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "questionType",
+                "description": null,
+                "type": {
+                  "kind": "ENUM",
+                  "name": "QuestionItemType",
                   "ofType": null
                 },
                 "defaultValue": null

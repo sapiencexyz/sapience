@@ -1687,7 +1687,7 @@ export type Query = {
    * @deprecated Field no longer supported
    */
   protocolVolume: Array<VolumeDataPoint>;
-  /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
+  /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field. `questionType` filters by rendered item type: `condition` returns items that resolve to a standalone condition (ungrouped conditions plus single-condition groups, which are unwrapped), `group` returns multi-condition groups only. */
   questions: Array<Question>;
   /**
    * Public referral analytics. Referral codes are attribution hints, not
@@ -1984,6 +1984,7 @@ export type QueryQuestionsArgs = {
   minEndTime?: InputMaybe<Scalars['Int']['input']>;
   minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   minSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
+  questionType?: InputMaybe<QuestionItemType>;
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   search?: InputMaybe<Scalars['String']['input']>;
   similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
