@@ -33,7 +33,12 @@ import { buildLines } from './lines.js';
 import { CHAIN_ID } from './session.js';
 import type { PoolCondition } from './types.js';
 
-const BID_WAIT_MS = 25_000;
+const BID_WAIT_MS = 45_000;
+
+/** The app's anonymous estimate-quoter bot: provides indicative prices for
+ *  UI display, deliberately unfunded — its bids can never be filled. Skip
+ *  them entirely so timeouts report the truth ("no fillable bids"). */
+const ESTIMATE_QUOTER = '0xe02ed37d0458c8999943cbe6d1c9db597f3ee572';
 const WS_CONNECT_TIMEOUT_MS = 15_000;
 const AUCTION_START_TIMEOUT_MS = 10_000;
 
@@ -339,7 +344,7 @@ export async function submitLine(
         rejectBid(
           new Error(
             bidsSeen === 0
-              ? 'No bids received within timeout (no counterparty quoted this line)'
+              ? 'No fillable bids — no funded market maker quoted this line'
               : `${bidsSeen} bid(s) received but none validated on-chain`,
           ),
         );
@@ -348,6 +353,7 @@ export async function submitLine(
       onBids = async (incoming) => {
         if (settled) return;
         const fresh = incoming.filter((b) => {
+          if (b.counterparty.toLowerCase() === ESTIMATE_QUOTER) return false;
           if (seenSigs.has(b.counterpartySignature)) return false;
           seenSigs.add(b.counterpartySignature);
           return true;
@@ -356,7 +362,7 @@ export async function submitLine(
         if (fresh.length > 0) {
           console.log(
             `${tag} ${fresh.length} fresh bid(s) from ` +
-              fresh.map((b) => `${b.counterparty.slice(0, 8)}@${b.counterpartyCollateral}`).join(', '),
+              fresh.map((b) => `${b.counterparty}@${b.counterpartyCollateral}`).join(', '),
           );
         }
         for (const b of fresh) {
