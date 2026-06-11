@@ -21,7 +21,7 @@ import { buildLines, LINES_PER_CARD } from './lines.js';
 import { loadPools, parsePools, poolIsOpen } from './pool.js';
 import { chainSubmission, mintReceipt } from './receipt.js';
 import { restoreSessionClient } from './session.js';
-import { submitLine } from './submitLine.js';
+import { prepareCollateral, submitLine } from './submitLine.js';
 import type { PoolConfig, SerializedSession } from './types.js';
 import bundledPools from '../pool.json' with { type: 'json' };
 
@@ -265,7 +265,7 @@ export async function handleApi(
     // The session isn't needed to mint the receipt (the minter does that),
     // but requiring a valid one here means a card can't be locked in for a
     // player the backend could never fund lines for.
-    await sessionFor(player, body.session);
+    const sessionClient = await sessionFor(player, body.session);
 
     const seed = cardSeed(secretFor(pool.poolId), pool.poolId, player);
     const submission = await mintReceipt({
@@ -286,6 +286,9 @@ export async function handleApi(
       });
       return true;
     }
+    // Wrap + approve for the WHOLE card now, in one UserOp, so the 10
+    // concurrent line requests that follow don't each race their own prep.
+    await prepareCollateral(sessionClient, player, price);
     json(res, 200, {
       poolId: pool.poolId,
       receiptTokenId: submission.tokenId.toString(),

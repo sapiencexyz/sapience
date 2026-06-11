@@ -84,11 +84,19 @@ interface FullBid {
  * Wrap the wUSDe shortfall for this line's stake and ensure the escrow
  * allowance covers it. Approves max so concurrent line requests don't race
  * a shrinking allowance.
+ *
+ * `nonceKey` gives the prep UserOp its own ERC-4337 2D nonce sequence.
+ * Without it, concurrent line requests that all see the same shortfall send
+ * byte-identical UserOps on the same sequence and the bundler rejects the
+ * clones ("Already known") — only one line survives. The normal flow avoids
+ * prep entirely (POST /api/card/submit wraps for the whole card up front);
+ * this is the retry/partial fallback.
  */
-async function prepareCollateral(
+export async function prepareCollateral(
   sessionClient: KernelAccountClient,
   smartAccountAddress: Address,
   stakeWei: bigint,
+  nonceKey?: bigint,
 ): Promise<void> {
   if (!ESCROW_ADDRESS || !COLLATERAL_ADDRESS) {
     throw new Error('Escrow/collateral not configured for Ethereal');
@@ -146,8 +154,17 @@ async function prepareCollateral(
 
   const account = sessionClient.account;
   if (!account) throw new Error('Session client has no account');
+  const nonce =
+    nonceKey == null
+      ? undefined
+      : await (
+          account as unknown as {
+            getNonce: (args: { key: bigint }) => Promise<bigint>;
+          }
+        ).getNonce({ key: nonceKey });
   const opHash = await sessionClient.sendUserOperation({
     callData: await account.encodeCalls(calls),
+    ...(nonce == null ? {} : { nonce }),
   });
   const receipt = await sessionClient.waitForUserOperationReceipt({
     hash: opHash,
@@ -185,7 +202,14 @@ export async function submitLine(
   const escrowAddress = ESCROW_ADDRESS;
   const collateralAddress = COLLATERAL_ADDRESS;
 
-  await prepareCollateral(sessionClient, smartAccountAddress, stakePerLineWei);
+  // Fallback prep on a per-line nonce key (collision-safe under concurrent
+  // line requests); usually a no-op because submit prepped the whole card.
+  await prepareCollateral(
+    sessionClient,
+    smartAccountAddress,
+    stakePerLineWei,
+    BigInt(101 + lineIndex),
+  );
   const HINT_LARGE = (1n << 255n) - 1n;
 
   const publicClient = createPublicClient({
