@@ -13,6 +13,7 @@ import type {
   ServerToClientMessage,
 } from '../escrowTypes';
 import type {
+  AuctionRole,
   IdentifyPayload,
   AuctionReceivedPayload,
 } from '@sapience/sdk/types';
@@ -46,6 +47,13 @@ import { getProviderForChain } from '../utils/getProviderForChain';
 // Identity helpers — keep clientId/instanceId short in logs.
 const short = (s: string | undefined): string =>
   s ? s.slice(0, 8) : 'unknown';
+
+// A client receives the global `auction.started` feed only if it declared a
+// counterparty-side role. Predictors (the default) and anonymous clients are
+// excluded — they still get bids on their own auctions via the per-auction
+// subscription. See AuctionRole in @sapience/sdk/types.
+const receivesAuctionFeed = (c: ClientConnection): boolean =>
+  c.role === 'counterparty' || c.role === 'both';
 
 // Strip non-printable ASCII so a client can't inject newlines/control chars
 // into our log lines via the `service` field.
@@ -171,13 +179,22 @@ export async function handleAuctionStart(
   if (details) {
     const broadcastMsg = { type: 'auction.started', payload: details };
     const auctionShort = short(auctionId);
+    // When role gating is on, the feed reaches only counterparty/both clients.
+    // Kept behind a flag so clients can deploy their declared role before the
+    // relayer narrows the fan-out (see config.AUCTION_FEED_ROLE_GATING).
+    const roleGating = config.AUCTION_FEED_ROLE_GATING;
     let attempted = 0;
     let sent = 0;
     let failed = 0;
     let skippedClosed = 0;
+    let skippedRole = 0;
     for (const c of ctx.allClients()) {
       if (!c.isOpen) {
         skippedClosed++;
+        continue;
+      }
+      if (roleGating && !receivesAuctionFeed(c)) {
+        skippedRole++;
         continue;
       }
       attempted++;
@@ -210,13 +227,14 @@ export async function handleAuctionStart(
       }
     }
     console.log(
-      `[Relayer] auction.broadcast.done auctionId=${auctionShort} attempted=${attempted} sent=${sent} failed=${failed} skippedClosed=${skippedClosed}`
+      `[Relayer] auction.broadcast.done auctionId=${auctionShort} attempted=${attempted} sent=${sent} failed=${failed} skippedClosed=${skippedClosed} skippedRole=${skippedRole} roleGating=${roleGating}`
     );
     logTiming(auctionId, 'broadcast', startTime, {
       attempted,
       sent,
       failed,
       skippedClosed,
+      skippedRole,
     });
   }
 
@@ -424,18 +442,27 @@ export function handleIdentify(
     typeof payload.chainId === 'number' && Number.isFinite(payload.chainId)
       ? payload.chainId
       : undefined;
+  // Role gates the global auction.started feed. Unknown/missing values fall
+  // back to 'predictor' (no feed) so a malformed identify can't silently
+  // subscribe a client to the broadcast. Re-identify upgrades in place
+  // (e.g. an app session promoting 'predictor' → 'both' on terminal open).
+  const role: AuctionRole =
+    payload.role === 'counterparty' || payload.role === 'both'
+      ? payload.role
+      : 'predictor';
 
   client.service = rawService;
   client.variant = rawVariant;
   client.instanceId = instanceId;
   client.chainId = chainId;
+  client.role = role;
 
   clientsIdentified.inc({
     service: serviceLabel(rawService),
     variant: variantLabel(rawVariant),
   });
   console.log(
-    `[Relayer] client.identified clientId=${short(client.id)} service=${rawService} variant=${rawVariant} instance=${short(
+    `[Relayer] client.identified clientId=${short(client.id)} service=${rawService} variant=${rawVariant} role=${role} instance=${short(
       instanceId
     )} chainId=${chainId ?? 'none'} serviceInstance=${
       typeof payload.serviceInstance === 'string'

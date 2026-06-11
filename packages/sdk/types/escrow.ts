@@ -320,6 +320,24 @@ export interface BidPayload {
 // ----- Client to Server Messages -----
 
 /**
+ * Connection role — decides who receives the global `auction.started` feed.
+ *
+ *   - `predictor`    — only starts auctions (sends `auction.start`). Does NOT
+ *                      receive the global feed; still gets bids on its own
+ *                      auctions via the per-auction subscription. This is the
+ *                      default for clients that never declare a role.
+ *   - `counterparty` — receives every `auction.started` to bid against them
+ *                      (e.g. vault-bot / auction-bidder).
+ *   - `both`         — starts auctions AND receives the global feed (e.g. an
+ *                      app session that opens the terminal / AutoBid).
+ *
+ * The role is declared via `identify` and can be upgraded in place by sending
+ * `identify` again (e.g. a `predictor` app session promoting to `both` when the
+ * user opens the terminal) — no reconnect required.
+ */
+export type AuctionRole = 'predictor' | 'counterparty' | 'both';
+
+/**
  * Client identity announced after WS connect. Backwards-compatible:
  * relayer treats clients without identify as anonymous.
  *
@@ -351,6 +369,12 @@ export interface IdentifyPayload {
    * to `'unknown'`.
    */
   variant?: string;
+  /**
+   * Connection role gating delivery of the global `auction.started` feed.
+   * Omitted / unrecognized values are treated as `'predictor'` (no feed).
+   * See {@link AuctionRole}.
+   */
+  role?: AuctionRole;
 }
 
 /** Optional ack a client sends on receiving auction.started — proves end-to-end delivery. */

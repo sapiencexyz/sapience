@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { WebSocket } from 'ws';
 import { InMemorySubscriptionManager } from '../transport/subscriptions';
+import { createWsClientConnection } from '../transport/wsTransport';
 import type { ClientConnection } from '../transport/types';
 
 function mockClient(
@@ -9,6 +11,7 @@ function mockClient(
   return {
     id,
     service: 'anonymous',
+    role: 'predictor',
     variant: 'default',
     send: vi.fn().mockReturnValue(true),
     close: vi.fn(),
@@ -17,6 +20,21 @@ function mockClient(
     },
   };
 }
+
+describe('createWsClientConnection', () => {
+  it('defaults role to predictor at connect time (before identify)', () => {
+    // A client we don't control may connect and never send `identify` — it
+    // must default to `predictor` so it stays OUT of the auction.started feed
+    // when role gating is on. Opting in requires declaring counterparty/both.
+    const fakeWs = {
+      readyState: WebSocket.OPEN,
+      send: vi.fn(),
+      close: vi.fn(),
+    };
+    const conn = createWsClientConnection(fakeWs as unknown as WebSocket);
+    expect(conn.role).toBe('predictor');
+  });
+});
 
 describe('InMemorySubscriptionManager', () => {
   let subs: InMemorySubscriptionManager;

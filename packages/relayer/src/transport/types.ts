@@ -6,6 +6,8 @@
  * `ClientConnection` + `SubscriptionManager` — never raw WebSocket objects.
  */
 
+import type { AuctionRole } from '@sapience/sdk/types';
+
 /** Opaque handle to a connected client — transport-agnostic. */
 export interface ClientConnection {
   readonly id: string;
@@ -15,6 +17,12 @@ export interface ClientConnection {
    * `service: 'anonymous'` so log lines always have a value.
    */
   service: string;
+  /**
+   * Connection role gating delivery of the global `auction.started` feed.
+   * Defaults to `'predictor'` (no feed) until the client declares otherwise
+   * via `identify`. See `AuctionRole` in `@sapience/sdk/types`.
+   */
+  role: AuctionRole;
   /**
    * Strategy/vault flavor a bot serves (e.g. `'default'`, `'pyth'`).
    * Used in tandem with `service` to break out metrics — see

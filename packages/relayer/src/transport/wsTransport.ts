@@ -14,6 +14,13 @@ export function createWsClientConnection(
   const conn: ClientConnection = {
     id,
     service: 'anonymous',
+    // Default role at connect time, before any `identify`. We default to
+    // `predictor` (does NOT receive the global auction.started feed) on
+    // purpose: there are clients we don't control that connect without ever
+    // identifying, and the safe default is to keep them OUT of the broadcast
+    // fan-out. A client opts INTO the feed by declaring `counterparty`/`both`
+    // via identify. See AuctionRole in @sapience/sdk/types.
+    role: 'predictor',
     variant: 'default',
     instanceId: undefined,
     chainId: undefined,

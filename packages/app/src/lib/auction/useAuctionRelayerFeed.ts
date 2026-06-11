@@ -16,6 +16,14 @@ export type AuctionFeedMessage = {
 // 30-minute staleness threshold for subscription pruning
 const SUBSCRIPTION_TTL_MS = 30 * 60 * 1000;
 
+// Stable per-page-load id so the relayer can distinguish app sessions in its
+// identify logs. Best-effort: falls back to a random suffix if crypto.randomUUID
+// is unavailable (e.g. during SSR evaluation).
+const appInstanceId =
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? `app-${crypto.randomUUID()}`
+    : `app-${Math.floor(Math.random() * 1e9).toString(36)}`;
+
 export function useAuctionRelayerFeed(options?: {
   observeVaultQuotes?: boolean;
 }) {
@@ -39,10 +47,24 @@ export function useAuctionRelayerFeed(options?: {
   useEffect(() => {
     if (!wsUrl) return;
     const client = getSharedAuctionWsClient(wsUrl);
+    // Declare the connection role as `both`: a terminal/AutoBid session both
+    // starts auctions (predictor side) AND watches the global auction.started
+    // feed (counterparty side). Without this the relayer treats the socket as
+    // a plain `predictor` and — once role gating is on — won't deliver the
+    // feed. Sent immediately (queued until open) here and re-sent on every
+    // (re)open below so it survives reconnects.
+    const identify = () =>
+      client.send({
+        type: 'identify',
+        payload: { service: 'app', instanceId: appInstanceId, role: 'both' },
+      });
+    identify();
     // Observe vault quotes (queued until open)
     if (observeVaultQuotes) client.send({ type: 'vault_quote.observe' });
 
     const offOpen = client.addOpenListener(() => {
+      // Re-announce role on reconnect (the relayer resets identity per socket).
+      identify();
       // Resubscribe to all auctions on reconnect
       for (const id of Array.from(subscribedAuctionsRef.current.keys())) {
         client.send({ type: 'auction.subscribe', payload: { auctionId: id } });

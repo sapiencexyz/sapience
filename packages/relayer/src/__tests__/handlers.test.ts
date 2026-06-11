@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OutcomeSide } from '@sapience/sdk/types';
 import type { ClientConnection, SubscriptionManager } from '../transport/types';
 
@@ -47,6 +47,15 @@ vi.mock('../utils/getProviderForChain', () => ({
     readContract: vi.fn().mockResolvedValue('0xManagerAddress'),
   })),
 }));
+
+// ── Mock config ────────────────────────────────────────────────────────────
+// envalid (v8) returns a Proxy that THROWS on mutation, so tests can't toggle
+// `AUCTION_FEED_ROLE_GATING` on the real object. Replace it with a plain
+// mutable copy that preserves every real value.
+vi.mock('../config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../config')>();
+  return { ...actual, config: { ...actual.config } };
+});
 
 import {
   handleAuctionStart,
@@ -101,6 +110,7 @@ function mockClient(id = crypto.randomUUID()): ClientConnection {
   return {
     id,
     service: 'anonymous',
+    role: 'predictor',
     variant: 'default',
     send: vi.fn().mockReturnValue(true),
     close: vi.fn(),
@@ -290,6 +300,87 @@ describe('Escrow Handlers', () => {
       expect(bot2.send).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'auction.started' })
       );
+    });
+
+    describe('role gating (AUCTION_FEED_ROLE_GATING)', () => {
+      // envalid types config as readonly; cast to mutate it for the test
+      // (the runtime object is a plain, non-frozen object).
+      const cfg = config as unknown as { AUCTION_FEED_ROLE_GATING: boolean };
+      const original = cfg.AUCTION_FEED_ROLE_GATING;
+      afterEach(() => {
+        cfg.AUCTION_FEED_ROLE_GATING = original;
+      });
+
+      it('with gating OFF, broadcasts to every role (incl. predictors)', async () => {
+        cfg.AUCTION_FEED_ROLE_GATING = false;
+        vi.mocked(validateAuctionRFQ).mockResolvedValue({ status: 'valid' });
+        vi.mocked(getEscrowAuctionDetails).mockReturnValue({
+          auctionId: 'auction-123',
+          picks: [],
+        } as never);
+
+        const predictor = mockClient('11111111-0000-0000-0000-000000000000');
+        predictor.role = 'predictor';
+        const counterparty = mockClient('22222222-0000-0000-0000-000000000000');
+        counterparty.role = 'counterparty';
+        const ctx2 = { allClients: () => [predictor, counterparty] };
+
+        await handleAuctionStart(
+          mockClient(),
+          baseAuctionPayload as never,
+          mockSubs(),
+          ctx2
+        );
+
+        expect(predictor.send).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'auction.started' })
+        );
+        expect(counterparty.send).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'auction.started' })
+        );
+      });
+
+      it('with gating ON, sends only to counterparty/both and skips predictor/anonymous', async () => {
+        cfg.AUCTION_FEED_ROLE_GATING = true;
+        vi.mocked(validateAuctionRFQ).mockResolvedValue({ status: 'valid' });
+        vi.mocked(getEscrowAuctionDetails).mockReturnValue({
+          auctionId: 'auction-123',
+          picks: [],
+        } as never);
+
+        const predictor = mockClient('11111111-0000-0000-0000-000000000000');
+        predictor.role = 'predictor';
+        const counterparty = mockClient('22222222-0000-0000-0000-000000000000');
+        counterparty.role = 'counterparty';
+        const both = mockClient('33333333-0000-0000-0000-000000000000');
+        both.role = 'both';
+        // Default role from the transport is 'predictor' — stands in for an
+        // anonymous client that never identified.
+        const anon = mockClient('44444444-0000-0000-0000-000000000000');
+        const ctx2 = {
+          allClients: () => [predictor, counterparty, both, anon],
+        };
+
+        await handleAuctionStart(
+          mockClient(),
+          baseAuctionPayload as never,
+          mockSubs(),
+          ctx2
+        );
+
+        expect(counterparty.send).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'auction.started' })
+        );
+        expect(both.send).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'auction.started' })
+        );
+        expect(predictor.send).not.toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'auction.started' })
+        );
+        expect(anon.send).not.toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'auction.started' })
+        );
+      });
     });
 
     it('records broadcast recipients only when send succeeded', async () => {
@@ -1147,6 +1238,52 @@ describe('handleIdentify', () => {
     expect(client.service).toBe('anonymous');
     expect(client.variant).toBe('default');
     expect(clientsIdentified.inc).not.toHaveBeenCalled();
+  });
+
+  it('stores counterparty / both roles verbatim', () => {
+    const cp = mockClient();
+    handleIdentify(cp, {
+      service: 'auction-bidder',
+      instanceId: 'inst-1',
+      role: 'counterparty',
+    });
+    expect(cp.role).toBe('counterparty');
+
+    const both = mockClient();
+    handleIdentify(both, {
+      service: 'app',
+      instanceId: 'inst-2',
+      role: 'both',
+    });
+    expect(both.role).toBe('both');
+  });
+
+  it('falls back to predictor for missing or unrecognized role', () => {
+    const missing = mockClient();
+    missing.role = 'both'; // ensure it actually gets reset
+    handleIdentify(missing, { service: 'app', instanceId: 'inst-1' });
+    expect(missing.role).toBe('predictor');
+
+    const bogus = mockClient();
+    bogus.role = 'counterparty';
+    handleIdentify(bogus, {
+      service: 'app',
+      instanceId: 'inst-2',
+      role: 'admin' as never,
+    });
+    expect(bogus.role).toBe('predictor');
+  });
+
+  it('upgrades role in place on re-identify (predictor → both)', () => {
+    const client = mockClient();
+    handleIdentify(client, { service: 'app', instanceId: 'inst-1' });
+    expect(client.role).toBe('predictor');
+    handleIdentify(client, {
+      service: 'app',
+      instanceId: 'inst-1',
+      role: 'both',
+    });
+    expect(client.role).toBe('both');
   });
 });
 

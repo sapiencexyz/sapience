@@ -30,6 +30,12 @@ export const config = cleanEnv(process.env, {
   WS_MAX_CONNECTIONS_PER_IP: num({ default: 50 }), // Max connections from a single IP
   WS_MAX_VALIDATION_FAILURES: num({ default: 10 }), // Disconnect after N signature validation failures
   WS_MAX_INVALID_MESSAGES: num({ default: 20 }), // Disconnect after N invalid/malformed messages
+  // When true, `auction.started` is delivered only to clients whose identify
+  // role is `counterparty` or `both` (predictors/anonymous are skipped). Kept
+  // false until vault-bot + app deploy with their declared role; flipping it
+  // then cuts the per-auction broadcast fan-out from "every connection" to
+  // "actual counterparties only". See AuctionRole in @sapience/sdk/types.
+  AUCTION_FEED_ROLE_GATING: bool({ default: false }),
   MAX_BIDS_PER_ESCROW_AUCTION: num({ default: 50 }), // Max bids per escrow auction (matches secondary market)
   MAX_BIDS_PER_CONNECTION_PER_AUCTION: num({ default: 5 }), // Per-connection cap so one connection can't monopolize an auction's bid slots with unverifiable bids
 
