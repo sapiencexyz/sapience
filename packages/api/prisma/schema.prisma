@@ -94,6 +94,8 @@ model Attestation {
   @@index([recipient], map: "IDX_attestation_recipient")
   @@index([time], map: "IDX_attestation_time")
   @@index([resolver], map: "IDX_attestation_resolver")
+  // Keyset paging for Query.forecasts orderBy (time, uid) DESC.
+  @@index([time, uid], map: "IDX_attestation_time_uid")
   @@map("attestation")
 }
 
@@ -220,6 +222,8 @@ model Condition {
   @@index([conditionGroupId])
   @@index([resolver], map: "IDX_condition_resolver")
   @@index([public, chainId, settled, conditionGroupId], map: "IDX_condition_market_filter")
+  // Keyset paging for Query.conditions orderBy (endTime, id) (both ASC and DESC).
+  @@index([endTime, id], map: "IDX_condition_endtime_id")
   // Raw SQL indexes (not representable in Prisma, managed via migration):
   // - IDX_condition_oi_numeric: ("openInterest"::numeric) DESC WHERE public = true
   // - IDX_condition_public_endtime: "endTime" DESC WHERE public = true
@@ -601,6 +605,8 @@ model Prediction {
   @@index([onChainCreatedAt], map: "IDX_prediction_created_at")
   @@index([settledAt], map: "IDX_prediction_settled_at")
   @@index([pickConfigId], map: "IDX_prediction_pick_config_id")
+  // Keyset paging for Query.predictions orderBy (createdAt, id) DESC.
+  @@index([createdAt, id], map: "IDX_prediction_createdat_id")
 }
 
 // TODO: Rename Prisma model Picks → PickConfiguration (requires migration with @@map)
@@ -669,6 +675,8 @@ model Position {
   @@index([holder], map: "IDX_position_balance_holder")
   @@index([pickConfigId], map: "IDX_position_balance_pick_config")
   @@index([tokenAddress], map: "IDX_position_token_address")
+  // Keyset paging for Query.positions orderBy (updatedAt, id) DESC.
+  @@index([updatedAt, id], map: "IDX_position_updatedat_id")
 }
 
 /// Record of token claims (early exit via redeem)
@@ -701,6 +709,8 @@ model Claim {
   @@index([holder], map: "IDX_claim_holder")
   @@index([pickConfigId], map: "IDX_claim_pick_config")
   @@index([redeemedAt], map: "IDX_claim_redeemed_at")
+  // Keyset paging for Query.claims orderBy (redeemedAt, id) DESC.
+  @@index([redeemedAt, id], map: "IDX_claim_redeemedat_id")
 }
 
 /// Record of position closes (settled exits)
@@ -727,6 +737,8 @@ model Close {
   @@index([predictorHolder], map: "IDX_close_predictor")
   @@index([counterpartyHolder], map: "IDX_close_counterparty")
   @@index([burnedAt], map: "IDX_close_burned_at")
+  // Keyset paging for Query.closes orderBy (burnedAt, id) DESC.
+  @@index([burnedAt, id], map: "IDX_close_burnedat_id")
 }
 
 /// Indexer state for SecondaryMarketEscrow contract
@@ -761,6 +773,8 @@ model SecondaryTrade {
   @@index([buyer], map: "IDX_secondary_trade_buyer")
   @@index([token], map: "IDX_secondary_trade_token")
   @@index([executedAt], map: "IDX_secondary_trade_executed_at")
+  // Keyset paging for Query.trades orderBy (executedAt, tradeHash) DESC.
+  @@index([executedAt, tradeHash], map: "IDX_secondary_trade_executedat_tradehash")
   @@map("secondary_trade")
 }
 
@@ -781,5 +795,22 @@ model CollateralTransfer {
   @@index([chainId, from], map: "IDX_collateral_transfer_from")
   @@index([chainId, to], map: "IDX_collateral_transfer_to")
   @@index([chainId, blockNumber], map: "IDX_collateral_transfer_block")
+  // Keyset paging for Query.collateralTransfers orderBy (timestamp, id) DESC.
+  @@index([timestamp, id], map: "IDX_collateral_transfer_timestamp_id")
   @@map("collateral_transfer")
+}
+
+/// Materialized top-N tag list for `Query.popularTags` (v1) and
+/// `Query.tags` (v2). No scheduled refresher exists: the resolvers
+/// refresh it inline when its newest `refreshedAt` is older than
+/// POPULAR_TAGS_MAX_AGE_MS, instead of running the `unnest(tags)`
+/// aggregation against `condition` on every miss.
+model PopularTag {
+  tag         String   @id @db.VarChar
+  rank        Int
+  count       Int
+  refreshedAt DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([rank])
+  @@map("popular_tag")
 }

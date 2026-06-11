@@ -8,7 +8,7 @@ import importPlugin from "eslint-plugin-import";
 export default [
   {files: ["**/*.{js,mjs,cjs,ts}"]},
   {languageOptions: { globals: globals.node }},
-  {ignores: ["src/graphql/types/generated.ts", "src/graphql/sdl/__generated__/**"]},
+  {ignores: ["src/graphql/types/generated.ts", "src/graphql/sdl/__generated__/**", "src/graphql/v2/__generated__/**"]},
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
   {

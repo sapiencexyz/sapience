@@ -5,10 +5,17 @@ import type { ApolloContext } from '../startApolloServer';
 import { operationTimingPlugin } from './operationTimingPlugin';
 
 const typeDefs = /* GraphQL */ `
+  input PingFilter {
+    holder: String
+    buyer: String
+    take: Int
+  }
+
   type Query {
     hello(name: String): String!
     fail: String!
     ping(address: String, holder: String, take: Int): String!
+    search(filter: PingFilter): String!
   }
 `;
 
@@ -20,6 +27,7 @@ const resolvers = {
       throw new Error('intentional');
     },
     ping: () => 'pong',
+    search: () => 'ok',
   },
 };
 
@@ -115,6 +123,31 @@ describe('operationTimingPlugin', () => {
       address: '[REDACTED]',
       holder: '[REDACTED]',
       take: 20,
+    });
+  });
+
+  it('redacts sensitive addresses nested inside filter input objects', async () => {
+    await apollo.executeOperation(
+      {
+        query: /* GraphQL */ `
+          query SearchPositions($filter: PingFilter) {
+            search(filter: $filter)
+          }
+        `,
+        variables: {
+          filter: {
+            holder: '0x1234567890abcdef1234567890abcdef12345678',
+            take: 20,
+          },
+        },
+        operationName: 'SearchPositions',
+      },
+      { contextValue: stubContext() }
+    );
+
+    const parsed = findLog(logs, '"operationName":"SearchPositions"');
+    expect(parsed.variables).toEqual({
+      filter: { holder: '[REDACTED]', take: 20 },
     });
   });
 

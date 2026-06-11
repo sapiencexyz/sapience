@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   GET_ATTESTATIONS_QUERY,
   GET_ATTESTATIONS_PAGINATED_QUERY,
-} from '@sapience/sdk/queries';
+} from '../fixtures/v1-operations';
 import { executeOperation } from '../../helpers/testApollo';
 import { stabilize } from '../../helpers/stableSerializer';
 

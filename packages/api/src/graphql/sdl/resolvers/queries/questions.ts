@@ -20,15 +20,37 @@
  * Pre-computed aggregate columns on `condition_group` (openInterest,
  * predictionCount, maxEndTime, maxCreatedAtEpoch, totalVolume*) are
  * maintained by the `trg_condition_group_aggregates` trigger.
+ *
+ * The resolver is split into small helpers to keep each step
+ * inspectable in isolation:
+ *
+ *   normalizeArgs       → clamps + sanitizes inputs
+ *   buildSqlFragments   → assembles every Prisma.sql fragment used
+ *                         by the UNION query
+ *   fetchSortedItems    → runs the UNION query, returns sorted ids
+ *   buildConditionWhere → mirrors the SQL filters as a Prisma where
+ *                         for the type-safe second-pass fetch
+ *   hydrateItems        → fetches groups/conditions by id and maps
+ *                         them to the QuestionReturn shape
  */
 
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+
+import { decodeCursor, encodeCursor } from '../../../relay/cursor';
 import type {
   QueryResolvers,
   ResolversTypes,
 } from '../../__generated__/resolvers';
-import { QuestionItemType } from '../../__generated__/resolvers';
+import {
+  QuestionItemType,
+  QuestionSortField,
+  SortOrder,
+  VolumeWindow,
+  type ResolutionStatus,
+} from '../../__generated__/resolvers';
 import { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+import { clampSkip, clampTake } from './pagination';
 
 // The resolver returns Prisma rows (via mappers), not the raw SDL
 // Condition/ConditionGroup shapes — the typewrapper around Question in
@@ -43,6 +65,16 @@ type SortedItemRow = {
   group_id: number | null;
   condition_id: string | null;
   prediction_count: bigint;
+  sort_value: number | string;
+  end_time: number;
+};
+
+type QuestionCursor = {
+  sortValue: string;
+  endTime: number;
+  itemType: string;
+  groupId: number;
+  conditionId: string;
 };
 
 const volumeColumnFragments = {
@@ -123,114 +155,279 @@ const fieldByResolvedVolumeKey: Record<VolumeKey, string> = {
   volumeFiltered7d: 'similarMarketVolumeFiltered7d',
 };
 
-export const questions: NonNullable<QueryResolvers['questions']> = async (
-  _parent,
-  {
-    take,
-    skip,
-    chainId,
+/**
+ * Inputs accepted by `runQuestions`. Hand-written interface (not derived
+ * from any `Query<Field>Args`) so the runner is decoupled from any one
+ * SDL field shape — both the deprecated bare-array `questions` resolver
+ * and the Relay `questionsConnection` adapt their args into this shape before calling.
+ */
+export interface RunQuestionsInput {
+  take?: number | null;
+  skip?: number | null;
+  search?: string | null;
+  categorySlugs?: string[] | null;
+  tag?: string | null;
+  chainId?: number | null;
+  contractAddress?: string | null;
+  contractAddressIn?: string[] | null;
+  minEndTime?: number | null;
+  maxEndTime?: number | null;
+  resolutionStatus?: ResolutionStatus | null;
+  minEstimatedPrice?: number | null;
+  maxEstimatedPrice?: number | null;
+  minSimilarMarketVolume?: number | null;
+  maxSimilarMarketVolume?: number | null;
+  similarMarketVolumeWindow?: VolumeWindow | null;
+  sortField?: QuestionSortField | null;
+  sortDirection?: SortOrder | null;
+  afterCursor?: QuestionCursor | null;
+  /**
+   * Restrict by *rendered* item type. `condition` admits ungrouped
+   * conditions plus single-condition groups (which hydration unwraps
+   * into standalone condition items); `group` admits only groups with
+   * 2+ matching conditions.
+   */
+  questionType?: QuestionItemType | null;
+}
+
+interface NormalizedArgs {
+  take: number;
+  skip: number;
+  search: string | null;
+  categorySlugs: string[] | null;
+  tag: string | null;
+  chainId: number | null | undefined;
+  contractAddress: string | null;
+  contractAddressIn: string[] | null;
+  minEndTime: number | null | undefined;
+  maxEndTime: number | null | undefined;
+  resolutionStatus: ResolutionStatus | null | undefined;
+  minEstimatedPrice: number | null | undefined;
+  maxEstimatedPrice: number | null | undefined;
+  minSimilarMarketVolume: number | null | undefined;
+  maxSimilarMarketVolume: number | null | undefined;
+  sortField: string;
+  sortDirectionRaw: 'ASC' | 'DESC';
+  afterCursor: QuestionCursor | null;
+  questionType: QuestionItemType | null;
+  volumeKey: VolumeKey;
+  useWindowedSimilarMarketVolume: boolean;
+  /**
+   * True when at least one per-condition filter is active OR when the
+   * all-time `similarMarketVolume` sort is used (which has no
+   * denormalized aggregate column on condition_group, so still needs
+   * a LEFT JOIN to compute SUM in one pass).
+   */
+  requiresConditionJoin: boolean;
+}
+
+const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
+  const sortField = args.sortField ?? 'endTime';
+  const volumeKey: VolumeKey =
+    (args.similarMarketVolumeWindow &&
+      volumeWindowToKey[args.similarMarketVolumeWindow]) ??
+    'volume24h';
+  const useWindowedSimilarMarketVolume = args.similarMarketVolumeWindow != null;
+
+  // Contract-address filter normalization. Lowercased once here so the SQL
+  // and Prisma `where` branches both compare against the canonical form the
+  // DB stores. When a caller filters by address without specifying a chain,
+  // default to `DEFAULT_CHAIN_ID` — addresses aren't a global namespace.
+  const contractAddress = args.contractAddress
+    ? args.contractAddress.toLowerCase()
+    : null;
+  const contractAddressIn =
+    args.contractAddressIn && args.contractAddressIn.length > 0
+      ? args.contractAddressIn.map((a) => a.toLowerCase())
+      : null;
+  const hasContractAddressFilter =
+    contractAddress != null || contractAddressIn != null;
+  const effectiveChainId =
+    args.chainId != null
+      ? args.chainId
+      : hasContractAddressFilter
+        ? DEFAULT_CHAIN_ID
+        : args.chainId;
+
+  const hasConditionFilters =
+    effectiveChainId != null ||
+    hasContractAddressFilter ||
+    (args.resolutionStatus != null && args.resolutionStatus !== 'all') ||
+    args.minEstimatedPrice != null ||
+    args.maxEstimatedPrice != null ||
+    args.minEndTime != null ||
+    args.maxEndTime != null ||
+    args.minSimilarMarketVolume != null ||
+    args.maxSimilarMarketVolume != null;
+
+  return {
+    take: clampTake(args.take, { defaultTake: 50, maxTake: 100 }),
+    skip: clampSkip(args.skip),
+    search: args.search?.slice(0, 200) ?? null,
+    categorySlugs: args.categorySlugs?.slice(0, 50) ?? null,
+    tag: args.tag?.slice(0, 200) ?? null,
+    chainId: effectiveChainId,
+    contractAddress,
+    contractAddressIn,
+    minEndTime: args.minEndTime,
+    maxEndTime: args.maxEndTime,
+    resolutionStatus: args.resolutionStatus,
+    minEstimatedPrice: args.minEstimatedPrice,
+    maxEstimatedPrice: args.maxEstimatedPrice,
+    minSimilarMarketVolume: args.minSimilarMarketVolume,
+    maxSimilarMarketVolume: args.maxSimilarMarketVolume,
     sortField,
-    sortDirection,
-    search,
-    categorySlugs,
-    minEndTime,
-    resolutionStatus,
-    minEstimatedPrice,
-    maxEstimatedPrice,
-    minSimilarMarketVolume,
-    maxSimilarMarketVolume,
-    tag,
-    similarMarketVolumeWindow,
-    questionType,
-  }
-) => {
-  const sanitizedSortField = sortField ?? 'endTime';
-  const dir = sortDirection === 'asc' ? 'ASC' : 'DESC';
+    sortDirectionRaw: args.sortDirection === 'asc' ? 'ASC' : 'DESC',
+    afterCursor: args.afterCursor ?? null,
+    questionType: args.questionType ?? null,
+    volumeKey,
+    useWindowedSimilarMarketVolume,
+    requiresConditionJoin:
+      hasConditionFilters ||
+      (sortField === 'similarMarketVolume' && !useWindowedSimilarMarketVolume),
+  };
+};
 
-  const boundedTake = Math.max(1, Math.min(take, 100));
-  const boundedSkip = Math.max(0, skip);
-  const boundedSearch = search?.slice(0, 200) ?? null;
-  const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
-  const boundedTag = tag?.slice(0, 200) ?? null;
+/**
+ * Per-condition filter fragments shared by the group LEFT JOIN and the
+ * ungrouped condition branch. Each fragment is either `Prisma.empty` or
+ * `AND <predicate>` so they slot into a WHERE clause without changing
+ * the surrounding SQL shape.
+ */
+interface ConditionFilterFragments {
+  resolvedFilter: Prisma.Sql;
+  priceFilter: Prisma.Sql;
+  similarMarketVolumeFilter: Prisma.Sql;
+  endTimeFilter: Prisma.Sql;
+  /** Concatenation of the four fragments above. */
+  conditionFilters: Prisma.Sql;
+}
 
+const buildConditionFilterFragments = (
+  n: NormalizedArgs
+): ConditionFilterFragments => {
   const resolvedFilter = (() => {
-    if (resolutionStatus && resolutionStatus !== 'all') {
-      switch (resolutionStatus) {
-        case 'unresolved':
-          return Prisma.sql`AND c.settled = false`;
-        case 'resolved':
-          return Prisma.sql`AND c.settled = true`;
-        case 'resolvedYes':
-          return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = true`;
-        case 'resolvedNo':
-          return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = false`;
-        default:
-          return Prisma.empty;
-      }
+    if (!n.resolutionStatus || n.resolutionStatus === 'all')
+      return Prisma.empty;
+    switch (n.resolutionStatus) {
+      case 'unresolved':
+        return Prisma.sql`AND c.settled = false`;
+      case 'resolved':
+        return Prisma.sql`AND c.settled = true`;
+      case 'resolvedYes':
+        return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = true`;
+      case 'resolvedNo':
+        return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = false`;
+      default:
+        return Prisma.empty;
     }
-    return Prisma.empty;
   })();
 
   const priceFilter = (() => {
     const parts: Prisma.Sql[] = [];
-    if (minEstimatedPrice != null) {
-      parts.push(Prisma.sql`c."estimatedPrice" >= ${minEstimatedPrice}`);
+    if (n.minEstimatedPrice != null) {
+      parts.push(Prisma.sql`c."estimatedPrice" >= ${n.minEstimatedPrice}`);
     }
-    if (maxEstimatedPrice != null) {
-      parts.push(Prisma.sql`c."estimatedPrice" <= ${maxEstimatedPrice}`);
+    if (n.maxEstimatedPrice != null) {
+      parts.push(Prisma.sql`c."estimatedPrice" <= ${n.maxEstimatedPrice}`);
     }
     if (parts.length === 0) return Prisma.empty;
     return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
   })();
 
-  const hasConditionFilters =
-    chainId != null ||
-    (resolutionStatus != null && resolutionStatus !== 'all') ||
-    minEstimatedPrice != null ||
-    maxEstimatedPrice != null ||
-    minEndTime != null ||
-    minSimilarMarketVolume != null ||
-    maxSimilarMarketVolume != null;
-
-  const resolvedVolumeKey: VolumeKey = resolveVolumeKey(
-    similarMarketVolumeWindow
-  );
-  const volumeFragments = volumeColumnFragments[resolvedVolumeKey];
-  const useWindowedSimilarMarketVolume = similarMarketVolumeWindow != null;
-
-  // All-time volume sort has no denormalized column on condition_group, so
-  // it also needs the LEFT JOIN to compute SUM in one pass rather than a
-  // correlated subquery per group.
-  const requiresConditionJoin =
-    hasConditionFilters ||
-    (sanitizedSortField === 'similarMarketVolume' &&
-      !useWindowedSimilarMarketVolume);
+  const volumeFragments = volumeColumnFragments[n.volumeKey];
 
   const similarMarketVolumeFilter = (() => {
     const parts: Prisma.Sql[] = [];
-    const expr = useWindowedSimilarMarketVolume
+    const expr = n.useWindowedSimilarMarketVolume
       ? volumeFragments.cond
       : Prisma.sql`c."similarMarketVolume"`;
-    if (minSimilarMarketVolume != null) {
-      parts.push(Prisma.sql`${expr} >= ${minSimilarMarketVolume}`);
+    if (n.minSimilarMarketVolume != null) {
+      parts.push(Prisma.sql`${expr} >= ${n.minSimilarMarketVolume}`);
     }
-    if (maxSimilarMarketVolume != null) {
-      parts.push(Prisma.sql`${expr} <= ${maxSimilarMarketVolume}`);
+    if (n.maxSimilarMarketVolume != null) {
+      parts.push(Prisma.sql`${expr} <= ${n.maxSimilarMarketVolume}`);
     }
     if (parts.length === 0) return Prisma.empty;
     return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
   })();
 
+  const endTimeFilter = (() => {
+    const parts: Prisma.Sql[] = [];
+    if (n.minEndTime != null) {
+      parts.push(Prisma.sql`c."endTime" >= ${n.minEndTime}`);
+    }
+    if (n.maxEndTime != null) {
+      parts.push(Prisma.sql`c."endTime" <= ${n.maxEndTime}`);
+    }
+    if (parts.length === 0) return Prisma.empty;
+    return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
+  })();
+
+  const chainIdFilter =
+    n.chainId != null
+      ? Prisma.sql`AND c."chainId" = ${n.chainId}`
+      : Prisma.empty;
+
+  // Contract-address filter applied at the same condition-row level as
+  // `chainId` — both the group LEFT JOIN and the ungrouped-condition
+  // branch consume `conditionFilters`, so this scopes both. Without it
+  // the page would pick the right groups but `hydrateItems` would still
+  // need a matching Prisma `where` (kept in `buildConditionWhere` below)
+  // to avoid hydrating extra conditions.
+  const contractAddressFilter = (() => {
+    if (n.contractAddress != null) {
+      return Prisma.sql`AND c."resolver" = ${n.contractAddress}`;
+    }
+    if (n.contractAddressIn != null && n.contractAddressIn.length > 0) {
+      return Prisma.sql`AND c."resolver" = ANY(${n.contractAddressIn}::text[])`;
+    }
+    return Prisma.empty;
+  })();
+
   const conditionFilters = Prisma.sql`
-    ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
+    ${chainIdFilter}
+    ${contractAddressFilter}
     ${resolvedFilter}
     ${priceFilter}
     ${similarMarketVolumeFilter}
-    ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
+    ${endTimeFilter}
   `;
 
+  return {
+    resolvedFilter,
+    priceFilter,
+    similarMarketVolumeFilter,
+    endTimeFilter,
+    conditionFilters,
+  };
+};
+
+/** Sort-value SQL fragments for both the group and condition branches. */
+interface SortFragments {
+  /** SUM/MAX expr aggregated over the group's matching conditions. */
+  groupSortValue: Prisma.Sql;
+  /** Single-row sort expr for ungrouped conditions. */
+  condSortValue: Prisma.Sql;
+  /** SUM/aggregate of c."predictionCount" used by the group branch. */
+  groupPredictionCount: Prisma.Sql;
+  /** MAX of c."endTime" used by the group branch. */
+  groupEndTime: Prisma.Sql;
+  /** GROUP BY + HAVING for the group branch (empty when no JOIN). */
+  groupByClause: Prisma.Sql;
+  /** LEFT JOIN against `condition` (empty when filters allow the trigger
+   * aggregates to satisfy the sort directly). */
+  groupConditionJoin: Prisma.Sql;
+}
+
+const buildSortFragments = (
+  n: NormalizedArgs,
+  filters: ConditionFilterFragments
+): SortFragments => {
+  const volumeFragments = volumeColumnFragments[n.volumeKey];
+
   const sortValueExpr = (() => {
-    switch (sanitizedSortField) {
+    switch (n.sortField) {
       case 'openInterest':
         return Prisma.sql`COALESCE(SUM(c."openInterest"::numeric), 0)`;
       case 'predictionCount':
@@ -238,7 +435,7 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
       case 'createdAt':
         return Prisma.sql`COALESCE(MAX(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint)::numeric, 0)`;
       case 'similarMarketVolume':
-        return useWindowedSimilarMarketVolume
+        return n.useWindowedSimilarMarketVolume
           ? volumeFragments.sumExpr
           : Prisma.sql`COALESCE(SUM(c."similarMarketVolume"), 0)::numeric`;
       default:
@@ -246,124 +443,210 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
     }
   })();
 
-  const groupConditionJoin = requiresConditionJoin
+  const groupConditionJoin = n.requiresConditionJoin
     ? Prisma.sql`LEFT JOIN condition c ON c."conditionGroupId" = cg.id
           AND c.public = true
-          ${conditionFilters}`
+          ${filters.conditionFilters}`
     : Prisma.empty;
 
-  const groupSortValue = requiresConditionJoin
+  const groupSortValue = n.requiresConditionJoin
     ? sortValueExpr
-    : sanitizedSortField === 'openInterest'
+    : n.sortField === 'openInterest'
       ? Prisma.sql`cg."totalOpenInterest"::numeric`
-      : sanitizedSortField === 'predictionCount'
+      : n.sortField === 'predictionCount'
         ? Prisma.sql`cg."totalPredictionCount"::numeric`
-        : sanitizedSortField === 'createdAt'
+        : n.sortField === 'createdAt'
           ? Prisma.sql`cg."maxCreatedAtEpoch"::numeric`
-          : sanitizedSortField === 'similarMarketVolume'
+          : n.sortField === 'similarMarketVolume'
             ? volumeFragments.group
             : Prisma.sql`cg."maxEndTime"::numeric`;
 
-  const groupPredictionCount = requiresConditionJoin
+  const groupPredictionCount = n.requiresConditionJoin
     ? Prisma.sql`COALESCE(SUM(c."predictionCount"), 0)`
     : Prisma.sql`cg."totalPredictionCount"`;
 
-  const groupEndTime = requiresConditionJoin
+  const groupEndTime = n.requiresConditionJoin
     ? Prisma.sql`COALESCE(MAX(c."endTime"), 0)`
     : Prisma.sql`cg."maxEndTime"`;
 
   // `questionType` filters by *rendered* item type: single-condition
   // groups unwrap into standalone condition items at hydration, so
-  // `condition` admits ungrouped conditions plus groups with exactly
-  // one matching condition; `group` admits only groups with 2+.
+  // `condition` admits only groups with exactly one matching condition
+  // and `group` admits only groups with 2+.
   const groupCountHaving =
-    questionType === 'condition'
+    n.questionType === QuestionItemType.Condition
       ? Prisma.sql`HAVING COUNT(c.id) = 1`
-      : questionType === 'group'
+      : n.questionType === QuestionItemType.Group
         ? Prisma.sql`HAVING COUNT(c.id) >= 2`
         : Prisma.sql`HAVING COUNT(c.id) > 0`;
 
-  const groupByClause = requiresConditionJoin
+  const groupByClause = n.requiresConditionJoin
     ? Prisma.sql`GROUP BY cg.id ${groupCountHaving}`
     : Prisma.empty;
 
-  // Without the condition join, the denormalized public count stands in
-  // for COUNT(c.id) — consistent with the hydration-time unwrap, whose
-  // `conditionWhere` is just `public: true` when no filters are active.
-  const groupPublicCountFilter = requiresConditionJoin
-    ? Prisma.empty
-    : questionType === 'condition'
-      ? Prisma.sql`AND cg."publicConditionCount" = 1`
-      : questionType === 'group'
-        ? Prisma.sql`AND cg."publicConditionCount" >= 2`
-        : Prisma.empty;
-
-  const includeUngroupedConditions = questionType !== 'group';
-
   const condSortValue =
-    sanitizedSortField === 'openInterest'
+    n.sortField === 'openInterest'
       ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)`
-      : sanitizedSortField === 'predictionCount'
+      : n.sortField === 'predictionCount'
         ? Prisma.sql`c."predictionCount"::numeric`
-        : sanitizedSortField === 'createdAt'
+        : n.sortField === 'createdAt'
           ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::numeric`
-          : sanitizedSortField === 'similarMarketVolume'
-            ? useWindowedSimilarMarketVolume
+          : n.sortField === 'similarMarketVolume'
+            ? n.useWindowedSimilarMarketVolume
               ? Prisma.sql`COALESCE(${volumeFragments.cond}, 0)::numeric`
               : Prisma.sql`COALESCE(c."similarMarketVolume", 0)::numeric`
             : Prisma.sql`COALESCE(c."endTime", 2147483647)::numeric`;
 
-  const sortedItems = await prisma.$queryRaw<SortedItemRow[]>`
-    WITH combined AS (
-      -- Part A: Active groups
-      SELECT
-        'group' as item_type,
-        cg.id as group_id,
-        NULL::text as condition_id,
-        ${groupSortValue} as sort_value,
-        ${groupPredictionCount} as prediction_count,
-        ${groupEndTime} as end_time
-      FROM condition_group cg
-      ${groupConditionJoin}
-      WHERE cg."publicConditionCount" > 0
-        ${groupPublicCountFilter}
-        ${
-          boundedSearch
-            ? Prisma.sql`AND (
-                cg.name ILIKE ${'%' + boundedSearch + '%'}
-                OR EXISTS (
-                  SELECT 1 FROM condition c_search
-                  WHERE c_search."conditionGroupId" = cg.id
-                    AND c_search.public = true
-                    AND (
-                      c_search.question ILIKE ${'%' + boundedSearch + '%'}
-                      OR c_search."shortName" ILIKE ${'%' + boundedSearch + '%'}
-                      OR EXISTS (SELECT 1 FROM unnest(c_search.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'})
-                    )
-                )
-              )`
-            : Prisma.empty
-        }
-        ${
-          boundedCategorySlugs?.length
-            ? Prisma.sql`AND cg."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${boundedCategorySlugs}::text[]))`
-            : Prisma.empty
-        }
-        ${
-          boundedTag
-            ? Prisma.sql`AND EXISTS (
-                SELECT 1 FROM condition c_tag
-                WHERE c_tag."conditionGroupId" = cg.id
-                  AND c_tag.public = true
-                  AND ${boundedTag} = ANY(c_tag.tags)
-              )`
-            : Prisma.empty
-        }
-      ${groupByClause}
+  return {
+    groupSortValue,
+    condSortValue,
+    groupPredictionCount,
+    groupEndTime,
+    groupByClause,
+    groupConditionJoin,
+  };
+};
 
-      ${
-        includeUngroupedConditions
-          ? Prisma.sql`
+/**
+ * Search/category/tag fragments for the group branch (where matches can
+ * come from the group name OR any of its conditions) and the
+ * ungrouped-condition branch (single-row predicates).
+ */
+interface SearchFragments {
+  groupSearch: Prisma.Sql;
+  groupCategory: Prisma.Sql;
+  groupTag: Prisma.Sql;
+  condSearch: Prisma.Sql;
+  condCategory: Prisma.Sql;
+  condTag: Prisma.Sql;
+}
+
+const buildSearchFragments = (n: NormalizedArgs): SearchFragments => {
+  const term = n.search ? `%${n.search}%` : null;
+
+  return {
+    groupSearch: term
+      ? Prisma.sql`AND (
+          cg.name ILIKE ${term}
+          OR EXISTS (
+            SELECT 1 FROM condition c_search
+            WHERE c_search."conditionGroupId" = cg.id
+              AND c_search.public = true
+              AND (
+                c_search.question ILIKE ${term}
+                OR c_search."shortName" ILIKE ${term}
+                OR EXISTS (SELECT 1 FROM unnest(c_search.tags) AS t WHERE t ILIKE ${term})
+              )
+          )
+        )`
+      : Prisma.empty,
+    groupCategory: n.categorySlugs?.length
+      ? Prisma.sql`AND cg."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${n.categorySlugs}::text[]))`
+      : Prisma.empty,
+    groupTag: n.tag
+      ? Prisma.sql`AND EXISTS (
+          SELECT 1 FROM condition c_tag
+          WHERE c_tag."conditionGroupId" = cg.id
+            AND c_tag.public = true
+            AND ${n.tag} = ANY(c_tag.tags)
+        )`
+      : Prisma.empty,
+    condSearch: term
+      ? Prisma.sql`AND (c.question ILIKE ${term} OR c."shortName" ILIKE ${term} OR EXISTS (SELECT 1 FROM unnest(c.tags) AS t WHERE t ILIKE ${term}))`
+      : Prisma.empty,
+    condCategory: n.categorySlugs?.length
+      ? Prisma.sql`AND c."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${n.categorySlugs}::text[]))`
+      : Prisma.empty,
+    condTag: n.tag ? Prisma.sql`AND ${n.tag} = ANY(c.tags)` : Prisma.empty,
+  };
+};
+
+const cursorIdentity = (row: SortedItemRow) => ({
+  groupId: row.group_id ?? 0,
+  conditionId: row.condition_id ?? '',
+  itemType: row.item_type,
+  endTime: Number(row.end_time ?? 0),
+});
+
+export const encodeQuestionCursor = (row: SortedItemRow): string => {
+  const identity = cursorIdentity(row);
+  return encodeCursor({
+    k: String(row.sort_value),
+    id: JSON.stringify(identity),
+  });
+};
+
+export const decodeQuestionCursor = (cursor: string | null | undefined) => {
+  if (!cursor) return null;
+  const payload = decodeCursor(cursor);
+  if (!payload) return null;
+  try {
+    const parsed = JSON.parse(payload.id) as Partial<QuestionCursor>;
+    const groupId = Number(parsed.groupId);
+    const endTime = Number(parsed.endTime);
+    const itemType = String(parsed.itemType ?? '');
+    const conditionId = String(parsed.conditionId ?? '');
+    if (!itemType || !Number.isFinite(groupId) || !Number.isFinite(endTime)) {
+      return null;
+    }
+    return {
+      sortValue: payload.k,
+      itemType,
+      groupId,
+      conditionId,
+      endTime,
+    } satisfies QuestionCursor;
+  } catch {
+    return null;
+  }
+};
+
+const buildQuestionCursorWhere = (n: NormalizedArgs): Prisma.Sql => {
+  const c = n.afterCursor;
+  if (!c) return Prisma.empty;
+  const sortCmp = n.sortDirectionRaw === 'ASC' ? '>' : '<';
+  const sortValue = Number(c.sortValue);
+  const normalizedSortValue = Number.isFinite(sortValue)
+    ? sortValue
+    : c.sortValue;
+  return Prisma.sql`
+    WHERE (
+      sort_value ${Prisma.raw(sortCmp)} ${normalizedSortValue}
+      OR (sort_value = ${normalizedSortValue} AND end_time > ${c.endTime})
+      OR (sort_value = ${normalizedSortValue} AND end_time = ${c.endTime} AND item_type > ${c.itemType})
+      OR (sort_value = ${normalizedSortValue} AND end_time = ${c.endTime} AND item_type = ${c.itemType} AND COALESCE(group_id, 0) > ${c.groupId})
+      OR (sort_value = ${normalizedSortValue} AND end_time = ${c.endTime} AND item_type = ${c.itemType} AND COALESCE(group_id, 0) = ${c.groupId} AND COALESCE(condition_id, '') > ${c.conditionId})
+    )
+  `;
+};
+
+const fetchSortedItems = async (
+  n: NormalizedArgs
+): Promise<SortedItemRow[]> => {
+  const filters = buildConditionFilterFragments(n);
+  const sort = buildSortFragments(n, filters);
+  const search = buildSearchFragments(n);
+  const cursorWhere = buildQuestionCursorWhere(n);
+  const offsetClause = n.afterCursor
+    ? Prisma.empty
+    : Prisma.sql`OFFSET ${n.skip}`;
+
+  // Without the condition join, the denormalized public count stands in
+  // for COUNT(c.id) in the questionType restriction — consistent with
+  // the hydration-time unwrap, whose `conditionWhere` is just
+  // `public: true` when no per-condition filters are active.
+  const groupPublicCountFilter = n.requiresConditionJoin
+    ? Prisma.empty
+    : n.questionType === QuestionItemType.Condition
+      ? Prisma.sql`AND cg."publicConditionCount" = 1`
+      : n.questionType === QuestionItemType.Group
+        ? Prisma.sql`AND cg."publicConditionCount" >= 2`
+        : Prisma.empty;
+
+  const ungroupedConditionsPart =
+    n.questionType === QuestionItemType.Group
+      ? Prisma.empty
+      : Prisma.sql`
       UNION ALL
 
       -- Part B: Ungrouped conditions
@@ -371,100 +654,149 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
         'condition' as item_type,
         NULL::integer as group_id,
         c.id as condition_id,
-        ${condSortValue} as sort_value,
+        ${sort.condSortValue} as sort_value,
         c."predictionCount" as prediction_count,
         COALESCE(c."endTime", 2147483647) as end_time
       FROM condition c
       WHERE c.public = true
         AND c."conditionGroupId" IS NULL
-        ${conditionFilters}
-        ${
-          boundedSearch
-            ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'} OR EXISTS (SELECT 1 FROM unnest(c.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'}))`
-            : Prisma.empty
-        }
-        ${
-          boundedCategorySlugs?.length
-            ? Prisma.sql`AND c."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${boundedCategorySlugs}::text[]))`
-            : Prisma.empty
-        }
-        ${
-          boundedTag
-            ? Prisma.sql`AND ${boundedTag} = ANY(c.tags)`
-            : Prisma.empty
-        }`
-          : Prisma.empty
-      }
+        ${filters.conditionFilters}
+        ${search.condSearch}
+        ${search.condCategory}
+        ${search.condTag}`;
+
+  return prisma.$queryRaw<SortedItemRow[]>`
+    WITH combined AS (
+      -- Part A: Active groups
+      SELECT
+        'group' as item_type,
+        cg.id as group_id,
+        NULL::text as condition_id,
+        ${sort.groupSortValue} as sort_value,
+        ${sort.groupPredictionCount} as prediction_count,
+        ${sort.groupEndTime} as end_time
+      FROM condition_group cg
+      ${sort.groupConditionJoin}
+      WHERE cg."publicConditionCount" > 0
+        ${groupPublicCountFilter}
+        ${search.groupSearch}
+        ${search.groupCategory}
+        ${search.groupTag}
+      ${sort.groupByClause}
+
+      ${ungroupedConditionsPart}
     )
-    SELECT item_type, group_id, condition_id, prediction_count
+    SELECT item_type, group_id, condition_id, prediction_count, sort_value, end_time
     FROM combined
-    ORDER BY sort_value ${Prisma.raw(dir)},
+    ${cursorWhere}
+    ORDER BY sort_value ${Prisma.raw(n.sortDirectionRaw)},
              end_time ASC,
              item_type ASC,
              COALESCE(group_id, 0) ASC,
              COALESCE(condition_id, '') ASC
-    LIMIT ${boundedTake}
-    OFFSET ${boundedSkip}
+    LIMIT ${n.take + 1}
+    ${offsetClause}
   `;
+};
 
-  if (sortedItems.length === 0) return [];
-
-  const groupIds = sortedItems
-    .filter((r) => r.item_type === 'group' && r.group_id !== null)
-    .map((r) => r.group_id as number);
-  const conditionIds = sortedItems
-    .filter((r) => r.item_type === 'condition' && r.condition_id !== null)
-    .map((r) => r.condition_id as string);
-
-  // Build Prisma where clause for nested conditions mirroring SQL filter.
+/**
+ * Mirrors the SQL conditionFilters as a Prisma where clause for the
+ * second-pass `conditionGroup.findMany` include filter — keeps the
+ * nested condition list filtered to the same set the SQL UNION
+ * surfaced.
+ */
+const buildConditionWhere = (n: NormalizedArgs): Prisma.ConditionWhereInput => {
   const resolvedPrismaFilter = (() => {
-    if (resolutionStatus && resolutionStatus !== 'all') {
-      switch (resolutionStatus) {
-        case 'unresolved':
-          return { settled: false };
-        case 'resolved':
-          return { settled: true };
-        case 'resolvedYes':
-          return { settled: true, resolvedToYes: true };
-        case 'resolvedNo':
-          return { settled: true, resolvedToYes: false };
-        default:
-          return {};
-      }
+    if (!n.resolutionStatus || n.resolutionStatus === 'all') return {};
+    switch (n.resolutionStatus) {
+      case 'unresolved':
+        return { settled: false };
+      case 'resolved':
+        return { settled: true };
+      case 'resolvedYes':
+        return { settled: true, resolvedToYes: true };
+      case 'resolvedNo':
+        return { settled: true, resolvedToYes: false };
+      default:
+        return {};
     }
-    return {};
   })();
 
   const estimatedPriceFilter = {
-    ...(minEstimatedPrice != null ? { gte: minEstimatedPrice } : {}),
-    ...(maxEstimatedPrice != null ? { lte: maxEstimatedPrice } : {}),
+    ...(n.minEstimatedPrice != null ? { gte: n.minEstimatedPrice } : {}),
+    ...(n.maxEstimatedPrice != null ? { lte: n.maxEstimatedPrice } : {}),
   };
   const similarMarketVolumeRangeFilter = {
-    ...(minSimilarMarketVolume != null ? { gte: minSimilarMarketVolume } : {}),
-    ...(maxSimilarMarketVolume != null ? { lte: maxSimilarMarketVolume } : {}),
+    ...(n.minSimilarMarketVolume != null
+      ? { gte: n.minSimilarMarketVolume }
+      : {}),
+    ...(n.maxSimilarMarketVolume != null
+      ? { lte: n.maxSimilarMarketVolume }
+      : {}),
   };
 
   const prismaSimilarMarketVolumeFilter = (() => {
     if (Object.keys(similarMarketVolumeRangeFilter).length === 0) return {};
-    if (!useWindowedSimilarMarketVolume) {
+    if (!n.useWindowedSimilarMarketVolume) {
       return { similarMarketVolume: similarMarketVolumeRangeFilter };
     }
-    const field = fieldByResolvedVolumeKey[resolvedVolumeKey];
+    const field = fieldByResolvedVolumeKey[n.volumeKey];
     return { [field]: similarMarketVolumeRangeFilter };
   })();
 
-  const conditionWhere: Prisma.ConditionWhereInput = {
+  // Mirror the SQL `contractAddressFilter` so the two-pass resolver
+  // hydrates only the conditions the UNION surfaced. Without this, the
+  // page picks the right groups but `hydrateItems` still pulls every
+  // sibling condition on the group.
+  const contractAddressPrismaFilter =
+    n.contractAddress != null
+      ? { resolver: n.contractAddress }
+      : n.contractAddressIn != null && n.contractAddressIn.length > 0
+        ? { resolver: { in: n.contractAddressIn } }
+        : {};
+
+  return {
     public: true,
-    ...(chainId !== null && chainId !== undefined ? { chainId } : {}),
+    ...(n.chainId !== null && n.chainId !== undefined
+      ? { chainId: n.chainId }
+      : {}),
+    ...contractAddressPrismaFilter,
     ...resolvedPrismaFilter,
-    ...(minEndTime !== null && minEndTime !== undefined
-      ? { endTime: { gte: minEndTime } }
+    ...(n.minEndTime !== null && n.minEndTime !== undefined
+      ? { endTime: { gte: n.minEndTime } }
+      : {}),
+    ...(n.maxEndTime !== null && n.maxEndTime !== undefined
+      ? {
+          endTime: {
+            ...((n.minEndTime !== null && n.minEndTime !== undefined
+              ? { gte: n.minEndTime }
+              : {}) as object),
+            lte: n.maxEndTime,
+          },
+        }
       : {}),
     ...(Object.keys(estimatedPriceFilter).length > 0
       ? { estimatedPrice: estimatedPriceFilter }
       : {}),
     ...prismaSimilarMarketVolumeFilter,
   };
+};
+
+type HydratedQuestion = {
+  item: QuestionReturn;
+  pageItem: SortedItemRow;
+};
+
+const hydrateItems = async (
+  pageItems: SortedItemRow[],
+  conditionWhere: Prisma.ConditionWhereInput
+): Promise<HydratedQuestion[]> => {
+  const groupIds = pageItems
+    .filter((r) => r.item_type === 'group' && r.group_id !== null)
+    .map((r) => r.group_id as number);
+  const conditionIds = pageItems
+    .filter((r) => r.item_type === 'condition' && r.condition_id !== null)
+    .map((r) => r.condition_id as string);
 
   const groupInclude = {
     category: true,
@@ -497,54 +829,152 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
   const conditionMap = new Map<string, (typeof conditions)[number]>();
   for (const c of conditions) conditionMap.set(c.id, c);
 
-  const result: QuestionReturn[] = [];
-  for (const item of sortedItems) {
+  // Intermediate shape — Question field resolvers (Question.ts) fill in
+  // `source`, `title`, `description`, etc. from this shape, so the
+  // runner only needs to populate the discriminator + the wrapped row +
+  // the prediction count.
+  const result: HydratedQuestion[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const push = (item: any, pageItem: SortedItemRow) =>
+    result.push({ item: item as QuestionReturn, pageItem });
+  for (const item of pageItems) {
     if (item.item_type === 'group' && item.group_id !== null) {
       const group = groupMap.get(item.group_id);
       if (!group) continue;
       if (group.condition.length === 1) {
         // Unwrap single-condition groups as standalone conditions so the
         // frontend doesn't render a group shell around a lone item.
-        result.push({
-          questionType: QuestionItemType.Condition,
-          group: null,
-          condition: group.condition[0] as unknown as ConditionReturn,
-          predictionCount: Number(item.prediction_count),
-        });
+        push(
+          {
+            questionType: QuestionItemType.Condition,
+            group: null,
+            condition: group.condition[0] as unknown as ConditionReturn,
+            predictionCount: Number(item.prediction_count),
+          },
+          item
+        );
       } else if (group.condition.length > 1) {
-        result.push({
-          questionType: QuestionItemType.Group,
-          group: {
-            ...group,
-            conditions: group.condition,
-          } as unknown as ConditionGroupReturn,
-          condition: null,
-          predictionCount: Number(item.prediction_count),
-        });
+        push(
+          {
+            questionType: QuestionItemType.Group,
+            group: {
+              ...group,
+              conditions: group.condition,
+            } as unknown as ConditionGroupReturn,
+            condition: null,
+            predictionCount: Number(item.prediction_count),
+          },
+          item
+        );
       }
     } else if (item.item_type === 'condition' && item.condition_id !== null) {
       const condition = conditionMap.get(item.condition_id);
       if (!condition) continue;
-      result.push({
-        questionType: QuestionItemType.Condition,
-        group: null,
-        condition: condition as unknown as ConditionReturn,
-        predictionCount: Number(item.prediction_count),
-      });
+      push(
+        {
+          questionType: QuestionItemType.Condition,
+          group: null,
+          condition: condition as unknown as ConditionReturn,
+          predictionCount: Number(item.prediction_count),
+        },
+        item
+      );
     }
   }
+  return result;
+};
+
+export const runQuestionsData = async (
+  args: RunQuestionsInput
+): Promise<{
+  items: QuestionReturn[];
+  hasMore: boolean;
+  pageItems: SortedItemRow[];
+}> => {
+  const n = normalizeArgs(args);
+  const conditionWhere = buildConditionWhere(n);
+  const hydrated: HydratedQuestion[] = [];
+  let afterCursor = n.afterCursor;
+  let skip = n.skip;
+  let hasMore = false;
 
   // The SQL count restriction and the hydration unwrap can disagree
   // when aggregates drift (trigger lag), so enforce the requested
-  // rendered type after unwrapping too.
-  if (questionType != null) {
-    // Items are pushed as plain objects above; the ResolverTypeWrapper
-    // union just obscures that from the type checker.
-    return result.filter(
-      (q) =>
-        (q as { questionType: QuestionItemType }).questionType === questionType
+  // rendered type after unwrapping too — the refill loop below tops the
+  // page back up after any drops.
+  const matchesRequestedType = (entry: HydratedQuestion) =>
+    n.questionType == null ||
+    (entry.item as { questionType?: QuestionItemType }).questionType ===
+      n.questionType;
+
+  while (hydrated.length < n.take) {
+    const remaining = n.take - hydrated.length;
+    const sortedItems = await fetchSortedItems({
+      ...n,
+      take: remaining,
+      skip: afterCursor ? 0 : skip,
+      afterCursor,
+    });
+    hasMore = sortedItems.length > remaining;
+    const pageItems = sortedItems.slice(0, remaining);
+    if (pageItems.length === 0) break;
+
+    hydrated.push(
+      ...(await hydrateItems(pageItems, conditionWhere)).filter(
+        matchesRequestedType
+      )
     );
+
+    const lastPageItem = pageItems[pageItems.length - 1];
+    afterCursor = {
+      sortValue: String(lastPageItem.sort_value),
+      ...cursorIdentity(lastPageItem),
+    };
+    skip = 0;
+
+    if (!hasMore) break;
   }
 
-  return result;
+  const page = hydrated.slice(0, n.take);
+  return {
+    items: page.map((entry) => entry.item),
+    hasMore,
+    pageItems: page.map((entry) => entry.pageItem),
+  };
+};
+
+export const runQuestions = async (
+  args: RunQuestionsInput
+): Promise<{ items: QuestionReturn[]; hasMore: boolean }> => {
+  const { items, hasMore } = await runQuestionsData(args);
+  return { items, hasMore };
+};
+
+/**
+ * v1 `Query.questions` resolver — thin wrapper around `runQuestionsData`
+ * that drops the cursor/`hasMore` envelope and returns the bare
+ * `[Question!]!` array the v1 SDL surface declares.
+ */
+export const questions: NonNullable<QueryResolvers['questions']> = async (
+  _parent,
+  args
+) => {
+  const { items } = await runQuestionsData({
+    take: args.take,
+    skip: args.skip,
+    search: args.search ?? null,
+    categorySlugs: args.categorySlugs ?? null,
+    tag: args.tag ?? null,
+    chainId: args.chainId ?? null,
+    minEndTime: args.minEndTime ?? null,
+    resolutionStatus: args.resolutionStatus ?? null,
+    minEstimatedPrice: args.minEstimatedPrice ?? null,
+    maxEstimatedPrice: args.maxEstimatedPrice ?? null,
+    minSimilarMarketVolume: args.minSimilarMarketVolume ?? null,
+    maxSimilarMarketVolume: args.maxSimilarMarketVolume ?? null,
+    similarMarketVolumeWindow: args.similarMarketVolumeWindow ?? null,
+    sortField: args.sortField ?? null,
+    sortDirection: args.sortDirection ?? null,
+  });
+  return items;
 };
