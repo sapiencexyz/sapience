@@ -13,10 +13,14 @@ import {
   fetchCard,
   fetchPool,
   submitCard,
+  submitLine,
   type CardResponse,
   type PoolResponse,
 } from '../lib/backendApi';
-import { redeemViaSession } from '../lib/session/sessionKeyManager';
+import {
+  loadSession,
+  redeemViaSession,
+} from '../lib/session/sessionKeyManager';
 import { useSession } from '../hooks/useSession';
 import { buildLines } from '../parlay';
 import Nav from '../components/Nav';
@@ -94,19 +98,17 @@ function fmtWin(wei: bigint): string {
   return `$${n.toFixed(2)}`;
 }
 
-function lineStatusLabel(status: string): string {
-  switch (status) {
-    case 'quoting':
-      return 'QUOTING…';
-    case 'signing':
-      return 'SIGNING…';
-    case 'submitting':
-      return 'MINTING…';
-    case 'failed':
-      return 'FAILED';
-    default:
-      return 'WAITING';
-  }
+/** Client-side per-line progress — the client drives each line's funding
+ *  request against the stateless backend. */
+type LineRun =
+  | { status: 'funding' }
+  | { status: 'done' }
+  | { status: 'failed'; error: string };
+
+function lineStatusLabel(run: LineRun | undefined): string {
+  if (run?.status === 'funding') return 'FUNDING…';
+  if (run?.status === 'failed') return 'FAILED';
+  return 'WAITING';
 }
 
 function loadRef(): Address | undefined {
@@ -233,34 +235,59 @@ export default function CardDetailScreen() {
     }
   }, [priceInput, pool]);
 
-  const doneFlags = (card?.lines ?? []).map(
-    (l) => l.funded || l.status === 'done',
-  );
+  // Per-line client-side run state, keyed by lineId. The on-chain `funded`
+  // flag from the backend is the durable truth; this only tracks requests
+  // this page has in flight (or that failed here).
+  const [lineRuns, setLineRuns] = useState<Record<string, LineRun>>({});
+
+  const lineDone = (l: { lineId: string; funded: boolean }) =>
+    l.funded || lineRuns[l.lineId]?.status === 'done';
+  const doneFlags = (card?.lines ?? []).map(lineDone);
   const lineCount = doneFlags.filter(Boolean).length;
   const cardComplete = card != null && card.lines.length > 0 && lineCount === card.lines.length;
+  const anyInflight = Object.values(lineRuns).some(
+    (r) => r.status === 'funding',
+  );
   const anyFailed = (card?.lines ?? []).some(
-    (l) => !l.funded && l.status === 'failed',
+    (l) => !lineDone(l) && lineRuns[l.lineId]?.status === 'failed',
   );
-  const anyInflight = (card?.lines ?? []).some(
-    (l) =>
-      !l.funded &&
-      (l.status === 'pending' ||
-        l.status === 'quoting' ||
-        l.status === 'signing' ||
-        l.status === 'submitting'),
-  );
-  // Submitted but some lines have no status at all: the backend restarted
-  // mid-run and lost its in-memory progress. Treat like a failure so the
-  // retry button appears (the backend skips already-funded lines).
-  const anyStalled =
-    card?.yesMask != null &&
-    !cardComplete &&
-    !anyInflight &&
-    (card?.lines ?? []).some((l) => !l.funded && l.status == null);
 
-  // Submit the picks: backend mints all 10 lines as the player.
+  // Funds the given lines: one synchronous backend request each, all in
+  // parallel. Idempotent — the backend skips already-funded lines.
+  const fundLines = async (indices: number[]) => {
+    const session = loadSession();
+    if (!player || !session || !card) return;
+    const lineIds = card.lines.map((l) => l.lineId);
+    setActionError(null);
+    setLineRuns((p) => {
+      const next = { ...p };
+      for (const i of indices) next[lineIds[i]] = { status: 'funding' };
+      return next;
+    });
+    await Promise.allSettled(
+      indices.map(async (i) => {
+        try {
+          await submitLine({ player, lineIndex: i, session });
+          setLineRuns((p) => ({ ...p, [lineIds[i]]: { status: 'done' } }));
+        } catch (e) {
+          setLineRuns((p) => ({
+            ...p,
+            [lineIds[i]]: {
+              status: 'failed',
+              error: e instanceof Error ? e.message : String(e),
+            },
+          }));
+        }
+      }),
+    );
+    setRefreshKey((k) => k + 1);
+  };
+
+  // Submit the picks: the backend mints the receipt NFT (locking sides and
+  // price on-chain), then this client drives the 10 line mints.
   const submitPicks = async () => {
-    if (!player || enteredPriceWei == null) return;
+    const session = loadSession();
+    if (!player || enteredPriceWei == null || !session) return;
     setActionError(null);
     setActionBusy(true);
     try {
@@ -269,8 +296,10 @@ export default function CardDetailScreen() {
         yesMask: pickedSides,
         cardPriceWei: enteredPriceWei.toString(),
         ref: loadRef(),
+        session,
       });
       setRefreshKey((k) => k + 1);
+      void fundLines(Array.from({ length: 10 }, (_, i) => i));
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -278,25 +307,13 @@ export default function CardDetailScreen() {
     }
   };
 
-  // Retry: identical yesMask/price — the backend is idempotent per line.
+  // Retry/resume: fund whichever lines aren't on-chain yet.
   const retryLines = async () => {
-    if (!player || card == null || card.yesMask == null || !card.cardPriceWei)
-      return;
-    setActionError(null);
-    setActionBusy(true);
-    try {
-      await submitCard({
-        player,
-        yesMask: card.yesMask,
-        cardPriceWei: card.cardPriceWei,
-        ref: loadRef(),
-      });
-      setRefreshKey((k) => k + 1);
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setActionBusy(false);
-    }
+    if (!card) return;
+    const indices = card.lines
+      .map((l, i) => (lineDone(l) ? -1 : i))
+      .filter((i) => i >= 0);
+    await fundLines(indices);
   };
 
   // Randomly assign YES/NO to all 16 cells.
@@ -363,7 +380,7 @@ export default function CardDetailScreen() {
     void (async () => {
       const out: Record<string, LineOutcome> = {};
       for (const apiLine of card.lines) {
-        if (!(apiLine.funded || apiLine.status === 'done')) continue;
+        if (!apiLine.funded) continue;
         const picks: Pick[] = apiLine.cellIndices.map((ci) => ({
           conditionResolver: card.cells[ci].resolver,
           conditionId: card.cells[ci].conditionId,
@@ -406,7 +423,7 @@ export default function CardDetailScreen() {
   // the declared side: correct (✓), wrong (✗), or not-yet-resolved (loading).
   useEffect(() => {
     if (!publicClient || !card || card.yesMask == null) return;
-    const allDone = card.lines.every((l) => l.funded || l.status === 'done');
+    const allDone = card.lines.every((l) => l.funded);
     if (!allDone || card.lines.length === 0) return;
     const mask = card.yesMask;
     let stop = false;
@@ -739,16 +756,12 @@ export default function CardDetailScreen() {
 
                 {LINES.map((l) => {
                   const apiLine = card.lines.find((x) => x.lineId === l.id);
-                  const status = apiLine?.status ?? 'pending';
+                  const run = lineRuns[l.id];
                   const funded = apiLine?.funded ?? false;
                   // funded (on-chain) or done (just minted) = the line exists.
-                  const done = funded || status === 'done';
-                  const submitFailed = !funded && status === 'failed';
-                  const inflight =
-                    !funded &&
-                    (status === 'quoting' ||
-                      status === 'signing' ||
-                      status === 'submitting');
+                  const done = funded || run?.status === 'done';
+                  const submitFailed = !done && run?.status === 'failed';
+                  const inflight = !done && run?.status === 'funding';
                   const o = lineOutcomes[l.id];
 
                   // Resolve the line's display verb/amount/tone.
@@ -806,7 +819,7 @@ export default function CardDetailScreen() {
                         </>
                       ) : (
                         <div className="payout-status">
-                          {lineStatusLabel(status)}
+                          {lineStatusLabel(run)}
                         </div>
                       )}
                     </div>
@@ -819,18 +832,24 @@ export default function CardDetailScreen() {
                 <>
                   {anyFailed && (
                     <p className="error small">
-                      {card.lines.find((l) => !l.funded && l.error)?.error ??
-                        'Some lines failed to fund.'}
+                      {Object.values(lineRuns)
+                        .map((r) => (r.status === 'failed' ? r.error : null))
+                        .find(Boolean) ?? 'Some lines failed to fund.'}
                     </p>
                   )}
-                  {(anyFailed || anyStalled) && !anyInflight && !actionBusy && (
+                  {/* The client drives line funding: offer to (re)start it
+                      whenever lines are missing and nothing is in flight —
+                      covers failures, page reloads, and interrupted runs. */}
+                  {!anyInflight && !actionBusy && (
                     <button
                       type="button"
                       className="primary block"
                       disabled={!isActive}
                       onClick={retryLines}
                     >
-                      Retry remaining lines
+                      {anyFailed
+                        ? 'Retry remaining lines'
+                        : `Fund remaining lines (${lineCount}/10)`}
                     </button>
                   )}
                 </>

@@ -1,4 +1,2 @@
 # Secrets: SERVER_SECRET, ADMIN_TOKEN, MINTER_PRIVATE_KEY
 .env
-# Journal — contains players' serialized session keys
-data/

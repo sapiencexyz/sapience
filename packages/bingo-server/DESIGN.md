@@ -1,22 +1,24 @@
 # COMBO.BINGO backend service
 
-A trusted backend that deals bingo cards, runs the RFQ auctions, and mints the
-escrow positions **as the user** via a scoped session key. Replaces the
-BingoCard smart contract entirely — there is no bingo contract in this
-architecture.
+A **stateless** backend that deals bingo cards, runs the RFQ auctions, and
+mints the escrow positions **as the player** via a scoped session key. The
+smart contracts are the database: the BingoCardReceipt NFT records every
+submission and carries the payout rail; escrow events record every funded
+line. The server stores nothing — it can restart, scale out, or run as a
+serverless function with no volume and no journal.
 
 ## Trust model
 
-The backend is trusted for exactly three things, all of which were already
-trusted off-chain in the prior design:
+The backend is trusted for exactly three things:
 
 1. **The card draw.** Mitigated with verifiable fairness (below).
 2. **Bonus + referral payouts** — discretionary, paid from the operator
-   treasury wallet.
+   treasury wallet through the receipt contract (one-shot on-chain flags).
 3. **Running the auctions honestly** — the relayer was always ours.
 
 The backend is NOT trusted with custody. Funds stay in the player's smart
-account; the backend holds a **session key** whose call policy only permits:
+account; the client sends a **session key** with each request whose call
+policy only permits:
 
 - `wUSDe.deposit()` (wrap native USDe)
 - `wUSDe.approve(escrow, …)` (escrow only — enforced by ParamCondition)
@@ -25,129 +27,117 @@ account; the backend holds a **session key** whose call policy only permits:
 
 So a fully compromised backend can, at worst, turn the player's balance into
 predictions owned by the player. It can never move funds to a third party.
+The session key is never stored — it lives only for the request it rides in
+on.
 
 ## Verifiable fairness
 
-Per pool, the operator generates a random 32-byte `SERVER_SECRET` and
-publishes its hash (`fairnessCommitment = keccak256(secret)`) when the pool
-opens. Every card is dealt deterministically:
+The operator holds one master `SERVER_SECRET`. Per pool:
 
 ```
-seed   = keccak256(secret ‖ poolId ‖ playerAddress)
-layout = fisherYatesShuffle(poolConditions, seed)[0..16]
+poolSecret = keccak256(master ‖ poolId)        // derived, never stored
+commitment = keccak256(poolSecret)             // published while pool is open
+seed       = keccak256(poolSecret ‖ poolId ‖ playerAddress)
+layout     = fisherYatesShuffle(poolConditions, seed)[0..16]
 ```
 
-- One player address → one card per pool, by construction. No re-rolling by
-  abandonment; a new card requires a new funded smart account.
+- One player address → one card per pool, by construction (and enforced
+  on-chain: the receipt contract mints at most one NFT per (pool, player)).
 - The backend cannot target a player with a bad card without breaking the
-  commitment: after the pool cutoff the secret is revealed
-  (`GET /fairness` includes it once `now >= cutoff`), and anyone can recompute
-  every card dealt.
-- The player cannot grind layouts: the seed depends on the secret they don't
-  know.
+  commitment: after the pool cutoff the derived secret is revealed
+  (`GET /api/fairness`), and anyone can recompute every card dealt. The seed
+  is also stamped on the receipt NFT at submit time.
+- Revealing one pool's secret exposes nothing about other pools or the
+  master.
 
 ## Card lifecycle
 
 ```
- player                     backend                          chain
-   │  POST /session            │                                │
-   │  (serialized session key) │                                │
-   │──────────────────────────▶│ verify + store                 │
-   │  GET /card                │                                │
-   │──────────────────────────▶│ deal from (secret, player)     │
-   │◀─ layout (16 cells) ──────│                                │
-   │  POST /card/submit        │                                │
-   │  {yesMask, priceWei, ref} │                                │
-   │──────────────────────────▶│ for each of 10 lines:          │
-   │                           │   RFQ via relayer WS           │
-   │                           │   validate bid on-chain        │
-   │                           │   sign + mint via session key ─▶ escrow.mint
-   │  GET /card  (poll)        │                                │   (predictor =
-   │──────────────────────────▶│ live per-line progress         │    player SA)
-   │                           │                                │
-   │        … conditions resolve …                              │
-   │                           │                                │
-   │  (positions + redemptions are the player's — redeem via    │
-   │   their own wallet/session, same as any Sapience position) │
+ player/client               backend (stateless)              chain
+   │  GET /api/card             │                                │
+   │───────────────────────────▶│ deal from (poolSecret, player) │
+   │◀─ layout (16 cells) ───────│ + read receipt/escrow state ──▶│
+   │  POST /api/card/submit     │                                │
+   │  {yesMask, price, ref,     │                                │
+   │   session}                 │                                │
+   │───────────────────────────▶│ mint receipt NFT (sponsored) ─▶│ Receipt.mint
+   │◀─ {receiptTokenId} ────────│   = THE submission record      │  (locks sides,
+   │                            │                                │   price, ref, seed)
+   │  POST /api/card/line ×10   │                                │
+   │  {lineIndex, session}      │                                │
+   │───────────────────────────▶│ RFQ via relayer WS             │
+   │                            │ validate bid on-chain          │
+   │                            │ sign + mint via session key ──▶│ escrow.mint
+   │◀─ {funded, txHash} ────────│ (synchronous, ~30-60s)         │  (predictor =
+   │                            │                                │   player SA)
+   │        … conditions resolve …                               │
+   │  (positions + redemptions are the player's — redeem via     │
+   │   their own wallet/session, same as any Sapience position)  │
 ```
 
-- **Sides** (`yesMask`, bit i = YES on cell i) are declared once per card at
-  submit time and persisted in the backend's journal. They are also evidenced
-  on-chain by the picks inside each minted line.
-- **Cutoff**: `POST /card/submit` (and any retry) is refused once
-  `now >= pool.cutoff`. Since the backend is the only entity holding the
-  session key, this is an effective hard stop, unlike the contract-free
-  client-side variant.
-- **Retries**: submission is idempotent per line — a line that already has a
-  funded escrow position (predictor token balance > 0) is skipped.
+- **Sides** (`yesMask`, bit i = YES on cell i) are locked by the receipt NFT
+  mint at submit time; retries with different sides/price are refused
+  against the chain record.
+- **Cutoff**: submit and line requests are refused once `now >= cutoff`.
+- **Idempotency**: a line whose pickConfigId already appears in the player's
+  escrow `PredictionCreated` events is never re-minted — the event record is
+  monotonic, so this survives the player redeeming (burning) the position.
+- **The client drives the lines.** If the tab closes mid-card, the UI offers
+  "Fund remaining lines" on return; nothing is lost or duplicated.
 
 ## Entitlements (bonus + referral)
 
-Same math as before, computed by the backend instead of a contract:
+Same math as the old contract, computed from chain state on demand:
 
-- A card is **complete** when all 10 lines have funded escrow positions.
-- A line **wins** when all 4 cells resolved decisively on the declared side
-  (resolver returns `ok` and exactly the picked weight nonzero).
-- `bonus = cardPrice × multiplierBps[winCount] / 10_000` — table lives in the
-  pool config, published via `GET /pool`.
-- `referral = cardPrice × referralBps / 10_000`, attributed to the `ref`
-  (a payout address) recorded at submit time.
-- `GET /admin/entitlements` lists every card with player, lines funded, wins,
-  decided-ness, bonus owed, referrer and referral owed. Payment itself is a
-  manual treasury transfer for now; mark-as-paid lives in the journal.
+- A card is **complete** when all 10 lines appear in escrow events.
+- A line **wins** when all 4 cells resolved decisively on the declared side.
+- `bonus = cardPrice × multiplierBps[winCount] / 10_000` (pool config).
+- `referral = cardPrice × referralBps / 10_000`, to the referrer stamped on
+  the receipt NFT.
+- `GET /api/admin/entitlements` enumerates every receipt NFT and joins it
+  against escrow + resolver state: lines funded, wins, decided/provisional,
+  owed amounts, and the on-chain `bonusPaid`/`referralPaid` flags. The
+  treasury pays through `payBonus`/`payReferral` on the receipt contract —
+  one-shot, auditable, straight from the admin UI.
 
-## State & persistence
+## State: all on-chain or config
 
-v1 is deliberately simple: an in-memory store backed by an append-only JSONL
-journal (`DATA_DIR/journal.jsonl`), replayed on boot. Everything else is
-derivable:
+| state              | source of truth                                 |
+| ------------------ | ----------------------------------------------- |
+| pools, multipliers | `pool.json` (one pool or array; last = active)  |
+| card layout        | derived from `SERVER_SECRET` + poolId + player  |
+| submission (sides, | receipt NFT `cardMeta` +                        |
+| price, ref, seed)  | `CardReceiptMinted` events                      |
+| line funded        | escrow `PredictionCreated` events (monotonic)   |
+| wins / resolution  | chain (resolver `getResolution`)                |
+| payouts paid       | receipt NFT one-shot flags                      |
+| session keys       | client localStorage; sent per request, not kept |
+| admin auth         | HMAC-signed nonces/tokens (no server sessions)  |
 
-| state               | source of truth                                 |
-| ------------------- | ----------------------------------------------- |
-| pool, multipliers   | `pool.json` (config file)                       |
-| card layout         | recomputable from `SERVER_SECRET` + player addr |
-| session keys        | journal (`session` records)                     |
-| declared sides, ref | journal (`submit` records)                      |
-| line funded         | chain (escrow predictor-token balance)          |
-| wins / resolution   | chain (resolver `getResolution`)                |
-| payouts marked paid | journal (`payout` records)                      |
+## Hosting
 
-Postgres (via the API package's Prisma) is the obvious v2 home for the
-journal once this leaves staging. The store module is the only thing that
-would change.
+The handler is framework-free (`src/handler.ts`) and runs two ways:
 
-## Hosting: one service
+- **Node service** (`src/server.ts`): also serves the built Vite frontend
+  with an SPA fallback — one Railway-style service, same origin.
+- **Vercel** (`api/index.ts` + `vercel.json`): the platform serves the
+  static build; every `/api/*` request hits one function running the same
+  handler. Project root = `packages/bingo-server`; line requests run a full
+  auction + mint synchronously, so `maxDuration` is set to 300s (requires a
+  plan with fluid compute / extended durations).
 
-The server also serves the built Vite frontend (`STATIC_DIR`, default
-`../bingo/dist`) with an SPA fallback, so frontend + backend deploy as a
-single long-running Node service (Railway). Same origin — the frontend calls
-relative `/api/...` paths. In dev, run both: `pnpm --filter @sapience/bingo
-dev` proxies `/api` to the local server (`vite.config.ts`).
-
-Deploy steps: `pnpm --filter @sapience/bingo build`, then start
-`@sapience/bingo-server` with `SERVER_SECRET`, `ADMIN_TOKEN`, and a
-`pool.json` mounted/checked in.
+Dev: `pnpm --filter @sapience/bingo dev` proxies `/api` to the local server.
 
 ## API surface
 
-| method | path                    | body / query                               | returns                                                                   |
-| ------ | ----------------------- | ------------------------------------------ | ------------------------------------------------------------------------- |
-| GET    | /api/health             |                                            | `{ ok }`                                                                  |
-| GET    | /api/pool               |                                            | pool id, cutoff, conditions, multipliers, referralBps, fairnessCommitment |
-| GET    | /api/fairness           |                                            | commitment; + secret once cutoff passed                                   |
-| POST   | /api/session            | serialized session (ZeroDev approval)      | `{ player }`                                                              |
-| GET    | /api/card               | `?player=0x…`                              | layout + declared sides + per-line state                                  |
-| POST   | /api/card/submit        | `{ player, yesMask, cardPriceWei, ref? }`  | submission accepted; poll /api/card                                       |
-| GET    | /api/admin/entitlements | `Authorization: Bearer ADMIN_TOKEN`        | entitlement rows + totals                                                 |
-| POST   | /api/admin/payouts      | `{ player, kind, amountWei, to, txHash? }` | marks a payout in the journal                                             |
-
-## What this deletes
-
-- `packages/protocol/src/bingo/` + deploy script + all BingoCard tests.
-- Client-side auction orchestration (`packages/bingo/src/lib/submitCard.ts`)
-  and its WebSocket bid-pairing.
-- The contract address setting, approve flows, on-chain admin pool txs.
-
-The bingo frontend keeps: wallet connect, session creation (with the slimmer
-call policy above), the card UI, the bridge. It swaps contract reads for
-`GET /pool` / `GET /card` and the submit flow for `POST /card/submit`.
+| method | path                    | body / query                                       | returns                                            |
+| ------ | ----------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| GET    | /api/health             |                                                    | `{ ok }`                                           |
+| GET    | /api/pool               | `?poolId=` (optional)                              | pool config + fairnessCommitment + receiptContract |
+| GET    | /api/fairness           |                                                    | per-pool commitments; + secrets once cutoffs pass  |
+| GET    | /api/card               | `?player=0x…&poolId=`                              | layout + chain submission + per-line funded flags  |
+| POST   | /api/card/submit        | `{ player, yesMask, cardPriceWei, ref?, session }` | `{ receiptTokenId }` — mints the receipt NFT       |
+| POST   | /api/card/line          | `{ player, lineIndex, session, poolId? }`          | `{ funded, txHash }` — auction + mint, synchronous |
+| GET    | /api/admin/nonce        |                                                    | SIWE nonce (HMAC-signed, stateless)                |
+| POST   | /api/admin/login        | `{ message, signature }`                           | `{ token }` (HMAC-signed bearer, 12h)              |
+| GET    | /api/admin/entitlements | `Authorization: Bearer <token or ADMIN_TOKEN>`     | entitlement rows + totals, all from chain          |

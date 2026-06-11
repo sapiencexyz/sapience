@@ -10,6 +10,13 @@ import {
 import { CELL_COUNT } from './lines.js';
 import type { PoolCondition } from './types.js';
 
+/** Per-pool fairness secret, derived from the master env secret. Revealing
+ *  one pool's secret after its cutoff exposes nothing about other pools or
+ *  the master. */
+export function poolSecret(master: Hex, poolId: string): Hex {
+  return keccak256(concatHex([master, stringToHex(poolId)]));
+}
+
 /** Published when the pool opens; the secret is revealed after cutoff so
  *  anyone can verify every card was dealt deterministically. */
 export function fairnessCommitment(secret: Hex): Hex {

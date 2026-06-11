@@ -1,15 +1,20 @@
 // Typed fetch client for the COMBO.BINGO backend service (bingo-server).
-// The backend deals the card, runs the RFQ auctions, and mints escrow lines
-// as the player via a scoped session key — there is no bingo contract.
+// The backend is STATELESS: the receipt NFT records each submission, escrow
+// events record funded lines, and the client drives the 10 line mints as 10
+// requests, sending its serialized session key with each one.
 
 import type { Address, Hex } from 'viem';
 import type { SerializedSession } from '~/lib/session/sessionKeyManager';
 
 const SERVER_URL_STORAGE_KEY = 'bingo-server-url';
-/** Same origin: in production the bingo-server serves this app and the API;
+/** Same origin: in production the platform serves this app and the API;
  *  in dev the Vite proxy forwards /api to the local server. */
 const DEFAULT_SERVER_URL = '';
 const REQUEST_TIMEOUT_MS = 30_000;
+/** Submitting mints the receipt NFT synchronously (~10-20s). */
+const SUBMIT_TIMEOUT_MS = 90_000;
+/** A line request runs a full auction + mint synchronously. */
+const LINE_TIMEOUT_MS = 180_000;
 
 export function loadServerUrl(): string {
   if (typeof window !== 'undefined') {
@@ -29,7 +34,7 @@ export function saveServerUrl(url: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// Response types — mirror bingo-server/src/server.ts exactly.
+// Response types — mirror bingo-server/src/handler.ts exactly.
 // ---------------------------------------------------------------------------
 
 export interface BackendCell {
@@ -53,25 +58,15 @@ export interface PoolResponse {
   referralBps: number;
   minCardPriceWei: string;
   fairnessCommitment: Hex;
-  /** BingoCardReceipt contract (payout rail), when configured. */
-  receiptContract: Address | null;
+  /** BingoCardReceipt contract (submission record + payout rail). */
+  receiptContract: Address;
 }
-
-export type BackendLineStatus =
-  | 'pending'
-  | 'quoting'
-  | 'signing'
-  | 'submitting'
-  | 'done'
-  | 'failed';
 
 export interface CardLine {
   lineId: string;
   cellIndices: [number, number, number, number];
-  /** On-chain: the line's escrow predictor position is funded. */
+  /** On-chain: this line was minted at some point (escrow events). */
   funded: boolean;
-  status?: BackendLineStatus;
-  error?: string;
 }
 
 export interface CardResponse {
@@ -81,25 +76,14 @@ export interface CardResponse {
   player: Address;
   /** The 16 dealt cells, in grid reading order. */
   cells: BackendCell[];
-  /** Bit i = YES on cell i; null until submitted. */
+  /** Bit i = YES on cell i; null until submitted (from the receipt NFT). */
   yesMask: number | null;
   cardPriceWei: string | null;
+  /** Milliseconds; null until submitted. */
   submittedAt: number | null;
-  hasSession: boolean;
-  /** BingoCardReceipt NFT id, once minted (null if disabled/pending). */
+  /** BingoCardReceipt NFT id; null until submitted. */
   receiptTokenId: string | null;
   lines: CardLine[];
-}
-
-export interface PayoutRecord {
-  type: 'payout';
-  at: number;
-  player: Address;
-  poolId: string;
-  kind: 'bonus' | 'referral';
-  amountWei: string;
-  to: Address;
-  txHash?: string;
 }
 
 export interface EntitlementRow {
@@ -117,11 +101,10 @@ export interface EntitlementRow {
   bonusOwedWei: string | null;
   ref: Address | null;
   referralOwedWei: string | null;
-  /** Receipt NFT id + on-chain one-shot paid flags, when configured. */
+  /** Receipt NFT id + on-chain one-shot paid flags. */
   receiptTokenId: string | null;
   bonusPaidOnChain: boolean | null;
   referralPaidOnChain: boolean | null;
-  payouts: PayoutRecord[];
 }
 
 export interface EntitlementsResponse {
@@ -132,8 +115,17 @@ export interface EntitlementsResponse {
 }
 
 export interface SubmitCardResponse {
-  accepted: boolean;
   poolId: string;
+  /** The receipt NFT minted (or already existing) for this card. */
+  receiptTokenId: string;
+}
+
+export interface SubmitLineResponse {
+  lineIndex: number;
+  funded: boolean;
+  lineId?: string;
+  txHash?: string | null;
+  alreadyFunded?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -143,12 +135,10 @@ export interface SubmitCardResponse {
 async function request<T>(
   path: string,
   init: RequestInit = {},
+  timeoutMs = REQUEST_TIMEOUT_MS,
 ): Promise<T> {
   const controller = new AbortController();
-  const timer = window.setTimeout(
-    () => controller.abort(),
-    REQUEST_TIMEOUT_MS,
-  );
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   let res: Response;
   try {
     res = await fetch(`${loadServerUrl()}${path}`, {
@@ -191,32 +181,48 @@ export function fetchCard(player: Address): Promise<CardResponse> {
   );
 }
 
-export function postSession(
-  serialized: SerializedSession,
-): Promise<{ player: Address }> {
-  return request<{ player: Address }>('/api/session', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(serialized),
-  });
-}
-
+/** Records the submission: the backend mints the receipt NFT, locking
+ *  sides/price/referrer on-chain. Fund lines afterwards with submitLine. */
 export function submitCard(params: {
   player: Address;
   yesMask: number;
   cardPriceWei: string;
   ref?: Address | null;
+  session: SerializedSession;
 }): Promise<SubmitCardResponse> {
-  return request<SubmitCardResponse>('/api/card/submit', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      player: params.player,
-      yesMask: params.yesMask,
-      cardPriceWei: params.cardPriceWei,
-      ...(params.ref ? { ref: params.ref } : {}),
-    }),
-  });
+  return request<SubmitCardResponse>(
+    '/api/card/submit',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        player: params.player,
+        yesMask: params.yesMask,
+        cardPriceWei: params.cardPriceWei,
+        session: params.session,
+        ...(params.ref ? { ref: params.ref } : {}),
+      }),
+    },
+    SUBMIT_TIMEOUT_MS,
+  );
+}
+
+/** Funds one line (auction + mint), synchronously. Idempotent — an
+ *  already-funded line returns immediately. */
+export function submitLine(params: {
+  player: Address;
+  lineIndex: number;
+  session: SerializedSession;
+}): Promise<SubmitLineResponse> {
+  return request<SubmitLineResponse>(
+    '/api/card/line',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(params),
+    },
+    LINE_TIMEOUT_MS,
+  );
 }
 
 export function fetchEntitlements(
@@ -224,29 +230,6 @@ export function fetchEntitlements(
 ): Promise<EntitlementsResponse> {
   return request<EntitlementsResponse>('/api/admin/entitlements', {
     headers: { authorization: `Bearer ${adminToken}` },
-  });
-}
-
-/** Creates a new pool (becomes active immediately). The server generates a
- *  fresh fairness secret and returns its commitment. */
-export function postAdminPool(
-  adminToken: string,
-  pool: {
-    poolId: string;
-    cutoff: number;
-    minCardPriceWei: string;
-    referralBps: number;
-    multiplierBps: number[];
-    conditions: BackendCell[];
-  },
-): Promise<{ poolId: string; cutoff: number; fairnessCommitment: Hex }> {
-  return request('/api/admin/pool', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${adminToken}`,
-    },
-    body: JSON.stringify(pool),
   });
 }
 

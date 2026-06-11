@@ -1,22 +1,21 @@
-// Bonus + referral entitlement math — the same rules the old contract
-// enforced, computed off-chain against escrow + resolver state.
+// Bonus + referral entitlement math, computed entirely from chain state:
+// the receipt NFT (what was submitted), escrow PredictionCreated events
+// (which lines were funded — monotonic, survives redeems), and resolver
+// reads (line outcomes). No server records involved.
 
-import type { Address } from 'viem';
-import { cardSeed, drawCells } from './draw.js';
+import type { Hex } from 'viem';
+import { cardSeed, drawCells, poolSecret } from './draw.js';
 import {
   cellResolution,
-  lineFunded,
+  fundedPickConfigIds,
+  linePickConfigId,
   linePicks,
   type CellOutcome,
 } from './chain.js';
+import { env } from './config.js';
 import { buildLines, CELL_COUNT, LINES_PER_CARD } from './lines.js';
-import { receiptPaidState } from './receipt.js';
-import type { Store } from './store.js';
-import type {
-  CardSubmission,
-  EntitlementRow,
-  PoolRecord,
-} from './types.js';
+import { allChainSubmissions, type ChainSubmission } from './receipt.js';
+import type { EntitlementRow, PoolConfig } from './types.js';
 
 const BPS = 10_000n;
 
@@ -27,19 +26,16 @@ interface LineState {
 }
 
 async function lineStates(
-  record: PoolRecord,
-  store: Store,
-  submission: CardSubmission,
+  pool: PoolConfig,
+  submission: ChainSubmission,
 ): Promise<LineState[]> {
-  // Funded = journal record (monotonic — survives the player redeeming the
-  // position, which burns the tokens) OR live predictor-token balance (covers
-  // lines minted before the journal record existed).
-  const journaled = store.fundedLineIds(submission.player, submission.poolId);
+  const secret = poolSecret(env.SERVER_SECRET as Hex, pool.poolId);
   const cells = drawCells(
-    record.pool.conditions,
-    cardSeed(record.secret, record.pool.poolId, submission.player),
+    pool.conditions,
+    cardSeed(secret, pool.poolId, submission.player),
   );
   const lines = buildLines();
+  const funded = await fundedPickConfigIds(submission.player);
 
   // One resolver read per distinct cell, shared across the lines that use it.
   const resolutions = new Map<number, CellOutcome>();
@@ -52,40 +48,35 @@ async function lineStates(
     }),
   );
 
-  return Promise.all(
-    lines.map(async (line) => {
-      const picks = linePicks(line, cells, submission.yesMask);
-      const funded =
-        journaled.has(line.id) ||
-        (await lineFunded(submission.player, picks));
-      let lost = false;
-      let allAgree = true;
-      for (const idx of line.cellIndices) {
-        const declaredYes = (submission.yesMask & (1 << idx)) !== 0;
-        const res = resolutions.get(idx) ?? 'pending';
-        if (res === 'pending') {
-          allAgree = false;
-        } else if (res === 'tie' || (res === 'yes') !== declaredYes) {
-          // A decisive miss (or a tie) loses the line for good.
-          lost = true;
-        }
+  return lines.map((line) => {
+    const picks = linePicks(line, cells, submission.yesMask);
+    const isFunded = funded.has(linePickConfigId(picks).toLowerCase());
+    let lost = false;
+    let allAgree = true;
+    for (const idx of line.cellIndices) {
+      const declaredYes = (submission.yesMask & (1 << idx)) !== 0;
+      const res = resolutions.get(idx) ?? 'pending';
+      if (res === 'pending') {
+        allAgree = false;
+      } else if (res === 'tie' || (res === 'yes') !== declaredYes) {
+        // A decisive miss (or a tie) loses the line for good.
+        lost = true;
       }
-      const outcome: LineState['outcome'] = lost
-        ? 'lost'
-        : allAgree
-          ? 'won'
-          : 'open';
-      return { funded, outcome };
-    }),
-  );
+    }
+    const outcome: LineState['outcome'] = lost
+      ? 'lost'
+      : allAgree
+        ? 'won'
+        : 'open';
+    return { funded: isFunded, outcome };
+  });
 }
 
 export async function entitlementFor(
-  record: PoolRecord,
-  store: Store,
-  submission: CardSubmission,
+  pool: PoolConfig,
+  submission: ChainSubmission,
 ): Promise<EntitlementRow> {
-  const states = await lineStates(record, store, submission);
+  const states = await lineStates(pool, submission);
   const fundedStates = states.filter((s) => s.funded);
   const linesFunded = fundedStates.length;
   const complete = linesFunded === LINES_PER_CARD;
@@ -100,22 +91,16 @@ export async function entitlementFor(
     decided = fundedStates.every((s) => s.outcome !== 'open');
     const price = BigInt(submission.cardPriceWei);
     bonusOwedWei = (
-      (price * BigInt(record.pool.multiplierBps[wins] ?? 0)) /
+      (price * BigInt(pool.multiplierBps[wins] ?? 0)) /
       BPS
     ).toString();
     if (submission.ref) {
       referralOwedWei = (
-        (price * BigInt(record.pool.referralBps)) /
+        (price * BigInt(pool.referralBps)) /
         BPS
       ).toString();
     }
   }
-
-  // On-chain payout state from the receipt NFT, when configured.
-  const paid = await receiptPaidState(
-    submission.poolId,
-    submission.player,
-  ).catch(() => null);
 
   return {
     player: submission.player,
@@ -131,41 +116,24 @@ export async function entitlementFor(
     bonusOwedWei,
     ref: submission.ref,
     referralOwedWei,
-    receiptTokenId: paid?.tokenId.toString() ?? null,
-    bonusPaidOnChain: paid?.bonusPaid ?? null,
-    referralPaidOnChain: paid?.referralPaid ?? null,
+    receiptTokenId: submission.tokenId.toString(),
+    bonusPaidOnChain: submission.bonusPaid,
+    referralPaidOnChain: submission.referralPaid,
   };
 }
 
-/** Every submission across every known pool — the admin payout worklist. */
-export async function allEntitlements(store: Store): Promise<EntitlementRow[]> {
+/** Every submission on the chain, joined against the configured pools — the
+ *  admin payout worklist. */
+export async function allEntitlements(
+  pools: readonly PoolConfig[],
+): Promise<EntitlementRow[]> {
+  const byId = new Map(pools.map((p) => [p.poolId, p]));
   const rows: EntitlementRow[] = [];
-  // Sequential on purpose: each row already fans out ~26 RPC reads.
-  for (const s of store.allSubmissions()) {
-    const record = store.getPool(s.poolId);
-    if (!record) continue; // pool predates the journal — not resolvable
-    rows.push(await entitlementFor(record, store, s));
+  // Sequential on purpose: each row already fans out ~17 RPC reads.
+  for (const s of await allChainSubmissions()) {
+    const pool = byId.get(s.poolId);
+    if (!pool) continue; // pool no longer in config — not resolvable
+    rows.push(await entitlementFor(pool, s));
   }
   return rows;
-}
-
-/** Per-card line funded flags, used by GET /card. */
-export async function fundedFlags(
-  record: PoolRecord,
-  store: Store,
-  player: Address,
-  yesMask: number,
-): Promise<boolean[]> {
-  const cells = drawCells(
-    record.pool.conditions,
-    cardSeed(record.secret, record.pool.poolId, player),
-  );
-  const journaled = store.fundedLineIds(player, record.pool.poolId);
-  return Promise.all(
-    buildLines().map(
-      async (line) =>
-        journaled.has(line.id) ||
-        lineFunded(player, linePicks(line, cells, yesMask)),
-    ),
-  );
 }

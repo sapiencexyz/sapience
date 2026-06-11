@@ -15,7 +15,6 @@ import {
   fetchEntitlements,
   fetchPool,
   postAdminLogin,
-  postAdminPool,
   type EntitlementsResponse,
   type PoolResponse,
 } from '../lib/backendApi';
@@ -175,31 +174,6 @@ export default function AdminScreen() {
     }
   };
 
-  // ---- pool creation ----
-
-  const [poolJson, setPoolJson] = useState('');
-  const [poolCreating, setPoolCreating] = useState(false);
-  const [poolCreateMsg, setPoolCreateMsg] = useState<string | null>(null);
-
-  const createPool = async () => {
-    const t = token.trim();
-    if (!t || !poolJson.trim()) return;
-    setPoolCreating(true);
-    setPoolCreateMsg(null);
-    try {
-      const parsed = JSON.parse(poolJson);
-      const created = await postAdminPool(t, parsed);
-      setPoolCreateMsg(
-        `Pool ${created.poolId} is live — commitment ${created.fairnessCommitment}`,
-      );
-      setPool(await fetchPool());
-    } catch (e) {
-      setPoolCreateMsg(e instanceof Error ? e.message : String(e));
-    } finally {
-      setPoolCreating(false);
-    }
-  };
-
   return (
     <main>
       <Nav />
@@ -234,34 +208,6 @@ export default function AdminScreen() {
             <div className="mono small">{pool.fairnessCommitment}</div>
           </div>
         )}
-      </section>
-
-      <section className="screen admin-section">
-        <h2>Create pool</h2>
-        <p className="muted small">
-          Paste a pool config (poolId, cutoff, minCardPriceWei, referralBps,
-          multiplierBps[11], conditions[≥16]). It becomes the active pool
-          immediately with a fresh fairness commitment; old pools keep
-          resolving for existing cards. Requires admin sign-in below.
-        </p>
-        <textarea
-          className="admin-input"
-          rows={6}
-          placeholder='{"poolId": "world-cup-…", "cutoff": 1781…, …}'
-          value={poolJson}
-          onChange={(e) => setPoolJson(e.target.value)}
-        />
-        <div className="admin-row">
-          <button
-            type="button"
-            className="primary"
-            disabled={poolCreating || !token.trim() || !poolJson.trim()}
-            onClick={createPool}
-          >
-            {poolCreating ? 'Creating…' : 'Create pool'}
-          </button>
-        </div>
-        {poolCreateMsg && <p className="muted small">{poolCreateMsg}</p>}
       </section>
 
       <section className="screen admin-section">
@@ -378,17 +324,6 @@ export default function AdminScreen() {
                   <div className="mono">
                     {fmtUnits(wei(r.referralOwedWei))}
                     {r.referralPaidOnChain ? ' (paid ✓)' : ''}
-                  </div>
-                  <div>Payouts</div>
-                  <div className="mono small">
-                    {r.payouts.length === 0
-                      ? '—'
-                      : r.payouts
-                          .map(
-                            (p) =>
-                              `${p.kind} ${fmtUnits(wei(p.amountWei))} → ${shortAddress(p.to)}`,
-                          )
-                          .join('; ')}
                   </div>
                 </div>
                 {r.receiptTokenId && (

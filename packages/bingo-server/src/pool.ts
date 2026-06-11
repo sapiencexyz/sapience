@@ -5,10 +5,20 @@ import type { PoolConfig } from './types.js';
 
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
 
-/** Loads and validates the pool config file (the bootstrap pool — admin-
- *  created pools arrive via POST /api/admin/pool and live in the journal). */
-export function loadPool(path: string): PoolConfig {
-  return validatePool(JSON.parse(readFileSync(path, 'utf8')));
+/** Loads the pool config file: a single pool object or an array of pools
+ *  (the last entry is the active pool; earlier entries stay resolvable so
+ *  historical cards keep their layouts). Pools are deployment config —
+ *  rotating pools is a config change, not server state. */
+export function loadPools(path: string): PoolConfig[] {
+  const raw = JSON.parse(readFileSync(path, 'utf8')) as unknown;
+  const list = Array.isArray(raw) ? raw : [raw];
+  if (list.length === 0) throw new Error('pool file: no pools');
+  const pools = list.map(validatePool);
+  const ids = new Set(pools.map((p) => p.poolId));
+  if (ids.size !== pools.length) {
+    throw new Error('pool file: duplicate poolId');
+  }
+  return pools;
 }
 
 /** Validates a pool object. Throws on anything that would make cards
