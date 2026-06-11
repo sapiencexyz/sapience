@@ -215,17 +215,24 @@ const Comments = ({
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const query = /* GraphQL */ `
-        query ConditionsByIds($where: ConditionWhereInput!) {
-          conditions(where: $where, take: 100) {
-            id
-            question
-            shortName
-            endTime
-            description
-            resolver
-            category {
-              slug
+      // v2 document — untagged so graphql-eslint (v1 schema) skips it.
+      const query = `
+        query ConditionsByIds($ids: [Bytes!]!) {
+          conditions(
+            first: 100
+            orderBy: { field: CREATED_AT, direction: DESC }
+            filter: { conditionIds: $ids }
+          ) {
+            nodes {
+              id: conditionId
+              question
+              shortName
+              endTime
+              description
+              resolver
+              category {
+                slug
+              }
             }
           }
         }

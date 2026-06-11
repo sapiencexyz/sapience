@@ -6,6 +6,7 @@ export * from './positions';
 export * from './forecasts';
 export * from './leaderboard';
 export * from './analytics';
+export * from './protocol';
 export * from './questions';
 export * from './pickConfigurations';
 export * from './tags';

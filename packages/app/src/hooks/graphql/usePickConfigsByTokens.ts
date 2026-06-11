@@ -2,59 +2,37 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
-import type { PickConfigData, PickData } from '~/hooks/graphql/usePositions';
+import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import {
+  PICK_CONFIGURATION_V2_FIELDS,
+  toPickConfigData,
+  type AdaptedPickConfigData,
+  type AdaptedPickData,
+  type PickConfigurationV2Node,
+} from '~/lib/adapters/pickConfig';
 
-// tokens arg on pickConfigurations added in PR #1440. `picks.condition`
-// is fetched inline so callers can build their conditionsMap from a
-// single round trip — see Pick resolver + pickConfigurations resolver.
-const PICK_CONFIGS_BY_TOKENS_QUERY = `
-  query PickConfigsByTokens($tokens: [String!]) {
-    pickConfigurations(tokens: $tokens, take: 100) {
-      id
-      chainId
-      marketAddress
-      totalPredictorCollateral
-      totalCounterpartyCollateral
-      claimedPredictorCollateral
-      claimedCounterpartyCollateral
-      resolved
-      result
-      resolvedAt
-      predictorToken
-      counterpartyToken
-      endsAt
-      isLegacy
-      picks {
-        id
-        pickConfigId
-        conditionResolver
-        conditionId
-        predictedOutcome
-        condition {
-          id
-          shortName
-          optionName
-          question
-          description
-          endTime
-          resolver
-          settled
-          resolvedToYes
-          nonDecisive
-          estimatedPrice
-          category {
-            slug
-          }
-        }
+// `picks.condition` is fetched inline so callers can build their
+// conditionsMap from a single round trip. v2: tokens move into `filter`,
+// `take` becomes `first`, and orderBy is explicit (v2 defaults can differ
+// from v1's). Node mapping (escrow → marketAddress, resolver →
+// conditionResolver, YES/NO → 1/0, …) lives in the shared adapter.
+export const PICK_CONFIGS_BY_TOKENS_QUERY = `
+  query PickConfigsByTokens($tokens: [Address!]) {
+    pickConfigurations(
+      filter: { tokens: $tokens }
+      first: 100
+      orderBy: { field: CREATED_AT, direction: DESC }
+    ) {
+      nodes {
+        ${PICK_CONFIGURATION_V2_FIELDS}
       }
     }
   }
 `;
 
 export type TokenPickConfig = {
-  pickConfig: PickConfigData;
-  picks: PickData[];
+  pickConfig: AdaptedPickConfigData;
+  picks: AdaptedPickData[];
   isPredictorToken: boolean;
 };
 
@@ -72,10 +50,10 @@ export function usePickConfigsByTokens(tokens: string[]) {
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{
-        pickConfigurations: PickConfigData[];
+      const resp = await graphqlRequestV2<{
+        pickConfigurations: { nodes: PickConfigurationV2Node[] } | null;
       }>(PICK_CONFIGS_BY_TOKENS_QUERY, { tokens: sorted });
-      return resp?.pickConfigurations ?? [];
+      return (resp?.pickConfigurations?.nodes ?? []).map(toPickConfigData);
     },
   });
 

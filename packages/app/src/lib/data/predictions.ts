@@ -1,7 +1,7 @@
 // Prediction data types, queries, and fetch helpers.
 // Shared across SSR pages, client components, and OG image routes.
 
-import { getGraphQLEndpoint } from './graphql';
+import { getGraphQLEndpoint, getGraphQLEndpointV2 } from './graphql';
 
 export const PREDICTION_BY_ID_QUERY = `
   query Prediction($id: String!) {
@@ -39,18 +39,26 @@ export const PREDICTION_BY_ID_QUERY = `
   }
 `;
 
+// v2 document — runs against the /v2/graphql endpoint. Variables: { ids }.
+// `id: conditionId` keeps the CTF hash under the stable `id` name.
 export const CONDITIONS_BY_IDS_QUERY = `
-  query ConditionsByIds($where: ConditionWhereInput!) {
-    conditions(where: $where, take: 100) {
-      id
-      question
-      shortName
-      endTime
-      settled
-      resolvedToYes
-      nonDecisive
-      resolver
-      category { slug }
+  query ConditionsByIds($ids: [Bytes!]!) {
+    conditions(
+      first: 100
+      orderBy: { field: CREATED_AT, direction: DESC }
+      filter: { conditionIds: $ids }
+    ) {
+      nodes {
+        id: conditionId
+        question
+        shortName
+        endTime
+        settled
+        resolvedToYes
+        nonDecisive
+        resolver
+        category { slug }
+      }
     }
   }
 `;
@@ -131,17 +139,17 @@ export async function fetchPredictionWithConditions(
 
   let conditions: (ConditionData & { id: string })[] = [];
   try {
-    const condResp = await fetch(endpoint, {
+    const condResp = await fetch(getGraphQLEndpointV2(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: CONDITIONS_BY_IDS_QUERY,
-        variables: { where: { id: { in: conditionIds } } },
+        variables: { ids: conditionIds },
       }),
     });
     if (condResp.ok) {
       const condJson = await condResp.json();
-      conditions = condJson?.data?.conditions ?? [];
+      conditions = condJson?.data?.conditions?.nodes ?? [];
     }
   } catch {
     // Condition fetch is non-critical

@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import {
-  fetchOpenInterestByCategory,
-  fetchOpenInterestByTimeToResolution,
+  fetchProtocolAnalytics,
   fetchProtocolStats,
   type CategoryOpenInterest,
+  type ProtocolAnalytics,
   type ProtocolStat,
   type TimeToResolutionBucket,
 } from '@sapience/sdk/queries';
 
 const CACHE_TIME_MS = 60 * 1000;
 
+// v1 — still backs the vault pages (VaultsPageContent, VaultPnlChart).
+// The protocol analytics dashboard uses `useProtocolAnalytics` (v2) below.
 export function useProtocolStats(vaultAddress?: string) {
   return useQuery<ProtocolStat[]>({
     queryKey: ['protocolStats', vaultAddress?.toLowerCase() ?? null],
@@ -19,25 +21,30 @@ export function useProtocolStats(vaultAddress?: string) {
   });
 }
 
-export function useOpenInterestByCategory() {
-  return useQuery<CategoryOpenInterest[]>({
-    queryKey: ['openInterestByCategory'],
-    queryFn: fetchOpenInterestByCategory,
+/**
+ * v2 protocol analytics: live stats, the recorded snapshot series and both
+ * open-interest breakdowns in a single `protocol { ... }` query.
+ */
+export function useProtocolAnalytics() {
+  return useQuery<ProtocolAnalytics>({
+    queryKey: ['protocolAnalytics'],
+    queryFn: () => fetchProtocolAnalytics(),
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
   });
 }
 
-export function useOpenInterestByTimeToResolution() {
-  return useQuery<TimeToResolutionBucket[]>({
-    queryKey: ['openInterestByTimeToResolution'],
-    queryFn: fetchOpenInterestByTimeToResolution,
-    staleTime: CACHE_TIME_MS,
-    refetchInterval: CACHE_TIME_MS,
-  });
-}
-
-export type { CategoryOpenInterest, ProtocolStat, TimeToResolutionBucket };
+export type {
+  CategoryOpenInterest,
+  ProtocolAnalytics,
+  ProtocolStat,
+  TimeToResolutionBucket,
+};
+export type {
+  ProtocolAnalyticsStat,
+  ProtocolCategoryOpenInterest,
+  ProtocolTimeToResolutionBucket,
+} from '@sapience/sdk/queries';
 
 /**
  * Protocol TVL = escrow balance + undeployed vault funds (wei).

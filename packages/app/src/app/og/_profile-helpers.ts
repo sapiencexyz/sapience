@@ -1,43 +1,56 @@
 // Profile-specific helpers for OG image generation
 
-import { isAddress, getAddress } from 'viem';
-import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
+import { isAddress } from 'viem';
+import { formatUnits } from './_prediction-helpers';
+import { getGraphQLEndpointV2 } from '~/lib/data/graphql';
 import { mainnetClient } from '~/lib/utils/util';
 import { getEnsAvatarUrlForAddress } from '~/lib/ens/avatar';
 import { SCHEMA_UID } from '~/lib/constants';
 
-// ---------- GraphQL queries ----------
+// ---------- GraphQL queries (v2 transport) ----------
 
-const ALL_TIME_PROFIT_LEADERBOARD_QUERY = `
-  query ProfitLeaderboard($limit: Int) {
-    profitLeaderboard(limit: $limit) {
-      address
-      totalPnL
+const PROFIT_RANK_QUERY = `
+  query ProfileProfitRank($address: Address!) {
+    account(address: $address) {
+      ranking(metric: PNL) {
+        rank
+        pnlFormatted
+      }
+    }
+    leaderboard(metric: PNL, first: 0) {
+      totalCount
     }
   }
 `;
 
 const ACCURACY_RANK_QUERY = `
-  query AccountAccuracyRank($address: String!) {
-    accountAccuracyRank(address: $address) {
-      address
-      accuracyScore
-      rank
-      totalForecasters
+  query ProfileAccuracyRank($address: Address!) {
+    account(address: $address) {
+      ranking(metric: ACCURACY) {
+        rank
+        accuracy
+      }
+    }
+    leaderboard(metric: ACCURACY, first: 0) {
+      totalCount
     }
   }
 `;
 
 const TRADING_VOLUME_QUERY = `
-  query TradingVolume($address: String!) {
-    accountTotalVolume(address: $address)
+  query TradingVolume($address: Address!) {
+    account(address: $address) {
+      stats {
+        totalVolume
+      }
+    }
   }
 `;
 
-const ATTESTATIONS_COUNT_QUERY = `
-  query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
-    attestations(where: $where, orderBy: { time: desc }, take: $take) {
-      id
+const FORECASTS_COUNT_QUERY = `
+  query ProfileForecastsCount($attester: Address!, $schemaId: String!) {
+    forecasts(filter: { attester: $attester, schemaId: $schemaId }, first: 0) {
+      totalCount
     }
   }
 `;
@@ -63,7 +76,7 @@ export interface EnsInfo {
 // ---------- Helpers ----------
 
 async function gqlFetch<T>(query: string, variables?: object): Promise<T> {
-  const res = await fetch(getGraphQLEndpoint(), {
+  const res = await fetch(getGraphQLEndpointV2(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),
@@ -75,27 +88,26 @@ async function gqlFetch<T>(query: string, variables?: object): Promise<T> {
 
 // ---------- Data fetchers ----------
 
+// v2: server-side `account.ranking(metric: PNL)` ranks over the FULL
+// population (v1 sorted the fetched top-100 client-side, so ranks beyond
+// 100 were null and totalParticipants was capped at 100).
 async function fetchProfitRank(address: string): Promise<{
   totalPnL: number | null;
   rank: number | null;
   totalParticipants: number;
 }> {
   const data = await gqlFetch<{
-    profitLeaderboard: Array<{ address: string; totalPnL: string }>;
-  }>(ALL_TIME_PROFIT_LEADERBOARD_QUERY, { limit: 100 });
+    account: {
+      ranking: { rank: number; pnlFormatted: string } | null;
+    } | null;
+    leaderboard: { totalCount: number } | null;
+  }>(PROFIT_RANK_QUERY, { address: address.toLowerCase() });
 
-  const entries = data?.profitLeaderboard || [];
-  const sorted = entries.sort(
-    (a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL)
-  );
-  const addressLc = address.toLowerCase();
-  const idx = sorted.findIndex((e) => e.address.toLowerCase() === addressLc);
-  const entry = idx >= 0 ? sorted[idx] : null;
-
+  const ranking = data?.account?.ranking ?? null;
   return {
-    totalPnL: entry ? parseFloat(entry.totalPnL) : null,
-    rank: idx >= 0 ? idx + 1 : null,
-    totalParticipants: sorted.length,
+    totalPnL: ranking ? parseFloat(ranking.pnlFormatted) : null,
+    rank: ranking?.rank ?? null,
+    totalParticipants: data?.leaderboard?.totalCount ?? 0,
   };
 }
 
@@ -105,29 +117,31 @@ async function fetchAccuracyRank(address: string): Promise<{
   totalForecasters: number;
 }> {
   const data = await gqlFetch<{
-    accountAccuracyRank: {
-      accuracyScore: number;
-      rank: number | null;
-      totalForecasters: number;
-    };
+    account: {
+      ranking: { rank: number; accuracy: number | null } | null;
+    } | null;
+    leaderboard: { totalCount: number } | null;
   }>(ACCURACY_RANK_QUERY, { address: address.toLowerCase() });
 
-  const r = data?.accountAccuracyRank;
-  if (!r) return { accuracyScore: null, rank: null, totalForecasters: 0 };
+  const ranking = data?.account?.ranking ?? null;
+  const totalForecasters = data?.leaderboard?.totalCount ?? 0;
+  if (!ranking) return { accuracyScore: null, rank: null, totalForecasters };
   return {
-    accuracyScore: r.accuracyScore ?? null,
-    rank: r.rank,
-    totalForecasters: r.totalForecasters ?? 0,
+    // v2 Ranking.accuracy carries the SAME raw avg(twError) scale as v1's
+    // accuracyScore (parity-verified identity; the SDL's old "0-1" doc was
+    // wrong) — pass through unscaled; the OG route Math.rounds it as before.
+    accuracyScore: ranking.accuracy != null ? ranking.accuracy : 0,
+    rank: ranking.rank,
+    totalForecasters,
   };
 }
 
 async function fetchVolume(address: string): Promise<string | null> {
-  const data = await gqlFetch<{ accountTotalVolume: string }>(
-    TRADING_VOLUME_QUERY,
-    { address: address.toLowerCase() }
-  );
+  const data = await gqlFetch<{
+    account: { stats: { totalVolume: string | number } } | null;
+  }>(TRADING_VOLUME_QUERY, { address: address.toLowerCase() });
 
-  const volumeWei = data?.accountTotalVolume || '0';
+  const volumeWei = String(data?.account?.stats?.totalVolume ?? '0');
   const formatted = formatUnits(volumeWei, 18);
   const num = Number(formatted);
   if (!Number.isFinite(num) || num === 0) return null;
@@ -138,25 +152,17 @@ async function fetchVolume(address: string): Promise<string | null> {
 }
 
 async function fetchForecastsCount(address: string): Promise<number | null> {
-  // Normalize address for the attester filter
-  let normalizedAddress = address;
-  try {
-    normalizedAddress = getAddress(address);
-  } catch {
-    // keep original
-  }
-
+  // v2 `forecasts` is a Relay connection; `first: 0` is a legal count-only
+  // query. Unlike the v1 `take: 100` page fetch, the count is exact (not
+  // capped at 100). The Address scalar canonicalizes to lowercase.
   const data = await gqlFetch<{
-    attestations: Array<{ id: string }>;
-  }>(ATTESTATIONS_COUNT_QUERY, {
-    where: {
-      schemaId: { equals: SCHEMA_UID },
-      AND: [{ attester: { equals: normalizedAddress } }],
-    },
-    take: 100,
+    forecasts: { totalCount: number } | null;
+  }>(FORECASTS_COUNT_QUERY, {
+    attester: address.toLowerCase(),
+    schemaId: SCHEMA_UID,
   });
 
-  const count = data?.attestations?.length;
+  const count = data?.forecasts?.totalCount;
   return count != null ? count : null;
 }
 

@@ -177,11 +177,11 @@ function decodeOptionId(id: string): {
 
 function createColumns(
   predictionMapRef: React.RefObject<Record<string, number>>,
-  expandedGroupIdsRef: React.RefObject<Set<number>>,
+  expandedGroupIdsRef: React.RefObject<Set<string>>,
   volumeMetricRef: React.RefObject<VolumeMetric>,
   volumeWindowRef: React.RefObject<VolumeWindow | null>,
   filterVolumeRef: React.RefObject<boolean>,
-  onToggleExpand: (groupId: number) => void,
+  onToggleExpand: (groupId: string) => void,
   onPrediction: (conditionId: string, p: number) => void,
   onSelectMetricOption: (id: MetricOptionId) => void,
   onToggleFilterVolume: () => void
@@ -860,18 +860,18 @@ export default function QuestionsTable({
   );
 
   // Expand/collapse state for groups
-  const [expandedGroupIds, setExpandedGroupIds] = React.useState<Set<number>>(
+  const [expandedGroupIds, setExpandedGroupIds] = React.useState<Set<string>>(
     new Set()
   );
   // Ref for expand state so column defs can access it without recreating columns
-  const expandedGroupIdsRef = React.useRef<Set<number>>(expandedGroupIds);
+  const expandedGroupIdsRef = React.useRef<Set<string>>(expandedGroupIds);
   expandedGroupIdsRef.current = expandedGroupIds;
 
   // Prediction probabilities — throttled to avoid re-rendering on every quote tick
   const { predictionMap, predictionMapRef, handlePrediction } =
     usePredictionMap();
 
-  const handleToggleExpand = React.useCallback((groupId: number) => {
+  const handleToggleExpand = React.useCallback((groupId: string) => {
     setExpandedGroupIds((prev) => {
       const next = new Set(prev);
       if (next.has(groupId)) {

@@ -111,6 +111,9 @@ export default function ProfileQuickMetrics({
 
   const pnlNumber = Number(profit?.totalPnL || 0);
 
+  // v2 Ranking.accuracy carries the SAME raw avg(twError) scale as v1's
+  // accuracyScore (parity-verified identity; the SDL's old "0-1" doc was
+  // wrong) — render exactly as v1 did.
   const accValue = accuracyLoading
     ? '—'
     : Number.isFinite(accuracy?.accuracyScore || 0)

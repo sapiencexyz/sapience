@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import type React from 'react';
 import { OutcomeSide } from '@sapience/sdk/types';
 
@@ -33,6 +33,9 @@ import {
   CreatePositionProvider,
   useCreatePositionContext,
 } from '../CreatePositionContext';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
+
+const mockFetchConditionsByIds = vi.mocked(fetchConditionsByIds);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,6 +58,64 @@ function makeSelection(overrides: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+describe('CreatePositionContext — settled-condition pruning (v2 contract)', () => {
+  const STORAGE_KEY_SELECTIONS = 'sapience:position-selections';
+
+  function seedSelections(conditionIds: string[]) {
+    store[STORAGE_KEY_SELECTIONS] = JSON.stringify(
+      conditionIds.map((conditionId, i) => ({
+        id: `sel-${i}`,
+        conditionId,
+        question: `Q ${i}`,
+        prediction: true,
+      }))
+    );
+  }
+
+  beforeEach(() => {
+    for (const key of Object.keys(store)) delete store[key];
+    mockFetchConditionsByIds.mockReset();
+    mockFetchConditionsByIds.mockResolvedValue([]);
+  });
+
+  it('rehydrates with a v2 conditions-by-ids document', async () => {
+    seedSelections(['0xaaa', '0xbbb']);
+
+    renderHook(() => useCreatePositionContext(), { wrapper });
+
+    await waitFor(() => expect(mockFetchConditionsByIds).toHaveBeenCalled());
+    const [query, ids] = mockFetchConditionsByIds.mock.calls[0];
+
+    // v2 contract: $ids variable, conditionIds filter, hash aliased onto id,
+    // connection nodes, explicit orderBy. No v1 vocabulary.
+    expect(query).toContain('$ids: [Bytes!]!');
+    expect(query).toContain('filter: { conditionIds: $ids }');
+    expect(query).toContain('id: conditionId');
+    expect(query).toContain('nodes');
+    expect(query).toContain('orderBy: { field: CREATED_AT, direction: DESC }');
+    expect(query).not.toContain('ConditionWhereInput');
+    expect(ids).toEqual(['0xaaa', '0xbbb']);
+  });
+
+  it('prunes settled conditions from the slip using mapped { id, settled } rows', async () => {
+    seedSelections(['0xaaa', '0xbbb']);
+    mockFetchConditionsByIds.mockResolvedValue([
+      { id: '0xaaa', settled: true },
+      { id: '0xbbb', settled: false },
+    ]);
+
+    const { result } = renderHook(() => useCreatePositionContext(), {
+      wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.selections.map((s) => s.conditionId)).toEqual([
+        '0xbbb',
+      ]);
+    });
+  });
+});
 
 describe('CreatePositionContext — predictedOutcome mapping', () => {
   beforeEach(() => {
