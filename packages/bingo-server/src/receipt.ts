@@ -1,7 +1,7 @@
-// Mints the BingoCardReceipt NFT for a submitted card: the on-chain record
-// of (player, pool, fairness seed, sides, price, referrer) and the payout
-// rail for bonus/referral transfers. Optional — disabled unless the contract
-// address and minter key are configured.
+// The BingoCardReceipt NFT is the system's database: minting it is the
+// durable record of a submission (player, pool, fairness seed, sides, price,
+// referrer), and it is the payout rail for bonus/referral transfers. The
+// server itself stores nothing — every read here goes to the chain.
 //
 // The minter is a ZeroDev kernel smart account owned by MINTER_PRIVATE_KEY,
 // and mints go through the same bundler + paymaster the player sessions use —
@@ -13,6 +13,7 @@ import {
   encodeFunctionData,
   http,
   keccak256,
+  parseAbiItem,
   stringToBytes,
   zeroAddress,
   type Address,
@@ -30,7 +31,8 @@ import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
 import { etherealTestnetChain } from '@sapience/sdk/constants';
 import { env } from './config.js';
 import { CHAIN_ID, getPublicClient, zeroDevUrl } from './session.js';
-import type { CardSubmission } from './types.js';
+
+const RECEIPT_ADDRESS = env.RECEIPT_CONTRACT_ADDRESS as Address;
 
 const RECEIPT_ABI = [
   {
@@ -75,8 +77,23 @@ const RECEIPT_ABI = [
   },
 ] as const;
 
-export function receiptEnabled(): boolean {
-  return !!env.RECEIPT_CONTRACT_ADDRESS && !!env.MINTER_PRIVATE_KEY;
+const CARD_MINTED_EVENT = parseAbiItem(
+  'event CardReceiptMinted(uint256 indexed tokenId, address indexed player, bytes32 indexed poolHash, string poolId, bytes32 seed, uint16 yesMask, uint256 cardPrice, address referrer)',
+);
+
+/** A submission, as recorded on the chain. */
+export interface ChainSubmission {
+  tokenId: bigint;
+  player: Address;
+  poolId: string;
+  seed: Hex;
+  yesMask: number;
+  cardPriceWei: string;
+  ref: Address | null;
+  /** Unix seconds (block timestamp of the mint). */
+  submittedAt: number;
+  bonusPaid: boolean;
+  referralPaid: boolean;
 }
 
 let minterClientPromise: Promise<KernelAccountClient> | null = null;
@@ -119,105 +136,151 @@ function getMinterClient(): Promise<KernelAccountClient> {
 }
 
 /** The minter smart-account address — set this as `minter` on the contract. */
-export async function minterAddress(): Promise<Address | null> {
-  if (!receiptEnabled()) return null;
+export async function minterAddress(): Promise<Address> {
   const client = await getMinterClient();
-  return client.account?.address ?? null;
+  const a = client.account?.address;
+  if (!a) throw new Error('Minter client has no account');
+  return a;
 }
 
-/** On-chain payout state from the receipt NFT, or null when there is no
- *  receipt (contract disabled or not yet minted). */
-export async function receiptPaidState(
-  poolId: string,
-  player: Address,
-): Promise<{
-  tokenId: bigint;
-  bonusPaid: boolean;
-  referralPaid: boolean;
-} | null> {
-  const tokenId = await receiptTokenId(poolId, player);
-  if (tokenId == null) return null;
-  const meta = (await getPublicClient().readContract({
-    address: env.RECEIPT_CONTRACT_ADDRESS as Address,
-    abi: RECEIPT_ABI,
-    functionName: 'cardMeta',
-    args: [tokenId],
-  })) as readonly [
-    Hex,
-    Hex,
-    Address,
-    bigint,
-    number,
-    bigint,
-    boolean,
-    boolean,
-  ];
-  return { tokenId, bonusPaid: meta[6], referralPaid: meta[7] };
+export function poolHash(poolId: string): Hex {
+  return keccak256(stringToBytes(poolId));
 }
 
-/** The already-minted receipt for (pool, player), or null. */
+/** The already-minted receipt id for (pool, player), or null. */
 export async function receiptTokenId(
   poolId: string,
   player: Address,
 ): Promise<bigint | null> {
-  if (!env.RECEIPT_CONTRACT_ADDRESS) return null;
   const id = (await getPublicClient().readContract({
-    address: env.RECEIPT_CONTRACT_ADDRESS as Address,
+    address: RECEIPT_ADDRESS,
     abi: RECEIPT_ABI,
     functionName: 'tokenOfPlayerPool',
-    args: [keccak256(stringToBytes(poolId)), player],
+    args: [poolHash(poolId), player],
   })) as bigint;
   return id === 0n ? null : id;
 }
 
-/** Idempotently mints the receipt for a submission. Failures are logged, not
- *  thrown — the receipt is the public record, not a gate on play. */
-export async function ensureReceiptMinted(
-  sub: CardSubmission,
-  seed: Hex,
-): Promise<void> {
-  if (!receiptEnabled()) return;
-  try {
-    const existing = await receiptTokenId(sub.poolId, sub.player);
-    if (existing != null) return;
+/** The chain's record of a (pool, player) submission, or null if none. */
+export async function chainSubmission(
+  poolId: string,
+  player: Address,
+): Promise<ChainSubmission | null> {
+  const tokenId = await receiptTokenId(poolId, player);
+  if (tokenId == null) return null;
+  const meta = (await getPublicClient().readContract({
+    address: RECEIPT_ADDRESS,
+    abi: RECEIPT_ABI,
+    functionName: 'cardMeta',
+    args: [tokenId],
+  })) as readonly [Hex, Hex, Address, bigint, number, bigint, boolean, boolean];
+  return {
+    tokenId,
+    player,
+    poolId,
+    seed: meta[1],
+    ref: meta[2] === zeroAddress ? null : meta[2],
+    submittedAt: Number(meta[3]),
+    yesMask: meta[4],
+    cardPriceWei: meta[5].toString(),
+    bonusPaid: meta[6],
+    referralPaid: meta[7],
+  };
+}
 
-    const client = await getMinterClient();
-    const account = client.account;
-    if (!account) throw new Error('Minter client has no account');
-    const opHash = await client.sendUserOperation({
-      callData: await account.encodeCalls([
-        {
-          to: env.RECEIPT_CONTRACT_ADDRESS as Address,
-          value: 0n,
-          data: encodeFunctionData({
-            abi: RECEIPT_ABI,
-            functionName: 'mint',
-            args: [
-              sub.player,
-              sub.poolId,
-              seed,
-              sub.yesMask,
-              BigInt(sub.cardPriceWei),
-              sub.ref ?? zeroAddress,
-            ],
-          }),
-        },
-      ]),
-    });
-    const receipt = await client.waitForUserOperationReceipt({ hash: opHash });
-    if (!receipt.success) {
-      throw new Error(
-        `Receipt mint reverted${receipt.reason ? `: ${receipt.reason}` : ''}`,
-      );
-    }
-    console.log(
-      `[receipt] minted for ${sub.player} pool=${sub.poolId} ` +
-        `tx=${receipt.receipt?.transactionHash ?? opHash}`,
-    );
-  } catch (e) {
-    console.error(
-      `[receipt] mint failed for ${sub.player} pool=${sub.poolId}:`,
-      e,
+/** Every submission ever, from CardReceiptMinted events + current paid
+ *  flags. The admin's payout worklist — no server records involved. */
+export async function allChainSubmissions(): Promise<ChainSubmission[]> {
+  const publicClient = getPublicClient();
+  const logs = await publicClient.getLogs({
+    address: RECEIPT_ADDRESS,
+    event: CARD_MINTED_EVENT,
+    fromBlock: BigInt(env.LOG_FROM_BLOCK),
+    toBlock: 'latest',
+  });
+  return Promise.all(
+    logs.map(async (log) => {
+      const { tokenId, player, poolId, seed, yesMask, cardPrice, referrer } =
+        log.args;
+      const meta = (await publicClient.readContract({
+        address: RECEIPT_ADDRESS,
+        abi: RECEIPT_ABI,
+        functionName: 'cardMeta',
+        args: [tokenId!],
+      })) as readonly [
+        Hex,
+        Hex,
+        Address,
+        bigint,
+        number,
+        bigint,
+        boolean,
+        boolean,
+      ];
+      return {
+        tokenId: tokenId!,
+        player: player!,
+        poolId: poolId!,
+        seed: seed!,
+        yesMask: yesMask!,
+        cardPriceWei: cardPrice!.toString(),
+        ref: referrer && referrer !== zeroAddress ? referrer : null,
+        submittedAt: Number(meta[3]),
+        bonusPaid: meta[6],
+        referralPaid: meta[7],
+      };
+    }),
+  );
+}
+
+/** Mints the receipt — THE act that records a submission. Idempotent: an
+ *  existing receipt is returned as-is. Throws on failure (no record, no
+ *  card). */
+export async function mintReceipt(params: {
+  player: Address;
+  poolId: string;
+  seed: Hex;
+  yesMask: number;
+  cardPriceWei: string;
+  ref: Address | null;
+}): Promise<ChainSubmission> {
+  const existing = await chainSubmission(params.poolId, params.player);
+  if (existing) return existing;
+
+  const client = await getMinterClient();
+  const account = client.account;
+  if (!account) throw new Error('Minter client has no account');
+  const opHash = await client.sendUserOperation({
+    callData: await account.encodeCalls([
+      {
+        to: RECEIPT_ADDRESS,
+        value: 0n,
+        data: encodeFunctionData({
+          abi: RECEIPT_ABI,
+          functionName: 'mint',
+          args: [
+            params.player,
+            params.poolId,
+            params.seed,
+            params.yesMask,
+            BigInt(params.cardPriceWei),
+            params.ref ?? zeroAddress,
+          ],
+        }),
+      },
+    ]),
+  });
+  const receipt = await client.waitForUserOperationReceipt({ hash: opHash });
+  if (!receipt.success) {
+    throw new Error(
+      `Receipt mint reverted${receipt.reason ? `: ${receipt.reason}` : ''}`,
     );
   }
+  console.log(
+    `[receipt] minted for ${params.player} pool=${params.poolId} ` +
+      `tx=${receipt.receipt?.transactionHash ?? opHash}`,
+  );
+  const minted = await chainSubmission(params.poolId, params.player);
+  if (!minted) throw new Error('Receipt mint not visible after inclusion');
+  return minted;
 }
