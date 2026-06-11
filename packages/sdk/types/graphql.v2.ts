@@ -1666,7 +1666,14 @@ export type QuestionOrderField =
 export type Ranking = {
   __typename?: 'Ranking';
   account: Account;
-  /** Lifetime Brier-derived accuracy score (0–1). Populated for `ACCURACY`. */
+  /**
+   * Lifetime accuracy score — the average time-weighted Brier-derived
+   * error (`avg(twError)`), the SAME raw, unbounded scale v1's
+   * `accuracyScore` used (NOT 0–1; fixture-typical values are in the
+   * hundreds). Render it the way v1 did. A future rescale to 0–1 would be
+   * a breaking display change — the parity suite pins the raw scale and
+   * fails loudly if the server ever rescales.
+   */
   accuracy?: Maybe<Scalars['Float']['output']>;
   /** Net profit/loss in wUSDe wei (signed). Populated for `PNL`. */
   pnl?: Maybe<Scalars['BigInt']['output']>;

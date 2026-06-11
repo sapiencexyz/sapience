@@ -82,7 +82,7 @@ export const ConditionGroup: ConditionGroupResolvers = {
     // createdAt asc. Per-group sets are bounded; per-request loader
     // amortizes count+page across multiple parent rows in the same
     // selection.
-    const all: ConditionRow[] = ctx.loaders?.conditionsByGroupId
+    const loaded: ConditionRow[] = ctx.loaders?.conditionsByGroupId
       ? ((await ctx.loaders.conditionsByGroupId.load(parent.id)) ?? [])
       : await prisma.condition.findMany({
           where: { conditionGroupId: parent.id },
@@ -92,6 +92,11 @@ export const ConditionGroup: ConditionGroupResolvers = {
             { id: 'asc' },
           ],
         });
+    // Hidden conditions never leak through the nested connection — the
+    // same forced visibility rule as v1's ConditionGroup.conditions
+    // resolver. Filtered post-load so it holds on both the loader path
+    // and the direct-prisma fallback.
+    const all = loaded.filter((c) => c.public);
 
     const totalCount = all.length;
     const rows = all.slice(skip, skip + first + 1);

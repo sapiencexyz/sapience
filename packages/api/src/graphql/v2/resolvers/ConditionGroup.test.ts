@@ -91,7 +91,10 @@ describe('ConditionGroup (v2)', () => {
   });
 
   it('ConditionGroup.conditions: a non-numeric after cursor resets to offset 0', async () => {
-    const condRows = Array.from({ length: 5 }, (_, i) => ({ id: `0xc${i}` }));
+    const condRows = Array.from({ length: 5 }, (_, i) => ({
+      id: `0xc${i}`,
+      public: true,
+    }));
     mockPrisma.condition.findMany.mockResolvedValueOnce(condRows);
     // A keyset cursor minted under a different orderBy (or a tampered value)
     // has a non-numeric `k`.
@@ -104,6 +107,27 @@ describe('ConditionGroup (v2)', () => {
     // ... and emitted cursors must stay numeric, not "NaN".
     expect(decodeCursor(conn.edges[0].cursor)?.k).toBe('0');
     expect(decodeCursor(conn.edges[1].cursor)?.k).toBe('1');
+  });
+
+  it('ConditionGroup.conditions: hidden conditions never leak (v1 visibility rule)', async () => {
+    mockPrisma.condition.findMany.mockResolvedValueOnce([
+      { id: '0xpub1', public: true },
+      { id: '0xpriv', public: false },
+      { id: '0xpub2', public: true },
+    ]);
+    const conn = await callResolver<{
+      nodes: { id: string }[];
+      totalCount: number;
+    }>(ConditionGroup.conditions)(
+      { id: 1, name: 'g' },
+      { first: 50 },
+      {},
+      null
+    );
+    expect(conn.nodes.map((c) => c.id)).toEqual(['0xpub1', '0xpub2']);
+    // totalCount counts only visible rows — private rows must not be
+    // inferable from the count either.
+    expect(conn.totalCount).toBe(2);
   });
 
   it('conditionGroups(orderBy OPEN_INTEREST): a non-numeric after cursor emits numeric cursors', async () => {
