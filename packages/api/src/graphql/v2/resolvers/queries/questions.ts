@@ -20,6 +20,7 @@ import {
   type RunQuestionsInput,
 } from '../../../sdl/resolvers/queries/questions';
 import {
+  QuestionItemType as V1QuestionItemType,
   QuestionSortField,
   ResolutionStatus as V1ResolutionStatus,
   SortOrder as V1SortOrder,
@@ -28,6 +29,7 @@ import {
 import type {
   QueryResolvers,
   QuestionFilter,
+  QuestionItemKind,
   QuestionItemResolvers,
   ResolutionStatus,
   VolumeWindow,
@@ -46,6 +48,15 @@ const RESOLUTION_STATUS_MAP: Record<ResolutionStatus, V1ResolutionStatus> = {
   RESOLVED_YES: V1ResolutionStatus.ResolvedYes,
   RESOLVED_NO: V1ResolutionStatus.ResolvedNo,
 } as Record<ResolutionStatus, V1ResolutionStatus>;
+
+/**
+ * v2's `QuestionItemKind` values mirror the `QuestionItem` union's
+ * member type names; v1's `QuestionItemType` uses condition/group.
+ */
+const QUESTION_ITEM_KIND_MAP: Record<QuestionItemKind, V1QuestionItemType> = {
+  CONDITION: V1QuestionItemType.Condition,
+  CONDITION_GROUP: V1QuestionItemType.Group,
+} as Record<QuestionItemKind, V1QuestionItemType>;
 
 const VOLUME_WINDOW_MAP: Record<VolumeWindow, V1VolumeWindow> = {
   ONE_HOUR: V1VolumeWindow.OneHour,
@@ -172,6 +183,9 @@ const toRunnerArgs = (
     sortField: order.sortField,
     sortDirection: direction === 'asc' ? V1SortOrder.Asc : V1SortOrder.Desc,
     afterCursor: null,
+    questionType: filter?.questionType
+      ? QUESTION_ITEM_KIND_MAP[filter.questionType]
+      : null,
   };
 };
 

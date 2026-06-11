@@ -3,15 +3,16 @@
  * excluding a hard-coded deny list of internal/meta tags that flow in
  * from Polymarket metadata.
  *
- * Reads from the `popular_tag` materialized table (refreshed by the
- * keeper via `refreshPopularTags`) — that turns the resolver into a
- * 20-row index scan vs. the `unnest(tags)` aggregation over the entire
- * `condition` table.
+ * Reads from the `popular_tag` materialized table — that turns the
+ * resolver into a 20-row index scan vs. the `unnest(tags)` aggregation
+ * over the entire `condition` table.
  *
- * Fallback: when the table is empty (fresh deploy, before the keeper
- * has populated it), the resolver computes the list inline and writes
- * it back so callers don't get a temporarily empty surface. The
- * in-process TTL stays in place to absorb the cold-start fan-in.
+ * There is no scheduled refresher: reads keep the materialization
+ * alive. When the table is empty (fresh deploy) or its newest row is
+ * older than POPULAR_TAGS_MAX_AGE_MS, the resolver recomputes inline
+ * via `refreshPopularTags` and writes the result back, so callers
+ * never see an empty or permanently frozen surface. The in-process
+ * TTL stays in place to absorb the refresh fan-in.
  */
 
 import type { QueryResolvers } from '../../__generated__/resolvers';
@@ -25,33 +26,45 @@ const popularTagsCache = new TtlCache<string, string[]>({
 /** Versioned so old caches invalidate when the deny list / SQL changes. */
 const CACHE_KEY = 'popularTags:v1';
 
-const computePopularTags = async (): Promise<string[]> => {
-  const result = await prisma.$queryRaw<{ tag: string; cnt: bigint }[]>`
-      SELECT t AS tag, COUNT(*) AS cnt
-      FROM condition, unnest(tags) AS t
-      WHERE public = true
-        AND array_length(tags, 1) > 0
-        AND t NOT LIKE 'Rewards%'
-        AND t NOT LIKE 'Finance Rewards%'
-        AND t NOT IN (
-          'Hide From New', 'Recurring', 'Weekly', 'Monthly',
-          'Monthly Hit', 'Multi Strikes', 'Neg Risk', 'Hit Price',
-          'Daily Temperature', 'Precipitation',
-          'Tweet Markets', 'Crypto Prices', 'Games'
-        )
-      GROUP BY t
-      ORDER BY cnt DESC
-      LIMIT 20
-    `;
-  return result.map((r) => r.tag);
+/**
+ * Max age of the materialization before a read triggers an inline
+ * refresh. Matches the in-process TTL cache above so the two layers
+ * expire on the same cadence.
+ */
+export const POPULAR_TAGS_MAX_AGE_MS = 60 * 60 * 1000;
+
+/**
+ * True when the materialized rows are absent or their newest
+ * `refreshedAt` is older than POPULAR_TAGS_MAX_AGE_MS. Shared by the
+ * v1 `popularTags` and v2 `tags` resolvers so both endpoints refresh
+ * on the same staleness rule.
+ */
+export const isPopularTagsStale = (
+  rows: ReadonlyArray<{ refreshedAt: Date }>
+): boolean => {
+  if (rows.length === 0) return true;
+  const newest = Math.max(...rows.map((r) => r.refreshedAt.getTime()));
+  return Date.now() - newest >= POPULAR_TAGS_MAX_AGE_MS;
 };
 
 /**
  * Recompute the materialized list and overwrite the `popular_tag`
- * table. Idempotent; safe to invoke from a keeper cron at any cadence
- * (recommended: same window as condition_group aggregate refresh).
+ * table. In-process callers are coalesced onto one in-flight refresh,
+ * so a stampede of stale reads recomputes once. Cross-process overlap
+ * is tolerated rather than locked: concurrent runs compute
+ * near-identical sets seconds apart, and `skipDuplicates` keeps a
+ * colliding insert from aborting either transaction.
  */
-export const refreshPopularTags = async (): Promise<string[]> => {
+let refreshInFlight: Promise<string[]> | null = null;
+
+export const refreshPopularTags = (): Promise<string[]> => {
+  refreshInFlight ??= doRefreshPopularTags().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+};
+
+const doRefreshPopularTags = async (): Promise<string[]> => {
   const result = await prisma.$queryRaw<{ tag: string; cnt: bigint }[]>`
       SELECT t AS tag, COUNT(*) AS cnt
       FROM condition, unnest(tags) AS t
@@ -98,17 +111,17 @@ export const popularTags: NonNullable<QueryResolvers['popularTags']> = async (
   const materialized = await prisma.popularTag.findMany({
     orderBy: { rank: 'asc' },
     take: 20,
-    select: { tag: true },
+    select: { tag: true, refreshedAt: true },
   });
-  if (materialized.length > 0) {
+  if (!isPopularTagsStale(materialized)) {
     const tags = materialized.map((r) => r.tag);
     popularTagsCache.set(CACHE_KEY, tags);
     return tags;
   }
 
-  // Cold start: keeper hasn't populated the table yet. Compute inline
-  // so the surface isn't empty; the keeper will overwrite later.
-  const tags = await computePopularTags();
+  // Empty (fresh deploy) or stale: recompute and write back so this
+  // and the v2 `tags` endpoint both serve a current set.
+  const tags = await refreshPopularTags();
   popularTagsCache.set(CACHE_KEY, tags);
   return tags;
 };

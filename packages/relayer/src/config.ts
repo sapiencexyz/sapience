@@ -31,6 +31,8 @@ export const config = cleanEnv(process.env, {
   WS_MAX_VALIDATION_FAILURES: num({ default: 10 }), // Disconnect after N signature validation failures
   WS_MAX_INVALID_MESSAGES: num({ default: 20 }), // Disconnect after N invalid/malformed messages
   MAX_BIDS_PER_ESCROW_AUCTION: num({ default: 50 }), // Max bids per escrow auction (matches secondary market)
+  MAX_BIDS_PER_CONNECTION_PER_AUCTION: num({ default: 5 }), // Per-connection cap so one connection can't monopolize an auction's bid slots with unverifiable bids
+
   DEFAULT_VAULT_MANAGER: str({ default: '' }), // Fallback manager address if vault contract not deployed
 });
 

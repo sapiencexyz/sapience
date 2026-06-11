@@ -141,9 +141,9 @@ Each entity exposes its on-wire-stable domain identifier next to `id`:
 | Entity             | Domain id field       | Type                                                                                                                                    |
 | ------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Account / Vault    | `address`             | `Address!` (canonical lowercase 0x address)                                                                                             |
-| Category           | `categoryId`          | `Int!`                                                                                                                                  |
+| Category           | `categoryId` †        | `Int!`                                                                                                                                  |
 | Condition          | `conditionId`         | `String!` (CTF condition id, lowercase 0x hash)                                                                                         |
-| ConditionGroup     | `groupId`             | `Int!`                                                                                                                                  |
+| ConditionGroup     | `groupId` †           | `Int!`                                                                                                                                  |
 | Prediction         | `predictionId`        | `String!` (on-chain, lowercase 0x hash)                                                                                                 |
 | Trade              | `tradeHash`           | `String!` (lowercase 0x hash)                                                                                                           |
 | Forecast           | `uid`                 | `String!` (EAS attestation uid)                                                                                                         |
@@ -151,6 +151,12 @@ Each entity exposes its on-wire-stable domain identifier next to `id`:
 | Claim / Close      | `txHash` + `logIndex` | `(String!, Int!)` — composite, no separate id                                                                                           |
 | CollateralTransfer | `txHash` + `logIndex` | `(String!, Int!)` — composite                                                                                                           |
 | Position           | (synthetic `id`)      | `ID!` — there is no on-chain domain id; the row's deterministic synthesis key (`holder:pickConfigId:eventIdx`) doubles as the domain id |
+
+> † **Erratum (as shipped):** `Category` exposes no `categoryId` — its domain
+> key in practice is `slug` (consumers re-key on it). `ConditionGroup.groupId`
+> was omitted from the implemented type; reintroducing it is **deferred with
+> G3** (SCHEMA_GAPS) since only the keeper's read→REST-write round-trip needs
+> the numeric id, and the keeper stays on v1 for now.
 
 ### Internal row ids
 
@@ -198,6 +204,17 @@ type PageInfo {
   for ergonomic clients. v2 keeps both — the Relay reference schema also
   does, and it's the convention that's settled in the ecosystem (GitHub
   GraphQL API, Shopify, etc.). The duplication is purely client ergonomics.
+
+> **Erratum (as shipped, 2026-06-10):** two connections deliberately deviate
+> from the two bullets above. `QuestionConnection` exposes **only `edges` +
+> `pageInfo`** — no `totalCount` (its SQL UNION cannot count cheaply; the
+> feed's only consumer needs `hasNextPage`, not a count) and no `nodes`.
+> `ActivityConnection` has `edges + pageInfo + totalCount` but **no `nodes`**
+> (a union connection can't share one node field set; consumers branch on
+> `__typename` via `edges[].node`). Consumers must read `edges[].node` on
+> both. Do not "fix" these to match the blanket promise — the deviations are
+> intentional.
+
 - **Cursors are opaque base64url** of `(orderKey, id)` — same encoding as
   v1 (`graphql/relay/cursor.ts`). Tie-break by stable id; direction baked
   into the order tuple.
@@ -290,26 +307,26 @@ The `emit-schema` step writes both root-level schema files.
 Each phase is a separate PR off `staging`. Phases land in order; each is
 shippable on its own (v2 endpoint stays buildable + healthy throughout).
 
-| Phase | PR title (suggested)                                         | Scope                                                                                                          |
-| ----- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| **0** | `feat(api): stub /v2/graphql endpoint + plan`                | **This PR.** Endpoint mounted, returns a `_v2Health` ping, `node(id:)` against empty registry, plan committed. |
-| 1     | `feat(api/v2): Account + accounts + Node base`               | `Account` type, `account` + `accounts`, `AddressEntity` interface, synthesis path.                             |
-| 2     | `feat(api/v2): Vault + vaults`                               | `Vault` implements `AddressEntity`, `vault` + `vaults` queries.                                                |
-| 3     | `feat(api/v2): Category + categories`                        | `category` + `categories` (small, easy warm-up after Account).                                                 |
-| 4     | `feat(api/v2): Forecast + forecasts`                         | EAS attestations, simplest connection (no internal joins).                                                     |
-| 5     | `feat(api/v2): Trade + trades`                               | Secondary-market trades, the second-simplest entity.                                                           |
-| 6     | `feat(api/v2): Condition + conditions`                       | `condition` + `conditions` + `ConditionFilter`.                                                                |
-| 7     | `feat(api/v2): ConditionGroup + conditionGroups`             | Pairs with Condition; the two have cross-refs.                                                                 |
-| 8     | `feat(api/v2): PickConfiguration + pickConfigurations`       | The 'picks config' graph node — referenced by Position, Prediction.                                            |
-| 9     | `feat(api/v2): Prediction + predictions`                     | Heavier — depends on PickConfiguration.                                                                        |
-| 10    | `feat(api/v2): Position + positions`                         | Heaviest — WAC walk over (mints, trades) per row.                                                              |
-| 11    | `feat(api/v2): Claim + claims, Close + closes`               | Settlement-side entities; small, ship together.                                                                |
-| 12    | `feat(api/v2): CollateralTransfer + collateralTransfers`     | Same shape as the v1 connection.                                                                               |
-| 13    | `feat(api/v2): activity feed`                                | Union connection over Prediction + Trade.                                                                      |
-| 14    | `feat(api/v2): leaderboard + ranking on AddressEntity`       | Ranked-by-metric connection + the matching field on Account/Vault.                                             |
-| 15    | `feat(api/v2): protocol + stats`                             | `Protocol` singleton with nested stats connection, OI-by-category, OI-by-time-to-resolution.                   |
-| 16    | `feat(api/v2): collateralBalance + history on AddressEntity` | Snapshot field + paginated history; no root-level field.                                                       |
-| 17    | `feat(api/v2): popularTags`                                  | Plain scalar list; the smallest entry — last because it's least interesting.                                   |
+| Phase | PR title (suggested)                                         | Scope                                                                                                                                                                                              |
+| ----- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **0** | `feat(api): stub /v2/graphql endpoint + plan`                | **This PR.** Endpoint mounted, returns a `_v2Health` ping, `node(id:)` against empty registry, plan committed.                                                                                     |
+| 1     | `feat(api/v2): Account + accounts + Node base`               | `Account` type, `account` + `accounts`, `AddressEntity` interface, synthesis path.                                                                                                                 |
+| 2     | `feat(api/v2): Vault + vaults`                               | `Vault` implements `AddressEntity`, `vault` + `vaults` queries.                                                                                                                                    |
+| 3     | `feat(api/v2): Category + categories`                        | `category` + `categories` (small, easy warm-up after Account).                                                                                                                                     |
+| 4     | `feat(api/v2): Forecast + forecasts`                         | EAS attestations, simplest connection (no internal joins). **Status: deferred at first ship; now in scope — lands on PR #1822 per SCHEMA_GAPS G4 (note: `value: String!`, not a binary outcome).** |
+| 5     | `feat(api/v2): Trade + trades`                               | Secondary-market trades, the second-simplest entity.                                                                                                                                               |
+| 6     | `feat(api/v2): Condition + conditions`                       | `condition` + `conditions` + `ConditionFilter`.                                                                                                                                                    |
+| 7     | `feat(api/v2): ConditionGroup + conditionGroups`             | Pairs with Condition; the two have cross-refs.                                                                                                                                                     |
+| 8     | `feat(api/v2): PickConfiguration + pickConfigurations`       | The 'picks config' graph node — referenced by Position, Prediction.                                                                                                                                |
+| 9     | `feat(api/v2): Prediction + predictions`                     | Heavier — depends on PickConfiguration.                                                                                                                                                            |
+| 10    | `feat(api/v2): Position + positions`                         | Heaviest — WAC walk over (mints, trades) per row.                                                                                                                                                  |
+| 11    | `feat(api/v2): Claim + claims, Close + closes`               | Settlement-side entities; small, ship together.                                                                                                                                                    |
+| 12    | `feat(api/v2): CollateralTransfer + collateralTransfers`     | Same shape as the v1 connection.                                                                                                                                                                   |
+| 13    | `feat(api/v2): activity feed`                                | Union connection over Prediction + Trade.                                                                                                                                                          |
+| 14    | `feat(api/v2): leaderboard + ranking on AddressEntity`       | Ranked-by-metric connection + the matching field on Account/Vault.                                                                                                                                 |
+| 15    | `feat(api/v2): protocol + stats`                             | `Protocol` singleton with nested stats connection, OI-by-category, OI-by-time-to-resolution.                                                                                                       |
+| 16    | `feat(api/v2): collateralBalance + history on AddressEntity` | Snapshot field + paginated history; no root-level field.                                                                                                                                           |
+| 17    | `feat(api/v2): popularTags`                                  | Plain scalar list; the smallest entry — last because it's least interesting.                                                                                                                       |
 
 Once Phase 17 is in, v2's surface fully covers the entity list from the
 brief. From that point the deprecation cycle on v1's pre-Relay shapes can

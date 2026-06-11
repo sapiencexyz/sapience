@@ -392,6 +392,11 @@ export type Claim = {
   id: Scalars['Int']['output'];
   marketAddress: Scalars['String']['output'];
   positionToken: Scalars['String']['output'];
+  /**
+   * Misnomer: this is the redeemed position's pickConfigId, NOT a Prediction.predictionId.
+   * Backed by the Claim.pickConfigId column; the GraphQL field name is kept only for
+   * backward compatibility on this deprecated query.
+   */
   predictionId: Scalars['String']['output'];
   redeemedAt: Scalars['Int']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
@@ -1629,8 +1634,10 @@ export type Query = {
   attestations: Array<Attestation>;
   categories: Array<Category>;
   /**
-   * Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
-   * @deprecated Field no longer supported
+   * Paginated list of prediction claim (redemption) records, filterable by holder, pickConfig, and chain.
+   * NOTE: the `predictionId` filter and the `Claim.predictionId` field are misnamed — both are actually
+   * a pickConfigId (the redeemed position's pick configuration), never a Prediction.predictionId.
+   * @deprecated `predictionId` is a misnomer — it filters on pickConfigId, not Prediction.predictionId.
    */
   claims: Array<Claim>;
   /**

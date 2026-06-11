@@ -293,8 +293,13 @@ export type Claim = Node & {
   holder: Scalars['Address']['output'];
   id: Scalars['ID']['output'];
   logIndex: Scalars['Int']['output'];
+  /**
+   * On-chain pickConfigId of the redeemed position. The underlying column
+   * was historically mislabeled `predictionId`; it has never stored a
+   * `Prediction.predictionId`.
+   */
+  pickConfigId: Scalars['Bytes32']['output'];
   positionToken: Scalars['Address']['output'];
-  predictionId: Scalars['Bytes32']['output'];
   redeemedAt: Scalars['UnixSeconds']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
   tokensBurned: Scalars['BigInt']['output'];
@@ -318,7 +323,8 @@ export type ClaimEdge = {
 export type ClaimFilter = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   holder?: InputMaybe<Scalars['Address']['input']>;
-  predictionId?: InputMaybe<Scalars['Bytes32']['input']>;
+  /** Match claims redeeming positions of this pickConfigId. */
+  pickConfigId?: InputMaybe<Scalars['Bytes32']['input']>;
 };
 
 export type ClaimOrder = {
@@ -1344,8 +1350,9 @@ export type Query = {
    */
   questions: QuestionConnection;
   /**
-   * Tags attached to public conditions, backed by the keeper-refreshed
-   * `popular_tag` materialization. Default order is `CONDITION_COUNT DESC`
+   * Tags attached to public conditions, backed by the `popular_tag`
+   * materialization (refreshed lazily by reads when older than ~1h).
+   * Default order is `CONDITION_COUNT DESC`
    * with `first: 20` — the canonical "popular tags" feed. Sort by `NAME`
    * for an alphabetical browse.
    */
@@ -1591,6 +1598,14 @@ export type QuestionFilter = {
   endsAt?: InputMaybe<IntRangeFilter>;
   /** Range over the Polymarket-derived `estimatedPrice` 0–1 probability. */
   estimatedPrice?: InputMaybe<FloatFilter>;
+  /**
+   * Restrict to one side of the `QuestionItem` union, by *rendered* kind:
+   * `CONDITION` returns items that resolve to a standalone Condition
+   * (ungrouped conditions plus single-condition groups, which the feed
+   * unwraps); `CONDITION_GROUP` returns multi-condition ConditionGroups
+   * only. Both kinds when omitted.
+   */
+  questionType?: InputMaybe<QuestionItemKind>;
   /** Resolution-status filter; defaults to ALL when omitted. */
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   /**
@@ -1620,6 +1635,12 @@ export type QuestionFilter = {
  * type via inline fragments.
  */
 export type QuestionItem = Condition | ConditionGroup;
+
+/**
+ * Which side of the `QuestionItem` union a feed item resolves to. Values
+ * mirror the union's member type names.
+ */
+export type QuestionItemKind = 'CONDITION' | 'CONDITION_GROUP';
 
 export type QuestionOrder = {
   direction: OrderDirection;
@@ -1770,8 +1791,9 @@ export type SimilarMarket = {
  * A tag attached to public conditions. Not a Node — the `name` itself is
  * the natural key, so refetch by globalId would be redundant.
  *
- * `conditionCount` is the denormalized usage count maintained by the
- * keeper's `popular_tag` refresh; treat it as near-real-time.
+ * `conditionCount` is the denormalized usage count from the `popular_tag`
+ * materialization, which reads refresh when it goes stale (~hourly);
+ * treat it as near-real-time.
  */
 export type Tag = {
   __typename?: 'Tag';

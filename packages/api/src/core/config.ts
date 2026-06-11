@@ -15,6 +15,10 @@ const validators = {
     default: 200,
     desc: 'Maximum requests per window per IP',
   }),
+  INTERNAL_RATE_LIMIT_BYPASS_TOKEN: str({
+    default: '',
+    desc: 'Shared secret that exempts internal services from the per-IP rate limit when sent as the x-internal-token header. Empty (default) disables the bypass entirely.',
+  }),
   GRAPHQL_MAX_COMPLEXITY: num({
     default: 15000,
     desc: 'Maximum allowed query complexity score',

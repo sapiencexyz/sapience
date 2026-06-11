@@ -132,6 +132,22 @@ describe('Claim + Close (v2)', () => {
     );
   });
 
+  it('claims(filter: { pickConfigId }) filters on the renamed column, lowercased', async () => {
+    // The Prisma column was renamed predictionId → pickConfigId (it never
+    // stored a Prediction.predictionId); the v2 filter must follow.
+    await callResolver(claims)(
+      null,
+      { first: 50, filter: { pickConfigId: '0xPC' } },
+      {},
+      null
+    );
+    expect(mockPrisma.claim.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ pickConfigId: '0xpc' }),
+      })
+    );
+  });
+
   it('closes(filter: { participant }) ORs across predictor/counterparty holder', async () => {
     await callResolver(closes)(
       null,
