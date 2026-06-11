@@ -154,6 +154,8 @@ export async function handleApi(
     const pool = resolvePool(url.searchParams.get('poolId'));
     json(res, 200, {
       poolId: pool.poolId,
+      /** 1-based position in the pool list — display ordinal. */
+      poolNumber: pools.indexOf(pool) + 1,
       cutoff: pool.cutoff,
       open: poolIsOpen(pool),
       conditions: pool.conditions,

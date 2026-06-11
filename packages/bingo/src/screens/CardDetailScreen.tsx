@@ -570,7 +570,7 @@ export default function CardDetailScreen() {
           <div className="receipt-titles">
             <div className="receipt-eyebrow-row">
               <span className="label">
-                Parlay Bingo · {cardComplete ? 'Live Bet' : 'Ready to Submit'}
+                Combo Bingo · {cardComplete ? 'Live Bet' : 'Ready to Submit'}
               </span>
               <button
                 type="button"
@@ -581,6 +581,22 @@ export default function CardDetailScreen() {
               </button>
             </div>
             <h2 className="receipt-title">World Cup 2026</h2>
+            {pool && (
+              <span className="label muted">
+                Pool #{pool.poolNumber} ·{' '}
+                {card.open
+                  ? `closes ${new Date(card.cutoff * 1000).toLocaleString(
+                      undefined,
+                      {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      },
+                    )}`
+                  : 'closed'}
+              </span>
+            )}
           </div>
         </header>
       )}

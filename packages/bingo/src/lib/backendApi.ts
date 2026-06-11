@@ -49,6 +49,8 @@ export interface BackendCell {
 
 export interface PoolResponse {
   poolId: string;
+  /** 1-based display ordinal of the pool. */
+  poolNumber: number;
   /** Unix seconds; submissions refused at/after this time. */
   cutoff: number;
   open: boolean;
