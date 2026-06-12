@@ -559,6 +559,10 @@ const VaultsPageContent = () => {
   // so we add the deployed cost basis back here to show true total.
   const tvlWei = liquidWei + deployedWei;
 
+  // The two terms come from different sources (on-chain read vs GraphQL);
+  // until both have loaded, the sum is a misleading partial figure.
+  const isBalanceReady = !!vaultData && !!protocolStats;
+
   const utilizationPercent = useMemo(() => {
     if (tvlWei <= 0n) return 0;
     const bps = Number((deployedWei * 10000n) / tvlWei);
@@ -745,63 +749,82 @@ const VaultsPageContent = () => {
                         <h4 className="font-mono text-base uppercase tracking-wider text-brand-white mb-3 sm:mb-2">
                           Vault Balance
                           <br className="sm:hidden" />{' '}
-                          <span className="font-medium text-[hsl(var(--ethena))]">
-                            {tvlDisplay} {collateralSymbol}
-                          </span>
-                        </h4>
-                        <div className="relative">
-                          {tvlWei <= VAULT_CAPACITY_WEI && (
-                            <div className="absolute -top-4 right-0 font-mono text-[10px] text-muted-foreground/50 uppercase">
-                              {depositCapDisplay} cap
-                            </div>
+                          {isBalanceReady && (
+                            <span className="font-medium text-[hsl(var(--ethena))] animate-in fade-in duration-200">
+                              {tvlDisplay} {collateralSymbol}
+                            </span>
                           )}
-                          <div className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner relative">
-                            <div
-                              className="h-3 bg-accent-gold rounded-sm transition-all gold-sheen"
-                              style={{
-                                width: `${tvlWei > VAULT_CAPACITY_WEI ? 100 : tvlPercentOfCap}%`,
-                              }}
-                            />
-                            <div
-                              className="absolute top-0 left-0 h-3 rounded-sm bg-brand-white transition-all"
-                              style={{
-                                width: `${tvlWei > VAULT_CAPACITY_WEI ? deployedPercentOfCap : Math.min(deployedPercentOfCap, tvlPercentOfCap)}%`,
-                              }}
-                            />
-                          </div>
-                          {tvlWei > VAULT_CAPACITY_WEI && (
+                        </h4>
+                        <div
+                          className={`relative ${isBalanceReady ? 'animate-in fade-in duration-200' : ''}`}
+                        >
+                          {isBalanceReady ? (
                             <>
+                              {tvlWei <= VAULT_CAPACITY_WEI && (
+                                <div className="absolute -top-4 right-0 font-mono text-[10px] text-muted-foreground/50 uppercase">
+                                  {depositCapDisplay} cap
+                                </div>
+                              )}
                               <div
-                                className="absolute top-0 h-3 vault-excess-rainbow rounded-r-sm"
-                                style={{
-                                  left: `${capPercentOfTvl}%`,
-                                  width: `${100 - capPercentOfTvl}%`,
-                                }}
-                              />
-                              <div
-                                className="absolute top-0 w-px h-3 border-l-2 border-background/70"
-                                style={{ left: `${capPercentOfTvl}%` }}
-                              />
-                              <div
-                                className="absolute -top-7 sm:-top-4 font-mono text-[10px] text-brand-white uppercase -translate-x-1/2 text-center sm:whitespace-nowrap"
-                                style={{ left: `${capPercentOfTvl}%` }}
+                                data-testid="vault-balance-bar"
+                                className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner relative"
                               >
-                                <span className="sm:hidden">
-                                  deposit
-                                  <br />
-                                  cap
-                                </span>
-                                <span className="hidden sm:inline">
-                                  deposit cap
-                                </span>
+                                <div
+                                  className="h-3 bg-accent-gold rounded-sm transition-all gold-sheen"
+                                  style={{
+                                    width: `${tvlWei > VAULT_CAPACITY_WEI ? 100 : tvlPercentOfCap}%`,
+                                  }}
+                                />
+                                <div
+                                  className="absolute top-0 left-0 h-3 rounded-sm bg-brand-white transition-all"
+                                  style={{
+                                    width: `${tvlWei > VAULT_CAPACITY_WEI ? deployedPercentOfCap : Math.min(deployedPercentOfCap, tvlPercentOfCap)}%`,
+                                  }}
+                                />
                               </div>
+                              {tvlWei > VAULT_CAPACITY_WEI && (
+                                <>
+                                  <div
+                                    className="absolute top-0 h-3 vault-excess-rainbow rounded-r-sm"
+                                    style={{
+                                      left: `${capPercentOfTvl}%`,
+                                      width: `${100 - capPercentOfTvl}%`,
+                                    }}
+                                  />
+                                  <div
+                                    className="absolute top-0 w-px h-3 border-l-2 border-background/70"
+                                    style={{ left: `${capPercentOfTvl}%` }}
+                                  />
+                                  <div
+                                    className="absolute -top-7 sm:-top-4 font-mono text-[10px] text-brand-white uppercase -translate-x-1/2 text-center sm:whitespace-nowrap"
+                                    style={{ left: `${capPercentOfTvl}%` }}
+                                  >
+                                    <span className="sm:hidden">
+                                      deposit
+                                      <br />
+                                      cap
+                                    </span>
+                                    <span className="hidden sm:inline">
+                                      deposit cap
+                                    </span>
+                                  </div>
+                                </>
+                              )}
                             </>
+                          ) : (
+                            <div className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] animate-pulse" />
                           )}
                         </div>
                         <div className="mt-2 flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-0 text-sm">
-                          <span className="font-mono text-muted-foreground uppercase">
-                            {deployedDisplay} {collateralSymbol} (
-                            {utilizationDisplay}) deployed
+                          <span
+                            className={`font-mono text-muted-foreground uppercase ${isBalanceReady ? 'animate-in fade-in duration-200' : ''}`}
+                          >
+                            {isBalanceReady && (
+                              <>
+                                {deployedDisplay} {collateralSymbol} (
+                                {utilizationDisplay}) deployed
+                              </>
+                            )}
                           </span>
                           <Link
                             href={`/profile/${VAULT_ADDRESS}`}

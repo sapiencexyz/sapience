@@ -248,13 +248,8 @@ import VaultsPageContent from '../VaultsPageContent';
 // blocked by the whitelist check.
 const WHITELISTED_ADDRESS = '0xdb5af497a73620d881561edb508012a5f84e9ba2';
 
-function setDefaults() {
-  mockUseCurrentAddress.mockReturnValue({
-    currentAddress: WHITELISTED_ADDRESS,
-    isConnected: true,
-  });
-
-  mockUsePassiveLiquidityVault.mockReturnValue({
+function passiveVaultDefaults() {
+  return {
     vaultData: { totalLiquidValue: 1000n * 10n ** 18n, paused: false },
     userData: { balance: 100n * 10n ** 18n },
     pendingRequest: null,
@@ -274,7 +269,16 @@ function setDefaults() {
     interactionDelay: 0n,
     isInteractionDelayActive: false,
     lastInteractionAt: 0n,
+  };
+}
+
+function setDefaults() {
+  mockUseCurrentAddress.mockReturnValue({
+    currentAddress: WHITELISTED_ADDRESS,
+    isConnected: true,
   });
+
+  mockUsePassiveLiquidityVault.mockReturnValue(passiveVaultDefaults());
 
   mockUseProtocolStats.mockReturnValue({
     data: [],
@@ -350,5 +354,73 @@ describe('VaultsPageContent geofence', () => {
     render(<VaultsPageContent />);
 
     expect(mockRouterReplace).not.toHaveBeenCalled();
+  });
+});
+
+describe('VaultsPageContent vault balance display', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearchParamsToString.mockReturnValue('');
+    setDefaults();
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+    // Liquid (on-chain) = 1,000; deployed (GraphQL) = 500 -> balance 1,500.
+    mockUseProtocolStats.mockReturnValue({
+      data: [{ vaultDeployed: (500n * 10n ** 18n).toString() }],
+      isLoading: false,
+    });
+  });
+
+  it('renders the balance and progress bar once both sources have loaded', () => {
+    render(<VaultsPageContent />);
+
+    expect(screen.getByText('1,500.00 USDe')).toBeInTheDocument();
+    expect(screen.getByTestId('vault-balance-bar')).toBeInTheDocument();
+    expect(screen.getByText(/deployed/)).toBeInTheDocument();
+  });
+
+  it('fades the balance, bar, and deployed line in once loaded', () => {
+    render(<VaultsPageContent />);
+
+    const fadeIn = 'animate-in fade-in duration-200';
+    expect(screen.getByText('1,500.00 USDe').className).toContain(fadeIn);
+    expect(
+      screen.getByTestId('vault-balance-bar').parentElement?.className
+    ).toContain(fadeIn);
+    expect(screen.getByText(/deployed/).className).toContain(fadeIn);
+  });
+
+  it('hides the balance number and progress bar until the on-chain read has loaded', () => {
+    mockUsePassiveLiquidityVault.mockReturnValue({
+      ...passiveVaultDefaults(),
+      vaultData: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    // Without the liquid value, the sum would misleadingly show only the
+    // deployed portion (500.00) - it must not render at all.
+    expect(screen.queryByText('500.00 USDe')).toBeNull();
+    expect(screen.queryByTestId('vault-balance-bar')).toBeNull();
+    expect(screen.queryByText(/deployed/)).toBeNull();
+  });
+
+  it('hides the balance number and progress bar until protocol stats have loaded', () => {
+    mockUseProtocolStats.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    });
+
+    render(<VaultsPageContent />);
+
+    // Without the deployed value, the sum would misleadingly show only the
+    // liquid portion (1,000.00) - it must not render at all.
+    expect(screen.queryByText('1,000.00 USDe')).toBeNull();
+    expect(screen.queryByTestId('vault-balance-bar')).toBeNull();
+    expect(screen.queryByText(/deployed/)).toBeNull();
   });
 });
