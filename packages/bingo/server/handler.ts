@@ -26,7 +26,7 @@ import {
 import { buildLines, LINES_PER_CARD } from './lines.js';
 import { loadPools, parsePools, poolIsOpen } from './pool.js';
 import { cardCount, chainSubmission, mintReceipt } from './receipt.js';
-import { restoreSessionClient } from './session.js';
+import { CHAIN_ID, restoreSessionClient } from './session.js';
 import { prepareCollateral, submitLine } from './submitLine.js';
 import type { PoolConfig, SerializedSession } from './types.js';
 import bundledStagingPools from '../pool.json' with { type: 'json' };
@@ -158,6 +158,10 @@ export async function handleApi(
     const pool = resolvePool(url.searchParams.get('poolId'));
     json(res, 200, {
       poolId: pool.poolId,
+      /** Which network this server is on — lets a frontend pointed at the
+       *  wrong backend detect the mismatch instead of failing weirdly. */
+      network: env.NETWORK,
+      chainId: CHAIN_ID,
       /** 1-based position in the pool list — display ordinal. */
       poolNumber: pools.indexOf(pool) + 1,
       cutoff: pool.cutoff,

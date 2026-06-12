@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { computeSmartAccountAddress } from '@sapience/sdk/session';
-import { CHAIN_ID } from '../lib/chain';
+import { CHAIN_ID, NETWORK } from '../lib/chain';
 import {
   fmtUnits,
   formatDollarLikeBalance,
@@ -38,7 +38,17 @@ export default function MintScreen() {
     let stop = false;
     fetchPool()
       .then((p) => {
-        if (!stop) setPool(p);
+        if (stop) return;
+        // Each backend serves one network; catch a frontend pointed at the
+        // wrong one before any session/mint runs into chainId mismatches.
+        if (p.chainId !== undefined && p.chainId !== CHAIN_ID) {
+          setPoolError(
+            `Backend is on ${p.network ?? `chain ${p.chainId}`}, but the app ` +
+              `is set to ${NETWORK}. Fix the network or backend URL in Settings.`,
+          );
+          return;
+        }
+        setPool(p);
       })
       .catch((e) => {
         if (!stop) setPoolError(e instanceof Error ? e.message : String(e));

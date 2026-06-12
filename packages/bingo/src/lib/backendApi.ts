@@ -5,8 +5,13 @@
 
 import type { Address, Hex } from 'viem';
 import type { SerializedSession } from '~/lib/session/sessionKeyManager';
+import { NETWORK, type Network } from '~/lib/chain';
 
-const SERVER_URL_STORAGE_KEY = 'bingo-server-url';
+// Each backend deployment serves ONE network, so the URL override is stored
+// per network (`bingo-server-url:<network>`) — switching networks switches
+// backends with it.
+/** Pre-network-switch key; migrated to the staging slot on first read. */
+const LEGACY_SERVER_URL_STORAGE_KEY = 'bingo-server-url';
 /** Same origin: in production the platform serves this app and the API;
  *  in dev the Vite proxy forwards /api to the local server. */
 const DEFAULT_SERVER_URL = '';
@@ -16,9 +21,21 @@ const SUBMIT_TIMEOUT_MS = 90_000;
 /** A line request runs a full auction + mint synchronously. */
 const LINE_TIMEOUT_MS = 180_000;
 
-export function loadServerUrl(): string {
+function migrateLegacyServerUrl(): void {
+  const legacy = window.localStorage.getItem(LEGACY_SERVER_URL_STORAGE_KEY);
+  if (legacy === null) return;
+  // Overrides saved before the network switch existed pointed at a staging
+  // (or local dev) server.
+  if (window.localStorage.getItem('bingo-server-url:staging') === null) {
+    window.localStorage.setItem('bingo-server-url:staging', legacy);
+  }
+  window.localStorage.removeItem(LEGACY_SERVER_URL_STORAGE_KEY);
+}
+
+export function loadServerUrl(network: Network = NETWORK): string {
   if (typeof window !== 'undefined') {
-    const v = window.localStorage.getItem(SERVER_URL_STORAGE_KEY);
+    migrateLegacyServerUrl();
+    const v = window.localStorage.getItem(`bingo-server-url:${network}`);
     if (v && v.trim()) return v.trim().replace(/\/$/, '');
   }
   const envUrl = import.meta.env.VITE_BINGO_SERVER_URL;
@@ -26,11 +43,13 @@ export function loadServerUrl(): string {
   return DEFAULT_SERVER_URL;
 }
 
-export function saveServerUrl(url: string): void {
+export function saveServerUrl(url: string, network: Network = NETWORK): void {
   if (typeof window === 'undefined') return;
+  migrateLegacyServerUrl();
   const v = url.trim();
-  if (v) window.localStorage.setItem(SERVER_URL_STORAGE_KEY, v);
-  else window.localStorage.removeItem(SERVER_URL_STORAGE_KEY);
+  const key = `bingo-server-url:${network}`;
+  if (v) window.localStorage.setItem(key, v);
+  else window.localStorage.removeItem(key);
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +68,11 @@ export interface BackendCell {
 
 export interface PoolResponse {
   poolId: string;
+  /** Which network the backend serves — compare against the app's NETWORK
+   *  to catch a frontend pointed at the wrong backend. Optional so the app
+   *  still works against backends that predate the network switch. */
+  network?: Network;
+  chainId?: number;
   /** 1-based display ordinal of the pool. */
   poolNumber: number;
   /** Unix seconds; submissions refused at/after this time. */

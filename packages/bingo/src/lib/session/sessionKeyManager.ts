@@ -48,7 +48,7 @@ import {
   predictionMarketEscrow as escrowAddresses,
   collateralToken as collateralAddresses,
 } from '@sapience/sdk/contracts';
-import { CHAIN, CHAIN_ID } from '~/lib/chain';
+import { CHAIN, CHAIN_ID, NETWORK } from '~/lib/chain';
 
 const PROJECT_ID =
   (import.meta.env.VITE_ZERODEV_PROJECT_ID as string | undefined) ??
@@ -57,7 +57,13 @@ const PROJECT_ID =
 const ENTRY_POINT = getEntryPoint('0.7');
 const KERNEL_VERSION = KERNEL_V3_1;
 export { CHAIN_ID };
-export const SESSION_STORAGE_KEY = 'sapience:bingo:session';
+// Sessions are chain-specific (the server rejects a session whose chainId
+// doesn't match), so each network gets its own slot. Staging keeps the
+// pre-switch key so existing sessions survive.
+export const SESSION_STORAGE_KEY =
+  NETWORK === 'main'
+    ? 'sapience:bingo:session:main'
+    : 'sapience:bingo:session';
 
 function getZeroDevUrl(chainId: number): string {
   return `https://rpc.zerodev.app/api/v3/${PROJECT_ID}/chain/${chainId}`;
