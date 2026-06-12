@@ -380,11 +380,13 @@ export async function handleApi(
     // The session isn't needed to mint the receipt (the minter does that),
     // but requiring a valid one here means a card can't be locked in for a
     // player the backend could never fund lines for.
-    const sessionClient = await sessionFor(network, player, body.session);
-
     // Indexes are strictly sequential: a retry of an existing index is
     // idempotent, the next index is a new card, anything beyond is stale.
-    const count = await cardCount(network, pool.poolId, player);
+    // Session restore and the count read are independent — overlap them.
+    const [sessionClient, count] = await Promise.all([
+      sessionFor(network, player, body.session),
+      cardCount(network, pool.poolId, player),
+    ]);
     if (cardIndex > count) {
       json(res, 409, {
         error: `cardIndex ${cardIndex} is not next (expected ${count})`,
@@ -464,12 +466,11 @@ export async function handleApi(
       json(res, 409, { error: 'Pool is closed (cutoff passed)' });
       return true;
     }
-    const submission = await chainSubmission(
-      network,
-      pool.poolId,
-      player,
-      cardIndex,
-    );
+    // The two chain reads don't depend on each other — overlap them.
+    const [submission, fundedEvents] = await Promise.all([
+      chainSubmission(network, pool.poolId, player, cardIndex),
+      fundedPredictions(network, player),
+    ]);
     if (!submission) {
       json(res, 409, { error: 'No submission — POST /api/card/submit first' });
       return true;
@@ -480,13 +481,14 @@ export async function handleApi(
       BigInt(submission.cardPriceWei) / BigInt(LINES_PER_CARD);
     // Monotonic funded check (escrow events): never double-mint a line,
     // even after the player redeemed (burned) the position.
-    const funded = await fundedLineFlags(
-      network,
-      player,
-      cells,
-      submission.yesMask,
-      cardTag(pool.poolId, player, cardIndex),
-      stakePerLineWei,
+    const tag = cardTag(pool.poolId, player, cardIndex);
+    const funded = buildLines().map((l) =>
+      lineIsFunded(
+        fundedEvents,
+        linePicks(l, cells, submission.yesMask),
+        tag,
+        stakePerLineWei,
+      ),
     );
     if (funded[lineIndex]) {
       json(res, 200, { lineIndex, funded: true, alreadyFunded: true });

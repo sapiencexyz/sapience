@@ -290,135 +290,177 @@ export default function AdminScreen() {
             {entitlements.rows.length === 0 && (
               <p className="muted small">No cards submitted yet.</p>
             )}
-            {/* Per-player rollup: re-rolls are self-documenting (sequential
-                receipts), so a funded card sitting above abandoned indexes
-                is the layout-grinder fingerprint — flag it for review
-                before paying that player's bonus. */}
-            {Object.entries(
-              entitlements.rows.reduce<
-                Record<string, typeof entitlements.rows>
-              >((acc, r) => {
-                const k = `${r.player}:${r.poolId}`;
-                (acc[k] ??= []).push(r);
-                return acc;
-              }, {})
-            ).map(([playerKey, rows]) => {
-              const sorted = [...rows].sort(
-                (a, b) => a.cardIndex - b.cardIndex
-              );
-              const abandoned = sorted.filter((r) => r.linesFunded === 0);
-              const grinder = sorted.some(
-                (r) =>
-                  r.linesFunded > 0 &&
-                  sorted.some(
-                    (o) => o.cardIndex < r.cardIndex && o.linesFunded === 0
-                  )
-              );
-              return (
-                <div key={playerKey}>
-                  {sorted.length > 1 && (
-                    <p className={grinder ? 'error small' : 'muted small'}>
-                      {shortAddress(sorted[0].player)}: {sorted.length} cards ·{' '}
-                      {sorted.filter((r) => r.complete).length} complete ·{' '}
-                      {abandoned.length} unfunded
-                      {grinder &&
-                        ' — ⚠ funded card above abandoned indexes (re-roll pattern); review before paying'}
-                    </p>
-                  )}
-                  {sorted.map((r) => (
-                    <div
-                      key={`${r.player}:${r.poolId}:${r.cardIndex}`}
-                      className="admin-action"
-                    >
-                      <div className="wizard-step-title mono">
-                        {shortAddress(r.player)} · Card #{r.cardIndex + 1}
-                      </div>
-                      <div className="admin-kv">
-                        <div>Card price</div>
-                        <div className="mono">
-                          {fmtUnits(wei(r.cardPriceWei))}
-                        </div>
-                        <div>Lines funded</div>
-                        <div className="mono">{r.linesFunded} / 10</div>
-                        <div>Complete</div>
-                        <div className="mono">{r.complete ? 'yes' : 'no'}</div>
-                        <div>Wins</div>
-                        <div className="mono">{r.wins ?? '—'}</div>
-                        <div>Decided</div>
-                        <div className="mono">
-                          {r.decided == null
-                            ? '—'
-                            : r.decided
-                              ? 'yes'
-                              : 'no (owed can still grow)'}
-                        </div>
-                        <div>Bonus owed</div>
-                        <div className="mono">
-                          {fmtUnits(wei(r.bonusOwedWei))}
-                          {r.bonusPaidOnChain ? ' (paid ✓)' : ''}
-                        </div>
-                        <div>Referrer</div>
-                        <div className="mono">{shortAddress(r.ref)}</div>
-                        <div>Referral owed</div>
-                        <div className="mono">
-                          {fmtUnits(wei(r.referralOwedWei))}
-                          {r.referralPaidOnChain ? ' (paid ✓)' : ''}
-                        </div>
-                      </div>
-                      {r.receiptTokenId && (
-                        <div className="admin-row">
-                          {r.bonusOwedWei &&
-                            wei(r.bonusOwedWei)! > 0n &&
-                            !r.bonusPaidOnChain && (
-                              <button
-                                type="button"
-                                className="primary"
-                                // payBonus is one-shot on-chain: paying while lines
-                                // are still open locks in an undercount forever.
-                                disabled={
-                                  writePending || !isConnected || !r.decided
-                                }
+            {entitlements.rows.length > 0 &&
+              (() => {
+                /* Re-rolls are self-documenting (sequential receipts), so a
+                   funded card sitting above abandoned indexes is the
+                   layout-grinder fingerprint — flag the player for review
+                   before paying their bonus. */
+                const byPlayer = entitlements.rows.reduce<
+                  Record<string, typeof entitlements.rows>
+                >((acc, r) => {
+                  const k = `${r.player}:${r.poolId}`;
+                  (acc[k] ??= []).push(r);
+                  return acc;
+                }, {});
+                const grinders = new Set(
+                  Object.values(byPlayer)
+                    .filter((rows) =>
+                      rows.some(
+                        (r) =>
+                          r.linesFunded > 0 &&
+                          rows.some(
+                            (o) =>
+                              o.cardIndex < r.cardIndex && o.linesFunded === 0
+                          )
+                      )
+                    )
+                    .map((rows) => rows[0].player)
+                );
+                const sorted = [...entitlements.rows].sort(
+                  (a, b) =>
+                    a.player.localeCompare(b.player) ||
+                    a.poolId.localeCompare(b.poolId) ||
+                    a.cardIndex - b.cardIndex
+                );
+                return (
+                  <>
+                    {grinders.size > 0 && (
+                      <p className="error small">
+                        ⚠ {[...grinders].map(shortAddress).join(', ')}: funded
+                        card above abandoned indexes (re-roll pattern) — review
+                        before paying.
+                      </p>
+                    )}
+                    <div className="admin-table-wrap">
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th>Player</th>
+                            <th>Card</th>
+                            <th className="num">Price</th>
+                            <th className="num">Lines</th>
+                            <th className="num">Wins</th>
+                            <th>Decided</th>
+                            <th className="num">Bonus owed</th>
+                            <th>Referrer</th>
+                            <th className="num">Referral owed</th>
+                            <th>Pay</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sorted.map((r) => (
+                            <tr
+                              key={`${r.player}:${r.poolId}:${r.cardIndex}`}
+                              className={
+                                grinders.has(r.player)
+                                  ? 'admin-table-flagged'
+                                  : undefined
+                              }
+                            >
+                              <td className="mono">
+                                {grinders.has(r.player) && (
+                                  <span title="Re-roll pattern — review before paying">
+                                    ⚠{' '}
+                                  </span>
+                                )}
+                                {shortAddress(r.player)}
+                              </td>
+                              <td className="mono">#{r.cardIndex + 1}</td>
+                              <td className="mono num">
+                                {fmtUnits(wei(r.cardPriceWei))}
+                              </td>
+                              <td
+                                className="mono num"
+                                title={r.complete ? 'complete' : 'incomplete'}
+                              >
+                                {r.linesFunded}/10{r.complete ? '' : ' ⚠'}
+                              </td>
+                              <td className="mono num">{r.wins ?? '—'}</td>
+                              <td
+                                className="mono"
                                 title={
-                                  r.decided
-                                    ? undefined
-                                    : 'Not all lines decided — amount can still grow'
-                                }
-                                onClick={() =>
-                                  void payBonus(
-                                    r.receiptTokenId!,
-                                    r.wins ?? 0,
-                                    r.bonusOwedWei!
-                                  )
+                                  r.decided === false
+                                    ? 'Owed can still grow'
+                                    : undefined
                                 }
                               >
-                                Pay bonus {fmtUnits(wei(r.bonusOwedWei))}
-                                {r.decided ? '' : ' (provisional)'}
-                              </button>
-                            )}
-                          {r.referralOwedWei &&
-                            wei(r.referralOwedWei)! > 0n &&
-                            !r.referralPaidOnChain && (
-                              <button
-                                type="button"
-                                className="ghost"
-                                disabled={writePending || !isConnected}
-                                onClick={() =>
-                                  void payReferral(
-                                    r.receiptTokenId!,
-                                    r.referralOwedWei!
-                                  )
-                                }
-                              >
-                                Pay referral {fmtUnits(wei(r.referralOwedWei))}
-                              </button>
-                            )}
-                        </div>
-                      )}
+                                {r.decided == null
+                                  ? '—'
+                                  : r.decided
+                                    ? 'yes'
+                                    : 'open'}
+                              </td>
+                              <td className="mono num">
+                                {fmtUnits(wei(r.bonusOwedWei))}
+                                {r.bonusPaidOnChain ? ' ✓' : ''}
+                              </td>
+                              <td className="mono">{shortAddress(r.ref)}</td>
+                              <td className="mono num">
+                                {fmtUnits(wei(r.referralOwedWei))}
+                                {r.referralPaidOnChain ? ' ✓' : ''}
+                              </td>
+                              <td>
+                                <div className="admin-table-actions">
+                                  {r.receiptTokenId &&
+                                    r.bonusOwedWei &&
+                                    wei(r.bonusOwedWei)! > 0n &&
+                                    !r.bonusPaidOnChain && (
+                                      <button
+                                        type="button"
+                                        className="primary"
+                                        // payBonus is one-shot on-chain: paying
+                                        // while lines are still open locks in an
+                                        // undercount forever.
+                                        disabled={
+                                          writePending ||
+                                          !isConnected ||
+                                          !r.decided
+                                        }
+                                        title={
+                                          r.decided
+                                            ? undefined
+                                            : 'Not all lines decided — amount can still grow'
+                                        }
+                                        onClick={() =>
+                                          void payBonus(
+                                            r.receiptTokenId!,
+                                            r.wins ?? 0,
+                                            r.bonusOwedWei!
+                                          )
+                                        }
+                                      >
+                                        Bonus
+                                      </button>
+                                    )}
+                                  {r.receiptTokenId &&
+                                    r.referralOwedWei &&
+                                    wei(r.referralOwedWei)! > 0n &&
+                                    !r.referralPaidOnChain && (
+                                      <button
+                                        type="button"
+                                        className="ghost"
+                                        disabled={writePending || !isConnected}
+                                        onClick={() =>
+                                          void payReferral(
+                                            r.receiptTokenId!,
+                                            r.referralOwedWei!
+                                          )
+                                        }
+                                      >
+                                        Referral
+                                      </button>
+                                    )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
-                </div>
-              );
-            })}
+                  </>
+                );
+              })()}
           </>
         )}
       </section>

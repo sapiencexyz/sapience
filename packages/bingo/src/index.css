@@ -1377,6 +1377,62 @@ button.quick-pick:hover {
   padding-top: 0;
 }
 
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--hairline-strong);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+
+.admin-table tbody tr + tr td {
+  border-top: 1px solid var(--hairline);
+}
+
+.admin-table th.num,
+.admin-table td.num {
+  text-align: right;
+}
+
+.admin-table-flagged td {
+  background: var(--no-soft);
+}
+
+.admin-table-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.admin-table-actions button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  border-radius: var(--r-sm);
+}
+
 .pool-results,
 .pool-selected {
   display: flex;

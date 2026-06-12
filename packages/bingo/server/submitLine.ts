@@ -231,14 +231,16 @@ export async function submitLine(
 
   // Fallback prep on a per-(card, line) nonce key (collision-safe under
   // concurrent line requests, including across two cards funding at once);
-  // usually a no-op because submit prepped the whole card.
-  await prepareCollateral(
+  // usually a no-op because submit prepped the whole card. Started here and
+  // awaited below so the relayer WebSocket connects while it runs.
+  const collateralReady = prepareCollateral(
     network,
     sessionClient,
     smartAccountAddress,
     stakePerLineWei,
     BigInt((cardIndex + 1) * 1000 + 101 + lineIndex),
   );
+  collateralReady.catch(() => {}); // awaited below; don't also reject unhandled
   const HINT_LARGE = (1n << 255n) - 1n;
 
   const publicClient = createPublicClient({
@@ -277,7 +279,7 @@ export async function submitLine(
   });
 
   try {
-    await new Promise<void>((resolve, reject) => {
+    const wsConnected = new Promise<void>((resolve, reject) => {
       if (ws.isConnected) return resolve();
       const startedAt = Date.now();
       const id = setInterval(() => {
@@ -290,6 +292,8 @@ export async function submitLine(
         }
       }, 100);
     });
+    // Collateral prep (started before the WS) and the WS connect overlap.
+    await Promise.all([collateralReady, wsConnected]);
 
     // 1. Build + sign auction intent (canonical pick order everywhere).
     const { payload, canonicalPicks } = await prepareAuctionRFQ({
@@ -381,47 +385,51 @@ export async function submitLine(
               fresh.map((b) => `${b.counterparty}@${b.counterpartyCollateral}`).join(', '),
           );
         }
+        // Validate concurrently — the first bid to pass wins. Sequential
+        // validation made every losing bid add a full RPC round-trip before
+        // the winner was even looked at.
         for (const b of fresh) {
           if (settled) return;
-          try {
-            const result = await validateBidOnChain(
-              {
-                counterparty: b.counterparty,
-                counterpartyCollateral: b.counterpartyCollateral,
-                counterpartyNonce: b.counterpartyNonce,
-                counterpartyDeadline: b.counterpartyDeadline,
-                counterpartySignature: b.counterpartySignature,
-                counterpartySessionKeyData: b.counterpartySessionKeyData,
-              },
-              {
-                predictor: smartAccountAddress,
-                predictorCollateral: stakePerLineWei.toString(),
-                predictorNonce,
-                picks: canonicalPicks.map((p) => ({
-                  conditionResolver: p.conditionResolver,
-                  conditionId: p.conditionId,
-                  predictedOutcome: p.predictedOutcome,
-                })),
-              },
-              {
-                chainId,
-                predictionMarketAddress: escrow,
-                collateralTokenAddress: collateral,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                publicClient: publicClient as any,
-                failOpen: false,
-              },
-            );
-            console.log(
-              `${tag} bid from ${b.counterparty.slice(0, 8)} validation=${result.status}` +
-                (result.status === 'invalid' && 'reason' in result
-                  ? ` reason=${String((result as { reason?: unknown }).reason)}`
-                  : ''),
-            );
-            if (result.status !== 'valid' && result.status !== 'unverified') {
-              bidsRejected += 1;
-            }
-            if (result.status === 'valid' || result.status === 'unverified') {
+          void (async () => {
+            try {
+              const result = await validateBidOnChain(
+                {
+                  counterparty: b.counterparty,
+                  counterpartyCollateral: b.counterpartyCollateral,
+                  counterpartyNonce: b.counterpartyNonce,
+                  counterpartyDeadline: b.counterpartyDeadline,
+                  counterpartySignature: b.counterpartySignature,
+                  counterpartySessionKeyData: b.counterpartySessionKeyData,
+                },
+                {
+                  predictor: smartAccountAddress,
+                  predictorCollateral: stakePerLineWei.toString(),
+                  predictorNonce,
+                  picks: canonicalPicks.map((p) => ({
+                    conditionResolver: p.conditionResolver,
+                    conditionId: p.conditionId,
+                    predictedOutcome: p.predictedOutcome,
+                  })),
+                },
+                {
+                  chainId,
+                  predictionMarketAddress: escrow,
+                  collateralTokenAddress: collateral,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  publicClient: publicClient as any,
+                  failOpen: false,
+                },
+              );
+              console.log(
+                `${tag} bid from ${b.counterparty.slice(0, 8)} validation=${result.status}` +
+                  (result.status === 'invalid' && 'reason' in result
+                    ? ` reason=${String((result as { reason?: unknown }).reason)}`
+                    : ''),
+              );
+              if (result.status !== 'valid' && result.status !== 'unverified') {
+                bidsRejected += 1;
+                return;
+              }
               if (settled) return;
               cleanup();
               resolveBid({
@@ -432,12 +440,11 @@ export async function submitLine(
                 counterpartySignature: b.counterpartySignature as Hex,
                 counterpartySessionKeyData: b.counterpartySessionKeyData,
               });
-              return;
+            } catch (e) {
+              bidsRejected += 1;
+              console.warn(`${tag} validate threw:`, e);
             }
-          } catch (e) {
-            bidsRejected += 1;
-            console.warn(`${tag} validate threw:`, e);
-          }
+          })();
         }
       };
 
