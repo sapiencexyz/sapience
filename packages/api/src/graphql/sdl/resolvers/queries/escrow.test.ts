@@ -510,6 +510,25 @@ describe('positions resolver — query shape', () => {
     expect(mockPrisma.secondaryTrade.findMany).not.toHaveBeenCalled();
   });
 
+  it('positionId alone is an accepted filter and narrows to that row id', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({
+        id: 2887,
+        balance: '200',
+        pickConfiguration: makePickConfig({
+          predictions: [makePrediction()],
+        }),
+      }),
+    ]);
+
+    const result = await callPositions({ holder: undefined, positionId: 2887 });
+
+    const callArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(callArgs.where).toMatchObject({ id: 2887 });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: '2887' });
+  });
+
   it('fetches take + 1 raw rows so hasMore can be derived without a count query', async () => {
     mockPrisma.position.findMany.mockResolvedValue([]);
 

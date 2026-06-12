@@ -230,6 +230,7 @@ const runPositions = async (
     skip,
     chainId,
     pickConfigId,
+    positionId,
     settled,
     result,
     endsAtMin,
@@ -267,8 +268,11 @@ const runPositions = async (
     where.pickConfigId = { in: pickConfigIds };
   }
 
+  const hasPositionId = positionId !== undefined && positionId !== null;
+  if (hasPositionId) where.id = positionId;
+
   // Require at least one filter — prevents accidentally-unbounded queries.
-  if (!holderLower && !conditionId && !pickConfigIdLower)
+  if (!holderLower && !conditionId && !pickConfigIdLower && !hasPositionId)
     return { items: [], hasMore: false };
 
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;

@@ -6,6 +6,9 @@ import { usePathname } from 'next/navigation';
 const PredictionPageClient = React.lazy(
   () => import('~/app/predictions/[predictionId]/PredictionPageClient')
 );
+const PositionPageClient = React.lazy(
+  () => import('~/app/positions/[positionId]/PositionPageClient')
+);
 const ForecastPageClient = React.lazy(
   () => import('~/app/forecast/[uid]/ForecastPageClient')
 );
@@ -33,6 +36,7 @@ const NotFoundContent = () => (
 
 type RouteMatch =
   | { type: 'prediction'; id: string }
+  | { type: 'position'; id: string }
   | { type: 'forecast'; uid: string }
   | { type: 'question'; parts: string[] }
   | { type: 'profile'; address: string }
@@ -46,6 +50,9 @@ function matchRoute(pathname: string): RouteMatch {
 
   m = p.match(/^\/predictions\/([^/]+)$/);
   if (m) return { type: 'prediction', id: m[1] };
+
+  m = p.match(/^\/positions\/([^/]+)$/);
+  if (m) return { type: 'position', id: m[1] };
 
   m = p.match(/^\/forecast\/([^/]+)$/);
   if (m) return { type: 'forecast', uid: m[1] };
@@ -73,6 +80,9 @@ export default function SpaFallbackRouter() {
           serverPrediction={null}
           serverConditions={[]}
         />
+      )}
+      {match.type === 'position' && (
+        <PositionPageClient positionId={match.id} serverPosition={null} />
       )}
       {match.type === 'forecast' && (
         <ForecastPageClient uid={match.uid} serverAttestation={null} />

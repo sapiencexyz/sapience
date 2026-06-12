@@ -130,6 +130,7 @@ try {
   // ── Step 4: Remove dynamic route pages ─────────────────────────────
   const dynamicPages = [
     path.join(SRC_APP, 'predictions', '[predictionId]', 'page.tsx'),
+    path.join(SRC_APP, 'positions', '[positionId]', 'page.tsx'),
     path.join(SRC_APP, 'forecast', '[uid]', 'page.tsx'),
     path.join(SRC_APP, 'questions', '[...parts]', 'page.tsx'),
     path.join(SRC_APP, 'profile', '[address]', 'page.tsx'),

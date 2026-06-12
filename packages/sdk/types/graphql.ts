@@ -1908,6 +1908,7 @@ export type QueryPositionsArgs = {
   orderBy?: InputMaybe<PositionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  positionId?: InputMaybe<Scalars['Int']['input']>;
   result?: InputMaybe<SettlementResult>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];
@@ -1927,6 +1928,7 @@ export type QueryPositionsPageArgs = {
   orderBy?: InputMaybe<PositionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  positionId?: InputMaybe<Scalars['Int']['input']>;
   result?: InputMaybe<SettlementResult>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];
