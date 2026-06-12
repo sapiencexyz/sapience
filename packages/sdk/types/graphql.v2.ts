@@ -640,8 +640,25 @@ export type ConditionGroup = Node & {
   /** Conditions in this group, ordered by `displayOrder` then `createdAt`. */
   conditions: ConditionConnection;
   createdAt: Scalars['DateTimeISO']['output'];
+  /**
+   * Polymarket event id this group is keyed by — the canonical
+   * (source, externalEventId) identity. Null for groups created before
+   * event-keying or from non-Polymarket sources.
+   */
+  externalEventId?: Maybe<Scalars['String']['output']>;
+  /**
+   * Numeric DB id — the group's domain id (PLAN.md). Exists for the
+   * keeper's read→REST-write round-trip (SCHEMA_GAPS G3); admin REST
+   * routes key groups by this id.
+   */
+  groupId: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
+  /**
+   * Whether this group is a negative-risk basket. Derived: true when the
+   * group carries a `negRiskMarketId` (the id itself stays admin-only).
+   */
+  negRisk: Scalars['Boolean']['output'];
   /**
    * External market URLs (typically Polymarket links) associated with this
    * group, aggregated across its constituent conditions.
