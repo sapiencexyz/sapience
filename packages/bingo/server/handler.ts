@@ -395,16 +395,26 @@ export async function handleApi(
     }
 
     const seed = cardSeed(secretFor(pool.poolId), pool.poolId, player, cardIndex);
-    const submission = await mintReceipt({
-      network,
-      player,
-      poolId: pool.poolId,
-      cardIndex,
-      seed,
-      yesMask,
-      cardPriceWei: price.toString(),
-      ref: (ref as Address | undefined) ?? null,
-    });
+    // Two independent UserOps from two different signers — run together:
+    // the MINTER mints the receipt while the PLAYER's session wraps +
+    // approves for the whole card (one op, so the 10 concurrent line
+    // requests that follow don't each race their own prep). ensureSessionOp:
+    // even when collateral is already prepared, send one op so a fresh
+    // session key gets ENABLED here, serially — not by 10 concurrent line
+    // mints racing the kernel's enable nonce.
+    const [submission] = await Promise.all([
+      mintReceipt({
+        network,
+        player,
+        poolId: pool.poolId,
+        cardIndex,
+        seed,
+        yesMask,
+        cardPriceWei: price.toString(),
+        ref: (ref as Address | undefined) ?? null,
+      }),
+      prepareCollateral(network, sessionClient, player, price, undefined, true),
+    ]);
     // Idempotent retry: the chain locked sides/price at first submit.
     if (
       submission.yesMask !== yesMask ||
@@ -415,12 +425,6 @@ export async function handleApi(
       });
       return true;
     }
-    // Wrap + approve for the WHOLE card now, in one UserOp, so the 10
-    // concurrent line requests that follow don't each race their own prep.
-    // ensureSessionOp: even when collateral is already prepared, send one
-    // op so a fresh session key gets ENABLED here, serially — not by 10
-    // concurrent line mints racing the kernel's enable nonce.
-    await prepareCollateral(network, sessionClient, player, price, undefined, true);
     json(res, 200, {
       poolId: pool.poolId,
       cardIndex,
@@ -466,6 +470,12 @@ export async function handleApi(
       json(res, 409, { error: 'Pool is closed (cutoff passed)' });
       return true;
     }
+    // Speculative: restored in parallel with the chain reads below; only
+    // awaited if this line actually needs funding. The floating catch keeps
+    // an early rejection (bad session) from becoming an unhandled rejection
+    // on the already-funded path — runLine re-awaits and surfaces it.
+    const sessionClientPromise = sessionFor(network, player, body.session);
+    sessionClientPromise.catch(() => {});
     // The two chain reads don't depend on each other — overlap them.
     const [submission, fundedEvents] = await Promise.all([
       chainSubmission(network, pool.poolId, player, cardIndex),
@@ -494,10 +504,10 @@ export async function handleApi(
       json(res, 200, { lineIndex, funded: true, alreadyFunded: true });
       return true;
     }
-    const runLine = async () =>
+    const runLine = async (client: Awaited<typeof sessionClientPromise>) =>
       submitLine({
         network,
-        sessionClient: await sessionFor(network, player, body.session),
+        sessionClient: client,
         smartAccountAddress: player,
         cells,
         yesMask: submission.yesMask,
@@ -509,17 +519,19 @@ export async function handleApi(
     try {
       let result;
       try {
-        result = await runLine();
+        result = await runLine(await sessionClientPromise);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         // 0x756688fe = kernel InvalidNonce: this op lost the session-enable
         // race to a concurrent line. The winner enabled the permission, so
-        // a fresh session restore (which sees it enabled) succeeds.
+        // a FRESH session restore (which sees it enabled) succeeds.
         if (!msg.includes('0x756688fe')) throw e;
         console.warn(
           `[bingo-server] line ${lineIndex} lost the session-enable race, retrying`,
         );
-        result = await runLine();
+        result = await runLine(
+          await sessionFor(network, player, body.session),
+        );
       }
       json(res, 200, {
         lineIndex,

@@ -168,6 +168,7 @@ export default function CardDetailScreen() {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [fillPreviousOpen, setFillPreviousOpen] = useState(false);
   const [tip, setTip] = useState<{
     text: string;
     x: number;
@@ -639,7 +640,16 @@ export default function CardDetailScreen() {
                 className={
                   cardIndex === cardsSummary.cardCount ? 'primary' : 'ghost'
                 }
-                onClick={() => selectCard(cardsSummary.cardCount)}
+                onClick={() => {
+                  // A card with unfunded lines forfeits bonus eligibility —
+                  // block the next card until every line of the previous
+                  // ones is funded (the admin reviews re-roll patterns).
+                  const unfilled = cardsSummary.cards.some(
+                    (c) => c.linesFunded < 10,
+                  );
+                  if (unfilled) setFillPreviousOpen(true);
+                  else selectCard(cardsSummary.cardCount);
+                }}
               >
                 + New card
               </button>
@@ -1030,6 +1040,30 @@ export default function CardDetailScreen() {
         <section className="screen admin-section">
           <p className="error small">{statusMsg}</p>
         </section>
+      )}
+
+      {fillPreviousOpen && (
+        <div
+          className="bingo-modal-backdrop"
+          onClick={() => setFillPreviousOpen(false)}
+        >
+          <div className="bingo-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <h2>Fill your card first</h2>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setFillPreviousOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <p>
+              You must fill your previous card to remain eligible for bonus
+              multipliers.
+            </p>
+          </div>
+        </div>
       )}
 
       {detailsOpen && card && (
