@@ -121,6 +121,26 @@ export function questionMentionsImminentDate(
 }
 
 /**
+ * Condition-level matcher: a market is "imminent" when EITHER its
+ * question OR its description mentions today's/tomorrow's UTC date.
+ *
+ * Question and description are scanned independently (not concatenated)
+ * so a date can't straddle the boundary between them — e.g. a question
+ * ending in "May" and a description starting with "18" must not be read
+ * as "May 18". A null/undefined/empty description simply never matches.
+ */
+export function conditionMentionsImminentDate(
+  question: string,
+  description: string | null | undefined,
+  now: Date
+): boolean {
+  return (
+    questionMentionsImminentDate(question, now) ||
+    questionMentionsImminentDate(description ?? '', now)
+  );
+}
+
+/**
  * Compute the desired tag set for a condition given its current tags and
  * whether the question matched. Always strip-then-re-add so yesterday's
  * tag gets cleaned up on markets that no longer match.

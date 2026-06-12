@@ -16,6 +16,7 @@ import { graphqlUrl, walkConnection, type Connection } from '../utils/graphql';
 export interface PageItem {
   id: string;
   question: string;
+  description: string;
   tags: string[];
 }
 
@@ -30,6 +31,7 @@ const IMMINENT_TAG_CANDIDATES_QUERY = `
       nodes {
         conditionId
         question
+        description
         tags
       }
       pageInfo {
@@ -43,6 +45,7 @@ const IMMINENT_TAG_CANDIDATES_QUERY = `
 type CandidateNode = {
   conditionId: string;
   question: string;
+  description: string | null;
   tags: string[] | null;
 };
 
@@ -72,6 +75,7 @@ export async function fetchAllUnsettledConditions(
         out.push({
           id: c.conditionId,
           question: c.question,
+          description: c.description ?? '',
           tags: c.tags ?? [],
         });
         if (maxResults !== null && out.length >= maxResults) {
