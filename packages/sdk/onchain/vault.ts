@@ -19,6 +19,15 @@ export const ZERO_ADDRESS: Address = zeroAddress;
 
 export const VAULT_ASSET_DECIMALS = 18;
 
+/**
+ * Safety buffer applied to deposit share requests, in basis points.
+ * The vault manager rejects a deposit when `assets / requestedShares` falls
+ * below the share value at processing time, so a slightly stale (low) PPS
+ * quote would make the request ask for too many shares. Requesting 10 bps
+ * fewer shares tolerates normal quote staleness and rounding drift.
+ */
+export const DEFAULT_DEPOSIT_SHARE_BUFFER_BPS = 10n;
+
 export function abiHasFunction(
   abi: readonly unknown[],
   name: string,
@@ -89,8 +98,15 @@ export function buildDepositCalls(
     pricePerShare && pricePerShare !== '0' ? pricePerShare : '1',
     decimals
   );
+  // Request slightly fewer shares than the raw PPS quote implies (equivalent
+  // to pricing the deposit at pricePerShare * (1 + buffer)), so the request
+  // still clears the manager's share-value check if PPS drifts up slightly
+  // before processing.
   const expectedSharesWei =
-    ppsScaled === 0n ? 0n : (amountWei * 10n ** BigInt(decimals)) / ppsScaled;
+    ppsScaled === 0n
+      ? 0n
+      : (amountWei * 10n ** BigInt(decimals) * 10_000n) /
+        (ppsScaled * (10_000n + DEFAULT_DEPOSIT_SHARE_BUFFER_BPS));
 
   const requestDepositCalldata = encodeFunctionData({
     abi: vaultAbi,
