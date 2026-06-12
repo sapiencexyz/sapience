@@ -4,7 +4,7 @@
 
 import type { PolymarketMarket } from '../../../types';
 import type { Filter, FilterResult } from '../types';
-import { fetchWithRetry } from '../../../utils';
+import { graphqlRequest, graphqlUrl } from '../../../utils/graphql';
 
 export interface ExistingCondition {
   endTime: number;
@@ -35,6 +35,54 @@ export interface ExistingCondition {
   conditionGroupNegRisk?: boolean;
 }
 
+const CHECK_CONDITIONS_QUERY = `
+  query CheckConditions($first: Int!, $filter: ConditionFilter!) {
+    conditions(first: $first, filter: $filter) {
+      nodes {
+        conditionId
+        endTime
+        question
+        shortName
+        optionName
+        description
+        tags
+        similarMarket {
+          markets
+          image
+          volume
+        }
+        conditionGroup {
+          groupId
+          name
+          similarMarkets
+          negRisk
+        }
+      }
+    }
+  }
+`;
+
+type CheckConditionNode = {
+  conditionId: string;
+  endTime: number;
+  question?: string | null;
+  shortName?: string | null;
+  optionName?: string | null;
+  description?: string | null;
+  tags?: string[] | null;
+  similarMarket?: {
+    markets?: string[] | null;
+    image?: string | null;
+    volume?: number | null;
+  } | null;
+  conditionGroup?: {
+    groupId?: number | null;
+    name?: string | null;
+    similarMarkets?: string[] | null;
+    negRisk?: boolean | null;
+  } | null;
+};
+
 /**
  * Check which condition IDs already exist in Sapience API
  * Uses GraphQL to batch query by condition IDs
@@ -48,84 +96,61 @@ export async function checkExistingConditions(
     return new Map();
   }
 
-  try {
-    const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
+  const url = graphqlUrl(apiUrl);
+  const PAGE_SIZE = 100;
+  const chunks: string[][] = [];
+  for (let i = 0; i < conditionIds.length; i += PAGE_SIZE) {
+    chunks.push(conditionIds.slice(i, i + PAGE_SIZE));
+  }
+  const existing = new Map<string, ExistingCondition>();
 
-    const query = `
-      query CheckConditions($where: ConditionWhereInput!, $take: Int!) {
-        conditions(where: $where, take: $take) {
-          id
-          endTime
-          question
-          shortName
-          optionName
-          description
-          similarMarkets
-          tags
-          similarMarketVolume
-          similarMarketImage
-          conditionGroup {
-            id
-            name
-            similarMarkets
-            negRisk
-          }
+  for (const chunk of chunks) {
+    // Public and private rows both count as pre-existing, so the pipeline
+    // doesn't try to recreate them. Omitting `public` defaults listing
+    // surfaces to public-only, so each chunk queries the two sides
+    // explicitly. Per-chunk failures skip just that chunk (warn, continue).
+    try {
+      for (const isPublic of [true, false]) {
+        const data = await graphqlRequest<{
+          conditions: { nodes: CheckConditionNode[] };
+        }>(
+          url,
+          CHECK_CONDITIONS_QUERY,
+          {
+            first: PAGE_SIZE,
+            filter: { conditionIds: chunk, public: isPublic },
+          },
+          'CheckConditions'
+        );
+        for (const condition of data.conditions.nodes) {
+          existing.set(condition.conditionId, {
+            endTime: condition.endTime,
+            question: condition.question ?? undefined,
+            shortName: condition.shortName ?? undefined,
+            optionName: condition.optionName ?? undefined,
+            description: condition.description ?? undefined,
+            similarMarkets: condition.similarMarket?.markets ?? undefined,
+            tags: condition.tags ?? undefined,
+            similarMarketVolume: condition.similarMarket?.volume ?? undefined,
+            similarMarketImage: condition.similarMarket?.image ?? undefined,
+            groupName: condition.conditionGroup?.name ?? undefined,
+            conditionGroupId: condition.conditionGroup?.groupId ?? undefined,
+            conditionGroupSimilarMarkets:
+              condition.conditionGroup?.similarMarkets ?? undefined,
+            conditionGroupNegRisk:
+              condition.conditionGroup?.negRisk ?? undefined,
+          });
         }
       }
-    `;
-
-    const PAGE_SIZE = 100;
-    const chunks: string[][] = [];
-    for (let i = 0; i < conditionIds.length; i += PAGE_SIZE) {
-      chunks.push(conditionIds.slice(i, i + PAGE_SIZE));
+    } catch (error) {
+      console.warn(`[API] Error checking existing conditions: ${error}`);
     }
-    const existing = new Map<string, ExistingCondition>();
-    for (const chunk of chunks) {
-      const response = await fetchWithRetry(graphqlUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query,
-          // Query by primary id only — public and private rows both count as
-          // pre-existing, so the pipeline doesn't try to recreate them.
-          variables: { where: { id: { in: chunk } }, take: PAGE_SIZE },
-        }),
-      });
-
-      if (!response.ok) {
-        console.warn(`[API] GraphQL query failed: ${response.status}`);
-        continue;
-      }
-
-      const result = await response.json();
-      for (const condition of result.data?.conditions ?? []) {
-        existing.set(condition.id, {
-          endTime: condition.endTime,
-          question: condition.question ?? undefined,
-          shortName: condition.shortName ?? undefined,
-          optionName: condition.optionName ?? undefined,
-          description: condition.description ?? undefined,
-          similarMarkets: condition.similarMarkets ?? undefined,
-          tags: condition.tags ?? undefined,
-          similarMarketVolume: condition.similarMarketVolume ?? undefined,
-          similarMarketImage: condition.similarMarketImage ?? undefined,
-          groupName: condition.conditionGroup?.name ?? undefined,
-          conditionGroupId: condition.conditionGroup?.id ?? undefined,
-          conditionGroupSimilarMarkets:
-            condition.conditionGroup?.similarMarkets ?? undefined,
-          conditionGroupNegRisk: condition.conditionGroup?.negRisk ?? undefined,
-        });
-      }
-    }
-
-    console.log(
-      `[API] Found ${existing.size}/${conditionIds.length} conditions already exist`
-    );
-    return existing;
-  } catch (error) {
-    console.warn(`[API] Error checking existing conditions: ${error}`);
-    return new Map(); // On error, proceed with all markets
   }
+
+  console.log(
+    `[API] Found ${existing.size}/${conditionIds.length} conditions already exist`
+  );
+  return existing;
 }
 
 /**

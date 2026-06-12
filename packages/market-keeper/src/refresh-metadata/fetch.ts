@@ -13,10 +13,10 @@
 
 import type { PolymarketMarket } from '../types';
 import { fetchWithRetry } from '../utils';
+import { graphqlUrl, walkConnection, type Connection } from '../utils/graphql';
 import { normalizeTagLabel } from '../generate/tags';
 import type { ExistingCondition } from '../generate/pipeline';
 
-const SAPIENCE_PAGE_SIZE = 100;
 const GAMMA_BATCH_SIZE = 50;
 const GAMMA_CONCURRENCY = 10;
 const EVENT_TAGS_BATCH_SIZE = 50;
@@ -31,131 +31,113 @@ const EVENT_TAGS_CONCURRENCY = 10;
 const GAMMA_RESPONSE_LIMIT = GAMMA_BATCH_SIZE * 4;
 const EVENT_TAGS_RESPONSE_LIMIT = EVENT_TAGS_BATCH_SIZE * 4;
 
-/**
- * Paginate Sapience GraphQL conditions to collect every refreshable row.
- * Filters: public=true, settled=false, similarMarkets non-empty.
- * Pagination: orderBy id asc, take/skip — deterministic to avoid skipping
- * rows that share a timestamp (same approach as fetchActiveConditionIds in
- * refresh-volume).
- */
-export async function fetchAllExistingConditions(
-  apiUrl: string
-): Promise<Map<string, ExistingCondition>> {
-  const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
-
-  // Uses the staging-supported `conditions(where:)` resolver. Offset pagination
-  // is deterministic because we order by stable `id` ascending. Keep selecting
-  // `conditionGroup.externalEventId` so group-name changes can still be sent
-  // with their stable event key.
-  const query = `
-    query RefreshMetadataConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!, $orderBy: [ConditionOrderByWithRelationInput!]) {
-      conditions(where: $where, take: $take, skip: $skip, orderBy: $orderBy) {
-        id
+const REFRESH_METADATA_CONDITIONS_QUERY = `
+  query RefreshMetadataConditions($first: Int!, $after: String, $filter: ConditionFilter) {
+    conditions(first: $first, after: $after, filter: $filter) {
+      nodes {
+        conditionId
         endTime
         question
         shortName
         optionName
         description
-        similarMarkets
         tags
-        similarMarketVolume
-        similarMarketImage
+        similarMarket {
+          markets
+          image
+          volume
+        }
         conditionGroup {
-          id
+          groupId
           name
           similarMarkets
           negRisk
           externalEventId
         }
       }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
-  `;
-
-  const existing = new Map<string, ExistingCondition>();
-  let skip = 0;
-  let pageCount = 0;
-
-  while (true) {
-    pageCount++;
-    const pageStart = Date.now();
-    const response = await fetchWithRetry(graphqlUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        variables: {
-          where: {
-            public: { equals: true },
-            settled: { equals: false },
-            similarMarkets: { isEmpty: false },
-          },
-          take: SAPIENCE_PAGE_SIZE,
-          skip,
-          orderBy: [{ id: 'asc' }],
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `[RefreshMetadata] GraphQL query failed: HTTP ${response.status} ${response.statusText}`
-      );
-    }
-
-    const result = (await response.json()) as {
-      data?: {
-        conditions?: Array<{
-          id: string;
-          endTime: number;
-          question?: string | null;
-          shortName?: string | null;
-          optionName?: string | null;
-          description?: string | null;
-          similarMarkets?: string[] | null;
-          tags?: string[] | null;
-          similarMarketVolume?: number | null;
-          similarMarketImage?: string | null;
-          conditionGroup?: {
-            id?: number | null;
-            name?: string | null;
-            similarMarkets?: string[] | null;
-            negRisk?: boolean | null;
-            externalEventId?: string | null;
-          } | null;
-        }>;
-      };
-    };
-
-    const conditions = result.data?.conditions ?? [];
-    const hasMore = conditions.length === SAPIENCE_PAGE_SIZE;
-
-    for (const c of conditions) {
-      existing.set(c.id, {
-        endTime: c.endTime,
-        question: c.question ?? undefined,
-        shortName: c.shortName ?? undefined,
-        optionName: c.optionName ?? undefined,
-        description: c.description ?? undefined,
-        similarMarkets: c.similarMarkets ?? undefined,
-        tags: c.tags ?? undefined,
-        similarMarketVolume: c.similarMarketVolume ?? undefined,
-        similarMarketImage: c.similarMarketImage ?? undefined,
-        groupName: c.conditionGroup?.name ?? undefined,
-        externalEventId: c.conditionGroup?.externalEventId ?? undefined,
-        conditionGroupId: c.conditionGroup?.id ?? undefined,
-        conditionGroupSimilarMarkets:
-          c.conditionGroup?.similarMarkets ?? undefined,
-        conditionGroupNegRisk: c.conditionGroup?.negRisk ?? undefined,
-      });
-    }
-
-    console.log(
-      `[RefreshMetadata]   GraphQL page ${pageCount}: fetched ${conditions.length} (cumulative ${existing.size}, ${Date.now() - pageStart}ms)`
-    );
-
-    if (!hasMore) break;
-    skip += SAPIENCE_PAGE_SIZE;
   }
+`;
+
+type RefreshMetadataNode = {
+  conditionId: string;
+  endTime: number;
+  question?: string | null;
+  shortName?: string | null;
+  optionName?: string | null;
+  description?: string | null;
+  tags?: string[] | null;
+  similarMarket?: {
+    markets?: string[] | null;
+    image?: string | null;
+    volume?: number | null;
+  } | null;
+  conditionGroup?: {
+    groupId?: number | null;
+    name?: string | null;
+    similarMarkets?: string[] | null;
+    negRisk?: boolean | null;
+    externalEventId?: string | null;
+  } | null;
+};
+
+/**
+ * Paginate Sapience GraphQL conditions to collect every refreshable row.
+ * Filters: public=true, settled=false server-side; the non-empty
+ * `similarMarket.markets` cut happens client-side because
+ * ConditionFilter has no `isEmpty` equivalent. Relay cursor pagination is
+ * keyset-deterministic server-side. Keep selecting
+ * `conditionGroup.externalEventId` so group-name changes can still be sent
+ * with their stable event key.
+ */
+export async function fetchAllExistingConditions(
+  apiUrl: string
+): Promise<Map<string, ExistingCondition>> {
+  const existing = new Map<string, ExistingCondition>();
+  let pageCount = 0;
+  let pageStart = Date.now();
+
+  await walkConnection<
+    RefreshMetadataNode,
+    { conditions: Connection<RefreshMetadataNode> }
+  >({
+    graphqlUrl: graphqlUrl(apiUrl),
+    query: REFRESH_METADATA_CONDITIONS_QUERY,
+    variables: { filter: { public: true, settled: false } },
+    label: 'RefreshMetadata',
+    select: (data) => data.conditions,
+    onPage: (nodes) => {
+      pageCount++;
+      for (const c of nodes) {
+        if (!c.similarMarket?.markets?.length) continue;
+        existing.set(c.conditionId, {
+          endTime: c.endTime,
+          question: c.question ?? undefined,
+          shortName: c.shortName ?? undefined,
+          optionName: c.optionName ?? undefined,
+          description: c.description ?? undefined,
+          similarMarkets: c.similarMarket.markets,
+          tags: c.tags ?? undefined,
+          similarMarketVolume: c.similarMarket.volume ?? undefined,
+          similarMarketImage: c.similarMarket.image ?? undefined,
+          groupName: c.conditionGroup?.name ?? undefined,
+          externalEventId: c.conditionGroup?.externalEventId ?? undefined,
+          conditionGroupId: c.conditionGroup?.groupId ?? undefined,
+          conditionGroupSimilarMarkets:
+            c.conditionGroup?.similarMarkets ?? undefined,
+          conditionGroupNegRisk: c.conditionGroup?.negRisk ?? undefined,
+        });
+      }
+      console.log(
+        `[RefreshMetadata]   GraphQL page ${pageCount}: fetched ${nodes.length} (cumulative ${existing.size}, ${Date.now() - pageStart}ms)`
+      );
+      pageStart = Date.now();
+    },
+  });
 
   return existing;
 }

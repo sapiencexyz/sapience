@@ -16,6 +16,7 @@ import {
   logError,
 } from '../utils';
 import { submitVolumeUpdates } from '../generate/api';
+import { fetchActiveConditionIds } from '../sapience/active-conditions';
 
 // ============ Constants ============
 
@@ -81,73 +82,6 @@ Environment Variables (required for API submission):
   SAPIENCE_API_URL     API URL (default: https://api.sapience.xyz)
   ADMIN_PRIVATE_KEY    64-char hex private key for signing admin requests
 `);
-}
-
-// ============ Sapience API ============
-
-/**
- * Fetch all active Polymarket condition IDs from Sapience via GraphQL.
- * Uses deterministic pagination (orderBy id) to avoid missing conditions
- * when many share the same timestamp (see commit 31c216402).
- */
-async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
-  const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
-
-  const PAGE_SIZE = 100;
-  const allIds: string[] = [];
-  const seen = new Set<string>();
-  let skip = 0;
-
-  while (true) {
-    const query = `
-      query ActiveConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!, $orderBy: [ConditionOrderByWithRelationInput!]) {
-        conditions(where: $where, take: $take, skip: $skip, orderBy: $orderBy) {
-          id
-        }
-      }
-    `;
-
-    const response = await fetchWithRetry(graphqlUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        variables: {
-          where: {
-            settled: { equals: false },
-            public: { equals: true },
-            similarMarkets: { isEmpty: false },
-          },
-          take: PAGE_SIZE,
-          skip,
-          orderBy: [{ id: 'asc' }],
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `GraphQL query failed: HTTP ${response.status} ${response.statusText}`
-      );
-    }
-
-    const result = (await response.json()) as {
-      data?: { conditions?: Array<{ id: string }> };
-    };
-    const conditions = result.data?.conditions ?? [];
-
-    for (const c of conditions) {
-      if (!seen.has(c.id)) {
-        seen.add(c.id);
-        allIds.push(c.id);
-      }
-    }
-
-    if (conditions.length < PAGE_SIZE) break;
-    skip += PAGE_SIZE;
-  }
-
-  return allIds;
 }
 
 // ============ Polymarket Data API ============

@@ -16,11 +16,11 @@ import { DEFAULT_SAPIENCE_API_URL } from '../constants';
 import {
   validatePrivateKey,
   confirmProductionAccess,
-  fetchWithRetry,
   log,
   logError,
 } from '../utils';
 import { submitMetadataUpdates } from '../generate/api';
+import { fetchAllUnsettledConditions } from './fetch';
 import {
   questionMentionsImminentDate,
   computeDesiredTags,
@@ -75,107 +75,6 @@ Environment Variables (required for live run):
   SAPIENCE_API_URL     API URL (default: https://api.sapience.xyz)
   ADMIN_PRIVATE_KEY    64-char hex private key for signing admin requests
 `);
-}
-
-interface PageItem {
-  id: string;
-  question: string;
-  tags: string[];
-}
-
-/**
- * Fetch every public + unsettled condition with its question and tags.
- *
- * Sorted by createdAt **desc** (newest first). Two reasons:
- *  - The newest markets are the most likely to mention today's or tomorrow's
- *    date in the title — so a `--limit N` dry-run sample is much more
- *    likely to find matches than if we walked the oldest markets first.
- *  - Live runs are uncapped and visit every market, so direction doesn't
- *    affect correctness — only the sample shape for partial runs.
- *
- * When `maxResults` is non-null, stops once the cumulative count hits it.
- */
-async function fetchAllUnsettledConditions(
-  apiUrl: string,
-  maxResults: number | null
-): Promise<PageItem[]> {
-  const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
-  const PAGE_SIZE = 100;
-  const out: PageItem[] = [];
-  let skip = 0;
-  let pageCount = 0;
-
-  // Public + unsettled conditions, sorted createdAt DESC so a --limit
-  // sample biases toward newest markets (most likely to match today's
-  // or tomorrow's date).
-  const query = `
-    query ImminentTagCandidates($where: ConditionWhereInput, $take: Int, $skip: Int) {
-      conditions(
-        where: $where
-        take: $take
-        skip: $skip
-        orderBy: [{ createdAt: desc }]
-      ) {
-        id
-        question
-        tags
-      }
-    }
-  `;
-
-  while (true) {
-    pageCount++;
-    const pageStart = Date.now();
-    const response = await fetchWithRetry(graphqlUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        variables: {
-          where: {
-            public: { equals: true },
-            settled: { equals: false },
-          },
-          take: PAGE_SIZE,
-          skip,
-        },
-      }),
-    });
-    if (!response.ok) {
-      const body = await response.text().catch(() => '(unreadable body)');
-      throw new Error(
-        `GraphQL conditions query failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
-      );
-    }
-    const result = (await response.json()) as {
-      data?: {
-        conditions?: Array<{ id: string; question: string; tags: string[] }>;
-      };
-      errors?: Array<{ message: string }>;
-    };
-    if (result.errors && result.errors.length > 0) {
-      throw new Error(
-        `GraphQL conditions query returned errors: ${JSON.stringify(result.errors, null, 2)}`
-      );
-    }
-    const nodes = result.data?.conditions ?? [];
-    for (const c of nodes) {
-      out.push({ id: c.id, question: c.question, tags: c.tags ?? [] });
-      if (maxResults !== null && out.length >= maxResults) {
-        log(
-          `[TodayTag]   page ${pageCount}: fetched ${nodes.length} (cumulative ${out.length}, ${Date.now() - pageStart}ms) — hit --limit ${maxResults}, stopping`
-        );
-        return out;
-      }
-    }
-    const hasMore = nodes.length === PAGE_SIZE;
-    log(
-      `[TodayTag]   page ${pageCount}: fetched ${nodes.length} (cumulative ${out.length}, ${Date.now() - pageStart}ms, hasMore=${hasMore})`
-    );
-    if (!hasMore) break;
-    skip += PAGE_SIZE;
-  }
-  return out;
 }
 
 /** Set-equality (order-insensitive) for two string[] tag lists. */
