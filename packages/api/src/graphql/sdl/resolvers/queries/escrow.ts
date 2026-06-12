@@ -237,6 +237,7 @@ const runPositions = async (
     holderWon,
     collateralMin,
     collateralMax,
+    active,
     orderBy,
     orderDirection,
   }: QueryPositionsArgs,
@@ -273,6 +274,14 @@ const runPositions = async (
 
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (pickConfigIdLower && !conditionId) where.pickConfigId = pickConfigIdLower;
+  if (active === true) {
+    if (settled === true) return { items: [], hasMore: false };
+    where.NOT = { balance: '0' };
+    where.pickConfiguration = {
+      ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
+      resolved: false,
+    };
+  }
   if (settled !== undefined && settled !== null) {
     where.pickConfiguration = {
       ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
@@ -432,10 +441,22 @@ const runPositions = async (
     executedAt: number;
     tradeHash: string;
   };
+  type ClaimRow = {
+    pickConfigId: string;
+    holder: string;
+    positionToken: string;
+  };
+  type CloseRow = {
+    pickConfigId: string;
+    predictorHolder: string;
+    counterpartyHolder: string;
+  };
+
+  const pickConfigIds = Array.from(new Set(rows.map((r) => r.pickConfigId)));
 
   // preloadPickConditions and the trades fetch are independent — both only
   // need `rows`. Run them in parallel to overlap their network round trips.
-  const [, trades] = await Promise.all([
+  const [, trades, claims, closes] = await Promise.all([
     preloadPickConditions(
       ctx,
       rows.map((r) => r.pickConfiguration)
@@ -459,6 +480,34 @@ const runPositions = async (
             tradeHash: true,
           },
         }),
+    active !== true || rows.length === 0
+      ? Promise.resolve([] as ClaimRow[])
+      : prisma.claim.findMany({
+          where: {
+            chainId: { in: chainIds },
+            holder: { in: holders },
+            positionToken: { in: tokenAddresses },
+            pickConfigId: { in: pickConfigIds },
+          },
+          select: { pickConfigId: true, holder: true, positionToken: true },
+        }),
+    active !== true || rows.length === 0
+      ? Promise.resolve([] as CloseRow[])
+      : prisma.close.findMany({
+          where: {
+            chainId: { in: chainIds },
+            pickConfigId: { in: pickConfigIds },
+            OR: [
+              { predictorHolder: { in: holders } },
+              { counterpartyHolder: { in: holders } },
+            ],
+          },
+          select: {
+            pickConfigId: true,
+            predictorHolder: true,
+            counterpartyHolder: true,
+          },
+        }),
   ]);
 
   const positionKey = (chainId: number, token: string, holder: string) =>
@@ -473,8 +522,41 @@ const runPositions = async (
     }
   }
 
+  const claimKeys = new Set(
+    claims.map(
+      (c) =>
+        `${c.pickConfigId}:${c.positionToken.toLowerCase()}:${c.holder.toLowerCase()}`
+    )
+  );
+  const predictorCloseKeys = new Set(
+    closes.map(
+      (c) => `${c.pickConfigId}:true:${c.predictorHolder.toLowerCase()}`
+    )
+  );
+  const counterpartyCloseKeys = new Set(
+    closes.map(
+      (c) => `${c.pickConfigId}:false:${c.counterpartyHolder.toLowerCase()}`
+    )
+  );
+
   const synthesized: PositionShape[] = [];
   for (const r of rows) {
+    if (active === true) {
+      const balanceBn = BigInt(r.balance);
+      if (balanceBn === 0n || (r.pickConfiguration?.resolved ?? false))
+        continue;
+      const claimKey = `${r.pickConfigId}:${r.tokenAddress.toLowerCase()}:${r.holder.toLowerCase()}`;
+      const closeKey = `${r.pickConfigId}:${r.isPredictorToken}:${r.holder.toLowerCase()}`;
+      if (
+        claimKeys.has(claimKey) ||
+        (r.isPredictorToken
+          ? predictorCloseKeys.has(closeKey)
+          : counterpartyCloseKeys.has(closeKey))
+      ) {
+        continue;
+      }
+    }
+
     const pc = r.pickConfiguration;
     let totalPayout = 0n;
     let predictionId: string | null = null;

@@ -1577,14 +1577,14 @@ type Query {
   positionCount(chainId: Int, holder: String!, settled: Boolean): Int!
 
   """
-  Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
+  Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status. Pass active: true for live inventory only: non-zero, unresolved positions with no indexed claim/redeem or close record. Omit active to keep historical queries unchanged.
   """
-  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
+  positions(active: Boolean, chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
 
   """
-  Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal.
+  Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. Supports active: true with the same live-inventory semantics as positions.
   """
-  positionsPage(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): PositionsPage!
+  positionsPage(active: Boolean, chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): PositionsPage!
 
   """Look up a single prediction by its on-chain prediction ID"""
   prediction(id: String!): Prediction

@@ -168,4 +168,35 @@ describe('PositionTokenTransferIndexer', () => {
       expect(mockPrisma.$executeRaw).not.toHaveBeenCalled();
     });
   });
+
+  describe('watch list', () => {
+    it('keeps fullyRedeemed tokens in scope while any indexed Position balance is non-zero', async () => {
+      const indexer = new Indexer(42161);
+      mockPrisma.picks.findMany.mockResolvedValue([
+        {
+          id: PICK_CONFIG_ID,
+          predictorToken: TOKEN,
+          counterpartyToken: HOLDER_B,
+        },
+      ]);
+
+      const result = await indexer.loadWatchList();
+
+      expect(mockPrisma.picks.findMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({
+          chainId: 42161,
+          OR: [
+            { fullyRedeemed: false },
+            { positionBalances: { some: { NOT: { balance: '0' } } } },
+          ],
+        }),
+        select: {
+          id: true,
+          predictorToken: true,
+          counterpartyToken: true,
+        },
+      });
+      expect(result.tokenAddresses).toContain(TOKEN.toLowerCase());
+    });
+  });
 });

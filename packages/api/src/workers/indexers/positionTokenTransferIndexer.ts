@@ -320,10 +320,13 @@ class PositionTokenTransferIndexer implements IIndexer {
     const where: NonNullable<
       Parameters<typeof prisma.picks.findMany>[0]
     >['where'] = {
-      fullyRedeemed: false,
       chainId: this.chainId,
       predictorToken: { not: null },
       counterpartyToken: { not: null },
+      OR: [
+        { fullyRedeemed: false },
+        { positionBalances: { some: { NOT: { balance: '0' } } } },
+      ],
     };
 
     // Legacy instances only watch tokens from their specific escrow contract

@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockPrisma = vi.hoisted(() => ({
   position: { findMany: vi.fn(), count: vi.fn() },
   secondaryTrade: { findMany: vi.fn() },
+  claim: { findMany: vi.fn() },
+  close: { findMany: vi.fn() },
   pick: { findMany: vi.fn() },
   $queryRaw: vi.fn(),
 }));
@@ -158,6 +160,8 @@ const callPositions = (
 beforeEach(() => {
   vi.clearAllMocks();
   mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+  mockPrisma.claim.findMany.mockResolvedValue([]);
+  mockPrisma.close.findMany.mockResolvedValue([]);
 });
 
 describe('positions resolver — synthetic row emission', () => {
@@ -372,6 +376,89 @@ describe('positions resolver — synthetic row emission', () => {
       balance: '200',
       realizedPnL: null,
     });
+  });
+
+  it('active=true excludes resolved, claimed, and closed rows while historical queries include them', async () => {
+    const rows = [
+      makePosition({
+        id: 1,
+        tokenAddress: TOKEN_PRED,
+        balance: '200',
+        pickConfiguration: makePickConfig({
+          resolved: true,
+          result: 'PREDICTOR_WINS',
+          predictions: [makePrediction()],
+        }),
+      }),
+      makePosition({
+        id: 2,
+        pickConfigId: 'private-unpriceable-claim',
+        tokenAddress: TOKEN_CP,
+        isPredictorToken: false,
+        balance: '200',
+        pickConfiguration: makePickConfig({
+          id: 'private-unpriceable-claim',
+          predictions: [
+            makePrediction({ predictor: BOB, counterparty: ALICE }),
+          ],
+        }),
+      }),
+      makePosition({
+        id: 3,
+        pickConfigId: 'private-unpriceable-close',
+        tokenAddress: '0xclosedtoken',
+        balance: '200',
+        pickConfiguration: makePickConfig({
+          id: 'private-unpriceable-close',
+          predictorToken: '0xclosedtoken',
+          predictions: [makePrediction()],
+        }),
+      }),
+      makePosition({
+        id: 4,
+        pickConfigId: 'private-unpriceable-active',
+        tokenAddress: '0xactivetoken',
+        balance: '200',
+        pickConfiguration: makePickConfig({
+          id: 'private-unpriceable-active',
+          predictorToken: '0xactivetoken',
+          predictions: [makePrediction()],
+        }),
+      }),
+    ];
+    mockPrisma.position.findMany.mockResolvedValue(rows);
+    mockPrisma.claim.findMany.mockResolvedValue([
+      {
+        pickConfigId: 'private-unpriceable-claim',
+        holder: ALICE,
+        positionToken: TOKEN_CP,
+      },
+    ]);
+    mockPrisma.close.findMany.mockResolvedValue([
+      {
+        pickConfigId: 'private-unpriceable-close',
+        predictorHolder: ALICE,
+        counterpartyHolder: BOB,
+      },
+    ]);
+
+    const historical = await callPositions();
+    const active = await callPositions({ active: true });
+
+    expect(historical.map((r) => r.id)).toEqual(['1', '2', '3', '4']);
+    expect(active.map((r) => r.id)).toEqual(['4']);
+    expect(mockPrisma.position.findMany.mock.calls[1][0].where).toMatchObject({
+      holder: ALICE,
+      NOT: { balance: '0' },
+      pickConfiguration: { resolved: false },
+    });
+  });
+
+  it('active=true with settled=true is an empty, incompatible filter combination', async () => {
+    const result = await callPositions({ active: true, settled: true });
+
+    expect(result).toEqual([]);
+    expect(mockPrisma.position.findMany).not.toHaveBeenCalled();
   });
 
   it('counterparty-side holder: cost basis comes from counterpartyCollateral', async () => {

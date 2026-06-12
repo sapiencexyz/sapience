@@ -1668,9 +1668,9 @@ export type Query = {
   popularTags: Array<Scalars['String']['output']>;
   /** Count of token positions for a given holder */
   positionCount: Scalars['Int']['output'];
-  /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
+  /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status. Pass active: true for live inventory only: non-zero, unresolved positions with no indexed claim/redeem or close record. Omit active to keep historical queries unchanged. */
   positions: Array<Position>;
-  /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. */
+  /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. Supports active: true with the same live-inventory semantics as positions. */
   positionsPage: PositionsPage;
   /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
@@ -1897,6 +1897,7 @@ export type QueryPositionCountArgs = {
 
 
 export type QueryPositionsArgs = {
+  active?: InputMaybe<Scalars['Boolean']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;
@@ -1916,6 +1917,7 @@ export type QueryPositionsArgs = {
 
 
 export type QueryPositionsPageArgs = {
+  active?: InputMaybe<Scalars['Boolean']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;
