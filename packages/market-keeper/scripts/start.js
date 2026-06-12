@@ -1,22 +1,17 @@
 #!/usr/bin/env node
-const { execSync } = require('child_process');
+/**
+ * Transitional all-in-one keeper entrypoint: runs every cron group in sequence
+ * (discovery → metadata-tags → market-data → settlement), fail-fast.
+ *
+ * This preserves the original single-cron behaviour while the groups are being
+ * split into separate Railway crons (scripts/cron-*.js + the start:* package
+ * scripts). Once each group has its own Railway cron, this file can be retired
+ * — cross-group failure isolation comes from that split, not from here.
+ *
+ * Ordering note: refresh-metadata + refresh-imminent-tag run back-to-back in
+ * the metadata-tags group, and refresh-metadata now PRESERVES the "Today" tag
+ * (KEEPER_INTERNAL_TAGS), so it no longer has to run last to "own" the tag.
+ */
+const { ORDER, runGroup } = require('./lib/groups');
 
-const run = (cmd) => execSync(cmd, { stdio: 'inherit' });
-
-run('node dist/scripts/refresh-metadata.js');
-run('node dist/scripts/generate.js');
-run('node dist/scripts/relist.js');
-run('node dist/scripts/prices-and-1d-7d-volume.js');
-run('node dist/scripts/refresh-volume.js');
-run('node dist/scripts/cleanup-polymarket.js --execute');
-// "today" tag runs AFTER refresh-metadata so we own the tag value last
-// (refresh-metadata can rewrite tags from Polymarket event data).
-run('node dist/scripts/refresh-imminent-tag.js');
-
-if (process.env.DEFAULT_CHAIN_ID === '5064014') {
-  run('node dist/scripts/settle-polymarket.js --execute --wait');
-} else {
-  run('node dist/scripts/settle-manual.js --execute --wait');
-}
-
-run('node dist/scripts/settle-pyth.js --execute --wait');
+for (const name of ORDER) runGroup(name);
