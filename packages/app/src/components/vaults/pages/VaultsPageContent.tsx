@@ -750,12 +750,14 @@ const VaultsPageContent = () => {
                           Vault Balance
                           <br className="sm:hidden" />{' '}
                           {isBalanceReady && (
-                            <span className="font-medium text-[hsl(var(--ethena))]">
+                            <span className="font-medium text-[hsl(var(--ethena))] animate-in fade-in duration-200">
                               {tvlDisplay} {collateralSymbol}
                             </span>
                           )}
                         </h4>
-                        <div className="relative">
+                        <div
+                          className={`relative ${isBalanceReady ? 'animate-in fade-in duration-200' : ''}`}
+                        >
                           {isBalanceReady ? (
                             <>
                               {tvlWei <= VAULT_CAPACITY_WEI && (
@@ -814,7 +816,9 @@ const VaultsPageContent = () => {
                           )}
                         </div>
                         <div className="mt-2 flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-0 text-sm">
-                          <span className="font-mono text-muted-foreground uppercase">
+                          <span
+                            className={`font-mono text-muted-foreground uppercase ${isBalanceReady ? 'animate-in fade-in duration-200' : ''}`}
+                          >
                             {isBalanceReady && (
                               <>
                                 {deployedDisplay} {collateralSymbol} (

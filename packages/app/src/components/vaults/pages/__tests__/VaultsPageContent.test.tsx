@@ -383,6 +383,17 @@ describe('VaultsPageContent vault balance display', () => {
     expect(screen.getByText(/deployed/)).toBeInTheDocument();
   });
 
+  it('fades the balance, bar, and deployed line in once loaded', () => {
+    render(<VaultsPageContent />);
+
+    const fadeIn = 'animate-in fade-in duration-200';
+    expect(screen.getByText('1,500.00 USDe').className).toContain(fadeIn);
+    expect(
+      screen.getByTestId('vault-balance-bar').parentElement?.className
+    ).toContain(fadeIn);
+    expect(screen.getByText(/deployed/).className).toContain(fadeIn);
+  });
+
   it('hides the balance number and progress bar until the on-chain read has loaded', () => {
     mockUsePassiveLiquidityVault.mockReturnValue({
       ...passiveVaultDefaults(),
