@@ -164,6 +164,13 @@ const fieldByResolvedVolumeKey: Record<VolumeKey, string> = {
 export interface RunQuestionsInput {
   take?: number | null;
   skip?: number | null;
+  /**
+   * Upper bound for the OFFSET. The keyset-aware callers keep the
+   * shared MAX_SKIP hardening (default); the plain v1 `questions`
+   * surface passes MAX_SAFE_INTEGER because staging deliberately
+   * reverted skip clamping there in #1802 — see the wrapper.
+   */
+  maxSkip?: number | null;
   search?: string | null;
   categorySlugs?: string[] | null;
   tag?: string | null;
@@ -262,7 +269,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
 
   return {
     take: clampTake(args.take, { defaultTake: 50, maxTake: 100 }),
-    skip: clampSkip(args.skip),
+    skip: clampSkip(args.skip, { maxSkip: args.maxSkip ?? undefined }),
     search: args.search?.slice(0, 200) ?? null,
     categorySlugs: args.categorySlugs?.slice(0, 50) ?? null,
     tag: args.tag?.slice(0, 200) ?? null,
@@ -960,8 +967,13 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
   args
 ) => {
   const { items } = await runQuestionsData({
-    take: args.take,
+    // #1802 semantics, clobbered by the 1804 merge and restored here:
+    // the v1 surface bounds take to [1, 100] itself (take <= 0 degrades
+    // to a single row, not the runner's 50-row default) and passes skip
+    // through unbounded (no MAX_SKIP cap).
+    take: Math.max(1, Math.min(args.take, 100)),
     skip: args.skip,
+    maxSkip: Number.MAX_SAFE_INTEGER,
     search: args.search ?? null,
     categorySlugs: args.categorySlugs ?? null,
     tag: args.tag ?? null,

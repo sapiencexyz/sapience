@@ -186,3 +186,76 @@ describe('runQuestionsData questionType filter', () => {
     expect(items).toHaveLength(0);
   });
 });
+
+/**
+ * v1 `questions` wrapper pagination bounds — #1802 semantics.
+ *
+ * Staging deliberately reverted the clampSkip/MAX_SKIP hardening from the
+ * v1 surface in #1802 ("roll graphql surface back to main"); the 1804
+ * merge re-imposed it via the shared runner (skip silently capped at
+ * 1000, take<=0 mapped to the 50-row default instead of 1). These pins
+ * record the restored v1 contract: skip passes through unbounded and
+ * take<=0 degrades to a single row, exactly as pre-merge staging behaved.
+ */
+const { questions } = await import('./questions');
+// The generated resolver type is a union including the object form
+// (ResolverWithResolve), which isn't directly callable — cast to the
+// plain-function shape for invocation, like the v2 resolver tests do.
+const callQuestions = questions as unknown as (
+  parent: unknown,
+  args: Record<string, unknown>,
+  ctx: unknown,
+  info: unknown
+) => Promise<unknown[]>;
+
+describe('v1 questions wrapper pagination bounds (#1802 semantics)', () => {
+  const flattenedValues = (): unknown[] => {
+    expect(queryRawMock).toHaveBeenCalled();
+    const [strings, ...values] = queryRawMock.mock.calls[0] as [
+      TemplateStringsArray,
+      ...unknown[],
+    ];
+    return Prisma.sql(strings, ...values).values;
+  };
+
+  beforeEach(() => {
+    queryRawMock.mockReset().mockResolvedValue([]);
+    conditionGroupFindManyMock.mockReset().mockResolvedValue([]);
+    conditionFindManyMock.mockReset().mockResolvedValue([]);
+  });
+
+  it('passes skip through unbounded (no MAX_SKIP cap on the v1 surface)', async () => {
+    await callQuestions({}, { take: 50, skip: 1500 }, {}, null);
+    // The OFFSET bind param must be the caller's skip, not the 1000 cap.
+    expect(flattenedValues()).toContain(1500);
+    expect(flattenedValues()).not.toContain(1000);
+  });
+
+  it('take <= 0 degrades to a single row, not the 50-row default', async () => {
+    queryRawMock.mockResolvedValue([
+      {
+        item_type: 'group',
+        group_id: 1,
+        condition_id: null,
+        prediction_count: 2n,
+        sort_value: 100,
+        end_time: 1_900_000_000,
+      },
+      {
+        item_type: 'group',
+        group_id: 2,
+        condition_id: null,
+        prediction_count: 2n,
+        sort_value: 90,
+        end_time: 1_900_000_000,
+      },
+    ]);
+    conditionGroupFindManyMock.mockResolvedValue([
+      { id: 1, condition: [{ id: '0xabc' }, { id: '0xdef' }] },
+      { id: 2, condition: [{ id: '0x123' }, { id: '0x456' }] },
+    ]);
+
+    const items = await callQuestions({}, { take: 0, skip: 0 }, {}, null);
+    expect(items).toHaveLength(1);
+  });
+});
