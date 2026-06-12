@@ -14,22 +14,20 @@ import {
 import { deserializePermissionAccount } from '@zerodev/permissions';
 import { toECDSASigner } from '@zerodev/permissions/signers';
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
-import {
-  CHAIN_ID_ETHEREAL_TESTNET,
-  etherealTestnetChain,
-} from '@sapience/sdk/constants';
 import { env } from './config.js';
+import { NETWORK_CONFIG, type Network } from './network.js';
 import type { SerializedSession } from './types.js';
 
-export const CHAIN_ID = CHAIN_ID_ETHEREAL_TESTNET;
+export const CHAIN = NETWORK_CONFIG[env.NETWORK as Network].chain;
+export const CHAIN_ID = CHAIN.id;
 
 const ENTRY_POINT = getEntryPoint('0.7');
 const KERNEL_VERSION = KERNEL_V3_1;
 
 export function getPublicClient() {
   return createPublicClient({
-    chain: etherealTestnetChain,
-    transport: http(etherealTestnetChain.rpcUrls.default.http[0]),
+    chain: CHAIN,
+    transport: http(CHAIN.rpcUrls.default.http[0]),
   });
 }
 
@@ -73,12 +71,12 @@ export async function restoreSessionClient(
 
   const url = zeroDevUrl(CHAIN_ID);
   const paymasterClient = createZeroDevPaymasterClient({
-    chain: etherealTestnetChain,
+    chain: CHAIN,
     transport: http(url),
   });
   return createKernelAccountClient({
     account,
-    chain: etherealTestnetChain,
+    chain: CHAIN,
     bundlerTransport: http(url),
     paymaster: {
       getPaymasterData: async (userOperation) =>

@@ -28,9 +28,8 @@ import {
 } from '@zerodev/sdk';
 import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
-import { etherealTestnetChain } from '@sapience/sdk/constants';
 import { env } from './config.js';
-import { CHAIN_ID, getPublicClient, zeroDevUrl } from './session.js';
+import { CHAIN, CHAIN_ID, getPublicClient, zeroDevUrl } from './session.js';
 
 const RECEIPT_ADDRESS = env.RECEIPT_CONTRACT_ADDRESS as Address;
 
@@ -145,12 +144,12 @@ function getMinterClient(): Promise<KernelAccountClient> {
       });
       const url = zeroDevUrl(CHAIN_ID);
       const paymasterClient = createZeroDevPaymasterClient({
-        chain: etherealTestnetChain,
+        chain: CHAIN,
         transport: http(url),
       });
       return createKernelAccountClient({
         account,
-        chain: etherealTestnetChain,
+        chain: CHAIN,
         bundlerTransport: http(url),
         paymaster: {
           getPaymasterData: async (userOperation) =>

@@ -29,11 +29,15 @@ import { cardCount, chainSubmission, mintReceipt } from './receipt.js';
 import { restoreSessionClient } from './session.js';
 import { prepareCollateral, submitLine } from './submitLine.js';
 import type { PoolConfig, SerializedSession } from './types.js';
-import bundledPools from '../pool.json' with { type: 'json' };
+import bundledStagingPools from '../pool.json' with { type: 'json' };
+import bundledMainPools from '../pool.main.json' with { type: 'json' };
 
 // Pools are deployment config, loaded once per process. Last entry = active.
-// The committed pool.json is bundled into the build (works on serverless,
-// no filesystem needed); POOL_PATH overrides it with a file on disk.
+// The committed pool file is bundled into the build (works on serverless,
+// no filesystem needed); conditions are chain-specific, so each network has
+// its own file. POOL_PATH overrides with a file on disk.
+const bundledPools =
+  env.NETWORK === 'main' ? bundledMainPools : bundledStagingPools;
 const pools = env.POOL_PATH
   ? loadPools(env.POOL_PATH)
   : parsePools(bundledPools);

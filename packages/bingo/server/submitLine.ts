@@ -21,7 +21,6 @@ import {
 import { prepareAuctionRFQ } from '@sapience/sdk/auction/initiate';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
-import { etherealTestnetChain } from '@sapience/sdk/constants';
 import { env } from './config.js';
 import { cardTag } from './draw.js';
 import {
@@ -30,7 +29,7 @@ import {
   linePicks,
 } from './chain.js';
 import { buildLines } from './lines.js';
-import { CHAIN_ID } from './session.js';
+import { CHAIN, CHAIN_ID } from './session.js';
 import type { PoolCondition } from './types.js';
 
 const BID_WAIT_MS = 45_000;
@@ -111,8 +110,8 @@ export async function prepareCollateral(
     throw new Error('Escrow/collateral not configured for Ethereal');
   }
   const publicClient = createPublicClient({
-    chain: etherealTestnetChain,
-    transport: http(etherealTestnetChain.rpcUrls.default.http[0]),
+    chain: CHAIN,
+    transport: http(CHAIN.rpcUrls.default.http[0]),
   });
   const [nativeBalance, wusdeBalance, allowance] = await Promise.all([
     publicClient.getBalance({ address: smartAccountAddress }),
@@ -226,8 +225,8 @@ export async function submitLine(
   const HINT_LARGE = (1n << 255n) - 1n;
 
   const publicClient = createPublicClient({
-    chain: etherealTestnetChain,
-    transport: http(etherealTestnetChain.rpcUrls.default.http[0]),
+    chain: CHAIN,
+    transport: http(CHAIN.rpcUrls.default.http[0]),
   });
 
   const picksForLine = linePicks(line, cells, yesMask);

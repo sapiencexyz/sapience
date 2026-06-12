@@ -1,0 +1,246 @@
+[
+  {
+    "poolId": "world-cup-2026-jun13-main",
+    "cutoff": 1781290800,
+    "minCardPriceWei": "1000000000000000000",
+    "referralBps": 200,
+    "multiplierBps": [
+      0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+    ],
+    "conditions": [
+      {
+        "conditionId": "0x802adc7238db42d431521f625b2a367954d04ebf8836109257dd4a3b961c6108",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Canada wins Jun 12?",
+        "question": "Will Canada win on 2026-06-12?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781337540
+      },
+      {
+        "conditionId": "0x7100ab95b70e1c300a74453214a5e605112c7cc7f5404961b740b4871609622e",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "CND/BSN O2.5",
+        "question": "Will Canada vs Bosnia and Herzegovina total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781290800
+      },
+      {
+        "conditionId": "0x5dc7bc1b2e7319e11c4c2ba8d540bab0dff827deec0bf206ece6d78e2d7c379c",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "BTTS CND/BSN",
+        "question": "Will both Canada and Bosnia and Herzegovina score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781301540
+      },
+      {
+        "conditionId": "0xfcb12b55e7eb928596de872a9021431ad07a6f33e1347302077db2abd9f55a76",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Canada scores first vs Bosnia-Herzegovina?",
+        "question": "Canada to score first vs. Bosnia-Herzegovina?",
+        "endTime": 1781301540
+      },
+      {
+        "conditionId": "0x01a9acebabf4fffcc62787087ee9f94f65b45dfa5d4c5ae638356573a52e79e6",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Jonathan David 1+ goals?",
+        "question": "Jonathan David: 1+ goals",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/worldcup-goal-props/can-jonathan-david.png",
+        "endTime": 1781301540
+      },
+      {
+        "conditionId": "0x26c10c27cde58e2d6214d65ab562d8142d34723b3b6ec3f40836d24f6d22dfc9",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "US wins Jun 12?",
+        "question": "Will United States win on 2026-06-12?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781319600
+      },
+      {
+        "conditionId": "0xfdb7c4c168e2946b9ec2ea6af346b571b794670c7fb771dfa8c3bae1eca45fbf",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "UNI/PRG O2.5",
+        "question": "Will United States vs Paraguay total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781323200
+      },
+      {
+        "conditionId": "0x45458c53ee6c6d2a5aab966703d5da6506e39b1650314a71ff2227efee9d7e35",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "BTTS UNI/PRG",
+        "question": "Will both United States and Paraguay score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0xc33a4381c2feb49d30fa68a732d396aeaf8a6c78f51ffd11ab8fcfc926faa1a0",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "US vs PAR scores first?",
+        "question": "United States to score first vs. Paraguay?",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0xd5ed23b3518b0350662e50ef374f3ea880447ba184fc669c4164a2c956b01275",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "USA leads (HT) Jun 12?",
+        "question": "United States leading at halftime?",
+        "endTime": 1781323140
+      },
+      {
+        "conditionId": "0xa75053ffa630e41fdc08a0885fe0614716ecb13061ac460914bfe498038d5364",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Will Brazil win on 2026-06-13?",
+        "question": "Will Brazil win on 2026-06-13?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781388000
+      },
+      {
+        "conditionId": "0x0a8418fdab57de8ce4e0c6042810fc635fb7d5718a86d10104fcd0d8cc5f6be9",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "BRZ/MRC O2.5",
+        "question": "Will Brazil vs Morocco total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781395199
+      },
+      {
+        "conditionId": "0xbaeaf4578a00cefa6c752e577479ad1afac01bcc6cd95c16dfb0230572731fe7",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "BTTS BRZ/MRC",
+        "question": "Will both Brazil and Morocco score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781319599
+      },
+      {
+        "conditionId": "0xd76a0e98117c0027553249b50ab43b9c40b9a8bfd8e6afc4cee4c035d9340d03",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "BRZ -1.5",
+        "question": "Brazil covers -1.5 spread vs Morocco?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781388000
+      },
+      {
+        "conditionId": "0xaed98ede31aac015de7ca81df6eeef8f8c39fb691a9357d9aa38fd35978d1a35",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Brazil leading HT Jun 13?",
+        "question": "Brazil leading at halftime?",
+        "endTime": 1781398740
+      },
+      {
+        "conditionId": "0x6b864f35765706986a861d22fcc207872062186ddcb5fbc20275e991b20ff6ab",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Will Switzerland win on 2026-06-13?",
+        "question": "Will Switzerland win on 2026-06-13?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781377200
+      },
+      {
+        "conditionId": "0x22bc30327ba8ca5a6c7a15808b63c2a8c5e00ebfd7536b74d2689992f4ba8a67",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "QTR/SWT O2.5",
+        "question": "Will Qatar vs Switzerland total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781377200
+      },
+      {
+        "conditionId": "0x641ae15780fd0d5feeffac3a17de3fac0de69524edc37a464485babd6cb380d7",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "BTTS QTR/SWT",
+        "question": "Will both Qatar and Switzerland score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781387940
+      },
+      {
+        "conditionId": "0x5238b69e57442973c13be38c5a71937cc33e1ce89a65e16e1158f233a9a767e5",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "SWT -1.5",
+        "question": "Switzerland covers -1.5 spread vs Qatar?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781377200
+      },
+      {
+        "conditionId": "0x4b4aaf41eb45e461759f44f8bb3a56c0056ae8b186f0b3e504643ee4e42b90ae",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "QTR/SWT O1.5",
+        "question": "Will Qatar vs Switzerland total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781384399
+      },
+      {
+        "conditionId": "0x1f2bb0bfc3c7b3c9ab678ce9e89cf68bd6daa83385c4834f669cb00c540276f2",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Will Scotland win on 2026-06-13?",
+        "question": "Will Scotland win on 2026-06-13?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781423940
+      },
+      {
+        "conditionId": "0xe282b7d92941a5c4124688a51da89efffa7f3fcc78ae29a327813b48fa92da66",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "HAI/SCT O2.5",
+        "question": "Will Haiti vs Scotland total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781398800
+      },
+      {
+        "conditionId": "0x2187369e90b576430f2f0107c393d1708031f41813e2bc00d0081eef99662f6c",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "BTTS HAI/SCT",
+        "question": "Will both Haiti and Scotland score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781409540
+      },
+      {
+        "conditionId": "0x644f58c9d29950147f2dc8211acba9c60c2f84c6eb79b1ffeee23f0ddfa94d0f",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Scotland scores first vs Haiti?",
+        "question": "Scotland to score first vs. Haiti?",
+        "endTime": 1781409540
+      },
+      {
+        "conditionId": "0xa17daa2f29c5c861bd83fc4212965d134e202d2d8ee303efa2ed43461ca40985",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "SCT -1.5",
+        "question": "Scotland covers -1.5 spread vs Haiti?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781395199
+      },
+      {
+        "conditionId": "0x10049e49f007ba1b40afd9b699f9be4e4e4a3cd6c569038c06d35952681453e8",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "AUS/TRK O1.5",
+        "question": "Will Australia vs T\u00fcrkiye total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781420340
+      },
+      {
+        "conditionId": "0x85a8fd15a5277a7e210fd45f53584b0831f081fd4727771af47fec7e4528ce83",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "AUS/TRK O2.5",
+        "question": "Will Australia vs T\u00fcrkiye total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781409600
+      },
+      {
+        "conditionId": "0xfed5189418eb18d64722c1d648a038cec5c408de25e66b70473a34f57a5742f5",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "BTTS AUS/TRK",
+        "question": "Will both Australia and T\u00fcrkiye score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781420340
+      },
+      {
+        "conditionId": "0xc877fc8356b1ba729ec3c8c830eb6358ef268c450490afe02e3916f5b23533f3",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Australia scores first?",
+        "question": "Australia to score first vs. T\u00fcrkiye?",
+        "endTime": 1781420340
+      },
+      {
+        "conditionId": "0xaccc4dc85d79c29c8a928087320bfe38a8e2f4136357d629e75a99e3fede970f",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Australia leads (HT)?",
+        "question": "Australia leading at halftime?",
+        "endTime": 1781420340
+      }
+    ]
+  }
+]

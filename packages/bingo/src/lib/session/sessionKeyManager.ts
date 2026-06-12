@@ -48,8 +48,7 @@ import {
   predictionMarketEscrow as escrowAddresses,
   collateralToken as collateralAddresses,
 } from '@sapience/sdk/contracts';
-import { etherealTestnetChain } from '@sapience/sdk/constants';
-import { CHAIN_ID } from '~/lib/chain';
+import { CHAIN, CHAIN_ID } from '~/lib/chain';
 
 const PROJECT_ID =
   (import.meta.env.VITE_ZERODEV_PROJECT_ID as string | undefined) ??
@@ -66,8 +65,8 @@ function getZeroDevUrl(chainId: number): string {
 
 function getPublicClient() {
   return createPublicClient({
-    chain: etherealTestnetChain,
-    transport: http(etherealTestnetChain.rpcUrls.default.http[0]),
+    chain: CHAIN,
+    transport: http(CHAIN.rpcUrls.default.http[0]),
   });
 }
 
@@ -260,7 +259,7 @@ export async function createSession(
   );
 
   // 11. Build client (bundler + paymaster)
-  const client = createChainClient(etherealTestnetChain, account);
+  const client = createChainClient(CHAIN, account);
 
   // 12. Deploy the smart account if not yet on-chain (needed for ERC-1271)
   onProgress?.('deploying-account');
@@ -329,7 +328,7 @@ export async function restoreSession(
     sessionKeySigner,
   );
 
-  const client = createChainClient(etherealTestnetChain, account);
+  const client = createChainClient(CHAIN, account);
 
   // Deploy if still not on-chain
   const code = await publicClient.getCode({ address: account.address });

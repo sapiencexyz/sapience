@@ -1,5 +1,10 @@
 import 'dotenv/config';
 import { cleanEnv, makeValidator, num, str } from 'envalid';
+import { NETWORK_CONFIG, resolveNetwork } from './network.js';
+
+// Resolved before cleanEnv so the network can drive other vars' defaults.
+const network = resolveNetwork(process.env.NETWORK);
+const networkDefaults = NETWORK_CONFIG[network];
 
 const hex32 = makeValidator<string>((v) => {
   if (!/^0x[0-9a-fA-F]{64}$/.test(v)) {
@@ -33,6 +38,9 @@ const addressOrEmpty = makeValidator<string>((v) => {
 });
 
 export const env = cleanEnv(process.env, {
+  /** 'staging' (Ethereal testnet, default) or 'main' (Ethereal mainnet).
+   *  Switches the chain, relayer, bundled pool file, and log-scan floor. */
+  NETWORK: str({ choices: ['staging', 'main'] as const, default: 'staging' }),
   PORT: num({ default: 3200 }),
   /** 0x-prefixed 32-byte hex MASTER fairness secret. Each pool's secret is
    *  derived as keccak(master ‖ poolId); cards are dealt as
@@ -50,9 +58,7 @@ export const env = cleanEnv(process.env, {
    *  pools (last = active). Empty (default) = use the pool.json committed
    *  next to the code, which is bundled into serverless builds. */
   POOL_PATH: str({ default: '' }),
-  RELAYER_WS_URL: str({
-    default: 'wss://relayer.staging.sapience.xyz/auction',
-  }),
+  RELAYER_WS_URL: str({ default: networkDefaults.relayerWsUrl }),
   /** Built Vite frontend to serve at / (SPA fallback; node entry only — on
    *  Vercel the platform serves the static build). The dir not existing is
    *  fine in dev — run the Vite dev server instead, it proxies /api. */
@@ -66,6 +72,11 @@ export const env = cleanEnv(process.env, {
   /** Hot wallet authorized as the receipt contract's minter. */
   MINTER_PRIVATE_KEY: hex32(),
   /** Lower bound for on-chain log scans (receipt + escrow events). Defaults
-   *  to the BingoCardReceipt (multi-card) deploy block on Ethereal testnet. */
-  LOG_FROM_BLOCK: num({ default: 4828264 }),
+   *  to the network's BingoCardReceipt deploy block — override only when
+   *  pointing at a different receipt contract. */
+  LOG_FROM_BLOCK: num(
+    networkDefaults.defaultLogFromBlock === undefined
+      ? {}
+      : { default: networkDefaults.defaultLogFromBlock },
+  ),
 });
