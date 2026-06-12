@@ -1,6 +1,6 @@
 /**
- * Refresh the "today" tag on conditions whose question text mentions
- * today's or tomorrow's UTC date.
+ * Refresh the "today" tag on conditions whose question OR description
+ * text mentions today's or tomorrow's UTC date.
  *
  * Designed to run once daily from start.js. Idempotent — re-running the
  * same day reports zero updates. The day after, yesterday's matches drop
@@ -22,7 +22,7 @@ import {
 import { submitMetadataUpdates } from '../generate/api';
 import { fetchAllUnsettledConditions } from './fetch';
 import {
-  questionMentionsImminentDate,
+  conditionMentionsImminentDate,
   computeDesiredTags,
   TODAY_TAG,
 } from './match';
@@ -57,9 +57,9 @@ function showHelp(): void {
   console.log(`
 Usage: tsx scripts/refresh-imminent-tag.ts [options]
 
-Tags every public + unsettled condition whose question references today's
-or tomorrow's UTC date (literal "today"/"tomorrow", "May 18"/"18 May",
-ISO "2026-05-18") with the "${TODAY_TAG}" tag, and strips the tag from
+Tags every public + unsettled condition whose question or description
+references today's or tomorrow's UTC date (literal "today"/"tomorrow",
+"May 18"/"18 May", ISO "2026-05-18") with the "${TODAY_TAG}" tag, and strips the tag from
 markets that no longer match. (The tag string is "${TODAY_TAG}" — the
 match logic also covers tomorrow, since markets resolving tomorrow are
 imminent enough that users want them in the same UI bucket.)
@@ -143,7 +143,9 @@ export async function main(): Promise<void> {
     }
   }
 
-  log(`[TodayTag] [2/3] Matching questions against reference dates...`);
+  log(
+    `[TodayTag] [2/3] Matching question + description against reference dates...`
+  );
   type Update = {
     id: string;
     question: string;
@@ -155,7 +157,11 @@ export async function main(): Promise<void> {
   let matchedCount = 0;
 
   for (const c of conditions) {
-    const matched = questionMentionsImminentDate(c.question, now);
+    const matched = conditionMentionsImminentDate(
+      c.question,
+      c.description,
+      now
+    );
     if (matched) matchedCount++;
     const desired = computeDesiredTags(c.tags, matched);
     if (!tagsEqual(c.tags, desired)) {

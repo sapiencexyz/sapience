@@ -53,12 +53,22 @@ describe('fetchAllUnsettledConditions', () => {
     expect(body.query).toMatch(/DESC/);
   });
 
-  it('maps nodes onto PageItem, defaulting tags to []', async () => {
+  it('maps nodes onto PageItem, defaulting tags to [] and description to ""', async () => {
     fetchQueue.push(() =>
       conditionsPage(
         [
-          { conditionId: '0x1', question: 'Q1?', tags: ['sports'] },
-          { conditionId: '0x2', question: 'Q2?', tags: null },
+          {
+            conditionId: '0x1',
+            question: 'Q1?',
+            description: 'D1',
+            tags: ['sports'],
+          },
+          {
+            conditionId: '0x2',
+            question: 'Q2?',
+            description: null,
+            tags: null,
+          },
         ],
         { hasNextPage: false, endCursor: null }
       )
@@ -70,9 +80,20 @@ describe('fetchAllUnsettledConditions', () => {
     );
 
     expect(out).toEqual([
-      { id: '0x1', question: 'Q1?', tags: ['sports'] },
-      { id: '0x2', question: 'Q2?', tags: [] },
+      { id: '0x1', question: 'Q1?', description: 'D1', tags: ['sports'] },
+      { id: '0x2', question: 'Q2?', description: '', tags: [] },
     ]);
+  });
+
+  it('requests the description field in the GraphQL query', async () => {
+    fetchQueue.push(() =>
+      conditionsPage([], { hasNextPage: false, endCursor: null })
+    );
+
+    await fetchAllUnsettledConditions('https://api.example.com', null);
+
+    const body = JSON.parse(fetchCalls[0].init!.body as string);
+    expect(body.query).toMatch(/description/);
   });
 
   it('paginates via the relay cursor until exhausted', async () => {
