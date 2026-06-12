@@ -1668,9 +1668,9 @@ export type Query = {
   popularTags: Array<Scalars['String']['output']>;
   /** Count of token positions for a given holder */
   positionCount: Scalars['Int']['output'];
-  /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status. Pass active: true for live inventory only: non-zero, unresolved positions with no indexed claim/redeem or close record; sell-history synthetic rows are omitted. The claim/close exclusion applies after pagination, so an active page may contain fewer than `take` rows even when more matches exist. active: false is treated the same as omitting the argument, keeping historical queries unchanged. */
+  /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
   positions: Array<Position>;
-  /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. Supports active: true with the same live-inventory semantics as positions. */
+  /** Same as `positions`, but wraps the result in a `PositionsPage` with a server-truth `hasMore` flag. Use this for infinite scroll: synthesized rows can be empty for some raw pages (zero-balance unresolved positions with no sells), so client-side `lastPage.length === 0` is not a reliable stop signal. */
   positionsPage: PositionsPage;
   /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
@@ -1897,7 +1897,6 @@ export type QueryPositionCountArgs = {
 
 
 export type QueryPositionsArgs = {
-  active?: InputMaybe<Scalars['Boolean']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;
@@ -1917,7 +1916,6 @@ export type QueryPositionsArgs = {
 
 
 export type QueryPositionsPageArgs = {
-  active?: InputMaybe<Scalars['Boolean']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralMax?: InputMaybe<Scalars['String']['input']>;
   collateralMin?: InputMaybe<Scalars['String']['input']>;
