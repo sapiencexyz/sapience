@@ -26,7 +26,13 @@ import {
 import { buildLines, LINES_PER_CARD } from './lines.js';
 import { NETWORK_CONFIG, resolveNetwork, type Network } from './network.js';
 import { loadPools, parsePools, poolIsOpen } from './pool.js';
-import { cardCount, chainSubmission, mintReceipt } from './receipt.js';
+import {
+  cardCount,
+  chainSubmission,
+  mintReceipt,
+  poolHash,
+  receiptLookup,
+} from './receipt.js';
 import { chainFor, restoreSessionClient } from './session.js';
 import { prepareCollateral, submitLine } from './submitLine.js';
 import type { PoolConfig, SerializedSession } from './types.js';
@@ -273,6 +279,57 @@ export async function handleApi(
       submittedAt: submission ? submission.submittedAt * 1000 : null,
       receiptTokenId: submission?.tokenId.toString() ?? null,
       lines,
+    });
+    return true;
+  }
+
+  // Public, shareable view of a card by receipt NFT id — same shape as
+  // GET /api/card. No session, no player param: the receipt IS the handle
+  // (everything it exposes is already public chain state).
+  if (route === 'GET /api/receipt') {
+    const raw = url.searchParams.get('tokenId') ?? '';
+    if (!/^\d{1,78}$/.test(raw)) {
+      json(res, 400, { error: 'tokenId query param required (decimal)' });
+      return true;
+    }
+    const receipt = await receiptLookup(network, BigInt(raw));
+    if (!receipt) {
+      json(res, 404, { error: `No receipt #${raw} on ${network}` });
+      return true;
+    }
+    const pool = poolsFor[network].find(
+      (p) => poolHash(p.poolId).toLowerCase() === receipt.poolHash.toLowerCase(),
+    );
+    if (!pool) {
+      json(res, 404, { error: 'Receipt belongs to an unknown pool' });
+      return true;
+    }
+    const cells = drawCells(pool.conditions, receipt.seed);
+    const funded = await fundedLineFlags(
+      network,
+      receipt.player,
+      cells,
+      receipt.yesMask,
+      cardTag(pool.poolId, receipt.player, receipt.cardIndex),
+      BigInt(receipt.cardPriceWei) / BigInt(LINES_PER_CARD),
+    );
+    json(res, 200, {
+      poolId: pool.poolId,
+      cutoff: pool.cutoff,
+      open: poolIsOpen(pool),
+      player: receipt.player,
+      cardIndex: receipt.cardIndex,
+      cardCount: receipt.cardIndex + 1,
+      cells,
+      yesMask: receipt.yesMask,
+      cardPriceWei: receipt.cardPriceWei,
+      submittedAt: receipt.submittedAt * 1000,
+      receiptTokenId: raw,
+      lines: buildLines().map((l, i) => ({
+        lineId: l.id,
+        cellIndices: l.cellIndices,
+        funded: funded[i] ?? false,
+      })),
     });
     return true;
   }

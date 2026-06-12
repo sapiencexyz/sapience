@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { isAddress, parseAbi, parseUnits, type Address } from 'viem';
 import {
   canonicalizePicks,
@@ -13,6 +13,7 @@ import {
   fetchCard,
   fetchCards,
   fetchPool,
+  fetchReceiptCard,
   submitCard,
   submitLine,
   type CardResponse,
@@ -129,6 +130,30 @@ function cardIndexFromUrl(): number | null {
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
+/** The ?receipt=<tokenId> query param — a PUBLIC, view-only card permalink
+ *  (no session/wallet needed; the receipt NFT id is the handle). */
+function receiptIdFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const v = new URLSearchParams(window.location.search).get('receipt');
+  return v && /^\d{1,78}$/.test(v) ? v : null;
+}
+
+/** Funded flags are monotonic on-chain (escrow events can't un-happen), so
+ *  never let a lagging backend read downgrade a line the UI already showed
+ *  as funded — that's what made cards "reset to pending" on refresh races. */
+function mergeCardMonotonic(
+  prev: CardResponse | null,
+  next: CardResponse,
+): CardResponse {
+  if (!prev || prev.receiptTokenId !== next.receiptTokenId) return next;
+  return {
+    ...next,
+    lines: next.lines.map((l, i) =>
+      !l.funded && prev.lines[i]?.funded ? { ...l, funded: true } : l,
+    ),
+  };
+}
+
 export default function CardDetailScreen() {
   const { isConnected } = useAccount();
   const { connectors, connect, isPending: connectPending } = useConnect();
@@ -144,6 +169,11 @@ export default function CardDetailScreen() {
   } = useSession();
   // The card is per-player: the connected session's smart account is the player.
   const player = config?.smartAccountAddress;
+
+  // ?receipt=<id> = public view-only mode: anyone's card by receipt NFT id,
+  // no session required, all write actions hidden.
+  const [receiptId] = useState<string | null>(receiptIdFromUrl());
+  const viewOnly = receiptId != null;
 
   const [pool, setPool] = useState<PoolResponse | null>(null);
   const [card, setCard] = useState<CardResponse | null>(null);
@@ -214,7 +244,7 @@ export default function CardDetailScreen() {
   // Resolve which card to show + keep the card list fresh: ?card=N wins,
   // otherwise default to the player's latest submitted card.
   useEffect(() => {
-    if (!player) return;
+    if (!player || viewOnly) return;
     let stop = false;
     const tick = async () => {
       try {
@@ -251,13 +281,13 @@ export default function CardDetailScreen() {
   // Poll the backend card every 3s (and immediately on refreshKey) so deal,
   // submission progress, and line funding all surface without a reload.
   useEffect(() => {
-    if (!player || cardIndex == null) return;
+    if (viewOnly || !player || cardIndex == null) return;
     let stop = false;
     const tick = async () => {
       try {
         const c = await fetchCard(player, cardIndex);
         if (stop) return;
-        setCard(c);
+        setCard((prev) => mergeCardMonotonic(prev, c));
         setStatusMsg(null);
       } catch (err) {
         if (stop) return;
@@ -270,7 +300,31 @@ export default function CardDetailScreen() {
       stop = true;
       window.clearInterval(interval);
     };
-  }, [player, cardIndex, refreshKey]);
+  }, [viewOnly, player, cardIndex, refreshKey]);
+
+  // View-only: poll the public receipt endpoint instead (slower cadence —
+  // nothing on this page is mid-flight).
+  useEffect(() => {
+    if (!receiptId) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const c = await fetchReceiptCard(receiptId);
+        if (stop) return;
+        setCard((prev) => mergeCardMonotonic(prev, c));
+        setStatusMsg(null);
+      } catch (err) {
+        if (stop) return;
+        setStatusMsg(err instanceof Error ? err.message : String(err));
+      }
+    };
+    void tick();
+    const interval = window.setInterval(tick, 10_000);
+    return () => {
+      stop = true;
+      window.clearInterval(interval);
+    };
+  }, [receiptId, refreshKey]);
 
   const submitted = card != null && card.yesMask != null;
   const yesMask = card?.yesMask ?? 0;
@@ -454,95 +508,133 @@ export default function CardDetailScreen() {
   // Read the real pool (stake + counterparty) for each funded line so the
   // "to win" amount survives a reload — recompute the pickConfigId from the
   // card's cells + declared sides and ask the escrow.
+  // Re-read only when something material changes (which lines are funded /
+  // which card), NOT on every 3s poll — `card` is a fresh object each poll
+  // and using it as a dep re-fired 10 sequential reads per cycle.
+  const outcomesKey = card
+    ? `${card.receiptTokenId}:${card.yesMask}:${card.lines
+        .map((l) => (l.funded ? 1 : 0))
+        .join('')}`
+    : '';
+  const cardRef = useRef<CardResponse | null>(null);
+  cardRef.current = card;
   useEffect(() => {
     const escrowAddr = escrowAddresses[CHAIN_ID]?.address as Address | undefined;
-    if (!publicClient || !card || card.yesMask == null || !escrowAddr) return;
-    const mask = card.yesMask;
+    const snapshot = cardRef.current;
+    if (!publicClient || !snapshot || snapshot.yesMask == null || !escrowAddr)
+      return;
+    const mask = snapshot.yesMask;
     let stop = false;
-    void (async () => {
-      const out: Record<string, LineOutcome> = {};
-      for (const apiLine of card.lines) {
-        if (!apiLine.funded) continue;
-        const picks: Pick[] = apiLine.cellIndices.map((ci) => ({
-          conditionResolver: card.cells[ci].resolver,
-          conditionId: card.cells[ci].conditionId,
-          predictedOutcome:
-            (mask & (1 << ci)) !== 0 ? OutcomeSide.YES : OutcomeSide.NO,
-        }));
-        try {
-          const pcid = computePickConfigId(canonicalizePicks(picks));
-          const cfg = (await publicClient.readContract({
-            address: escrowAddr,
-            abi: ESCROW_PICKCONFIG_ABI,
-            functionName: 'getPickConfiguration',
-            args: [pcid],
-          })) as {
-            totalPredictorCollateral: bigint;
-            totalCounterpartyCollateral: bigint;
-            claimedPredictorCollateral: bigint;
-            resolved: boolean;
-            result: number;
-          };
-          out[apiLine.lineId] = {
-            pool:
-              cfg.totalPredictorCollateral + cfg.totalCounterpartyCollateral,
-            resolved: cfg.resolved,
-            predictorWon: cfg.result === 1, // SettlementResult.PREDICTOR_WINS
-            claimed: cfg.claimedPredictorCollateral > 0n,
-          };
-        } catch {
-          /* leave unset */
-        }
-      }
-      if (!stop) setLineOutcomes(out);
-    })();
+    const tick = async () => {
+      // All funded lines read in parallel; failures resolve to null so one
+      // flaky RPC call can't hide the rest.
+      const entries = await Promise.all(
+        snapshot.lines
+          .filter((l) => l.funded)
+          .map(async (apiLine) => {
+            const picks: Pick[] = apiLine.cellIndices.map((ci) => ({
+              conditionResolver: snapshot.cells[ci].resolver,
+              conditionId: snapshot.cells[ci].conditionId,
+              predictedOutcome:
+                (mask & (1 << ci)) !== 0 ? OutcomeSide.YES : OutcomeSide.NO,
+            }));
+            try {
+              const pcid = computePickConfigId(canonicalizePicks(picks));
+              const cfg = (await publicClient.readContract({
+                address: escrowAddr,
+                abi: ESCROW_PICKCONFIG_ABI,
+                functionName: 'getPickConfiguration',
+                args: [pcid],
+              })) as {
+                totalPredictorCollateral: bigint;
+                totalCounterpartyCollateral: bigint;
+                claimedPredictorCollateral: bigint;
+                resolved: boolean;
+                result: number;
+              };
+              return [
+                apiLine.lineId,
+                {
+                  pool:
+                    cfg.totalPredictorCollateral +
+                    cfg.totalCounterpartyCollateral,
+                  resolved: cfg.resolved,
+                  // SettlementResult.PREDICTOR_WINS
+                  predictorWon: cfg.result === 1,
+                  claimed: cfg.claimedPredictorCollateral > 0n,
+                },
+              ] as const;
+            } catch {
+              return null;
+            }
+          }),
+      );
+      if (stop) return;
+      const out = Object.fromEntries(
+        entries.filter((e): e is NonNullable<typeof e> => e != null),
+      );
+      // MERGE — a failed read must never blank an amount already on screen
+      // (replacing the map each cycle is what made funded lines flap back
+      // to bare "PENDING" after a refresh).
+      setLineOutcomes((prev) => ({ ...prev, ...out }));
+    };
+    void tick();
+    // Slow refresh keeps WON/CLAIM states current once matches resolve.
+    const interval = window.setInterval(tick, 30_000);
     return () => {
       stop = true;
+      window.clearInterval(interval);
     };
-  }, [publicClient, card, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicClient, outcomesKey, refreshKey]);
 
   // Once all 10 lines are funded, read each cell's resolution and compare to
   // the declared side: correct (✓), wrong (✗), or not-yet-resolved (loading).
   useEffect(() => {
-    if (!publicClient || !card || card.yesMask == null) return;
-    const allDone = card.lines.every((l) => l.funded);
-    if (!allDone || card.lines.length === 0) return;
-    const mask = card.yesMask;
+    const snapshot = cardRef.current;
+    if (!publicClient || !snapshot || snapshot.yesMask == null) return;
+    const allDone = snapshot.lines.every((l) => l.funded);
+    if (!allDone || snapshot.lines.length === 0) return;
+    const mask = snapshot.yesMask;
     let stop = false;
-    void (async () => {
+    const tick = async () => {
       const out: Record<number, CellStatus> = {};
-      for (let i = 0; i < card.cells.length; i++) {
-        const declaredYes = (mask & (1 << i)) !== 0;
-        let st: CellStatus = 'pending';
-        try {
-          const r = (await publicClient.readContract({
-            address: card.cells[i].resolver,
-            abi: RESOLVER_ABI,
-            functionName: 'getResolution',
-            args: [card.cells[i].conditionId],
-          })) as readonly [boolean, { yesWeight: bigint; noWeight: bigint }];
-          const ok = r[0];
-          const yw = r[1].yesWeight;
-          const nw = r[1].noWeight;
-          if (ok && !(yw === 0n && nw === 0n)) {
-            const decisiveYes = yw > 0n && nw === 0n;
-            const decisiveNo = nw > 0n && yw === 0n;
-            st =
-              (declaredYes && decisiveYes) || (!declaredYes && decisiveNo)
-                ? 'correct'
-                : 'wrong';
+      await Promise.all(
+        snapshot.cells.map(async (cell, i) => {
+          const declaredYes = (mask & (1 << i)) !== 0;
+          try {
+            const r = (await publicClient.readContract({
+              address: cell.resolver,
+              abi: RESOLVER_ABI,
+              functionName: 'getResolution',
+              args: [cell.conditionId],
+            })) as readonly [boolean, { yesWeight: bigint; noWeight: bigint }];
+            const ok = r[0];
+            const yw = r[1].yesWeight;
+            const nw = r[1].noWeight;
+            if (ok && !(yw === 0n && nw === 0n)) {
+              const decisiveYes = yw > 0n && nw === 0n;
+              const decisiveNo = nw > 0n && yw === 0n;
+              out[i] =
+                (declaredYes && decisiveYes) || (!declaredYes && decisiveNo)
+                  ? 'correct'
+                  : 'wrong';
+            }
+          } catch {
+            /* leave as-is — merge below keeps any prior decisive state */
           }
-        } catch {
-          /* leave pending */
-        }
-        out[i] = st;
-      }
-      if (!stop) setCellStatus(out);
-    })();
+        }),
+      );
+      if (!stop) setCellStatus((prev) => ({ ...prev, ...out }));
+    };
+    void tick();
+    const interval = window.setInterval(tick, 30_000);
     return () => {
       stop = true;
+      window.clearInterval(interval);
     };
-  }, [publicClient, card, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicClient, outcomesKey, refreshKey]);
 
   // Wins so far = funded lines that resolved in the predictor's favor.
   const wins = LINES.filter(
@@ -617,7 +709,7 @@ export default function CardDetailScreen() {
         </header>
       )}
 
-      {!isConnected && injected && (
+      {!viewOnly && !isConnected && injected && (
         <section className="screen admin-section">
           <button
             type="button"
@@ -630,13 +722,13 @@ export default function CardDetailScreen() {
         </section>
       )}
 
-      {needsSession && (
+      {!viewOnly && needsSession && (
         <section className="screen admin-section">{sessionPrompt}</section>
       )}
 
       {/* Card selector — only once the player has at least one submitted
           card; a first-time player just sees their fresh card below. */}
-      {player && cardsSummary && cardsSummary.cardCount > 0 && (
+      {!viewOnly && player && cardsSummary && cardsSummary.cardCount > 0 && (
         <section className="screen admin-section">
           <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
             {cardsSummary.cards.map((c) => (
@@ -673,7 +765,7 @@ export default function CardDetailScreen() {
         </section>
       )}
 
-      {card && player && (
+      {card && (player || viewOnly) && (
         <section className="screen admin-section">
           {!submitted && (
             <div className="admin-action">
@@ -936,7 +1028,12 @@ export default function CardDetailScreen() {
                     verb = 'PENDING';
                   }
 
-                  const claimable = verb === 'CLAIM' && isActive;
+                  // Claiming needs the viewer's session to BE the card's
+                  // player — on a public receipt URL the square is display-only.
+                  const claimable =
+                    verb === 'CLAIM' &&
+                    isActive &&
+                    player?.toLowerCase() === card.player.toLowerCase();
                   return (
                     <div
                       key={l.id}
@@ -1060,7 +1157,7 @@ export default function CardDetailScreen() {
         </section>
       )}
 
-      {!card && player && !statusMsg && (
+      {!card && (player || viewOnly) && !statusMsg && (
         <section className="screen admin-section">
           <p className="muted small">Dealing your card…</p>
         </section>

@@ -89,6 +89,13 @@ const RECEIPT_ABI = [
       { type: 'bool', name: 'referralPaid' },
     ],
   },
+  {
+    type: 'function',
+    name: 'ownerOf',
+    stateMutability: 'view',
+    inputs: [{ type: 'uint256', name: 'tokenId' }],
+    outputs: [{ type: 'address' }],
+  },
 ] as const;
 
 const CARD_MINTED_EVENT = parseAbiItem(
@@ -173,6 +180,54 @@ export async function minterAddress(network: Network): Promise<Address> {
   const a = client.account?.address;
   if (!a) throw new Error('Minter client has no account');
   return a;
+}
+
+/** A receipt looked up by token id — the public, shareable handle for a
+ *  card. `player` is the NFT's current owner (the mintee; also the payout
+ *  recipient — the product has no transfer flow). Null if not minted. */
+export interface ReceiptLookup {
+  player: Address;
+  poolHash: Hex;
+  seed: Hex;
+  yesMask: number;
+  cardIndex: number;
+  cardPriceWei: string;
+  /** Unix seconds. */
+  submittedAt: number;
+}
+
+export async function receiptLookup(
+  network: Network,
+  tokenId: bigint,
+): Promise<ReceiptLookup | null> {
+  const publicClient = getPublicClient(network);
+  try {
+    const [meta, owner] = await Promise.all([
+      publicClient.readContract({
+        address: receiptAddress(network),
+        abi: RECEIPT_ABI,
+        functionName: 'cardMeta',
+        args: [tokenId],
+      }) as Promise<CardMetaTuple>,
+      publicClient.readContract({
+        address: receiptAddress(network),
+        abi: RECEIPT_ABI,
+        functionName: 'ownerOf', // reverts if not minted
+        args: [tokenId],
+      }) as Promise<Address>,
+    ]);
+    return {
+      player: owner,
+      poolHash: meta[0],
+      seed: meta[1],
+      submittedAt: Number(meta[3]),
+      yesMask: meta[4],
+      cardIndex: meta[5],
+      cardPriceWei: meta[6].toString(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function poolHash(poolId: string): Hex {

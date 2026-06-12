@@ -242,6 +242,13 @@ export function fetchCards(player: Address): Promise<CardsResponse> {
   );
 }
 
+/** Public, shareable card lookup by receipt NFT id (no session needed). */
+export function fetchReceiptCard(tokenId: string): Promise<CardResponse> {
+  return request<CardResponse>(
+    `/api/receipt?tokenId=${encodeURIComponent(tokenId)}`,
+  );
+}
+
 /** Records the submission: the backend mints the receipt NFT, locking
  *  sides/price/referrer on-chain. Fund lines afterwards with submitLine. */
 export function submitCard(params: {
