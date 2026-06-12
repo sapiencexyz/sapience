@@ -63,6 +63,36 @@ describe('checkExistingConditions', () => {
     expect(fetchCalls).toHaveLength(0);
   });
 
+  it('drops empty/invalid conditionIds before querying (one bad id must not poison the chunk)', async () => {
+    // The v2 `conditionIds` filter is a strict Bytes scalar: a single ''/non-hex
+    // element 500s the ENTIRE variable, skipping the whole 100-id chunk. So bad
+    // ids must be filtered out before the query, leaving the valid ones intact.
+    fetchQueue.push(() => conditionsPage([makeNode('0x1'), makeNode('0x2')]));
+
+    await checkExistingConditions('https://api.example.com', [
+      '0x1',
+      '', // empty — Polymarket market with no conditionId
+      '0x2',
+      'not-hex', // malformed
+    ]);
+
+    expect(fetchCalls).toHaveLength(1);
+    const filter = JSON.parse(fetchCalls[0].init!.body as string).variables
+      .filter;
+    expect(filter.conditionIds).toEqual(['0x1', '0x2']);
+  });
+
+  it('makes no request and returns empty when every id is invalid', async () => {
+    const result = await checkExistingConditions('https://api.example.com', [
+      '',
+      '   ',
+      'nope',
+    ]);
+
+    expect(fetchCalls).toHaveLength(0);
+    expect(result.size).toBe(0);
+  });
+
   it('matches public and hidden rows in one id-filtered query (no public filter)', async () => {
     // Both public and private rows count as pre-existing so the pipeline
     // never tries to recreate them. An id lookup is exempt from the listing's
