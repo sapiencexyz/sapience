@@ -33,6 +33,15 @@ registerNodeTypeV2({
 export const ConditionGroup: ConditionGroupResolvers = {
   id: (parent) => toGlobalIdV2('ConditionGroup', String(parent.id)),
 
+  // Domain id (SCHEMA_GAPS G3): the keeper reads groups via GraphQL but
+  // writes via admin REST routes keyed by the numeric DB id.
+  groupId: (parent) => parent.id,
+
+  // Derived like v1: the DB stores only `negRiskMarketId`; its presence
+  // marks the group as a negative-risk basket.
+  negRisk: (parent) =>
+    Boolean((parent as { negRiskMarketId?: string | null }).negRiskMarketId),
+
   category: async (parent, _args, ctx) => {
     if (parent.categoryId == null) return null;
     if (ctx.loaders?.categoryById)

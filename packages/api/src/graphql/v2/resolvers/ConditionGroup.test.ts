@@ -43,6 +43,33 @@ describe('ConditionGroup (v2)', () => {
     });
   });
 
+  it('groupId exposes the numeric DB id for keeper read→REST-write round-trips (SCHEMA_GAPS G3)', async () => {
+    const groupId = await callResolver<number>(ConditionGroup.groupId)(
+      { id: 7, name: 'My Group' },
+      {},
+      {},
+      null
+    );
+    expect(groupId).toBe(7);
+  });
+
+  it('negRisk derives from negRiskMarketId presence, mirroring v1', async () => {
+    const withMarket = await callResolver<boolean>(ConditionGroup.negRisk)(
+      { id: 1, negRiskMarketId: '0xabc' },
+      {},
+      {},
+      null
+    );
+    const withoutMarket = await callResolver<boolean>(ConditionGroup.negRisk)(
+      { id: 2, negRiskMarketId: null },
+      {},
+      {},
+      null
+    );
+    expect(withMarket).toBe(true);
+    expect(withoutMarket).toBe(false);
+  });
+
   it('totals collapses denormalized counters into one struct', () => {
     type Totals = {
       publicConditionCount: number;
