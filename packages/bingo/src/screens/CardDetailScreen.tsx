@@ -200,6 +200,7 @@ export default function CardDetailScreen() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [fillPreviousOpen, setFillPreviousOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [tip, setTip] = useState<{
     text: string;
     x: number;
@@ -417,7 +418,7 @@ export default function CardDetailScreen() {
     setActionError(null);
     setActionBusy(true);
     try {
-      await submitCard({
+      const res = await submitCard({
         player,
         cardIndex,
         yesMask: pickedSides,
@@ -425,6 +426,20 @@ export default function CardDetailScreen() {
         ref: loadRef(),
         session,
       });
+      // Optimistic flip to the submitted view — without this the pick form
+      // (with a re-enabled button) lingers until the next poll notices the
+      // receipt. The poll then confirms with the same receiptTokenId.
+      setCard((prev) =>
+        prev
+          ? {
+              ...prev,
+              yesMask: pickedSides,
+              cardPriceWei: enteredPriceWei.toString(),
+              submittedAt: Date.now(),
+              receiptTokenId: res.receiptTokenId,
+            }
+          : prev,
+      );
       setRefreshKey((k) => k + 1);
       void fundLines(Array.from({ length: 10 }, (_, i) => i));
     } catch (e) {
@@ -680,13 +695,32 @@ export default function CardDetailScreen() {
               <span className="label">
                 Combo Bingo · {cardComplete ? 'Live Bet' : 'Ready to Submit'}
               </span>
-              <button
-                type="button"
-                className="details-link"
-                onClick={() => setDetailsOpen(true)}
-              >
-                Details
-              </button>
+              <span>
+                {card.receiptTokenId && (
+                  <button
+                    type="button"
+                    className="details-link"
+                    onClick={() => {
+                      // The public, view-only permalink for this card —
+                      // anyone can open it, no wallet needed.
+                      const url = `${window.location.origin}/card?receipt=${card.receiptTokenId}`;
+                      void navigator.clipboard.writeText(url).then(() => {
+                        setShareCopied(true);
+                        window.setTimeout(() => setShareCopied(false), 1500);
+                      });
+                    }}
+                  >
+                    {shareCopied ? 'Copied!' : 'Share'}
+                  </button>
+                )}{' '}
+                <button
+                  type="button"
+                  className="details-link"
+                  onClick={() => setDetailsOpen(true)}
+                >
+                  Details
+                </button>
+              </span>
             </div>
             <h2 className="receipt-title">World Cup 2026</h2>
             {pool && (
