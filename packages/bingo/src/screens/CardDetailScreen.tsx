@@ -24,6 +24,7 @@ import {
   redeemViaSession,
 } from '../lib/session/sessionKeyManager';
 import { useSession } from '../hooks/useSession';
+import { useCollateralBalance } from '../hooks/blockchain/useCollateralBalance';
 import { buildLines } from '../parlay';
 import Nav from '../components/Nav';
 
@@ -290,6 +291,20 @@ export default function CardDetailScreen() {
       return null;
     }
   }, [priceInput, pool]);
+
+  // Spendable collateral = native USDe + wrapped (the backend wraps any
+  // native shortfall). Drives the balance display + the pre-submit check —
+  // without it, a too-high price only fails server-side AFTER the receipt
+  // NFT has locked the card at a price the player can't fund.
+  const { rawBalance: availableWei } = useCollateralBalance({
+    address: player as Address | undefined,
+    chainId: CHAIN_ID,
+    enabled: !!player && !submitted,
+  });
+  const insufficientBalance =
+    enteredPriceWei != null &&
+    availableWei != null &&
+    enteredPriceWei > availableWei;
 
   // Per-line client-side run state, keyed by lineId. The on-chain `funded`
   // flag from the backend is the durable truth; this only tracks requests
@@ -724,10 +739,17 @@ export default function CardDetailScreen() {
                   );
                 })}
               </div>
-              <div className="field">
-                <label className="label" htmlFor="card-price">
-                  Card price (USDe)
-                </label>
+              <div className="field price-field">
+                <div className="price-field-labels">
+                  <label className="label" htmlFor="card-price">
+                    Card price (USDe)
+                  </label>
+                  {availableWei != null && (
+                    <span className="label muted">
+                      Available: {fmtUnits(availableWei)} USDe
+                    </span>
+                  )}
+                </div>
                 <input
                   id="card-price"
                   className="admin-input"
@@ -751,6 +773,12 @@ export default function CardDetailScreen() {
                     .
                   </p>
                 )}
+                {insufficientBalance && (
+                  <p className="error small">
+                    Not enough USDe — you have {fmtUnits(availableWei)}{' '}
+                    available.
+                  </p>
+                )}
               </div>
               <div className="pick-actions">
                 <button
@@ -768,7 +796,8 @@ export default function CardDetailScreen() {
                     actionBusy ||
                     !isActive ||
                     !allCellsPicked ||
-                    enteredPriceWei == null
+                    enteredPriceWei == null ||
+                    insufficientBalance
                   }
                   onClick={submitPicks}
                 >

@@ -1433,6 +1433,19 @@ button.quick-pick:hover {
   border-radius: var(--r-sm);
 }
 
+/* Card price input under the pick grid: breathing room above, and the
+   available-balance readout right-aligned on the label line. */
+.price-field {
+  margin-top: 1.5rem;
+}
+
+.price-field-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
 .pool-results,
 .pool-selected {
   display: flex;
