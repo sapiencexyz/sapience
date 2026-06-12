@@ -274,6 +274,11 @@ const runPositions = async (
 
   if (chainId !== undefined && chainId !== null) where.chainId = chainId;
   if (pickConfigIdLower && !conditionId) where.pickConfigId = pickConfigIdLower;
+  // active=true narrows to live inventory. Balance/resolution filter at the
+  // DB level; the claim/close exclusion happens in-memory after the fetch
+  // (Claim/Close have no Prisma relation to Position), so an active page can
+  // come back short — same caveat the schema already documents for
+  // synthesized rows. active=false is treated the same as omitting the arg.
   if (active === true) {
     if (settled === true) return { items: [], hasMore: false };
     where.NOT = { balance: '0' };
@@ -659,7 +664,9 @@ const runPositions = async (
 
     // Emit one synthetic row per sell (only meaningful for unresolved
     // pickConfigs — once settled, the existing PnL flow takes over).
-    if (!isResolved) {
+    // Skipped for active=true: sell rows are historical disposals, not live
+    // inventory, so an active query returns only real Position rows.
+    if (!isResolved && active !== true) {
       for (const d of disposalRows) {
         synthesized.push({
           id: `${r.id}-sell-${d.tradeHash}`,

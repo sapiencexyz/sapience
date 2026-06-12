@@ -340,8 +340,24 @@ class PositionTokenTransferIndexer implements IIndexer {
         id: true,
         predictorToken: true,
         counterpartyToken: true,
+        fullyRedeemed: true,
       },
     });
+
+    // fullyRedeemed configs only match via the nonzero-balance OR arm: they
+    // are kept watched until their burn logs are processed and balances
+    // drain to zero. Transient while the cursor catches up to the burn
+    // block; if the same ids persist across many cycles, the burn logs were
+    // missed for good (e.g. beyond reconciler lookback) and the balances
+    // need a manual replay/repair.
+    const retained = configs.filter((c) => c.fullyRedeemed);
+    if (retained.length > 0) {
+      logger.warn(
+        `[TransferIndexer:${this.chainId}] ${retained.length} fullyRedeemed pickConfig(s) retained in watch list pending burn-log catch-up: ${retained
+          .map((c) => c.id)
+          .join(', ')}`
+      );
+    }
 
     const tokenAddresses: string[] = [];
     const tokenInfoMap = new Map<string, TokenInfo>();

@@ -461,6 +461,33 @@ describe('positions resolver — synthetic row emission', () => {
     expect(mockPrisma.position.findMany).not.toHaveBeenCalled();
   });
 
+  it('active=true omits sell-history synthetic rows, keeping only the live row', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({
+        balance: '100',
+        pickConfiguration: makePickConfig({
+          predictions: [makePrediction()],
+        }),
+      }),
+    ]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
+      makeTrade({
+        seller: ALICE,
+        buyer: '0xcarol',
+        price: '80',
+        tokenAmount: '100',
+        executedAt: TS_SELL,
+        tradeHash: '0xtrade1',
+      }),
+    ]);
+
+    const historical = await callPositions();
+    const active = await callPositions({ active: true });
+
+    expect(historical.map((r) => r.id)).toEqual(['1-sell-0xtrade1', '1']);
+    expect(active.map((r) => r.id)).toEqual(['1']);
+  });
+
   it('counterparty-side holder: cost basis comes from counterpartyCollateral', async () => {
     mockPrisma.position.findMany.mockResolvedValue([
       makePosition({

@@ -177,6 +177,7 @@ describe('PositionTokenTransferIndexer', () => {
           id: PICK_CONFIG_ID,
           predictorToken: TOKEN,
           counterpartyToken: HOLDER_B,
+          fullyRedeemed: true,
         },
       ]);
 
@@ -194,6 +195,7 @@ describe('PositionTokenTransferIndexer', () => {
           id: true,
           predictorToken: true,
           counterpartyToken: true,
+          fullyRedeemed: true,
         },
       });
       expect(result.tokenAddresses).toContain(TOKEN.toLowerCase());
