@@ -106,41 +106,39 @@ export async function checkExistingConditions(
 
   for (const chunk of chunks) {
     // Public and private rows both count as pre-existing, so the pipeline
-    // doesn't try to recreate them. Omitting `public` defaults listing
-    // surfaces to public-only, so each chunk queries the two sides
-    // explicitly. Per-chunk failures skip just that chunk (warn, continue).
+    // doesn't try to recreate them. An id-filtered query is exempt from the
+    // listing's public-only default, so omitting `public` matches both
+    // visibility sides in one request (see conditionListFilters carve-out).
+    // Per-chunk failures skip just that chunk (warn, continue).
     try {
-      for (const isPublic of [true, false]) {
-        const data = await graphqlRequest<{
-          conditions: { nodes: CheckConditionNode[] };
-        }>(
-          url,
-          CHECK_CONDITIONS_QUERY,
-          {
-            first: PAGE_SIZE,
-            filter: { conditionIds: chunk, public: isPublic },
-          },
-          'CheckConditions'
-        );
-        for (const condition of data.conditions.nodes) {
-          existing.set(condition.conditionId, {
-            endTime: condition.endTime,
-            question: condition.question ?? undefined,
-            shortName: condition.shortName ?? undefined,
-            optionName: condition.optionName ?? undefined,
-            description: condition.description ?? undefined,
-            similarMarkets: condition.similarMarket?.markets ?? undefined,
-            tags: condition.tags ?? undefined,
-            similarMarketVolume: condition.similarMarket?.volume ?? undefined,
-            similarMarketImage: condition.similarMarket?.image ?? undefined,
-            groupName: condition.conditionGroup?.name ?? undefined,
-            conditionGroupId: condition.conditionGroup?.groupId ?? undefined,
-            conditionGroupSimilarMarkets:
-              condition.conditionGroup?.similarMarkets ?? undefined,
-            conditionGroupNegRisk:
-              condition.conditionGroup?.negRisk ?? undefined,
-          });
-        }
+      const data = await graphqlRequest<{
+        conditions: { nodes: CheckConditionNode[] };
+      }>(
+        url,
+        CHECK_CONDITIONS_QUERY,
+        {
+          first: PAGE_SIZE,
+          filter: { conditionIds: chunk },
+        },
+        'CheckConditions'
+      );
+      for (const condition of data.conditions.nodes) {
+        existing.set(condition.conditionId, {
+          endTime: condition.endTime,
+          question: condition.question ?? undefined,
+          shortName: condition.shortName ?? undefined,
+          optionName: condition.optionName ?? undefined,
+          description: condition.description ?? undefined,
+          similarMarkets: condition.similarMarket?.markets ?? undefined,
+          tags: condition.tags ?? undefined,
+          similarMarketVolume: condition.similarMarket?.volume ?? undefined,
+          similarMarketImage: condition.similarMarket?.image ?? undefined,
+          groupName: condition.conditionGroup?.name ?? undefined,
+          conditionGroupId: condition.conditionGroup?.groupId ?? undefined,
+          conditionGroupSimilarMarkets:
+            condition.conditionGroup?.similarMarkets ?? undefined,
+          conditionGroupNegRisk: condition.conditionGroup?.negRisk ?? undefined,
+        });
       }
     } catch (error) {
       console.warn(`[API] Error checking existing conditions: ${error}`);

@@ -84,4 +84,36 @@ describe('buildConditionListFilters (v2)', () => {
     expect(result.where.conditionGroupId).toBeUndefined();
     expect(sqlText(result)).not.toContain('conditionGroupId');
   });
+
+  it('public omitted on a listing (no conditionIds) defaults to public-only', () => {
+    const result = build({ filter: {} }, 'createdAt');
+
+    expect(result.where.public).toBe(true);
+    // The default side emits `c.public = true` as literal SQL (no bound param),
+    // unlike the explicit branch which binds `${value}`.
+    expect(sqlText(result)).toContain('c.public = true');
+  });
+
+  it('public omitted WITH conditionIds returns both public and hidden rows', () => {
+    // Carve-out: an explicit id lookup is not a listing surface, so the
+    // public-only default is skipped — a single id-filtered query matches
+    // both visibility sides. The market-keeper's exclude-existing and
+    // cleanup re-check paths rely on this to avoid a second query per chunk.
+    const result = build({ filter: { conditionIds: ['0xAbC'] } }, 'createdAt');
+
+    expect(result.where.public).toBeUndefined();
+    expect(sqlText(result)).not.toContain('c.public');
+    // The id filter itself is still applied (lowercased).
+    expect(result.where.id).toEqual({ in: ['0xabc'] });
+  });
+
+  it('public explicitly set WITH conditionIds restricts to that side', () => {
+    const result = build(
+      { filter: { conditionIds: ['0x1'], public: false } },
+      'createdAt'
+    );
+
+    expect(result.where.public).toBe(false);
+    expect(sqlValues(result)).toContain(false);
+  });
 });

@@ -152,14 +152,19 @@ describe('fetchConditionsWithEngagement', () => {
     expect(fetchCalls).toHaveLength(0);
   });
 
-  it('flags engagement from non-zero openInterest on either visibility side or from forecasts', async () => {
-    // The re-check runs right after cleanup privated these conditions, so
-    // the hidden side is where the rows actually live — public-only
-    // defaulting would blind the safety gate.
+  it('flags engagement from non-zero openInterest or from forecasts', async () => {
+    // The re-check runs right after cleanup privated these conditions, so the
+    // hidden side is where the rows live — but an id-filtered query is exempt
+    // from the public-only listing default, so one query (no `public` filter)
+    // returns both visibility sides. A second forecasts query catches rows
+    // with attestations but zero OI.
     fetchQueue.push(() =>
-      conditionsPage([conditionNode('0xa', '5'), conditionNode('0xb', '0')])
-    ); // public: true
-    fetchQueue.push(() => conditionsPage([conditionNode('0xc', '7')])); // public: false
+      conditionsPage([
+        conditionNode('0xa', '5'),
+        conditionNode('0xb', '0'),
+        conditionNode('0xc', '7'),
+      ])
+    );
     fetchQueue.push(() => forecastsPage([{ conditionId: '0xd' }]));
 
     const result = await fetchConditionsWithEngagement(
@@ -170,16 +175,15 @@ describe('fetchConditionsWithEngagement', () => {
     expect(result.sort()).toEqual(['0xa', '0xc', '0xd']);
     const filters = fetchCalls.map((c) => requestBody(c).variables.filter);
     expect(filters).toEqual([
-      { conditionIds: ['0xa', '0xb', '0xc', '0xd'], public: true },
-      { conditionIds: ['0xa', '0xb', '0xc', '0xd'], public: false },
+      { conditionIds: ['0xa', '0xb', '0xc', '0xd'] },
       { conditionIds: ['0xa', '0xb', '0xc', '0xd'] },
     ]);
   });
 
   it('chunks id lists of more than 50', async () => {
     const ids = Array.from({ length: 60 }, (_, i) => `0x${i + 1}`);
-    // Chunk 1 (50 ids): public, private, forecasts. Chunk 2 (10): same.
-    for (let i = 0; i < 6; i++) {
+    // Chunk 1 (50 ids): conditions + forecasts. Chunk 2 (10): same.
+    for (let i = 0; i < 4; i++) {
       fetchQueue.push((): Response => {
         return jsonResponse({
           data: {
@@ -192,10 +196,10 @@ describe('fetchConditionsWithEngagement', () => {
 
     await fetchConditionsWithEngagement('https://api.example.com', ids);
 
-    expect(fetchCalls).toHaveLength(6);
+    expect(fetchCalls).toHaveLength(4);
     const sizes = fetchCalls.map(
       (c) => requestBody(c).variables.filter.conditionIds.length
     );
-    expect(sizes).toEqual([50, 50, 50, 10, 10, 10]);
+    expect(sizes).toEqual([50, 50, 10, 10]);
   });
 });

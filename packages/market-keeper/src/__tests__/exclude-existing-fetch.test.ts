@@ -63,47 +63,40 @@ describe('checkExistingConditions', () => {
     expect(fetchCalls).toHaveLength(0);
   });
 
-  it('queries public and hidden rows separately (omitting public defaults to public-only)', async () => {
+  it('matches public and hidden rows in one id-filtered query (no public filter)', async () => {
     // Both public and private rows count as pre-existing so the pipeline
-    // never tries to recreate them — the listing default of public-only
-    // would silently drop hidden rows.
-    fetchQueue.push(() => conditionsPage([makeNode('0x1')]));
-    fetchQueue.push(() => conditionsPage([makeNode('0x2')]));
+    // never tries to recreate them. An id lookup is exempt from the listing's
+    // public-only default, so a single query with no `public` filter returns
+    // both visibility sides — no second request per chunk.
+    fetchQueue.push(() => conditionsPage([makeNode('0x1'), makeNode('0x2')]));
 
     const result = await checkExistingConditions('https://api.example.com', [
       '0x1',
       '0x2',
     ]);
 
-    expect(fetchCalls).toHaveLength(2);
-    for (const call of fetchCalls) {
-      expect(call.url).toBe('https://api.example.com/v2/graphql');
-    }
-    const filters = fetchCalls.map(
-      (c) => JSON.parse(c.init!.body as string).variables.filter
-    );
-    expect(filters).toEqual(
-      expect.arrayContaining([
-        { conditionIds: ['0x1', '0x2'], public: true },
-        { conditionIds: ['0x1', '0x2'], public: false },
-      ])
-    );
+    expect(fetchCalls).toHaveLength(1);
+    expect(fetchCalls[0].url).toBe('https://api.example.com/v2/graphql');
+    const filter = JSON.parse(fetchCalls[0].init!.body as string).variables
+      .filter;
+    expect(filter).toEqual({ conditionIds: ['0x1', '0x2'] });
+    expect(filter).not.toHaveProperty('public');
     expect([...result.keys()].sort()).toEqual(['0x1', '0x2']);
   });
 
-  it('chunks large id lists into batches of 100 per side', async () => {
+  it('chunks large id lists into batches of 100, one request per chunk', async () => {
     const ids = Array.from({ length: 150 }, (_, i) => `0x${i + 1}`);
-    // 2 chunks × 2 sides = 4 requests.
-    for (let i = 0; i < 4; i++) fetchQueue.push(() => conditionsPage([]));
+    // 2 chunks × 1 request each = 2 requests.
+    for (let i = 0; i < 2; i++) fetchQueue.push(() => conditionsPage([]));
 
     await checkExistingConditions('https://api.example.com', ids);
 
-    expect(fetchCalls).toHaveLength(4);
+    expect(fetchCalls).toHaveLength(2);
     const sizes = fetchCalls.map(
       (c) =>
         JSON.parse(c.init!.body as string).variables.filter.conditionIds.length
     );
-    expect(sizes.sort((a, b) => a - b)).toEqual([50, 50, 100, 100]);
+    expect(sizes.sort((a, b) => a - b)).toEqual([50, 100]);
   });
 
   it('maps GraphQL fields onto the ExistingCondition shape', async () => {
@@ -129,7 +122,6 @@ describe('checkExistingConditions', () => {
         }),
       ])
     );
-    fetchQueue.push(() => conditionsPage([]));
 
     const result = await checkExistingConditions('https://api.example.com', [
       '0xabc',
@@ -154,13 +146,12 @@ describe('checkExistingConditions', () => {
 
   it('continues with remaining chunks when one chunk errors, keeping partial results', async () => {
     const ids = Array.from({ length: 150 }, (_, i) => `0x${i + 1}`);
-    // Chunk 1: public side errors → whole chunk skipped (warn, continue).
+    // Chunk 1: request errors → whole chunk skipped (warn, continue).
     fetchQueue.push(
       () => new Response('boom', { status: 500, statusText: 'Server Error' })
     );
-    // Chunk 2: both sides succeed.
+    // Chunk 2: succeeds.
     fetchQueue.push(() => conditionsPage([makeNode('0x101')]));
-    fetchQueue.push(() => conditionsPage([]));
 
     const result = await checkExistingConditions(
       'https://api.example.com',

@@ -50,9 +50,10 @@ query UnresolvedNoEngagement($first: Int!, $after: String, $filter: ConditionFil
 }
 `;
 
-// Re-check query: which of these IDs carry open interest now. Run once per
-// visibility side — the re-check happens right after cleanup privated the
-// rows, and omitting `public` defaults the listing to public-only.
+// Re-check query: which of these IDs carry open interest now. The re-check
+// happens right after cleanup privated the rows, so the candidates live on
+// the hidden side — but an id-filtered query is exempt from the listing's
+// public-only default, so omitting `public` covers both sides in one call.
 const CONDITIONS_BY_IDS_QUERY = `
 query ConditionsWithEngagement($first: Int!, $filter: ConditionFilter!) {
   conditions(first: $first, filter: $filter) {
@@ -180,23 +181,21 @@ export async function fetchConditionsWithEngagement(
   for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
     const chunk = ids.slice(i, i + CHUNK_SIZE);
 
-    for (const isPublic of [true, false]) {
-      const data = await graphqlRequest<{
-        conditions: {
-          nodes: Array<Pick<CandidateNode, 'conditionId' | 'openInterest'>>;
-        };
-      }>(
-        url,
-        CONDITIONS_BY_IDS_QUERY,
-        {
-          first: chunk.length,
-          filter: { conditionIds: chunk, public: isPublic },
-        },
-        'Cleanup'
-      );
-      for (const node of data.conditions.nodes) {
-        if (!isZero(node.openInterest)) engaged.add(node.conditionId);
-      }
+    const data = await graphqlRequest<{
+      conditions: {
+        nodes: Array<Pick<CandidateNode, 'conditionId' | 'openInterest'>>;
+      };
+    }>(
+      url,
+      CONDITIONS_BY_IDS_QUERY,
+      {
+        first: chunk.length,
+        filter: { conditionIds: chunk },
+      },
+      'Cleanup'
+    );
+    for (const node of data.conditions.nodes) {
+      if (!isZero(node.openInterest)) engaged.add(node.conditionId);
     }
 
     const withForecasts = await fetchForecastConditionIds(url, chunk);
